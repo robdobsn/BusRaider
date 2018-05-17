@@ -1,6 +1,6 @@
 #include "pigfx_config.h"
-#include "uart.h"
 #include "utils.h"
+#include "uart.h"
 #include "timer.h"
 #include "framebuffer.h"
 #include "console.h"
@@ -13,6 +13,9 @@
 #include "../uspi/include/uspi.h"
 
 #include "bare_metal_pi_zero.h"
+
+int ledVal = 0;
+
 
 uint8_t convModeToVal(uint8_t mode)
 {
@@ -88,6 +91,9 @@ volatile unsigned int last_backspace_t;
 
 static void _keypress_handler(const char* str )
 {
+    digitalWrite(4, ledVal);
+    ledVal = !ledVal;
+    
     const char* c = str;
     char CR = 13;
 
@@ -407,8 +413,7 @@ void term_main_loop()
     ee_printf("Waiting for UART data (115200,8,N,1)\n");
 
     /**/
-    int ledVal = 0;
-    while( uart_buffer_start == uart_buffer_end )
+    while( uart_poll() == 0 )
     {
         usleep(100000 );
         digitalWrite(4, ledVal);
@@ -422,31 +427,34 @@ void term_main_loop()
 
     while(1)
     {
-        if( !DMA_CHAN0_BUSY && uart_buffer_start != uart_buffer_end )
-        {
-            strb[0] = *uart_buffer_start++;
-            if( uart_buffer_start >= uart_buffer_limit )
-                uart_buffer_start = uart_buffer;
+//         if( !DMA_CHAN0_BUSY && uart_buffer_start != uart_buffer_end )
+//         {
+//             strb[0] = *uart_buffer_start++;
+//             if( uart_buffer_start >= uart_buffer_limit )
+//                 uart_buffer_start = uart_buffer;
 
             
-#if ENABLED(SKIP_BACKSPACE_ECHO)
-            if( time_microsec()-last_backspace_t > 50000 )
-                backspace_n_skip=0;
+// #if ENABLED(SKIP_BACKSPACE_ECHO)
+//             if( time_microsec()-last_backspace_t > 50000 )
+//                 backspace_n_skip=0;
 
-            if( backspace_n_skip  > 0 )
-            {
-                //ee_printf("Skip %c",strb[0]);
-                strb[0]=0; // Skip this char
-                backspace_n_skip--;
-                if( backspace_n_skip == 0)
-                    strb[0]=0x7F; // Add backspace instead
-            }
-#endif
+//             if( backspace_n_skip  > 0 )
+//             {
+//                 //ee_printf("Skip %c",strb[0]);
+//                 strb[0]=0; // Skip this char
+//                 backspace_n_skip--;
+//                 if( backspace_n_skip == 0)
+//                     strb[0]=0x7F; // Add backspace instead
+//             }
+// #endif
 
+        if (uart_poll())
+        {
+            strb[0] = uart_read_byte();
             gfx_term_putstring( strb );
         }
 
-        uart_fill_queue(0);
+        // uart_fill_queue(0);
         timer_poll();
     }
 
@@ -480,7 +488,7 @@ void entry_point()
     timers_init();
     attach_timer_handler( HEARTBEAT_FREQUENCY, _heartbeat_timer_handler, 0, 0 );
 
-    initialize_uart_irq();
+    // initialize_uart_irq();
 
     //video_test();
     //video_line_test();
