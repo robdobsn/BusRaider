@@ -9,63 +9,15 @@
 #include "dma.h"
 #include "nmalloc.h"
 #include "ee_printf.h"
+#include "piwiring.h"
 #include "../uspi\include\uspi\types.h"
 #include "../uspi/include/uspi.h"
 
-#include "bare_metal_pi_zero.h"
-
 int ledVal = 0;
-
-
-uint8_t convModeToVal(uint8_t mode)
-{
-    switch(mode)
-    {
-        case INPUT:
-        case INPUT_PULLUP:
-            return 0;
-        case OUTPUT: return 1;
-        case PINMODE_ALT0: return 4;
-        case PINMODE_ALT1: return 5;
-        case PINMODE_ALT2: return 6;
-        case PINMODE_ALT3: return 7;
-        case PINMODE_ALT4: return 3;
-        case PINMODE_ALT5: return 2;
-    }
-    return 0;
-}
-
-void pinMode(uint8_t pin, uint8_t mode)
-{
-    uint32_t gpfSelReg = GPIO_BASE + (pin / 10) * 4;
-    uint8_t bitPos = ((pin - ((pin / 10) * 10)) % 10) * 3; 
-    uint32_t regVal = R32(gpfSelReg);
-    regVal&=~(7<<bitPos); //gpio14
-    regVal|=convModeToVal(mode)<<bitPos;    //alt5  
-    W32(gpfSelReg,regVal);
-}
-
-void digitalWrite(uint8_t pin, int val)
-{
-    if (val)
-    {
-        if (pin < 32)
-            W32(GPSET0, 1 << pin);
-        else
-            W32(GPSET1, 1 << (pin-32));
-    }
-    else
-    {
-        if (pin < 32)
-            W32(GPCLR0, 1 << pin);
-        else
-            W32(GPCLR1, 1 << (pin-32));
-    }
-
-}
+int ledCount = 0;
+int firstCharReceived = 0;
 
 #define UART_BUFFER_SIZE 16384 /* 16k */
-
 
 unsigned int led_status;
 volatile unsigned int* UART0_DR;
@@ -91,9 +43,7 @@ volatile unsigned int last_backspace_t;
 
 static void _keypress_handler(const char* str )
 {
-    digitalWrite(4, ledVal);
-    ledVal = !ledVal;
-    
+
     const char* c = str;
     char CR = 13;
 
@@ -413,15 +363,13 @@ void term_main_loop()
     ee_printf("Waiting for UART data (115200,8,N,1)\n");
 
     /**/
-    while( uart_poll() == 0 )
-    {
-        usleep(100000 );
-        digitalWrite(4, ledVal);
-        ledVal = !ledVal;
-    }
+    // while( uart_poll() == 0 )
+    // {
+    //     usleep(100000 );
+    //     digitalWrite(4, ledVal);
+    //     ledVal = !ledVal;
+    // }
     /**/
-
-    gfx_term_putstring( "\x1B[2J" );
 
     char strb[2] = {0,0};
 
@@ -450,12 +398,29 @@ void term_main_loop()
 
         if (uart_poll())
         {
+            // Switch screen to terminal view
+            if (!firstCharReceived)
+            {
+                gfx_term_putstring( "\x1B[2J" );
+                firstCharReceived = 1;
+            }
+            // Show char received
             strb[0] = uart_read_byte();
             gfx_term_putstring( strb );
         }
 
         // uart_fill_queue(0);
         timer_poll();
+
+        // Blink LED
+        ledCount++;
+        if (ledCount > 100000)
+        {
+            ledCount = 0;
+            digitalWrite(4, ledVal);
+            ledVal = !ledVal;
+        }
+
     }
 
 }
