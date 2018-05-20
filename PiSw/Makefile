@@ -1,6 +1,6 @@
 
 ARMGNU ?= arm-none-eabi
-CFLAGS = -Wall -Wextra -O2 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard
+CFLAGS = -Wall -Wextra -O3 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard
 
 
 ## Important!!! asm.o must be the first object to be linked!
