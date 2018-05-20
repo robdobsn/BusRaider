@@ -1,5 +1,4 @@
 #include "piwiring.h"
-#include "bare_metal_pi_zero.h"
 
 uint8_t convModeToVal(uint8_t mode)
 {
@@ -46,4 +45,11 @@ void digitalWrite(uint8_t pin, int val)
             W32(GPCLR1, 1 << (pin-32));
     }
 
+}
+
+int digitalRead(uint8_t pin)
+{
+    if (pin < 32)
+        return ((R32(GPLEV0) >> pin) & 0x01) != 0;
+    return ((R32(GPLEV1) >> (pin-32)) & 0x01) != 0;
 }

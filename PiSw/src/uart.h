@@ -12,8 +12,8 @@ extern void uart_dump_mem(unsigned char* start_addr, unsigned char* end_addr);
 extern void uart_load_ihex(void);
 extern unsigned int uart_read_byte();
 extern unsigned int uart_read_hex();
-void uart_write_hex_u8 ( unsigned int d );
-void uart_write_hex_u32 ( unsigned int d );
+extern void uart_write_hex_u8 ( unsigned int d );
+extern void uart_write_hex_u32 ( unsigned int d );
 
 
 #endif

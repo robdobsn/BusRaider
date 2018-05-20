@@ -52,6 +52,7 @@ typedef	unsigned long long uint64_t;
 #define GPCLR1    0x2020002C
 //GPCLR acts the same way as GPSET, but clears the pin instead.
 #define GPLEV0    0x20200034 //GPIO Pin Level. There are 2 of these (32 bits each)
+#define GPLEV1    0x20200038 //GPIO Pin Level. Second (32 bits)
 
 // #define GPFSEL1 0x20200004
 // #define GPSET0  0x2020001C

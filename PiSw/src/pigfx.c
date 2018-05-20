@@ -12,10 +12,15 @@
 #include "piwiring.h"
 #include "../uspi\include\uspi\types.h"
 #include "../uspi/include/uspi.h"
+#include "bus_access.h"
 
 int ledVal = 0;
 int ledCount = 0;
 int firstCharReceived = 0;
+uint32_t rdAddr = 0x8000;
+uint32_t wrAddr = 0x8000;
+int dataVal = 0;
+int errCount = 0;
 
 #define UART_BUFFER_SIZE 16384 /* 16k */
 
@@ -419,8 +424,38 @@ void term_main_loop()
             ledCount = 0;
             digitalWrite(4, ledVal);
             ledVal = !ledVal;
+
+            for (int i = 0; i < 10; i++)
+            {
+                busSetAddr(((uint32_t)0x8000+i));
+                busWriteData(i);
+            }
+
+            // for (int i = 0; i < 10; i++)
+            // {
+            //     busSetAddr(((uint32_t)0x8000)+i);
+            //     uint8_t val = busReadData();
+            //     ee_printf("%02x ",val);
+            // }
+            ee_printf("\n");
         }
 
+        // busSetAddr(wrAddr);
+        // busWriteData(dataVal);
+
+        // wrAddr++;
+        // dataVal++;
+
+        // if (wrAddr > 10)
+        // {
+        //     busSetAddr(rdAddr);
+        //     uint8_t val = busReadData();
+        //     if (val != (rdAddr & 0xff))
+        //     {
+        //         errCount++;
+        //     }
+        //     rdAddr++;
+        // }
     }
 
 }
@@ -489,6 +524,10 @@ void entry_point()
 
     pinMode(4, OUTPUT);
     digitalWrite(4, 1);
+
+    busSetup();
+    busRequestControl();
+    busTakeControl();
 
     term_main_loop();
 }
