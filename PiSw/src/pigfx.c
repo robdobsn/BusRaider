@@ -418,6 +418,7 @@ void term_main_loop()
         timer_poll();
 
         // Blink LED
+        const int NUM_TEST_LOCS = 10;
         ledCount++;
         if (ledCount > 100000)
         {
@@ -425,17 +426,21 @@ void term_main_loop()
             // digitalWrite(4, ledVal);
             ledVal = !ledVal;
 
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < NUM_TEST_LOCS; i++)
             {
                 busSetAddr(((uint32_t)0x8000+i));
                 busWriteData(i);
             }
 
-            for (int i = 0; i < 10; i++)
+            uint8_t readVals[NUM_TEST_LOCS];
+            for (int i = 0; i < NUM_TEST_LOCS; i++)
             {
                 busSetAddr(((uint32_t)0x8000)+i);
-                uint8_t val = busReadData();
-                ee_printf("%02x ",val);
+                readVals[i] = busReadData();
+            }
+            for (int i = 0; i < NUM_TEST_LOCS; i++)
+            {
+                ee_printf("%02x ",readVals[i]);
             }
             ee_printf("\n");
         }

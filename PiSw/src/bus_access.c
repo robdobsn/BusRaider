@@ -3,7 +3,7 @@
 #include "timer.h"
 #include "ee_printf.h"
 
-#define USE_BITWISE_BUS_ACCESS 1
+//#define USE_BITWISE_BUS_ACCESS 1
 
 #define BUS_ACC_MUX_BUS_P0 20
 #define BUS_ACC_WR_BAR 17
@@ -22,10 +22,10 @@
 #define BUS_ACC_H_ADDR_BAR 16
 #define BUS_ACC_BUSRQ 19
 #define BUS_ACC_MUX_BUS_MASK (~((uint32_t)0xff << BUS_ACC_MUX_BUS_P0))
-#define BUS_ACC_MUX_BUS_GPFSEL GPFSEL2
+#define BUS_ACC_MUX_BUS_GPF_REG GPFSEL2
 #define BUS_ACC_MUX_BUS_GPF_MASK 0xff000000
 #define BUS_ACC_MUX_BUS_GPF_INPUT 0x00000000
-#define BUS_ACC_MUX_BUS_GPF_OUTPUT 0x00248248
+#define BUS_ACC_MUX_BUS_GPF_OUTPUT 0x00249249
 
 void muxBusOutputs()
 {
@@ -33,9 +33,9 @@ void muxBusOutputs()
 	for (int i = 0; i < 8; i++)
 	{
 		pinMode(BUS_ACC_MUX_BUS_P0 + i, OUTPUT);
-	}	
+	}
 #else
-	W32(BUS_ACC_MUX_BUS_GPFSEL, (R32(BUS_ACC_MUX_BUS_GPFSEL) & BUS_ACC_MUX_BUS_GPF_MASK) | BUS_ACC_MUX_BUS_GPF_OUTPUT);
+	W32(BUS_ACC_MUX_BUS_GPF_REG, (R32(BUS_ACC_MUX_BUS_GPF_REG) & BUS_ACC_MUX_BUS_GPF_MASK) | BUS_ACC_MUX_BUS_GPF_OUTPUT);
 #endif
 }
 
@@ -47,21 +47,27 @@ void muxBusInputs()
 		pinMode(BUS_ACC_MUX_BUS_P0 + i, INPUT);
 	}	
 #else
-	W32(BUS_ACC_MUX_BUS_GPFSEL, (R32(BUS_ACC_MUX_BUS_GPFSEL) & BUS_ACC_MUX_BUS_GPF_MASK) | BUS_ACC_MUX_BUS_GPF_INPUT);
+	W32(BUS_ACC_MUX_BUS_GPF_REG, (R32(BUS_ACC_MUX_BUS_GPF_REG) & BUS_ACC_MUX_BUS_GPF_MASK) | BUS_ACC_MUX_BUS_GPF_INPUT);
 #endif
 }
 
 void setMuxBus(uint8_t val)
 {
-// #ifdef USE_BITWISE_BUS_ACCESS	
+#ifdef USE_BITWISE_BUS_ACCESS	
+	uint32_t va0 = R32(GPLEV0);
+	uint32_t va1 = (R32(GPLEV0) & BUS_ACC_MUX_BUS_MASK) | (((uint32_t)val) << BUS_ACC_MUX_BUS_P0);
+
 	for (int i = 0; i < 8; i++)
 	{
 		digitalWrite(BUS_ACC_MUX_BUS_P0 + i, val & 0x01);
 		val = val >> 1;
 	}
-// #else
-// 	W32(GPLEV0, (R32(GPLEV0) & BUS_ACC_MUX_BUS_MASK) | (((uint32_t)val) << BUS_ACC_MUX_BUS_P0));
-// #endif
+#else
+	uint32_t setBits = ((uint32_t)val) << BUS_ACC_MUX_BUS_P0;
+	uint32_t clrBits = (~(((uint32_t)val) << BUS_ACC_MUX_BUS_P0)) & (~BUS_ACC_MUX_BUS_MASK);
+	W32(GPSET0, setBits);
+	W32(GPCLR0, clrBits);
+#endif
 }
 
 uint8_t getMuxBus()
@@ -86,17 +92,25 @@ uint8_t getMuxBus()
 void setAddrHigh(uint32_t val)
 {
 	setMuxBus(val);
+#ifdef USE_BITWISE_BUS_ACCESS	
 	digitalWrite(BUS_ACC_H_ADDR_SET, 1);
 	digitalWrite(BUS_ACC_H_ADDR_SET, 0);
+#else
+	W32(GPSET0, 1 << BUS_ACC_H_ADDR_SET);
+	W32(GPCLR0, 1 << BUS_ACC_H_ADDR_SET);
+#endif
 }
 
 void setAddrLow(uint32_t val)
 {
 	setMuxBus(val);
+#ifdef USE_BITWISE_BUS_ACCESS	
 	digitalWrite(BUS_ACC_L_ADDR_SET, 1);
-	// ee_printf("LADDRSET %08x %08x\n", R32(GPLEV0), R32(GPFSEL0));
 	digitalWrite(BUS_ACC_L_ADDR_SET, 0);
-	// ee_printf("LADDRCLR %08x %08x\n", R32(GPLEV0), R32(GPFSEL0));
+#else
+	W32(GPSET0, 1 << BUS_ACC_L_ADDR_SET);
+	W32(GPCLR0, 1 << BUS_ACC_L_ADDR_SET);
+#endif
 }
 
 void setPinOutAndValue(int pin, int val)
@@ -182,6 +196,7 @@ void busWriteData(uint8_t data)
 {
 	muxBusOutputs();
 	setMuxBus(data);
+#ifdef USE_BITWISE_BUS_ACCESS
 	digitalWrite(BUS_ACC_DATA_DIRN_IN, 0);
 	digitalWrite(BUS_ACC_DATA_BAR, 0);
 	digitalWrite(BUS_ACC_MREQ_BAR, 0);
@@ -191,20 +206,30 @@ void busWriteData(uint8_t data)
 	digitalWrite(BUS_ACC_MREQ_BAR, 1);
 	digitalWrite(BUS_ACC_DATA_BAR, 1);
 	digitalWrite(BUS_ACC_DATA_DIRN_IN, 1);
+#else
+	W32(GPCLR0, (1 << BUS_ACC_DATA_DIRN_IN) | (1 << BUS_ACC_DATA_BAR) | (1 << BUS_ACC_MREQ_BAR));
+	W32(GPCLR0, (1 << BUS_ACC_WR_BAR));
+	W32(GPSET0, (1 << BUS_ACC_DATA_DIRN_IN) | (1 << BUS_ACC_DATA_BAR) | (1 << BUS_ACC_MREQ_BAR) | (1 << BUS_ACC_WR_BAR));
+#endif
 	muxBusInputs();
 }
 
 uint8_t busReadData()
 {
+#ifdef USE_BITWISE_BUS_ACCESS
 	digitalWrite(BUS_ACC_DATA_DIRN_IN, 1);
 	digitalWrite(BUS_ACC_DATA_BAR, 0);
 	digitalWrite(BUS_ACC_MREQ_BAR, 0);
 	digitalWrite(BUS_ACC_RD_BAR, 0);
 	usleep(1);
-	uint8_t val = getMuxBus();
 	digitalWrite(BUS_ACC_RD_BAR, 1);
 	digitalWrite(BUS_ACC_MREQ_BAR, 1);
 	digitalWrite(BUS_ACC_DATA_BAR, 1);
+#else
+	W32(GPCLR0, (1 << BUS_ACC_DATA_BAR) | (1 << BUS_ACC_MREQ_BAR) | (1 << BUS_ACC_RD_BAR));
+	uint8_t val = getMuxBus();
+	W32(GPSET0, (1 << BUS_ACC_DATA_BAR) | (1 << BUS_ACC_MREQ_BAR) | (1 << BUS_ACC_RD_BAR));
+#endif
 	return val;
 }
 

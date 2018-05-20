@@ -1,6 +1,6 @@
 
 ARMGNU ?= arm-none-eabi
-CFLAGS = -Wall -Wextra -O0 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard
+CFLAGS = -Wall -Wextra -O2 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard
 
 
 ## Important!!! asm.o must be the first object to be linked!
@@ -20,9 +20,9 @@ all: pigfx.elf pigfx.hex kernel
 	ctags src/.
 	arm-none-eabi-objcopy --srec-forceS3 pigfx.elf -O srec pigfx.srec
 
-$(SRC_DIR)/pigfx_config.h: pigfx_config.h.in 
-	@sed 's/\$$VERSION\$$/$(BUILD_VERSION)/g' pigfx_config.h.in > $(SRC_DIR)/pigfx_config.h
-	@echo "Creating pigfx_config.h"
+# $(SRC_DIR)/pigfx_config.h: pigfx_config.h.in 
+# 	@sed 's/\$$VERSION\$$/$(BUILD_VERSION)/g' pigfx_config.h.in > $(SRC_DIR)/pigfx_config.h
+# 	@echo "Creating pigfx_config.h"
 
 run: pigfx.elf
 	./launch_qemu.bash
@@ -59,7 +59,7 @@ pigfx.elf : $(SRC_DIR)/pigfx_config.h $(OBJS)
 
 
 .PHONY clean :
-	rm -f $(SRC_DIR)/pigfx_config.h
+	# rm -f $(SRC_DIR)/pigfx_config.h
 	rm -f $(BUILD_DIR)/*.o
 	rm -f *.hex
 	rm -f *.elf
