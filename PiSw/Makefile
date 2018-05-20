@@ -4,7 +4,7 @@ CFLAGS = -Wall -Wextra -O3 -g -nostdlib -nostartfiles -fno-stack-limit -ffreesta
 
 
 ## Important!!! asm.o must be the first object to be linked!
-OOB = asm.o pigfx.o uart.o irq.o utils.o timer.o framebuffer.o postman.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o raspihwconfig.o stupid_timer.o binary_assets.o piwiring.o bus_access.o
+OOB = asm.o pi_bus_raider.o uart.o irq.o utils.o timer.o framebuffer.o postman.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o raspihwconfig.o stupid_timer.o binary_assets.o piwiring.o bus_access.o
 
 BUILD_DIR = build
 SRC_DIR = src
@@ -16,25 +16,25 @@ OBJS=$(patsubst %.o,$(BUILD_DIR)/%.o,$(OOB))
 LIBGCC="$(shell $(ARMGNU)-gcc -print-libgcc-file-name)"
 LIBUSPI=uspi/lib/libuspi.a
 
-all: pigfx.elf pigfx.hex kernel 
+all: pi_bus_raider.elf pi_bus_raider.hex kernel 
 	ctags src/.
-	arm-none-eabi-objcopy --srec-forceS3 pigfx.elf -O srec pigfx.srec
+	arm-none-eabi-objcopy --srec-forceS3 pi_bus_raider.elf -O srec pi_bus_raider.srec
 
-# $(SRC_DIR)/pigfx_config.h: pigfx_config.h.in 
-# 	@sed 's/\$$VERSION\$$/$(BUILD_VERSION)/g' pigfx_config.h.in > $(SRC_DIR)/pigfx_config.h
-# 	@echo "Creating pigfx_config.h"
+# $(SRC_DIR)/pgm_config.h: pgm_config.h.in 
+# 	@sed 's/\$$VERSION\$$/$(BUILD_VERSION)/g' pgm_config.h.in > $(SRC_DIR)/pgm_config.h
+# 	@echo "Creating pgm_config.h"
 
-run: pigfx.elf
+run: pi_bus_raider.elf
 	./launch_qemu.bash
 
-kernel: pigfx.img
-	cp pigfx.img bin/kernel.img
+kernel: pi_bus_raider.img
+	cp pi_bus_raider.img bin/kernel.img
 
-debug: pigfx.elf
+debug: pi_bus_raider.elf
 	cd JTAG && ./run_gdb.sh
 
-dump: pigfx.elf
-	@$(ARMGNU)-objdump --disassemble-zeroes -D pigfx.elf > pigfx.dump
+dump: pi_bus_raider.elf
+	@$(ARMGNU)-objdump --disassemble-zeroes -D pi_bus_raider.elf > pi_bus_raider.dump
 	@echo "OBJDUMP $<"
 
 $(BUILD_DIR)/%.o : $(SRC_DIR)/%.c 
@@ -53,13 +53,13 @@ $(BUILD_DIR)/%.o : $(SRC_DIR)/%.s
 	@$(ARMGNU)-objcopy $< -O binary $@
 	@echo "OBJCOPY $< -> $@"
 
-pigfx.elf : $(SRC_DIR)/pigfx_config.h $(OBJS) 
+pi_bus_raider.elf : $(SRC_DIR)/pgm_config.h $(OBJS) 
 	@$(ARMGNU)-ld $(OBJS) $(LIBGCC) $(LIBUSPI) -T memmap -o $@
 	@echo "LD $@"
 
 
 .PHONY clean :
-	# rm -f $(SRC_DIR)/pigfx_config.h
+	# rm -f $(SRC_DIR)/pgm_config.h
 	rm -f $(BUILD_DIR)/*.o
 	rm -f *.hex
 	rm -f *.elf

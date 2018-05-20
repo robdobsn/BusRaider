@@ -1,4 +1,4 @@
-#include "pigfx_config.h"
+#include "pgm_config.h"
 #include "utils.h"
 #include "uart.h"
 #include "timer.h"

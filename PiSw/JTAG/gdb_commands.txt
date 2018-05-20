@@ -1,4 +1,4 @@
-file ../pigfx.elf
+file ../pi_bus_raider.elf
 target remote 127.0.0.1:3333
 layout split
 layout regs

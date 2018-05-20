@@ -3,7 +3,7 @@
 
 #include "globaldefs.h"
 
-#define PIGFX_VERSION           "$VERSION$"
+#define PIGFX_VERSION           "V1.0"
 #define SEND_CR_LF              ON              /* Send CR+LF when Return is pressed */
 #define GFX_USE_DMA             ON              /* Graphics functions use DMA when possible (faster, but occupy DMA channel 0) */
 #define BACKSPACE_ECHO          OFF             /* Auto-echo the backspace char */
