@@ -3,7 +3,7 @@
 #include "timer.h"
 #include "ee_printf.h"
 
-//#define USE_BITWISE_BUS_ACCESS 1
+#define USE_BITWISE_BUS_ACCESS 1
 
 #define BUS_ACC_MUX_BUS_P0 20
 #define BUS_ACC_WR_BAR 17
@@ -22,21 +22,33 @@
 #define BUS_ACC_H_ADDR_BAR 16
 #define BUS_ACC_BUSRQ 19
 #define BUS_ACC_MUX_BUS_MASK (~((uint32_t)0xff << BUS_ACC_MUX_BUS_P0))
+#define BUS_ACC_MUX_BUS_GPFSEL GPFSEL2
+#define BUS_ACC_MUX_BUS_GPF_MASK 0xff000000
+#define BUS_ACC_MUX_BUS_GPF_INPUT 0x00000000
+#define BUS_ACC_MUX_BUS_GPF_OUTPUT 0x00248248
 
 void muxBusOutputs()
 {
+#ifdef USE_BITWISE_BUS_ACCESS
 	for (int i = 0; i < 8; i++)
 	{
 		pinMode(BUS_ACC_MUX_BUS_P0 + i, OUTPUT);
 	}	
+#else
+	W32(BUS_ACC_MUX_BUS_GPFSEL, (R32(BUS_ACC_MUX_BUS_GPFSEL) & BUS_ACC_MUX_BUS_GPF_MASK) | BUS_ACC_MUX_BUS_GPF_OUTPUT);
+#endif
 }
 
 void muxBusInputs()
 {
+#ifdef USE_BITWISE_BUS_ACCESS
 	for (int i = 0; i < 8; i++)
 	{
 		pinMode(BUS_ACC_MUX_BUS_P0 + i, INPUT);
 	}	
+#else
+	W32(BUS_ACC_MUX_BUS_GPFSEL, (R32(BUS_ACC_MUX_BUS_GPFSEL) & BUS_ACC_MUX_BUS_GPF_MASK) | BUS_ACC_MUX_BUS_GPF_INPUT);
+#endif
 }
 
 void setMuxBus(uint8_t val)
@@ -58,9 +70,13 @@ uint8_t getMuxBus()
 	uint8_t val = 0;
 	for (int i = 0; i < 8; i++)
 	{
-		val = val | (digitalRead(BUS_ACC_MUX_BUS_P0 + i) & 0x01);
-		val = val << 1;
+		int bitVal = digitalRead(BUS_ACC_MUX_BUS_P0 + i);
+		// ee_printf("%d ", bitVal);
+		val = val >> 1;
+		val = val | ((bitVal != 0) ? 0x80 : 0);
 	}	
+	// ee_printf("\n");
+	return val;
 #else
 	uint32_t busVals = R32(GPLEV0);
 	return (busVals >> BUS_ACC_MUX_BUS_P0) & 0xff;
@@ -78,7 +94,9 @@ void setAddrLow(uint32_t val)
 {
 	setMuxBus(val);
 	digitalWrite(BUS_ACC_L_ADDR_SET, 1);
+	// ee_printf("LADDRSET %08x %08x\n", R32(GPLEV0), R32(GPFSEL0));
 	digitalWrite(BUS_ACC_L_ADDR_SET, 0);
+	// ee_printf("LADDRCLR %08x %08x\n", R32(GPLEV0), R32(GPFSEL0));
 }
 
 void setPinOutAndValue(int pin, int val)

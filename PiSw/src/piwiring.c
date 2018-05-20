@@ -20,7 +20,7 @@ uint8_t convModeToVal(uint8_t mode)
 
 void pinMode(uint8_t pin, uint8_t mode)
 {
-    uint32_t gpfSelReg = GPIO_BASE + (pin / 10) * 4;
+    uint32_t gpfSelReg = GPFSEL0 + (pin / 10) * 4;
     uint8_t bitPos = ((pin - ((pin / 10) * 10)) % 10) * 3; 
     uint32_t regVal = R32(gpfSelReg);
     regVal&=~(7<<bitPos); //gpio14

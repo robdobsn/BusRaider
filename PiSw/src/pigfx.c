@@ -96,15 +96,15 @@ static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd,
                                       __attribute__((unused)) void* pParam, 
                                       __attribute__((unused)) void *pContext )
 {
-    if( led_status )
-    {
-        W32(GPCLR0,1<<16);
-        led_status = 0;
-    } else
-    {
-        W32(GPSET0,1<<16);
-        led_status = 1;
-    }
+    // if( led_status )
+    // {
+    //     W32(GPCLR0,1<<16);
+    //     led_status = 0;
+    // } else
+    // {
+    //     W32(GPSET0,1<<16);
+    //     led_status = 1;
+    // }
 
     attach_timer_handler( HEARTBEAT_FREQUENCY, _heartbeat_timer_handler, 0, 0 );
 }
@@ -168,30 +168,30 @@ void heartbeat_init()
 }
 
 
-void heartbeat_loop()
-{
-    unsigned int last_time = 0;
-    unsigned int curr_time;
+// void heartbeat_loop()
+// {
+//     unsigned int last_time = 0;
+//     unsigned int curr_time;
 
-    while(1)
-    {
+//     while(1)
+//     {
         
-        curr_time = time_microsec();
-        if( curr_time-last_time > 500000 )
-        {
-            if( led_status )
-            {
-                W32(GPCLR0,1<<16);
-                led_status = 0;
-            } else
-            {
-                W32(GPSET0,1<<16);
-                led_status = 1;
-            }
-            last_time = curr_time;
-        } 
-    }
-}
+//         curr_time = time_microsec();
+//         if( curr_time-last_time > 500000 )
+//         {
+//             if( led_status )
+//             {
+//                 W32(GPCLR0,1<<16);
+//                 led_status = 0;
+//             } else
+//             {
+//                 W32(GPSET0,1<<16);
+//                 led_status = 1;
+//             }
+//             last_time = curr_time;
+//         } 
+//     }
+// }
 
 
 void initialize_framebuffer()
@@ -422,7 +422,7 @@ void term_main_loop()
         if (ledCount > 100000)
         {
             ledCount = 0;
-            digitalWrite(4, ledVal);
+            // digitalWrite(4, ledVal);
             ledVal = !ledVal;
 
             for (int i = 0; i < 10; i++)
@@ -431,12 +431,12 @@ void term_main_loop()
                 busWriteData(i);
             }
 
-            // for (int i = 0; i < 10; i++)
-            // {
-            //     busSetAddr(((uint32_t)0x8000)+i);
-            //     uint8_t val = busReadData();
-            //     ee_printf("%02x ",val);
-            // }
+            for (int i = 0; i < 10; i++)
+            {
+                busSetAddr(((uint32_t)0x8000)+i);
+                uint8_t val = busReadData();
+                ee_printf("%02x ",val);
+            }
             ee_printf("\n");
         }
 
