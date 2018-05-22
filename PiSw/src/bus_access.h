@@ -4,6 +4,7 @@
 extern void busSetup();
 extern void busReleaseControl();
 extern void busRequestControl();
+extern int busControlAcknowledged();
 extern void busTakeControl();
 extern void busSetAddr(uint32_t addr);
 extern void busSetData(uint8_t data);

@@ -427,6 +427,31 @@ void term_main_loop()
             // digitalWrite(4, ledVal);
             ledVal = !ledVal;
 
+
+            // Check bus ack initially
+            if (busControlAcknowledged())
+            {
+                ee_printf("BusAck Initially ????\n");
+                continue;
+            }
+            // Request bus
+            busRequestControl();
+            for (int i = 0; i < 100000; i++)
+            {
+                if (busControlAcknowledged())
+                {
+                    ee_printf("Ack\n");
+                    break;
+                }
+            }
+            if (!busControlAcknowledged())
+            {
+                ee_printf("Failed to acquire bus\n");
+                continue;
+            }
+
+            busTakeControl();
+
             for (int i = 0; i < NUM_TEST_LOCS; i++)
             {
                 busSetAddr(((uint32_t)0x8000+i));
@@ -443,7 +468,10 @@ void term_main_loop()
             {
                 ee_printf("%02x ",readVals[i]);
             }
-            ee_printf("\n");
+            ee_printf(" %08x\n", R32(GPLEV0));
+            // Release bus
+            
+            busReleaseControl();
         }
 
         // busSetAddr(wrAddr);
@@ -532,8 +560,8 @@ void entry_point()
     digitalWrite(4, 1);
 
     busSetup();
-    busRequestControl();
-    busTakeControl();
+    // busRequestControl();
+    // busTakeControl();
 
     term_main_loop();
 }

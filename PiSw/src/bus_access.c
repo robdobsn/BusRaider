@@ -21,6 +21,7 @@
 #define BUS_ACC_L_ADDR_BAR 13
 #define BUS_ACC_H_ADDR_BAR 16
 #define BUS_ACC_BUSRQ 19
+#define BUS_ACC_BUSACK_BAR 2
 #define BUS_ACC_MUX_BUS_MASK (~((uint32_t)0xff << BUS_ACC_MUX_BUS_P0))
 #define BUS_ACC_MUX_BUS_GPF_REG GPFSEL2
 #define BUS_ACC_MUX_BUS_GPF_MASK 0xff000000
@@ -153,11 +154,11 @@ void busSetup()
 void busReleaseControl()
 {
 	digitalWrite(BUS_ACC_BUSRQ, 0);
-	pinMode(BUS_ACC_WR_BAR, INPUT);
-	pinMode(BUS_ACC_RD_BAR, INPUT);
-	pinMode(BUS_ACC_MREQ_BAR, INPUT);
-	pinMode(BUS_ACC_IORQ_BAR, INPUT);
-	digitalWrite(BUS_ACC_CTRL_IN, 1);
+	pinMode(BUS_ACC_WR_BAR, INPUT_PULLUP);
+	pinMode(BUS_ACC_RD_BAR, INPUT_PULLUP);
+	pinMode(BUS_ACC_MREQ_BAR, INPUT_PULLUP);
+	pinMode(BUS_ACC_IORQ_BAR, INPUT_PULLUP);
+	// digitalWrite(BUS_ACC_CTRL_IN, 1);
 	digitalWrite(BUS_ACC_L_ADDR_BAR, 1);
 	digitalWrite(BUS_ACC_H_ADDR_BAR, 1);
 	digitalWrite(BUS_ACC_PUSH_ADDR_BAR, 1);
@@ -170,13 +171,18 @@ void busRequestControl()
 	digitalWrite(BUS_ACC_BUSRQ, 1);
 }
 
+int busControlAcknowledged()
+{
+	return (R32(GPLEV0) & (1 << BUS_ACC_BUSACK_BAR)) == 0;
+}
+
 void busTakeControl()
 {
 	setPinOutAndValue(BUS_ACC_WR_BAR, 1);
 	setPinOutAndValue(BUS_ACC_RD_BAR, 1);
 	setPinOutAndValue(BUS_ACC_MREQ_BAR, 1);
 	setPinOutAndValue(BUS_ACC_IORQ_BAR, 1);
-	digitalWrite(BUS_ACC_CTRL_IN, 0);
+	// digitalWrite(BUS_ACC_CTRL_IN, 0);
 	digitalWrite(BUS_ACC_L_ADDR_BAR, 1);
 	digitalWrite(BUS_ACC_H_ADDR_BAR, 1);
 	digitalWrite(BUS_ACC_PUSH_ADDR_BAR, 0);

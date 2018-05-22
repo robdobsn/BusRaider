@@ -10,12 +10,13 @@ extern "C"{
 #define INPUT 0x0
 #define OUTPUT 0x1
 #define INPUT_PULLUP 0x2
-#define PINMODE_ALT0 0x3
-#define PINMODE_ALT1 0x4
-#define PINMODE_ALT2 0x5
-#define PINMODE_ALT3 0x6
-#define PINMODE_ALT4 0x7
-#define PINMODE_ALT5 0x8
+#define INPUT_PULLDOWN 0x3
+#define PINMODE_ALT0 0x4
+#define PINMODE_ALT1 0x5
+#define PINMODE_ALT2 0x6
+#define PINMODE_ALT3 0x7
+#define PINMODE_ALT4 0x8
+#define PINMODE_ALT5 0x9
 
 typedef	signed char int8_t;
 typedef	unsigned char uint8_t;
@@ -59,6 +60,7 @@ typedef	unsigned long long uint64_t;
 // #define GPCLR0  0x20200028
 #define GPPUD       0x20200094
 #define GPPUDCLK0   0x20200098
+#define GPPUDCLK1   0x2020009C
 
 #define AUX_ENABLES     0x20215004
 #define AUX_MU_IO_REG   0x20215040
