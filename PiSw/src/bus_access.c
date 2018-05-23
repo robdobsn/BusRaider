@@ -15,7 +15,6 @@
 #define BUS_ACC_RESET 10
 #define BUS_ACC_PUSH_ADDR_BAR 7
 #define BUS_ACC_WAIT_OR_NMI 4
-#define BUS_ACC_CTRL_IN 5
 #define BUS_ACC_DATA_BAR 6
 #define BUS_ACC_DATA_DIRN_IN 12
 #define BUS_ACC_L_ADDR_BAR 13
@@ -141,8 +140,6 @@ void busSetup()
 	setPinOutAndValue(BUS_ACC_DATA_DIRN_IN, 1);
 	// Read data Output enable
 	setPinOutAndValue(BUS_ACC_DATA_BAR, 1);
-	// Control bus direction 
-	setPinOutAndValue(BUS_ACC_CTRL_IN, 1);
 	// Address push
 	setPinOutAndValue(BUS_ACC_PUSH_ADDR_BAR, 1);
 
@@ -153,17 +150,19 @@ void busSetup()
 
 void busReleaseControl()
 {
-	digitalWrite(BUS_ACC_BUSRQ, 0);
 	pinMode(BUS_ACC_WR_BAR, INPUT_PULLUP);
 	pinMode(BUS_ACC_RD_BAR, INPUT_PULLUP);
 	pinMode(BUS_ACC_MREQ_BAR, INPUT_PULLUP);
 	pinMode(BUS_ACC_IORQ_BAR, INPUT_PULLUP);
-	// digitalWrite(BUS_ACC_CTRL_IN, 1);
 	digitalWrite(BUS_ACC_L_ADDR_BAR, 1);
 	digitalWrite(BUS_ACC_H_ADDR_BAR, 1);
 	digitalWrite(BUS_ACC_PUSH_ADDR_BAR, 1);
 	digitalWrite(BUS_ACC_DATA_BAR, 1);
 	muxBusInputs();
+	// Setup edge triggering on falling edge of RD
+	W32(GPEDS0, 1 << BUS_ACC_RD_BAR);  // Clear any current detected edge
+	W32(GPFEN0, 1 << BUS_ACC_RD_BAR);  // Set falling edge detect
+	digitalWrite(BUS_ACC_BUSRQ, 0);
 }
 
 void busRequestControl()
@@ -182,7 +181,6 @@ void busTakeControl()
 	setPinOutAndValue(BUS_ACC_RD_BAR, 1);
 	setPinOutAndValue(BUS_ACC_MREQ_BAR, 1);
 	setPinOutAndValue(BUS_ACC_IORQ_BAR, 1);
-	// digitalWrite(BUS_ACC_CTRL_IN, 0);
 	digitalWrite(BUS_ACC_L_ADDR_BAR, 1);
 	digitalWrite(BUS_ACC_H_ADDR_BAR, 1);
 	digitalWrite(BUS_ACC_PUSH_ADDR_BAR, 0);

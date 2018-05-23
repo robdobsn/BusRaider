@@ -427,7 +427,8 @@ void term_main_loop()
             // digitalWrite(4, ledVal);
             ledVal = !ledVal;
 
-
+            // Show edge detect
+            ee_printf("Edge %08x\n", R32(GPEDS0));
             // Check bus ack initially
             if (busControlAcknowledged())
             {
@@ -446,6 +447,7 @@ void term_main_loop()
             }
             if (!busControlAcknowledged())
             {
+                busReleaseControl();
                 ee_printf("Failed to acquire bus\n");
                 continue;
             }
@@ -454,14 +456,14 @@ void term_main_loop()
 
             for (int i = 0; i < NUM_TEST_LOCS; i++)
             {
-                busSetAddr(((uint32_t)0x8000+i));
+                busSetAddr(((uint32_t)0x0100+i));
                 busWriteData(i);
             }
 
             uint8_t readVals[NUM_TEST_LOCS];
             for (int i = 0; i < NUM_TEST_LOCS; i++)
             {
-                busSetAddr(((uint32_t)0x8000)+i);
+                busSetAddr(((uint32_t)0x0100)+i);
                 readVals[i] = busReadData();
             }
             for (int i = 0; i < NUM_TEST_LOCS; i++)
@@ -470,8 +472,9 @@ void term_main_loop()
             }
             ee_printf(" %08x\n", R32(GPLEV0));
             // Release bus
-            
+
             busReleaseControl();
+            ee_printf("Edge2 %08x\n", R32(GPEDS0));
         }
 
         // busSetAddr(wrAddr);
