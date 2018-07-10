@@ -237,4 +237,3 @@ uint8_t busReadData()
 	return val;
 }
 
-

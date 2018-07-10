@@ -475,6 +475,7 @@ void term_main_loop()
 
             busReleaseControl();
             ee_printf("Edge2 %08x\n", R32(GPEDS0));
+
         }
 
         // busSetAddr(wrAddr);

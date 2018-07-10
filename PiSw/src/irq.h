@@ -36,7 +36,6 @@ typedef struct {
 #define RPI_BASIC_ACCESS_ERROR_0_IRQ    (1 << 7)
 
 #define RPI_UART_INTERRUPT_IRQ          (1 << 25) /* 25 for IRQ register 2 means IRQ 57 in the table */
-#define RPI_BASIC_ARM_TIMER_IRQ         (1 << 0)
 #define RPI_SYSTEM_TIMER_3_IRQ          (1 << 3)
 
 /** @brief The BCM2835 Interupt controller peripheral at it's base address */
