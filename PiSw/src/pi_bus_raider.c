@@ -12,7 +12,7 @@
 #include "piwiring.h"
 #include "../uspi\include\uspi\types.h"
 #include "../uspi/include/uspi.h"
-#include "bus_access.h"
+#include "busraider.h"
 
 int ledVal = 0;
 int ledCount = 0;
@@ -430,7 +430,7 @@ void term_main_loop()
             // Show edge detect
             ee_printf("Edge %08x\n", R32(GPEDS0));
             // Check bus ack initially
-            if (busControlAcknowledged())
+            if (br_bus_acknowledged())
             {
                 ee_printf("BusAck Initially ????\n");
                 continue;
