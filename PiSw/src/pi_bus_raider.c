@@ -436,29 +436,32 @@ void term_main_loop()
                 continue;
             }
             // Request bus
-            busRequestControl();
+            br_request_bus();
+            // Wait for ack
             for (int i = 0; i < 100000; i++)
             {
-                if (busControlAcknowledged())
+                if (br_bus_acknowledged())
                 {
                     ee_printf("Ack\n");
                     break;
                 }
             }
-            if (!busControlAcknowledged())
+            if (!br_bus_acknowledged())
             {
-                busReleaseControl();
+                br_release_control();
                 ee_printf("Failed to acquire bus\n");
                 continue;
             }
 
-            busTakeControl();
+            // Take control
+            br_take_control();
 
             for (int i = 0; i < NUM_TEST_LOCS; i++)
             {
                 busSetAddr(((uint32_t)0x0100+i));
                 busWriteData(i);
             }
+
 
             uint8_t readVals[NUM_TEST_LOCS];
             for (int i = 0; i < NUM_TEST_LOCS; i++)
@@ -473,7 +476,7 @@ void term_main_loop()
             ee_printf(" %08x\n", R32(GPLEV0));
             // Release bus
 
-            busReleaseControl();
+            br_release_control();
             ee_printf("Edge2 %08x\n", R32(GPEDS0));
 
         }
@@ -560,8 +563,8 @@ void entry_point()
 
     ee_printf("---------\n");
 
-    pinMode(4, OUTPUT);
-    digitalWrite(4, 1);
+    // pinMode(4, OUTPUT);
+    // digitalWrite(4, 1);
 
     busSetup();
     // busRequestControl();
