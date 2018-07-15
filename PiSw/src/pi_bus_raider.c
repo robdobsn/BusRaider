@@ -1,3 +1,5 @@
+// Bus Raider V1.3
+
 #include "pgm_config.h"
 #include "utils.h"
 #include "uart.h"
@@ -14,41 +16,24 @@
 #include "../uspi/include/uspi.h"
 #include "busraider.h"
 
-int ledVal = 0;
-int ledCount = 0;
-int firstCharReceived = 0;
-uint32_t rdAddr = 0x8000;
-uint32_t wrAddr = 0x8000;
-int dataVal = 0;
-int errCount = 0;
-
-// #define UART_BUFFER_SIZE 16384 /* 16k */
-
-// unsigned int led_status;
-// volatile unsigned int* UART0_DR;
-// volatile unsigned int* UART0_ITCR;
-// volatile unsigned int* UART0_IMSC;
-// volatile unsigned int* UART0_FR;
-
-
-// volatile char* uart_buffer;
-// volatile char* uart_buffer_start;
-// volatile char* uart_buffer_end;
-// volatile char* uart_buffer_limit;
+// int ledVal = 0;
+// int ledCount = 0;
+// int firstCharReceived = 0;
+// uint32_t rdAddr = 0x8000;
+// uint32_t wrAddr = 0x8000;
+// int dataVal = 0;
+// int errCount = 0;
 
 extern unsigned int pheap_space;
 extern unsigned int heap_sz;
-
 
 #if ENABLED(SKIP_BACKSPACE_ECHO)
 volatile unsigned int backspace_n_skip;
 volatile unsigned int last_backspace_t;
 #endif
 
-
 static void _keypress_handler(const char* str )
 {
-
     const char* c = str;
     char CR = 13;
 
@@ -89,111 +74,7 @@ static void _keypress_handler(const char* str )
         ee_printf("%02x\n", ch);
         ++c;
     }
-
 } 
-
-
-// static void _heartbeat_timer_handler( __attribute__((unused)) unsigned hnd, 
-//                                       __attribute__((unused)) void* pParam, 
-//                                       __attribute__((unused)) void *pContext )
-// {
-//     // if( led_status )
-//     // {
-//     //     W32(GPCLR0,1<<16);
-//     //     led_status = 0;
-//     // } else
-//     // {
-//     //     W32(GPSET0,1<<16);
-//     //     led_status = 1;
-//     // }
-
-//     attach_timer_handler( HEARTBEAT_FREQUENCY, _heartbeat_timer_handler, 0, 0 );
-// }
-
-
-// void uart_fill_queue( __attribute__((unused)) void* data )
-// {
-//     while( !( *UART0_FR & 0x10)/*uart_poll()*/)
-//     {
-//         *uart_buffer_end++ = (char)( *UART0_DR & 0xFF /*uart_read_byte()*/);
-
-//         if( uart_buffer_end >= uart_buffer_limit )
-//            uart_buffer_end = uart_buffer; 
-
-//         if( uart_buffer_end == uart_buffer_start )
-//         {
-//             uart_buffer_start++;
-//             if( uart_buffer_start >= uart_buffer_limit )
-//                 uart_buffer_start = uart_buffer; 
-//         }
-//     }
-
-//     /* Clear UART0 interrupts */
-//     *UART0_ITCR = 0xFFFFFFFF;
-// }
-
-
-
-// void initialize_uart_irq()
-// {
-//     uart_buffer_start = uart_buffer_end = uart_buffer;
-//     uart_buffer_limit = &( uart_buffer[ UART_BUFFER_SIZE ] );
-
-//     UART0_DR   = (volatile unsigned int*)0x20201000;
-//     UART0_IMSC = (volatile unsigned int*)0x20201038;
-//     UART0_ITCR = (volatile unsigned int*)0x20201044;
-//     UART0_FR   = (volatile unsigned int*)0x20201018;
-
-//     *UART0_IMSC = (1<<4) | (1<<7) | (1<<9); // Masked interrupts: RXIM + FEIM + BEIM (See pag 188 of BCM2835 datasheet)
-//     *UART0_ITCR = 0xFFFFFFFF; // Clear UART0 interrupts
-
-//     pIRQController->Enable_IRQs_2 = RPI_UART_INTERRUPT_IRQ;
-//     enable_irq();
-//     irq_attach_handler( 57, uart_fill_queue, 0 );
-// }
-
-
-// void heartbeat_init()
-// {
-//     unsigned int ra;
-//     ra=R32(GPFSEL1);
-//     ra&=~(7<<18);
-//     ra|=1<<18;
-//     W32(GPFSEL1,ra);
-
-//     // Enable JTAG pins
-//     W32( 0x20200000, 0x04a020 );
-//     W32( 0x20200008, 0x65b6c0 );
-
-//     led_status=0;
-// }
-
-
-// void heartbeat_loop()
-// {
-//     unsigned int last_time = 0;
-//     unsigned int curr_time;
-
-//     while(1)
-//     {
-        
-//         curr_time = time_microsec();
-//         if( curr_time-last_time > 500000 )
-//         {
-//             if( led_status )
-//             {
-//                 W32(GPCLR0,1<<16);
-//                 led_status = 0;
-//             } else
-//             {
-//                 W32(GPSET0,1<<16);
-//                 led_status = 1;
-//             }
-//             last_time = curr_time;
-//         } 
-//     }
-// }
-
 
 void initialize_framebuffer()
 {
@@ -218,10 +99,6 @@ void initialize_framebuffer()
 
     fb_set_xterm_palette();
 
-    //cout("fb addr: ");cout_h((unsigned int)p_fb);cout_endl();
-    //cout("fb size: ");cout_d((unsigned int)fbsize);cout(" bytes");cout_endl();
-    //cout("  pitch: ");cout_d((unsigned int)pitch);cout_endl();
-
     if( fb_get_phisical_buffer_size( &p_w, &p_h ) != FB_SUCCESS )
     {
         //cout("fb_get_phisical_buffer_size error");cout_endl();
@@ -233,253 +110,89 @@ void initialize_framebuffer()
     gfx_clear();
 }
 
-
-// void video_test()
-// {
-//     unsigned char ch='A';
-//     unsigned int row=0;
-//     unsigned int col=0;
-//     unsigned int term_cols, term_rows;
-//     gfx_get_term_size( &term_rows, &term_cols );
-
-// #if 0
-//     unsigned int t0 = time_microsec();
-//     for( row=0; row<1000000; ++row )
-//     {
-//         gfx_putc(0,col,ch);
-//     }
-//     t0 = time_microsec()-t0;
-//     cout("T: ");cout_d(t0);cout_endl();
-//     return;
-// #endif
-// #if 0
-//     while(1)
-//     {
-//         gfx_putc(row,col,ch);
-//         col = col+1;
-//         if( col >= term_cols )
-//         {
-//             usleep(100000);
-//             col=0;
-//             gfx_scroll_up(8);
-//         }
-//         ++ch;
-//         gfx_set_fg( ch );
-//     }
-// #endif
-// #if 1
-//     while(1)
-//     {
-//         gfx_putc(row,col,ch);
-//         col = col+1;
-//         if( col >= term_cols )
-//         {
-//             usleep(50000);
-//             col=0;
-//             row++;
-//             if( row >= term_rows )
-//             {
-//                 row=term_rows-1;
-//                 int i;
-//                 for(i=0;i<10;++i)
-//                 {
-//                     usleep(500000);
-//                     gfx_scroll_down(8);
-//                     gfx_set_bg( i );
-//                 }
-//                 usleep(1000000);
-//                 gfx_clear();
-//                 return;
-//             }
-
-//         }
-//         ++ch;
-//         gfx_set_fg( ch );
-//     }
-// #endif
-
-// #if 0
-//     while(1)
-//     {
-//         gfx_set_bg( RR );
-//         gfx_clear();
-//         RR = (RR+1)%16;
-//         usleep(1000000);
-//     }
-// #endif
-
-// }
-
-
-// void video_line_test()
-// {
-//     int x=-10; 
-//     int y=-10;
-//     int vx=1;
-//     int vy=0;
-
-//     gfx_set_fg( 15 );
-
-//     while(1)
-//     {
-//         // Render line
-//         gfx_line( 320, 240, x, y );
-
-//         usleep( 1000 );
-
-//         // Clear line
-//         gfx_swap_fg_bg();
-//         gfx_line( 320, 240, x, y );
-//         gfx_swap_fg_bg();
-
-//         x = x+vx;
-//         y = y+vy;
-        
-//         if( x>700 )
-//         {
-//             x--;
-//             vx--;
-//             vy++;
-//         }
-//         if( y>500 )
-//         {
-//             y--;
-//             vx--;
-//             vy--;
-//         }
-//         if( x<-10 )
-//         {
-//             x++;
-//             vx++;
-//             vy--;
-//         }
-//         if( y<-10 )
-//         {
-//             y++;
-//             vx++;
-//             vy++;
-//         }
-
-//     }
-// }
-
-
-void term_main_loop()
+void main_loop()
 {
     ee_printf("Waiting for UART data (921600,8,N,1)\n");
 
-    /**/
-    // while( uart_poll() == 0 )
-    // {
-    //     usleep(100000 );
-    //     digitalWrite(4, ledVal);
-    //     ledVal = !ledVal;
-    // }
-    /**/
-
     char strb[2] = {0,0};
-
     while(1)
     {
-//         if( !DMA_CHAN0_BUSY && uart_buffer_start != uart_buffer_end )
-//         {
-//             strb[0] = *uart_buffer_start++;
-//             if( uart_buffer_start >= uart_buffer_limit )
-//                 uart_buffer_start = uart_buffer;
-
-            
-// #if ENABLED(SKIP_BACKSPACE_ECHO)
-//             if( time_microsec()-last_backspace_t > 50000 )
-//                 backspace_n_skip=0;
-
-//             if( backspace_n_skip  > 0 )
-//             {
-//                 //ee_printf("Skip %c",strb[0]);
-//                 strb[0]=0; // Skip this char
-//                 backspace_n_skip--;
-//                 if( backspace_n_skip == 0)
-//                     strb[0]=0x7F; // Add backspace instead
-//             }
-// #endif
-
         if (uart_poll())
         {
-            // Switch screen to terminal view
-            if (!firstCharReceived)
-            {
-                gfx_term_putstring( "\x1B[2J" );
-                firstCharReceived = 1;
-            }
+            // // Switch screen to terminal view
+            // if (!firstCharReceived)
+            // {
+            //     gfx_term_putstring( "\x1B[2J" );
+            //     firstCharReceived = 1;
+            // }
             // Show char received
             strb[0] = uart_read_byte();
             gfx_term_putstring( strb );
         }
 
-        // uart_fill_queue(0);
         timer_poll();
 
         // Blink LED
-        const int NUM_TEST_LOCS = 10;
-        ledCount++;
-        if (ledCount > 100000)
-        {
-            ledCount = 0;
-            // digitalWrite(4, ledVal);
-            ledVal = !ledVal;
+        // const int NUM_TEST_LOCS = 10;
+        // ledCount++;
+        // if (ledCount > 100000)
+        // {
+        //     ledCount = 0;
+        //     ledVal = !ledVal;
 
-            // Show edge detect
-            ee_printf("Edge %08x\n", R32(GPEDS0));
-            // Check bus ack initially
-            if (br_bus_acknowledged())
-            {
-                ee_printf("BusAck Initially ????\n");
-                continue;
-            }
-            // Request bus
-            br_request_bus();
-            // Wait for ack
-            for (int i = 0; i < 100000; i++)
-            {
-                if (br_bus_acknowledged())
-                {
-                    ee_printf("Ack\n");
-                    break;
-                }
-            }
-            if (!br_bus_acknowledged())
-            {
-                br_release_control();
-                ee_printf("Failed to acquire bus\n");
-                continue;
-            }
+        //     // Show edge detect
+        //     ee_printf("Edge %08x\n", R32(GPEDS0));
+        //     // Check bus ack initially
+        //     if (br_bus_acknowledged())
+        //     {
+        //         ee_printf("BusAck Initially ????\n");
+        //         continue;
+        //     }
+        //     // Request bus
+        //     br_request_bus();
+        //     // Wait for ack
+        //     for (int i = 0; i < 100000; i++)
+        //     {
+        //         if (br_bus_acknowledged())
+        //         {
+        //             ee_printf("Ack\n");
+        //             break;
+        //         }
+        //     }
+        //     if (!br_bus_acknowledged())
+        //     {
+        //         br_release_control();
+        //         ee_printf("Failed to acquire bus\n");
+        //         continue;
+        //     }
 
-            // Take control
-            br_take_control();
+        //     // Take control
+        //     br_take_control();
 
-            for (int i = 0; i < NUM_TEST_LOCS; i++)
-            {
-                busSetAddr(((uint32_t)0x0100+i));
-                busWriteData(i);
-            }
+        //     for (int i = 0; i < NUM_TEST_LOCS; i++)
+        //     {
+        //         busSetAddr(((uint32_t)0x0100+i));
+        //         busWriteData(i);
+        //     }
 
 
-            uint8_t readVals[NUM_TEST_LOCS];
-            for (int i = 0; i < NUM_TEST_LOCS; i++)
-            {
-                busSetAddr(((uint32_t)0x0100)+i);
-                readVals[i] = busReadData();
-            }
-            for (int i = 0; i < NUM_TEST_LOCS; i++)
-            {
-                ee_printf("%02x ",readVals[i]);
-            }
-            ee_printf(" %08x\n", R32(GPLEV0));
-            // Release bus
+        //     uint8_t readVals[NUM_TEST_LOCS];
+        //     for (int i = 0; i < NUM_TEST_LOCS; i++)
+        //     {
+        //         busSetAddr(((uint32_t)0x0100)+i);
+        //         readVals[i] = busReadData();
+        //     }
+        //     for (int i = 0; i < NUM_TEST_LOCS; i++)
+        //     {
+        //         ee_printf("%02x ",readVals[i]);
+        //     }
+        //     ee_printf(" %08x\n", R32(GPLEV0));
+        //     // Release bus
 
-            br_release_control();
-            ee_printf("Edge2 %08x\n", R32(GPEDS0));
+        //     br_release_control();
+        //     ee_printf("Edge2 %08x\n", R32(GPEDS0));
 
-        }
+        // }
 
         // busSetAddr(wrAddr);
         // busWriteData(dataVal);
@@ -507,16 +220,13 @@ void entry_point()
     // Heap init
     nmalloc_set_memory_area( (unsigned char*)( pheap_space ), heap_sz );
 
-    // UART buffer allocation
-    // uart_buffer = (volatile char*)nmalloc_malloc( UART_BUFFER_SIZE ); 
-    
+    // UART
     uart_init();
-    // heartbeat_init();
-    
-    //heartbeat_loop();
-    
+
+    // Frame buffer    
     initialize_framebuffer();
 
+    // Initial message
     gfx_term_putstring( "\x1B[2J" ); // Clear screen
     gfx_set_bg(27);
     gfx_term_putstring( "\x1B[2K" ); // Render blue line at top
@@ -527,17 +237,9 @@ void entry_point()
     gfx_set_bg(0);
 
     timers_init();
-    // attach_timer_handler( HEARTBEAT_FREQUENCY, _heartbeat_timer_handler, 0, 0 );
 
-    // initialize_uart_irq();
-
-    //video_test();
-    //video_line_test();
-
-
-#if 1
+    // USB
     ee_printf("Initializing USB\n");
-
     if( USPiInitialize() )
     {
         ee_printf("Initialization OK!\n");
@@ -557,18 +259,15 @@ void entry_point()
             gfx_set_fg(15);
         }
     }
-
-    else ee_printf("USB initialization failed.\n");
-#endif
-
+    else
+    {
+        ee_printf("USB initialization failed.\n");
+    }
     ee_printf("---------\n");
 
-    // pinMode(4, OUTPUT);
-    // digitalWrite(4, 1);
+    // Bus raider setup
+    br_init();
 
-    busSetup();
-    // busRequestControl();
-    // busTakeControl();
-
-    term_main_loop();
+    // Start the main loop
+    main_loop();
 }
