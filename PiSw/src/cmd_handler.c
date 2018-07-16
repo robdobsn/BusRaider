@@ -1,3 +1,5 @@
+// Command Handler for Bus Raider
+// Rob Dobson 2018
 
 #include "cmd_handler.h"
 #include "bare_metal_pi_zero.h"
@@ -53,6 +55,25 @@ uint32_t __cmdHandler_srec_maxlen = 0;
 uint8_t* __pCmdHandler_trec_base = 0;
 uint32_t __cmdHandler_trec_maxlen = 0;
 
+// Debug
+#ifdef DEBUG_SREC_RX
+char debugStr[500];
+int debugErrCode = 0;
+
+int cmdHandler_isError()
+{
+	return debugErrCode;
+}
+char* cmdHandler_getError()
+{
+	return debugStr;
+}
+void cmdHandler_errorClear()
+{
+	debugErrCode = 0;
+}
+#endif
+
 // Init the destinations for SREC and TREC records
 void cmdHandler_init(uint32_t sRecBase, int sRecBufMaxLen, uint8_t* pTRecBasePtr, int tRecBufMaxLen)
 {
@@ -66,6 +87,19 @@ void cmdHandler_init(uint32_t sRecBase, int sRecBufMaxLen, uint8_t* pTRecBasePtr
 // Convert char to nybble
 uint8_t chToNybble(int ch)
 {
+#ifdef DEBUG_SREC_RX
+	if ((ch < '0') || ((ch > '9') && (ch < 'A')) || (ch >'F'))
+	{
+		char* pErrMsg = "Nybble invalid";
+		char* pBuf = debugStr;
+		while (*pErrMsg)
+		{
+			*pBuf++ = *pErrMsg++;
+		}
+		*pBuf = 0;
+		debugErrCode = 10;
+	}
+#endif
     if (ch > '9')
     	ch -= 7;
     return ch & 0xF;
@@ -87,8 +121,6 @@ CmdHandler_Ret cmdHandler_handle_char(int ch)
 			}
 			else if ((ch == 'g') || (ch == 'G'))
 			{
-				// Flush uart before go
-				uart_purge();
 				// Go to start address
 				utils_goto(__cmdHandler_entryAddr);
 			}

@@ -6,6 +6,8 @@
 
 #include "bare_metal_pi_zero.h"
 
+#define DEBUG_SREC_RX 1
+
 #ifdef __cplusplus
 extern "C"{
 #endif
@@ -24,6 +26,12 @@ extern void cmdHandler_init(uint32_t sRecBase, int sRecBufMaxLen, uint8_t* pTRec
 
 // Handle a single char
 extern CmdHandler_Ret cmdHandler_handle_char(int ch);
+
+#ifdef DEBUG_SREC_RX
+extern int cmdHandler_isError();
+extern char* cmdHandler_getError();
+extern void cmdHandler_errorClear();
+#endif
 
 #ifdef __cplusplus
 }

@@ -127,6 +127,17 @@ void main_loop()
             
             // Offer to the cmd_handler
             CmdHandler_Ret retc = cmdHandler_handle_char(ch);
+            if (retc == CMDHANDLER_RET_CHECKSUM_ERROR)
+            {
+                ee_printf("Checksum error %d\n", retc);
+                usleep(3000000);
+            }
+            if (cmdHandler_isError())
+            {
+                ee_printf("%s\n", cmdHandler_getError());
+                cmdHandler_errorClear();
+                usleep(3000000);
+            }
 
             // Check handled
             if (retc == CMDHANDLER_RET_IGNORED)
@@ -134,8 +145,10 @@ void main_loop()
                 if (ch == 'x')
                 {
                     // Test
+                    unsigned int testBaseAddr = 0;
+                    unsigned int testLen = 10000;
                     clearTarget();
-                    BR_RETURN_TYPE brRetc = br_read_block(0x9000, pTargetBuffer, 0x10, 1);
+                    BR_RETURN_TYPE brRetc = br_read_block(testBaseAddr, pTargetBuffer, testLen, 1);
                     gfx_term_putstring("ReadBlock=");
                     gfx_term_putchar(brRetc + '0');
                     gfx_term_putstring("\n");
@@ -146,25 +159,66 @@ void main_loop()
                     ee_printf("\n");
 
                     // Test data
-                    for (int i = 0; i < 16; i++)
+                    for (unsigned int i = 0; i < testLen; i++)
                     {
-                        pTargetBuffer[i] = i;
+                        pTargetBuffer[i] = (i * 23487) / 3;
                     }
 
-                    brRetc = br_write_block(0x9000, pTargetBuffer, 0x10, 1);
+                    brRetc = br_write_block(testBaseAddr, pTargetBuffer, testLen, 1);
 
-                    clearTarget();
-                    brRetc = br_read_block(0x9000, pTargetBuffer, 0x10, 1);
+                    unsigned char pTestBuffer[testLen];
+                    brRetc = br_read_block(testBaseAddr, pTestBuffer, testLen, 1);
                     gfx_term_putstring("ReadBlock=");
                     gfx_term_putchar(brRetc + '0');
                     gfx_term_putstring("\n");
-                    for (int i = 0; i < 0x10; i++)
+                    int errFound = 0;
+                    unsigned int errAddr = 0;
+                    for (unsigned int i = 0; i < testLen; i++)
                     {
-                        ee_printf("%02x ", pTargetBuffer[i]);
+                        if (pTestBuffer[i] != pTargetBuffer[i])
+                        {
+                            errFound = 1;
+                            errAddr = i;
+                            break;
+                        }    
+
                     }
-                    ee_printf("\n");
+                    if (errFound)
+                    {
+                        ee_printf("Error at %08x\n", errAddr);
+                        for (int i = 0; i < 5; i++)
+                        {
+                            ee_printf("%02x %02x\n", pTestBuffer[(errAddr+i) % testLen], pTargetBuffer[(errAddr+i) % testLen]);
+                        }
+                    }
 
+                }
+                else if (ch == 'y')
+                {
+                    for (int k = 0; k < 10; k++)
+                    {
+                        for (int i = 0; i < 0x10; i++)
+                        {
+                            ee_printf("%02x ", pTargetBuffer[k*0x10+i]);
+                        }
+                        ee_printf("\n");
+                    }
 
+                    br_write_block(0, pTargetBuffer, 0x2000, 1);
+                    br_reset_host();
+                }
+                else if (ch == 'z')
+                {
+                    unsigned char pTestBuffer[0x400];
+                    br_read_block(0x3c00, pTestBuffer, 0x400, 1);
+                    for (int k = 0; k < 16; k++)
+                    {
+                        for (int i = 0; i < 64; i++)
+                        {
+                            ee_printf("%c", pTestBuffer[k*64+i]);
+                        }
+                        ee_printf("\n");
+                    }
                 }
             }
         }
@@ -277,7 +331,7 @@ void entry_point()
     ee_printf("RC2014 Bus Raider %s\n", PGM_VERSION );
     gfx_term_putstring( "\x1B[2K" );
     //gfx_term_putstring( "\x1B[2K" ); 
-    ee_printf("Rob Dobson (modified from PIGFX Filippo Bergamasco)\n\n");
+    ee_printf("Rob Dobson (inspired by PIGFX)\n\n");
     gfx_set_bg(0);
 
     timers_init();

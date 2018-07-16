@@ -1,4 +1,6 @@
 // Bus Raider
+// Rob Dobson 2018
+
 #include "busraider.h"
 #include "piwiring.h"
 #include "timer.h"

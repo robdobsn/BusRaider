@@ -1,4 +1,5 @@
 // Bus Raider
+// Rob Dobson 2018
 
 #ifndef _BUSRAIDER_H_
 #define _BUSRAIDER_H_
