@@ -54,6 +54,7 @@ extern void gfx_scroll_up( unsigned int npixels );
  *  Terminal
  *
  */
+extern void gfx_term_putchar(unsigned char c);
 extern void gfx_term_putstring( const char* str );
 extern void gfx_term_set_cursor_visibility( unsigned char visible );
 extern void gfx_term_move_cursor( unsigned int row, unsigned int col );

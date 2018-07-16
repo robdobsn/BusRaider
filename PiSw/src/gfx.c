@@ -1,4 +1,4 @@
-#include "pigfx_config.h"
+#include "pgm_config.h"
 #include "gfx.h"
 #include "console.h"
 #include "dma.h"
@@ -39,7 +39,6 @@ typedef struct SCN_STATE
 typedef void state_fun( char ch, scn_state *state );
 void state_fun_normaltext( char ch, scn_state *state );
 void state_fun_read_digit( char ch, scn_state *state );
-
 
 
 typedef struct {
@@ -423,6 +422,14 @@ void gfx_term_render_cursor_newline_dma()
         gfx_fill_rect_dma( ctx.term.cursor_col*8, ctx.term.cursor_row*8, 8, 8 );
 }
 
+
+void gfx_term_putchar(unsigned char c)
+{
+    char tmpBuf[2];
+    tmpBuf[0] = c;
+    tmpBuf[1] = 0;
+    gfx_term_putstring(tmpBuf);
+}
 
 void gfx_term_putstring( const char* str )
 {

@@ -3,6 +3,8 @@
 #ifndef _BUSRAIDER_H_
 #define _BUSRAIDER_H_
 
+#include "bare_metal_pi_zero.h"
+
 // Return codes
 typedef enum {
 BR_OK             = 0,
@@ -39,6 +41,12 @@ BR_NO_BUS_ACK     = 2,
 
 // Initialise the bus raider
 extern void br_init();
+// Reset host
+extern void br_reset_host();
+// NMI host
+extern void br_nmi_host();
+// IRQ host
+extern void br_irq_host();
 // Request access to the bus
 extern void br_request_bus();
 // Check if bus request has been acknowledged
@@ -47,5 +55,23 @@ extern int br_bus_acknowledged();
 extern void br_take_control();
 // Release control of bus
 extern void br_release_control();
+// Request and take bus
+extern BR_RETURN_TYPE br_req_and_take_bus();
+// Set address
+extern void br_set_low_addr(uint32_t lowAddrByte);
+extern void br_inc_low_addr();
+extern void br_set_high_addr(uint32_t highAddrByte);
+extern void br_set_full_addr(unsigned int addr);
+// Control the PIB (bus used to transfer data to/from Pi)
+extern void br_set_pib_output();
+extern void br_set_pib_input();
+extern void br_set_pib_value(uint8_t val);
+extern uint8_t br_get_pib_value();
+// Read and write bytes
+extern void br_write_byte(uint32_t byte);
+extern uint8_t br_read_byte();
+// Read and write blocks
+extern BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease);
+extern BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease);
 
 #endif

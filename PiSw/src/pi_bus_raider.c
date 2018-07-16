@@ -15,15 +15,13 @@
 #include "../uspi\include\uspi\types.h"
 #include "../uspi/include/uspi.h"
 #include "busraider.h"
+#include "cmd_handler.h"
 
-// int ledVal = 0;
-// int ledCount = 0;
-// int firstCharReceived = 0;
-// uint32_t rdAddr = 0x8000;
-// uint32_t wrAddr = 0x8000;
-// int dataVal = 0;
-// int errCount = 0;
+// Target buffer
+#define MAX_TARGET_MEMORY_SIZE 0x10000
+unsigned char pTargetBuffer[MAX_TARGET_MEMORY_SIZE];
 
+// Heap space
 extern unsigned int pheap_space;
 extern unsigned int heap_sz;
 
@@ -31,6 +29,12 @@ extern unsigned int heap_sz;
 volatile unsigned int backspace_n_skip;
 volatile unsigned int last_backspace_t;
 #endif
+
+void clearTarget()
+{
+    for (int i = 0; i < MAX_TARGET_MEMORY_SIZE; i++)
+        pTargetBuffer[i] = 0;
+}
 
 static void _keypress_handler(const char* str )
 {
@@ -114,20 +118,55 @@ void main_loop()
 {
     ee_printf("Waiting for UART data (921600,8,N,1)\n");
 
-    char strb[2] = {0,0};
     while(1)
     {
         if (uart_poll())
         {
-            // // Switch screen to terminal view
-            // if (!firstCharReceived)
-            // {
-            //     gfx_term_putstring( "\x1B[2J" );
-            //     firstCharReceived = 1;
-            // }
             // Show char received
-            strb[0] = uart_read_byte();
-            gfx_term_putstring( strb );
+            int ch = uart_read_byte();
+            
+            // Offer to the cmd_handler
+            CmdHandler_Ret retc = cmdHandler_handle_char(ch);
+
+            // Check handled
+            if (retc == CMDHANDLER_RET_IGNORED)
+            {
+                if (ch == 'x')
+                {
+                    // Test
+                    clearTarget();
+                    BR_RETURN_TYPE brRetc = br_read_block(0x9000, pTargetBuffer, 0x10, 1);
+                    gfx_term_putstring("ReadBlock=");
+                    gfx_term_putchar(brRetc + '0');
+                    gfx_term_putstring("\n");
+                    for (int i = 0; i < 0x10; i++)
+                    {
+                        ee_printf("%02x ", pTargetBuffer[i]);
+                    }
+                    ee_printf("\n");
+
+                    // Test data
+                    for (int i = 0; i < 16; i++)
+                    {
+                        pTargetBuffer[i] = i;
+                    }
+
+                    brRetc = br_write_block(0x9000, pTargetBuffer, 0x10, 1);
+
+                    clearTarget();
+                    brRetc = br_read_block(0x9000, pTargetBuffer, 0x10, 1);
+                    gfx_term_putstring("ReadBlock=");
+                    gfx_term_putchar(brRetc + '0');
+                    gfx_term_putstring("\n");
+                    for (int i = 0; i < 0x10; i++)
+                    {
+                        ee_printf("%02x ", pTargetBuffer[i]);
+                    }
+                    ee_printf("\n");
+
+
+                }
+            }
         }
 
         timer_poll();
@@ -206,6 +245,7 @@ void main_loop()
         //     uint8_t val = busReadData();
         //     if (val != (rdAddr & 0xff))
         //     {
+
         //         errCount++;
         //     }
         //     rdAddr++;
@@ -223,6 +263,10 @@ void entry_point()
     // UART
     uart_init();
 
+    // Command handler
+    clearTarget();
+    cmdHandler_init(0, 1000000, pTargetBuffer, MAX_TARGET_MEMORY_SIZE);
+
     // Frame buffer    
     initialize_framebuffer();
 
@@ -230,10 +274,10 @@ void entry_point()
     gfx_term_putstring( "\x1B[2J" ); // Clear screen
     gfx_set_bg(27);
     gfx_term_putstring( "\x1B[2K" ); // Render blue line at top
-    ee_printf(" ===  PiGFX ===  v.%s\n", PIGFX_VERSION );
+    ee_printf("RC2014 Bus Raider %s\n", PGM_VERSION );
     gfx_term_putstring( "\x1B[2K" );
     //gfx_term_putstring( "\x1B[2K" ); 
-    ee_printf(" Copyright (c) 2016 Filippo Bergamasco\n\n");
+    ee_printf("Rob Dobson (modified from PIGFX Filippo Bergamasco)\n\n");
     gfx_set_bg(0);
 
     timers_init();

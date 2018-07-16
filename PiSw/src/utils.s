@@ -247,3 +247,11 @@ hex2byte:
     bx lr
 
 
+.global utils_goto
+utils_goto:
+    bx r0
+
+.globl utils_store_abs8
+utils_store_abs8:
+    strb r1,[r0]
+    bx lr

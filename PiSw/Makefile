@@ -4,7 +4,7 @@ CFLAGS = -Wall -Wextra -O3 -g -nostdlib -nostartfiles -fno-stack-limit -ffreesta
 
 
 ## Important!!! asm.o must be the first object to be linked!
-OOB = asm.o pi_bus_raider.o busraider.o uart.o irq.o utils.o timer.o framebuffer.o postman.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o raspihwconfig.o stupid_timer.o binary_assets.o piwiring.o
+OOB = asm.o pi_bus_raider.o busraider.o cmd_handler.o uart.o irq.o utils.o timer.o framebuffer.o postman.o console.o gfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o raspihwconfig.o stupid_timer.o binary_assets.o piwiring.o
 
 BUILD_DIR = build
 SRC_DIR = src
@@ -20,9 +20,9 @@ all: pi_bus_raider.elf pi_bus_raider.hex kernel
 	ctags src/.
 	arm-none-eabi-objcopy --srec-forceS3 pi_bus_raider.elf -O srec pi_bus_raider.srec
 
-# $(SRC_DIR)/pgm_config.h: pgm_config.h.in 
-# 	@sed 's/\$$VERSION\$$/$(BUILD_VERSION)/g' pgm_config.h.in > $(SRC_DIR)/pgm_config.h
-# 	@echo "Creating pgm_config.h"
+## $(SRC_DIR)/pgm_config.h: pgm_config.h.in 
+## 	@sed 's/\$$VERSION\$$/$(BUILD_VERSION)/g' pgm_config.h.in > $(SRC_DIR)/pgm_config.h
+## 	@echo "Creating pgm_config.h"
 
 run: pi_bus_raider.elf
 	./launch_qemu.bash
@@ -59,7 +59,6 @@ pi_bus_raider.elf : $(SRC_DIR)/pgm_config.h $(OBJS)
 
 
 .PHONY clean :
-	# rm -f $(SRC_DIR)/pgm_config.h
 	rm -f $(BUILD_DIR)/*.o
 	rm -f *.hex
 	rm -f *.elf

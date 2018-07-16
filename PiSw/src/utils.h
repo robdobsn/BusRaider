@@ -1,6 +1,11 @@
 #ifndef _PIGFX_UTILS_H_
 #define _PIGFX_UTILS_H_
 
+#include "bare_metal_pi_zero.h"
+
+extern void utils_goto (uint32_t gotoAddr);
+extern void utils_store_abs8(uint32_t addr, uint8_t byte);
+
 extern void enable_irq();
 extern void disable_irq();
 

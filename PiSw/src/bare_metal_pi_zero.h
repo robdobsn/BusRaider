@@ -18,6 +18,10 @@ extern "C"{
 #define PINMODE_ALT4 0x8
 #define PINMODE_ALT5 0x9
 
+#ifndef bool
+#define bool int
+#endif
+
 typedef	signed char int8_t;
 typedef	unsigned char uint8_t;
 typedef	short int16_t;

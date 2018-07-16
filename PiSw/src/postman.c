@@ -1,4 +1,4 @@
-#include "pigfx_config.h"
+#include "pgm_config.h"
 #include "postman.h"
 #include "utils.h"
 #include "timer.h"
