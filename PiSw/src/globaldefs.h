@@ -9,6 +9,8 @@
 #define NULL 0
 #endif
 
+#define ULONG_MAX  4294967295UL
+
 typedef	signed char int8_t;
 typedef	unsigned char uint8_t;
 typedef	short int16_t;

@@ -17,6 +17,7 @@
 #include "busraider.h"
 #include "cmd_handler.h"
 #include "mc_generic.h"
+#include "rdutils.h"
 
 // Bootloader buffer
 #define MAX_BOOTLOADER_SIZE 0x200000
@@ -125,12 +126,25 @@ void initialize_framebuffer()
     gfx_clear();
 }
 
+unsigned long __lastDisplayUpdateUs = 0;
+
 void main_loop()
 {
     ee_printf("Waiting for UART data (921600,8,N,1)\n");
 
     while(1)
     {
+        // Handle target machine display updates
+        unsigned long reqUpdateUs = 1000000 / mc_generic_get_disp_rate();
+        if (rdutils_isTimeout(time_microsec(), __lastDisplayUpdateUs, reqUpdateUs))
+        {
+            // Check valid 
+            mc_generic_handle_disp();
+            __lastDisplayUpdateUs = time_microsec();
+        }
+
+
+        // Handle serial communication
         if (uart_poll())
         {
             // Show char received

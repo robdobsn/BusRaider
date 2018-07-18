@@ -2,6 +2,7 @@
 // Rob Dobson 2018
 
 #include "mc_trs80.h"
+#include "utils.h"
 
 static McGenericDescriptor* __pMCtype = NULL;
 
@@ -11,7 +12,7 @@ void mc_generic_set(const char* mcName)
 	mc_generic_restore();
 
 	// Check for TRS80 Model 1
-	if (strcmp(mcName, "TRS80Model1") == 0)
+	if (strcmp((char*)mcName, "TRS80Model1") == 0)
 	{
 		__pMCtype = trs80_get_descriptor(0);
 	}
@@ -42,6 +43,14 @@ void mc_generic_restore()
 McGenericDescriptor* mc_generic_get()
 {
 	return __pMCtype;
+}
+
+unsigned int mc_generic_get_disp_rate()
+{
+	// Check if valid
+	if (!__pMCtype)
+		return 25;
+	return __pMCtype->displayRefreshRatePerSec;
 }
 
 void mc_generic_handle_key(unsigned char ucModifiers, const unsigned char rawKeys[6])

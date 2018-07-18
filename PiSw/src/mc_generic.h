@@ -7,7 +7,7 @@
 typedef void TMcInitFunction();
 typedef void TMcDeInitFunction();
 typedef void TMcKeyHandlerRaw(unsigned char ucModifiers, const unsigned char rawKeys[6]);
-typedef void TMcDispHandler(uint8_t* pDispBuf, int dispBufLen);
+typedef void TMcDispHandler();
 
 typedef struct McGenericDescriptor
 {
@@ -15,9 +15,6 @@ typedef struct McGenericDescriptor
 	TMcInitFunction* pInit;
 	TMcDeInitFunction* pDeInit;
 	// Display
-	int bMemoryMapped;
-	int displayStartAddr;
-	int displayBufSize;
 	int displayRefreshRatePerSec;
 	// Keyboard
 	TMcKeyHandlerRaw* pKeyHandler;
@@ -29,4 +26,5 @@ extern void mc_generic_restore();
 extern McGenericDescriptor* mc_generic_get();
 
 extern void mc_generic_handle_key(unsigned char ucModifiers, const unsigned char rawKeys[6]);
-extern void mc_generic_handle_disp(uint8_t* pDispBuf, int dispBufLen);
+extern void mc_generic_handle_disp();
+extern unsigned int mc_generic_get_disp_rate();
