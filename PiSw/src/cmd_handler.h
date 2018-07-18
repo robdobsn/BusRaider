@@ -21,8 +21,7 @@ typedef enum
 } CmdHandler_Ret;
 
 // Init the destinations for SREC and TREC records
-
-extern void cmdHandler_init(uint32_t sRecBase, int sRecBufMaxLen, uint8_t* pTRecBasePtr, int tRecBufMaxLen);
+extern void cmdHandler_init(uint8_t* pSRecBase, int sRecBufMaxLen, uint8_t* pTRecBase, int tRecBufMaxLen);
 
 // Handle a single char
 extern CmdHandler_Ret cmdHandler_handle_char(int ch);

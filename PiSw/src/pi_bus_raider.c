@@ -16,6 +16,11 @@
 #include "../uspi/include/uspi.h"
 #include "busraider.h"
 #include "cmd_handler.h"
+#include "mc_generic.h"
+
+// Bootloader buffer
+#define MAX_BOOTLOADER_SIZE 0x200000
+unsigned char pBootloaderBuffer[MAX_BOOTLOADER_SIZE];
 
 // Target buffer
 #define MAX_TARGET_MEMORY_SIZE 0x10000
@@ -36,49 +41,55 @@ void clearTarget()
         pTargetBuffer[i] = 0;
 }
 
-static void _keypress_handler(const char* str )
+static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char rawKeys[6])
 {
-    const char* c = str;
-    char CR = 13;
+    ee_printf("KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
+    mc_generic_handle_key(ucModifiers, rawKeys);
+}
 
-    while( *c )
-    {
-         char ch = *c;
-         //ee_printf("CHAR 0x%x\n",ch );
+// static void _keypress_handler(const char* str)
+// {
+//     const char* c = str;
+//     char CR = 13;
 
-#if ENABLED(SEND_CR_LF)
-        if( ch == 10 )
-        {
-            // Send CR first
-            uart_write( &CR, 1 );
+//     while( *c )
+//     {
+//          char ch = *c;
+//          //ee_printf("CHAR 0x%x\n",ch );
 
-        }
-#endif
+// #if ENABLED(SEND_CR_LF)
+//         if( ch == 10 )
+//         {
+//             // Send CR first
+//             uart_write( &CR, 1 );
 
-#if ENABLED( SWAP_DEL_WITH_BACKSPACE )
-        if( ch == 0x7F ) 
-        {
-            ch = 0x8;
-        }
-#endif
+//         }
+// #endif
 
-#if ENABLED( BACKSPACE_ECHO )
-        if( ch == 0x8 )
-            gfx_term_putstring( "\x7F" );
-#endif
+// #if ENABLED( SWAP_DEL_WITH_BACKSPACE )
+//         if( ch == 0x7F ) 
+//         {
+//             ch = 0x8;
+//         }
+// #endif
 
-#if ENABLED(SKIP_BACKSPACE_ECHO)
-        if( ch == 0x7F )
-        {
-            backspace_n_skip = 2;
-            last_backspace_t = time_microsec();
-        }
-#endif
-        uart_write( &ch, 1 ); 
-        ee_printf("%02x\n", ch);
-        ++c;
-    }
-} 
+// #if ENABLED( BACKSPACE_ECHO )
+//         if(ch == 0x8)
+//             gfx_term_putstring("\x7F");
+// #endif
+
+// #if ENABLED(SKIP_BACKSPACE_ECHO)
+//         if(ch == 0x7F)
+//         {
+//             backspace_n_skip = 2;
+//             last_backspace_t = time_microsec();
+//         }
+// #endif
+//         uart_write(&ch, 1); 
+//         ee_printf("%02x\n", ch);
+//         ++c;
+//     }
+// }
 
 void initialize_framebuffer()
 {
@@ -94,16 +105,16 @@ void initialize_framebuffer()
     unsigned int v_w = p_w;
     unsigned int v_h = p_h;
 
-    fb_init( p_w, p_h, 
-             v_w, v_h,
-             8, 
-             (void*)&p_fb, 
-             &fbsize, 
-             &pitch );
+    fb_init(p_w, p_h, 
+            v_w, v_h,
+            8, 
+            (void*)&p_fb, 
+            &fbsize, 
+            &pitch);
 
     fb_set_xterm_palette();
 
-    if( fb_get_phisical_buffer_size( &p_w, &p_h ) != FB_SUCCESS )
+    if (fb_get_phisical_buffer_size(&p_w, &p_h) != FB_SUCCESS)
     {
         //cout("fb_get_phisical_buffer_size error");cout_endl();
     }
@@ -312,16 +323,16 @@ void main_loop()
 void entry_point()
 {
     // Heap init
-    nmalloc_set_memory_area( (unsigned char*)( pheap_space ), heap_sz );
+    nmalloc_set_memory_area((unsigned char*)(pheap_space), heap_sz);
 
     // UART
     uart_init();
 
     // Command handler
     clearTarget();
-    cmdHandler_init(0, 1000000, pTargetBuffer, MAX_TARGET_MEMORY_SIZE);
+    cmdHandler_init(pBootloaderBuffer, MAX_BOOTLOADER_SIZE, pTargetBuffer, MAX_TARGET_MEMORY_SIZE);
 
-    // Frame buffer    
+    // Frame buffer
     initialize_framebuffer();
 
     // Initial message
@@ -336,16 +347,20 @@ void entry_point()
 
     timers_init();
 
+    // Default to TRS80 Model1
+    mc_generic_set("TRS80Model1");
+
     // USB
     ee_printf("Initializing USB\n");
-    if( USPiInitialize() )
+    if(USPiInitialize())
     {
         ee_printf("Initialization OK!\n");
         ee_printf("Checking for keyboards...\n");
 
-        if ( USPiKeyboardAvailable () )
+        if (USPiKeyboardAvailable())
         {
-            USPiKeyboardRegisterKeyPressedHandler( _keypress_handler );
+            // USPiKeyboardRegisterKeyPressedHandler(_keypress_handler);
+            USPiKeyboardRegisterKeyStatusHandlerRaw(_keypress_raw_handler);
             gfx_set_fg(10);
             ee_printf("Keyboard found.\n");
             gfx_set_fg(15);

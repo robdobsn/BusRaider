@@ -50,7 +50,7 @@ uint32_t __cmdHandler_addr = 0;
 uint8_t __cmdHandler_byte = 0;
 
 // Pointers to memory for SREC (bootloading) and TREC (target program)
-uint32_t __cmdHandler_srec_base = 0;
+uint8_t* __pCmdHandler_srec_base = 0;
 uint32_t __cmdHandler_srec_maxlen = 0;
 uint8_t* __pCmdHandler_trec_base = 0;
 uint32_t __cmdHandler_trec_maxlen = 0;
@@ -75,12 +75,12 @@ void cmdHandler_errorClear()
 #endif
 
 // Init the destinations for SREC and TREC records
-void cmdHandler_init(uint32_t sRecBase, int sRecBufMaxLen, uint8_t* pTRecBasePtr, int tRecBufMaxLen)
+void cmdHandler_init(uint8_t* pSRecBase, int sRecBufMaxLen, uint8_t* pTRecBase, int tRecBufMaxLen)
 {
 	__cmdHandler_state = CMDHANDLER_STATE_INIT;
-	__cmdHandler_srec_base = sRecBase;
+	__pCmdHandler_srec_base = pSRecBase;
 	__cmdHandler_srec_maxlen = sRecBufMaxLen;
-	__pCmdHandler_trec_base = pTRecBasePtr;
+	__pCmdHandler_trec_base = pTRecBase;
 	__cmdHandler_trec_maxlen = tRecBufMaxLen;
 }
 
@@ -230,7 +230,7 @@ CmdHandler_Ret cmdHandler_handle_char(int ch)
 				{
 					if (__cmdHandler_addr + __cmdHandler_byteIdx < __cmdHandler_srec_maxlen)
 					{
-						utils_store_abs8(__cmdHandler_srec_base + __cmdHandler_addr + __cmdHandler_byteIdx, __cmdHandler_byte);
+						__pCmdHandler_srec_base[__cmdHandler_addr + __cmdHandler_byteIdx] = __cmdHandler_byte;
 					}
 				}
 				else
