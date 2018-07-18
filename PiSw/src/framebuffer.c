@@ -108,7 +108,7 @@ FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w
         return FB_GET_DISPLAY_SIZE_FAIL;
 
 
-#if ENABLED(FRAMEBUFFER_DEBUG)
+#ifdef FRAMEBUFFER_DEBUG
     unsigned int display_w = mailbuffer[5];
     unsigned int display_h = mailbuffer[6];
     cout("Display size: ");cout_d(display_w);cout("x");cout_d(display_h);cout_endl();
@@ -189,7 +189,7 @@ FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w
      *       */
     *pp_fb = (void*)mem_p2v(physical_screenbase);
 
-#if ENABLED(FRAMEBUFFER_DEBUG)
+#ifdef FRAMEBUFFER_DEBUG
     cout("Screen addr: ");cout_h((unsigned int)*pp_fb); cout_endl();
     cout("Screen size: ");cout_d(*pfbsize); cout_endl();
 #endif
@@ -218,7 +218,7 @@ FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w
     if( *pPitch == 0 )
         return FB_INVALID_PITCH;
 
-#if ENABLED(FRAMEBUFFER_DEBUG)
+#ifdef FRAMEBUFFER_DEBUG
     cout("pitch: "); cout_d(*pPitch); cout_endl();
 #endif
 

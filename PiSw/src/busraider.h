@@ -4,6 +4,7 @@
 #ifndef _BUSRAIDER_H_
 #define _BUSRAIDER_H_
 
+#include "globaldefs.h"
 #include "bare_metal_pi_zero.h"
 
 // Return codes

@@ -25,6 +25,7 @@ typedef struct McGenericDescriptor
 } McGenericDescriptor;
 
 extern void mc_generic_set(const char* mcName);
+extern void mc_generic_restore();
 extern McGenericDescriptor* mc_generic_get();
 
 extern void mc_generic_handle_key(unsigned char ucModifiers, const unsigned char rawKeys[6]);

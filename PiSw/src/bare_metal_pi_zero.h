@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "globaldefs.h"
+
 #ifdef __cplusplus
 extern "C"{
 #endif

@@ -126,7 +126,7 @@ void gfx_get_term_size( unsigned int* rows, unsigned int* cols )
 
 void gfx_clear()
 {
-#if ENABLED(GFX_USE_DMA)
+#ifdef GFX_USE_DMA
     unsigned int* BG = (unsigned int*)mem_2uncached( mem_buff_dma );
     *BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
     *(BG+1) = *BG;
@@ -175,7 +175,7 @@ void gfx_scroll_down_dma( unsigned int npixels )
 
 void gfx_scroll_down( unsigned int npixels )
 {
-#if ENABLED(GFX_USE_DMA)
+#ifdef GFX_USE_DMA
     gfx_scroll_down_dma( npixels );
     dma_execute_queue();
 #else
@@ -229,7 +229,7 @@ void gfx_fill_rect_dma( unsigned int x, unsigned int y, unsigned int width, unsi
 
 void gfx_fill_rect( unsigned int x, unsigned int y, unsigned int width, unsigned int height )
 {
-#if ENABLED(GFX_USE_DMA)
+#ifdef GFX_USE_DMA
     gfx_fill_rect_dma( x, y, width, height );
     dma_execute_queue();
 #else

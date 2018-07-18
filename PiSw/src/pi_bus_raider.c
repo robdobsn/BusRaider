@@ -30,10 +30,10 @@ unsigned char pTargetBuffer[MAX_TARGET_MEMORY_SIZE];
 extern unsigned int pheap_space;
 extern unsigned int heap_sz;
 
-#if ENABLED(SKIP_BACKSPACE_ECHO)
-volatile unsigned int backspace_n_skip;
-volatile unsigned int last_backspace_t;
-#endif
+// #if ENABLED(SKIP_BACKSPACE_ECHO)
+// volatile unsigned int backspace_n_skip;
+// volatile unsigned int last_backspace_t;
+// #endif
 
 void clearTarget()
 {

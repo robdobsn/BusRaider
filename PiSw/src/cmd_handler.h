@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "globaldefs.h"
 #include "bare_metal_pi_zero.h"
 
 #define DEBUG_SREC_RX 1
