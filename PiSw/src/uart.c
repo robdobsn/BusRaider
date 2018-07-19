@@ -6,19 +6,18 @@
 #include "irq.h"
 #include "nmalloc.h"
 
-int __chch = 0;
 volatile unsigned int rxhead;
 volatile unsigned int rxtail;
-#define RXBUFMASK 0xFFF
+#define RXBUFMASK 0x3FFF
 volatile unsigned char rxbuffer[RXBUFMASK+1];
 
 //------------------------------------------------------------------------
-unsigned int uart_lcr ( void )
+unsigned int uart_lcr(void)
 {
     return(R32(AUX_MU_LSR_REG));
 }
 //------------------------------------------------------------------------
-unsigned int uart_read_byte ( void )
+unsigned int uart_read_byte(void)
 {
     // while(1)
     // {
@@ -34,7 +33,7 @@ unsigned int uart_read_byte ( void )
     return 0;
 }
 //------------------------------------------------------------------------
-unsigned int uart_poll ( void )
+unsigned int uart_poll(void)
 {
     // if (__chch)
     // {
@@ -157,7 +156,6 @@ void uart_irq_handler( __attribute__((unused)) void* data )
             rc=R32(AUX_MU_IO_REG); //read byte from rx fifo
             rxbuffer[rxhead]=rc&0xFF;
             rxhead=(rxhead+1)&RXBUFMASK;
-            __chch = rc;
         }
 
     }
