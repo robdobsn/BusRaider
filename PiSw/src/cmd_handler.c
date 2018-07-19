@@ -5,6 +5,7 @@
 #include "bare_metal_pi_zero.h"
 #include "utils.h"
 #include "uart.h"
+#include "ee_printf.h"
 
 // States while decoding a line of Motorola SREC format
 typedef enum
@@ -48,31 +49,15 @@ int __cmdHandler_dataLen = 0;
 int __cmdHandler_byteIdx = 0;
 uint32_t __cmdHandler_addr = 0;
 uint8_t __cmdHandler_byte = 0;
+int __cmdHandler_lastCharInvalid = 0;
+int __cmdHandler_debugChCount = 0;
+int __cmdHandler_errCode = 0;
 
 // Pointers to memory for SREC (bootloading) and TREC (target program)
 uint8_t* __pCmdHandler_srec_base = 0;
 uint32_t __cmdHandler_srec_maxlen = 0;
 uint8_t* __pCmdHandler_trec_base = 0;
 uint32_t __cmdHandler_trec_maxlen = 0;
-
-// Debug
-#ifdef DEBUG_SREC_RX
-char debugStr[500];
-int debugErrCode = 0;
-
-int cmdHandler_isError()
-{
-	return debugErrCode;
-}
-char* cmdHandler_getError()
-{
-	return debugStr;
-}
-void cmdHandler_errorClear()
-{
-	debugErrCode = 0;
-}
-#endif
 
 // Init the destinations for SREC and TREC records
 void cmdHandler_init(uint8_t* pSRecBase, int sRecBufMaxLen, uint8_t* pTRecBase, int tRecBufMaxLen)
@@ -82,24 +67,31 @@ void cmdHandler_init(uint8_t* pSRecBase, int sRecBufMaxLen, uint8_t* pTRecBase, 
 	__cmdHandler_srec_maxlen = sRecBufMaxLen;
 	__pCmdHandler_trec_base = pTRecBase;
 	__cmdHandler_trec_maxlen = tRecBufMaxLen;
+	__cmdHandler_debugChCount = 0;
+	__cmdHandler_errCode = CMDHANDLER_RET_OK;
+}
+
+void cmdHandler_clearError()
+{
+	__cmdHandler_errCode = CMDHANDLER_RET_OK;
+	__cmdHandler_debugChCount = 0;
+}
+
+int cmdHandler_getError()
+{
+	return __cmdHandler_errCode;
 }
 
 // Convert char to nybble
 uint8_t chToNybble(int ch)
 {
-#ifdef DEBUG_SREC_RX
-	if ((ch < '0') || ((ch > '9') && (ch < 'A')) || (ch >'F'))
+	if ((ch < '0') || ((ch > '9') && (ch < 'A')) || ((ch >'F') && (ch < 'a')) || (ch >'f'))
 	{
-		char* pErrMsg = "Nybble invalid";
-		char* pBuf = debugStr;
-		while (*pErrMsg)
-		{
-			*pBuf++ = *pErrMsg++;
-		}
-		*pBuf = 0;
-		debugErrCode = 10;
-	}
+		__cmdHandler_errCode = CMDHANDLER_RET_INVALID_NYBBLE;
+#ifdef DEBUG_SREC_RX
+		ee_printf("Nybble invalid %02x count %d\n", ch, __cmdHandler_debugChCount);
 #endif
+	}
     if (ch > '9')
     	ch -= 7;
     return ch & 0xF;
@@ -108,6 +100,7 @@ uint8_t chToNybble(int ch)
 // Handle a single char
 CmdHandler_Ret cmdHandler_handle_char(int ch)
 {
+	__cmdHandler_debugChCount++;
 	// Handle based on state
 	switch(__cmdHandler_state)
 	{
@@ -118,14 +111,24 @@ CmdHandler_Ret cmdHandler_handle_char(int ch)
 				__cmdHandler_checksum = 0;
 				__cmdHandler_state = CMDHANDLER_STATE_RECTYPE;
 				__cmdHandler_dest = (ch == 'S') ? CMDHANDLER_DEST_BOOTLOAD : CMDHANDLER_DEST_TARGET;
+				__cmdHandler_lastCharInvalid = 0;
 			}
 			else if ((ch == 'g') || (ch == 'G'))
 			{
 				// Go to start address
+				__cmdHandler_lastCharInvalid = 0;
 				utils_goto(__cmdHandler_entryAddr);
 			}
 			else
 			{
+				#ifdef DEBUG_SREC_RX
+					if ((ch != '\n') && (ch != '\r'))
+						if (!__cmdHandler_lastCharInvalid)
+						{
+							ee_printf("I...%02x, count %d\n",ch,__cmdHandler_debugChCount);
+							__cmdHandler_lastCharInvalid = 1;
+						}
+				#endif
 				return CMDHANDLER_RET_IGNORED;
 			}
 			break;
@@ -152,7 +155,15 @@ CmdHandler_Ret cmdHandler_handle_char(int ch)
 				case '7':
 				case '8':
 				case '9': { __cmdHandler_recType = CMDHANDLER_RECTYPE_START; __cmdHandler_state = CMDHANDLER_STATE_LEN; break; }
-				default: { __cmdHandler_state = CMDHANDLER_STATE_INIT; break; }
+				default:
+					{ 
+						#ifdef DEBUG_SREC_RX
+							ee_printf("RECTYPE INVALID %d", ch);
+						#endif
+						__cmdHandler_state = CMDHANDLER_STATE_INIT;
+						__cmdHandler_errCode = CMDHANDLER_RET_INVALID_RECTYPE;
+						return CMDHANDLER_RET_INVALID_RECTYPE;
+					}
 			}
 			break;
 		}
@@ -273,5 +284,5 @@ CmdHandler_Ret cmdHandler_handle_char(int ch)
 			break;
 		}
 	}
-	return CMDHANDLER_RET_OK;
+	return __cmdHandler_errCode;
 }

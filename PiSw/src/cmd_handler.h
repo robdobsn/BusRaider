@@ -16,9 +16,11 @@ extern "C"{
 typedef enum
 {
 	CMDHANDLER_RET_OK,
+	CMDHANDLER_RET_LINE_COMPLETE,
 	CMDHANDLER_RET_IGNORED,
 	CMDHANDLER_RET_CHECKSUM_ERROR,
-	CMDHANDLER_RET_LINE_COMPLETE
+	CMDHANDLER_RET_INVALID_RECTYPE,
+	CMDHANDLER_RET_INVALID_NYBBLE
 } CmdHandler_Ret;
 
 // Init the destinations for SREC and TREC records
@@ -27,11 +29,9 @@ extern void cmdHandler_init(uint8_t* pSRecBase, int sRecBufMaxLen, uint8_t* pTRe
 // Handle a single char
 extern CmdHandler_Ret cmdHandler_handle_char(int ch);
 
-#ifdef DEBUG_SREC_RX
-extern int cmdHandler_isError();
-extern char* cmdHandler_getError();
-extern void cmdHandler_errorClear();
-#endif
+// Error handling
+extern void cmdHandler_clearError();
+extern int cmdHandler_getError();
 
 #ifdef __cplusplus
 }

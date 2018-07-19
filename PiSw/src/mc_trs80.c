@@ -4,6 +4,7 @@
 #include "mc_trs80.h"
 #include "nmalloc.h"
 #include "ee_printf.h"
+#include "gfx.h"
 #include "usb_hid_keys.h"
 #include "busraider.h"
 
@@ -18,6 +19,7 @@ static void trs80_init()
 {
 	// Allocate storage for display
 	__trs80ScreenBuffer = nmalloc_malloc(TRS80_DISP_RAM_SIZE);
+    gfx_term_move_cursor(20,0);
 }
 
 static void trs80_deinit()
@@ -27,11 +29,11 @@ static void trs80_deinit()
 		nmalloc_free((void*)__trs80ScreenBuffer);	
 }
 
-static const char FromTRS80[] = "trs80";
+// static const char FromTRS80[] = "trs80";
 
 static void trs80_keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6])
 {
-	LogWrite(FromTRS80, 4, "Key %02x %02x", ucModifiers, rawKeys[0]);
+	// LogWrite(FromTRS80, 4, "Key %02x %02x", ucModifiers, rawKeys[0]);
 
 	// TRS80 keyboard is mapped as follows
 	// Addr	Bit 0 		1 		2 		3 		4 		5 		6 		7
@@ -184,17 +186,20 @@ static void trs80_keyHandler(unsigned char ucModifiers, const unsigned char rawK
 
 static void trs80_displayHandler()
 {
+	gfx_term_save_cursor();
+
 	// LogWrite(FromTRS80, 4, ".");
-    unsigned char pTestBuffer[0x400];
-    br_read_block(0x3c00, pTestBuffer, 0x400, 1);
+    unsigned char pScrnBuffer[0x400];
+    br_read_block(0x3c00, pScrnBuffer, 0x400, 1);
     for (int k = 0; k < 16; k++)
     {
         for (int i = 0; i < 64; i++)
         {
-            ee_printf("%c", pTestBuffer[k*64+i]);
+        	gfx_putc(k,i,pScrnBuffer[k*64+i]);
         }
-        ee_printf("\n");
     }
+
+    gfx_term_restore_cursor();
 }
 
 static McGenericDescriptor trs80_descr =
@@ -203,7 +208,7 @@ static McGenericDescriptor trs80_descr =
 	.pInit = trs80_init,
 	.pDeInit = trs80_deinit,
 	// Required display refresh rate
-	.displayRefreshRatePerSec = 1,
+	.displayRefreshRatePerSec = 25,
 	// Keyboard
 	.pKeyHandler = trs80_keyHandler,
 	.pDispHandler = trs80_displayHandler

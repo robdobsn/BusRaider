@@ -44,7 +44,7 @@ void clearTarget()
 
 static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char rawKeys[6])
 {
-    ee_printf("KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
+    // ee_printf("KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
     mc_generic_handle_key(ucModifiers, rawKeys);
 }
 
@@ -155,13 +155,19 @@ void main_loop()
             if (retc == CMDHANDLER_RET_CHECKSUM_ERROR)
             {
                 ee_printf("Checksum error %d\n", retc);
-                usleep(3000000);
+                // usleep(3000000);
             }
-            if (cmdHandler_isError())
+            else if ((retc == CMDHANDLER_RET_INVALID_RECTYPE) || (retc == CMDHANDLER_RET_INVALID_NYBBLE))
             {
-                ee_printf("%s\n", cmdHandler_getError());
-                cmdHandler_errorClear();
-                usleep(3000000);
+                ee_printf("Error receiving from serial\n");
+                // Discard remaining chars
+                usleep(100000);
+                while(uart_poll())
+                {
+                    usleep(1000);
+                    while(uart_poll())
+                        uart_read_byte();
+                }
             }
 
             // Check handled
@@ -220,30 +226,31 @@ void main_loop()
                 }
                 else if (ch == 'y')
                 {
-                    for (int k = 0; k < 10; k++)
-                    {
-                        for (int i = 0; i < 0x10; i++)
-                        {
-                            ee_printf("%02x ", pTargetBuffer[k*0x10+i]);
-                        }
-                        ee_printf("\n");
-                    }
+                    // for (int k = 0; k < 10; k++)
+                    // {
+                    //     for (int i = 0; i < 0x10; i++)
+                    //     {
+                    //         ee_printf("%02x ", pTargetBuffer[k*0x10+i]);
+                    //     }
+                    //     ee_printf("\n");
+                    // }
 
-                    br_write_block(0, pTargetBuffer, 0x2000, 1);
+                    br_write_block(0, pTargetBuffer, MAX_TARGET_MEMORY_SIZE, 1);
                     br_reset_host();
                 }
                 else if (ch == 'z')
                 {
-                    unsigned char pTestBuffer[0x400];
-                    br_read_block(0x3c00, pTestBuffer, 0x400, 1);
-                    for (int k = 0; k < 16; k++)
-                    {
-                        for (int i = 0; i < 64; i++)
-                        {
-                            ee_printf("%c", pTestBuffer[k*64+i]);
-                        }
-                        ee_printf("\n");
-                    }
+                    // unsigned char pTestBuffer[0x400];
+                    // br_read_block(0x3c00, pTestBuffer, 0x400, 1);
+                    // for (int k = 0; k < 16; k++)
+                    // {
+                    //     for (int i = 0; i < 64; i++)
+                    //     {
+                    //         ee_printf("%c", pTestBuffer[k*64+i]);
+                    //     }
+                    //     ee_printf("\n");
+                    // }
+                    br_reset_host();
                 }
             }
         }
