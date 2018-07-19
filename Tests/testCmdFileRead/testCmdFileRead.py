@@ -92,8 +92,10 @@ class Z80CMDFileHandler:
                 lenSeg = len(seg["data"])
                 addrLine = seg["addr"]
                 segDataIdx = 0
-                for i in range(lenSeg//bytesPerLine):
+                for i in range((lenSeg//bytesPerLine)+1):
                     lenRec = 16 if lenSeg >= 16 else lenSeg
+                    if lenRec == 0:
+                        break
                     s3Rec = self.genS3Rec(startCh, addrLine, seg["data"], lenRec, segDataIdx)
                     outFile.write(s3Rec + "\n")
                     lenSeg -= bytesPerLine

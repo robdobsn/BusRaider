@@ -4,6 +4,7 @@
 #include "utils.h"
 
 extern void uart_init(void);
+extern void uart_init_irq();
 extern unsigned int uart_poll();
 extern void uart_purge();
 extern void uart_write(const char* data, unsigned int size );

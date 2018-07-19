@@ -45,5 +45,7 @@ extern rpi_irq_controller_t* pIRQController;
 typedef void IntHandler( void *data );
 void irq_attach_handler( unsigned int irq, IntHandler *phandler, void* pdata );
 
+void irq_uart_handler(IntHandler *pHandler);
+
 #endif
 

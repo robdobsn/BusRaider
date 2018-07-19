@@ -9,6 +9,12 @@ rpi_irq_controller_t* pIRQController =  (rpi_irq_controller_t*)RPI_INTERRUPT_CON
 IntHandler* (_irq_handlers[63]) = {0};
 void* (_irq_handlers_data[63]) = {0};
 
+IntHandler *pUartIrqHandler = 0;
+
+void irq_uart_handler(IntHandler *pHandler)
+{
+    pUartIrqHandler = pHandler;
+}
 
 void irq_attach_handler( unsigned int irq, IntHandler *phandler, void* pdata )
 {
@@ -39,6 +45,11 @@ void __attribute__((interrupt("IRQ"))) irq_handler_(void)
         IntHandler* hnd = _irq_handlers[9]; 
         hnd( _irq_handlers_data[9] );
 
+    }
+    else
+    {
+        if (pUartIrqHandler)
+            pUartIrqHandler(0);
     }
 
 }

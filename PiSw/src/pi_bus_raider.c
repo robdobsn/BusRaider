@@ -5,10 +5,7 @@
 #include "uart.h"
 #include "timer.h"
 #include "framebuffer.h"
-#include "console.h"
 #include "gfx.h"
-#include "irq.h"
-#include "dma.h"
 #include "nmalloc.h"
 #include "ee_printf.h"
 #include "piwiring.h"
@@ -145,10 +142,14 @@ void main_loop()
 
 
         // Handle serial communication
-        if (uart_poll())
+        for (int rxCtr = 0; rxCtr < 100; rxCtr++)
         {
+            if (!uart_poll())
+                break;
+
             // Show char received
             int ch = uart_read_byte();
+            // ee_printf("%c", ch);
             
             // Offer to the cmd_handler
             CmdHandler_Ret retc = cmdHandler_handle_char(ch);
@@ -159,15 +160,15 @@ void main_loop()
             }
             else if ((retc == CMDHANDLER_RET_INVALID_RECTYPE) || (retc == CMDHANDLER_RET_INVALID_NYBBLE))
             {
-                ee_printf("Error receiving from serial\n");
-                // Discard remaining chars
-                usleep(100000);
-                while(uart_poll())
-                {
-                    usleep(1000);
-                    while(uart_poll())
-                        uart_read_byte();
-                }
+                ee_printf("Error receiving from serial %d\n", retc);
+                // // Discard remaining chars
+                // usleep(100000);
+                // while(uart_poll())
+                // {
+                //     usleep(1000);
+                //     while(uart_poll())
+                //         uart_read_byte();
+                // }
             }
 
             // Check handled
@@ -235,7 +236,7 @@ void main_loop()
                     //     ee_printf("\n");
                     // }
 
-                    br_write_block(0, pTargetBuffer, MAX_TARGET_MEMORY_SIZE, 1);
+                    br_write_block(0, pTargetBuffer, 0x2000, 1);
                     br_reset_host();
                 }
                 else if (ch == 'z')
@@ -250,96 +251,32 @@ void main_loop()
                     //     }
                     //     ee_printf("\n");
                     // }
+                    br_write_block(0x0, pTargetBuffer, 3, 1);
+                    br_write_block(0x8000, pTargetBuffer+0x8000, 0x4000, 1);
+
+                    int testLen = 20;
+                    unsigned char pTestBuffer[testLen];
+                    int brRetc = br_read_block(0xa4a0, pTestBuffer, testLen, 1);
+                    gfx_term_putstring("ReadBlock=");
+                    gfx_term_putchar(brRetc + '0');
+                    gfx_term_putstring("\n");
+                    for ( int i = 0; i < testLen; i++)
+                    {
+                        ee_printf("%02x ", pTestBuffer[i]);
+                        if (pTestBuffer[i] != pTargetBuffer[0xa4a0+i])
+                            ee_printf("(%02x)", pTargetBuffer[0xa4a0+i]);
+                    }
+                    ee_printf("\n");
+
                     br_reset_host();
                 }
             }
         }
 
         timer_poll();
-
-        // Blink LED
-        // const int NUM_TEST_LOCS = 10;
-        // ledCount++;
-        // if (ledCount > 100000)
-        // {
-        //     ledCount = 0;
-        //     ledVal = !ledVal;
-
-        //     // Show edge detect
-        //     ee_printf("Edge %08x\n", R32(GPEDS0));
-        //     // Check bus ack initially
-        //     if (br_bus_acknowledged())
-        //     {
-        //         ee_printf("BusAck Initially ????\n");
-        //         continue;
-        //     }
-        //     // Request bus
-        //     br_request_bus();
-        //     // Wait for ack
-        //     for (int i = 0; i < 100000; i++)
-        //     {
-        //         if (br_bus_acknowledged())
-        //         {
-        //             ee_printf("Ack\n");
-        //             break;
-        //         }
-        //     }
-        //     if (!br_bus_acknowledged())
-        //     {
-        //         br_release_control();
-        //         ee_printf("Failed to acquire bus\n");
-        //         continue;
-        //     }
-
-        //     // Take control
-        //     br_take_control();
-
-        //     for (int i = 0; i < NUM_TEST_LOCS; i++)
-        //     {
-        //         busSetAddr(((uint32_t)0x0100+i));
-        //         busWriteData(i);
-        //     }
-
-
-        //     uint8_t readVals[NUM_TEST_LOCS];
-        //     for (int i = 0; i < NUM_TEST_LOCS; i++)
-        //     {
-        //         busSetAddr(((uint32_t)0x0100)+i);
-        //         readVals[i] = busReadData();
-        //     }
-        //     for (int i = 0; i < NUM_TEST_LOCS; i++)
-        //     {
-        //         ee_printf("%02x ",readVals[i]);
-        //     }
-        //     ee_printf(" %08x\n", R32(GPLEV0));
-        //     // Release bus
-
-        //     br_release_control();
-        //     ee_printf("Edge2 %08x\n", R32(GPEDS0));
-
-        // }
-
-        // busSetAddr(wrAddr);
-        // busWriteData(dataVal);
-
-        // wrAddr++;
-        // dataVal++;
-
-        // if (wrAddr > 10)
-        // {
-        //     busSetAddr(rdAddr);
-        //     uint8_t val = busReadData();
-        //     if (val != (rdAddr & 0xff))
-        //     {
-
-        //         errCount++;
-        //     }
-        //     rdAddr++;
-        // }
     }
 
 }
-
 
 void entry_point()
 {
@@ -368,7 +305,7 @@ void entry_point()
 
     timers_init();
 
-    // Default to TRS80 Model1
+    // // Default to TRS80 Model1
     mc_generic_set("TRS80Model1");
 
     // USB
@@ -399,9 +336,13 @@ void entry_point()
     }
     ee_printf("---------\n");
 
+    // Initialise the interrupt handler
+    uart_init_irq();
+
     // Bus raider setup
     br_init();
 
     // Start the main loop
     main_loop();
+
 }
