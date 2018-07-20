@@ -7,6 +7,8 @@
 #include "uart.h"
 #include "ee_printf.h"
 
+#define MAX_SREC_DATA_LEN 200
+
 // States while decoding a line of Motorola SREC format
 typedef enum
 {
@@ -49,24 +51,19 @@ int __cmdHandler_dataLen = 0;
 int __cmdHandler_byteIdx = 0;
 uint32_t __cmdHandler_addr = 0;
 uint8_t __cmdHandler_byte = 0;
+uint8_t __cmdHandler_data[MAX_SREC_DATA_LEN];
 int __cmdHandler_lastCharInvalid = 0;
 int __cmdHandler_debugChCount = 0;
 int __cmdHandler_errCode = 0;
 
-// Pointers to memory for SREC (bootloading) and TREC (target program)
-uint8_t* __pCmdHandler_srec_base = 0;
-uint32_t __cmdHandler_srec_maxlen = 0;
-uint8_t* __pCmdHandler_trec_base = 0;
-uint32_t __cmdHandler_trec_maxlen = 0;
+// Handler for received data
+TCmdHandlerDataBlockCallback* __cmdHandler_pDataBlockCallback;
 
 // Init the destinations for SREC and TREC records
-void cmdHandler_init(uint8_t* pSRecBase, int sRecBufMaxLen, uint8_t* pTRecBase, int tRecBufMaxLen)
+void cmdHandler_init(TCmdHandlerDataBlockCallback* pDataBlockCallback)
 {
+	__cmdHandler_pDataBlockCallback = pDataBlockCallback;
 	__cmdHandler_state = CMDHANDLER_STATE_INIT;
-	__pCmdHandler_srec_base = pSRecBase;
-	__cmdHandler_srec_maxlen = sRecBufMaxLen;
-	__pCmdHandler_trec_base = pTRecBase;
-	__cmdHandler_trec_maxlen = tRecBufMaxLen;
 	__cmdHandler_debugChCount = 0;
 	__cmdHandler_errCode = CMDHANDLER_RET_OK;
 }
@@ -113,12 +110,12 @@ CmdHandler_Ret cmdHandler_handle_char(int ch)
 				__cmdHandler_dest = (ch == 'S') ? CMDHANDLER_DEST_BOOTLOAD : CMDHANDLER_DEST_TARGET;
 				__cmdHandler_lastCharInvalid = 0;
 			}
-			else if ((ch == 'g') || (ch == 'G'))
-			{
-				// Go to start address
-				__cmdHandler_lastCharInvalid = 0;
-				utils_goto(__cmdHandler_entryAddr);
-			}
+			// else if ((ch == 'g') || (ch == 'G'))
+			// {
+			// 	// Go to start address
+			// 	__cmdHandler_lastCharInvalid = 0;
+			// 	utils_goto(__cmdHandler_entryAddr);
+			// }
 			else
 			{
 				#ifdef DEBUG_SREC_RX
@@ -237,27 +234,32 @@ CmdHandler_Ret cmdHandler_handle_char(int ch)
 				// Checksum
 				__cmdHandler_checksum += __cmdHandler_byte & 0xff;
 				// Store to appropriate place
-				if (__cmdHandler_dest == CMDHANDLER_DEST_BOOTLOAD)
+				if (__cmdHandler_byteIdx < MAX_SREC_DATA_LEN)
 				{
-					if (__cmdHandler_addr + __cmdHandler_byteIdx < __cmdHandler_srec_maxlen)
-					{
-						__pCmdHandler_srec_base[__cmdHandler_addr + __cmdHandler_byteIdx] = __cmdHandler_byte;
-					}
+					__cmdHandler_data[__cmdHandler_byteIdx] = __cmdHandler_byte;
 				}
-				else
-				{
-					if (__cmdHandler_addr + __cmdHandler_byteIdx < __cmdHandler_trec_maxlen)
-					{
-						__pCmdHandler_trec_base[__cmdHandler_addr + __cmdHandler_byteIdx] = __cmdHandler_byte;
-					}
+				// if (__cmdHandler_dest == CMDHANDLER_DEST_BOOTLOAD)
+				// {
+				// 	if (__cmdHandler_addr + __cmdHandler_byteIdx < __cmdHandler_srec_maxlen)
+				// 	{
+				// 		__pCmdHandler_srec_base[__cmdHandler_addr + __cmdHandler_byteIdx] = __cmdHandler_byte;
+				// 	}
+				// }
+				// else
+				// {
+				// 	if (__cmdHandler_addr + __cmdHandler_byteIdx < __cmdHandler_trec_maxlen)
+				// 	{
+				// 		__pCmdHandler_trec_base[__cmdHandler_addr + __cmdHandler_byteIdx] = __cmdHandler_byte;
+				// 	}
 
-				}
+				// }
 				// Next byte
 				__cmdHandler_byteIdx++;
 				__cmdHandler_byte = 0;
 				// Check for end
 				if (__cmdHandler_byteIdx >= __cmdHandler_dataLen)
 				{
+					// Check for checksum
 					__cmdHandler_state = CMDHANDLER_STATE_CHECKSUM;
 					__cmdHandler_fieldCtr = 0;
 					__cmdHandler_byte = 0;
@@ -277,9 +279,17 @@ CmdHandler_Ret cmdHandler_handle_char(int ch)
 				__cmdHandler_state = CMDHANDLER_STATE_INIT;
 				// Check if checksum correct
 				if (__cmdHandler_byte != ((~__cmdHandler_checksum) & 0xff))
+				{
 					return CMDHANDLER_RET_CHECKSUM_ERROR;
+				}
 				else
+				{
+					// Callback on new data
+					if (__cmdHandler_recType == CMDHANDLER_RECTYPE_DATA)
+						if (__cmdHandler_pDataBlockCallback)
+							__cmdHandler_pDataBlockCallback(__cmdHandler_addr, __cmdHandler_data, __cmdHandler_dataLen, __cmdHandler_dest);
 					return CMDHANDLER_RET_LINE_COMPLETE;
+				}
 			}
 			break;
 		}

@@ -13,6 +13,8 @@
 extern "C"{
 #endif
 
+typedef void TCmdHandlerDataBlockCallback(uint32_t addr, uint8_t* pData, uint32_t len, int type);
+
 typedef enum
 {
 	CMDHANDLER_RET_OK,
@@ -24,7 +26,7 @@ typedef enum
 } CmdHandler_Ret;
 
 // Init the destinations for SREC and TREC records
-extern void cmdHandler_init(uint8_t* pSRecBase, int sRecBufMaxLen, uint8_t* pTRecBase, int tRecBufMaxLen);
+extern void cmdHandler_init(TCmdHandlerDataBlockCallback* dataBlockCallback);
 
 // Handle a single char
 extern CmdHandler_Ret cmdHandler_handle_char(int ch);
