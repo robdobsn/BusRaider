@@ -336,6 +336,19 @@ void main_loop()
 
                     targetClear();
                 }
+                else if (ch == 'q')
+                {
+                    unsigned char pTestBuffer[0x400];
+                    br_read_block(0x3c00, pTestBuffer, 0x400, 1);
+                    for (int k = 0; k < 16; k++)
+                    {
+                        for (int i = 0; i < 64; i++)
+                        {
+                            ee_printf("%c", pTestBuffer[k*64+i]);
+                        }
+                        ee_printf("\n");
+                    }
+                }
                 else if (ch == 'm')
                 {
                     ee_printf("Blocks %d\n", __targetMemoryBlockLastIdx);

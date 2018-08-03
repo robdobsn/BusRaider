@@ -52,120 +52,186 @@ static void trs80_keyHandler(unsigned char ucModifiers, const unsigned char rawK
 		keybdBytes[i] = 0;
 
 	// Go through key codes
+	int suppressShift = 0;
+	int suppressCtrl = 0;
 	for (int keyIdx = 0; keyIdx < 6; keyIdx++)
 	{
 		// Key
 		unsigned char rawKey = rawKeys[keyIdx];
 
 		// Handle key
-		if (rawKey == KEY_APOSTROPHE)
-		{
-			// Handle @
-			keybdBytes[0] = 1;
-		}
-		else if ((rawKey >= KEY_A) && (rawKey <= KEY_Z))
+		// if (rawKey == KEY_APOSTROPHE)
+		// {
+		// 	// Handle @
+		// 	keybdBytes[0] = 1;
+		// }
+		// else 
+		if ((rawKey >= KEY_A) && (rawKey <= KEY_Z))
 		{
 			// Handle A..Z
 			int bitIdx = ((rawKey - KEY_A) + 1) % 8;
-			keybdBytes[(((rawKey - KEY_A) + 1) / 8)] = (1 << bitIdx);
+			keybdBytes[(((rawKey - KEY_A) + 1) / 8)] |= (1 << bitIdx);
+		}
+		else if ((rawKey == KEY_2) && ((ucModifiers & KEY_MOD_LSHIFT) != 0))
+		{
+			// Handle @
+			keybdBytes[0] |= 1;
+			suppressShift = 1;
+		}
+		else if ((rawKey == KEY_6) && ((ucModifiers & KEY_MOD_LSHIFT) != 0))
+		{
+			// Handle ^
+			suppressShift = 1;
+		}
+		else if ((rawKey == KEY_7) && ((ucModifiers & KEY_MOD_LSHIFT) != 0))
+		{
+			// Handle &
+			keybdBytes[4] |= 0x40;
+		}
+		else if ((rawKey == KEY_8) && (ucModifiers & KEY_MOD_LSHIFT))
+		{
+			// Handle *
+			keybdBytes[5] |= 4;
+		}
+		else if ((rawKey == KEY_9) && (ucModifiers & KEY_MOD_LSHIFT))
+		{
+			// Handle (
+			keybdBytes[5] |= 1;
+			keybdBytes[7] |= 0x01;
+		}
+		else if ((rawKey == KEY_0) && (ucModifiers & KEY_MOD_LSHIFT))
+		{
+			// Handle )
+			keybdBytes[5] |= 2;
+			keybdBytes[7] |= 0x01;
 		}
 		else if ((rawKey >= KEY_1) && (rawKey <= KEY_9))
 		{
 			// Handle 1..9
 			int bitIdx = ((rawKey - KEY_1) + 1) % 8;
-			keybdBytes[(((rawKey - KEY_1) + 1) / 8) + 4] = (1 << bitIdx);
+			keybdBytes[(((rawKey - KEY_1) + 1) / 8) + 4] |= (1 << bitIdx);
 		}
 		else if (rawKey == KEY_0)
 		{
 			// Handle 0
-			keybdBytes[4] = 1;
+			keybdBytes[4] |= 1;
 		}
-		else if ((rawKey == KEY_8) && (ucModifiers & KEY_MOD_LSHIFT))
+		else if ((rawKey == KEY_SEMICOLON) && ((ucModifiers & KEY_MOD_LSHIFT) == 0))
 		{
-			// Handle *
-			keybdBytes[5] = 4;
+			// Handle ;
+			keybdBytes[5] |= 8;
+			suppressShift = 1;
 		}
-		else if ((rawKey == KEY_EQUAL) && (ucModifiers & KEY_MOD_LSHIFT))
+		else if ((rawKey == KEY_SEMICOLON) && (ucModifiers & KEY_MOD_LSHIFT))
 		{
-			// Handle +
-			keybdBytes[5] = 8;
+			// Handle :
+			keybdBytes[5] |= 4;
+			suppressShift = 1;
 		}
-		else if ((rawKey == KEY_COMMA) && (ucModifiers & KEY_MOD_LSHIFT))
+		else if ((rawKey == KEY_APOSTROPHE) && (ucModifiers & KEY_MOD_LSHIFT))
+		{
+			// Handle "
+			keybdBytes[4] |= 4;
+			keybdBytes[7] |= 0x01;
+		}
+		else if (rawKey == KEY_COMMA)
 		{
 			// Handle <
-			keybdBytes[5] = 0x10;
+			keybdBytes[5] |= 0x10;
+		}
+		else if (rawKey == KEY_DOT)
+		{
+			// Handle >
+			keybdBytes[5] |= 0x40;
 		}
 		else if ((rawKey == KEY_EQUAL) && ((ucModifiers & KEY_MOD_LSHIFT) == 0))
 		{
 			// Handle =
-			keybdBytes[5] = 0x20;
+			keybdBytes[5] |= 0x20;
+			keybdBytes[7] |= 0x01;
 		}
-		else if ((rawKey == KEY_DOT) && (ucModifiers & KEY_MOD_LSHIFT))
+		else if ((rawKey == KEY_EQUAL) && ((ucModifiers & KEY_MOD_LSHIFT) != 0))
 		{
-			// Handle >
-			keybdBytes[5] = 0x40;
+			// Handle +
+			keybdBytes[5] |= 0x8;
+			keybdBytes[7] |= 0x01;
 		}
-		else if ((rawKey == KEY_SLASH) && (ucModifiers & KEY_MOD_LSHIFT))
+		else if ((rawKey == KEY_MINUS) && ((ucModifiers & KEY_MOD_LSHIFT) == 0))
+		{
+			// Handle -
+			keybdBytes[5] |= 0x20;
+			suppressShift = 1;
+		}
+		else if (rawKey == KEY_SLASH)
 		{
 			// Handle ?
-			keybdBytes[5] = 0x80;
+			keybdBytes[5] |= 0x80;
 		}
 		else if (rawKey == KEY_ENTER)
 		{
 			// Handle Enter
-			keybdBytes[6] = 0x01;
+			keybdBytes[6] |= 0x01;
 		}
 		else if (rawKey == KEY_BACKSPACE)
 		{
-			// Handle Clear
-			keybdBytes[6] = 0x02;
+			// Treat as LEFT
+			keybdBytes[6] |= 0x20;
 		}
 		else if (rawKey == KEY_ESC)
 		{
 			// Handle Break
-			keybdBytes[6] = 0x04;
+			keybdBytes[6] |= 0x04;
 		}
 		else if (rawKey == KEY_UP)
 		{
 			// Handle Up
-			keybdBytes[6] = 0x08;
+			keybdBytes[6] |= 0x08;
 		}
 		else if (rawKey == KEY_DOWN)
 		{
 			// Handle Down
-			keybdBytes[6] = 0x10;
+			keybdBytes[6] |= 0x10;
 		}
 		else if (rawKey == KEY_LEFT)
 		{
 			// Handle Left
-			keybdBytes[6] = 0x20;
+			keybdBytes[6] |= 0x20;
 		}
 		else if (rawKey == KEY_RIGHT)
 		{
 			// Handle Right
-			keybdBytes[6] = 0x40;
+			keybdBytes[6] |= 0x40;
 		}
 		else if (rawKey == KEY_SPACE)
 		{
 			// Handle Space
-			keybdBytes[6] = 0x80;
+			keybdBytes[6] |= 0x80;
 		}
 		else if (rawKey == KEY_LEFTSHIFT)
 		{
 			// Handle Left Shift
-			keybdBytes[7] = 0x01;
+			keybdBytes[7] |= 0x01;
 		}
 		else if (rawKey == KEY_RIGHTSHIFT)
 		{
 			// Handle Left Shift
-			keybdBytes[7] = 0x02;
+			keybdBytes[7] |= 0x02;
 		}
 		else if ((rawKey == KEY_LEFTCTRL) || (rawKey == KEY_RIGHTCTRL))
 		{
 			// Handle <
-			keybdBytes[7] = 0x10;
+			keybdBytes[7] |= 0x10;
 		}
+	}
 
+	// Suppress shift keys if needed
+	if(suppressShift)
+	{
+		keybdBytes[7] &= 0xfc;
+	}
+	if(suppressCtrl)
+	{
+		keybdBytes[7] &= 0xef;
 	}
 
 	// Build RAM map

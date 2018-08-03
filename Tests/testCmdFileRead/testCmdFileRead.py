@@ -112,6 +112,6 @@ class Z80CMDFileHandler:
             
 z80CmdHandler = Z80CMDFileHandler()
 
-z80CmdHandler.load(r"C:\Users\rob\Downloads\Galaxy Invasion (1980)(Big Five Software)[CMD]\galinv1a.cmd")
-z80CmdHandler.createSRECFile("T", r"C:\Users\rob\Downloads\Galaxy Invasion (1980)(Big Five Software)[CMD]\galinv1a.srec")
+z80CmdHandler.load(r"C:\Users\rob\Downloads\Galaxy Invasion (1980)(Big Five Software)[CMD]\galinv1d.cmd")
+z80CmdHandler.createSRECFile("T", r"C:\Users\rob\Downloads\Galaxy Invasion (1980)(Big Five Software)[CMD]\galinv1d.srec")
 
