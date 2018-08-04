@@ -10,9 +10,6 @@
 
 extern unsigned char pTRS80Font[];
 
-extern unsigned char G_FONT_GLYPHS;
-static unsigned char* pFONT = &G_FONT_GLYPHS;
-
 #define TRS80_KEYBOARD_ADDR 0x3800
 #define TRS80_KEYBOARD_RAM_SIZE 0x0100
 #define TRS80_DISP_RAM_ADDR 0x3c00
@@ -25,12 +22,6 @@ static void trs80_init()
 	// Allocate storage for display
 	__trs80ScreenBuffer = nmalloc_malloc(TRS80_DISP_RAM_SIZE);
     gfx_term_move_cursor(20,0);
-
-
-    for (int i = 0; i < 16; i++)
-    {
-    	ee_printf("%d == %d\n", pTRS80Font[i], pFONT[i]);
-    }
 }
 
 static void trs80_deinit()

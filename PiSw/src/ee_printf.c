@@ -57,8 +57,9 @@ This code is based on a file that contains the following:
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
 
 //#define DO_LOG_STRING(x) uart_write_str(x)
-#define DO_LOG_STRING(x) gfx_term_putstring((const char*)x)
-
+#define DISP_WRITE_STRING(x) gfx_term_putstring((const char*)x)
+#define UART_WRITE_STRING(x) uart_write_str((const char*)x)
+#define LOG_WRITE_STRING(x) DISP_WRITE_STRING(x)
 
 static char *lower_digits = "0123456789abcdefghijklmnopqrstuvwxyz";
 static char *upper_digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -535,7 +536,7 @@ repeat:
 
       case 'A':
         flags |= UPPERCASE;
-
+        /* fall through */
       case 'a':
         if (qualifier == 'l')
           str = eaddr(str, va_arg(args, unsigned char *), field_width, flags);
@@ -550,7 +551,7 @@ repeat:
 
       case 'X':
         flags |= UPPERCASE;
-
+        /* fall through */
       case 'x':
         base = 16;
         break;
@@ -597,7 +598,7 @@ void uart_send_char(char c) {
   char str[2];
   str[0] = c;
   str[1] = '\0';
-  DO_LOG_STRING(str);
+  UART_WRITE_STRING(str);
 }
 
 void LogWrite (const char *pSource,		
@@ -611,30 +612,30 @@ void LogWrite (const char *pSource,
   ee_vsprintf(buf, fmt, args);
   va_end(args);
 
-  DO_LOG_STRING( "[" );
+  LOG_WRITE_STRING( "[" );
   switch( Severity )
   {
       case 1:
-          DO_LOG_STRING(" ERROR ");
+          LOG_WRITE_STRING(" ERROR ");
           break;
       case 2:
-          DO_LOG_STRING("WARNING");
+          LOG_WRITE_STRING("WARNING");
           break;
       case 3:
-          DO_LOG_STRING("NOTICE ");
+          LOG_WRITE_STRING("NOTICE ");
           break;
       case 4:
-          DO_LOG_STRING(" DEBUG ");
+          LOG_WRITE_STRING(" DEBUG ");
           break;
       default:
-          DO_LOG_STRING("  ??   ");
+          LOG_WRITE_STRING("  ??   ");
   }
 
-  DO_LOG_STRING( "] " );
-  DO_LOG_STRING( pSource );
-  DO_LOG_STRING( ": " );
-  DO_LOG_STRING( buf );
-  DO_LOG_STRING( "\n" );
+  LOG_WRITE_STRING( "] " );
+  LOG_WRITE_STRING( pSource );
+  LOG_WRITE_STRING( ": " );
+  LOG_WRITE_STRING( buf );
+  LOG_WRITE_STRING( "\n" );
 }
 
 void ee_printf(const char *fmt, ...)
@@ -646,6 +647,17 @@ void ee_printf(const char *fmt, ...)
   ee_vsprintf(buf, fmt, args);
   va_end(args);
 
-  DO_LOG_STRING( buf );
+  LOG_WRITE_STRING( buf );
 }
 
+void uart_printf(const char *fmt, ...)
+{
+  char buf[15*80];
+  va_list args;
+
+  va_start(args, fmt);
+  ee_vsprintf(buf, fmt, args);
+  va_end(args);
+
+  UART_WRITE_STRING( buf );
+}

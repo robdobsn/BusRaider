@@ -1,4 +1,4 @@
-
+// Pi Bare Metal UART
 
 #include "uart.h"
 #include "bare_metal_pi_zero.h"
@@ -19,11 +19,6 @@ unsigned int uart_lcr(void)
 //------------------------------------------------------------------------
 unsigned int uart_read_byte(void)
 {
-    // while(1)
-    // {
-    //     if(R32(AUX_MU_LSR_REG)&0x01) break;
-    // }
-    // return(R32(AUX_MU_IO_REG)&0xFF);
     if(rxtail!=rxhead)
     {
         unsigned int ch = rxbuffer[rxtail];
@@ -35,13 +30,6 @@ unsigned int uart_read_byte(void)
 //------------------------------------------------------------------------
 unsigned int uart_poll(void)
 {
-    // if (__chch)
-    // {
-    //     ee_printf("HERE %02x", __chch);
-    //     __chch = 0;
-    // }
-    // if(R32(AUX_MU_LSR_REG)&0x01) return(1);
-    // return(0);
     return rxtail!=rxhead;
 }
 //------------------------------------------------------------------------
@@ -138,11 +126,6 @@ unsigned int uart_read_hex()
 
 void uart_irq_handler( __attribute__((unused)) void* data )
 {
-    // if(R32(AUX_MU_LSR_REG)&0x01) 
-    //     __chch = 1;
-
-    // ee_printf(".");
-    
     unsigned int rb,rc;
 
     //an interrupt has occurred, find out why
@@ -159,42 +142,11 @@ void uart_irq_handler( __attribute__((unused)) void* data )
         }
 
     }
-
-    // while( !( *UART0_FR & 0x10)/*uart_poll()*/)
-    // {
-    //     *uart_buffer_end++ = (char)( *UART0_DR & 0xFF /*uart_read_byte()*/);
-
-    //     if( uart_buffer_end >= uart_buffer_limit )
-    //        uart_buffer_end = uart_buffer; 
-
-    //     if( uart_buffer_end == uart_buffer_start )
-    //     {
-    //         uart_buffer_start++;
-    //         if( uart_buffer_start >= uart_buffer_limit )
-    //             uart_buffer_start = uart_buffer; 
-    //     }
-    // }
-
-    // /* Clear UART0 interrupts */
-    // *UART0_ITCR = 0xFFFFFFFF;
 }
+
 void uart_init_irq()
 {
-    // uart_buffer_start = uart_buffer_end = uart_buffer;
-    // uart_buffer_limit = &( uart_buffer[ UART_BUFFER_SIZE ] );
-
-    // UART0_DR   = (volatile unsigned int*)0x20201000;
-    // UART0_IMSC = (volatile unsigned int*)0x20201038;
-    // UART0_ITCR = (volatile unsigned int*)0x20201044;
-    // UART0_FR   = (volatile unsigned int*)0x20201018;
-
-    // *UART0_IMSC = (1<<4) | (1<<7) | (1<<9); // Masked interrupts: RXIM + FEIM + BEIM (See pag 188 of BCM2835 datasheet)
-    // *UART0_ITCR = 0xFFFFFFFF; // Clear UART0 interrupts
-
     W32(IRQ_ENABLE1,1<<29);
-    // pIRQController->Enable_IRQs_2 = RPI_UART_INTERRUPT_IRQ;
-    // enable_irq();
-    // irq_attach_handler(57, uart_fill_queue, 0 );
     enable_irq();
     irq_uart_handler(uart_irq_handler);
 }
@@ -221,12 +173,7 @@ void uart_init ( void )
     ra&=~(7<<15); //gpio15
     ra|=2<<15;    //alt5
     W32(GPFSEL1,ra);
-    //I wonder if we really need this
-    //W32(GPPUD,0);
-    //for(ra=0;ra<150;ra++) dummy(ra);
-    //W32(GPPUDCLK0,(1<<14)|(1<<15));
-    //for(ra=0;ra<150;ra++) dummy(ra);
-    //W32(GPPUDCLK0,0);
+
     W32(AUX_MU_CNTL_REG,3);
 
 }

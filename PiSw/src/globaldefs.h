@@ -5,6 +5,14 @@
 #define bool int
 #endif
 
+#ifndef false
+#define false 0
+#endif
+
+#ifndef true
+#define true (!false)
+#endif
+
 #ifndef NULL
 #define NULL 0
 #endif

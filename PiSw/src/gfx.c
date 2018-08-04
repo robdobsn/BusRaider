@@ -1,8 +1,10 @@
-#include "pgm_config.h"
+#include "globaldefs.h"
 #include "gfx.h"
-#include "console.h"
 #include "dma.h"
 #include "utils.h"
+
+// Graphics functions use DMA when possible (faster, but occupy DMA channel 0)    
+#define GFX_USE_DMA 1
 
 extern unsigned char G_FONT_GLYPHS;
 static unsigned char* FNT = &G_FONT_GLYPHS;

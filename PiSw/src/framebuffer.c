@@ -1,9 +1,10 @@
-#include "pgm_config.h"
+#include "globaldefs.h"
 #include "framebuffer.h"
 #include "postman.h"
-#include "console.h"
 #include "utils.h"
+#include "ee_printf.h"
 
+#define FRAMEBUFFER_DEBUG 1
 
 static const unsigned int xterm_colors[256] = {
 0x000000,  0x800000,  0x008000,  0x808000,  0x000080,
@@ -111,7 +112,7 @@ FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w
 #ifdef FRAMEBUFFER_DEBUG
     unsigned int display_w = mailbuffer[5];
     unsigned int display_h = mailbuffer[6];
-    cout("Display size: ");cout_d(display_w);cout("x");cout_d(display_h);cout_endl();
+    uart_printf("Display size: %d x %d\r\n", display_w, display_h);
 #endif
 
     /* Set up screen */
@@ -190,8 +191,7 @@ FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w
     *pp_fb = (void*)mem_p2v(physical_screenbase);
 
 #ifdef FRAMEBUFFER_DEBUG
-    cout("Screen addr: ");cout_h((unsigned int)*pp_fb); cout_endl();
-    cout("Screen size: ");cout_d(*pfbsize); cout_endl();
+    uart_printf("Screen addr: %08x, Size %d\r\n", (unsigned int)*pp_fb, *pfbsize);
 #endif
 
     /* Get the framebuffer pitch (bytes per line) */
@@ -219,7 +219,7 @@ FB_RETURN_TYPE fb_init( unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w
         return FB_INVALID_PITCH;
 
 #ifdef FRAMEBUFFER_DEBUG
-    cout("pitch: "); cout_d(*pPitch); cout_endl();
+    uart_printf("Pitch: %d\r\n",*pPitch);
 #endif
 
     return FB_SUCCESS;

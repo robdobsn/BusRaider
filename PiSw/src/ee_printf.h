@@ -3,6 +3,7 @@
 
 
 extern void ee_printf(const char *fmt, ...);
+extern void uart_printf(const char *fmt, ...);
 
 extern void LogWrite (const char *pSource,		// short name of module
         	       unsigned	   Severity,		// see above

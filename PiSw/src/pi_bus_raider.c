@@ -1,6 +1,6 @@
 // Bus Raider V1.3
 
-#include "pgm_config.h"
+#include "globaldefs.h"
 #include "utils.h"
 #include "uart.h"
 #include "timer.h"
@@ -32,11 +32,6 @@ int __targetMemoryBlockLastIdx = 0;
 // Heap space
 extern unsigned int pheap_space;
 extern unsigned int heap_sz;
-
-// #if ENABLED(SKIP_BACKSPACE_ECHO)
-// volatile unsigned int backspace_n_skip;
-// volatile unsigned int last_backspace_t;
-// #endif
 
 void targetClear()
 {
@@ -91,50 +86,6 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
     // ee_printf("KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
     mc_generic_handle_key(ucModifiers, rawKeys);
 }
-
-// static void _keypress_handler(const char* str)
-// {
-//     const char* c = str;
-//     char CR = 13;
-
-//     while( *c )
-//     {
-//          char ch = *c;
-//          //ee_printf("CHAR 0x%x\n",ch );
-
-// #if ENABLED(SEND_CR_LF)
-//         if( ch == 10 )
-//         {
-//             // Send CR first
-//             uart_write( &CR, 1 );
-
-//         }
-// #endif
-
-// #if ENABLED( SWAP_DEL_WITH_BACKSPACE )
-//         if( ch == 0x7F ) 
-//         {
-//             ch = 0x8;
-//         }
-// #endif
-
-// #if ENABLED( BACKSPACE_ECHO )
-//         if(ch == 0x8)
-//             gfx_term_putstring("\x7F");
-// #endif
-
-// #if ENABLED(SKIP_BACKSPACE_ECHO)
-//         if(ch == 0x7F)
-//         {
-//             backspace_n_skip = 2;
-//             last_backspace_t = time_microsec();
-//         }
-// #endif
-//         uart_write(&ch, 1); 
-//         ee_printf("%02x\n", ch);
-//         ++c;
-//     }
-// }
 
 void initialize_framebuffer()
 {
@@ -385,7 +336,7 @@ void entry_point()
     gfx_term_putstring( "\x1B[2J" ); // Clear screen
     gfx_set_bg(27);
     gfx_term_putstring( "\x1B[2K" ); // Render blue line at top
-    ee_printf("RC2014 Bus Raider %s\n", PGM_VERSION );
+    ee_printf("RC2014 Bus Raider V1.0\n");
     gfx_term_putstring( "\x1B[2K" );
     //gfx_term_putstring( "\x1B[2K" ); 
     ee_printf("Rob Dobson (inspired by PIGFX)\n\n");

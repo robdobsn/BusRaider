@@ -1,8 +1,9 @@
-#include "pgm_config.h"
+#include "globaldefs.h"
 #include "postman.h"
 #include "utils.h"
 #include "timer.h"
 
+//#define POSTMAN_DEBUG 1
 
 #define MAPPED_REGISTERS_BASE 0x20000000
 
