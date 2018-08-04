@@ -36,6 +36,11 @@ extern void gfx_clear_rect( unsigned int x, unsigned int y, unsigned int width, 
  */
 extern void gfx_putc( unsigned int row, unsigned int col, unsigned char c );
 
+/*!
+ * Renders a character cell 8x8 at location (x,y)
+ */
+
+extern void gfx_putCell8x8(unsigned int row, unsigned int col, unsigned int* pCell);
 
 /*! 
  * Scrolls the entire framebuffer down (adding background color at the bottom)

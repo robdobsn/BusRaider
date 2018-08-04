@@ -355,6 +355,28 @@ void gfx_putc( unsigned int row, unsigned int col, unsigned char c )
     }
 }
 
+void gfx_putCell8x8(unsigned int row, unsigned int col, unsigned int* pCell)
+{
+    if( col >= ctx.term.WIDTH )
+        return;
+    if( row >= ctx.term.HEIGHT )
+        return;
+    const unsigned int FG = ctx.fg<<24 | ctx.fg<<16 | ctx.fg<<8 | ctx.fg;
+    const unsigned int BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
+    const unsigned int stride = (ctx.Pitch>>2) - 2;
+    register unsigned int* pf = (unsigned int*)PFB((col<<3), (row<<3));
+    register unsigned char h=8;
+
+    while(h--)
+    {
+        register unsigned int gv = *pCell++;
+        *pf++ =  (gv & FG) | ( ~gv & BG );
+        gv = *pCell++;
+        *pf++ =  (gv & FG) | ( ~gv & BG );
+        pf += stride;
+    }
+
+}
 
 
 /*

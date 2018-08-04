@@ -11,9 +11,9 @@
 #define HEARTBEAT_FREQUENCY     1               /* Status led blink frequency in Hz */
 
 // Log framebuffer operations to UART
-// #define FRAMEBUFFER_DEBUG       1             
+#define FRAMEBUFFER_DEBUG       1             
 // Log mailbox operations to UART
-// #define POSTMAN_DEBUG           1
+//#define POSTMAN_DEBUG           1
 // Graphics functions use DMA when possible (faster, but occupy DMA channel 0)             
 #define GFX_USE_DMA             1
 

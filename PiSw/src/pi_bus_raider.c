@@ -381,6 +381,7 @@ void entry_point()
     initialize_framebuffer();
 
     // Initial message
+    ee_printf("\n\n\n\n\n\n\n\n\n\n");
     gfx_term_putstring( "\x1B[2J" ); // Clear screen
     gfx_set_bg(27);
     gfx_term_putstring( "\x1B[2K" ); // Render blue line at top

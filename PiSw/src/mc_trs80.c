@@ -8,6 +8,11 @@
 #include "usb_hid_keys.h"
 #include "busraider.h"
 
+extern unsigned char pTRS80Font[];
+
+extern unsigned char G_FONT_GLYPHS;
+static unsigned char* pFONT = &G_FONT_GLYPHS;
+
 #define TRS80_KEYBOARD_ADDR 0x3800
 #define TRS80_KEYBOARD_RAM_SIZE 0x0100
 #define TRS80_DISP_RAM_ADDR 0x3c00
@@ -20,6 +25,12 @@ static void trs80_init()
 	// Allocate storage for display
 	__trs80ScreenBuffer = nmalloc_malloc(TRS80_DISP_RAM_SIZE);
     gfx_term_move_cursor(20,0);
+
+
+    for (int i = 0; i < 16; i++)
+    {
+    	ee_printf("%d == %d\n", pTRS80Font[i], pFONT[i]);
+    }
 }
 
 static void trs80_deinit()
@@ -207,6 +218,11 @@ static void trs80_keyHandler(unsigned char ucModifiers, const unsigned char rawK
 			// Handle Space
 			keybdBytes[6] |= 0x80;
 		}
+		else if (rawKey == KEY_F1)
+		{
+			// Handle CLEAR
+			keybdBytes[6] |= 0x02;
+		}		
 		else if (rawKey == KEY_LEFTSHIFT)
 		{
 			// Handle Left Shift
@@ -261,7 +277,10 @@ static void trs80_displayHandler()
     {
         for (int i = 0; i < 64; i++)
         {
-        	gfx_putc(k,i,pScrnBuffer[k*64+i]);
+        	// gfx_putc(k,i,pScrnBuffer[k*64+i]);
+        	unsigned int *pCell = (unsigned int*) (pTRS80Font + ((unsigned int)(pScrnBuffer[k*64+i])<<6));
+        	// unsigned int *pCell = (unsigned int*) pTRS80Font; 
+        	gfx_putCell8x8(k, i, pCell);
         }
     }
 
