@@ -16,6 +16,8 @@ typedef struct McGenericDescriptor
 	TMcDeInitFunction* pDeInit;
 	// Display
 	int displayRefreshRatePerSec;
+	int displayPixelsX;
+	int displayPixelsY;
 	// Keyboard
 	TMcKeyHandlerRaw* pKeyHandler;
 	TMcDispHandler* pDispHandler;

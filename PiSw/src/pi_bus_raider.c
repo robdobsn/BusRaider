@@ -15,71 +15,11 @@
 #include "cmd_handler.h"
 #include "mc_generic.h"
 #include "rdutils.h"
-
-// Target buffer
-#define MAX_TARGET_MEMORY_SIZE 0x10000
-unsigned char __pTargetBuffer[MAX_TARGET_MEMORY_SIZE];
-
-// Target memory blocks
-#define MAX_TARGET_MEMORY_BLOCKS 20
-struct
-{
-    uint32_t start;
-    uint32_t len;
-} __targetMemoryBlocks[MAX_TARGET_MEMORY_BLOCKS];
-int __targetMemoryBlockLastIdx = 0;
+#include "target_memory_map.h"
 
 // Heap space
 extern unsigned int pheap_space;
 extern unsigned int heap_sz;
-
-void targetClear()
-{
-    __targetMemoryBlockLastIdx = 0;
-
-    for (int i = 0; i < MAX_TARGET_MEMORY_BLOCKS; i++)
-        __targetMemoryBlocks[i].len = 0;
-
-    for (int i = 0; i < MAX_TARGET_MEMORY_SIZE; i++)
-        __pTargetBuffer[i] = 0;
-}
-
-void targetDataBlockCallback(uint32_t addr, uint8_t* pData, uint32_t len, int type)
-{
-    type = type;
-
-    // Check if contiguous with other data
-    int blockIdx = -1;
-    for (int i = 0; i < __targetMemoryBlockLastIdx; i++)
-    {
-        if (__targetMemoryBlocks[i].start + __targetMemoryBlocks[i].len == addr)
-        {
-            blockIdx = i;
-            __targetMemoryBlocks[i].len += len;   
-            break;
-        }
-    }
-
-    // New block
-    if (blockIdx == -1)
-    {
-        if (__targetMemoryBlockLastIdx >= MAX_TARGET_MEMORY_BLOCKS)
-        {
-            ee_printf("Too many target memory blocks\n");
-            return;
-        }
-        __targetMemoryBlocks[__targetMemoryBlockLastIdx].start = addr;
-        __targetMemoryBlocks[__targetMemoryBlockLastIdx].len = len;
-        __targetMemoryBlockLastIdx++;
-    }
-
-    // Store block
-    for (unsigned int i = 0; i < len; i++)
-    {
-        if (addr+i < MAX_TARGET_MEMORY_SIZE)
-            __pTargetBuffer[addr+i] = pData[i];
-    }
-}
 
 static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char rawKeys[6])
 {
@@ -172,58 +112,58 @@ void main_loop()
             // Check handled
             if (retc == CMDHANDLER_RET_IGNORED)
             {
-                if (ch == 'x')
-                {
-                    // Test
-                    unsigned int testBaseAddr = 0;
-                    unsigned int testLen = 10000;
-                    targetClear();
-                    BR_RETURN_TYPE brRetc = br_read_block(testBaseAddr, __pTargetBuffer, testLen, 1);
-                    gfx_term_putstring("ReadBlock=");
-                    gfx_term_putchar(brRetc + '0');
-                    gfx_term_putstring("\n");
-                    for (int i = 0; i < 0x10; i++)
-                    {
-                        ee_printf("%02x ", __pTargetBuffer[i]);
-                    }
-                    ee_printf("\n");
+                // if (ch == 'x')
+                // {
+                //     // Test
+                //     unsigned int testBaseAddr = 0;
+                //     unsigned int testLen = 10000;
+                //     targetClear();
+                //     BR_RETURN_TYPE brRetc = br_read_block(testBaseAddr, __pTargetBuffer, testLen, 1);
+                //     gfx_term_putstring("ReadBlock=");
+                //     gfx_term_putchar(brRetc + '0');
+                //     gfx_term_putstring("\n");
+                //     for (int i = 0; i < 0x10; i++)
+                //     {
+                //         ee_printf("%02x ", __pTargetBuffer[i]);
+                //     }
+                //     ee_printf("\n");
 
-                    // Test data
-                    for (unsigned int i = 0; i < testLen; i++)
-                    {
-                        __pTargetBuffer[i] = (i * 23487) / 3;
-                    }
+                //     // Test data
+                //     for (unsigned int i = 0; i < testLen; i++)
+                //     {
+                //         __pTargetBuffer[i] = (i * 23487) / 3;
+                //     }
 
-                    brRetc = br_write_block(testBaseAddr, __pTargetBuffer, testLen, 1);
+                //     brRetc = br_write_block(testBaseAddr, __pTargetBuffer, testLen, 1);
 
-                    unsigned char pTestBuffer[testLen];
-                    brRetc = br_read_block(testBaseAddr, pTestBuffer, testLen, 1);
-                    gfx_term_putstring("ReadBlock=");
-                    gfx_term_putchar(brRetc + '0');
-                    gfx_term_putstring("\n");
-                    int errFound = 0;
-                    unsigned int errAddr = 0;
-                    for (unsigned int i = 0; i < testLen; i++)
-                    {
-                        if (pTestBuffer[i] != __pTargetBuffer[i])
-                        {
-                            errFound = 1;
-                            errAddr = i;
-                            break;
-                        }    
+                //     unsigned char pTestBuffer[testLen];
+                //     brRetc = br_read_block(testBaseAddr, pTestBuffer, testLen, 1);
+                //     gfx_term_putstring("ReadBlock=");
+                //     gfx_term_putchar(brRetc + '0');
+                //     gfx_term_putstring("\n");
+                //     int errFound = 0;
+                //     unsigned int errAddr = 0;
+                //     for (unsigned int i = 0; i < testLen; i++)
+                //     {
+                //         if (pTestBuffer[i] != __pTargetBuffer[i])
+                //         {
+                //             errFound = 1;
+                //             errAddr = i;
+                //             break;
+                //         }    
 
-                    }
-                    if (errFound)
-                    {
-                        ee_printf("Error at %08x\n", errAddr);
-                        for (int i = 0; i < 5; i++)
-                        {
-                            ee_printf("%02x %02x\n", pTestBuffer[(errAddr+i) % testLen], __pTargetBuffer[(errAddr+i) % testLen]);
-                        }
-                    }
+                //     }
+                //     if (errFound)
+                //     {
+                //         ee_printf("Error at %08x\n", errAddr);
+                //         for (int i = 0; i < 5; i++)
+                //         {
+                //             ee_printf("%02x %02x\n", pTestBuffer[(errAddr+i) % testLen], __pTargetBuffer[(errAddr+i) % testLen]);
+                //         }
+                //     }
 
-                }
-                else if (ch == 'g')
+                // }
+                if (ch == 'g')
                 {
                     // for (int k = 0; k < 10; k++)
                     // {
@@ -234,7 +174,7 @@ void main_loop()
                     //     ee_printf("\n");
                     // }
 
-                    if (__targetMemoryBlockLastIdx == 0)
+                    if (targetGetNumBlocks() == 0)
                     {
                         // Nothing new to write
                         ee_printf("Nothing new to write to target\n");
@@ -242,72 +182,73 @@ void main_loop()
                     else
                     {
 
-                        for (int i = 0; i < __targetMemoryBlockLastIdx; i++)
+                        for (int i = 0; i < targetGetNumBlocks(); i++)
                         {
+                            TargetMemoryBlock* pBlock = targetGetMemoryBlock(i);
                             // ee_printf("%08x %08x\n", __targetMemoryBlocks[i].start, __targetMemoryBlocks[i].len);
-                            br_write_block(__targetMemoryBlocks[i].start, __pTargetBuffer + __targetMemoryBlocks[i].start, __targetMemoryBlocks[i].len, 1);
+                            br_write_block(pBlock->start, targetMemoryPtr() + pBlock->start, pBlock->len, 1);
                         }
 
-                        ee_printf("Written %d blocks, now resetting host ...\n", __targetMemoryBlockLastIdx);
+                        ee_printf("Written %d blocks, now resetting host ...\n", targetGetNumBlocks());
                         br_reset_host();
 
                         targetClear();
                     }
                 }
-                else if (ch == 'z')
-                {
-                    // unsigned char pTestBuffer[0x400];
-                    // br_read_block(0x3c00, pTestBuffer, 0x400, 1);
-                    // for (int k = 0; k < 16; k++)
-                    // {
-                    //     for (int i = 0; i < 64; i++)
-                    //     {
-                    //         ee_printf("%c", pTestBuffer[k*64+i]);
-                    //     }
-                    //     ee_printf("\n");
-                    // }
-                    br_write_block(0x0, __pTargetBuffer, 3, 1);
-                    br_write_block(0x8000, __pTargetBuffer+0x8000, 0x4000, 1);
+            //     else if (ch == 'z')
+            //     {
+            //         // unsigned char pTestBuffer[0x400];
+            //         // br_read_block(0x3c00, pTestBuffer, 0x400, 1);
+            //         // for (int k = 0; k < 16; k++)
+            //         // {
+            //         //     for (int i = 0; i < 64; i++)
+            //         //     {
+            //         //         ee_printf("%c", pTestBuffer[k*64+i]);
+            //         //     }
+            //         //     ee_printf("\n");
+            //         // }
+            //         br_write_block(0x0, __pTargetBuffer, 3, 1);
+            //         br_write_block(0x8000, __pTargetBuffer+0x8000, 0x4000, 1);
 
-                    int testLen = 20;
-                    unsigned char pTestBuffer[testLen];
-                    int brRetc = br_read_block(0xa4a0, pTestBuffer, testLen, 1);
-                    gfx_term_putstring("ReadBlock=");
-                    gfx_term_putchar(brRetc + '0');
-                    gfx_term_putstring("\n");
-                    for ( int i = 0; i < testLen; i++)
-                    {
-                        ee_printf("%02x ", pTestBuffer[i]);
-                        if (pTestBuffer[i] != __pTargetBuffer[0xa4a0+i])
-                            ee_printf("(%02x)", __pTargetBuffer[0xa4a0+i]);
-                    }
-                    ee_printf("\n");
+            //         int testLen = 20;
+            //         unsigned char pTestBuffer[testLen];
+            //         int brRetc = br_read_block(0xa4a0, pTestBuffer, testLen, 1);
+            //         gfx_term_putstring("ReadBlock=");
+            //         gfx_term_putchar(brRetc + '0');
+            //         gfx_term_putstring("\n");
+            //         for ( int i = 0; i < testLen; i++)
+            //         {
+            //             ee_printf("%02x ", pTestBuffer[i]);
+            //             if (pTestBuffer[i] != __pTargetBuffer[0xa4a0+i])
+            //                 ee_printf("(%02x)", __pTargetBuffer[0xa4a0+i]);
+            //         }
+            //         ee_printf("\n");
 
-                    br_reset_host();
+            //         br_reset_host();
 
-                    targetClear();
-                }
-                else if (ch == 'q')
-                {
-                    unsigned char pTestBuffer[0x400];
-                    br_read_block(0x3c00, pTestBuffer, 0x400, 1);
-                    for (int k = 0; k < 16; k++)
-                    {
-                        for (int i = 0; i < 64; i++)
-                        {
-                            ee_printf("%c", pTestBuffer[k*64+i]);
-                        }
-                        ee_printf("\n");
-                    }
-                }
-                else if (ch == 'm')
-                {
-                    ee_printf("Blocks %d\n", __targetMemoryBlockLastIdx);
-                    for (int i = 0; i < __targetMemoryBlockLastIdx; i++)
-                    {
-                        ee_printf("%08x %08x\n", __targetMemoryBlocks[i].start, __targetMemoryBlocks[i].len);
-                    }
-                }
+            //         targetClear();
+            //     }
+            //     else if (ch == 'q')
+            //     {
+            //         unsigned char pTestBuffer[0x400];
+            //         br_read_block(0x3c00, pTestBuffer, 0x400, 1);
+            //         for (int k = 0; k < 16; k++)
+            //         {
+            //             for (int i = 0; i < 64; i++)
+            //             {
+            //                 ee_printf("%c", pTestBuffer[k*64+i]);
+            //             }
+            //             ee_printf("\n");
+            //         }
+            //     }
+            //     else if (ch == 'm')
+            //     {
+            //         ee_printf("Blocks %d\n", __targetMemoryBlockLastIdx);
+            //         for (int i = 0; i < __targetMemoryBlockLastIdx; i++)
+            //         {
+            //             ee_printf("%08x %08x\n", __targetMemoryBlocks[i].start, __targetMemoryBlocks[i].len);
+            //         }
+            //     }
             }
         }
 

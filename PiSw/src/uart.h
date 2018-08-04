@@ -1,5 +1,4 @@
-#ifndef _PIGFX_UART_H_
-#define _PIGFX_UART_H_
+#pragma once
 
 #include "utils.h"
 
@@ -15,6 +14,3 @@ extern unsigned int uart_read_byte();
 extern unsigned int uart_read_hex();
 extern void uart_write_hex_u8 ( unsigned int d );
 extern void uart_write_hex_u32 ( unsigned int d );
-
-
-#endif

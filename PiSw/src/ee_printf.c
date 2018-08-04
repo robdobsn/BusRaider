@@ -56,7 +56,6 @@ This code is based on a file that contains the following:
 
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
 
-//#define DO_LOG_STRING(x) uart_write_str(x)
 #define DISP_WRITE_STRING(x) gfx_term_putstring((const char*)x)
 #define UART_WRITE_STRING(x) uart_write_str((const char*)x)
 #define LOG_WRITE_STRING(x) DISP_WRITE_STRING(x)

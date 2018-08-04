@@ -285,6 +285,8 @@ static McGenericDescriptor trs80_descr =
 	.pDeInit = trs80_deinit,
 	// Required display refresh rate
 	.displayRefreshRatePerSec = 25,
+	.displayPixelsX = 2 * 6 * 64,
+	.displayPixelsY = 2 * 8 * 16,
 	// Keyboard
 	.pKeyHandler = trs80_keyHandler,
 	.pDispHandler = trs80_displayHandler

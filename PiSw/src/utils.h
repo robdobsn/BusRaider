@@ -1,5 +1,4 @@
-#ifndef _PIGFX_UTILS_H_
-#define _PIGFX_UTILS_H_
+#pragma once
 
 #include "bare_metal_pi_zero.h"
 
@@ -75,9 +74,3 @@ inline void memcpy( unsigned char* dst, unsigned char* src, unsigned int len )
 //#define mem_v2p(X) ((((unsigned int)X)&0x0FFFFFFF))
 #define mem_2uncached(X) ((((unsigned int)X)&0x0FFFFFFF)|0x40000000)
 #define mem_2cached(X)   ((((unsigned int)X)&0x0FFFFFFF))
-
-
-
-
-
-#endif
