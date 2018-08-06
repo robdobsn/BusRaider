@@ -4,7 +4,7 @@
 #include "postman.h"
 #include "utils.h"
 
-#define FRAMEBUFFER_DEBUG 1
+// #define FRAMEBUFFER_DEBUG 1
 
 static const unsigned int xterm_colors[256] = {
     0x000000, 0x800000, 0x008000, 0x808000, 0x000080,

@@ -69,7 +69,6 @@ void wgfx_set_window(int winIdx, int tlx, int tly, int width, int height,
         __wgfxWindows[winIdx].height = ctx.screenHeight - tly;
     else
         __wgfxWindows[winIdx].height = height * yPixScale;
-    uart_printf("Here %d\r\n", winIdx);
     if (cellWidth == -1)
         __wgfxWindows[winIdx].cellWidth = pFontToUse->cellX;
     else
@@ -82,15 +81,15 @@ void wgfx_set_window(int winIdx, int tlx, int tly, int width, int height,
     __wgfxWindows[winIdx].yPixScale = yPixScale;
     __wgfxWindows[winIdx].pFont = pFontToUse;
 
-    uart_printf("idx %d, cx %d cy %d sx %d sy %d *pFont %02x %02x %02x\n\r\n",
-        winIdx,
-        __wgfxWindows[winIdx].pFont->cellX,
-        __wgfxWindows[winIdx].pFont->cellY,
-        __wgfxWindows[winIdx].xPixScale,
-        __wgfxWindows[winIdx].yPixScale,
-        pFontToUse->pFontData[0],
-        pFontToUse->pFontData[1],
-        pFontToUse->pFontData[2]);
+    // uart_printf("idx %d, cx %d cy %d sx %d sy %d *pFont %02x %02x %02x\n\r\n",
+    //     winIdx,
+    //     __wgfxWindows[winIdx].pFont->cellX,
+    //     __wgfxWindows[winIdx].pFont->cellY,
+    //     __wgfxWindows[winIdx].xPixScale,
+    //     __wgfxWindows[winIdx].yPixScale,
+    //     pFontToUse->pFontData[0],
+    //     pFontToUse->pFontData[1],
+    //     pFontToUse->pFontData[2]);
 
     __wgfxNumWindows = winIdx + 1;
 }

@@ -1,8 +1,7 @@
 // Bus Raider
 // Rob Dobson 2018
 
-#ifndef _BUSRAIDER_H_
-#define _BUSRAIDER_H_
+#pragma once
 
 #include "bare_metal_pi_zero.h"
 #include "globaldefs.h"
@@ -76,4 +75,3 @@ extern uint8_t br_read_byte();
 extern BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease);
 extern BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease);
 
-#endif

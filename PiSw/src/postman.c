@@ -3,6 +3,7 @@
 #include "rdutils.h"
 #include "timer.h"
 #include "utils.h"
+#include "ee_printf.h"
 
 //#define POSTMAN_DEBUG 1
 
@@ -15,11 +16,7 @@ static volatile unsigned int* MAILBOX0WRITE = (unsigned int*)mem_p2v(MAPPED_REGI
 POSTMAN_RETURN_TYPE postman_recv(unsigned int channel, unsigned int* out_data)
 {
 #ifdef POSTMAN_DEBUG
-    char debug_buff[20] = { 0 };
-    uart_write_str("Postman recv from channel ");
-    word2hexstr(channel, debug_buff);
-    uart_write_str(debug_buff);
-    uart_write_str("\n");
+    uart_printf("Postman recv from channel 0x%x\n", channel);
 #endif
 
     if (channel > 0xF) {
@@ -35,7 +32,7 @@ POSTMAN_RETURN_TYPE postman_recv(unsigned int channel, unsigned int* out_data)
         while (*MAILBOX0STATUS & 0x40000000) //30th bit is zero when ready
         {
 #ifdef POSTMAN_DEBUG
-            uart_write_str("Mailbox empty, waiting...\n");
+            uart_printf("Mailbox empty, waiting...\n");
 #endif
             if (rdutils_isTimeout(micros(), start_time, MAILBOX_WAIT_TIMEOUT)) {
                 return POSTMAN_RECV_TIMEOUT;
@@ -49,10 +46,7 @@ POSTMAN_RETURN_TYPE postman_recv(unsigned int channel, unsigned int* out_data)
         dmb();
 
 #ifdef POSTMAN_DEBUG
-        uart_write_str("Received from channel ");
-        word2hexstr(msg & 0xf, debug_buff);
-        uart_write_str(debug_buff);
-        uart_write_str("\n");
+        uart_printf("Received from channel 0x%x\n", msg & 0xf);
 #endif
 
         // check mailbox id
@@ -76,10 +70,7 @@ POSTMAN_RETURN_TYPE postman_send(unsigned int channel, unsigned int data)
 {
 #ifdef POSTMAN_DEBUG
     char debug_buff[20] = { 0 };
-    uart_write_str("Postman send to channel ");
-    word2hexstr(channel, debug_buff);
-    uart_write_str(debug_buff);
-    uart_write_str("\n");
+    uart_printf("Postman send to channel 0x%s\n", channel);
 #endif
 
     if (data & 0xF) {
@@ -92,7 +83,7 @@ POSTMAN_RETURN_TYPE postman_send(unsigned int channel, unsigned int data)
     while (*MAILBOX0STATUS & 0x80000000) //top bit is zero when ready
     {
 #ifdef POSTMAN_DEBUG
-        uart_write_str("Mailbox full, waiting...\n");
+        uart_printf("Mailbox full, waiting...\n");
 #endif
         if (rdutils_isTimeout(micros(), start_time, MAILBOX_WAIT_TIMEOUT)) {
             return POSTMAN_SEND_TIMEOUT;
@@ -103,7 +94,7 @@ POSTMAN_RETURN_TYPE postman_send(unsigned int channel, unsigned int data)
     *MAILBOX0WRITE = data | channel; //lowest 4 bits for the mailbox, top 28 bits for the data
 
 #ifdef POSTMAN_DEBUG
-    uart_write_str("Message sent.\n");
+    uart_printf("Message sent.\n");
 #endif
 
     return POSTMAN_SUCCESS;

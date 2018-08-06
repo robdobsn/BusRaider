@@ -1,3 +1,6 @@
+// Bus Raider
+// Rob Dobson 2018
+
 #include "piwiring.h"
 
 uint8_t convModeToVal(uint8_t mode)

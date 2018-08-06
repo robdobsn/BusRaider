@@ -1,4 +1,4 @@
-// Command Handler for Bus Raider
+// Bus Raider
 // Rob Dobson 2018
 
 #include "cmd_handler.h"

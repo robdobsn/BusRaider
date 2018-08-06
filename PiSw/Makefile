@@ -4,12 +4,11 @@ CFLAGS = -Wall -Wextra -O3 -g -nostdlib -nostartfiles -fno-stack-limit -ffreesta
 
 
 ## Important!!! asm.o must be the first object to be linked!
-OOB = asm.o pi_bus_raider.o busraider.o systemfont.o mc_generic.o mc_trs80.o mc_trs80l3font.o target_memory_map.o cmd_handler.o uart.o irq.o utils.o timer.o framebuffer.o postman.o wgfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o raspihwconfig.o stupid_timer.o piwiring.o rdutils.o
+OOB = asm.o pi_bus_raider.o busraider.o systemfont.o mc_generic.o mc_trs80.o mc_trs80l3font.o target_memory_map.o cmd_handler.o uart.o irq.o utils.o framebuffer.o postman.o wgfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o raspihwconfig.o timer.o piwiring.o rdutils.o
 
 BUILD_DIR = build
 SRC_DIR = src
 BUILD_VERSION = $(shell git describe --all --long | cut -d "-" -f 3)
-
 
 OBJS=$(patsubst %.o,$(BUILD_DIR)/%.o,$(OOB))
 

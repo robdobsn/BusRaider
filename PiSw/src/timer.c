@@ -1,3 +1,6 @@
+// Bus Raider
+// Rob Dobson 2018
+
 #include "ee_printf.h"
 #include "rdutils.h"
 #include "timer.h"

@@ -1,4 +1,5 @@
-// Pi Bare Metal UART
+// Bus Raider
+// Rob Dobson 2018
 
 #include "uart.h"
 #include "bare_metal_pi_zero.h"

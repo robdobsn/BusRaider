@@ -16,9 +16,6 @@ extern void membarrier();
 /**
  * String related
  */
-extern unsigned int hex2byte(unsigned char* addr);
-extern void byte2hexstr(unsigned char byte, char* outstr);
-extern void word2hexstr(unsigned int word, char* outstr);
 extern unsigned int strlen(char* str);
 extern int strcmp(char* s1, char* s2);
 

@@ -1,3 +1,6 @@
+// Bus Raider
+// Rob Dobson 2018
+
 #pragma once
 
 #include "globaldefs.h"

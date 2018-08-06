@@ -1,4 +1,5 @@
-// Bus Raider V1.3
+// Bus Raider
+// Rob Dobson 2018
 
 #include "globaldefs.h"
 #include "utils.h"
@@ -25,7 +26,6 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
 {
     // ee_printf("KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
     mc_generic_handle_key(ucModifiers, rawKeys);
-    uart_printf("%d\r\n", micros());
 }
 
 void initialize_framebuffer()
