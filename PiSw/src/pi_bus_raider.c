@@ -112,7 +112,7 @@ void main_loop()
                 //     unsigned int testBaseAddr = 0;
                 //     unsigned int testLen = 10000;
                 //     targetClear();
-                //     BR_RETURN_TYPE brRetc = br_read_block(testBaseAddr, __pTargetBuffer, testLen, 1);
+                //     BR_RETURN_TYPE brRetc = br_read_block(testBaseAddr, __pTargetBuffer, testLen, 1, 0);
                 //     gfx_term_putstring("ReadBlock=");
                 //     gfx_term_putchar(brRetc + '0');
                 //     gfx_term_putstring("\n");
@@ -128,10 +128,10 @@ void main_loop()
                 //         __pTargetBuffer[i] = (i * 23487) / 3;
                 //     }
 
-                //     brRetc = br_write_block(testBaseAddr, __pTargetBuffer, testLen, 1);
+                //     brRetc = br_write_block(testBaseAddr, __pTargetBuffer, testLen, 1, 0);
 
                 //     unsigned char pTestBuffer[testLen];
-                //     brRetc = br_read_block(testBaseAddr, pTestBuffer, testLen, 1);
+                //     brRetc = br_read_block(testBaseAddr, pTestBuffer, testLen, 1, 0);
                 //     gfx_term_putstring("ReadBlock=");
                 //     gfx_term_putchar(brRetc + '0');
                 //     gfx_term_putstring("\n");
@@ -174,8 +174,17 @@ void main_loop()
 
                         for (int i = 0; i < targetGetNumBlocks(); i++) {
                             TargetMemoryBlock* pBlock = targetGetMemoryBlock(i);
-                            // ee_printf("%08x %08x\n", __targetMemoryBlocks[i].start, __targetMemoryBlocks[i].len);
-                            br_write_block(pBlock->start, targetMemoryPtr() + pBlock->start, pBlock->len, 1);
+                            ee_printf("%08x %08x\n", pBlock->start, pBlock->len);
+
+
+                            // TEST
+                            uint8_t tmpBuf[0x100];
+                            for (int kk = 0; kk < 0x100; kk++)
+                                tmpBuf[kk] = 0xff;
+                            br_write_block(0, tmpBuf, 0x100, 1, 1);                            
+
+
+                            br_write_block(pBlock->start, targetMemoryPtr() + pBlock->start, pBlock->len, 1, 0);
                         }
 
                         ee_printf("Written %d blocks, now resetting host ...\n", targetGetNumBlocks());
@@ -196,12 +205,12 @@ void main_loop()
                 //         //     }
                 //         //     ee_printf("\n");
                 //         // }
-                //         br_write_block(0x0, __pTargetBuffer, 3, 1);
-                //         br_write_block(0x8000, __pTargetBuffer+0x8000, 0x4000, 1);
+                //         br_write_block(0x0, __pTargetBuffer, 3, 1, 0);
+                //         br_write_block(0x8000, __pTargetBuffer+0x8000, 0x4000, 1, 0);
 
                 //         int testLen = 20;
                 //         unsigned char pTestBuffer[testLen];
-                //         int brRetc = br_read_block(0xa4a0, pTestBuffer, testLen, 1);
+                //         int brRetc = br_read_block(0xa4a0, pTestBuffer, testLen, 1, 0);
                 //         gfx_term_putstring("ReadBlock=");
                 //         gfx_term_putchar(brRetc + '0');
                 //         gfx_term_putstring("\n");
@@ -220,7 +229,7 @@ void main_loop()
                 //     else if (ch == 'q')
                 //     {
                 //         unsigned char pTestBuffer[0x400];
-                //         br_read_block(0x3c00, pTestBuffer, 0x400, 1);
+                //         br_read_block(0x3c00, pTestBuffer, 0x400, 1, 0);
                 //         for (int k = 0; k < 16; k++)
                 //         {
                 //             for (int i = 0; i < 64; i++)
@@ -271,32 +280,30 @@ void entry_point()
     wgfx_set_console_window(1);
 
     // Initial message
+    wgfx_set_fg(11);
     ee_printf("RC2014 Bus Raider V1.0\n");
-    ee_printf("Rob Dobson (inspired by PiGFX)\n\n");
+    ee_printf("Rob Dobson 2018 (inspired by PiGFX)\n\n");
+    wgfx_set_fg(15);
 
     // Init timers
     timers_init();
 
     // USB
-    // ee_printf("Initializing USB\n");
     if (USPiInitialize()) {
-        ee_printf("Initialization OK!\n");
-        ee_printf("Checking for keyboards...\n");
+        ee_printf("Checking for keyboards...");
 
         if (USPiKeyboardAvailable()) {
             USPiKeyboardRegisterKeyStatusHandlerRaw(_keypress_raw_handler);
-            wgfx_set_fg(10);
-            ee_printf("Keyboard found.\n");
-            wgfx_set_fg(15);
+            ee_printf("keyboard found\n");
         } else {
             wgfx_set_fg(9);
-            ee_printf("No keyboard found.\n");
+            ee_printf("keyboard not found\n");
             wgfx_set_fg(15);
         }
     } else {
-        ee_printf("USB initialization failed.\n");
+        ee_printf("USB initialization failed\n");
     }
-    ee_printf("---------\n");
+    ee_printf("\n");
 
     // Initialise the interrupt handler
     uart_init_irq();

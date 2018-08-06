@@ -267,12 +267,12 @@ uint8_t br_get_pib_value()
 #endif
 }
 
-// Write a single byte to currently set address
+// Write a single byte to currently set address (or IO port)
 // Assumes:
 // - control of host bus has been requested and acknowledged
 // - address bus is already set and output enabled to host bus
 // - PIB is already set to output
-void br_write_byte(uint32_t byte)
+void br_write_byte(uint32_t byte, int iorq)
 {
     // Set the data onto the PIB
     br_set_pib_value(byte);
@@ -283,50 +283,50 @@ void br_write_byte(uint32_t byte)
     digitalWrite(BR_MREQ_BAR, 0);
     digitalWrite(BR_WR_BAR, 0);
     digitalWrite(BR_WR_BAR, 1);
-    digitalWrite(BR_MREQ_BAR, 1);
+    digitalWrite((iorq ? BR_IORQ_BAR : BR_MREQ_BAR), 1);
     digitalWrite(BR_DATA_OE_BAR, 1);
     digitalWrite(BR_DATA_DIR_IN, 1);
 #else
     // Clear DIR_IN (so make direction out), enable data output onto data bus and MREQ_BAR active
-    W32(GPCLR0, (1 << BR_DATA_DIR_IN) | (1 << BR_DATA_OE_BAR) | (1 << BR_MREQ_BAR));
+    W32(GPCLR0, (1 << BR_DATA_DIR_IN) | (1 << BR_DATA_OE_BAR) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)));
     // Write the data by setting WR_BAR active
     W32(GPCLR0, (1 << BR_WR_BAR));
     // Deactivate and leave data direction set to inwards
-    W32(GPSET0, (1 << BR_DATA_DIR_IN) | (1 << BR_DATA_OE_BAR) | (1 << BR_MREQ_BAR) | (1 << BR_WR_BAR));
+    W32(GPSET0, (1 << BR_DATA_DIR_IN) | (1 << BR_DATA_OE_BAR) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_WR_BAR));
 #endif
 }
 
-// Read a single byte from currently set address
+// Read a single byte from currently set address (or IO port)
 // Assumes:
 // - control of host bus has been requested and acknowledged
 // - address bus is already set and output enabled to host bus
 // - PIB is already set to input
 // - data direction on data bus driver is set to input (default)
-uint8_t br_read_byte()
+uint8_t br_read_byte(int iorq)
 {
     // Read the byte
 #ifdef USE_BITWISE_BUS_ACCESS
     digitalWrite(BR_DATA_DIR_IN, 1);
     digitalWrite(BR_DATA_OE_BAR, 0);
-    digitalWrite(BR_MREQ_BAR, 0);
+    digitalWrite((iorq ? BR_IORQ_BAR : BR_MREQ_BAR), 0);
     digitalWrite(BR_RD_BAR, 0);
     uint8_t val = br_get_pib_value();
     digitalWrite(BR_RD_BAR, 1);
-    digitalWrite(BR_MREQ_BAR, 1);
+    digitalWrite((iorq ? BR_IORQ_BAR : BR_MREQ_BAR), 1);
     digitalWrite(BR_DATA_OE_BAR, 1);
 #else
     // enable data output onto PIB (data-dir must be inwards already), MREQ_BAR and RD_BAR both active
-    W32(GPCLR0, (1 << BR_DATA_OE_BAR) | (1 << BR_MREQ_BAR) | (1 << BR_RD_BAR));
+    W32(GPCLR0, (1 << BR_DATA_OE_BAR) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
     // Get the data
     uint8_t val = br_get_pib_value();
     // Deactivate leaving data-dir inwards
-    W32(GPSET0, (1 << BR_DATA_OE_BAR) | (1 << BR_MREQ_BAR) | (1 << BR_RD_BAR));
+    W32(GPSET0, (1 << BR_DATA_OE_BAR) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
 #endif
     return val;
 }
 
 // Write a consecutive block of memory to host
-BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease)
+BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq)
 {
     // Check if we need to request bus
     if (busRqAndRelease) {
@@ -345,7 +345,7 @@ BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int b
     // Iterate data
     for (uint32_t i = 0; i < len; i++) {
         // Write byte
-        br_write_byte(*pData);
+        br_write_byte(*pData, iorq);
 
         // Increment the lower address counter
         br_inc_low_addr();
@@ -377,7 +377,7 @@ BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int b
 // - control of host bus has been requested and acknowledged
 // - PIB is already set to input
 // - data direction on data bus driver is set to input (default)
-BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease)
+BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq)
 {
     // Check if we need to request bus
     if (busRqAndRelease) {
@@ -393,7 +393,7 @@ BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int bu
     // Iterate data
     for (uint32_t i = 0; i < len; i++) {
         // Read byte
-        *pData = br_read_byte();
+        *pData = br_read_byte(iorq);
 
         // Increment the lower address counter
         br_inc_low_addr();

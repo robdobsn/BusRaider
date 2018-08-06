@@ -69,9 +69,9 @@ extern void br_set_pib_input();
 extern void br_set_pib_value(uint8_t val);
 extern uint8_t br_get_pib_value();
 // Read and write bytes
-extern void br_write_byte(uint32_t byte);
-extern uint8_t br_read_byte();
+extern void br_write_byte(uint32_t byte, int iorq);
+extern uint8_t br_read_byte(int iorq);
 // Read and write blocks
-extern BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease);
-extern BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease);
+extern BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
+extern BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
 
