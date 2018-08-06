@@ -31,21 +31,17 @@ void targetDataBlockCallback(uint32_t addr, uint8_t* pData, uint32_t len, int ty
 
     // Check if contiguous with other data
     int blockIdx = -1;
-    for (int i = 0; i < __targetMemoryBlockLastIdx; i++)
-    {
-        if (__targetMemoryBlocks[i].start + __targetMemoryBlocks[i].len == addr)
-        {
+    for (int i = 0; i < __targetMemoryBlockLastIdx; i++) {
+        if (__targetMemoryBlocks[i].start + __targetMemoryBlocks[i].len == addr) {
             blockIdx = i;
-            __targetMemoryBlocks[i].len += len;   
+            __targetMemoryBlocks[i].len += len;
             break;
         }
     }
 
     // New block
-    if (blockIdx == -1)
-    {
-        if (__targetMemoryBlockLastIdx >= MAX_TARGET_MEMORY_BLOCKS)
-        {
+    if (blockIdx == -1) {
+        if (__targetMemoryBlockLastIdx >= MAX_TARGET_MEMORY_BLOCKS) {
             ee_printf("Too many target memory blocks\n");
             return;
         }
@@ -55,24 +51,23 @@ void targetDataBlockCallback(uint32_t addr, uint8_t* pData, uint32_t len, int ty
     }
 
     // Store block
-    for (unsigned int i = 0; i < len; i++)
-    {
-        if (addr+i < MAX_TARGET_MEMORY_SIZE)
-            __pTargetBuffer[addr+i] = pData[i];
+    for (unsigned int i = 0; i < len; i++) {
+        if (addr + i < MAX_TARGET_MEMORY_SIZE)
+            __pTargetBuffer[addr + i] = pData[i];
     }
 }
 
 int targetGetNumBlocks()
 {
-	return __targetMemoryBlockLastIdx;
+    return __targetMemoryBlockLastIdx;
 }
 
-TargetMemoryBlock *targetGetMemoryBlock(int n)
+TargetMemoryBlock* targetGetMemoryBlock(int n)
 {
-	return &__targetMemoryBlocks[n];
+    return &__targetMemoryBlocks[n];
 }
 
-unsigned char *targetMemoryPtr()
+unsigned char* targetMemoryPtr()
 {
-	return __pTargetBuffer;
+    return __pTargetBuffer;
 }

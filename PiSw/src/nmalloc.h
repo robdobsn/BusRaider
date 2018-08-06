@@ -39,31 +39,25 @@
 #ifndef _NMALLOC_000_H
 #define _NMALLOC_000_H
 
-
 /* size_T datatype, used as an unsigned integer to keep track of memory
  * block size. This type can be modified as needed by the target architecture
  */
 typedef unsigned int size_T;
 
-
 /* Use the following definition to enable debug (it needs printf function) */
 
 //#define NMALLOC_DEBUG
 
-
-
-
-extern void  nmalloc_set_memory_area( void* pBuff, size_T max_size );
-extern void* nmalloc_malloc( size_T size );
-extern void  nmalloc_free( void** ptr );
-
+extern void nmalloc_set_memory_area(void* pBuff, size_T max_size);
+extern void* nmalloc_malloc(size_T size);
+extern void nmalloc_free(void** ptr);
 
 /* The following functions are available only in debug mode */
 #ifdef NMALLOC_DEBUG
 
-extern void nmalloc_print_blocks( void );
-extern size_T nmalloc_free_space( void );
-extern size_T nmalloc_num_free_blocks( void );
+extern void nmalloc_print_blocks(void);
+extern size_T nmalloc_free_space(void);
+extern size_T nmalloc_num_free_blocks(void);
 
 #endif
 

@@ -25,14 +25,15 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
 {
     // ee_printf("KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
     mc_generic_handle_key(ucModifiers, rawKeys);
+    uart_printf("%d\r\n", micros());
 }
 
 void initialize_framebuffer()
 {
-    usleep(10000);
+    delayMicroseconds(10000);
     fb_release();
 
-    unsigned char* p_fb=0;
+    unsigned char* p_fb = 0;
     unsigned int fbsize;
     unsigned int pitch;
 
@@ -41,23 +42,22 @@ void initialize_framebuffer()
     unsigned int v_w = p_w;
     unsigned int v_h = p_h;
 
-    fb_init(p_w, p_h, 
-            v_w, v_h,
-            8, 
-            (void*)&p_fb, 
-            &fbsize, 
-            &pitch);
+    fb_init(p_w, p_h,
+        v_w, v_h,
+        8,
+        (void*)&p_fb,
+        &fbsize,
+        &pitch);
 
     fb_set_xterm_palette();
 
-    if (fb_get_phisical_buffer_size(&p_w, &p_h) != FB_SUCCESS)
-    {
+    if (fb_get_phisical_buffer_size(&p_w, &p_h) != FB_SUCCESS) {
         //cout("fb_get_phisical_buffer_size error");cout_endl();
     }
     //cout("phisical fb size: "); cout_d(p_w); cout("x"); cout_d(p_h); cout_endl();
 
-    usleep(10000);
-    wgfx_init(p_fb, v_w, v_h, pitch, fbsize); 
+    delayMicroseconds(10000);
+    wgfx_init(p_fb, v_w, v_h, pitch, fbsize);
     wgfx_clear();
 }
 
@@ -70,36 +70,29 @@ void main_loop()
     McGenericDescriptor* pMcDescr = mc_generic_get_descriptor();
     const unsigned long reqUpdateUs = 1000000 / pMcDescr->displayRefreshRatePerSec;
 
-    while(1)
-    {
+    while (1) {
         // Handle target machine display updates
-        if (rdutils_isTimeout(time_microsec(), __lastDisplayUpdateUs, reqUpdateUs))
-        {
-            // Check valid 
+        if (rdutils_isTimeout(micros(), __lastDisplayUpdateUs, reqUpdateUs)) {
+            // Check valid
             mc_generic_handle_disp();
-            __lastDisplayUpdateUs = time_microsec();
+            __lastDisplayUpdateUs = micros();
         }
 
-
         // Handle serial communication
-        for (int rxCtr = 0; rxCtr < 100; rxCtr++)
-        {
+        for (int rxCtr = 0; rxCtr < 100; rxCtr++) {
             if (!uart_poll())
                 break;
 
             // Show char received
             int ch = uart_read_byte();
             // ee_printf("%c", ch);
-            
+
             // Offer to the cmd_handler
             CmdHandler_Ret retc = cmdHandler_handle_char(ch);
-            if (retc == CMDHANDLER_RET_CHECKSUM_ERROR)
-            {
+            if (retc == CMDHANDLER_RET_CHECKSUM_ERROR) {
                 ee_printf("Checksum error %d\n", retc);
                 // usleep(3000000);
-            }
-            else if ((retc == CMDHANDLER_RET_INVALID_RECTYPE) || (retc == CMDHANDLER_RET_INVALID_NYBBLE))
-            {
+            } else if ((retc == CMDHANDLER_RET_INVALID_RECTYPE) || (retc == CMDHANDLER_RET_INVALID_NYBBLE)) {
                 ee_printf("Error receiving from serial %d\n", retc);
                 // // Discard remaining chars
                 // usleep(100000);
@@ -112,8 +105,7 @@ void main_loop()
             }
 
             // Check handled
-            if (retc == CMDHANDLER_RET_IGNORED)
-            {
+            if (retc == CMDHANDLER_RET_IGNORED) {
                 // if (ch == 'x')
                 // {
                 //     // Test
@@ -152,7 +144,7 @@ void main_loop()
                 //             errFound = 1;
                 //             errAddr = i;
                 //             break;
-                //         }    
+                //         }
 
                 //     }
                 //     if (errFound)
@@ -165,8 +157,7 @@ void main_loop()
                 //     }
 
                 // }
-                if (ch == 'g')
-                {
+                if (ch == 'g') {
                     // for (int k = 0; k < 10; k++)
                     // {
                     //     for (int i = 0; i < 0x10; i++)
@@ -176,16 +167,12 @@ void main_loop()
                     //     ee_printf("\n");
                     // }
 
-                    if (targetGetNumBlocks() == 0)
-                    {
+                    if (targetGetNumBlocks() == 0) {
                         // Nothing new to write
                         ee_printf("Nothing new to write to target\n");
-                    }
-                    else
-                    {
+                    } else {
 
-                        for (int i = 0; i < targetGetNumBlocks(); i++)
-                        {
+                        for (int i = 0; i < targetGetNumBlocks(); i++) {
                             TargetMemoryBlock* pBlock = targetGetMemoryBlock(i);
                             // ee_printf("%08x %08x\n", __targetMemoryBlocks[i].start, __targetMemoryBlocks[i].len);
                             br_write_block(pBlock->start, targetMemoryPtr() + pBlock->start, pBlock->len, 1);
@@ -197,66 +184,65 @@ void main_loop()
                         targetClear();
                     }
                 }
-            //     else if (ch == 'z')
-            //     {
-            //         // unsigned char pTestBuffer[0x400];
-            //         // br_read_block(0x3c00, pTestBuffer, 0x400, 1);
-            //         // for (int k = 0; k < 16; k++)
-            //         // {
-            //         //     for (int i = 0; i < 64; i++)
-            //         //     {
-            //         //         ee_printf("%c", pTestBuffer[k*64+i]);
-            //         //     }
-            //         //     ee_printf("\n");
-            //         // }
-            //         br_write_block(0x0, __pTargetBuffer, 3, 1);
-            //         br_write_block(0x8000, __pTargetBuffer+0x8000, 0x4000, 1);
+                //     else if (ch == 'z')
+                //     {
+                //         // unsigned char pTestBuffer[0x400];
+                //         // br_read_block(0x3c00, pTestBuffer, 0x400, 1);
+                //         // for (int k = 0; k < 16; k++)
+                //         // {
+                //         //     for (int i = 0; i < 64; i++)
+                //         //     {
+                //         //         ee_printf("%c", pTestBuffer[k*64+i]);
+                //         //     }
+                //         //     ee_printf("\n");
+                //         // }
+                //         br_write_block(0x0, __pTargetBuffer, 3, 1);
+                //         br_write_block(0x8000, __pTargetBuffer+0x8000, 0x4000, 1);
 
-            //         int testLen = 20;
-            //         unsigned char pTestBuffer[testLen];
-            //         int brRetc = br_read_block(0xa4a0, pTestBuffer, testLen, 1);
-            //         gfx_term_putstring("ReadBlock=");
-            //         gfx_term_putchar(brRetc + '0');
-            //         gfx_term_putstring("\n");
-            //         for ( int i = 0; i < testLen; i++)
-            //         {
-            //             ee_printf("%02x ", pTestBuffer[i]);
-            //             if (pTestBuffer[i] != __pTargetBuffer[0xa4a0+i])
-            //                 ee_printf("(%02x)", __pTargetBuffer[0xa4a0+i]);
-            //         }
-            //         ee_printf("\n");
+                //         int testLen = 20;
+                //         unsigned char pTestBuffer[testLen];
+                //         int brRetc = br_read_block(0xa4a0, pTestBuffer, testLen, 1);
+                //         gfx_term_putstring("ReadBlock=");
+                //         gfx_term_putchar(brRetc + '0');
+                //         gfx_term_putstring("\n");
+                //         for ( int i = 0; i < testLen; i++)
+                //         {
+                //             ee_printf("%02x ", pTestBuffer[i]);
+                //             if (pTestBuffer[i] != __pTargetBuffer[0xa4a0+i])
+                //                 ee_printf("(%02x)", __pTargetBuffer[0xa4a0+i]);
+                //         }
+                //         ee_printf("\n");
 
-            //         br_reset_host();
+                //         br_reset_host();
 
-            //         targetClear();
-            //     }
-            //     else if (ch == 'q')
-            //     {
-            //         unsigned char pTestBuffer[0x400];
-            //         br_read_block(0x3c00, pTestBuffer, 0x400, 1);
-            //         for (int k = 0; k < 16; k++)
-            //         {
-            //             for (int i = 0; i < 64; i++)
-            //             {
-            //                 ee_printf("%c", pTestBuffer[k*64+i]);
-            //             }
-            //             ee_printf("\n");
-            //         }
-            //     }
-            //     else if (ch == 'm')
-            //     {
-            //         ee_printf("Blocks %d\n", __targetMemoryBlockLastIdx);
-            //         for (int i = 0; i < __targetMemoryBlockLastIdx; i++)
-            //         {
-            //             ee_printf("%08x %08x\n", __targetMemoryBlocks[i].start, __targetMemoryBlocks[i].len);
-            //         }
-            //     }
+                //         targetClear();
+                //     }
+                //     else if (ch == 'q')
+                //     {
+                //         unsigned char pTestBuffer[0x400];
+                //         br_read_block(0x3c00, pTestBuffer, 0x400, 1);
+                //         for (int k = 0; k < 16; k++)
+                //         {
+                //             for (int i = 0; i < 64; i++)
+                //             {
+                //                 ee_printf("%c", pTestBuffer[k*64+i]);
+                //             }
+                //             ee_printf("\n");
+                //         }
+                //     }
+                //     else if (ch == 'm')
+                //     {
+                //         ee_printf("Blocks %d\n", __targetMemoryBlockLastIdx);
+                //         for (int i = 0; i < __targetMemoryBlockLastIdx; i++)
+                //         {
+                //             ee_printf("%08x %08x\n", __targetMemoryBlocks[i].start, __targetMemoryBlocks[i].len);
+                //         }
+                //     }
             }
         }
 
         timer_poll();
     }
-
 }
 
 void entry_point()
@@ -280,7 +266,7 @@ void entry_point()
 
     // Allocate display space
     wgfx_set_window(0, 0, 0, pMcDescr->displayPixelsX, pMcDescr->displayPixelsY,
-                pMcDescr->displayCellX, pMcDescr->displayCellY, 2, 1, pMcDescr->pFont);
+        pMcDescr->displayCellX, pMcDescr->displayCellY, 2, 1, pMcDescr->pFont);
     wgfx_set_window(1, 0, pMcDescr->displayPixelsY, -1, -1, -1, -1, 1, 1, NULL);
     wgfx_set_console_window(1);
 
@@ -293,27 +279,21 @@ void entry_point()
 
     // USB
     // ee_printf("Initializing USB\n");
-    if(USPiInitialize())
-    {
+    if (USPiInitialize()) {
         ee_printf("Initialization OK!\n");
         ee_printf("Checking for keyboards...\n");
 
-        if (USPiKeyboardAvailable())
-        {
+        if (USPiKeyboardAvailable()) {
             USPiKeyboardRegisterKeyStatusHandlerRaw(_keypress_raw_handler);
             wgfx_set_fg(10);
             ee_printf("Keyboard found.\n");
             wgfx_set_fg(15);
-        }
-        else
-        {
+        } else {
             wgfx_set_fg(9);
             ee_printf("No keyboard found.\n");
             wgfx_set_fg(15);
         }
-    }
-    else
-    {
+    } else {
         ee_printf("USB initialization failed.\n");
     }
     ee_printf("---------\n");
@@ -326,5 +306,4 @@ void entry_point()
 
     // Start the main loop
     main_loop();
-
 }

@@ -4,25 +4,24 @@
 
 #pragma once
 
-#include "globaldefs.h"
 #include "bare_metal_pi_zero.h"
+#include "globaldefs.h"
 
 #define DEBUG_SREC_RX 1
 
 #ifdef __cplusplus
-extern "C"{
+extern "C" {
 #endif
 
 typedef void TCmdHandlerDataBlockCallback(uint32_t addr, uint8_t* pData, uint32_t len, int type);
 
-typedef enum
-{
-	CMDHANDLER_RET_OK,
-	CMDHANDLER_RET_LINE_COMPLETE,
-	CMDHANDLER_RET_IGNORED,
-	CMDHANDLER_RET_CHECKSUM_ERROR,
-	CMDHANDLER_RET_INVALID_RECTYPE,
-	CMDHANDLER_RET_INVALID_NYBBLE
+typedef enum {
+    CMDHANDLER_RET_OK,
+    CMDHANDLER_RET_LINE_COMPLETE,
+    CMDHANDLER_RET_IGNORED,
+    CMDHANDLER_RET_CHECKSUM_ERROR,
+    CMDHANDLER_RET_INVALID_RECTYPE,
+    CMDHANDLER_RET_INVALID_NYBBLE
 } CmdHandler_Ret;
 
 // Init the destinations for SREC and TREC records

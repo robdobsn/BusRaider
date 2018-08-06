@@ -6,11 +6,10 @@
 
 extern WgfxFont __systemFont;
 
-#define MIN( v1, v2 ) ( ((v1) < (v2)) ? (v1) : (v2))
-#define MAX( v1, v2 ) ( ((v1) > (v2)) ? (v1) : (v2))
+#define MIN(v1, v2) (((v1) < (v2)) ? (v1) : (v2))
+#define MAX(v1, v2) (((v1) > (v2)) ? (v1) : (v2))
 
-typedef struct WgfxWindowDef
-{
+typedef struct WgfxWindowDef {
     int tlx;
     int width;
     int tly;
@@ -54,8 +53,8 @@ typedef struct {
 static FRAMEBUFFER_CTX ctx;
 
 void wgfx_set_window(int winIdx, int tlx, int tly, int width, int height,
-                int cellWidth, int cellHeight, int xPixScale, int yPixScale,
-                 WgfxFont* pFont)
+    int cellWidth, int cellHeight, int xPixScale, int yPixScale,
+    WgfxFont* pFont)
 {
     WgfxFont* pFontToUse = (pFont != NULL) ? pFont : (&__systemFont);
     if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS)
@@ -84,20 +83,20 @@ void wgfx_set_window(int winIdx, int tlx, int tly, int width, int height,
     __wgfxWindows[winIdx].pFont = pFontToUse;
 
     uart_printf("idx %d, cx %d cy %d sx %d sy %d *pFont %02x %02x %02x\n\r\n",
-                    winIdx,
-                    __wgfxWindows[winIdx].pFont->cellX,
-                    __wgfxWindows[winIdx].pFont->cellY,
-                    __wgfxWindows[winIdx].xPixScale,
-                    __wgfxWindows[winIdx].yPixScale,
-                    pFontToUse->pFontData[0], 
-                    pFontToUse->pFontData[1],
-                    pFontToUse->pFontData[2]);
+        winIdx,
+        __wgfxWindows[winIdx].pFont->cellX,
+        __wgfxWindows[winIdx].pFont->cellY,
+        __wgfxWindows[winIdx].xPixScale,
+        __wgfxWindows[winIdx].yPixScale,
+        pFontToUse->pFontData[0],
+        pFontToUse->pFontData[1],
+        pFontToUse->pFontData[2]);
 
-    __wgfxNumWindows = winIdx+1;
+    __wgfxNumWindows = winIdx + 1;
 }
 
 void wgfx_set_console_window(int winIdx)
-{    
+{
     if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS)
         return;
     ctx.term.outputWinIdx = winIdx;
@@ -105,15 +104,14 @@ void wgfx_set_console_window(int winIdx)
     ctx.term.numCols = __wgfxWindows[winIdx].width / (__wgfxWindows[winIdx].cellWidth * __wgfxWindows[winIdx].xPixScale);
     ctx.term.numRows = __wgfxWindows[winIdx].height / (__wgfxWindows[winIdx].cellHeight * __wgfxWindows[winIdx].yPixScale);
     ctx.term.cursor_row = ctx.term.cursor_col = 0;
-
 }
 
 void wgfx_term_render_cursor();
 void wgfx_restore_cursor_content();
 unsigned char* wgfx_get_win_pfb(int winIdx, int col, int row);
 
-void wgfx_init(void* p_framebuffer, unsigned int width, unsigned int height, 
-            unsigned int pitch, unsigned int size)
+void wgfx_init(void* p_framebuffer, unsigned int width, unsigned int height,
+    unsigned int pitch, unsigned int size)
 {
     ctx.pfb = p_framebuffer;
     ctx.screenWidth = width;
@@ -140,7 +138,7 @@ void wgfx_clear()
 {
     unsigned char* pf = ctx.pfb;
     unsigned char* pfb_end = pf + ctx.size;
-    while(pf < pfb_end)
+    while (pf < pfb_end)
         *pf++ = ctx.bg;
 }
 
@@ -157,14 +155,12 @@ void wgfx_bump_curpos(int bumpRow)
     else
         ctx.term.cursor_row++;
 
-    if(ctx.term.cursor_col >= ctx.term.numCols)
-    {
+    if (ctx.term.cursor_col >= ctx.term.numCols) {
         ctx.term.cursor_row++;
         ctx.term.cursor_col = 0;
     }
 
-    if(ctx.term.cursor_row >= ctx.term.numRows)
-    {
+    if (ctx.term.cursor_row >= ctx.term.numRows) {
         --ctx.term.cursor_row;
 
         // gfx_scroll_down_dma(8);
@@ -175,67 +171,63 @@ void wgfx_bump_curpos(int bumpRow)
 
 void wgfx_term_putchar(char ch)
 {
-    switch(ch)
-    {
-        case '\r':
-            wgfx_restore_cursor_content();
-            ctx.term.cursor_col = 0;
-            wgfx_term_render_cursor();
-            break;
+    switch (ch) {
+    case '\r':
+        wgfx_restore_cursor_content();
+        ctx.term.cursor_col = 0;
+        wgfx_term_render_cursor();
+        break;
 
-        case '\n':
-            wgfx_restore_cursor_content();
-            ctx.term.cursor_col = 0;
-            wgfx_bump_curpos(1);
-            wgfx_term_render_cursor();
-            break;
+    case '\n':
+        wgfx_restore_cursor_content();
+        ctx.term.cursor_col = 0;
+        wgfx_bump_curpos(1);
+        wgfx_term_render_cursor();
+        break;
 
-        case 0x09: /* tab */
-            wgfx_restore_cursor_content();
-            ctx.term.cursor_col += 1;
-            ctx.term.cursor_col =  MIN(ctx.term.cursor_col + 8 - ctx.term.cursor_col%8, ctx.term.numCols-1);
-            wgfx_term_render_cursor();
-            break;
+    case 0x09: /* tab */
+        wgfx_restore_cursor_content();
+        ctx.term.cursor_col += 1;
+        ctx.term.cursor_col = MIN(ctx.term.cursor_col + 8 - ctx.term.cursor_col % 8, ctx.term.numCols - 1);
+        wgfx_term_render_cursor();
+        break;
 
-        case 0x08:
-            /* backspace */
-            if(ctx.term.cursor_col > 0)
-            {
-                wgfx_restore_cursor_content();
-                ctx.term.cursor_col--;
-                wgfx_putc(ctx.term.outputWinIdx, ctx.term.cursor_row, ctx.term.cursor_col, ' ');
-                wgfx_term_render_cursor();
-            }
-            break;
-
-        default:
+    case 0x08:
+        /* backspace */
+        if (ctx.term.cursor_col > 0) {
             wgfx_restore_cursor_content();
-            wgfx_putc(ctx.term.outputWinIdx, ctx.term.cursor_row, ctx.term.cursor_col, ch);
-            wgfx_bump_curpos(0);
+            ctx.term.cursor_col--;
+            wgfx_putc(ctx.term.outputWinIdx, ctx.term.cursor_row, ctx.term.cursor_col, ' ');
             wgfx_term_render_cursor();
-            break;
+        }
+        break;
+
+    default:
+        wgfx_restore_cursor_content();
+        wgfx_putc(ctx.term.outputWinIdx, ctx.term.cursor_row, ctx.term.cursor_col, ch);
+        wgfx_bump_curpos(0);
+        wgfx_term_render_cursor();
+        break;
     }
-
 }
 
 void wgfx_term_putstring(const char* str)
 {
-    while(*str)
+    while (*str)
         wgfx_term_putchar(*str++);
 }
 
 void wgfx_putc(int windowIdx, unsigned int row, unsigned int col, unsigned char ch)
 {
-    if(col >= ctx.term.numCols)
+    if (col >= ctx.term.numCols)
         return;
-    if(row >= ctx.term.numRows)
+    if (row >= ctx.term.numRows)
         return;
     if (windowIdx < 0 || windowIdx >= __wgfxNumWindows)
         return;
 
     unsigned char* pBuf = wgfx_get_win_pfb(windowIdx, col, row); // ctx.pfb + row * 8 * ctx.Pitch + col * 8;
-    unsigned char* pFont = __wgfxWindows[windowIdx].pFont->pFontData +
-                 ch * __wgfxWindows[windowIdx].pFont->bytesPerChar;
+    unsigned char* pFont = __wgfxWindows[windowIdx].pFont->pFontData + ch * __wgfxWindows[windowIdx].pFont->bytesPerChar;
 
     // if (windowIdx == 1)
     // {
@@ -249,16 +241,12 @@ void wgfx_putc(int windowIdx, unsigned int row, unsigned int col, unsigned char 
     // }
 
     unsigned char* pBufCur = pBuf;
-    for (int y = 0; y < __wgfxWindows[windowIdx].cellHeight; y++)
-    {
-        for (int i = 0; i < __wgfxWindows[windowIdx].yPixScale; i++)
-        {
+    for (int y = 0; y < __wgfxWindows[windowIdx].cellHeight; y++) {
+        for (int i = 0; i < __wgfxWindows[windowIdx].yPixScale; i++) {
             pBufCur = pBuf;
             int bitMask = 0x01 << (__wgfxWindows[windowIdx].cellWidth - 1);
-            for (int x = 0; x < __wgfxWindows[windowIdx].cellWidth; x++)
-            {
-                for (int j = 0; j < __wgfxWindows[windowIdx].xPixScale; j++)
-                {
+            for (int x = 0; x < __wgfxWindows[windowIdx].cellWidth; x++) {
+                for (int j = 0; j < __wgfxWindows[windowIdx].xPixScale; j++) {
                     *pBufCur = (*pFont & bitMask) ? ctx.fg : ctx.bg;
                     pBufCur++;
                 }
@@ -309,50 +297,49 @@ void wgfx_putc(int windowIdx, unsigned int row, unsigned int col, unsigned char 
 
 unsigned char* wgfx_get_win_pfb(int winIdx, int col, int row)
 {
-    return ctx.pfb + ((row * __wgfxWindows[winIdx].cellHeight * __wgfxWindows[winIdx].yPixScale) + __wgfxWindows[winIdx].tly) * ctx.pitch + 
-            (col * __wgfxWindows[winIdx].cellWidth * __wgfxWindows[winIdx].xPixScale) + __wgfxWindows[winIdx].tlx;
+    return ctx.pfb + ((row * __wgfxWindows[winIdx].cellHeight * __wgfxWindows[winIdx].yPixScale) + __wgfxWindows[winIdx].tly) * ctx.pitch + (col * __wgfxWindows[winIdx].cellWidth * __wgfxWindows[winIdx].xPixScale) + __wgfxWindows[winIdx].tlx;
 }
 
 void wgfx_restore_cursor_content()
 {
-//     // Restore framebuffer content that was overwritten by the cursor
-//     unsigned int* pb = (unsigned int*)ctx.cursor_buffer;
-//     unsigned int* pfb = gfx_get_win_pfb(ctx.term.outputWinIdx, ctx.term.cursor_col, ctx.term.cursor_row);
-//     const unsigned int stride = (ctx.Pitch>>2) - 2;
-//     unsigned int h=8;
-//     while(h--)
-//     {
-//         *pfb++ = *pb++;
-//         *pfb++ = *pb++;
-//         pfb+=stride;
-//     }
-//     //cout("cursor restored");cout_d(ctx.term.cursor_row);cout("-");cout_d(ctx.term.cursor_col);cout_endl();
+    //     // Restore framebuffer content that was overwritten by the cursor
+    //     unsigned int* pb = (unsigned int*)ctx.cursor_buffer;
+    //     unsigned int* pfb = gfx_get_win_pfb(ctx.term.outputWinIdx, ctx.term.cursor_col, ctx.term.cursor_row);
+    //     const unsigned int stride = (ctx.Pitch>>2) - 2;
+    //     unsigned int h=8;
+    //     while(h--)
+    //     {
+    //         *pfb++ = *pb++;
+    //         *pfb++ = *pb++;
+    //         pfb+=stride;
+    //     }
+    //     //cout("cursor restored");cout_d(ctx.term.cursor_row);cout("-");cout_d(ctx.term.cursor_col);cout_endl();
 }
 
 void wgfx_term_render_cursor()
 {
-//     // Save framebuffer content that is going to be replaced by the cursor and update
-//     // the new content
-//     //
-//     unsigned int* pb = (unsigned int*)ctx.cursor_buffer;
-//     unsigned int* pfb = (unsigned int*)PFB( ctx.term.cursor_col*8, ctx.term.cursor_row*8 );
-//     const unsigned int stride = (ctx.Pitch>>2) - 2;
-//     unsigned int h=8;
+    //     // Save framebuffer content that is going to be replaced by the cursor and update
+    //     // the new content
+    //     //
+    //     unsigned int* pb = (unsigned int*)ctx.cursor_buffer;
+    //     unsigned int* pfb = (unsigned int*)PFB( ctx.term.cursor_col*8, ctx.term.cursor_row*8 );
+    //     const unsigned int stride = (ctx.Pitch>>2) - 2;
+    //     unsigned int h=8;
 
-//     if( ctx.term.cursor_visible )
-//         while(h--)
-//         {
-//             *pb++ = *pfb; *pfb = ~*pfb; pfb++;
-//             *pb++ = *pfb; *pfb = ~*pfb; pfb++;
-//             pfb+=stride;
-//         }
-//     else
-//         while(h--)
-//         {
-//             *pb++ = *pfb++;
-//             *pb++ = *pfb++;
-//             pfb+=stride;
-//         }
+    //     if( ctx.term.cursor_visible )
+    //         while(h--)
+    //         {
+    //             *pb++ = *pfb; *pfb = ~*pfb; pfb++;
+    //             *pb++ = *pfb; *pfb = ~*pfb; pfb++;
+    //             pfb+=stride;
+    //         }
+    //     else
+    //         while(h--)
+    //         {
+    //             *pb++ = *pfb++;
+    //             *pb++ = *pfb++;
+    //             pfb+=stride;
+    //         }
 }
 
 void wgfx_set_bg(WGFX_COL col)
@@ -371,7 +358,6 @@ void wgfx_set_fg(WGFX_COL col)
 //     unsigned char* pDest = rows < 0 ? wgfx_get_win_pfb(windowIdx, 0, 0) : wgfx_get_win_pfb(windowIdx, 0, numRows);
 //     unsigned char* pSrc = rows < 0 ? wgfx_get_win_pfb(windowIdx, 0, numRows) : wgfx_get_win_pfb(windowIdx, 0, 0);
 
-    
 //     // unsigned int* pf_dst = (unsigned int*)( ctx.pfb + ctx.size ) -1;
 //     // unsigned int* pf_src = (unsigned int*)( ctx.pfb + ctx.size - ctx.Pitch*npixels) -1;
 //     // const unsigned int* const pfb_end = (unsigned int*)( ctx.pfb );

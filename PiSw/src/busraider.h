@@ -4,30 +4,30 @@
 #ifndef _BUSRAIDER_H_
 #define _BUSRAIDER_H_
 
-#include "globaldefs.h"
 #include "bare_metal_pi_zero.h"
+#include "globaldefs.h"
 
 // Return codes
 typedef enum {
-BR_OK             = 0,
-BR_ERR            = 1,
-BR_NO_BUS_ACK     = 2,
+    BR_OK = 0,
+    BR_ERR = 1,
+    BR_NO_BUS_ACK = 2,
 } BR_RETURN_TYPE;
 
 // Pi pins used for control of host bus
 #define BR_BUSRQ 19
-#define BR_BUSACK_BAR 2			// SDA
+#define BR_BUSACK_BAR 2 // SDA
 #define BR_RESET 4
 #define BR_NMI 8
 #define BR_IRQ 10
 #define BR_WAIT 9
 #define BR_WR_BAR 17
 #define BR_RD_BAR 18
-#define BR_MREQ_BAR 0			// ID_SD
-#define BR_IORQ_BAR 1			// ID_SC
-#define BR_DATA_BUS 20			// GPIO20..27
+#define BR_MREQ_BAR 0 // ID_SD
+#define BR_IORQ_BAR 1 // ID_SC
+#define BR_DATA_BUS 20 // GPIO20..27
 #define BR_PUSH_ADDR_BAR 3
-#define BR_HADDR_CK 7			// CE1
+#define BR_HADDR_CK 7 // CE1
 #define BR_HADDR_SER 5
 #define BR_LADDR_CK 16
 #define BR_LADDR_CLR_BAR 13

@@ -10,21 +10,20 @@ typedef void TMcDeInitFunction();
 typedef void TMcKeyHandlerRaw(unsigned char ucModifiers, const unsigned char rawKeys[6]);
 typedef void TMcDispHandler();
 
-typedef struct McGenericDescriptor
-{
-	// Initialisation/Deinit
-	TMcInitFunction* pInit;
-	TMcDeInitFunction* pDeInit;
-	// Display
-	int displayRefreshRatePerSec;
-	int displayPixelsX;
-	int displayPixelsY;
-	int displayCellX;
-	int displayCellY;
-	WgfxFont* pFont;
-	// Keyboard
-	TMcKeyHandlerRaw* pKeyHandler;
-	TMcDispHandler* pDispHandler;
+typedef struct McGenericDescriptor {
+    // Initialisation/Deinit
+    TMcInitFunction* pInit;
+    TMcDeInitFunction* pDeInit;
+    // Display
+    int displayRefreshRatePerSec;
+    int displayPixelsX;
+    int displayPixelsY;
+    int displayCellX;
+    int displayCellY;
+    WgfxFont* pFont;
+    // Keyboard
+    TMcKeyHandlerRaw* pKeyHandler;
+    TMcDispHandler* pDispHandler;
 } McGenericDescriptor;
 
 extern void mc_generic_set(const char* mcName);

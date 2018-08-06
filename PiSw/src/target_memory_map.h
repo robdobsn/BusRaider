@@ -5,8 +5,7 @@
 
 #include "globaldefs.h"
 
-typedef struct TargetMemoryBlock
-{
+typedef struct TargetMemoryBlock {
     uint32_t start;
     uint32_t len;
 } TargetMemoryBlock;
@@ -14,5 +13,5 @@ typedef struct TargetMemoryBlock
 extern void targetClear();
 extern void targetDataBlockCallback(uint32_t addr, uint8_t* pData, uint32_t len, int type);
 extern int targetGetNumBlocks();
-extern TargetMemoryBlock *targetGetMemoryBlock(int n);
-extern unsigned char *targetMemoryPtr();
+extern TargetMemoryBlock* targetGetMemoryBlock(int n);
+extern unsigned char* targetMemoryPtr();
