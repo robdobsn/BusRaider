@@ -4,6 +4,8 @@
 #include "wgfx.h"
 #include "ee_printf.h"
 
+extern WgfxFont __systemFont;
+
 #define MIN( v1, v2 ) ( ((v1) < (v2)) ? (v1) : (v2))
 #define MAX( v1, v2 ) ( ((v1) > (v2)) ? (v1) : (v2))
 
@@ -20,7 +22,7 @@ typedef struct WgfxWindowDef
     WgfxFont* pFont;
 } WgfxWindowDef;
 
-#define WGFX_MAX_WINDOWS 2
+#define WGFX_MAX_WINDOWS 5
 static WgfxWindowDef __wgfxWindows[WGFX_MAX_WINDOWS];
 static int __wgfxNumWindows = 0;
 
@@ -55,6 +57,7 @@ void wgfx_set_window(int winIdx, int tlx, int tly, int width, int height,
                 int cellWidth, int cellHeight, int xPixScale, int yPixScale,
                  WgfxFont* pFont)
 {
+    WgfxFont* pFontToUse = (pFont != NULL) ? pFont : (&__systemFont);
     if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS)
         return;
     __wgfxWindows[winIdx].tlx = tlx * xPixScale;
@@ -67,11 +70,18 @@ void wgfx_set_window(int winIdx, int tlx, int tly, int width, int height,
         __wgfxWindows[winIdx].height = ctx.screenHeight - tly;
     else
         __wgfxWindows[winIdx].height = height * yPixScale;
-    __wgfxWindows[winIdx].cellWidth = cellWidth;
-    __wgfxWindows[winIdx].cellHeight = cellHeight;
+    uart_printf("Here %d\r\n", winIdx);
+    if (cellWidth == -1)
+        __wgfxWindows[winIdx].cellWidth = pFontToUse->cellX;
+    else
+        __wgfxWindows[winIdx].cellWidth = cellWidth;
+    if (cellHeight == -1)
+        __wgfxWindows[winIdx].cellHeight = pFontToUse->cellY;
+    else
+        __wgfxWindows[winIdx].cellHeight = cellHeight;
     __wgfxWindows[winIdx].xPixScale = xPixScale;
     __wgfxWindows[winIdx].yPixScale = yPixScale;
-    __wgfxWindows[winIdx].pFont = pFont;
+    __wgfxWindows[winIdx].pFont = pFontToUse;
 
     uart_printf("idx %d, cx %d cy %d sx %d sy %d *pFont %02x %02x %02x\n\r\n",
                     winIdx,
@@ -79,7 +89,9 @@ void wgfx_set_window(int winIdx, int tlx, int tly, int width, int height,
                     __wgfxWindows[winIdx].pFont->cellY,
                     __wgfxWindows[winIdx].xPixScale,
                     __wgfxWindows[winIdx].yPixScale,
-                    pFont[0], pFont[1], pFont[2]);
+                    pFontToUse->pFontData[0], 
+                    pFontToUse->pFontData[1],
+                    pFontToUse->pFontData[2]);
 
     __wgfxNumWindows = winIdx+1;
 }
@@ -101,7 +113,7 @@ void wgfx_restore_cursor_content();
 unsigned char* wgfx_get_win_pfb(int winIdx, int col, int row);
 
 void wgfx_init(void* p_framebuffer, unsigned int width, unsigned int height, 
-            unsigned int pitch, unsigned int size, WgfxFont* pSystemFont)
+            unsigned int pitch, unsigned int size)
 {
     ctx.pfb = p_framebuffer;
     ctx.screenWidth = width;
@@ -110,11 +122,11 @@ void wgfx_init(void* p_framebuffer, unsigned int width, unsigned int height,
     ctx.size = size;
 
     // Windows
-    wgfx_set_window(0, 0, 0, width, height, 8, 8, 2, 2, pSystemFont);
+    wgfx_set_window(0, 0, 0, width, height, -1, -1, 2, 2, NULL);
 
-    // Initial setting assuming 8 x 24 font (overridden by real font)
-    ctx.term.numCols = ctx.screenWidth / 8;
-    ctx.term.numRows = ctx.screenHeight / 24;
+    // Initial settings
+    ctx.term.numCols = ctx.screenWidth / __systemFont.cellX;
+    ctx.term.numRows = ctx.screenHeight / __systemFont.cellY;
     ctx.term.cursor_row = ctx.term.cursor_col = 0;
     ctx.term.cursor_visible = 1;
     ctx.term.outputWinIdx = 0;
@@ -352,3 +364,23 @@ void wgfx_set_fg(WGFX_COL col)
 {
     ctx.fg = col;
 }
+
+// void wgfx_scroll(int windowIdx, int rows)
+// {
+//     int numRows = abs(rows);
+//     unsigned char* pDest = rows < 0 ? wgfx_get_win_pfb(windowIdx, 0, 0) : wgfx_get_win_pfb(windowIdx, 0, numRows);
+//     unsigned char* pSrc = rows < 0 ? wgfx_get_win_pfb(windowIdx, 0, numRows) : wgfx_get_win_pfb(windowIdx, 0, 0);
+
+    
+//     // unsigned int* pf_dst = (unsigned int*)( ctx.pfb + ctx.size ) -1;
+//     // unsigned int* pf_src = (unsigned int*)( ctx.pfb + ctx.size - ctx.Pitch*npixels) -1;
+//     // const unsigned int* const pfb_end = (unsigned int*)( ctx.pfb );
+
+//     // while( pf_src >= pfb_end )
+//     //     *pf_dst-- = *pf_src--;
+
+//     // // Fill with bg at the top
+//     // const unsigned int BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
+//     // while( pf_dst >= pfb_end )
+//     //     *pf_dst-- = BG;
+// }

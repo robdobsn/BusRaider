@@ -3,12 +3,13 @@
 
 #pragma once
 
+#include "globaldefs.h"
 #include "wgfxfont.h"
 
 typedef unsigned char WGFX_COL;
 
 extern void wgfx_init(void* p_framebuffer, unsigned int width, unsigned int height, 
-				unsigned int pitch, unsigned int size, WgfxFont* pSystemFont);
+				unsigned int pitch, unsigned int size);
 extern void wgfx_clear();
 
 extern void wgfx_term_putstring(const char* str);

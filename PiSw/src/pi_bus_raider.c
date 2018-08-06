@@ -27,7 +27,7 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
     mc_generic_handle_key(ucModifiers, rawKeys);
 }
 
-void initialize_framebuffer(WgfxFont* pSystemFont)
+void initialize_framebuffer()
 {
     usleep(10000);
     fb_release();
@@ -57,7 +57,7 @@ void initialize_framebuffer(WgfxFont* pSystemFont)
     //cout("phisical fb size: "); cout_d(p_w); cout("x"); cout_d(p_h); cout_endl();
 
     usleep(10000);
-    wgfx_init(p_fb, v_w, v_h, pitch, fbsize, pSystemFont); 
+    wgfx_init(p_fb, v_w, v_h, pitch, fbsize); 
     wgfx_clear();
 }
 
@@ -276,12 +276,12 @@ void entry_point()
     McGenericDescriptor* pMcDescr = mc_generic_get_descriptor();
 
     // Frame buffer
-    initialize_framebuffer(pMcDescr->pFont);
+    initialize_framebuffer();
 
     // Allocate display space
     wgfx_set_window(0, 0, 0, pMcDescr->displayPixelsX, pMcDescr->displayPixelsY,
                 pMcDescr->displayCellX, pMcDescr->displayCellY, 2, 1, pMcDescr->pFont);
-    wgfx_set_window(1, 0, pMcDescr->displayPixelsY, -1, -1, 8, 24, 2, 1, pMcDescr->pFont);
+    wgfx_set_window(1, 0, pMcDescr->displayPixelsY, -1, -1, -1, -1, 1, 1, NULL);
     wgfx_set_console_window(1);
 
     // Initial message
