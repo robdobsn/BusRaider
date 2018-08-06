@@ -3,6 +3,7 @@
 
 #pragma once
 #include "globaldefs.h"
+#include "wgfxfont.h"
 
 typedef void TMcInitFunction();
 typedef void TMcDeInitFunction();
@@ -18,6 +19,9 @@ typedef struct McGenericDescriptor
 	int displayRefreshRatePerSec;
 	int displayPixelsX;
 	int displayPixelsY;
+	int displayCellX;
+	int displayCellY;
+	WgfxFont* pFont;
 	// Keyboard
 	TMcKeyHandlerRaw* pKeyHandler;
 	TMcDispHandler* pDispHandler;
@@ -25,8 +29,7 @@ typedef struct McGenericDescriptor
 
 extern void mc_generic_set(const char* mcName);
 extern void mc_generic_restore();
-extern McGenericDescriptor* mc_generic_get();
+extern McGenericDescriptor* mc_generic_get_descriptor();
 
 extern void mc_generic_handle_key(unsigned char ucModifiers, const unsigned char rawKeys[6]);
 extern void mc_generic_handle_disp();
-extern unsigned int mc_generic_get_disp_rate();

@@ -40,7 +40,7 @@ extern void gfx_putc( unsigned int row, unsigned int col, unsigned char c );
  * Renders a character cell 8x8 at location (x,y)
  */
 
-extern void gfx_putCell8x8(unsigned int row, unsigned int col, unsigned int* pCell);
+extern void gfx_putCell8x8(int winIdx, unsigned int row, unsigned int col, unsigned int* pCell);
 
 /*! 
  * Scrolls the entire framebuffer down (adding background color at the bottom)
@@ -70,6 +70,9 @@ extern void gfx_term_clear_till_end();
 extern void gfx_term_clear_till_cursor();
 extern void gfx_term_clear_line();
 extern void gfx_term_clear_screen();
+
+extern void gfx_set_window(int winIdx, int tlx, int tly, int width, int height);
+extern void gfx_set_console_window(int winIdx);
 
 
 #endif

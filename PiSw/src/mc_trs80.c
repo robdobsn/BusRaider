@@ -4,11 +4,11 @@
 #include "mc_trs80.h"
 #include "nmalloc.h"
 #include "ee_printf.h"
-#include "gfx.h"
+#include "wgfx.h"
 #include "usb_hid_keys.h"
 #include "busraider.h"
 
-extern unsigned char pTRS80Font[];
+extern WgfxFont __TRS80Level3Font;
 
 #define TRS80_KEYBOARD_ADDR 0x3800
 #define TRS80_KEYBOARD_RAM_SIZE 0x0100
@@ -21,7 +21,6 @@ static void trs80_init()
 {
 	// Allocate storage for display
 	__trs80ScreenBuffer = nmalloc_malloc(TRS80_DISP_RAM_SIZE);
-    gfx_term_move_cursor(20,0);
 }
 
 static void trs80_deinit()
@@ -259,8 +258,6 @@ static void trs80_keyHandler(unsigned char ucModifiers, const unsigned char rawK
 
 static void trs80_displayHandler()
 {
-	gfx_term_save_cursor();
-
 	// LogWrite(FromTRS80, 4, ".");
     unsigned char pScrnBuffer[0x400];
     br_read_block(0x3c00, pScrnBuffer, 0x400, 1);
@@ -268,14 +265,12 @@ static void trs80_displayHandler()
     {
         for (int i = 0; i < 64; i++)
         {
-        	// gfx_putc(k,i,pScrnBuffer[k*64+i]);
-        	unsigned int *pCell = (unsigned int*) (pTRS80Font + ((unsigned int)(pScrnBuffer[k*64+i])<<6));
+        	wgfx_putc(0,k,i,pScrnBuffer[k*64+i]);
+        	// unsigned int *pCell = (unsigned int*) (pTRS80Font + ((unsigned int)(pScrnBuffer[k*64+i])<<6));
         	// unsigned int *pCell = (unsigned int*) pTRS80Font; 
-        	gfx_putCell8x8(k, i, pCell);
+        	// gfx_putCell8x8(0, k, i, pCell);
         }
     }
-
-    gfx_term_restore_cursor();
 }
 
 static McGenericDescriptor trs80_descr =
@@ -285,8 +280,11 @@ static McGenericDescriptor trs80_descr =
 	.pDeInit = trs80_deinit,
 	// Required display refresh rate
 	.displayRefreshRatePerSec = 25,
-	.displayPixelsX = 2 * 6 * 64,
-	.displayPixelsY = 2 * 8 * 16,
+	.displayPixelsX = 8 * 64,
+	.displayPixelsY = 24 * 16,
+	.displayCellX = 8,
+	.displayCellY = 24,
+	.pFont = &__TRS80Level3Font,
 	// Keyboard
 	.pKeyHandler = trs80_keyHandler,
 	.pDispHandler = trs80_displayHandler

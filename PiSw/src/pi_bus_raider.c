@@ -5,7 +5,7 @@
 #include "uart.h"
 #include "timer.h"
 #include "framebuffer.h"
-#include "gfx.h"
+#include "wgfx.h"
 #include "nmalloc.h"
 #include "ee_printf.h"
 #include "piwiring.h"
@@ -27,7 +27,7 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
     mc_generic_handle_key(ucModifiers, rawKeys);
 }
 
-void initialize_framebuffer()
+void initialize_framebuffer(WgfxFont* pSystemFont)
 {
     usleep(10000);
     fb_release();
@@ -36,8 +36,8 @@ void initialize_framebuffer()
     unsigned int fbsize;
     unsigned int pitch;
 
-    unsigned int p_w = 640;
-    unsigned int p_h = 480;
+    unsigned int p_w = 1366;
+    unsigned int p_h = 768;
     unsigned int v_w = p_w;
     unsigned int v_h = p_h;
 
@@ -57,8 +57,8 @@ void initialize_framebuffer()
     //cout("phisical fb size: "); cout_d(p_w); cout("x"); cout_d(p_h); cout_endl();
 
     usleep(10000);
-    gfx_set_env( p_fb, v_w, v_h, pitch, fbsize ); 
-    gfx_clear();
+    wgfx_init(p_fb, v_w, v_h, pitch, fbsize, pSystemFont); 
+    wgfx_clear();
 }
 
 unsigned long __lastDisplayUpdateUs = 0;
@@ -67,10 +67,12 @@ void main_loop()
 {
     ee_printf("Waiting for UART data (921600,8,N,1)\n");
 
+    McGenericDescriptor* pMcDescr = mc_generic_get_descriptor();
+    const unsigned long reqUpdateUs = 1000000 / pMcDescr->displayRefreshRatePerSec;
+
     while(1)
     {
         // Handle target machine display updates
-        unsigned long reqUpdateUs = 1000000 / mc_generic_get_disp_rate();
         if (rdutils_isTimeout(time_microsec(), __lastDisplayUpdateUs, reqUpdateUs))
         {
             // Check valid 
@@ -265,31 +267,32 @@ void entry_point()
     // UART
     uart_init();
 
-    // Command handler
+    // Target machine memory and command handler
     targetClear();
     cmdHandler_init(targetDataBlockCallback);
 
+    // Set to TRS80 Model1
+    mc_generic_set("TRS80Model1");
+    McGenericDescriptor* pMcDescr = mc_generic_get_descriptor();
+
     // Frame buffer
-    initialize_framebuffer();
+    initialize_framebuffer(pMcDescr->pFont);
+
+    // Allocate display space
+    wgfx_set_window(0, 0, 0, pMcDescr->displayPixelsX, pMcDescr->displayPixelsY,
+                pMcDescr->displayCellX, pMcDescr->displayCellY, 2, 1, pMcDescr->pFont);
+    wgfx_set_window(1, 0, pMcDescr->displayPixelsY, -1, -1, 8, 24, 2, 1, pMcDescr->pFont);
+    wgfx_set_console_window(1);
 
     // Initial message
-    ee_printf("\n\n\n\n\n\n\n\n\n\n");
-    gfx_term_putstring( "\x1B[2J" ); // Clear screen
-    gfx_set_bg(27);
-    gfx_term_putstring( "\x1B[2K" ); // Render blue line at top
     ee_printf("RC2014 Bus Raider V1.0\n");
-    gfx_term_putstring( "\x1B[2K" );
-    //gfx_term_putstring( "\x1B[2K" ); 
-    ee_printf("Rob Dobson (inspired by PIGFX)\n\n");
-    gfx_set_bg(0);
+    ee_printf("Rob Dobson (inspired by PiGFX)\n\n");
 
+    // Init timers
     timers_init();
 
-    // // Default to TRS80 Model1
-    mc_generic_set("TRS80Model1");
-
     // USB
-    ee_printf("Initializing USB\n");
+    // ee_printf("Initializing USB\n");
     if(USPiInitialize())
     {
         ee_printf("Initialization OK!\n");
@@ -297,17 +300,16 @@ void entry_point()
 
         if (USPiKeyboardAvailable())
         {
-            // USPiKeyboardRegisterKeyPressedHandler(_keypress_handler);
             USPiKeyboardRegisterKeyStatusHandlerRaw(_keypress_raw_handler);
-            gfx_set_fg(10);
+            wgfx_set_fg(10);
             ee_printf("Keyboard found.\n");
-            gfx_set_fg(15);
+            wgfx_set_fg(15);
         }
         else
         {
-            gfx_set_fg(9);
+            wgfx_set_fg(9);
             ee_printf("No keyboard found.\n");
-            gfx_set_fg(15);
+            wgfx_set_fg(15);
         }
     }
     else

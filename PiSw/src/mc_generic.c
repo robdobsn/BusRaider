@@ -40,17 +40,9 @@ void mc_generic_restore()
 	}
 }
 
-McGenericDescriptor* mc_generic_get()
+McGenericDescriptor* mc_generic_get_descriptor()
 {
 	return __pMCtype;
-}
-
-unsigned int mc_generic_get_disp_rate()
-{
-	// Check if valid
-	if (!__pMCtype)
-		return 25;
-	return __pMCtype->displayRefreshRatePerSec;
 }
 
 void mc_generic_handle_key(unsigned char ucModifiers, const unsigned char rawKeys[6])

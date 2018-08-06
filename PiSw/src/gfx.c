@@ -9,7 +9,6 @@
 extern unsigned char G_FONT_GLYPHS;
 static unsigned char* FNT = &G_FONT_GLYPHS;
 
-
 #define MIN( v1, v2 ) ( ((v1) < (v2)) ? (v1) : (v2))
 #define MAX( v1, v2 ) ( ((v1) > (v2)) ? (v1) : (v2))
 #define PFB( X, Y ) ( ctx.pfb + Y*ctx.Pitch + X )
@@ -25,6 +24,18 @@ int __abs__( int a )
 {
     return a<0?-a:a;
 }
+
+typedef struct GfxWindowDef
+{
+    int tlx;
+    int width;
+    int tly;
+    int height;
+} GfxWindowDef;
+
+#define GFX_MAX_WINDOWS 2
+GfxWindowDef __gfxWindows[GFX_MAX_WINDOWS];
+int __gfxNumWindows = 0;
 
 typedef struct SCN_STATE
 {
@@ -58,6 +69,7 @@ typedef struct {
         unsigned int cursor_col;
         unsigned int saved_cursor[2];
         char cursor_visible;
+        int outputWinIdx;
 
         scn_state state;
     } term;
@@ -74,8 +86,36 @@ static FRAMEBUFFER_CTX ctx;
 unsigned int __attribute__((aligned(0x100))) mem_buff_dma[16];
 
 
-void gfx_term_render_cursor();
+int gfx_term_win_tlx()
+{
+    return __gfxWindows[ctx.term.outputWinIdx].tlx;
+}
 
+int gfx_term_win_tly()
+{
+    return __gfxWindows[ctx.term.outputWinIdx].tly;
+}
+
+int gfx_win_tlx(int winIdx)
+{
+    if (winIdx < 0 || winIdx >= __gfxNumWindows)
+        return 0;
+    return __gfxWindows[winIdx].tlx;
+}
+
+int gfx_win_tly(int winIdx)
+{
+    if (winIdx < 0 || winIdx >= __gfxNumWindows)
+        return 0;
+    return __gfxWindows[winIdx].tly;
+}
+
+unsigned int* gfx_get_win_pfb(int winIdx, int col, int row)
+{
+    return (unsigned int*)PFB(get_win_tlx() + ctx.term.cursor_col*8, get_win_tly() + ctx.term.cursor_row*8 );
+}
+
+void gfx_term_render_cursor();
 
 
 void gfx_set_env( void* p_framebuffer, unsigned int width, unsigned int height, unsigned int pitch, unsigned int size )
@@ -88,11 +128,15 @@ void gfx_set_env( void* p_framebuffer, unsigned int width, unsigned int height, 
     ctx.Pitch = pitch;
     ctx.size = size;
 
+    // Windows
+    gfx_set_window(0, 0, 0, width, height);
+
     ctx.term.WIDTH = ctx.W / 8;
     ctx.term.HEIGHT= ctx.H / 8;
     ctx.term.cursor_row = ctx.term.cursor_col = 0;
     ctx.term.cursor_visible = 1;
     ctx.term.state.next = state_fun_normaltext;
+    ctx.term.outputWinIdx = 0;
 
     ctx.bg = 0;
     ctx.fg = 15;
@@ -357,7 +401,7 @@ void gfx_putc( unsigned int row, unsigned int col, unsigned char c )
     }
 }
 
-void gfx_putCell8x8(unsigned int row, unsigned int col, unsigned int* pCell)
+void gfx_putCell8x8(int winIdx, unsigned int row, unsigned int col, unsigned int* pCell)
 {
     if( col >= ctx.term.WIDTH )
         return;
@@ -366,7 +410,7 @@ void gfx_putCell8x8(unsigned int row, unsigned int col, unsigned int* pCell)
     const unsigned int FG = ctx.fg<<24 | ctx.fg<<16 | ctx.fg<<8 | ctx.fg;
     const unsigned int BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
     const unsigned int stride = (ctx.Pitch>>2) - 2;
-    register unsigned int* pf = (unsigned int*)PFB((col<<3), (row<<3));
+    register unsigned int* pf = (unsigned int*)PFB(gfx_win_tly(winIdx)+(col<<3), gfx_win_tlx(winIdx)+(row<<3));
     register unsigned char h=8;
 
     while(h--)
@@ -390,7 +434,7 @@ void gfx_restore_cursor_content()
 {
     // Restore framebuffer content that was overwritten by the cursor
     unsigned int* pb = (unsigned int*)ctx.cursor_buffer;
-    unsigned int* pfb = (unsigned int*)PFB( ctx.term.cursor_col*8, ctx.term.cursor_row*8 );
+    unsigned int* pfb = gfx_get_win_pfb(ctx.term.outputWinIdx, ctx.term.cursor_col, ctx.term.cursor_row);
     const unsigned int stride = (ctx.Pitch>>2) - 2;
     unsigned int h=8;
     while(h--)
@@ -862,4 +906,32 @@ void state_fun_normaltext( char ch, scn_state *state )
     gfx_putc( ctx.term.cursor_row, ctx.term.cursor_col, ch );
     ++ctx.term.cursor_col;
     gfx_term_render_cursor();
+}
+
+void gfx_set_window(int winIdx, int tlx, int tly, int width, int height)
+{
+    if (winIdx < 0 || winIdx >= GFX_MAX_WINDOWS)
+        return;
+    __gfxWindows[winIdx].tlx = tlx;
+    __gfxWindows[winIdx].tly = tly;
+    if (width == -1)
+        __gfxWindows[winIdx].width = ctx.W - tlx;
+    else
+        __gfxWindows[winIdx].width = width;
+    if (height == -1)
+        __gfxWindows[winIdx].height = ctx.H - tly;
+    else
+        __gfxWindows[winIdx].height = height;
+    __gfxNumWindows = winIdx+1;
+}
+
+void gfx_set_console_window(int winIdx)
+{    
+    if (winIdx < 0 || winIdx >= GFX_MAX_WINDOWS)
+        return;
+    ctx.term.outputWinIdx = winIdx;
+    // Reset term params
+    ctx.term.WIDTH = __gfxWindows[winIdx].width / 8;
+    ctx.term.HEIGHT = __gfxWindows[winIdx].height / 8;
+    ctx.term.cursor_row = ctx.term.cursor_col = 0;  
 }

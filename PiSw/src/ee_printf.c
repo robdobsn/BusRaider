@@ -42,7 +42,7 @@ This code is based on a file that contains the following:
 #include "uart.h"
 #include "utils.h"
 #include <stdarg.h>
-#include "gfx.h"
+#include "wgfx.h"
 
 #define size_t unsigned int
 
@@ -56,9 +56,9 @@ This code is based on a file that contains the following:
 
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
 
-#define DISP_WRITE_STRING(x) gfx_term_putstring((const char*)x)
+#define DISP_WRITE_STRING(x) wgfx_term_putstring((const char*)x)
 #define UART_WRITE_STRING(x) uart_write_str((const char*)x)
-#define LOG_WRITE_STRING(x) DISP_WRITE_STRING(x)
+#define LOG_WRITE_STRING(x) uart_write_str((const char*)x)
 
 static char *lower_digits = "0123456789abcdefghijklmnopqrstuvwxyz";
 static char *upper_digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -646,7 +646,7 @@ void ee_printf(const char *fmt, ...)
   ee_vsprintf(buf, fmt, args);
   va_end(args);
 
-  LOG_WRITE_STRING( buf );
+  DISP_WRITE_STRING( buf );
 }
 
 void uart_printf(const char *fmt, ...)
