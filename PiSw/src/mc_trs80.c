@@ -202,7 +202,7 @@ static void trs80_displayHandler()
     br_read_block(0x3c00, pScrnBuffer, 0x400, 1, 0);
     for (int k = 0; k < 16; k++) {
         for (int i = 0; i < 64; i++) {
-            wgfx_putc(0, k, i, pScrnBuffer[k * 64 + i]);
+            wgfx_putc(0, i, k, pScrnBuffer[k * 64 + i]);
         }
     }
 }

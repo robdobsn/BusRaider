@@ -14,7 +14,7 @@ extern void wgfx_clear();
 
 extern void wgfx_term_putstring(const char* str);
 
-void wgfx_putc(int windowIdx, unsigned int row, unsigned int col, unsigned char ch);
+void wgfx_putc(int windowIdx, unsigned int col, unsigned int row, unsigned char ch);
 
 extern void wgfx_set_window(int winIdx, int tlx, int tly, int width, int height,
     int cellWidth, int cellHeight, int xPixScale, int yPixScale,

@@ -46,7 +46,8 @@ typedef struct {
     WGFX_COL bg;
     WGFX_COL fg;
 
-    unsigned int cursor_buffer[16];
+    // Make sure this is big enough for any font's character cell
+    unsigned char cursor_buffer[512];
 
 } FRAMEBUFFER_CTX;
 
@@ -147,13 +148,8 @@ void wgfx_clear_screen()
     wgfx_term_render_cursor();
 }
 
-void wgfx_bump_curpos(int bumpRow)
+void wgfx_check_curpos()
 {
-    if (!bumpRow)
-        ctx.term.cursor_col++;
-    else
-        ctx.term.cursor_row++;
-
     if (ctx.term.cursor_col >= ctx.term.numCols) {
         ctx.term.cursor_row++;
         ctx.term.cursor_col = 0;
@@ -162,9 +158,6 @@ void wgfx_bump_curpos(int bumpRow)
     if (ctx.term.cursor_row >= ctx.term.numRows) {
         --ctx.term.cursor_row;
         wgfx_scroll(ctx.term.outputWinIdx, 1);
-        // gfx_scroll_down_dma(8);
-        // gfx_term_render_cursor_newline_dma();
-        // dma_execute_queue();
     }
 }
 
@@ -172,51 +165,46 @@ void wgfx_term_putchar(char ch)
 {
     switch (ch) {
     case '\r':
-        wgfx_restore_cursor_content();
         ctx.term.cursor_col = 0;
-        wgfx_term_render_cursor();
         break;
 
     case '\n':
-        wgfx_restore_cursor_content();
         ctx.term.cursor_col = 0;
-        wgfx_bump_curpos(1);
-        wgfx_term_render_cursor();
+        ctx.term.cursor_row++;
+        wgfx_check_curpos();
         break;
 
     case 0x09: /* tab */
-        wgfx_restore_cursor_content();
         ctx.term.cursor_col += 1;
         ctx.term.cursor_col = MIN(ctx.term.cursor_col + 8 - ctx.term.cursor_col % 8, ctx.term.numCols - 1);
-        wgfx_term_render_cursor();
+        wgfx_check_curpos();
         break;
 
     case 0x08:
         /* backspace */
         if (ctx.term.cursor_col > 0) {
-            wgfx_restore_cursor_content();
             ctx.term.cursor_col--;
-            wgfx_putc(ctx.term.outputWinIdx, ctx.term.cursor_row, ctx.term.cursor_col, ' ');
-            wgfx_term_render_cursor();
+            wgfx_putc(ctx.term.outputWinIdx, ctx.term.cursor_col, ctx.term.cursor_row, ' ');
         }
         break;
 
     default:
-        wgfx_restore_cursor_content();
-        wgfx_putc(ctx.term.outputWinIdx, ctx.term.cursor_row, ctx.term.cursor_col, ch);
-        wgfx_bump_curpos(0);
-        wgfx_term_render_cursor();
+        wgfx_putc(ctx.term.outputWinIdx, ctx.term.cursor_col, ctx.term.cursor_row, ch);
+        ctx.term.cursor_col++;
+        wgfx_check_curpos();
         break;
     }
 }
 
 void wgfx_term_putstring(const char* str)
 {
+    wgfx_restore_cursor_content();
     while (*str)
         wgfx_term_putchar(*str++);
+    wgfx_term_render_cursor();
 }
 
-void wgfx_putc(int windowIdx, unsigned int row, unsigned int col, unsigned char ch)
+void wgfx_putc(int windowIdx, unsigned int col, unsigned int row, unsigned char ch)
 {
     if (col >= ctx.term.numCols)
         return;
@@ -225,20 +213,12 @@ void wgfx_putc(int windowIdx, unsigned int row, unsigned int col, unsigned char 
     if (windowIdx < 0 || windowIdx >= __wgfxNumWindows)
         return;
 
-    unsigned char* pBuf = wgfx_get_win_pfb(windowIdx, col, row); // ctx.pfb + row * 8 * ctx.Pitch + col * 8;
+    // Pointer to framebuffer where char cell starts
+    unsigned char* pBuf = wgfx_get_win_pfb(windowIdx, col, row);
+    // Pointer to font data to write into char cell
     unsigned char* pFont = __wgfxWindows[windowIdx].pFont->pFontData + ch * __wgfxWindows[windowIdx].pFont->bytesPerChar;
 
-    // if (windowIdx == 1)
-    // {
-    // uart_printf("c %d r %d s %d idx %d, cx %d cy %d sx %d sy %d *pFont %02x %02x %02x\n\r",
-    //                 col, row, ctx.pitch, windowIdx,
-    //                 __wgfxWindows[windowIdx].cellWidth,
-    //                 __wgfxWindows[windowIdx].cellHeight,
-    //                 __wgfxWindows[windowIdx].xPixScale,
-    //                 __wgfxWindows[windowIdx].yPixScale,
-    //                 pFont[0], pFont[1], pFont[2]);
-    // }
-
+    // For each bit in the font character write the appropriate data to the pixel in framebuffer
     unsigned char* pBufCur = pBuf;
     for (int y = 0; y < __wgfxWindows[windowIdx].cellHeight; y++) {
         for (int i = 0; i < __wgfxWindows[windowIdx].yPixScale; i++) {
@@ -255,43 +235,62 @@ void wgfx_putc(int windowIdx, unsigned int row, unsigned int col, unsigned char 
         }
         pFont += __wgfxWindows[windowIdx].pFont->bytesAcross;
     }
+}
 
-    // for (int l = 0; l < 100; l++)
-    // {
-    //     *pBuf = ctx.fg;
-    //     pBuf += ctx.Pitch + 1;
-    // }
+// Write data from a char cell in a window
+void wgfx_write_cell(int windowIdx, unsigned int col, unsigned int row, unsigned char* pCellBuf)
+{
+    if (col >= ctx.term.numCols)
+        return;
+    if (row >= ctx.term.numRows)
+        return;
+    if (windowIdx < 0 || windowIdx >= __wgfxNumWindows)
+        return;
 
-    // for (int h = 0; h < 8; h++)
-    // {
-    //     for (int v = 0; v < 8; v++)
-    //     {
-    //         *pBuf++ = (ctx.fg & *pFontCh) | (ctx.bg & ~*pFontCh);
-    //         pFontCh++;
-    //     }
-    //     pBuf += stride;
-    // }
+    // Pointer to framebuffer where char cell starts
+    unsigned char* pBuf = wgfx_get_win_pfb(windowIdx, col, row);
 
-    // const unsigned int FG = ctx.fg<<24 | ctx.fg<<16 | ctx.fg<<8 | ctx.fg;
-    // const unsigned int BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
-    // const unsigned int stride = (ctx.Pitch>>2) - 2;
+    // Write data from cell buffer
+    unsigned char* pBufCur = pBuf;
+    for (int y = 0; y < __wgfxWindows[windowIdx].cellHeight; y++) {
+        for (int i = 0; i < __wgfxWindows[windowIdx].yPixScale; i++) {
+            pBufCur = pBuf;
+            for (int x = 0; x < __wgfxWindows[windowIdx].cellWidth; x++) {
+                for (int j = 0; j < __wgfxWindows[windowIdx].xPixScale; j++) {
+                    *pBufCur++ = *pCellBuf++;
+                }
+            }
+            pBuf += ctx.pitch;
+        }
+    }
+}
 
-    // register unsigned int* p_glyph = (unsigned int*)( FNT + ((unsigned int)ch<<6) );
-    // register unsigned int* pf = (unsigned int*)PFB((col<<3), (row<<3));
-    // register unsigned char h=8;
+// Read data from a char cell in a window
+void wgfx_read_cell(int windowIdx, unsigned int col, unsigned int row, unsigned char* pCellBuf)
+{
+    if (col >= ctx.term.numCols)
+        return;
+    if (row >= ctx.term.numRows)
+        return;
+    if (windowIdx < 0 || windowIdx >= __wgfxNumWindows)
+        return;
 
-    // while(h--)
-    // {
-    //     //unsigned int w=2;
-    //     //while( w-- ) // Loop unrolled for 8x8 fonts
-    //     {
-    //         register unsigned int gv = *p_glyph++;
-    //         *pf++ =  (gv & FG) | ( ~gv & BG );
-    //         gv = *p_glyph++;
-    //         *pf++ =  (gv & FG) | ( ~gv & BG );
-    //     }
-    //     pf += stride;
-    // }
+    // Pointer to framebuffer where char cell starts
+    unsigned char* pBuf = wgfx_get_win_pfb(windowIdx, col, row);
+
+    // Write data from cell buffer
+    unsigned char* pBufCur = pBuf;
+    for (int y = 0; y < __wgfxWindows[windowIdx].cellHeight; y++) {
+        for (int i = 0; i < __wgfxWindows[windowIdx].yPixScale; i++) {
+            pBufCur = pBuf;
+            for (int x = 0; x < __wgfxWindows[windowIdx].cellWidth; x++) {
+                for (int j = 0; j < __wgfxWindows[windowIdx].xPixScale; j++) {
+                    *pCellBuf++ = *pBufCur++;
+                }
+            }
+            pBuf += ctx.pitch;
+        }
+    }
 }
 
 unsigned char* wgfx_get_win_pfb(int winIdx, int col, int row)
@@ -301,44 +300,16 @@ unsigned char* wgfx_get_win_pfb(int winIdx, int col, int row)
 
 void wgfx_restore_cursor_content()
 {
-    //     // Restore framebuffer content that was overwritten by the cursor
-    //     unsigned int* pb = (unsigned int*)ctx.cursor_buffer;
-    //     unsigned int* pfb = gfx_get_win_pfb(ctx.term.outputWinIdx, ctx.term.cursor_col, ctx.term.cursor_row);
-    //     const unsigned int stride = (ctx.Pitch>>2) - 2;
-    //     unsigned int h=8;
-    //     while(h--)
-    //     {
-    //         *pfb++ = *pb++;
-    //         *pfb++ = *pb++;
-    //         pfb+=stride;
-    //     }
-    //     //cout("cursor restored");cout_d(ctx.term.cursor_row);cout("-");cout_d(ctx.term.cursor_col);cout_endl();
+    // Write content of cell buffer to current screen location
+    wgfx_write_cell(ctx.term.outputWinIdx, ctx.term.cursor_col, ctx.term.cursor_row, ctx.cursor_buffer);
 }
 
 void wgfx_term_render_cursor()
 {
-    //     // Save framebuffer content that is going to be replaced by the cursor and update
-    //     // the new content
-    //     //
-    //     unsigned int* pb = (unsigned int*)ctx.cursor_buffer;
-    //     unsigned int* pfb = (unsigned int*)PFB( ctx.term.cursor_col*8, ctx.term.cursor_row*8 );
-    //     const unsigned int stride = (ctx.Pitch>>2) - 2;
-    //     unsigned int h=8;
-
-    //     if( ctx.term.cursor_visible )
-    //         while(h--)
-    //         {
-    //             *pb++ = *pfb; *pfb = ~*pfb; pfb++;
-    //             *pb++ = *pfb; *pfb = ~*pfb; pfb++;
-    //             pfb+=stride;
-    //         }
-    //     else
-    //         while(h--)
-    //         {
-    //             *pb++ = *pfb++;
-    //             *pb++ = *pfb++;
-    //             pfb+=stride;
-    //         }
+    // Read content of cell buffer to current screen location
+    wgfx_read_cell(ctx.term.outputWinIdx, ctx.term.cursor_col, ctx.term.cursor_row, ctx.cursor_buffer);
+    // Show cursor
+    wgfx_putc(ctx.term.outputWinIdx, ctx.term.cursor_col, ctx.term.cursor_row, '_');
 }
 
 void wgfx_set_bg(WGFX_COL col)
