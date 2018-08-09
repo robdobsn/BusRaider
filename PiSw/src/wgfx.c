@@ -18,6 +18,8 @@ typedef struct WgfxWindowDef {
     int cellHeight;
     int xPixScale;
     int yPixScale;
+    int foregroundColour;
+    int backgroundColour;
     WgfxFont* pFont;
 } WgfxWindowDef;
 
@@ -53,23 +55,37 @@ typedef struct {
 
 static FRAMEBUFFER_CTX ctx;
 
+void wgfx_term_render_cursor();
+void wgfx_restore_cursor_content();
+unsigned char* wgfx_get_win_pfb(int winIdx, int col, int row);
+void wgfxHLine(int x, int y, int len, int colour);
+void wgfxVLine(int x, int y, int len, int colour);
+
 void wgfx_set_window(int winIdx, int tlx, int tly, int width, int height,
     int cellWidth, int cellHeight, int xPixScale, int yPixScale,
-    WgfxFont* pFont)
+    WgfxFont* pFont, int foregroundColour, int backgroundColour, 
+    int borderWidth, int borderColour)
 {
     WgfxFont* pFontToUse = (pFont != NULL) ? pFont : (&__systemFont);
     if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS)
         return;
-    __wgfxWindows[winIdx].tlx = tlx * xPixScale;
-    __wgfxWindows[winIdx].tly = tly * yPixScale;
-    if (width == -1)
-        __wgfxWindows[winIdx].width = ctx.screenWidth - tlx;
+    // Width and height
+    if (width == -1 && tlx != -1)
+        __wgfxWindows[winIdx].width = ctx.screenWidth - tlx - borderWidth * 2;
     else
         __wgfxWindows[winIdx].width = width * xPixScale;
     if (height == -1)
-        __wgfxWindows[winIdx].height = ctx.screenHeight - tly;
+        __wgfxWindows[winIdx].height = ctx.screenHeight - tly - borderWidth * 2;
     else
         __wgfxWindows[winIdx].height = height * yPixScale;
+    // Top,Left
+    if (tlx != -1)
+        __wgfxWindows[winIdx].tlx = tlx * xPixScale + borderWidth;
+    else
+        __wgfxWindows[winIdx].tlx = (ctx.screenWidth - __wgfxWindows[winIdx].width) / 2;
+    __wgfxWindows[winIdx].tly = tly * yPixScale + borderWidth;
+
+    // Cell
     if (cellWidth == -1)
         __wgfxWindows[winIdx].cellWidth = pFontToUse->cellX;
     else
@@ -78,9 +94,39 @@ void wgfx_set_window(int winIdx, int tlx, int tly, int width, int height,
         __wgfxWindows[winIdx].cellHeight = pFontToUse->cellY;
     else
         __wgfxWindows[winIdx].cellHeight = cellHeight;
+
+    // Scale
     __wgfxWindows[winIdx].xPixScale = xPixScale;
     __wgfxWindows[winIdx].yPixScale = yPixScale;
+    
+    // Font
     __wgfxWindows[winIdx].pFont = pFontToUse;
+    __wgfxWindows[winIdx].foregroundColour = foregroundColour;
+    __wgfxWindows[winIdx].backgroundColour = backgroundColour;
+
+    // Border
+    if (borderColour != -1 && borderWidth > 0)
+    {
+        for (int i = 0; i < borderWidth; i++)
+        {
+            wgfxHLine(__wgfxWindows[winIdx].tlx-borderWidth, 
+                    __wgfxWindows[winIdx].tly-borderWidth+i, 
+                    __wgfxWindows[winIdx].width + borderWidth * 2,
+                    borderColour);
+            wgfxHLine(__wgfxWindows[winIdx].tlx-borderWidth, 
+                    __wgfxWindows[winIdx].tly+__wgfxWindows[winIdx].height+i, 
+                    __wgfxWindows[winIdx].width + borderWidth * 2,
+                    borderColour);
+            wgfxVLine(__wgfxWindows[winIdx].tlx-borderWidth+i, 
+                    __wgfxWindows[winIdx].tly-borderWidth, 
+                    __wgfxWindows[winIdx].height + borderWidth * 2,
+                    borderColour);
+            wgfxVLine(__wgfxWindows[winIdx].tlx+__wgfxWindows[winIdx].width+i, 
+                    __wgfxWindows[winIdx].tly-borderWidth, 
+                    __wgfxWindows[winIdx].height + borderWidth * 2,
+                    borderColour);
+        }
+    }
 
     // uart_printf("idx %d, cx %d cy %d sx %d sy %d *pFont %02x %02x %02x\n\r\n",
     //     winIdx,
@@ -106,10 +152,6 @@ void wgfx_set_console_window(int winIdx)
     ctx.term.cursor_row = ctx.term.cursor_col = 0;
 }
 
-void wgfx_term_render_cursor();
-void wgfx_restore_cursor_content();
-unsigned char* wgfx_get_win_pfb(int winIdx, int col, int row);
-
 void wgfx_init(void* p_framebuffer, unsigned int width, unsigned int height,
     unsigned int pitch, unsigned int size)
 {
@@ -120,7 +162,7 @@ void wgfx_init(void* p_framebuffer, unsigned int width, unsigned int height,
     ctx.size = size;
 
     // Windows
-    wgfx_set_window(0, 0, 0, width, height, -1, -1, 2, 2, NULL);
+    wgfx_set_window(0, 0, 0, width, height, -1, -1, 2, 2, NULL, -1, -1, 0, 0);
 
     // Initial settings
     ctx.term.numCols = ctx.screenWidth / __systemFont.cellX;
@@ -226,7 +268,9 @@ void wgfx_putc(int windowIdx, unsigned int col, unsigned int row, unsigned char 
             int bitMask = 0x01 << (__wgfxWindows[windowIdx].cellWidth - 1);
             for (int x = 0; x < __wgfxWindows[windowIdx].cellWidth; x++) {
                 for (int j = 0; j < __wgfxWindows[windowIdx].xPixScale; j++) {
-                    *pBufCur = (*pFont & bitMask) ? ctx.fg : ctx.bg;
+                    *pBufCur = (*pFont & bitMask) ? 
+                            ((__wgfxWindows[windowIdx].foregroundColour != -1) ? __wgfxWindows[windowIdx].foregroundColour : ctx.fg) : 
+                            ((__wgfxWindows[windowIdx].backgroundColour != -1) ? __wgfxWindows[windowIdx].backgroundColour : ctx.bg);
                     pBufCur++;
                 }
                 bitMask = bitMask >> 1;
@@ -298,6 +342,11 @@ unsigned char* wgfx_get_win_pfb(int winIdx, int col, int row)
     return ctx.pfb + ((row * __wgfxWindows[winIdx].cellHeight * __wgfxWindows[winIdx].yPixScale) + __wgfxWindows[winIdx].tly) * ctx.pitch + (col * __wgfxWindows[winIdx].cellWidth * __wgfxWindows[winIdx].xPixScale) + __wgfxWindows[winIdx].tlx;
 }
 
+unsigned char* wgfx_get_pfb_xy(int x, int y)
+{
+    return ctx.pfb + y * ctx.pitch + x;
+}
+
 void wgfx_restore_cursor_content()
 {
     // Write content of cell buffer to current screen location
@@ -361,16 +410,23 @@ void wgfx_scroll(int windowIdx, int rows)
     {
         *pBlankStart++ = ctx.bg;
     }
+}
 
-    // unsigned int* pf_dst = (unsigned int*)( ctx.pfb + ctx.size ) -1;
-    // unsigned int* pf_src = (unsigned int*)( ctx.pfb + ctx.size - ctx.Pitch*npixels) -1;
-    // const unsigned int* const pfb_end = (unsigned int*)( ctx.pfb );
+void wgfxHLine(int x, int y, int len, int colour)
+{
+    unsigned char* pBuf = wgfx_get_pfb_xy(x, y);
+    for (int i = 0; i < len; i++)
+    {
+        *pBuf++ = colour;
+    }
+}
 
-    // while( pf_src >= pfb_end )
-    //     *pf_dst-- = *pf_src--;
-
-    // // Fill with bg at the top
-    // const unsigned int BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
-    // while( pf_dst >= pfb_end )
-    //     *pf_dst-- = BG;
+void wgfxVLine(int x, int y, int len, int colour)
+{
+    unsigned char* pBuf = wgfx_get_pfb_xy(x, y);
+    for (int i = 0; i < len; i++)
+    {
+        *pBuf = colour;
+        pBuf += ctx.pitch;
+    }
 }

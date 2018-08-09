@@ -21,6 +21,8 @@ typedef struct McGenericDescriptor {
     int displayCellX;
     int displayCellY;
     WgfxFont* pFont;
+    int displayForeground;
+    int displayBackground;
     // Keyboard
     TMcKeyHandlerRaw* pKeyHandler;
     TMcDispHandler* pDispHandler;

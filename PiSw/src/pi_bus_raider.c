@@ -274,9 +274,14 @@ void entry_point()
     initialize_framebuffer();
 
     // Allocate display space
-    wgfx_set_window(0, 0, 0, pMcDescr->displayPixelsX, pMcDescr->displayPixelsY,
-        pMcDescr->displayCellX, pMcDescr->displayCellY, 2, 1, pMcDescr->pFont);
-    wgfx_set_window(1, 0, pMcDescr->displayPixelsY, -1, -1, -1, -1, 1, 1, NULL);
+    int windowBorderWidth = 5;
+    wgfx_set_window(0, -1, 0, pMcDescr->displayPixelsX, pMcDescr->displayPixelsY,
+        pMcDescr->displayCellX, pMcDescr->displayCellY, 2, 1,
+        pMcDescr->pFont, pMcDescr->displayForeground, pMcDescr->displayBackground,
+        windowBorderWidth, 8);
+    wgfx_set_window(1, 0, pMcDescr->displayPixelsY + windowBorderWidth*2 + 10, -1, -1, -1, -1, 1, 1, 
+        NULL, -1, -1,
+        windowBorderWidth, 8);
     wgfx_set_console_window(1);
 
     // Initial message
@@ -304,6 +309,14 @@ void entry_point()
         ee_printf("USB initialization failed\n");
     }
     ee_printf("\n");
+
+    // Debug show colour palette
+    // for (int i = 0; i < 255; i++)
+    // {
+    //     wgfx_set_fg(i);
+    //     ee_printf("%02d ", i);
+    // }
+    // wgfx_set_fg(15);
 
     // Initialise the interrupt handler
     uart_init_irq();

@@ -218,6 +218,8 @@ static McGenericDescriptor trs80_descr = {
     .displayCellX = 8,
     .displayCellY = 24,
     .pFont = &__TRS80Level3Font,
+    .displayForeground = WGFX_GREEN,
+    .displayBackground = WGFX_BLACK,
     // Keyboard
     .pKeyHandler = trs80_keyHandler,
     .pDispHandler = trs80_displayHandler
