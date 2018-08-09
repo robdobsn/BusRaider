@@ -30,8 +30,6 @@ static void trs80_deinit()
         nmalloc_free((void*)__trs80ScreenBuffer);
 }
 
-// static const char FromTRS80[] = "trs80";
-
 static void trs80_keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6])
 {
     // LogWrite(FromTRS80, 4, "Key %02x %02x", ucModifiers, rawKeys[0]);
@@ -60,12 +58,6 @@ static void trs80_keyHandler(unsigned char ucModifiers, const unsigned char rawK
         unsigned char rawKey = rawKeys[keyIdx];
 
         // Handle key
-        // if (rawKey == KEY_APOSTROPHE)
-        // {
-        // 	// Handle @
-        // 	keybdBytes[0] = 1;
-        // }
-        // else
         if ((rawKey >= KEY_A) && (rawKey <= KEY_Z)) {
             // Handle A..Z
             int bitIdx = ((rawKey - KEY_A) + 1) % 8;
@@ -188,22 +180,16 @@ static void trs80_keyHandler(unsigned char ucModifiers, const unsigned char rawK
         }
     }
 
-    // for (int i = 0; i < TRS80_KEYBOARD_RAM_SIZE; i++) {
-    //     kbdMap[i] = 0;
+    // DEBUG
+    // for (int i = 0; i < 16; i++)
+    // {
+    //     uart_printf("%02x..", i*16);
+    //     for (int j = 0; j < 16; j++)
+    //     {
+    //         uart_printf("%02x ", kbdMap[i*16+j]);
+    //     }
+    //     uart_printf("\n");
     // }
-    // for (int j = 0; j < TRS80_KEY_BYTES; j++) {
-    //     kbdMap[1 << j] |= keybdBytes[j];
-    // }
-
-    for (int i = 0; i < 16; i++)
-    {
-        uart_printf("%02x..", i*16);
-        for (int j = 0; j < 16; j++)
-        {
-            uart_printf("%02x ", kbdMap[i*16+j]);
-        }
-        uart_printf("\n");
-    }
 
     // Write to target machine RAM
     br_write_block(TRS80_KEYBOARD_ADDR, kbdMap, TRS80_KEYBOARD_RAM_SIZE, 1, 0);
@@ -217,9 +203,6 @@ static void trs80_displayHandler()
     for (int k = 0; k < 16; k++) {
         for (int i = 0; i < 64; i++) {
             wgfx_putc(0, k, i, pScrnBuffer[k * 64 + i]);
-            // unsigned int *pCell = (unsigned int*) (pTRS80Font + ((unsigned int)(pScrnBuffer[k*64+i])<<6));
-            // unsigned int *pCell = (unsigned int*) pTRS80Font;
-            // gfx_putCell8x8(0, k, i, pCell);
         }
     }
 }

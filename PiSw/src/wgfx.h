@@ -21,5 +21,7 @@ extern void wgfx_set_window(int winIdx, int tlx, int tly, int width, int height,
     WgfxFont* pFont);
 extern void wgfx_set_console_window(int winIdx);
 
+extern void wgfx_scroll(int winIdx, int rows);
+
 extern void wgfx_set_bg(WGFX_COL col);
 extern void wgfx_set_fg(WGFX_COL col);

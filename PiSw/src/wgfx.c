@@ -161,7 +161,7 @@ void wgfx_bump_curpos(int bumpRow)
 
     if (ctx.term.cursor_row >= ctx.term.numRows) {
         --ctx.term.cursor_row;
-
+        wgfx_scroll(ctx.term.outputWinIdx, 1);
         // gfx_scroll_down_dma(8);
         // gfx_term_render_cursor_newline_dma();
         // dma_execute_queue();
@@ -351,21 +351,55 @@ void wgfx_set_fg(WGFX_COL col)
     ctx.fg = col;
 }
 
-// void wgfx_scroll(int windowIdx, int rows)
-// {
-//     int numRows = abs(rows);
-//     unsigned char* pDest = rows < 0 ? wgfx_get_win_pfb(windowIdx, 0, 0) : wgfx_get_win_pfb(windowIdx, 0, numRows);
-//     unsigned char* pSrc = rows < 0 ? wgfx_get_win_pfb(windowIdx, 0, numRows) : wgfx_get_win_pfb(windowIdx, 0, 0);
+// Positive values for rows scroll up, negative down
+void wgfx_scroll(int windowIdx, int rows)
+{
+    if (windowIdx < 0 || windowIdx >= WGFX_MAX_WINDOWS || rows == 0)
+        return;
+    int numRows = rows < 0 ? -rows : rows;
+    unsigned char* pBlankStart = NULL;
+    unsigned char* pBlankEnd = NULL;
+    if (rows > 0)
+    {
+        unsigned char* pDest = wgfx_get_win_pfb(windowIdx, 0, 0);
+        unsigned char* pSrc = wgfx_get_win_pfb(windowIdx, 0, numRows);
+        unsigned char* pEnd = wgfx_get_win_pfb(windowIdx, 0, ctx.term.numRows);
+        pBlankStart = wgfx_get_win_pfb(windowIdx, 0, ctx.term.numRows-numRows);
+        pBlankEnd = pEnd;
+        while (pSrc < pEnd)
+        {
+            *pDest++ = *pSrc++;
+        }
+    }
+    else
+    {
+        unsigned char* pDest = wgfx_get_win_pfb(windowIdx, 0, ctx.term.numRows) - 1;
+        unsigned char* pSrc = wgfx_get_win_pfb(windowIdx, 0, ctx.term.numRows-numRows) - 1;
+        unsigned char* pEnd = wgfx_get_win_pfb(windowIdx, 0, 0);
+        pBlankStart = pEnd;
+        pBlankEnd = wgfx_get_win_pfb(windowIdx, 0, numRows);
+        pBlankEnd = pSrc;
+        while (pSrc > pEnd)
+        {
+            *pDest-- = *pSrc--;            
+        }
+    }
 
-//     // unsigned int* pf_dst = (unsigned int*)( ctx.pfb + ctx.size ) -1;
-//     // unsigned int* pf_src = (unsigned int*)( ctx.pfb + ctx.size - ctx.Pitch*npixels) -1;
-//     // const unsigned int* const pfb_end = (unsigned int*)( ctx.pfb );
+    // Clear lines
+    while(pBlankStart < pBlankEnd)
+    {
+        *pBlankStart++ = ctx.bg;
+    }
 
-//     // while( pf_src >= pfb_end )
-//     //     *pf_dst-- = *pf_src--;
+    // unsigned int* pf_dst = (unsigned int*)( ctx.pfb + ctx.size ) -1;
+    // unsigned int* pf_src = (unsigned int*)( ctx.pfb + ctx.size - ctx.Pitch*npixels) -1;
+    // const unsigned int* const pfb_end = (unsigned int*)( ctx.pfb );
 
-//     // // Fill with bg at the top
-//     // const unsigned int BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
-//     // while( pf_dst >= pfb_end )
-//     //     *pf_dst-- = BG;
-// }
+    // while( pf_src >= pfb_end )
+    //     *pf_dst-- = *pf_src--;
+
+    // // Fill with bg at the top
+    // const unsigned int BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
+    // while( pf_dst >= pfb_end )
+    //     *pf_dst-- = BG;
+}
