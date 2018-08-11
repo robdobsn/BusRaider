@@ -303,10 +303,10 @@ void cmdHandler_service()
 
         // Show char received
         int ch = uart_read_byte();
-        // ee_printf("%c", ch);
+        ee_printf("%02x ", ch);
 
         minihdlc_char_receiver(ch);
-        
+
         continue;
 
         // Offer to the cmd_handler

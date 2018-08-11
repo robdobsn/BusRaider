@@ -1,6 +1,7 @@
 // from https://github.com/mengguang/minihdlc
 
 #include "minihdlc.h"
+#include "ee_printf.h"
 
 /* HDLC Asynchronous framing */
 /* The frame boundary octet is 01111110, (7E in hexadecimal notation) */
@@ -110,6 +111,8 @@ void minihdlc_char_receiver(uint8_t data)
 {
     /* FRAME FLAG */
     if (data == FRAME_BOUNDARY_OCTET) {
+        ee_printf("...%d %04x %04x\n", mhst.frame_position, mhst.frame_checksum,
+                ((mhst.receive_frame_buffer[mhst.frame_position - 1] << 8) | (mhst.receive_frame_buffer[mhst.frame_position - 2] & 0xff)));
         if (mhst.escape_character == true) {
             mhst.escape_character = false;
         }
