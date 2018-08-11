@@ -43,8 +43,9 @@ This code is based on a file that contains the following:
 #include "utils.h"
 #include "wgfx.h"
 #include <stdarg.h>
+#include "ee_printf.h"
 
-#define size_t unsigned int
+// #define size_t unsigned int
 
 #define ZEROPAD (1 << 0) /* Pad with zero */
 #define SIGN (1 << 1) /* Unsigned/signed long */
@@ -611,10 +612,15 @@ void uart_send_char(char c)
     UART_WRITE_STRING(str);
 }
 
+unsigned int __logSeverity = LOG_DEBUG;
+
 void LogWrite(const char* pSource,
-    unsigned Severity,
+    unsigned severity,
     const char* fmt, ...)
 {
+    if (severity > __logSeverity)
+        return;
+
     char buf[15 * 80];
     va_list args;
 
@@ -623,17 +629,17 @@ void LogWrite(const char* pSource,
     va_end(args);
 
     LOG_WRITE_STRING("[");
-    switch (Severity) {
-    case 1:
+    switch (severity) {
+    case LOG_ERROR:
         LOG_WRITE_STRING(" ERROR ");
         break;
-    case 2:
+    case LOG_WARNING:
         LOG_WRITE_STRING("WARNING");
         break;
-    case 3:
+    case LOG_NOTICE:
         LOG_WRITE_STRING("NOTICE ");
         break;
-    case 4:
+    case LOG_DEBUG:
         LOG_WRITE_STRING(" DEBUG ");
         break;
     default:
@@ -645,6 +651,11 @@ void LogWrite(const char* pSource,
     LOG_WRITE_STRING(": ");
     LOG_WRITE_STRING(buf);
     LOG_WRITE_STRING("\n");
+}
+
+void LogSetLevel(int severity)
+{
+    __logSeverity = severity;
 }
 
 void ee_printf(const char* fmt, ...)

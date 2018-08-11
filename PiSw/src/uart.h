@@ -5,10 +5,11 @@
 
 #include "utils.h"
 
-extern void uart_init(unsigned int baudRate, int use_interrupts);
+extern void uart_init(unsigned int baudRate, bool use_interrupts);
 extern void uart_init_irq();
 extern unsigned int uart_poll();
 extern void uart_purge();
+extern void uart_send(unsigned int c);
 extern void uart_write(const char* data, unsigned int size);
 extern void uart_write_str(const char* data);
 extern void uart_dump_mem(unsigned char* start_addr, unsigned char* end_addr);

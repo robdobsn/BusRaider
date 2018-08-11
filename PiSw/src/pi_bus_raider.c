@@ -8,13 +8,13 @@
 #include "wgfx.h"
 #include "ee_printf.h"
 #include "piwiring.h"
-#include "../uspi\include\uspi\types.h"
-#include "../uspi/include/uspi.h"
 #include "busraider.h"
 #include "cmd_handler.h"
 #include "mc_generic.h"
 #include "target_memory_map.h"
 #include "rdutils.h"
+#include "../uspi\include\uspi\types.h"
+#include "../uspi/include/uspi.h"
 
 // Baud rate
 #define MAIN_UART_BAUD_RATE 921600
@@ -31,6 +31,9 @@ void main_loop();
 
 void entry_point()
 {
+    // Logging
+    LogSetLevel(LOG_ERROR);
+    
     // System init
     system_init();
 

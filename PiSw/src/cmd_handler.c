@@ -8,6 +8,8 @@
 #include "utils.h"
 #include "target_memory_map.h"
 #include "busraider.h"
+#include "minihdlc.h"
+#include "ee_printf.h"
 
 #define MAX_SREC_DATA_LEN 200
 
@@ -58,6 +60,16 @@ int __cmdHandler_errCode = 0;
 // Handler for received data
 TCmdHandlerDataBlockCallback* __cmdHandler_pDataBlockCallback;
 
+void cmdHandler_sendChar(uint8_t ch)
+{
+    uart_send(ch);
+}
+
+void cmdHandler_frameHandler(const uint8_t *framebuffer, uint16_t framelength)
+{
+    ee_printf("HDLC frame received, len\n", framelength);
+}
+
 // Init the destinations for SREC and TREC records
 void cmdHandler_init(TCmdHandlerDataBlockCallback* pDataBlockCallback)
 {
@@ -65,6 +77,7 @@ void cmdHandler_init(TCmdHandlerDataBlockCallback* pDataBlockCallback)
     __cmdHandler_state = CMDHANDLER_STATE_INIT;
     __cmdHandler_debugChCount = 0;
     __cmdHandler_errCode = CMDHANDLER_RET_OK;
+    minihdlc_init(cmdHandler_sendChar, cmdHandler_frameHandler);
 }
 
 void cmdHandler_clearError()
@@ -291,6 +304,10 @@ void cmdHandler_service()
         // Show char received
         int ch = uart_read_byte();
         // ee_printf("%c", ch);
+
+        minihdlc_char_receiver(ch);
+        
+        continue;
 
         // Offer to the cmd_handler
         CmdHandler_Ret retc = cmdHandler_handle_char(ch);
