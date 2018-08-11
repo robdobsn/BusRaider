@@ -156,7 +156,7 @@ void uart_init_irq()
 }
 
 //------------------------------------------------------------------------
-void uart_init(unsigned int baudRate)
+void uart_init(unsigned int baudRate, bool use_interrupts)
 {
     unsigned int ra;
 
@@ -180,4 +180,10 @@ void uart_init(unsigned int baudRate)
     W32(GPFSEL1, ra);
 
     W32(AUX_MU_CNTL_REG, 3);
+
+    if (use_interrupts)
+    {
+        // Initialise the interrupt handler
+        uart_init_irq();
+    }
 }

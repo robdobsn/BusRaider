@@ -27,6 +27,8 @@ typedef enum {
 // Init the destinations for SREC and TREC records
 extern void cmdHandler_init(TCmdHandlerDataBlockCallback* dataBlockCallback);
 
+extern void cmdHandler_service();
+
 // Handle a single char
 extern CmdHandler_Ret cmdHandler_handle_char(int ch);
 
