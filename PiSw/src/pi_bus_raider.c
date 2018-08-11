@@ -18,6 +18,9 @@
 #include "rdutils.h"
 #include "target_memory_map.h"
 
+// Baud rate
+#define MAIN_UART_BAUD_RATE 921600
+
 // Heap space
 extern unsigned int pheap_space;
 extern unsigned int heap_sz;
@@ -65,7 +68,7 @@ unsigned long __lastDisplayUpdateUs = 0;
 
 void main_loop()
 {
-    ee_printf("Waiting for UART data (921600,8,N,1)\n");
+    ee_printf("Waiting for UART data (%d,8,N,1)\n", MAIN_UART_BAUD_RATE);
 
     McGenericDescriptor* pMcDescr = mc_generic_get_descriptor();
     const unsigned long reqUpdateUs = 1000000 / pMcDescr->displayRefreshRatePerSec;
@@ -260,7 +263,7 @@ void entry_point()
     nmalloc_set_memory_area((unsigned char*)(pheap_space), heap_sz);
 
     // UART
-    uart_init();
+    uart_init(MAIN_UART_BAUD_RATE);
 
     // Target machine memory and command handler
     targetClear();

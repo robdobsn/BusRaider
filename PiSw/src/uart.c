@@ -156,7 +156,7 @@ void uart_init_irq()
 }
 
 //------------------------------------------------------------------------
-void uart_init(void)
+void uart_init(unsigned int baudRate)
 {
     unsigned int ra;
 
@@ -169,7 +169,8 @@ void uart_init(void)
     W32(AUX_MU_IER_REG, 0x05);
     W32(AUX_MU_IIR_REG, 0xC6);
     // W32(AUX_MU_BAUD_REG,270);
-    W32(AUX_MU_BAUD_REG, 33); // 921,600 baud
+    //W32(AUX_MU_BAUD_REG, 33); // 921,600 baud
+    W32(AUX_MU_BAUD_REG, ((AUX_MU_CLOCK/(baudRate*8))-1));
 
     ra = R32(GPFSEL1);
     ra &= ~(7 << 12); //gpio14

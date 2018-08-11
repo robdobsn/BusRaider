@@ -5,7 +5,7 @@
 
 #include "utils.h"
 
-extern void uart_init(void);
+extern void uart_init(unsigned int baudRate);
 extern void uart_init_irq();
 extern unsigned int uart_poll();
 extern void uart_purge();

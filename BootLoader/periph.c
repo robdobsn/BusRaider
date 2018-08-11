@@ -120,6 +120,7 @@ void uart_init ( void )
     PUT32(AUX_MU_IER_REG,0);
     PUT32(AUX_MU_IIR_REG,0xC6);
     PUT32(AUX_MU_BAUD_REG,33);  // 270 for 115200, 33 for 1MBPS
+    //PUT32(AUX_MU_BAUD_REG, 67);  // 460800 baud
     ra=GET32(GPFSEL1);
     ra&=~(7<<12); //gpio14
     ra|=2<<12;    //alt5
