@@ -34,7 +34,7 @@ POSTMAN_RETURN_TYPE postman_recv(unsigned int channel, unsigned int* out_data)
 #ifdef POSTMAN_DEBUG
             uart_printf("Mailbox empty, waiting...\n");
 #endif
-            if (rdutils_isTimeout(micros(), start_time, MAILBOX_WAIT_TIMEOUT)) {
+            if (timer_isTimeout(micros(), start_time, MAILBOX_WAIT_TIMEOUT)) {
                 return POSTMAN_RECV_TIMEOUT;
             }
             flushcache();
@@ -56,7 +56,7 @@ POSTMAN_RETURN_TYPE postman_recv(unsigned int channel, unsigned int* out_data)
             return POSTMAN_SUCCESS;
         }
 
-        if (rdutils_isTimeout(micros(), start_time, MAILBOX_WAIT_TIMEOUT)) {
+        if (timer_isTimeout(micros(), start_time, MAILBOX_WAIT_TIMEOUT)) {
             return POSTMAN_RECV_TIMEOUT;
         }
 
@@ -85,7 +85,7 @@ POSTMAN_RETURN_TYPE postman_send(unsigned int channel, unsigned int data)
 #ifdef POSTMAN_DEBUG
         uart_printf("Mailbox full, waiting...\n");
 #endif
-        if (rdutils_isTimeout(micros(), start_time, MAILBOX_WAIT_TIMEOUT)) {
+        if (timer_isTimeout(micros(), start_time, MAILBOX_WAIT_TIMEOUT)) {
             return POSTMAN_SEND_TIMEOUT;
         }
     }

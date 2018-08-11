@@ -414,7 +414,7 @@ FB_RETURN_TYPE fb_get_pitch(unsigned int* pPitch)
     return FB_SUCCESS;
 }
 
-FB_RETURN_TYPE fb_get_phisical_buffer_size(unsigned int* pWidth, unsigned int* pHeight)
+FB_RETURN_TYPE fb_get_physical_buffer_size(unsigned int* pWidth, unsigned int* pHeight)
 {
     volatile unsigned int pBuffData[256] __attribute__((aligned(16)));
     unsigned int off;
@@ -422,7 +422,7 @@ FB_RETURN_TYPE fb_get_phisical_buffer_size(unsigned int* pWidth, unsigned int* p
 
     off = 1;
     pBuffData[off++] = 0; // Request
-    pBuffData[off++] = 0x00040003; // Tag: get phisical buffer size
+    pBuffData[off++] = 0x00040003; // Tag: get physical buffer size
     pBuffData[off++] = 8; // response buffer size in bytes
     pBuffData[off++] = 0; // request size
     pBuffData[off++] = 0; // response buffer
@@ -446,7 +446,7 @@ FB_RETURN_TYPE fb_get_phisical_buffer_size(unsigned int* pWidth, unsigned int* p
     return FB_SUCCESS;
 }
 
-FB_RETURN_TYPE fb_set_phisical_buffer_size(unsigned int* pWidth, unsigned int* pHeight)
+FB_RETURN_TYPE fb_set_physical_buffer_size(unsigned int* pWidth, unsigned int* pHeight)
 {
     volatile unsigned int pBuffData[256] __attribute__((aligned(16)));
     unsigned int off;
@@ -454,7 +454,7 @@ FB_RETURN_TYPE fb_set_phisical_buffer_size(unsigned int* pWidth, unsigned int* p
 
     off = 1;
     pBuffData[off++] = 0; // Request
-    pBuffData[off++] = 0x00048003; // Tag: set phisical buffer size
+    pBuffData[off++] = 0x00048003; // Tag: set physical buffer size
     pBuffData[off++] = 8; // response buffer size in bytes
     pBuffData[off++] = 8; // request size
     pBuffData[off++] = *pWidth; // response buffer

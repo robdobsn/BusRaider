@@ -3,6 +3,8 @@
 
 #include "wgfx.h"
 #include "ee_printf.h"
+#include "framebuffer.h"
+#include "timer.h"
 
 extern WgfxFont __systemFont;
 
@@ -55,11 +57,57 @@ typedef struct {
 
 static FRAMEBUFFER_CTX ctx;
 
-void wgfx_term_render_cursor();
-void wgfx_restore_cursor_content();
-unsigned char* wgfx_get_win_pfb(int winIdx, int col, int row);
-void wgfxHLine(int x, int y, int len, int colour);
-void wgfxVLine(int x, int y, int len, int colour);
+void wgfx_init(unsigned int desiredWidth, unsigned int desiredHeight)
+{
+    delayMicroseconds(10000);
+    fb_release();
+
+    unsigned char* p_fb = 0;
+    unsigned int fbsize;
+    unsigned int pitch;
+
+    unsigned int p_w = desiredWidth;
+    unsigned int p_h = desiredHeight;
+    unsigned int v_w = p_w;
+    unsigned int v_h = p_h;
+
+    fb_init(p_w, p_h, v_w, v_h, 8, (void*)&p_fb, &fbsize, &pitch);
+
+    fb_set_xterm_palette();
+
+    if (fb_get_physical_buffer_size(&p_w, &p_h) != FB_SUCCESS) {
+        // uart_printf("fb_get_physical_buffer_size error\n");
+    }
+    // uart_printf("physical fb size %dx%d\n", p_w, p_h);
+
+    delayMicroseconds(10000);
+    wgfx_set_framebuffer(p_fb, v_w, v_h, pitch, fbsize);
+    wgfx_clear();
+}
+
+void wgfx_set_framebuffer(void* p_framebuffer, unsigned int width, unsigned int height,
+    unsigned int pitch, unsigned int size)
+{
+    ctx.pfb = p_framebuffer;
+    ctx.screenWidth = width;
+    ctx.screenHeight = height;
+    ctx.pitch = pitch;
+    ctx.size = size;
+
+    // Windows
+    wgfx_set_window(0, 0, 0, width, height, -1, -1, 2, 2, NULL, -1, -1, 0, 0);
+
+    // Initial settings
+    ctx.term.numCols = ctx.screenWidth / __systemFont.cellX;
+    ctx.term.numRows = ctx.screenHeight / __systemFont.cellY;
+    ctx.term.cursor_row = ctx.term.cursor_col = 0;
+    ctx.term.cursor_visible = 1;
+    ctx.term.outputWinIdx = 0;
+
+    ctx.bg = 0;
+    ctx.fg = 15;
+    wgfx_term_render_cursor();
+}
 
 void wgfx_set_window(int winIdx, int tlx, int tly, int width, int height,
     int cellWidth, int cellHeight, int xPixScale, int yPixScale,
@@ -150,30 +198,6 @@ void wgfx_set_console_window(int winIdx)
     ctx.term.numCols = __wgfxWindows[winIdx].width / (__wgfxWindows[winIdx].cellWidth * __wgfxWindows[winIdx].xPixScale);
     ctx.term.numRows = __wgfxWindows[winIdx].height / (__wgfxWindows[winIdx].cellHeight * __wgfxWindows[winIdx].yPixScale);
     ctx.term.cursor_row = ctx.term.cursor_col = 0;
-}
-
-void wgfx_init(void* p_framebuffer, unsigned int width, unsigned int height,
-    unsigned int pitch, unsigned int size)
-{
-    ctx.pfb = p_framebuffer;
-    ctx.screenWidth = width;
-    ctx.screenHeight = height;
-    ctx.pitch = pitch;
-    ctx.size = size;
-
-    // Windows
-    wgfx_set_window(0, 0, 0, width, height, -1, -1, 2, 2, NULL, -1, -1, 0, 0);
-
-    // Initial settings
-    ctx.term.numCols = ctx.screenWidth / __systemFont.cellX;
-    ctx.term.numRows = ctx.screenHeight / __systemFont.cellY;
-    ctx.term.cursor_row = ctx.term.cursor_col = 0;
-    ctx.term.cursor_visible = 1;
-    ctx.term.outputWinIdx = 0;
-
-    ctx.bg = 0;
-    ctx.fg = 15;
-    wgfx_term_render_cursor();
 }
 
 void wgfx_clear()

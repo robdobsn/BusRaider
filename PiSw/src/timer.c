@@ -14,7 +14,7 @@ uint32_t micros()
 void delayMicroseconds(uint32_t us)
 {
     uint32_t timeNow = micros();
-    while (!rdutils_isTimeout(micros(), timeNow, us)) {
+    while (!timer_isTimeout(micros(), timeNow, us)) {
         // Do nothing
     }
 }

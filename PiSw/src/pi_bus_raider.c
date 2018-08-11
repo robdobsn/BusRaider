@@ -5,7 +5,6 @@
 #include "utils.h"
 #include "uart.h"
 #include "timer.h"
-#include "framebuffer.h"
 #include "wgfx.h"
 #include "nmalloc.h"
 #include "ee_printf.h"
@@ -15,8 +14,8 @@
 #include "busraider.h"
 #include "cmd_handler.h"
 #include "mc_generic.h"
-#include "rdutils.h"
 #include "target_memory_map.h"
+#include "rdutils.h"
 
 // Baud rate
 #define MAIN_UART_BAUD_RATE 921600
@@ -31,39 +30,6 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
     mc_generic_handle_key(ucModifiers, rawKeys);
 }
 
-void initialize_framebuffer()
-{
-    delayMicroseconds(10000);
-    fb_release();
-
-    unsigned char* p_fb = 0;
-    unsigned int fbsize;
-    unsigned int pitch;
-
-    unsigned int p_w = 1366;
-    unsigned int p_h = 768;
-    unsigned int v_w = p_w;
-    unsigned int v_h = p_h;
-
-    fb_init(p_w, p_h,
-        v_w, v_h,
-        8,
-        (void*)&p_fb,
-        &fbsize,
-        &pitch);
-
-    fb_set_xterm_palette();
-
-    if (fb_get_phisical_buffer_size(&p_w, &p_h) != FB_SUCCESS) {
-        //cout("fb_get_phisical_buffer_size error");cout_endl();
-    }
-    //cout("phisical fb size: "); cout_d(p_w); cout("x"); cout_d(p_h); cout_endl();
-
-    delayMicroseconds(10000);
-    wgfx_init(p_fb, v_w, v_h, pitch, fbsize);
-    wgfx_clear();
-}
-
 unsigned long __lastDisplayUpdateUs = 0;
 
 void main_loop()
@@ -75,7 +41,7 @@ void main_loop()
 
     while (1) {
         // Handle target machine display updates
-        if (rdutils_isTimeout(micros(), __lastDisplayUpdateUs, reqUpdateUs)) {
+        if (timer_isTimeout(micros(), __lastDisplayUpdateUs, reqUpdateUs)) {
             // Check valid
             mc_generic_handle_disp();
             __lastDisplayUpdateUs = micros();
@@ -273,8 +239,8 @@ void entry_point()
     mc_generic_set("TRS80Model1");
     McGenericDescriptor* pMcDescr = mc_generic_get_descriptor();
 
-    // Frame buffer
-    initialize_framebuffer();
+    // Graphics system
+    wgfx_init(1366, 768);
 
     // Allocate display space
     int windowBorderWidth = 5;
