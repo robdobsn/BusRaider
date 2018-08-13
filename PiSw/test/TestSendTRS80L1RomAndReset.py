@@ -9,8 +9,14 @@ logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 with open(r"../../ROMS/TRS80/level1.srec", "rb") as romFile:
     romData = romFile.read()
 
-cmdFrame = bytearray(b"srectarget\0")
-cmdFrame += romData
+with open(r"../../TRS80SW/galinv1d.srec", "rb") as galaxyFile:
+    galaxyData = galaxyFile.read()
+
+romFrame = bytearray(b"srectarget\0")
+romFrame += romData
+
+galaxyFrame = bytearray(b"srectarget\0")
+galaxyFrame += galaxyData
 
 resetFrame = b"resettarget\0"
 progFrame = b"programtarget\0"
@@ -21,12 +27,21 @@ with serial.Serial('COM6', 921600) as s:
     h.sendFrame(ioclearFrame)
     print("Sent ioclear len", len(ioclearFrame))
     time.sleep(1.0)
-    h.sendFrame(cmdFrame)
-    print("Sent srectarget len", len(cmdFrame))
+    h.sendFrame(romFrame)
+    print("Sent ROM srcs len", len(romFrame))
     time.sleep(1.0)
     h.sendFrame(progFrame)
     print("Sent progtarget len", len(progFrame))
     time.sleep(2.0)
     h.sendFrame(resetFrame)
     print("Sent resettarget len", len(resetFrame))
-    
+    time.sleep(2.0)    
+    h.sendFrame(galaxyFrame)
+    print("Sent Galaxy Invasion srcs len", len(galaxyFrame))
+    time.sleep(1.0)
+    h.sendFrame(progFrame)
+    print("Sent progtarget len", len(progFrame))
+    time.sleep(2.0)
+    h.sendFrame(resetFrame)
+    print("Sent resettarget len", len(resetFrame))
+    time.sleep(2.0)
