@@ -9,7 +9,7 @@
 
 volatile unsigned int rxhead;
 volatile unsigned int rxtail;
-#define RXBUFMASK 0x3FFF
+#define RXBUFMASK 0x7FFF
 volatile unsigned char rxbuffer[RXBUFMASK + 1];
 
 //------------------------------------------------------------------------

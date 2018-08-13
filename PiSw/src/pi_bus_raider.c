@@ -45,7 +45,7 @@ void entry_point()
 
     // Target machine memory and command handler
     targetClear();
-    cmdHandler_init(targetDataBlockCallback);
+    cmdHandler_init();
 
     // Set to TRS80 Model1
     mc_generic_set("TRS80Model1");
@@ -54,7 +54,7 @@ void entry_point()
     // Graphics system
     wgfx_init(1366, 768);
 
-    // Allocate display space
+    // Layout display
     int windowBorderWidth = 5;
     wgfx_set_window(0, -1, 0, pMcDescr->displayPixelsX, pMcDescr->displayPixelsY,
         pMcDescr->displayCellX, pMcDescr->displayCellY, 2, 1,
@@ -68,8 +68,8 @@ void entry_point()
     // Initial message
     wgfx_set_fg(11);
     ee_printf("RC2014 Bus Raider V1.0\n");
-    ee_printf("Rob Dobson 2018 (inspired by PiGFX)\n\n");
     wgfx_set_fg(15);
+    ee_printf("Rob Dobson 2018 (inspired by PiGFX)\n\n");
 
     // USB
     if (USPiInitialize()) {

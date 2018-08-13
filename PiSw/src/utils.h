@@ -16,8 +16,8 @@ extern void membarrier();
 /**
  * String related
  */
-extern unsigned int strlen(char* str);
-extern int strcmp(char* s1, char* s2);
+extern unsigned int strlen(const char* str);
+extern int strcmp(const char* s1, const char* s2);
 
 /**
  * Memory

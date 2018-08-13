@@ -25,10 +25,8 @@ void targetClear()
         __pTargetBuffer[i] = 0;
 }
 
-void targetDataBlockCallback(uint32_t addr, uint8_t* pData, uint32_t len, int type)
+void targetDataBlockCallback(uint32_t addr, const uint8_t* pData, uint32_t len)
 {
-    type = type;
-
     // Check if contiguous with other data
     int blockIdx = -1;
     for (int i = 0; i < __targetMemoryBlockLastIdx; i++) {
@@ -50,6 +48,8 @@ void targetDataBlockCallback(uint32_t addr, uint8_t* pData, uint32_t len, int ty
         __targetMemoryBlockLastIdx++;
     }
 
+    // ee_printf("Blk st %04x len %d\n", addr, len);
+    
     // Store block
     for (unsigned int i = 0; i < len; i++) {
         if (addr + i < MAX_TARGET_MEMORY_SIZE)
