@@ -85,7 +85,7 @@ void minihdlc_char_receiver(uint8_t data)
         {
             uint16_t rxcrc = (mhst.receive_frame_buffer[mhst.frame_position - 1]) |
                          (mhst.receive_frame_buffer[mhst.frame_position - 2] << 8);
-            ee_printf("...len %d calc %04x rxcrc %04x\n", mhst.frame_position, mhst.frame_checksum, rxcrc);
+            // ee_printf("...len %d calc %04x rxcrc %04x\n", mhst.frame_position, mhst.frame_checksum, rxcrc);
             if (rxcrc == mhst.frame_checksum)
             {
                 /* Call the user defined function and pass frame to it */

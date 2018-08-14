@@ -30,7 +30,7 @@ void cmdHandler_procCommand(const char* pCmdStr, const uint8_t* pData, int dataL
     // Check for simple commands
     if (strcmp(pCmdStr, "srectarget") == 0)
     {
-        ee_printf("CmdHandler: RxCmd srectarget, byte0 %02x len %d\n", pData[0], dataLen);
+        ee_printf("CmdHandler: srectarget, byte0 %02x len %d\n", pData[0], dataLen);
         targetClear();
         srec_decode(targetDataBlockCallback, cmdHandler_sinkAddr, pData, dataLen);
     }
@@ -52,12 +52,12 @@ void cmdHandler_procCommand(const char* pCmdStr, const uint8_t* pData, int dataL
     }
     else if (strcmp(pCmdStr, "resettarget") == 0)
     {
-        ee_printf("CmdHandler: RxCmd resettarget\n");
+        ee_printf("CmdHandler: resettarget\n");
         br_reset_host();
     }
     else if (strcmp(pCmdStr, "ioclrtarget") == 0)
     {
-        ee_printf("CmdHandler: RxCmd ioclrtarget\n");
+        ee_printf("CmdHandler: ioclrtarget\n");
         // Fill IO "memory" with 0xff
         uint8_t tmpBuf[0x100];
         for (int kk = 0; kk < 0x100; kk++)
@@ -68,7 +68,7 @@ void cmdHandler_procCommand(const char* pCmdStr, const uint8_t* pData, int dataL
 
 void cmdHandler_frameHandler(const uint8_t *framebuffer, int framelength)
 {
-    ee_printf("HDLC frame received, len %d\n", framelength);
+    // ee_printf("HDLC frame received, len %d\n", framelength);
 
     // Extract command string
     char cmdStr[CMD_HANDLER_MAX_CMD_STR_LEN+1];
@@ -90,7 +90,7 @@ void cmdHandler_frameHandler(const uint8_t *framebuffer, int framelength)
     if (dataLen < 0)
         dataLen = 0;
 
-    ee_printf("Command str %s, cmdLen %d byte0 %02x, datalen %d\n", cmdStr, cmdStrLen, pDataPtr[0], dataLen);
+    // ee_printf("CmdHandler: %s, cmdLen %d byte0 %02x, datalen %d\n", cmdStr, cmdStrLen, pDataPtr[0], dataLen);
     cmdHandler_procCommand(cmdStr, pDataPtr, dataLen);
 }
 

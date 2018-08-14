@@ -17,10 +17,18 @@ extern WgfxFont __TRS80Level3Font;
 
 static uint8_t* __trs80ScreenBuffer = NULL;
 
+static uint8_t __trs80KeyBuffer[TRS80_KEYBOARD_RAM_SIZE];
+static bool __trs80KeyBufferDirty = false;
+
 static void trs80_init()
 {
     // Allocate storage for display
     __trs80ScreenBuffer = nmalloc_malloc(TRS80_DISP_RAM_SIZE);
+    // Clear keyboard buffer
+    for (int i = 0; i < TRS80_KEYBOARD_RAM_SIZE; i++)
+        __trs80KeyBuffer[i] = 0;
+    // Ensure keyboard is cleared initially
+    __trs80KeyBufferDirty = true;
 }
 
 static void trs80_deinit()
@@ -173,10 +181,19 @@ static void trs80_keyHandler(unsigned char ucModifiers, const unsigned char rawK
     // Build RAM map
     uint8_t kbdMap[TRS80_KEYBOARD_RAM_SIZE];
     for (int i = 0; i < TRS80_KEYBOARD_RAM_SIZE; i++) {
+        // Clear initially
         kbdMap[i] = 0;
+        // Set all locations that would be set in real TRS80 due to
+        // matrix operation of keyboard on address lines
         for (int j = 0; j < TRS80_KEY_BYTES; j++) {
             if (i & (1 << j))
                 kbdMap[i] |= keybdBytes[j];
+        }
+        // Check for changes
+        if (kbdMap[i] != __trs80KeyBuffer[i])
+        {
+            __trs80KeyBuffer[i] = kbdMap[i];
+            __trs80KeyBufferDirty = true;
         }
     }
 
@@ -190,20 +207,27 @@ static void trs80_keyHandler(unsigned char ucModifiers, const unsigned char rawK
     //     }
     //     uart_printf("\n");
     // }
-
-    // Write to target machine RAM
-    br_write_block(TRS80_KEYBOARD_ADDR, kbdMap, TRS80_KEYBOARD_RAM_SIZE, 1, 0);
 }
 
 static void trs80_displayHandler()
 {
-    // LogWrite(FromTRS80, 4, ".");
-    unsigned char pScrnBuffer[0x400];
-    br_read_block(0x3c00, pScrnBuffer, 0x400, 1, 0);
+    // Read memory of RC2014 at the location of the TRS80 memory
+    // mapped screen
+    unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
+    br_read_block(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, 1, 0);
+
+    // Write to the display on the Pi Zero
     for (int k = 0; k < 16; k++) {
         for (int i = 0; i < 64; i++) {
             wgfx_putc(0, i, k, pScrnBuffer[k * 64 + i]);
         }
+    }
+
+    // Check for key presses and send to the TRS80 if necessary
+    if (__trs80KeyBufferDirty)
+    {
+        br_write_block(TRS80_KEYBOARD_ADDR, __trs80KeyBuffer, TRS80_KEYBOARD_RAM_SIZE, 1, 0);
+        __trs80KeyBufferDirty = false;
     }
 }
 
