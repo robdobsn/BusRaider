@@ -6,17 +6,11 @@ import time
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
-with open(r"../../ROMS/TRS80/level1.rom", "rb") as romFile:
+with open(r"../ROMS/TRS80/level1.rom", "rb") as romFile:
     romData = romFile.read()
-
-with open(r"../../TRS80SW/galinv1d.cmd", "rb") as galaxyFile:
-    galaxyData = galaxyFile.read()
 
 romFrame = bytearray(b"{\"cmdName\":\"filetarget\",\"fileType\":\"trs80bin\"}\0")
 romFrame += romData
-
-galaxyFrame = bytearray(b"{\"cmdName\":\"filetarget\",\"fileType\":\"trs80cmd\"}\0")
-galaxyFrame += galaxyData
 
 clearFrame = b"{\"cmdName\":\"cleartarget\"}\0"
 resetFrame = b"{\"cmdName\":\"resettarget\"}\0"
@@ -39,13 +33,3 @@ with serial.Serial('COM6', 921600) as s:
     time.sleep(2.0)
     h.sendFrame(resetFrame)
     print("Sent resettarget len", len(resetFrame))
-    time.sleep(2.0)    
-    h.sendFrame(galaxyFrame)
-    print("Sent Galaxy Invasion srcs len", len(galaxyFrame))
-    time.sleep(1.0)
-    h.sendFrame(progFrame)
-    print("Sent progtarget len", len(progFrame))
-    time.sleep(2.0)
-    h.sendFrame(resetFrame)
-    print("Sent resettarget len", len(resetFrame))
-    time.sleep(2.0)

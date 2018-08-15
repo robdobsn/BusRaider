@@ -6,10 +6,7 @@ import time
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
-with open(r"../../ROMS/TRS80/level1.rom", "rb") as romFile:
-    romData = romFile.read()
-
-with open(r"../../TRS80SW/galinv1d.cmd", "rb") as galaxyFile:
+with open(r"../TRS80SW/galinv1d.cmd", "rb") as galaxyFile:
     galaxyData = galaxyFile.read()
 
 romFrame = bytearray(b"{\"cmdName\":\"filetarget\",\"fileType\":\"trs80bin\"}\0")

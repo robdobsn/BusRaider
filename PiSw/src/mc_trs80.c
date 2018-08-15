@@ -246,14 +246,23 @@ static void handleTrs80ExecAddr(uint32_t execAddr)
 static void trs80_handle_file(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
 {
     // Get the file type
-    #define MAX_FILE_TYPE_STR 30
-    char fileType[MAX_FILE_TYPE_STR+1];
-    if (!jsonGetValueForKey("fileType", pFileInfo, fileType, MAX_FILE_TYPE_STR))
+    #define MAX_VALUE_STR 30
+    char fileType[MAX_VALUE_STR+1];
+    if (!jsonGetValueForKey("fileType", pFileInfo, fileType, MAX_VALUE_STR))
         return;
     if (strcmp(fileType, "trs80cmd") == 0)
     {
         LogWrite("TRS80", LOG_DEBUG, "Processing TRS80 cmd file len %d\n", fileLen);
         mc_trs80_cmdfile_proc(targetDataBlockStore, handleTrs80ExecAddr, pFileData, fileLen);
+    }
+    else if (strcmp(fileType, "trs80bin") == 0)
+    {
+        uint16_t baseAddr = 0;
+        char baseAddrStr[MAX_VALUE_STR+1];
+        if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
+            baseAddr = strtol(baseAddrStr, NULL, 16);
+        LogWrite("TRS80", LOG_DEBUG, "Processing TRS80 binary file, baseAddr %04x len %d\n", baseAddr, fileLen);
+        targetDataBlockStore(baseAddr, pFileData, fileLen);
     }
 }
 
