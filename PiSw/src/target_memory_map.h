@@ -11,7 +11,7 @@ typedef struct TargetMemoryBlock {
 } TargetMemoryBlock;
 
 extern void targetClear();
-extern void targetDataBlockCallback(uint32_t addr, const uint8_t* pData, uint32_t len);
+extern void targetDataBlockStore(uint32_t addr, const uint8_t* pData, uint32_t len);
 extern int targetGetNumBlocks();
 extern TargetMemoryBlock* targetGetMemoryBlock(int n);
 extern unsigned char* targetMemoryPtr();

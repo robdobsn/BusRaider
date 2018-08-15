@@ -25,7 +25,7 @@ void targetClear()
         __pTargetBuffer[i] = 0;
 }
 
-void targetDataBlockCallback(uint32_t addr, const uint8_t* pData, uint32_t len)
+void targetDataBlockStore(uint32_t addr, const uint8_t* pData, uint32_t len)
 {
     // Check if contiguous with other data
     int blockIdx = -1;

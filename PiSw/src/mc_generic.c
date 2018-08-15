@@ -59,3 +59,14 @@ void mc_generic_handle_disp(uint8_t* pDispBuf, int dispBufLen)
             __pMCtype->pDispHandler(pDispBuf, dispBufLen);
     }
 }
+
+void mc_generic_handle_file(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
+{
+    // Check if valid
+    if (__pMCtype) {
+        // Handle display
+        if (__pMCtype->pFileHandler)
+            __pMCtype->pFileHandler(pFileInfo, pFileData, fileLen);
+    }
+}
+

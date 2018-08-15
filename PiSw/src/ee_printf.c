@@ -59,7 +59,7 @@ This code is based on a file that contains the following:
 
 #define DISP_WRITE_STRING(x) wgfx_term_putstring((const char*)x)
 #define UART_WRITE_STRING(x) uart_write_str((const char*)x)
-#define LOG_WRITE_STRING(x) uart_write_str((const char*)x)
+#define LOG_WRITE_STRING(x) wgfx_term_putstring((const char*)x)
 
 static char* lower_digits = "0123456789abcdefghijklmnopqrstuvwxyz";
 static char* upper_digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";

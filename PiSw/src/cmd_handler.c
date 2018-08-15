@@ -6,6 +6,8 @@
 #include "ee_printf.h"
 #include "uart.h"
 #include "utils.h"
+#include "rdutils.h"
+#include "mc_generic.h"
 #include "target_memory_map.h"
 #include "busraider.h"
 #include "minihdlc.h"
@@ -13,6 +15,8 @@
 #include "srecparser.h"
 
 #define CMD_HANDLER_MAX_CMD_STR_LEN 200
+
+static const char* FromCmdHandler = "CmdHander";
 
 // Structure for command handler state
 void cmdHandler_sendChar(uint8_t ch)
@@ -22,47 +26,63 @@ void cmdHandler_sendChar(uint8_t ch)
 
 void cmdHandler_sinkAddr(uint32_t addr)
 {
-    ee_printf("CmdHandler: got addr from SREC %04x\n", addr);
+    LogWrite(FromCmdHandler, LOG_DEBUG, "CmdHandler: got addr from SREC %04x\n", addr);
 }
 
-void cmdHandler_procCommand(const char* pCmdStr, const uint8_t* pData, int dataLen)
+void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int dataLen)
 {
+    // ee_printf("cmdHandler_procCommand %s\n", pCmdJson);
+    
+    // Get the command string
+    #define MAX_CMD_NAME_STR 100
+    char cmdName[MAX_CMD_NAME_STR+1];
+    if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
+        return;
+
     // Check for simple commands
-    if (strcmp(pCmdStr, "srectarget") == 0)
+    if (strcmp(cmdName, "cleartarget") == 0)
     {
-        ee_printf("CmdHandler: srectarget, byte0 %02x len %d\n", pData[0], dataLen);
         targetClear();
-        srec_decode(targetDataBlockCallback, cmdHandler_sinkAddr, pData, dataLen);
     }
-    else if (strcmp(pCmdStr, "programtarget") == 0)
+    else if (strcmp(cmdName, "programtarget") == 0)
     {
         if (targetGetNumBlocks() == 0) {
             // Nothing new to write
-            ee_printf("CmdHandler: programtarget - nothing to write\n");
+            LogWrite(FromCmdHandler, LOG_DEBUG, "programtarget - nothing to write\n");
         } else {
 
             for (int i = 0; i < targetGetNumBlocks(); i++) {
                 TargetMemoryBlock* pBlock = targetGetMemoryBlock(i);
-                ee_printf("CmdHandler: programtarget start %08x len %d\n", pBlock->start, pBlock->len);
+                LogWrite(FromCmdHandler, LOG_DEBUG,"programtarget start %08x len %d\n", pBlock->start, pBlock->len);
                 br_write_block(pBlock->start, targetMemoryPtr() + pBlock->start, pBlock->len, 1, 0);
             }
 
-            ee_printf("CmdHandler: programtarget - written %d blocks\n", targetGetNumBlocks());
+            LogWrite(FromCmdHandler, LOG_DEBUG, "programtarget - written %d blocks\n", targetGetNumBlocks());
         }
     }
-    else if (strcmp(pCmdStr, "resettarget") == 0)
+    else if (strcmp(cmdName, "resettarget") == 0)
     {
-        ee_printf("CmdHandler: resettarget\n");
+        LogWrite(FromCmdHandler, LOG_DEBUG, "resettarget\n");
         br_reset_host();
     }
-    else if (strcmp(pCmdStr, "ioclrtarget") == 0)
+    else if (strcmp(cmdName, "ioclrtarget") == 0)
     {
-        ee_printf("CmdHandler: ioclrtarget\n");
+        LogWrite(FromCmdHandler, LOG_DEBUG, "ioclrtarget\n");
         // Fill IO "memory" with 0xff
         uint8_t tmpBuf[0x100];
         for (int kk = 0; kk < 0x100; kk++)
             tmpBuf[kk] = 0xff;
         br_write_block(0, tmpBuf, 0x100, 1, 1);         
+    }
+    else if (strcmp(cmdName, "filetarget") == 0)
+    {
+        LogWrite(FromCmdHandler, LOG_DEBUG, "filetarget, len %d\n", dataLen);
+        mc_generic_handle_file(pCmdJson, pData, dataLen);
+    }
+    else if (strcmp(cmdName, "srectarget") == 0)
+    {
+        LogWrite(FromCmdHandler, LOG_DEBUG, "srectarget, len %d\n", dataLen);
+        srec_decode(targetDataBlockStore, cmdHandler_sinkAddr, pData, dataLen);
     }
 }
 
@@ -90,7 +110,7 @@ void cmdHandler_frameHandler(const uint8_t *framebuffer, int framelength)
     if (dataLen < 0)
         dataLen = 0;
 
-    // ee_printf("CmdHandler: %s, cmdLen %d byte0 %02x, datalen %d\n", cmdStr, cmdStrLen, pDataPtr[0], dataLen);
+    // LogWrite(FromCmdHandler, LOG_DEBUG, "%s, cmdLen %d byte0 %02x, datalen %d\n", cmdStr, cmdStrLen, pDataPtr[0], dataLen);
     cmdHandler_procCommand(cmdStr, pDataPtr, dataLen);
 }
 

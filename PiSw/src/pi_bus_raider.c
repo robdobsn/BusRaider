@@ -32,7 +32,7 @@ void main_loop();
 void entry_point()
 {
     // Logging
-    LogSetLevel(LOG_ERROR);
+    LogSetLevel(LOG_WARNING);
     
     // System init
     system_init();

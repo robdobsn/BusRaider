@@ -7,6 +7,10 @@
 #include "nmalloc.h"
 #include "usb_hid_keys.h"
 #include "wgfx.h"
+#include "mc_trs80_cmdfile.h"
+#include "target_memory_map.h"
+#include "utils.h"
+#include "rdutils.h"
 
 extern WgfxFont __TRS80Level3Font;
 
@@ -231,6 +235,28 @@ static void trs80_displayHandler()
     }
 }
 
+static void handleTrs80ExecAddr(uint32_t execAddr)
+{
+    // Handle the execution address
+    uint8_t jumpCmd[3] = { 0xc3, execAddr & 0xff, (execAddr >> 8) & 0xff };
+    targetDataBlockStore(0, jumpCmd, 3);
+    LogWrite("TRS80", LOG_DEBUG, "Added JMP %04x at 0000\n", execAddr);
+}
+
+static void trs80_handle_file(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
+{
+    // Get the file type
+    #define MAX_FILE_TYPE_STR 30
+    char fileType[MAX_FILE_TYPE_STR+1];
+    if (!jsonGetValueForKey("fileType", pFileInfo, fileType, MAX_FILE_TYPE_STR))
+        return;
+    if (strcmp(fileType, "trs80cmd") == 0)
+    {
+        LogWrite("TRS80", LOG_DEBUG, "Processing TRS80 cmd file len %d\n", fileLen);
+        mc_trs80_cmdfile_proc(targetDataBlockStore, handleTrs80ExecAddr, pFileData, fileLen);
+    }
+}
+
 static McGenericDescriptor trs80_descr = {
     // Initialisation function
     .pInit = trs80_init,
@@ -246,7 +272,8 @@ static McGenericDescriptor trs80_descr = {
     .displayBackground = WGFX_BLACK,
     // Keyboard
     .pKeyHandler = trs80_keyHandler,
-    .pDispHandler = trs80_displayHandler
+    .pDispHandler = trs80_displayHandler,
+    .pFileHandler = trs80_handle_file
 };
 
 McGenericDescriptor* trs80_get_descriptor(int subType)
