@@ -136,7 +136,7 @@ BR_RETURN_TYPE br_req_and_take_bus()
     br_request_bus();
 
     // Check for ack
-    for (int i = 0; i < 100000; i++) {
+    for (int i = 0; i < 10000; i++) {
         if (br_bus_acknowledged()) {
             break;
         }
@@ -161,7 +161,7 @@ void br_set_low_addr(uint32_t lowAddrByte)
     W32(GPSET0, 1 << BR_LADDR_CLR_BAR);
     // Clock the required value in - requires one more count than
     // expected as the output register is one clock pulse behind the counter
-    for (uint32_t i = 0; i < lowAddrByte + 1; i++) {
+    for (uint32_t i = 0; i < (lowAddrByte & 0xff) + 1; i++) {
         W32(GPSET0, 1 << BR_LADDR_CK);
         W32(GPCLR0, 1 << BR_LADDR_CK);
     }
@@ -203,7 +203,7 @@ void br_set_high_addr(uint32_t highAddrByte)
 void br_set_full_addr(unsigned int addr)
 {
     br_set_high_addr(addr >> 8);
-    br_set_low_addr(addr);
+    br_set_low_addr(addr & 0xff);
 }
 
 // Set the PIB (pins used for data bus access) to outputs (from Pi)

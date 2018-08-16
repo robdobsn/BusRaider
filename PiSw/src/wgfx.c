@@ -286,15 +286,21 @@ void wgfx_putc(int windowIdx, unsigned int col, unsigned int row, unsigned char 
 
     // For each bit in the font character write the appropriate data to the pixel in framebuffer
     unsigned char* pBufCur = pBuf;
-    for (int y = 0; y < __wgfxWindows[windowIdx].cellHeight; y++) {
-        for (int i = 0; i < __wgfxWindows[windowIdx].yPixScale; i++) {
+    int fgColour = ((__wgfxWindows[windowIdx].foregroundColour != -1) ?
+                    __wgfxWindows[windowIdx].foregroundColour : ctx.fg);
+    int bgColour = ((__wgfxWindows[windowIdx].backgroundColour != -1) ?
+                    __wgfxWindows[windowIdx].backgroundColour : ctx.bg);
+    int cellHeight = __wgfxWindows[windowIdx].cellHeight;
+    int yPixScale = __wgfxWindows[windowIdx].yPixScale;
+    int cellWidth = __wgfxWindows[windowIdx].cellWidth;
+    int xPixScale = __wgfxWindows[windowIdx].xPixScale;
+    for (int y = 0; y < cellHeight; y++) {
+        for (int i = 0; i < yPixScale; i++) {
             pBufCur = pBuf;
-            int bitMask = 0x01 << (__wgfxWindows[windowIdx].cellWidth - 1);
-            for (int x = 0; x < __wgfxWindows[windowIdx].cellWidth; x++) {
-                for (int j = 0; j < __wgfxWindows[windowIdx].xPixScale; j++) {
-                    *pBufCur = (*pFont & bitMask) ? 
-                            ((__wgfxWindows[windowIdx].foregroundColour != -1) ? __wgfxWindows[windowIdx].foregroundColour : ctx.fg) : 
-                            ((__wgfxWindows[windowIdx].backgroundColour != -1) ? __wgfxWindows[windowIdx].backgroundColour : ctx.bg);
+            int bitMask = 0x01 << (cellWidth - 1);
+            for (int x = 0; x < cellWidth; x++) {
+                for (register int j = 0; j < xPixScale; j++) {
+                    *pBufCur = (*pFont & bitMask) ? fgColour : bgColour;
                     pBufCur++;
                 }
                 bitMask = bitMask >> 1;

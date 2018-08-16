@@ -19,15 +19,13 @@ extern WgfxFont __TRS80Level3Font;
 #define TRS80_DISP_RAM_ADDR 0x3c00
 #define TRS80_DISP_RAM_SIZE 0x400
 
-static uint8_t* __trs80ScreenBuffer = NULL;
-
+static uint8_t __trs80ScreenBuffer[TRS80_DISP_RAM_SIZE];
+static bool __trs80ScreenBufferValid = false;
 static uint8_t __trs80KeyBuffer[TRS80_KEYBOARD_RAM_SIZE];
 static bool __trs80KeyBufferDirty = false;
 
 static void trs80_init()
 {
-    // Allocate storage for display
-    __trs80ScreenBuffer = nmalloc_malloc(TRS80_DISP_RAM_SIZE);
     // Clear keyboard buffer
     for (int i = 0; i < TRS80_KEYBOARD_RAM_SIZE; i++)
         __trs80KeyBuffer[i] = 0;
@@ -37,9 +35,6 @@ static void trs80_init()
 
 static void trs80_deinit()
 {
-    // Allocate storage for display
-    if (__trs80ScreenBuffer)
-        nmalloc_free((void*)__trs80ScreenBuffer);
 }
 
 static void trs80_keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6])
@@ -223,9 +218,15 @@ static void trs80_displayHandler()
     // Write to the display on the Pi Zero
     for (int k = 0; k < 16; k++) {
         for (int i = 0; i < 64; i++) {
-            wgfx_putc(0, i, k, pScrnBuffer[k * 64 + i]);
+            register int cellIdx = k * 64 + i;
+            if (!__trs80ScreenBufferValid || (__trs80ScreenBuffer[cellIdx] != pScrnBuffer[cellIdx]))
+            {
+                wgfx_putc(0, i, k, pScrnBuffer[cellIdx]);
+                __trs80ScreenBuffer[cellIdx] = pScrnBuffer[cellIdx];
+            }
         }
     }
+    __trs80ScreenBufferValid = true;
 
     // Check for key presses and send to the TRS80 if necessary
     if (__trs80KeyBufferDirty)
@@ -271,7 +272,7 @@ static McGenericDescriptor trs80_descr = {
     .pInit = trs80_init,
     .pDeInit = trs80_deinit,
     // Required display refresh rate
-    .displayRefreshRatePerSec = 25,
+    .displayRefreshRatePerSec = 30,
     .displayPixelsX = 8 * 64,
     .displayPixelsY = 24 * 16,
     .displayCellX = 8,

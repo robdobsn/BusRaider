@@ -25,8 +25,6 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
     mc_generic_handle_key(ucModifiers, rawKeys);
 }
 
-unsigned long __lastDisplayUpdateUs = 0;
-
 void main_loop();
 
 void entry_point()
@@ -39,6 +37,8 @@ void entry_point()
 
     // Init timers
     timers_init();
+
+    // Clock init
 
     // UART
     uart_init(MAIN_UART_BAUD_RATE, 1);
@@ -110,13 +110,34 @@ void main_loop()
     McGenericDescriptor* pMcDescr = mc_generic_get_descriptor();
     const unsigned long reqUpdateUs = 1000000 / pMcDescr->displayRefreshRatePerSec;
 
+    #define REFRESH_RATE_WINDOW_SIZE_MS 2000
+    int refreshCount = 0;
+    unsigned long curRateSampleWindowStart = micros();
+    unsigned long lastDisplayUpdateUs = 0;
+    unsigned long dispTime = 0;
+
     while (1) {
 
         // Handle target machine display updates
-        if (timer_isTimeout(micros(), __lastDisplayUpdateUs, reqUpdateUs)) {
+        if (timer_isTimeout(micros(), lastDisplayUpdateUs, reqUpdateUs)) {
             // Check valid
+            dispTime = micros();
+            lastDisplayUpdateUs = micros();
             mc_generic_handle_disp();
-            __lastDisplayUpdateUs = micros();
+            dispTime = micros() - dispTime;
+            refreshCount++;
+        }
+
+        // Handle refresh rate calculation
+        if (timer_isTimeout(micros(), curRateSampleWindowStart, REFRESH_RATE_WINDOW_SIZE_MS * 1000)) {
+            int refreshRate = refreshCount * 1000 / REFRESH_RATE_WINDOW_SIZE_MS;
+            // uart_printf("Rate %d per sec, requs %ld dispTime %ld\n", refreshCount / 2, reqUpdateUs, dispTime);
+            wgfx_putc(1, 150, 0, '0' + (refreshRate % 10));
+            wgfx_putc(1, 149, 0, '0' + ((refreshRate / 10) % 10));
+            if (refreshRate / 100 != 0)
+                wgfx_putc(1, 148, 0, '0' + ((refreshRate / 100) % 10));
+            refreshCount = 0;
+            curRateSampleWindowStart = micros();
         }
 
         // Service command handler
