@@ -36,7 +36,7 @@ void mc_trs80_cmdfile_proc(CmdFileParserDataCallback* pDataCallback, CmdFilePars
                 else
                     length -= 2;
                 pDataCallback(addr, pData+pos, length);
-                LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: Code segment addr %04x len %04x\n", addr, length);
+                LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: Code segment addr %04x len %04x", addr, length);
                 break;
             }
             case 2:
@@ -54,33 +54,33 @@ void mc_trs80_cmdfile_proc(CmdFileParserDataCallback* pDataCallback, CmdFilePars
                     execAddr = pData[pos] + (((uint32_t)pData[pos+1]) << 8);
                     pos+=2;
                     pAddrCallback(execAddr);
-                    LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: ExecAddr16 %04x\n", execAddr);
+                    LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: ExecAddr16 %04x", execAddr);
                 }
                 else
                 {
-                    LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: Error in exec addr\n");
+                    LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: Error in exec addr");
                 }
                 break;
             }
             case 3:
             {
                 // Non exec marker
-                LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: Non exec marker\n");
+                LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: Non exec marker");
                 return;
             }
             case 4:
             {
-                LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: End of partitioned data\n");
+                LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: End of partitioned data");
                 break;
             }
             case 5:
             {
-                LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: Title\n");
+                LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: Title");
                 break;
             }
             default:
             {
-                LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: Undecoded block %02x\n", code);
+                LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: Undecoded block %02x", code);
                 break;
             }
         }

@@ -53,7 +53,7 @@ class Frame(object):
         if not res:
             c1 = str(self.crc)
             c2 = str(calcCRC(self.data))
-            logger.warning("invalid crc %s != %s", c1.encode("hex"), c2.encode("hex"))
+            logger.warning("invalid crc %s != %s", c1, c2)
             self.error = True
         return res
 
@@ -97,13 +97,14 @@ class HDLC(object):
     def _readBytes(self, size):
         while size > 0:
             b = bytearray(self.serial.read(1))
-            if b < 1:
+            if len(b) < 1:
                 return False
             res = self._readByte(b[0])
             if res:
                 return True
 
     def _readByte(self, b):
+        print(".")
         assert 0 <= b <= 255
         if b == 0x7E:
             # Start or End

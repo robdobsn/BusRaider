@@ -3,6 +3,10 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+thumbs.db
+.pioenvs/
+.sconsign.dblite
+
 # User-specific files
 *.suo
 *.user
@@ -327,3 +331,4 @@ ASALocalRun/
 
 # MFractors (Xamarin productivity tool) working folder
 .mfractor/
+Blog/Thumbs.db

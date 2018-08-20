@@ -17,7 +17,7 @@
 #include "../uspi/include/uspi.h"
 
 // Baud rate
-#define MAIN_UART_BAUD_RATE 921600
+#define MAIN_UART_BAUD_RATE 115200
 
 static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char rawKeys[6])
 {
@@ -30,7 +30,7 @@ void main_loop();
 void entry_point()
 {
     // Logging
-    LogSetLevel(LOG_WARNING);
+    LogSetLevel(LOG_DEBUG);
     
     // System init
     system_init();

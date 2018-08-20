@@ -57,7 +57,7 @@ static int JSMNR_parse_primitive(JSMNR_parser *parser, const char *js,
 				goto found;
 		}
 		if (js[parser->pos] < 32 || js[parser->pos] >= 127) {
-            LogWrite(FromJSMNR, LOG_DEBUG, "JSMNR_ERROR_INVAL ch bounds %d pos %d\n", js[parser->pos], parser->pos);
+            LogWrite(FromJSMNR, LOG_DEBUG, "JSMNR_ERROR_INVAL ch bounds %d pos %d", js[parser->pos], parser->pos);
             parser->pos = start;
 			return JSMNR_ERROR_INVAL;
 		}
@@ -134,7 +134,7 @@ static int JSMNR_parse_string(JSMNR_parser *parser, const char *js,
 						if(!((js[parser->pos] >= 48 && js[parser->pos] <= 57) || // 0-9
 									(js[parser->pos] >= 65 && js[parser->pos] <= 70) || // A-F
 									(js[parser->pos] >= 97 && js[parser->pos] <= 102))) { // a-f
-                            LogWrite(FromJSMNR, LOG_DEBUG, "JSMNR_ERROR_INVAL hex bounds %d pos %d\n", js[parser->pos], parser->pos);
+                            LogWrite(FromJSMNR, LOG_DEBUG, "JSMNR_ERROR_INVAL hex bounds %d pos %d", js[parser->pos], parser->pos);
 							parser->pos = start;
 							return JSMNR_ERROR_INVAL;
 						}
@@ -144,7 +144,7 @@ static int JSMNR_parse_string(JSMNR_parser *parser, const char *js,
 					break;
 				// Unexpected symbol
 				default:
-                    LogWrite(FromJSMNR, LOG_DEBUG, "JSMNR_ERROR_INVAL Unexpected %d pos %d\n", js[parser->pos], parser->pos);
+                    LogWrite(FromJSMNR, LOG_DEBUG, "JSMNR_ERROR_INVAL Unexpected %d pos %d", js[parser->pos], parser->pos);
 					parser->pos = start;
 					return JSMNR_ERROR_INVAL;
 			}
@@ -222,7 +222,7 @@ int JSMNR_parse(JSMNR_parser *parser, const char *js, size_t len,
 					token = &tokens[i];
 					if (token->start != -1 && token->end == -1) {
 						if (token->type != type) {
-                            LogWrite(FromJSMNR, LOG_NOTICE, "JSMNR_ERROR_INVAL %d type %d %d\n", token->start, token->type, type);
+                            LogWrite(FromJSMNR, LOG_NOTICE, "JSMNR_ERROR_INVAL %d type %d %d", token->start, token->type, type);
 							return JSMNR_ERROR_INVAL;
 						}
 						parser->toksuper = -1;
@@ -233,7 +233,7 @@ int JSMNR_parse(JSMNR_parser *parser, const char *js, size_t len,
 				/* Error if unmatched closing bracket */
 				if (i == -1)
                 {
-                    LogWrite(FromJSMNR, LOG_NOTICE, "JSMNR_ERROR_INVAL unmatchedbrace pos %d ch %d toknext %d type %d\n", parser->pos, js[parser->pos], parser->toknext, type);
+                    LogWrite(FromJSMNR, LOG_NOTICE, "JSMNR_ERROR_INVAL unmatchedbrace pos %d ch %d toknext %d type %d", parser->pos, js[parser->pos], parser->toknext, type);
                     JSMNR_logLongStr("JSMN: parse input", js, true);
                     return JSMNR_ERROR_INVAL;
                 }

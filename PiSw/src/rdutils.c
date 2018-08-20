@@ -49,6 +49,49 @@ int strncmp(const char* str1, const char* str2, size_t num)
     return (0);
 }
 
+int stricmp(const char* str1, const char* str2)
+{
+    do {
+        if (rdtolower(*str1) != rdtolower(*str2++))
+            return (rdtolower(*str1) - rdtolower(*(--str2)));
+        if (*str1++ == 0)
+            break;
+    } while (1);
+    return (0);
+}
+
+// strstr from Apple open source
+const char *strstr(const char* string, const char* substring)
+{
+    const char *a, *b;
+
+    /* First scan quickly through the two strings looking for a
+     * single-character match.  When it's found, then compare the
+     * rest of the substring.
+     */
+
+    b = substring;
+    if (*b == 0) {
+    return string;
+    }
+    for ( ; *string != 0; string += 1) {
+    if (*string != *b) {
+        continue;
+    }
+    a = string;
+    while (1) {
+        if (*b == 0) {
+        return string;
+        }
+        if (*a++ != *b++) {
+        break;
+        }
+    }
+    b = substring;
+    }
+    return NULL;
+}
+
 bool jsonGetValueForKey(const char* srchKey, const char* jsonStr, char* pOutStr, int outStrMaxLen)
 {
     // pCmdJson is a JSON string containing the command to execute (amongst other things possibly)
@@ -58,7 +101,7 @@ bool jsonGetValueForKey(const char* srchKey, const char* jsonStr, char* pOutStr,
     JSMNR_init(&parser);
     int tokenCountRslt = JSMNR_parse(&parser, jsonStr, strlen(jsonStr), tokens, MAX_TOKENS);
     if (tokenCountRslt < 0) {
-        LogWrite("rdutils", LOG_DEBUG, "parseJson result %d maxTokens %d jsonLen %d\n", 
+        LogWrite("rdutils", LOG_DEBUG, "parseJson result %d maxTokens %d jsonLen %d", 
                         tokenCountRslt, MAX_TOKENS, strlen(jsonStr));
         return false;
     }
@@ -97,7 +140,7 @@ bool jsonGetValueForKey(const char* srchKey, const char* jsonStr, char* pOutStr,
 #define LONG_MIN    ((long)(~LONG_MAX))     /* 0x80000000 */
 #endif
 
-char isspace (unsigned char c) 
+char rdisspace (unsigned char c) 
 {
   if ( c == ' '
     || c == '\f'
@@ -110,21 +153,30 @@ char isspace (unsigned char c)
   return 0;
 }
 
-int isdigit(int c)
+int rdisdigit(int c)
 {
     return (c >= '0' && c <= '9' ? 1 : 0);
 }
 
 #define UC(c)   ((unsigned char)c)
 
-char isupper (unsigned char c)
+char rdisupper (unsigned char c)
 {
     if ( c >= UC('A') && c <= UC('Z') )
         return 1;
     return 0;
 }
 
-int isalpha(int c)
+char rdtolower(char c)
+{
+    if (rdisupper(c))
+    {
+        return c + ('a' - 'A');
+    }
+    return c;
+}
+
+int rdisalpha(int c)
 {
     return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ? 1 : 0);
 }
@@ -150,7 +202,7 @@ long strtol(const char *nptr, char **endptr, register int base)
      */
     do {
         c = *s++;
-    } while (isspace(c));
+    } while (rdisspace(c));
     if (c == '-') {
         neg = 1;
         c = *s++;
@@ -186,10 +238,10 @@ long strtol(const char *nptr, char **endptr, register int base)
     cutlim = cutoff % (unsigned long)base;
     cutoff /= (unsigned long)base;
     for (acc = 0, any = 0;; c = *s++) {
-        if (isdigit(c))
+        if (rdisdigit(c))
             c -= '0';
-        else if (isalpha(c))
-            c -= isupper(c) ? 'A' - 10 : 'a' - 10;
+        else if (rdisalpha(c))
+            c -= rdisupper(c) ? 'A' - 10 : 'a' - 10;
         else
             break;
         if (c >= base)
@@ -210,4 +262,13 @@ long strtol(const char *nptr, char **endptr, register int base)
     if (endptr != 0)
         *endptr = (char *) (any ? s - 1 : nptr);
     return (acc);
+}
+
+void * memcpy (void *dest, const void *src, size_t len)
+{
+    char *d = dest;
+    const char *s = src;
+    while (len--)
+       *d++ = *s++;
+    return dest;
 }

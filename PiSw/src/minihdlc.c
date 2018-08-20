@@ -1,4 +1,4 @@
-// from https://github.com/mengguang/minihdlc
+// Modified from https://github.com/mengguang/minihdlc
 
 #include "minihdlc.h"
 #include "ee_printf.h"

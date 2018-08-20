@@ -241,7 +241,7 @@ static void handleTrs80ExecAddr(uint32_t execAddr)
     // Handle the execution address
     uint8_t jumpCmd[3] = { 0xc3, execAddr & 0xff, (execAddr >> 8) & 0xff };
     targetDataBlockStore(0, jumpCmd, 3);
-    LogWrite("TRS80", LOG_DEBUG, "Added JMP %04x at 0000\n", execAddr);
+    LogWrite("TRS80", LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
 }
 
 static void trs80_handle_file(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
@@ -251,18 +251,18 @@ static void trs80_handle_file(const char* pFileInfo, const uint8_t* pFileData, i
     char fileType[MAX_VALUE_STR+1];
     if (!jsonGetValueForKey("fileType", pFileInfo, fileType, MAX_VALUE_STR))
         return;
-    if (strcmp(fileType, "trs80cmd") == 0)
+    if (stricmp(fileType, "cmd") == 0)
     {
-        LogWrite("TRS80", LOG_DEBUG, "Processing TRS80 cmd file len %d\n", fileLen);
+        LogWrite("TRS80", LOG_DEBUG, "Processing TRS80 cmd file len %d", fileLen);
         mc_trs80_cmdfile_proc(targetDataBlockStore, handleTrs80ExecAddr, pFileData, fileLen);
     }
-    else if (strcmp(fileType, "trs80bin") == 0)
+    else if (stricmp(fileType, "bin") == 0)
     {
         uint16_t baseAddr = 0;
         char baseAddrStr[MAX_VALUE_STR+1];
         if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
             baseAddr = strtol(baseAddrStr, NULL, 16);
-        LogWrite("TRS80", LOG_DEBUG, "Processing TRS80 binary file, baseAddr %04x len %d\n", baseAddr, fileLen);
+        LogWrite("TRS80", LOG_DEBUG, "Processing TRS80 binary file, baseAddr %04x len %d", baseAddr, fileLen);
         targetDataBlockStore(baseAddr, pFileData, fileLen);
     }
 }
