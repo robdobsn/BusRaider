@@ -71,3 +71,4 @@ unsigned char* targetMemoryPtr()
 {
     return __pTargetBuffer;
 }
+

@@ -416,3 +416,13 @@ BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int bu
     }
     return BR_OK;
 }
+
+// Clear all IO space
+void br_clear_all_io()
+{
+    // Fill IO "memory" with 0xff
+    uint8_t tmpBuf[0x100];
+    for (int kk = 0; kk < 0x100; kk++)
+        tmpBuf[kk] = 0xff;
+    br_write_block(0, tmpBuf, 0x100, 1, 1);  
+}

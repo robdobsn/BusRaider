@@ -52,6 +52,7 @@
         }
 
         function initializeProgress(numFiles) {
+            window.pageState.uploadProgress = []
             let progressBar = document.getElementById('progress-bar');
             progressBar.value = 0;
             for (let i = numFiles; i > 0; i--) {
@@ -63,7 +64,7 @@
             let progressBar = document.getElementById('progress-bar');
             window.pageState.uploadProgress[fileNumber] = percent;
             let total = window.pageState.uploadProgress.reduce((tot, curr) => tot + curr, 0) / window.pageState.uploadProgress.length;
-            console.debug('update', fileNumber, percent, total);
+            // console.debug('update', fileNumber, percent, total);
             progressBar.value = total;
         }
 
@@ -96,20 +97,12 @@
             xhr.send(formData);
         }
 
-        function sendToRC2014()
+        function sendCmdToTarget(targetCmd)
         {
             var xhr = new XMLHttpRequest();
-            xhr.open('GET', "/targetcmd/programtarget");
+            xhr.open('GET', "/targetcmd/" + targetCmd);
             xhr.send();
         }
-
-        function resetRC2014()
-        {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', "/targetcmd/resettarget");
-            xhr.send();
-        }
-        
 
     </script>
     <style>
@@ -202,8 +195,10 @@
             <progress id="progress-bar" max=100 value=0></progress>
         </div>
         <div id="control-area" class="layout-region">
-            <span class="button" onclick="sendToRC2014()">Send to RC2014</span>
-            <span class="button" onclick="resetRC2014()">Reset RC2014</span>
+            <span class="button" onclick="sendCmdToTarget('programtarget')">Send to RC2014</span>
+            <span class="button" onclick="sendCmdToTarget('resettarget')">Reset RC2014</span>
+            <span class="button" onclick="sendCmdToTarget('ioclrtarget')">Clear all RC2014 IO</span>
+            <span class="button" onclick="sendCmdToTarget('cleartarget')">Clear Target Buffer</span>
         </div>
         <div id="footer-area" class="layout-region">
             <p>Developed by Rob Dobson 2018, inspired by RC2014 and PiGFX</p>

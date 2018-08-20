@@ -29,8 +29,10 @@ static void trs80_init()
     // Clear keyboard buffer
     for (int i = 0; i < TRS80_KEYBOARD_RAM_SIZE; i++)
         __trs80KeyBuffer[i] = 0;
+
     // Ensure keyboard is cleared initially
     __trs80KeyBufferDirty = true;
+
 }
 
 static void trs80_deinit()

@@ -83,6 +83,7 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
                         _receivedFileName, _receivedFileBufSize);
 
         }
+
     }
     else if (strcmp(cmdName, "ufBlock") == 0)
     {
@@ -174,11 +175,7 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
     else if (strcmp(cmdName, "ioclrtarget") == 0)
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "ioclrtarget");
-        // Fill IO "memory" with 0xff
-        uint8_t tmpBuf[0x100];
-        for (int kk = 0; kk < 0x100; kk++)
-            tmpBuf[kk] = 0xff;
-        br_write_block(0, tmpBuf, 0x100, 1, 1);         
+        br_clear_all_io();       
     }
     else if (strcmp(cmdName, "filetarget") == 0)
     {

@@ -128,7 +128,9 @@ void setup()
     webServer.addEndpoints(restAPIEndpoints);
 
     // File upload
-    webServer.addFileUploadHandler(fileUploadHandler);
+    String uploadResponseStr;
+    Utils::setJsonBoolResult(uploadResponseStr, true);
+    webServer.addFileUploadHandler(fileUploadHandler, uploadResponseStr.c_str());
 
     // Add debug blocks
     debugLoopTimer.blockAdd(0, "Web");

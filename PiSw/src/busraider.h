@@ -75,3 +75,5 @@ extern uint8_t br_read_byte(int iorq);
 extern BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
 extern BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
 
+// Clear IO
+extern void br_clear_all_io();

@@ -24,6 +24,7 @@ class WebServer
     bool _begun;
     bool _webServerEnabled;
     WebServerFileUploadHandlerT* _pFileUploadHandler;
+    String _fileUploadResponseJson;
 
     WebServer()
     {
@@ -179,15 +180,17 @@ class WebServer
         }
     }
 
-    void addFileUploadHandler(WebServerFileUploadHandlerT* pFileUploadHandler)
+    void addFileUploadHandler(WebServerFileUploadHandlerT* pFileUploadHandler, 
+                const char * responseJSON)
     {
         _pFileUploadHandler = pFileUploadHandler;
         if (_pFileUploadHandler == NULL)
             return;
 
         // upload a file to /upload
-        _pServer->on("/upload", HTTP_POST, [](AsyncWebServerRequest *request){
-            request->send(200);
+        _fileUploadResponseJson = responseJSON;
+        _pServer->on("/upload", HTTP_POST, [this](AsyncWebServerRequest *request){
+            request->send(200, "application/json", _fileUploadResponseJson.c_str());
         }, (*_pFileUploadHandler));        
     }
 
