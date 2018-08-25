@@ -36,8 +36,11 @@
  ----------------------------------------------------------------------------
 */
 
-#ifndef _NMALLOC_000_H
-#define _NMALLOC_000_H
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* size_T datatype, used as an unsigned integer to keep track of memory
  * block size. This type can be modified as needed by the target architecture
@@ -61,4 +64,6 @@ extern size_T nmalloc_num_free_blocks(void);
 
 #endif
 
+#ifdef __cplusplus
+}
 #endif

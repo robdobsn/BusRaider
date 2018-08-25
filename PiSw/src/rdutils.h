@@ -27,7 +27,8 @@ extern long strtol(const char *nptr, char **endptr, register int base);
 
 extern void * memcpy (void *dest, const void *src, size_t len);
 
-extern void __aeabi_unwind_cpp_pr0(void);
+// extern void __aeabi_unwind_cpp_pr0(void);
+// extern void __cxa_end_cleanup(void);
 
 #ifdef __cplusplus
 }

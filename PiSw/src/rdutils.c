@@ -273,9 +273,17 @@ void * memcpy (void *dest, const void *src, size_t len)
     return dest;
 }
 
-// Stubbed out exception routine to avoid unwind errors in ARM code
-// https://stackoverflow.com/questions/14028076/memory-utilization-for-unwind-support-on-arm-architecture
-void __aeabi_unwind_cpp_pr0(void) 
-{
+// // Stubbed out exception routine to avoid unwind errors in ARM code
+// // https://stackoverflow.com/questions/14028076/memory-utilization-for-unwind-support-on-arm-architecture
+// void __aeabi_unwind_cpp_pr0(void) 
+// {
 
-}
+// }
+
+// // Stubbed out - probably should restore registers but might only be necessary on unwinding after exceptions
+// // which are not used
+// void __cxa_end_cleanup(void)
+// {
+
+// }
+

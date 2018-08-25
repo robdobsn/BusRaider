@@ -15,6 +15,8 @@
 #include "rdutils.h"
 #include "../uspi\include\uspi\types.h"
 #include "../uspi/include/uspi.h"
+#include "McManager.h"
+#include "McTRS80.h"
 
 // Baud rate
 #define MAIN_UART_BAUD_RATE 115200
@@ -24,6 +26,7 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
     // ee_printf("KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
     mc_generic_handle_key(ucModifiers, rawKeys);
 }
+
 
 void main_loop();
 
@@ -99,6 +102,17 @@ extern "C" void entry_point()
 
     // Bus raider setup
     br_init();
+
+    // Code to test start of new machine handler
+    // new McTRS80();
+
+    // ee_printf("McManager nummc %d\n", McManager::_numMachines);
+
+    // McBase* pMc = McManager::getMachine();
+    // if (pMc)
+    //     pMc->handleDisplay();
+    // else
+    //     ee_printf("Failed to construct\n");
 
     // Start the main loop
     main_loop();
