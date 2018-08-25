@@ -28,6 +28,10 @@ enum WGFX_COLR_NAMES
 	WGFX_WHITE
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern void wgfx_init(unsigned int desiredWidth, unsigned int desiredHeight);
 extern void wgfx_set_framebuffer(void* p_framebuffer, unsigned int width, unsigned int height,
     unsigned int pitch, unsigned int size);
@@ -53,3 +57,7 @@ extern void wgfx_restore_cursor_content();
 extern unsigned char* wgfx_get_win_pfb(int winIdx, int col, int row);
 extern void wgfxHLine(int x, int y, int len, int colour);
 extern void wgfxVLine(int x, int y, int len, int colour);
+
+#ifdef __cplusplus
+}
+#endif

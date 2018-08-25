@@ -6,6 +6,10 @@
 #include "bare_metal_pi_zero.h"
 #include "globaldefs.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // Return codes
 typedef enum {
     BR_OK = 0,
@@ -77,3 +81,7 @@ extern BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len,
 
 // Clear IO
 extern void br_clear_all_io();
+
+#ifdef __cplusplus
+}
+#endif

@@ -5,6 +5,10 @@
 
 #include "utils.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern void uart_init(unsigned int baudRate, bool use_interrupts);
 extern void uart_init_irq();
 extern unsigned int uart_poll();
@@ -18,3 +22,7 @@ extern unsigned int uart_read_byte();
 extern unsigned int uart_read_hex();
 extern void uart_write_hex_u8(unsigned int d);
 extern void uart_write_hex_u32(unsigned int d);
+
+#ifdef __cplusplus
+}
+#endif

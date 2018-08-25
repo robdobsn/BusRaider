@@ -40,6 +40,10 @@ $(BUILD_DIR)/%.o : $(SRC_DIR)/%.c
 	@$(ARMGNU)-gcc $(CFLAGS) -c $< -o $@
 	@echo "CC $<"
 
+$(BUILD_DIR)/%.o : $(SRC_DIR)/%.cpp
+	@$(ARMGNU)-gcc $(CFLAGS) -c $< -o $@
+	@echo "CC $<"
+
 $(BUILD_DIR)/%.o : $(SRC_DIR)/%.s 
 	@$(ARMGNU)-as $< -o $@
 	@echo "AS $<"

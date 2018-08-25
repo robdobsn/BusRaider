@@ -27,8 +27,9 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
 
 void main_loop();
 
-void entry_point()
+extern "C" void entry_point()
 {
+
     // Logging
     LogSetLevel(LOG_DEBUG);
     

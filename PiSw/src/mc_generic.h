@@ -5,6 +5,10 @@
 #include "globaldefs.h"
 #include "wgfxfont.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef void TMcInitFunction();
 typedef void TMcDeInitFunction();
 typedef void TMcKeyHandlerRaw(unsigned char ucModifiers, const unsigned char rawKeys[6]);
@@ -39,3 +43,7 @@ extern McGenericDescriptor* mc_generic_get_descriptor();
 extern void mc_generic_handle_key(unsigned char ucModifiers, const unsigned char rawKeys[6]);
 extern void mc_generic_handle_disp();
 extern void mc_generic_handle_file(const char* pFileInfo, const uint8_t* pFileData, int fileLen);
+
+#ifdef __cplusplus
+}
+#endif

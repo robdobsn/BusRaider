@@ -3,6 +3,10 @@
 
 #include "globaldefs.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern int timer_isTimeout(unsigned long curTime, unsigned long lastTime, unsigned long maxDuration);
 
 extern void system_init();
@@ -22,3 +26,9 @@ extern bool jsonGetValueForKey(const char* srchKey, const char* jsonStr, char* p
 extern long strtol(const char *nptr, char **endptr, register int base);
 
 extern void * memcpy (void *dest, const void *src, size_t len);
+
+extern void __aeabi_unwind_cpp_pr0(void);
+
+#ifdef __cplusplus
+}
+#endif
