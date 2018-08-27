@@ -37,12 +37,12 @@ typedef struct {
 #define RPI_UART_INTERRUPT_IRQ (1 << 25) /* 25 for IRQ register 2 means IRQ 57 in the table */
 #define RPI_SYSTEM_TIMER_3_IRQ (1 << 3)
 
-/** @brief The BCM2835 Interupt controller peripheral at it's base address */
-extern rpi_irq_controller_t* pIRQController;
-
 typedef void IntHandler(void* data);
-void irq_attach_handler(unsigned int irq, IntHandler* phandler, void* pdata);
 
-void irq_uart_handler(IntHandler* pHandler);
+extern void irq_set_usb_handler(IntHandler* pHandler, void* pData);
+extern void irq_set_uart_handler(IntHandler* pHandler, void* pData);
+
+extern volatile int edgeCountGlobal;
+extern volatile unsigned int globalAllBasicBits;
 
 #endif

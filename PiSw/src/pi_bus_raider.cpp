@@ -17,6 +17,7 @@
 #include "../uspi/include/uspi.h"
 #include "McManager.h"
 #include "McTRS80.h"
+#include "irq.h"
 
 // Baud rate
 #define MAIN_UART_BAUD_RATE 115200
@@ -114,6 +115,8 @@ extern "C" void entry_point()
     // else
     //     ee_printf("Failed to construct\n");
 
+    br_enable_wait_iorq();
+
     // Start the main loop
     main_loop();
 }
@@ -141,6 +144,9 @@ void main_loop()
             mc_generic_handle_disp();
             dispTime = micros() - dispTime;
             refreshCount++;
+
+
+            ee_printf("%d %d %d %08x\n", edgeCountGlobal, globalUartCount, globalUartDebug, globalAllBasicBits);
         }
 
         // Handle refresh rate calculation

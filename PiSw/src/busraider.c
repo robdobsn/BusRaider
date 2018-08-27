@@ -9,10 +9,15 @@
 // Uncomment the following lines to enable these pins
 // #define BR_ENABLE_NMI 1
 // #define BR_ENABLE_IRQ 1
-// #define BR_ENABLE_WAIT 1
+#define BR_ENABLE_WAIT 1
+// Use IORQ Wait
+#define BR_ENABLE_IORQ_WAIT_CIRCUIT 1
+// Use Low address read
+#define BR_ENABLE_LADDR_READ 1
 
 // Uncomment the following to use bitwise access to busses and pins on Pi
 // #define USE_BITWISE_BUS_ACCESS 1
+
 
 // Set a pin to be an output and set initial value for that pin
 void br_set_pin_out(int pin, int val)
@@ -41,6 +46,10 @@ void br_init()
 // WAIT
 #ifdef BR_ENABLE_WAIT
     br_set_pin_out(BR_WAIT, 0);
+#endif
+// IORQ WAIT
+#ifdef BR_ENABLE_LADDR_READ
+    br_set_pin_out(BR_LADDR_OE_BAR, 1);
 #endif
     // Address push
     br_set_pin_out(BR_PUSH_ADDR_BAR, 1);
@@ -425,4 +434,21 @@ void br_clear_all_io()
     for (int kk = 0; kk < 0x100; kk++)
         tmpBuf[kk] = 0xff;
     br_write_block(0, tmpBuf, 0x100, 1, 1);  
+}
+
+// Enable wait on IORQ
+void br_enable_wait_iorq() //AccessCallbackFnT* pAccessCallback)
+{
+    // Clear WAIT to stop any wait happening
+    // digitalWrite(BR_WAIT, 0);
+
+    // Setup interrupt on IORQ line
+
+    // Setup edge triggering on falling edge of MREQ
+    W32(GPEDS0, 1 << 0);  // Clear any current detected edge
+    W32(GPFEN0, 1 << 0);  // Set falling edge detect
+
+    W32(IRQ_FIQ_CONTROL, (1 << 7) | 52);
+    enable_fiq();
+
 }

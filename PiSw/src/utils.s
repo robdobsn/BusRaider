@@ -13,6 +13,13 @@ disable_irq:
         cpsid i
         mov pc, lr
 
+.global enable_fiq
+enable_fiq:
+    mrs r0,cpsr
+    bic r0,r0,#0x40
+    msr cpsr_c,r0
+    bx lr
+
 ;@ Wait for at least r0 cycles
 .global busywait
 busywait:

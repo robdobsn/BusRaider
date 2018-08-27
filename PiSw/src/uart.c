@@ -129,21 +129,27 @@ unsigned int uart_read_hex()
     return 0;
 }
 
+volatile int globalUartCount = 0;
+volatile int globalUartDebug = 0;
+
 void uart_irq_handler(__attribute__((unused)) void* data)
 {
     unsigned int rb, rc;
 
-    //an interrupt has occurred, find out why
-    while (1) //resolve all interrupts to uart
+    globalUartDebug++;
+
+    // An interrupt has occurred, find out why
+    while (1)
     {
         rb = R32(AUX_MU_IIR_REG);
         if ((rb & 1) == 1)
-            break; //no more interrupts
+            break; // No more interrupts
         if ((rb & 6) == 4) {
-            //receiver holds a valid byte
-            rc = R32(AUX_MU_IO_REG); //read byte from rx fifo
+            // Receiver holds a valid byte
+            rc = R32(AUX_MU_IO_REG); // Read byte from rx fifo
             rxbuffer[rxhead] = rc & 0xFF;
             rxhead = (rxhead + 1) & RXBUFMASK;
+            globalUartCount++;
         }
     }
 }
@@ -151,8 +157,9 @@ void uart_irq_handler(__attribute__((unused)) void* data)
 void uart_init_irq()
 {
     W32(IRQ_ENABLE1, 1 << 29);
-    enable_irq();
-    irq_uart_handler(uart_irq_handler);
+   //  enable_irq();
+   irq_set_uart_handler(uart_irq_handler, NULL);
+    // irq_attach_handler(57, uart_irq_handler, NULL);
 }
 
 //------------------------------------------------------------------------

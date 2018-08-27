@@ -16,7 +16,7 @@ _reset_h:                        .word   _reset_
     _data_abort_h:               .word   /*data_abort_*/            hang
     _unused_handler_h:           .word   hang
     _interrupt_h:                .word   irq_handler_ 
-    _fast_interrupt_h:           .word   /*fast_interrupt_handler*/ hang
+    _fast_interrupt_h:           .word   fiq_handler_
 
 
 ;@ See linker script file
@@ -71,6 +71,16 @@ _reset_:
 2:
     ;@ Jump to the entry point
     bl  entry_point
+
+.global fiq_handler_
+fiq_handler_:
+    mov r10, #32          ;@ r10 = 32 (which is BR_HADDR_SER) used for TEST only
+    mvn r9, #0            ;@ r9 = 0xffffffff
+    ldr r11, =0x20200000  ;@ r11 = base of GPIO
+    str r10, [r11, #28]   ;@ GPSET0 - set BR_HADDR_SER
+    str r10, [r11, #40]   ;@ GPCLR0 - clear BR_HADDR_SER
+    str r9, [r11, #64]    ;@ GPEDS0 - clear interrupt by writing 0xffffffff to GPEDS0
+    subs pc,lr,#4         ;@ return from FIQ
 
 .global hang
 hang: 

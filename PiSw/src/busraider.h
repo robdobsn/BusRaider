@@ -10,6 +10,8 @@
 extern "C" {
 #endif
 
+typedef void AccessCallbackFnT(int addr, int data, int flags);
+
 // Return codes
 typedef enum {
     BR_OK = 0,
@@ -18,24 +20,25 @@ typedef enum {
 } BR_RETURN_TYPE;
 
 // Pi pins used for control of host bus
-#define BR_BUSRQ 19
+#define BR_BUSRQ 19 // SPI1 MISO
 #define BR_BUSACK_BAR 2 // SDA
-#define BR_RESET 4
-#define BR_NMI 8
-#define BR_IRQ 10
-#define BR_WAIT 9
-#define BR_WR_BAR 17
-#define BR_RD_BAR 18
+#define BR_RESET 4 // CPCLK0
+#define BR_NMI 8 // SPI0 CE0
+#define BR_IRQ 10 // SPI0 MOSI
+#define BR_WAIT 9 // SPI0 MISO
+#define BR_WR_BAR 17 // SPI1 CE1
+#define BR_RD_BAR 18 // SPI1 CE0
 #define BR_MREQ_BAR 0 // ID_SD
 #define BR_IORQ_BAR 1 // ID_SC
 #define BR_DATA_BUS 20 // GPIO20..27
-#define BR_PUSH_ADDR_BAR 3
-#define BR_HADDR_CK 7 // CE1
+#define BR_PUSH_ADDR_BAR 3 // SCL
+#define BR_HADDR_CK 7 // SPI0 CE1
 #define BR_HADDR_SER 5
-#define BR_LADDR_CK 16
-#define BR_LADDR_CLR_BAR 13
+#define BR_LADDR_CK 16 // SPI1 CE2
+#define BR_LADDR_CLR_BAR 13 // PWM1
 #define BR_DATA_DIR_IN 6
-#define BR_DATA_OE_BAR 12
+#define BR_DATA_OE_BAR 12 // PWM0
+#define BR_LADDR_OE_BAR 11 // SPI0 SCLK
 
 // Direct access to Pi PIB (used for data transfer to/from host data bus)
 #define BR_PIB_MASK (~((uint32_t)0xff << BR_DATA_BUS))
@@ -78,6 +81,8 @@ extern uint8_t br_read_byte(int iorq);
 // Read and write blocks
 extern BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
 extern BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
+// Enable WAIT
+extern void br_enable_wait_iorq(); //(AccessCallbackFnT* pAccessCallback);
 
 // Clear IO
 extern void br_clear_all_io();
