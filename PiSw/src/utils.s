@@ -20,6 +20,11 @@ enable_fiq:
     msr cpsr_c,r0
     bx lr
 
+.global disable_fiq
+disable_fiq:
+    cpsid f
+    mov     pc, lr
+
 ;@ Wait for at least r0 cycles
 .global busywait
 busywait:

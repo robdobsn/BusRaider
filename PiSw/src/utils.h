@@ -8,6 +8,7 @@ extern void utils_store_abs8(uint32_t addr, uint8_t byte);
 extern void enable_irq();
 extern void disable_irq();
 extern void enable_fiq();
+extern void disable_fiq();
 
 extern void busywait(unsigned int cycles);
 extern void W32(unsigned int addr, unsigned int data);
