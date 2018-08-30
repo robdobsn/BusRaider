@@ -52,6 +52,8 @@ extern void wgfx_scroll(int winIdx, int rows);
 extern void wgfx_set_bg(WGFX_COL col);
 extern void wgfx_set_fg(WGFX_COL col);
 
+extern void wgfx_wait_for_prev_operation();
+
 extern void wgfx_term_render_cursor();
 extern void wgfx_restore_cursor_content();
 extern unsigned char* wgfx_get_win_pfb(int winIdx, int col, int row);

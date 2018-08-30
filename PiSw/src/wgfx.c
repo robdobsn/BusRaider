@@ -5,6 +5,8 @@
 #include "ee_printf.h"
 #include "framebuffer.h"
 #include "timer.h"
+#include "utils.h"
+#include "dma.h"
 
 extern WgfxFont __systemFont;
 
@@ -28,6 +30,7 @@ typedef struct WgfxWindowDef {
 #define WGFX_MAX_WINDOWS 5
 static WgfxWindowDef __wgfxWindows[WGFX_MAX_WINDOWS];
 static int __wgfxNumWindows = 0;
+static bool __wgfxDMAActive = false;
 
 typedef struct {
     unsigned int screenWidth;
@@ -56,6 +59,7 @@ typedef struct {
 } FRAMEBUFFER_CTX;
 
 static FRAMEBUFFER_CTX ctx;
+unsigned int __attribute__((aligned(0x100))) mem_buff_dma[16];
 
 void wgfx_init(unsigned int desiredWidth, unsigned int desiredHeight)
 {
@@ -88,6 +92,8 @@ void wgfx_init(unsigned int desiredWidth, unsigned int desiredHeight)
 void wgfx_set_framebuffer(void* p_framebuffer, unsigned int width, unsigned int height,
     unsigned int pitch, unsigned int size)
 {
+    dma_init();
+
     ctx.pfb = p_framebuffer;
     ctx.screenWidth = width;
     ctx.screenHeight = height;
@@ -202,6 +208,8 @@ void wgfx_set_console_window(int winIdx)
 
 void wgfx_clear()
 {
+    // Wait for previous operation (dma) to complete
+    wgfx_wait_for_prev_operation();
     unsigned char* pf = ctx.pfb;
     unsigned char* pfb_end = pf + ctx.size;
     while (pf < pfb_end)
@@ -279,6 +287,9 @@ void wgfx_putc(int windowIdx, unsigned int col, unsigned int row, unsigned char 
     if (windowIdx < 0 || windowIdx >= __wgfxNumWindows)
         return;
 
+    // Wait for previous operation (dma) to complete
+    wgfx_wait_for_prev_operation();
+
     // Pointer to framebuffer where char cell starts
     unsigned char* pBuf = wgfx_get_win_pfb(windowIdx, col, row);
     // Pointer to font data to write into char cell
@@ -321,6 +332,9 @@ void wgfx_write_cell(int windowIdx, unsigned int col, unsigned int row, unsigned
     if (windowIdx < 0 || windowIdx >= __wgfxNumWindows)
         return;
 
+    // Wait for previous operation (dma) to complete
+    wgfx_wait_for_prev_operation();
+
     // Pointer to framebuffer where char cell starts
     unsigned char* pBuf = wgfx_get_win_pfb(windowIdx, col, row);
 
@@ -348,6 +362,9 @@ void wgfx_read_cell(int windowIdx, unsigned int col, unsigned int row, unsigned 
         return;
     if (windowIdx < 0 || windowIdx >= __wgfxNumWindows)
         return;
+
+    // Wait for previous operation (dma) to complete
+    wgfx_wait_for_prev_operation();
 
     // Pointer to framebuffer where char cell starts
     unsigned char* pBuf = wgfx_get_win_pfb(windowIdx, col, row);
@@ -401,11 +418,27 @@ void wgfx_set_fg(WGFX_COL col)
     ctx.fg = col;
 }
 
+void wgfx_wait_for_prev_operation()
+{
+    if (__wgfxDMAActive)
+        for (int i = 0; i < 100000; i++)
+            if (!dma_running())
+                break;
+    __wgfxDMAActive = false;
+}
+
+#define USE_DMA_FOR_SCROLL 1
+
 // Positive values for rows scroll up, negative down
 void wgfx_scroll(int windowIdx, int rows)
 {
     if (windowIdx < 0 || windowIdx >= WGFX_MAX_WINDOWS || rows == 0)
         return;
+
+    // Wait for previous operation (dma) to complete
+    wgfx_wait_for_prev_operation();
+    
+    // Get framebuffer location
     int numRows = rows < 0 ? -rows : rows;
     unsigned char* pBlankStart = NULL;
     unsigned char* pBlankEnd = NULL;
@@ -416,10 +449,36 @@ void wgfx_scroll(int windowIdx, int rows)
         unsigned char* pEnd = wgfx_get_win_pfb(windowIdx, 0, ctx.term.numRows);
         pBlankStart = wgfx_get_win_pfb(windowIdx, 0, ctx.term.numRows-numRows);
         pBlankEnd = pEnd;
+
+#ifdef USE_DMA_FOR_SCROLL
+    unsigned int* BG = (unsigned int*)mem_2uncached( mem_buff_dma );
+    *BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
+    *(BG+1) = *BG;
+    *(BG+2) = *BG;
+    *(BG+3) = *BG;
+    // unsigned int line_height = ctx.Pitch * npixels;
+
+    dma_enqueue_operation( (unsigned int *)( pSrc ),
+                           (unsigned int *)( pDest ),
+                           (pEnd-pSrc),
+                           0,
+                           DMA_TI_SRC_INC | DMA_TI_DEST_INC );
+
+    dma_enqueue_operation( BG,
+                           (unsigned int *)( pBlankStart ),
+                           pBlankEnd-pBlankStart,
+                           0,
+                           DMA_TI_DEST_INC );
+
+    dma_execute_queue();
+    __wgfxDMAActive = true;
+
+#else        
         while (pSrc < pEnd)
         {
             *pDest++ = *pSrc++;
         }
+#endif
     }
     else
     {
@@ -435,15 +494,18 @@ void wgfx_scroll(int windowIdx, int rows)
         }
     }
 
-    // Clear lines
-    while(pBlankStart < pBlankEnd)
-    {
-        *pBlankStart++ = ctx.bg;
-    }
+    // // Clear lines
+    // while(pBlankStart < pBlankEnd)
+    // {
+    //     *pBlankStart++ = ctx.bg;
+    // }
 }
 
 void wgfxHLine(int x, int y, int len, int colour)
 {
+    // Wait for previous operation (dma) to complete
+    wgfx_wait_for_prev_operation();
+
     unsigned char* pBuf = wgfx_get_pfb_xy(x, y);
     for (int i = 0; i < len; i++)
     {
@@ -453,6 +515,9 @@ void wgfxHLine(int x, int y, int len, int colour)
 
 void wgfxVLine(int x, int y, int len, int colour)
 {
+    // Wait for previous operation (dma) to complete
+    wgfx_wait_for_prev_operation();
+
     unsigned char* pBuf = wgfx_get_pfb_xy(x, y);
     for (int i = 0; i < len; i++)
     {
@@ -460,3 +525,4 @@ void wgfxVLine(int x, int y, int len, int colour)
         pBuf += ctx.pitch;
     }
 }
+

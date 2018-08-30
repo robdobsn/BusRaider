@@ -1,5 +1,4 @@
-#ifndef _DMA_H_
-#define _DMA_H_
+#pragma once
 
 #define DMA_TI_SRC_INC (1 << 8)
 #define DMA_TI_SRC_IGNORE (1 << 11)
@@ -18,4 +17,3 @@ int dma_running();
 
 #define DMA_CHAN0_BUSY (*((volatile unsigned int*)0x20007000 /*DMA_BASE*/ + (0 << 6) + 0x00 /*dma_cs_offset*/) & 0x1)
 
-#endif
