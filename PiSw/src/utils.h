@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "bare_metal_pi_zero.h"
 
 extern void utils_goto(uint32_t gotoAddr);
@@ -11,8 +15,6 @@ extern void enable_fiq();
 extern void disable_fiq();
 
 extern void busywait(unsigned int cycles);
-extern void W32(unsigned int addr, unsigned int data);
-extern unsigned int R32(unsigned int addr);
 extern void membarrier();
 
 /**
@@ -78,3 +80,7 @@ inline void memcpy( unsigned char* dst, unsigned char* src, unsigned int len )
 //#define mem_v2p(X) ((((unsigned int)X)&0x0FFFFFFF))
 #define mem_2uncached(X) ((((unsigned int)X) & 0x0FFFFFFF) | 0x40000000)
 #define mem_2cached(X) ((((unsigned int)X) & 0x0FFFFFFF))
+
+#ifdef __cplusplus
+}
+#endif

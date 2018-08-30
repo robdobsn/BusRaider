@@ -7,6 +7,18 @@
 #include "jsmnR.h"
 #include "ee_printf.h"
 
+void W32(unsigned int addr, unsigned int val)
+{
+    volatile unsigned int* pAddr = (volatile unsigned int*)addr;
+    *pAddr = val;
+}
+
+unsigned int R32(unsigned int addr)
+{
+    volatile unsigned int* pAddr = (volatile unsigned int*)addr;
+    return *pAddr;
+}
+
 int timer_isTimeout(unsigned long curTime, unsigned long lastTime, unsigned long maxDuration)
 {
     if (curTime >= lastTime) {

@@ -5,9 +5,17 @@
 
 #include "utils.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern void sw_serial_init(int txPin, int rxPin, int txBufferSize, int rxBufferSize);
 extern void sw_serial_deinit();
 extern void sw_serial_begin(long speed);
+
+#ifdef __cplusplus
+}
+#endif
 
 // extern unsigned int sw_serial_poll();
 // extern void sw_serial_purge();

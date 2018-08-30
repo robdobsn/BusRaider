@@ -1,5 +1,9 @@
-#ifndef _IRQ_H_
-#define _IRQ_H_
+#pragma once
+
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* See http://www.valvers.com/open-software/raspberry-pi/step04-bare-metal-programming-in-c-pt4/ */
 
@@ -43,4 +47,6 @@ extern void irq_set_usb_handler(IntHandler* pHandler, void* pData);
 extern void irq_set_uart_handler(IntHandler* pHandler, void* pData);
 extern void irq_set_wait_state_handler(IntHandler* pHandler);
 
+#ifdef __cplusplus
+}
 #endif

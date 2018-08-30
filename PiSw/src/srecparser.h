@@ -3,6 +3,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // #define DEBUG_SREC_RX 1
 
 #include "globaldefs.h"
@@ -24,3 +28,7 @@ extern void srec_init();
 
 extern void srec_decode(SrecHandlerDataCallback* pSrecDataCallback, SrecHandlerAddrCallback* pSrecAddrCallback,
 			const uint8_t* pData, uint32_t len);
+
+#ifdef __cplusplus
+}
+#endif

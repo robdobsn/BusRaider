@@ -2,6 +2,10 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -13,3 +17,7 @@ typedef void (* frame_handler_type)(const uint8_t *framebuffer, int framelength)
 void minihdlc_init(sendchar_type, frame_handler_type);
 void minihdlc_char_receiver(uint8_t data);
 void minihdlc_send_frame(const uint8_t *framebuffer, int frame_length);
+
+#ifdef __cplusplus
+}
+#endif

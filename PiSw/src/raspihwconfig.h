@@ -1,5 +1,8 @@
-#ifndef _RASPI_HW_CONFIG_H_
-#define _RASPI_HW_CONFIG_H_
+#pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef enum {
     RHW_SUCCESS = 0x0,
@@ -27,4 +30,6 @@ typedef enum {
 RHW_RETURN_TYPE rhw_get_mac_address(unsigned char* pOutAddr);
 RHW_RETURN_TYPE rhw_set_device_power(RHW_DEVICE dev, RHW_POWER_STATE state);
 
+#ifdef __cplusplus
+}
 #endif

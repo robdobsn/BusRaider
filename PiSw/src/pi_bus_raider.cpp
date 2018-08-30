@@ -98,6 +98,9 @@ extern "C" void entry_point()
     // Bus raider setup
     br_init();
 
+    // Bus raider enable wait states
+    br_enable_wait_states();
+
     // Code to test start of new machine handler
     // new McTRS80();
 
@@ -148,5 +151,10 @@ extern "C" void entry_point()
 
         // Timer polling
         timer_poll();
+
+        // Service bus raider
+        br_service();
     }
 }
+
+// #endif

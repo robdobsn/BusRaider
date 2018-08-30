@@ -38,22 +38,6 @@ bloop:  ;@ eor r1, r0, r1
         pop {r1}
         bx lr   ;@ Return 
 
-
-
-;@ W32( address, data ) 
-;@  write one word at the specified memory address
-.global W32
-W32:    str  r1, [r0]
-        bx lr        
-
-
-;@ R32( address ) 
-;@  write one word at the specified memory address
-.global R32
-R32:    ldr  r0, [r0]
-        bx lr        
-
-
 ;@ performs a memory barrier
 ;@ http://infocenter.arm.com/help/topic/com.arm.doc.ddi0360f/I1014942.html
 ;@

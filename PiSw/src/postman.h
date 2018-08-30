@@ -1,6 +1,9 @@
-#ifndef _POSTMAN_H_
-#define _POSTMAN_H_
+#pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+	
 typedef enum {
     POSTMAN_SUCCESS = 0xC0,
     POSTMAN_SEND_TIMEOUT = 0xC1,
@@ -15,4 +18,6 @@ typedef enum {
 extern POSTMAN_RETURN_TYPE postman_send(unsigned int channel, unsigned int data);
 extern POSTMAN_RETURN_TYPE postman_recv(unsigned int channel, unsigned int* out_data);
 
+#ifdef __cplusplus
+}
 #endif

@@ -7,6 +7,9 @@
 extern "C" {
 #endif
 
+extern void W32(unsigned int addr, unsigned int val);
+extern unsigned int R32(unsigned int addr);
+
 extern int timer_isTimeout(unsigned long curTime, unsigned long lastTime, unsigned long maxDuration);
 
 extern void system_init();

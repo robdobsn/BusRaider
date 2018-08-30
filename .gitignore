@@ -6,6 +6,7 @@
 thumbs.db
 .pioenvs/
 .sconsign.dblite
+build/*.o
 
 # User-specific files
 *.suo

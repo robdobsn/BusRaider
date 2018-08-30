@@ -6,6 +6,10 @@
 #include "globaldefs.h"
 #include "wgfxfont.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef unsigned char WGFX_COL;
 
 enum WGFX_COLR_NAMES
@@ -27,10 +31,6 @@ enum WGFX_COLR_NAMES
 	WGFX_CYAN,
 	WGFX_WHITE
 };
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 extern void wgfx_init(unsigned int desiredWidth, unsigned int desiredHeight);
 extern void wgfx_set_framebuffer(void* p_framebuffer, unsigned int width, unsigned int height,

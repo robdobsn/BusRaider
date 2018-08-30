@@ -5,6 +5,7 @@
 #include "piwiring.h"
 #include "timer.h"
 #include "irq.h"
+#include "utils.h"
 
 // Following pins are jumpered - to allow SPI bus usage if not needed
 // Uncomment the following lines to enable these pins
@@ -436,8 +437,67 @@ void br_clear_all_io()
     br_write_block(0, tmpBuf, 0x100, 1, 1);  
 }
 
+//#define TEST_BUS_RAIDER_FIQ 1
+
+#ifdef TEST_BUS_RAIDER_FIQ
+
+static const int PI_ZERO_LED = 47;
+volatile int flag = 0;
+int a = 0;
+
+void br_wait_state_isr(void* pData)
+{
+        flag = 1;
+    // scaleCtr++;
+    // if (scaleCtr > 1000)
+    // {
+    //     scaleCtr = 0;
+    //     // W32(GPSET0, 1 << 17);
+    //     // W32(GPCLR0, 1 << 17);
+    //     // if (digitalRead(PI_ZERO_LED))
+    //     //     digitalWrite(PI_ZERO_LED, 0);
+    //     // else
+    //     //     digitalWrite(PI_ZERO_LED, 1);
+    // }
+    W32(GPEDS0, 0xffffffff);  // Clear any current detected edge
+}
+
 // Enable wait-states
-void br_enable_wait_iorq()
+void br_enable_wait_states()
+{
+    irq_set_wait_state_handler(br_wait_state_isr);
+
+    pinMode(8, INPUT);
+
+    W32(GPEDS0, 1 << 8);  // Clear any current detected edge
+    // W32(GPAFEN0, 1 << 22);  // Set falling edge detect async
+    W32(GPFEN0, 1 << 8);  // Set falling edge detect
+
+    W32(IRQ_FIQ_CONTROL, (1 << 7) | 52);
+    enable_fiq();
+
+    pinMode(PI_ZERO_LED, OUTPUT);
+
+}
+
+void br_service()
+{
+    if (flag)
+    {
+        flag = 0;
+        a++;
+        if (a > 1000)
+        {
+            a = 0;
+            digitalWrite(PI_ZERO_LED, !digitalRead(PI_ZERO_LED));
+        }
+    }
+}
+
+#else
+
+// Enable wait-states
+void br_enable_wait_states()
 {
 #ifdef BR_ENABLE_WAIT_STATES
     // Clear WAIT to stop any wait happening
@@ -467,3 +527,9 @@ void br_wait_state_isr(void* pData)
     // Clear detected edge on any pin
     W32(GPEDS0, 0xffffffff);  
 }
+
+void br_service()
+{
+}
+
+#endif
