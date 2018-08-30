@@ -496,9 +496,22 @@ void br_service()
 
 #else
 
+volatile int iorqPortsRead[256];
+volatile int iorqPortsWritten[256];
+volatile int iorqPortsOther[256];
+volatile int iorqIsNotActive = 0;
+
 // Enable wait-states
 void br_enable_wait_states()
 {
+
+    for (int i = 0; i < 256; i++)
+    {
+        iorqPortsRead[i] = 0;
+        iorqPortsWritten[i] = 0;
+        iorqPortsOther[i] = 0;
+    }
+
 #ifdef BR_ENABLE_WAIT_STATES
     // Clear WAIT to stop any wait happening
     digitalWrite(BR_WAIT, 0);
@@ -521,6 +534,29 @@ void br_enable_wait_states()
 void br_wait_state_isr(void* pData)
 {
     pData = pData;
+    
+    // Read the low address
+    digitalWrite(BR_LADDR_OE_BAR, 0);
+    uint8_t lowAddr = br_get_pib_value() & 0xff;
+    digitalWrite(BR_LADDR_OE_BAR, 1);
+
+    // Read the control lines
+    uint32_t busVals = R32(GPLEV0);
+    if ((busVals & (1 << BR_RD_BAR)) == 0)
+    {
+        iorqPortsRead[lowAddr]++;
+    }
+    else if ((busVals & (1 << BR_WR_BAR)) == 0)
+    {
+        iorqPortsWritten[lowAddr]++;
+    }
+    else
+    {
+        iorqPortsOther[lowAddr]++;
+    }
+    if (busVals & (iorqIsNotActive != 0))
+        iorqIsNotActive++;
+
     // Clear the WAIT state
     W32(GPCLR0, 1 << BR_WAIT);
     W32(GPSET0, 1 << BR_WAIT);
@@ -528,8 +564,24 @@ void br_wait_state_isr(void* pData)
     W32(GPEDS0, 0xffffffff);  
 }
 
+#include "ee_printf.h"
+
+int loopCtr = 0;
 void br_service()
 {
+    loopCtr++;
+    if (loopCtr > 100000)
+    {
+        for (int i = 0; i < 256; i++)
+        {
+            if (iorqPortsRead[i] > 0 || iorqPortsWritten[i] > 0 || iorqPortsOther[i] > 0)
+                ee_printf("%d r %d w %d o %d\n", i, iorqPortsRead[i], iorqPortsWritten[i], iorqPortsOther[i]);
+        }
+        if (iorqIsNotActive > 0)
+            ee_printf("Not actv %d", iorqIsNotActive);
+        ee_printf("\n");
+        loopCtr = 0;
+    }
 }
 
 #endif
