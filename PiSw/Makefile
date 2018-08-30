@@ -16,12 +16,12 @@ OBJS=$(patsubst %.o,$(BUILD_DIR)/%.o,$(OOB))
 LIBGCC="$(shell $(ARMGNU)-gcc -print-libgcc-file-name)"
 LIBUSPI=uspi/lib/libuspi.a
 
-all: pi_bus_raider.elf pi_bus_raider.hex kernel list
+all: pi_bus_raider.elf kernel list
 	$(MAKE) -C ./uspi/lib 
 	ctags src/.
 	arm-none-eabi-objcopy --srec-forceS3 pi_bus_raider.elf -O srec pi_bus_raider.srec
 
-run: pi_bus_raider.elf
+run: pi_bus_raider.img
 	curl -F "file=@pi_bus_raider.img" http://192.168.86.89/upload
 
 kernel: pi_bus_raider.img
@@ -32,10 +32,6 @@ list: pi_bus_raider.elf
 
 debug: pi_bus_raider.elf
 	cd JTAG && ./run_gdb.sh
-
-dump: pi_bus_raider.elf
-	@$(ARMGNU)-objdump --disassemble-zeroes -D pi_bus_raider.elf > pi_bus_raider.dump
-	@echo "OBJDUMP $<"
 
 $(BUILD_DIR)/%.o : $(SRC_DIR)/%.c 
 	@$(ARMGNU)-gcc $(CFLAGS) -c $< -o $@
@@ -48,10 +44,6 @@ $(BUILD_DIR)/%.o : $(SRC_DIR)/%.cpp
 $(BUILD_DIR)/%.o : $(SRC_DIR)/%.s 
 	@$(ARMGNU)-as $< -o $@
 	@echo "AS $<"
-
-%.hex : %.elf 
-	@$(ARMGNU)-objcopy $< -O ihex $@
-	@echo "OBJCOPY $< -> $@"
 
 %.img : %.elf 
 	@$(ARMGNU)-objcopy $< -O binary $@
@@ -66,8 +58,6 @@ pi_bus_raider.elf : $(OBJS) $(LIBUSPI)
 
 .PHONY clean :
 	rm -f $(BUILD_DIR)/*.o
-	rm -f *.hex
 	rm -f *.elf
 	rm -f *.img
-	rm -f *.dump
 	rm -f tags
