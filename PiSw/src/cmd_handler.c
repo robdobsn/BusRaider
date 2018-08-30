@@ -20,7 +20,7 @@
 
 static const char* FromCmdHandler = "CmdHander";
 
-#define MAX_FILE_NAME_STR 50
+#define MAX_FILE_NAME_STR 100
 char _receivedFileName[MAX_FILE_NAME_STR+1];
 static uint8_t* _pReceivedFileDataPtr = NULL;
 static int _receivedFileBufSize = 0;
@@ -40,7 +40,7 @@ void cmdHandler_sinkAddr(uint32_t addr)
 
 void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int dataLen)
 {
-    LogWrite(FromCmdHandler, LOG_DEBUG, "cmdHandler_procCommand %s, dataLen %d", pCmdJson, dataLen);
+    // LogWrite(FromCmdHandler, LOG_DEBUG, "cmdHandler_procCommand %s, dataLen %d", pCmdJson, dataLen);
     
     // Get the command string
     #define MAX_CMD_NAME_STR 30
@@ -109,8 +109,8 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
 
         // Add to count of blocks
         _receivedBlockCount++;
-        LogWrite(FromCmdHandler, LOG_DEBUG, "efBlock, len %d, blocks %d", 
-                    _receivedFileBytesRx, _receivedBlockCount);
+        // LogWrite(FromCmdHandler, LOG_DEBUG, "efBlock, len %d, blocks %d", 
+        //             _receivedFileBytesRx, _receivedBlockCount);
     }
     else if (strcmp(cmdName, "ufEnd") == 0)
     {
@@ -134,6 +134,51 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         const char* pDot = strstr(_receivedFileName, ".");
         if (pDot != NULL)
         {
+            // Handle IMG files as firmware update for Pi itself
+            if (stricmp(pDot, ".IMG") == 0)
+            {
+                LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd IMG firmware update File %s, len %d", _receivedFileName, _receivedFileBytesRx);
+
+                // Copy the blockCopyExecRelocatable() code to HEAP space
+                uint8_t* pCopyBlockNewLocation = nmalloc_malloc(blockCopyExecRelocatableLen);
+                if (!pCopyBlockNewLocation)
+                {
+                    LogWrite(FromCmdHandler, LOG_ERROR, "cannot create space for blockCopyExecRelocatable fn, len %d", blockCopyExecRelocatableLen);
+                    return;
+                }
+                memcpy(pCopyBlockNewLocation, blockCopyExecRelocatable, blockCopyExecRelocatableLen);
+
+                // Call the copyblock function in it's new location
+                blockCopyExecRelocatableFnT* pCopyBlockFn = (blockCopyExecRelocatableFnT*) pCopyBlockNewLocation;
+
+                LogWrite(FromCmdHandler, LOG_DEBUG, "Address of copyBlockFn %08x, len %d", pCopyBlockNewLocation, blockCopyExecRelocatableLen);
+
+                // Call the copyBlock function in its new location using it to move the program
+                // to 0x8000 the base address for Pi programs
+                (*pCopyBlockFn) ((uint8_t*)0x8000, _pReceivedFileDataPtr, _receivedFileBytesRx, (uint8_t*)0x8000);
+
+                // // Allocate again for test
+                // uint8_t* pTest = nmalloc_malloc(_receivedFileBytesRx);
+                // void* retVal = (*pCopyBlockFn) (pTest, _pReceivedFileDataPtr, _receivedFileBytesRx);
+
+                // // Check it
+                // LogWrite(FromCmdHandler, LOG_DEBUG, "Address of test %08x, len %d, retVal %08x", pTest, blockCopyExecRelocatableLen, retVal);
+                // for (int i = 0; i < _receivedFileBytesRx; i++)
+                // {
+                //     if (pTest[i] != _pReceivedFileDataPtr[i])
+                //     {
+                //         LogWrite(FromCmdHandler, LOG_DEBUG, "Incorrect data at %d", i);
+                //         break;
+                //     }
+                // }
+
+                // LogWrite(FromCmdHandler, LOG_DEBUG, "Here");
+
+                return;
+            }
+
+
+            // TODO - move the following code to specific machine
             if (stricmp(pDot, ".CMD") == 0)
             {
                 LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd CMD File %s, len %d", _receivedFileName, _receivedFileBytesRx);
@@ -141,6 +186,8 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
                 return;
             }
         }
+
+        // TODO - move the following code to specific machine
 
         // Falling through to here so treat as binary file
         LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd BIN File %s, len %d", _receivedFileName, _receivedFileBytesRx);

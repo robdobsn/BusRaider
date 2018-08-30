@@ -46,12 +46,6 @@ void irq_set_uart_handler(IntHandler* pHandler, void* pData)
 
 void __attribute__((interrupt("IRQ"))) irq_handler_(void)
 {
-
-    edgeCountGlobal++;
-    globalAllBasicBits |= pIRQController->IRQ_pending_1;
-    if (edgeCountGlobal % 1000 == 0)
-        globalAllBasicBits = 0;
-
     if (pIRQController->IRQ_basic_pending & (1 << 11) && __irqHandlerUSBFn)
     {
         // IRQ 9
@@ -67,28 +61,19 @@ void __attribute__((interrupt("IRQ"))) irq_handler_(void)
     }
 }
 
-volatile int edgeCountGlobal = 0;
-volatile unsigned int globalAllBasicBits = 0;
+////////////////////////////////////////////////////////////////////////////////////////////
+// WAIT_STATE FIQ interrupt service routine
+////////////////////////////////////////////////////////////////////////////////////////////
 
-void irq_set_iorq_handler()
+static IntHandler* __irqHandlerWaitStateFn = 0;
+
+void irq_set_wait_state_handler(IntHandler* pHandler)
 {
-    // Setup edge triggering on falling edge of pin
-    #define BR_RD_BAR 18
-    W32(GPEDS0, 1 << BR_RD_BAR);  // Clear any current detected edge
-    W32(GPFEN0, 1 << BR_RD_BAR);  // Set falling edge detect
-   W32(IRQ_FIQ_CONTROL, (1 << 7) | 52);
-   enable_fiq();
+    __irqHandlerWaitStateFn = pHandler;
 }
-// void __attribute__((interrupt("FIQ"))) fiq_handler_(void)
-// {
-// 
-    //             register volatile char *gpsed0 asm ("r8");
-    // register volatile char *dat asm ("r9");
-    // gpsed0 = GPEDS0;
-    // dat = *gpsed0;
-    // if (dat != 0)
-    // {
-    //     *gpsed0 = 0xffffffff;
 
-    // }
-// }
+void c_firq_handler()
+{
+    if (__irqHandlerWaitStateFn)
+        __irqHandlerWaitStateFn(0);
+}

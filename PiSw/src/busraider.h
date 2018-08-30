@@ -83,6 +83,7 @@ extern BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len
 extern BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
 // Enable WAIT
 extern void br_enable_wait_iorq(); //(AccessCallbackFnT* pAccessCallback);
+extern void br_wait_state_isr(void* pData);
 
 // Clear IO
 extern void br_clear_all_io();

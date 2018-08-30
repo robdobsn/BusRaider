@@ -21,9 +21,15 @@ extern unsigned int strlen(const char* str);
 extern int strcmp(const char* s1, const char* s2);
 
 /**
- * Memory
+ * Relocatable block copy (like memcpy but can be moved anywhere in memory)
  */
+extern void* blockCopyExecRelocatable(void* pDest, void* pSrc, int len, void* execAddr);
+typedef void* blockCopyExecRelocatableFnT(uint8_t* pDest, uint8_t* pSrc, int len, void* execAddr);
+extern unsigned int blockCopyExecRelocatableLen;
+
 /*
+
+
 inline void memcpy( unsigned char* dst, unsigned char* src, unsigned int len )
 {
     unsigned char* srcEnd = src + len;

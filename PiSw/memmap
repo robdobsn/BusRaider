@@ -1,10 +1,10 @@
 
 MEMORY
 {
-    ram : ORIGIN = 0x8000, LENGTH = 10M
+    ram : ORIGIN = 0x8000, LENGTH = 512M
 }
 
-heap_size = 250000;
+heap_size = 20M;
 
 SECTIONS
 {
@@ -26,15 +26,6 @@ SECTIONS
         . = . + heap_size;
         _heap_end = .;
     } > ram 
-
-    /* Remove information from the standard libraries 
-       /DISCARD/ :
-       {
-       libc.a ( * )
-       libm.a ( * )
-       libgcc.a ( * )
-       }
-     */
 
     .ARM.attributes 0 : { *(.ARM.attributes) }
 }

@@ -111,6 +111,22 @@ strcmp:
     pop {r2,r3}
     bx lr
 
+;@ blockCopyExecRelocatable - copied to heap and used for firmware update
+.global blockCopyExecRelocatable
+blockCopyExecRelocatable:
+    push {r3}
+blockCopyExecRelocatableLoop:
+    LDRB r3, [r1], #1
+    STRB r3, [r0], #1
+    SUBS r2, r2, #1
+    BGE blockCopyExecRelocatableLoop
+    pop {r0}
+    bx r0
+
+blockCopyExecRelocatableEnd:
+.global blockCopyExecRelocatableLen
+blockCopyExecRelocatableLen: .word blockCopyExecRelocatableEnd-blockCopyExecRelocatable
+
 .global utils_goto
 utils_goto:
     bx r0

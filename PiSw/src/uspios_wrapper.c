@@ -6,8 +6,6 @@
 #include "timer.h"
 #include "uart.h"
 
-static const char* FromUSPIOSWrapper = "USPIOSWrapper";
-
 void* malloc(unsigned nSize) // result must be 4-byte aligned
 {
     return nmalloc_malloc(nSize);
@@ -44,7 +42,7 @@ void CancelKernelTimer(__attribute__((unused)) unsigned hTimer)
 
 void ConnectInterrupt(unsigned nIRQ, TInterruptHandler* pHandler, void* pParam)
 {
-    // LogWrite (FromUSPIOSWrapper, LOG_DEBUG, "IRQ is %d\n", nIRQ);
+    nIRQ = nIRQ;
     irq_set_usb_handler(pHandler, pParam);
 }
 

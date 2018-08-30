@@ -4,14 +4,13 @@
 #include "busraider.h"
 #include "piwiring.h"
 #include "timer.h"
+#include "irq.h"
 
 // Following pins are jumpered - to allow SPI bus usage if not needed
 // Uncomment the following lines to enable these pins
 // #define BR_ENABLE_NMI 1
 // #define BR_ENABLE_IRQ 1
-#define BR_ENABLE_WAIT 1
-// Use IORQ Wait
-#define BR_ENABLE_IORQ_WAIT_CIRCUIT 1
+#define BR_ENABLE_WAIT_STATES 1
 // Use Low address read
 #define BR_ENABLE_LADDR_READ 1
 
@@ -44,10 +43,11 @@ void br_init()
     br_set_pin_out(BR_IRQ, 0);
 #endif
 // WAIT
-#ifdef BR_ENABLE_WAIT
+#ifdef BR_ENABLE_WAIT_STATES
+    // Clear WAIT initially - leaving LOW disables WAIT generation
     br_set_pin_out(BR_WAIT, 0);
 #endif
-// IORQ WAIT
+// Low address read
 #ifdef BR_ENABLE_LADDR_READ
     br_set_pin_out(BR_LADDR_OE_BAR, 1);
 #endif
@@ -436,19 +436,34 @@ void br_clear_all_io()
     br_write_block(0, tmpBuf, 0x100, 1, 1);  
 }
 
-// Enable wait on IORQ
-void br_enable_wait_iorq() //AccessCallbackFnT* pAccessCallback)
+// Enable wait-states
+void br_enable_wait_iorq()
 {
+#ifdef BR_ENABLE_WAIT_STATES
     // Clear WAIT to stop any wait happening
-    // digitalWrite(BR_WAIT, 0);
+    digitalWrite(BR_WAIT, 0);
 
-    // Setup interrupt on IORQ line
+    // Set vector for WAIT state interrupt
+    irq_set_wait_state_handler(br_wait_state_isr);
 
     // Setup edge triggering on falling edge of MREQ
-    W32(GPEDS0, 1 << 0);  // Clear any current detected edge
-    W32(GPFEN0, 1 << 0);  // Set falling edge detect
+    W32(GPEDS0, 1 << BR_IORQ_BAR);  // Clear any current detected edge
+    W32(GPFEN0, 1 << BR_IORQ_BAR);  // Set falling edge detect
 
     W32(IRQ_FIQ_CONTROL, (1 << 7) | 52);
     enable_fiq();
 
+    // Allow WAIT generation
+    digitalWrite(BR_WAIT, 1);
+#endif
+}
+
+void br_wait_state_isr(void* pData)
+{
+    pData = pData;
+    // Clear the WAIT state
+    W32(GPCLR0, 1 << BR_WAIT);
+    W32(GPSET0, 1 << BR_WAIT);
+    // Clear detected edge on any pin
+    W32(GPEDS0, 0xffffffff);  
 }

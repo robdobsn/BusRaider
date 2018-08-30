@@ -41,8 +41,6 @@ typedef void IntHandler(void* data);
 
 extern void irq_set_usb_handler(IntHandler* pHandler, void* pData);
 extern void irq_set_uart_handler(IntHandler* pHandler, void* pData);
-
-extern volatile int edgeCountGlobal;
-extern volatile unsigned int globalAllBasicBits;
+extern void irq_set_wait_state_handler(IntHandler* pHandler);
 
 #endif
