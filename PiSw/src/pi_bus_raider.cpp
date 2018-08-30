@@ -27,9 +27,6 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
     mc_generic_handle_key(ucModifiers, rawKeys);
 }
 
-
-void main_loop();
-
 extern "C" void entry_point()
 {
 
@@ -112,17 +109,8 @@ extern "C" void entry_point()
     // else
     //     ee_printf("Failed to construct\n");
 
-    // br_enable_wait_iorq();
-
-    // Start the main loop
-    main_loop();
-}
-
-void main_loop()
-{
     ee_printf("Waiting for UART data (%d,8,N,1)\n", MAIN_UART_BAUD_RATE);
 
-    McGenericDescriptor* pMcDescr = mc_generic_get_descriptor();
     const unsigned long reqUpdateUs = 1000000 / pMcDescr->displayRefreshRatePerSec;
 
     #define REFRESH_RATE_WINDOW_SIZE_MS 2000
