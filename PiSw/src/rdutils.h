@@ -33,6 +33,9 @@ extern void * memcpy (void *dest, const void *src, size_t len);
 // extern void __aeabi_unwind_cpp_pr0(void);
 // extern void __cxa_end_cleanup(void);
 
+// Error handler for pure virtual functions
+extern void __cxa_pure_virtual();
+
 #ifdef __cplusplus
 }
 #endif

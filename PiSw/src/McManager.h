@@ -1,3 +1,5 @@
+// Bus Raider Machine Manager
+// Rob Dobson 2018
 
 #pragma once
 
@@ -6,6 +8,8 @@
 
 class McManager
 {
+  private:
+    static McDescriptorTable defaultDescriptorTable;
   public:
 
     static const int MAX_MACHINES = 10;
@@ -25,6 +29,14 @@ class McManager
         if (_curMachineIdx >= _numMachines)
             return NULL;
         return _pMachines[_curMachineIdx];
+    }
+
+    static McDescriptorTable* getDescriptorTable(int subType)
+    {
+        McBase* pMc = getMachine();
+        if (pMc)
+            return pMc->getDescriptorTable(subType);
+        return &defaultDescriptorTable;
     }
 
 };

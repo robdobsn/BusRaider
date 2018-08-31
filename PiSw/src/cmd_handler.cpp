@@ -7,13 +7,13 @@
 #include "uart.h"
 #include "utils.h"
 #include "rdutils.h"
-#include "mc_generic.h"
 #include "target_memory_map.h"
 #include "busraider.h"
 #include "minihdlc.h"
 #include "ee_printf.h"
 #include "srecparser.h"
 #include "nmalloc.h"
+#include "McManager.h"
 
 #define CMD_HANDLER_MAX_CMD_STR_LEN 200
 #define MAX_INT_ARG_STR_LEN 10
@@ -66,7 +66,7 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         // Allocate space for file
         if (_pReceivedFileDataPtr != NULL)
             nmalloc_free((void**)(&_pReceivedFileDataPtr));
-        _pReceivedFileDataPtr = nmalloc_malloc(fileLen);
+        _pReceivedFileDataPtr = (uint8_t*)nmalloc_malloc(fileLen);
         if (_pReceivedFileDataPtr)
         {
             _receivedFileBufSize = fileLen;
@@ -140,13 +140,13 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
                 LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd IMG firmware update File %s, len %d", _receivedFileName, _receivedFileBytesRx);
 
                 // Copy the blockCopyExecRelocatable() code to HEAP space
-                uint8_t* pCopyBlockNewLocation = nmalloc_malloc(blockCopyExecRelocatableLen);
+                uint8_t* pCopyBlockNewLocation = (uint8_t*)nmalloc_malloc(blockCopyExecRelocatableLen);
                 if (!pCopyBlockNewLocation)
                 {
                     LogWrite(FromCmdHandler, LOG_ERROR, "cannot create space for blockCopyExecRelocatable fn, len %d", blockCopyExecRelocatableLen);
                     return;
                 }
-                memcpy(pCopyBlockNewLocation, blockCopyExecRelocatable, blockCopyExecRelocatableLen);
+                memcpy((void*)pCopyBlockNewLocation, (void*)blockCopyExecRelocatable, blockCopyExecRelocatableLen);
 
                 // Call the copyblock function in it's new location
                 blockCopyExecRelocatableFnT* pCopyBlockFn = (blockCopyExecRelocatableFnT*) pCopyBlockNewLocation;
@@ -182,7 +182,9 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
             if (stricmp(pDot, ".CMD") == 0)
             {
                 LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd CMD File %s, len %d", _receivedFileName, _receivedFileBytesRx);
-                mc_generic_handle_file("{\"fileType\":\"cmd\"}", _pReceivedFileDataPtr, _receivedFileBytesRx);
+                McBase* pMc = McManager::getMachine();
+                if (pMc)
+                    pMc->fileHander("{\"fileType\":\"cmd\"}", _pReceivedFileDataPtr, _receivedFileBytesRx);
                 return;
             }
         }
@@ -191,7 +193,9 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
 
         // Falling through to here so treat as binary file
         LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd BIN File %s, len %d", _receivedFileName, _receivedFileBytesRx);
-        mc_generic_handle_file("{\"fileType\":\"bin\"}", _pReceivedFileDataPtr, _receivedFileBytesRx);
+        McBase* pMc = McManager::getMachine();
+        if (pMc)
+            pMc->fileHander("{\"fileType\":\"bin\"}", _pReceivedFileDataPtr, _receivedFileBytesRx);
 
     }
     else if (strcmp(cmdName, "cleartarget") == 0)
@@ -227,7 +231,9 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
     else if (strcmp(cmdName, "filetarget") == 0)
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "filetarget, len %d", dataLen);
-        mc_generic_handle_file(pCmdJson, pData, dataLen);
+        McBase* pMc = McManager::getMachine();
+        if (pMc)
+            pMc->fileHander(pCmdJson, pData, dataLen);
     }
     else if (strcmp(cmdName, "srectarget") == 0)
     {

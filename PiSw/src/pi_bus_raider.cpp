@@ -10,7 +10,6 @@
 #include "piwiring.h"
 #include "busraider.h"
 #include "cmd_handler.h"
-#include "mc_generic.h"
 #include "target_memory_map.h"
 #include "rdutils.h"
 #include "../uspi\include\uspi\types.h"
@@ -24,7 +23,9 @@
 static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char rawKeys[6])
 {
     // ee_printf("KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
-    mc_generic_handle_key(ucModifiers, rawKeys);
+    McBase* pMc = McManager::getMachine();
+    if (pMc)
+        pMc->keyHandler(ucModifiers, rawKeys);
 }
 
 extern "C" void entry_point()
@@ -46,9 +47,29 @@ extern "C" void entry_point()
     targetClear();
     cmdHandler_init();
 
+    // Add machines
+    new McTRS80();
+    ee_printf("McManager nummc %d\n", McManager::_numMachines);
+
+    // Get descriptor of current machine
+    if (!McManager::getMachine())
+    {
+        ee_printf("Failed to construct machine\n");
+    }
+
+    // Get machine descriptor table
+    McDescriptorTable* pMcDescr = McManager::getDescriptorTable(0);
+
+    // McBase* pMc = McManager::getMachine();
+    // if (pMc)
+    //     pMc->handleDisplay();
+    // else
+    //     ee_printf("Failed to construct\n");
+
     // Set to TRS80 Model1
-    mc_generic_set("TRS80Model1");
-    McGenericDescriptor* pMcDescr = mc_generic_get_descriptor();
+    // mc_generic_set("TRS80Model1");
+    // McGenericDescriptor* pMcDescr = mc_generic_get_descriptor();
+
 
     // Graphics system
     wgfx_init(1366, 768);
@@ -101,17 +122,6 @@ extern "C" void entry_point()
     // Bus raider enable wait states
     br_enable_wait_states();
 
-    // Code to test start of new machine handler
-    // new McTRS80();
-
-    // ee_printf("McManager nummc %d\n", McManager::_numMachines);
-
-    // McBase* pMc = McManager::getMachine();
-    // if (pMc)
-    //     pMc->handleDisplay();
-    // else
-    //     ee_printf("Failed to construct\n");
-
     ee_printf("Waiting for UART data (%d,8,N,1)\n", MAIN_UART_BAUD_RATE);
 
     const unsigned long reqUpdateUs = 1000000 / pMcDescr->displayRefreshRatePerSec;
@@ -129,7 +139,9 @@ extern "C" void entry_point()
             // Check valid
             dispTime = micros();
             lastDisplayUpdateUs = micros();
-            mc_generic_handle_disp();
+            McBase* pMc = McManager::getMachine();
+            if (pMc)
+                pMc->displayRefresh();
             dispTime = micros() - dispTime;
             refreshCount++;
         }

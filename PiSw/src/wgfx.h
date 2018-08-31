@@ -10,6 +10,8 @@
 extern "C" {
 #endif
 
+extern WgfxFont __systemFont;
+
 typedef unsigned char WGFX_COL;
 
 enum WGFX_COLR_NAMES
