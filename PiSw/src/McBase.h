@@ -5,6 +5,8 @@
 #include "globaldefs.h"
 #include "wgfxfont.h"
 
+static const int MC_WINDOW_NUMBER = 0;
+
 class McDescriptorTable
 {
   public:
@@ -14,6 +16,8 @@ class McDescriptorTable
     int displayPixelsY;
     int displayCellX;
     int displayCellY;
+    int pixelScaleX;
+    int pixelScaleY;
     WgfxFont* pFont;
     int displayForeground;
     int displayBackground;

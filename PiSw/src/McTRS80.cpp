@@ -11,15 +11,17 @@
 
 extern WgfxFont __TRS80Level3Font;
 
-static const char* TRS80LogPrefix = "TRS80";
+static const char* LogPrefix = "TRS80";
 
-McDescriptorTable McTRS80::_trs80DescriptorTable = {
+McDescriptorTable McTRS80::_descriptorTable = {
     // Required display refresh rate
     .displayRefreshRatePerSec = 30,
     .displayPixelsX = 8 * 64,
     .displayPixelsY = 24 * 16,
     .displayCellX = 8,
     .displayCellY = 24,
+    .pixelScaleX = 2,
+    .pixelScaleY = 1,
     .pFont = &__TRS80Level3Font,
     .displayForeground = WGFX_GREEN,
     .displayBackground = WGFX_BLACK
@@ -28,23 +30,27 @@ McDescriptorTable McTRS80::_trs80DescriptorTable = {
 // Enable machine
 void McTRS80::enable()
 {
-    LogWrite(TRS80LogPrefix, LOG_DEBUG, "Enabling TRS80");
+    // Invalidate screen buffer
+    _screenBufferValid = false;
+    _keyBufferDirty = false;
+
+    LogWrite(LogPrefix, LOG_DEBUG, "Enabling TRS80");
     br_set_bus_access_callback(memoryRequestCallback);
 }
 
 // Disable machine
 void McTRS80::disable()
 {
-    LogWrite(TRS80LogPrefix, LOG_DEBUG, "Disabling TRS80");
+    LogWrite(LogPrefix, LOG_DEBUG, "Disabling TRS80");
     br_remove_bus_access_callback();
 }
 
-void McTRS80::handleTrs80ExecAddr(uint32_t execAddr)
+void McTRS80::handleExecAddr(uint32_t execAddr)
 {
     // Handle the execution address
     uint8_t jumpCmd[3] = { 0xc3, uint8_t(execAddr & 0xff), uint8_t((execAddr >> 8) & 0xff) };
     targetDataBlockStore(0, jumpCmd, 3);
-    LogWrite(TRS80LogPrefix, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
+    LogWrite(LogPrefix, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
@@ -55,12 +61,16 @@ void McTRS80::displayRefresh()
     br_read_block(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, 1, 0);
 
     // Write to the display on the Pi Zero
-    for (int k = 0; k < 16; k++) {
-        for (int i = 0; i < 64; i++) {
-            register int cellIdx = k * 64 + i;
+    int cols = _descriptorTable.displayPixelsX / _descriptorTable.displayCellX;
+    int rows = _descriptorTable.displayPixelsY / _descriptorTable.displayCellY;
+    for (int k = 0; k < rows; k++) 
+    {
+        for (int i = 0; i < cols; i++)
+        {
+            register int cellIdx = k * cols + i;
             if (!_screenBufferValid || (_screenBuffer[cellIdx] != pScrnBuffer[cellIdx]))
             {
-                wgfx_putc(0, i, k, pScrnBuffer[cellIdx]);
+                wgfx_putc(MC_WINDOW_NUMBER, i, k, pScrnBuffer[cellIdx]);
                 _screenBuffer[cellIdx] = pScrnBuffer[cellIdx];
             }
         }
@@ -257,8 +267,8 @@ void McTRS80::fileHander(const char* pFileInfo, const uint8_t* pFileData, int fi
         return;
     if (stricmp(fileType, "cmd") == 0)
     {
-        LogWrite("TRS80", LOG_DEBUG, "Processing TRS80 cmd file len %d", fileLen);
-        mc_trs80_cmdfile_proc(targetDataBlockStore, handleTrs80ExecAddr, pFileData, fileLen);
+        LogWrite(LogPrefix, LOG_DEBUG, "Processing TRS80 CMD file len %d", fileLen);
+        mc_trs80_cmdfile_proc(targetDataBlockStore, handleExecAddr, pFileData, fileLen);
     }
     else if (stricmp(fileType, "bin") == 0)
     {
@@ -266,13 +276,13 @@ void McTRS80::fileHander(const char* pFileInfo, const uint8_t* pFileData, int fi
         char baseAddrStr[MAX_VALUE_STR+1];
         if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
             baseAddr = strtol(baseAddrStr, NULL, 16);
-        LogWrite("TRS80", LOG_DEBUG, "Processing TRS80 binary file, baseAddr %04x len %d", baseAddr, fileLen);
+        LogWrite(LogPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
         targetDataBlockStore(baseAddr, pFileData, fileLen);
     }
 }
 
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-uint32_t McTRS80::memoryRequestCallback(uint32_t addr, uint32_t data, uint32_t flags)
+uint32_t McTRS80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
 {
     // Check for read
     if (flags & BR_CTRL_BUS_RD)

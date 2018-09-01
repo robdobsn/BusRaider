@@ -16,6 +16,7 @@
 #include "../uspi/include/uspi.h"
 #include "McManager.h"
 #include "McTRS80.h"
+#include "McRobsZ80.h"
 
 // Baud rate
 #define MAIN_UART_BAUD_RATE 115200
@@ -49,9 +50,10 @@ extern "C" void entry_point()
 
     // Add machines
     new McTRS80();
+    new McRobsZ80();
 
     // Enable first machine
-    McManager::setMachineIdx(0);
+    McManager::setMachineIdx(1);
 
     // Get current machine to check things are working
     if (!McManager::getMachine())
@@ -67,8 +69,10 @@ extern "C" void entry_point()
 
     // Layout display
     int windowBorderWidth = 5;
-    wgfx_set_window(0, -1, 0, pMcDescr->displayPixelsX, pMcDescr->displayPixelsY,
-        pMcDescr->displayCellX, pMcDescr->displayCellY, 2, 1,
+    wgfx_set_window(0, -1, 0, 
+        pMcDescr->displayPixelsX, pMcDescr->displayPixelsY,
+        pMcDescr->displayCellX, pMcDescr->displayCellY,
+        pMcDescr->pixelScaleX, pMcDescr->pixelScaleY,
         pMcDescr->pFont, pMcDescr->displayForeground, pMcDescr->displayBackground,
         windowBorderWidth, 8);
     wgfx_set_window(1, 0, pMcDescr->displayPixelsY + windowBorderWidth*2 + 10, -1, -1, -1, -1, 1, 1, 

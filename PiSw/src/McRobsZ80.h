@@ -1,21 +1,17 @@
-// Bus Raider Machine TRS80
+// Bus Raider Machine RobsZ80
 // Rob Dobson 2018
 
 #include "McBase.h"
 #include "McManager.h"
 #include "ee_printf.h"
 
-class McTRS80 : public McBase
+class McRobsZ80 : public McBase
 {
   private:
-    static constexpr uint32_t TRS80_KEYBOARD_ADDR = 0x3800;
-    static constexpr uint32_t TRS80_KEYBOARD_RAM_SIZE = 0x0100;
-    static constexpr uint32_t TRS80_DISP_RAM_ADDR = 0x3c00;
-    static constexpr uint32_t TRS80_DISP_RAM_SIZE = 0x400;
-    uint8_t _screenBuffer[TRS80_DISP_RAM_SIZE];
+    static constexpr uint32_t ROBSZ80_DISP_RAM_ADDR = 0xc000;
+    static constexpr uint32_t ROBSZ80_DISP_RAM_SIZE = 0x4000;
+    uint8_t _screenBuffer[ROBSZ80_DISP_RAM_SIZE];
     bool _screenBufferValid;
-    uint8_t _keyBuffer[TRS80_KEYBOARD_RAM_SIZE];
-    bool _keyBufferDirty;
 
     static McDescriptorTable _descriptorTable;
 
@@ -23,16 +19,8 @@ class McTRS80 : public McBase
 
   public:
 
-    McTRS80() : McBase()
+    McRobsZ80() : McBase()
     {
-        // Clear keyboard buffer
-        for (uint32_t i = 0; i < TRS80_KEYBOARD_RAM_SIZE; i++)
-            _keyBuffer[i] = 0;
-
-        // Ensure keyboard is cleared initially
-        _keyBufferDirty = true;
-
-        // Screen buffer invalid
         _screenBufferValid = false;
     }
 

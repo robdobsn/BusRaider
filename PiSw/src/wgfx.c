@@ -322,6 +322,18 @@ void wgfx_putc(int windowIdx, unsigned int col, unsigned int row, unsigned char 
     }
 }
 
+void wgfxSetMonoPixel(int windowIdx, int x, int y, int value)
+{
+    // Wait for previous operation (dma) to complete
+    wgfx_wait_for_prev_operation();
+    unsigned char* pBuf = wgfx_get_win_pfb_xy(windowIdx, x, y);
+    int fgColour = ((__wgfxWindows[windowIdx].foregroundColour != -1) ?
+                    __wgfxWindows[windowIdx].foregroundColour : ctx.fg);
+    int bgColour = ((__wgfxWindows[windowIdx].backgroundColour != -1) ?
+                    __wgfxWindows[windowIdx].backgroundColour : ctx.bg);
+    *pBuf = value ? fgColour : bgColour;
+}
+
 // Write data from a char cell in a window
 void wgfx_write_cell(int windowIdx, unsigned int col, unsigned int row, unsigned char* pCellBuf)
 {
@@ -386,7 +398,18 @@ void wgfx_read_cell(int windowIdx, unsigned int col, unsigned int row, unsigned 
 
 unsigned char* wgfx_get_win_pfb(int winIdx, int col, int row)
 {
-    return ctx.pfb + ((row * __wgfxWindows[winIdx].cellHeight * __wgfxWindows[winIdx].yPixScale) + __wgfxWindows[winIdx].tly) * ctx.pitch + (col * __wgfxWindows[winIdx].cellWidth * __wgfxWindows[winIdx].xPixScale) + __wgfxWindows[winIdx].tlx;
+    return ctx.pfb + 
+            ((row * __wgfxWindows[winIdx].cellHeight * __wgfxWindows[winIdx].yPixScale) +
+            __wgfxWindows[winIdx].tly) * ctx.pitch + 
+            (col * __wgfxWindows[winIdx].cellWidth * __wgfxWindows[winIdx].xPixScale) + 
+            __wgfxWindows[winIdx].tlx;
+}
+
+unsigned char* wgfx_get_win_pfb_xy(int winIdx, int x, int y)
+{
+    return ctx.pfb + 
+            ((y * __wgfxWindows[winIdx].yPixScale) + __wgfxWindows[winIdx].tly) * ctx.pitch + 
+            (x * __wgfxWindows[winIdx].xPixScale) + __wgfxWindows[winIdx].tlx;
 }
 
 unsigned char* wgfx_get_pfb_xy(int x, int y)
@@ -517,7 +540,6 @@ void wgfxVLine(int x, int y, int len, int colour)
 {
     // Wait for previous operation (dma) to complete
     wgfx_wait_for_prev_operation();
-
     unsigned char* pBuf = wgfx_get_pfb_xy(x, y);
     for (int i = 0; i < len; i++)
     {
@@ -525,4 +547,3 @@ void wgfxVLine(int x, int y, int len, int colour)
         pBuf += ctx.pitch;
     }
 }
-
