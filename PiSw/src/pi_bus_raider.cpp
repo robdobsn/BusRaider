@@ -49,29 +49,20 @@ extern "C" void entry_point()
 
     // Add machines
     new McTRS80();
-    ee_printf("McManager nummc %d\n", McManager::_numMachines);
 
-    // Get descriptor of current machine
+    // Enable first machine
+    McManager::setMachineIdx(0);
+
+    // Get current machine to check things are working
     if (!McManager::getMachine())
     {
-        ee_printf("Failed to construct machine\n");
+        uart_printf("Failed to construct machine\n");
     }
 
     // Get machine descriptor table
     McDescriptorTable* pMcDescr = McManager::getDescriptorTable(0);
 
-    // McBase* pMc = McManager::getMachine();
-    // if (pMc)
-    //     pMc->handleDisplay();
-    // else
-    //     ee_printf("Failed to construct\n");
-
-    // Set to TRS80 Model1
-    // mc_generic_set("TRS80Model1");
-    // McGenericDescriptor* pMcDescr = mc_generic_get_descriptor();
-
-
-    // Graphics system
+    // Initialise graphics system
     wgfx_init(1366, 768);
 
     // Layout display
@@ -90,6 +81,9 @@ extern "C" void entry_point()
     ee_printf("RC2014 Bus Raider V1.01\n");
     wgfx_set_fg(15);
     ee_printf("Rob Dobson 2018 (inspired by PiGFX)\n\n");
+
+    // Number of machines
+    ee_printf("%d machines supported\n", McManager::getNumMachines());
 
     // USB
     if (USPiInitialize()) {

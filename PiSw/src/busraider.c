@@ -18,6 +18,8 @@
 // Uncomment the following to use bitwise access to busses and pins on Pi
 // #define USE_BITWISE_BUS_ACCESS 1
 
+// Callback on bus access
+static br_bus_access_callback_fntype* __br_pBusAccessCallback = NULL;
 
 // Set a pin to be an output and set initial value for that pin
 void br_set_pin_out(int pin, int val)
@@ -437,64 +439,20 @@ void br_clear_all_io()
     br_write_block(0, tmpBuf, 0x100, 1, 1);  
 }
 
-//#define TEST_BUS_RAIDER_FIQ 1
-
-#ifdef TEST_BUS_RAIDER_FIQ
-
-static const int PI_ZERO_LED = 47;
-volatile int flag = 0;
-int a = 0;
-
-void br_wait_state_isr(void* pData)
+// Set the bus access interrupt callback
+void br_set_bus_access_callback(br_bus_access_callback_fntype* pBusAccessCallback)
 {
-        flag = 1;
-    // scaleCtr++;
-    // if (scaleCtr > 1000)
-    // {
-    //     scaleCtr = 0;
-    //     // W32(GPSET0, 1 << 17);
-    //     // W32(GPCLR0, 1 << 17);
-    //     // if (digitalRead(PI_ZERO_LED))
-    //     //     digitalWrite(PI_ZERO_LED, 0);
-    //     // else
-    //     //     digitalWrite(PI_ZERO_LED, 1);
-    // }
-    W32(GPEDS0, 0xffffffff);  // Clear any current detected edge
+    __br_pBusAccessCallback = pBusAccessCallback;
 }
 
-// Enable wait-states
-void br_enable_wait_states()
+void br_remove_bus_access_callback()
 {
-    irq_set_wait_state_handler(br_wait_state_isr);
-
-    pinMode(8, INPUT);
-
-    W32(GPEDS0, 1 << 8);  // Clear any current detected edge
-    // W32(GPAFEN0, 1 << 22);  // Set falling edge detect async
-    W32(GPFEN0, 1 << 8);  // Set falling edge detect
-
-    W32(IRQ_FIQ_CONTROL, (1 << 7) | 52);
-    enable_fiq();
-
-    pinMode(PI_ZERO_LED, OUTPUT);
-
+    __br_pBusAccessCallback = NULL;
 }
 
-void br_service()
-{
-    if (flag)
-    {
-        flag = 0;
-        a++;
-        if (a > 1000)
-        {
-            a = 0;
-            digitalWrite(PI_ZERO_LED, !digitalRead(PI_ZERO_LED));
-        }
-    }
-}
+// #define TEST_BUSRAIDER_FIQ 1
 
-#else
+#ifdef TEST_BUSRAIDER_FIQ
 
 volatile int iorqPortsRead[256];
 volatile int iorqPortsWritten[256];
@@ -582,6 +540,109 @@ void br_service()
         ee_printf("\n");
         loopCtr = 0;
     }
+}
+
+#else
+
+// Enable wait-states
+void br_enable_wait_states()
+{
+#ifdef BR_ENABLE_WAIT_STATES
+    // Clear WAIT to stop any wait happening
+    digitalWrite(BR_WAIT, 0);
+
+    // Set vector for WAIT state interrupt
+    irq_set_wait_state_handler(br_wait_state_isr);
+
+    // Setup edge triggering on falling edge of IORQ
+    W32(GPEDS0, 1 << BR_IORQ_BAR);  // Clear any current detected edge
+    W32(GPFEN0, 1 << BR_IORQ_BAR);  // Set falling edge detect
+
+    // Enable FIQ interrupts on GPIO[3] which is any GPIO pin
+    W32(IRQ_FIQ_CONTROL, (1 << 7) | 52);
+
+    // Enable Fast Interrupts
+    enable_fiq();
+
+    // Allow WAIT state generation
+    digitalWrite(BR_WAIT, 1);
+#endif
+}
+
+void br_wait_state_isr(void* pData)
+{
+    pData = pData;
+
+    // Read the low address
+    digitalWrite(BR_LADDR_OE_BAR, 0);
+    uint32_t lowAddr = br_get_pib_value() & 0xff;
+    digitalWrite(BR_LADDR_OE_BAR, 1);
+
+    // Read the control lines
+    uint32_t busVals = R32(GPLEV0);
+
+    // Set the appropriate bits for up-line communication
+    uint32_t ctrlBusVals = 
+        (((busVals & (1 << BR_RD_BAR)) == 0) ? (1 << BR_CTRL_BUS_RD) : 0) |
+        (((busVals & (1 << BR_WR_BAR)) == 0) ? (1 << BR_CTRL_BUS_WR) : 0) |
+        (((busVals & (1 << BR_MREQ_BAR)) == 0) ? (1 << BR_CTRL_BUS_MREQ) : 0) |
+        (((busVals & (1 << BR_IORQ_BAR)) == 0) ? (1 << BR_CTRL_BUS_IORQ) : 0) |
+        (((busVals & (1 << BR_M1_BAR)) == 0) ? (1 << BR_CTRL_BUS_M1) : 0);
+
+    // Read the data bus if the target machine is writing
+    uint32_t dataBusVals = 0;
+    bool isWriting = (busVals & (1 << BR_WR_BAR)) == 0;
+    if (isWriting)
+    {
+        digitalWrite(BR_DATA_DIR_IN, 1);
+        digitalWrite(BR_DATA_OE_BAR, 0);
+        dataBusVals = br_get_pib_value() & 0xff;
+        digitalWrite(BR_DATA_OE_BAR, 0);
+    }
+
+    // Send this to anything listening
+    uint32_t retVal = 0;
+    if (__br_pBusAccessCallback)
+        retVal = __br_pBusAccessCallback(lowAddr, dataBusVals, ctrlBusVals) & 0xff;
+
+    // If not writing then put the returned data onto the bus
+    if (!isWriting)
+    {
+        digitalWrite(BR_DATA_DIR_IN, 0);
+        digitalWrite(BR_DATA_OE_BAR, 0);
+        br_set_pib_output();
+        br_set_pib_value(retVal);
+    }
+
+    // Clear the WAIT state
+    W32(GPCLR0, 1 << BR_WAIT);
+    W32(GPSET0, 1 << BR_WAIT);
+    // Clear detected edge on any pin
+    W32(GPEDS0, 0xffffffff);  
+
+    // If not writing then we need to wait until the request is complete
+    if (!isWriting)
+    {
+        // Wait until the request has completed (both IORQ_BAR and MREQ_BAR high)
+        uint32_t ctrlBusMask = ((1 << BR_CTRL_BUS_MREQ) | (1 << BR_CTRL_BUS_IORQ));
+        int hangAvoidCount = 0;
+        while ((R32(GPLEV0) & ctrlBusMask) != ctrlBusMask)
+        {
+            // Stop waiting if this takes more than 1000 loops
+            // (which will be way longer than the 1uS or less it should take)
+            hangAvoidCount++;
+            if (hangAvoidCount > 1000)
+                break;
+        }
+        // Put the bus back to how it should be left
+        br_set_pib_input();
+        digitalWrite(BR_DATA_DIR_IN, 1);
+    }
+
+}
+
+void br_service()
+{
 }
 
 #endif

@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-typedef void AccessCallbackFnT(int addr, int data, int flags);
+typedef uint32_t br_bus_access_callback_fntype(uint32_t addr, uint32_t data, uint32_t flags);
 
 // Return codes
 typedef enum {
@@ -18,6 +18,14 @@ typedef enum {
     BR_ERR = 1,
     BR_NO_BUS_ACK = 2,
 } BR_RETURN_TYPE;
+
+
+// Control bus bits used to pass to machines, etc
+#define BR_CTRL_BUS_RD 0
+#define BR_CTRL_BUS_WR 1
+#define BR_CTRL_BUS_MREQ 2
+#define BR_CTRL_BUS_IORQ 3
+#define BR_CTRL_BUS_M1 4
 
 // Pi pins used for control of host bus
 #define BR_BUSRQ 19 // SPI1 MISO
@@ -39,6 +47,7 @@ typedef enum {
 #define BR_DATA_DIR_IN 6
 #define BR_DATA_OE_BAR 12 // PWM0
 #define BR_LADDR_OE_BAR 11 // SPI0 SCLK
+#define BR_M1_BAR 5 // NOTE THAT CURRENTLY THIS IS USED FOR SOMETHING IN V1.3 HARDWARE 
 
 // Direct access to Pi PIB (used for data transfer to/from host data bus)
 #define BR_PIB_MASK (~((uint32_t)0xff << BR_DATA_BUS))
@@ -90,6 +99,10 @@ extern void br_clear_all_io();
 
 // Service
 extern void br_service();
+
+// Set and remove callbacks on bus access
+extern void br_set_bus_access_callback(br_bus_access_callback_fntype* pBusAccessCallback);
+extern void br_remove_bus_access_callback();
 
 #ifdef __cplusplus
 }

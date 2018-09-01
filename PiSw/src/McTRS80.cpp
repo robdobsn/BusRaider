@@ -11,6 +11,8 @@
 
 extern WgfxFont __TRS80Level3Font;
 
+static const char* TRS80LogPrefix = "TRS80";
+
 McDescriptorTable McTRS80::_trs80DescriptorTable = {
     // Required display refresh rate
     .displayRefreshRatePerSec = 30,
@@ -23,12 +25,26 @@ McDescriptorTable McTRS80::_trs80DescriptorTable = {
     .displayBackground = WGFX_BLACK
 };
 
+// Enable machine
+void McTRS80::enable()
+{
+    LogWrite(TRS80LogPrefix, LOG_DEBUG, "Enabling TRS80");
+    br_set_bus_access_callback(memoryRequestCallback);
+}
+
+// Disable machine
+void McTRS80::disable()
+{
+    LogWrite(TRS80LogPrefix, LOG_DEBUG, "Disabling TRS80");
+    br_remove_bus_access_callback();
+}
+
 void McTRS80::handleTrs80ExecAddr(uint32_t execAddr)
 {
     // Handle the execution address
     uint8_t jumpCmd[3] = { 0xc3, uint8_t(execAddr & 0xff), uint8_t((execAddr >> 8) & 0xff) };
     targetDataBlockStore(0, jumpCmd, 3);
-    LogWrite("TRS80", LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
+    LogWrite(TRS80LogPrefix, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
@@ -256,7 +272,20 @@ void McTRS80::fileHander(const char* pFileInfo, const uint8_t* pFileData, int fi
 }
 
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-void McTRS80::memoryRequest(uint32_t addr, uint32_t data, uint32_t flags)
+uint32_t McTRS80::memoryRequestCallback(uint32_t addr, uint32_t data, uint32_t flags)
 {
-    ee_printf("memoryRequest %08x %08x %08x\n", addr, data, flags);
+    // Check for read
+    if (flags & BR_CTRL_BUS_RD)
+    {
+        // Decode port
+        if (addr == 0x13)  // Joystick
+        {
+            // Indicate no buttons are pressed
+            return 0xff;
+        }
+    }
+
+    // Not read
+    return 0;
 }
+

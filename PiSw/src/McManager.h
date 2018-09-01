@@ -21,12 +21,26 @@ class McManager
 
     static void setMachineIdx(int mcIdx)
     {
+        // Disable current machine
+        if (getMachine())
+            getMachine()->disable();
+
+        // Set the new machine
         _curMachineIdx = mcIdx;
+
+        // Enable machine
+        if (getMachine())
+            getMachine()->enable();
+    }
+
+    static int getNumMachines()
+    {
+        return _numMachines;
     }
 
     static McBase* getMachine()
     {
-        if (_curMachineIdx >= _numMachines)
+        if ((_curMachineIdx < 0) || (_curMachineIdx >= _numMachines))
             return NULL;
         return _pMachines[_curMachineIdx];
     }

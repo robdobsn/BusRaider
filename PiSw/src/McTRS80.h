@@ -33,6 +33,12 @@ class McTRS80 : public McBase
         _keyBufferDirty = true;
     }
 
+    // Enable machine
+    virtual void enable();
+
+    // Disable machine
+    virtual void disable();
+
     // Get descriptor table for the machine
     virtual McDescriptorTable* getDescriptorTable([[maybe_unused]] int subType)
     {
@@ -49,6 +55,6 @@ class McTRS80 : public McBase
     virtual void fileHander(const char* pFileInfo, const uint8_t* pFileData, int fileLen);
 
     // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-    virtual void memoryRequest(uint32_t addr, uint32_t data, uint32_t flags);
+    static uint32_t memoryRequestCallback(uint32_t addr, uint32_t data, uint32_t flags);
 
 };

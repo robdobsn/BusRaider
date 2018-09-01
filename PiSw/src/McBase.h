@@ -25,6 +25,12 @@ class McBase
 
     McBase();
 
+    // Enable machine
+    virtual void enable() = 0;
+
+    // Disable machine
+    virtual void disable() = 0;
+
     // Get descriptor table for the machine
     virtual McDescriptorTable* getDescriptorTable(int subType) = 0;
 
@@ -36,8 +42,5 @@ class McBase
 
     // Handle a file
     virtual void fileHander(const char* pFileInfo, const uint8_t* pFileData, int fileLen) = 0;
-
-    // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-    virtual void memoryRequest(uint32_t addr, uint32_t data, uint32_t flags) = 0;
 
 };

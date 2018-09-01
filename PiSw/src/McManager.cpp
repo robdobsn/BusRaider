@@ -6,7 +6,7 @@
 
 McBase* McManager::_pMachines[McManager::MAX_MACHINES];
 int McManager::_numMachines = 0;
-int McManager::_curMachineIdx = 0;
+int McManager::_curMachineIdx = -1;
 McDescriptorTable McManager::defaultDescriptorTable = {
     // Required display refresh rate
     .displayRefreshRatePerSec = 30,

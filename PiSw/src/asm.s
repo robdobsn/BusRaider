@@ -74,17 +74,11 @@ _reset_:
 
 .global fiq_handler_
 fiq_handler_:
+    ;@ Probably don't need to push all these registers as FIQ swaps out R8..R14
     push {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,lr}
     bl c_firq_handler
     pop  {r0,r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11,r12,lr}
     subs pc,lr,#4
-    # mov r10, #32          ;@ r10 = 32 (which is BR_HADDR_SER) used for TEST only
-    # mvn r9, #0            ;@ r9 = 0xffffffff
-    # ldr r11, =0x20200000  ;@ r11 = base of GPIO
-    # str r10, [r11, #28]   ;@ GPSET0 - set BR_HADDR_SER
-    # str r10, [r11, #40]   ;@ GPCLR0 - clear BR_HADDR_SER
-    # str r9, [r11, #64]    ;@ GPEDS0 - clear interrupt by writing 0xffffffff to GPEDS0
-    # subs pc,lr,#4         ;@ return from FIQ
 
 .global hang
 hang: 
