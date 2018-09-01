@@ -53,7 +53,7 @@ extern "C" void entry_point()
     new McRobsZ80();
 
     // Enable first machine
-    McManager::setMachineIdx(1);
+    McManager::setMachineIdx(0);
 
     // Get current machine to check things are working
     if (!McManager::getMachine())
