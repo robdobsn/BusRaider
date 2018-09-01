@@ -48,6 +48,8 @@ typedef enum {
 #define BR_DATA_OE_BAR 12 // PWM0
 #define BR_LADDR_OE_BAR 11 // SPI0 SCLK
 #define BR_M1_BAR 5 // NOTE THAT CURRENTLY THIS IS USED FOR SOMETHING IN V1.3 HARDWARE 
+#define BR_CLOCK_PIN -1 // NOTE THIS IS CURRENTLY USED FOR RESET IN V1.3
+			// TODO Change to Pin 4 - and reallocate RESET
 
 // Direct access to Pi PIB (used for data transfer to/from host data bus)
 #define BR_PIB_MASK (~((uint32_t)0xff << BR_DATA_BUS))

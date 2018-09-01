@@ -104,6 +104,17 @@ extern "C" {
 
 #define SYSTIMERCLO 0x20003004
 
+#define ARM_IO_BASE		0x20000000
+
+//
+// Clock Manager
+//
+#define ARM_CM_BASE		(ARM_IO_BASE + 0x101000)
+
+#define ARM_CM_GP0CTL		(ARM_CM_BASE + 0x70)
+#define ARM_CM_GP0DIV		(ARM_CM_BASE + 0x74)
+#define ARM_CM_PASSWD 		(0x5A << 24)
+
 #ifdef __cplusplus
 }
 #endif

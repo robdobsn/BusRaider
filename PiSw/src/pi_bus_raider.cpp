@@ -130,6 +130,8 @@ extern "C" void entry_point()
     unsigned long lastDisplayUpdateUs = 0;
     unsigned long dispTime = 0;
 
+    McManager::setMachineIdx(0);
+    
     while (1) {
 
         // Handle target machine display updates

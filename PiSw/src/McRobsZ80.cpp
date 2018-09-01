@@ -12,6 +12,8 @@
 static const char* LogPrefix = "RobsZ80";
 
 McDescriptorTable McRobsZ80::_descriptorTable = {
+    // Machine name
+    "Rob's Z80",
     // Required display refresh rate
     .displayRefreshRatePerSec = 30,
     .displayPixelsX = 512,
@@ -22,7 +24,9 @@ McDescriptorTable McRobsZ80::_descriptorTable = {
     .pixelScaleY = 1,
     .pFont = &__systemFont,
     .displayForeground = WGFX_WHITE,
-    .displayBackground = WGFX_BLACK
+    .displayBackground = WGFX_BLACK,
+    // Clock
+    .clockFrequencyHz = 7000000
 };
 
 // Enable machine

@@ -14,6 +14,8 @@ extern WgfxFont __TRS80Level3Font;
 static const char* LogPrefix = "TRS80";
 
 McDescriptorTable McTRS80::_descriptorTable = {
+    // Machine name
+    "TRS80",
     // Required display refresh rate
     .displayRefreshRatePerSec = 30,
     .displayPixelsX = 8 * 64,
@@ -24,7 +26,9 @@ McDescriptorTable McTRS80::_descriptorTable = {
     .pixelScaleY = 1,
     .pFont = &__TRS80Level3Font,
     .displayForeground = WGFX_GREEN,
-    .displayBackground = WGFX_BLACK
+    .displayBackground = WGFX_BLACK,
+    // Clock
+    .clockFrequencyHz = 1770000
 };
 
 // Enable machine

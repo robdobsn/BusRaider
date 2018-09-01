@@ -10,6 +10,8 @@ static const int MC_WINDOW_NUMBER = 0;
 class McDescriptorTable
 {
   public:
+    // Name
+    const char* machineName;
     // Display
     int displayRefreshRatePerSec;
     int displayPixelsX;
@@ -21,6 +23,8 @@ class McDescriptorTable
     WgfxFont* pFont;
     int displayForeground;
     int displayBackground;
+    // Clock
+    uint32_t clockFrequencyHz;
 };
 
 class McBase
