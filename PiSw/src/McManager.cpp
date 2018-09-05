@@ -32,3 +32,68 @@ void McManager::add(McBase* pMachine)
         return;
     _pMachines[_numMachines++] = pMachine;
 }
+
+bool McManager::setMachineIdx(int mcIdx)
+{
+    // Check valid
+    if (mcIdx < 0 || mcIdx >= _numMachines)
+        return false;
+
+    // Check if no change
+    if (_curMachineIdx == mcIdx)
+        return false;
+    
+    // Disable current machine
+    if (getMachine())
+        getMachine()->disable();
+
+    // Set the new machine
+    _curMachineIdx = mcIdx;
+
+    // Enable machine
+    if (getMachine())
+    {
+        // Machine
+        McBase* pMachine = getMachine();
+
+        // Setup clock
+        uint32_t clockFreqHz = pMachine->getDescriptorTable(0)->clockFrequencyHz;
+        if (clockFreqHz != 0)
+        {
+            _clockGen.setOutputPin();
+            _clockGen.setFrequency(clockFreqHz);
+            _clockGen.enable(true);
+        }
+        else
+        {
+            _clockGen.enable(false);
+        }
+
+        // Start
+        pMachine->enable();
+
+        // Started machine
+        LogWrite("McManager", LOG_DEBUG, "Started machine %s\n", 
+                    pMachine->getDescriptorTable(0)->machineName);
+
+    }
+    else
+    {
+        LogWrite("McManager", LOG_DEBUG, "Failed to start machine idx %d\n", mcIdx);
+    }
+    return true;
+}
+
+bool McManager::setMachineByName(const char* mcName)
+{
+    // Find machine
+    for (int i = 0; i < _numMachines; i++)
+    {
+        if (stricmp(mcName, _pMachines[i]->getDescriptorTable(0)->machineName) == 0)
+        {
+            setMachineIdx(i);
+            return true;
+        }
+    }
+    return false;
+}

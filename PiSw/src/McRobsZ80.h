@@ -8,7 +8,7 @@
 class McRobsZ80 : public McBase
 {
   private:
-    static constexpr uint32_t ROBSZ80_DISP_RAM_ADDR = 0xc000;
+    static constexpr uint32_t ROBSZ80_DISP_RAM_ADDR = 0x4000;
     static constexpr uint32_t ROBSZ80_DISP_RAM_SIZE = 0x4000;
     uint8_t _screenBuffer[ROBSZ80_DISP_RAM_SIZE];
     bool _screenBufferValid;

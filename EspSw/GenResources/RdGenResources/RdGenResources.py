@@ -113,6 +113,8 @@ def generateResourceFile(settings = None):
         walkGen = os.walk(uiFolder)
         for root,folders,fileNames in walkGen:
             for fileName in fileNames:
+                if fileName == "Thumbs.db":
+                    continue
                 filePath = os.path.join(root, fileName)
                 # Get file parts to create variable name
                 fileExtSplit = os.path.splitext(fileName)

@@ -29,6 +29,38 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
         pMc->keyHandler(ucModifiers, rawKeys);
 }
 
+void layout_display()
+{
+    // Clear display
+    wgfx_clear();
+    
+    // Layout display
+    McDescriptorTable* pMcDescr = McManager::getDescriptorTable(0);
+    int windowBorderWidth = 5;
+    wgfx_set_window(0, -1, 0, 
+        pMcDescr->displayPixelsX, pMcDescr->displayPixelsY,
+        pMcDescr->displayCellX, pMcDescr->displayCellY,
+        pMcDescr->pixelScaleX, pMcDescr->pixelScaleY,
+        pMcDescr->pFont, pMcDescr->displayForeground, pMcDescr->displayBackground,
+        windowBorderWidth, 8);
+    wgfx_set_window(1, 0, (pMcDescr->displayPixelsY*pMcDescr->pixelScaleY) + windowBorderWidth*2 + 10, 
+        -1, -1, -1, -1, 1, 1, 
+        NULL, -1, -1,
+        0, 8);
+    wgfx_set_console_window(1);
+}
+
+extern "C" void set_machine_by_name(const char* mcName)
+{
+    // Set the machine
+    if (McManager::setMachineByName(mcName))
+    {
+        // Set the display
+        layout_display();
+    }
+
+}
+
 extern "C" void entry_point()
 {
 
@@ -46,7 +78,7 @@ extern "C" void entry_point()
 
     // Target machine memory and command handler
     targetClear();
-    cmdHandler_init();
+    cmdHandler_init(set_machine_by_name);
 
     // Add machines
     new McTRS80();
@@ -67,22 +99,12 @@ extern "C" void entry_point()
     // Initialise graphics system
     wgfx_init(1366, 768);
 
-    // Layout display
-    int windowBorderWidth = 5;
-    wgfx_set_window(0, -1, 0, 
-        pMcDescr->displayPixelsX, pMcDescr->displayPixelsY,
-        pMcDescr->displayCellX, pMcDescr->displayCellY,
-        pMcDescr->pixelScaleX, pMcDescr->pixelScaleY,
-        pMcDescr->pFont, pMcDescr->displayForeground, pMcDescr->displayBackground,
-        windowBorderWidth, 8);
-    wgfx_set_window(1, 0, pMcDescr->displayPixelsY + windowBorderWidth*2 + 10, -1, -1, -1, -1, 1, 1, 
-        NULL, -1, -1,
-        windowBorderWidth, 8);
-    wgfx_set_console_window(1);
+    // Layout display for the selected machine
+    layout_display();
 
     // Initial message
     wgfx_set_fg(11);
-    ee_printf("RC2014 Bus Raider V1.01\n");
+    ee_printf("RC2014 Bus Raider V1.02\n");
     wgfx_set_fg(15);
     ee_printf("Rob Dobson 2018 (inspired by PiGFX)\n\n");
 
@@ -130,8 +152,6 @@ extern "C" void entry_point()
     unsigned long lastDisplayUpdateUs = 0;
     unsigned long dispTime = 0;
 
-    McManager::setMachineIdx(0);
-    
     while (1) {
 
         // Handle target machine display updates

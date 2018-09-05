@@ -21,49 +21,8 @@ class McManager
     static TargetClockGenerator _clockGen;
 
     static void add(McBase* pMachine);
-
-    static void setMachineIdx(int mcIdx)
-    {
-        // Disable current machine
-        if (getMachine())
-            getMachine()->disable();
-
-        // Set the new machine
-        _curMachineIdx = mcIdx;
-
-        // Enable machine
-        if (getMachine())
-        {
-            // Machine
-            McBase* pMachine = getMachine();
-
-            // Setup clock
-            uint32_t clockFreqHz = pMachine->getDescriptorTable(0)->clockFrequencyHz;
-            if (clockFreqHz != 0)
-            {
-                _clockGen.setOutputPin();
-                _clockGen.setFrequency(clockFreqHz);
-                _clockGen.enable(true);
-            }
-            else
-            {
-                _clockGen.enable(false);
-            }
-
-            // Start
-            pMachine->enable();
-
-            // Started machine
-            LogWrite("McManager", LOG_DEBUG, "Started machine %s\n", 
-                        pMachine->getDescriptorTable(0)->machineName);
-
-        }
-        else
-        {
-            LogWrite("McManager", LOG_DEBUG, "Failed to start machine idx %d\n", mcIdx);
-        }
-
-    }
+    static bool setMachineIdx(int mcIdx);
+    static bool setMachineByName(const char* mcName);
 
     static int getNumMachines()
     {

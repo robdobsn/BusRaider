@@ -104,6 +104,12 @@
             xhr.send();
         }
 
+        function setMachine()
+        {
+            var mcName = document.getElementById("machine-select").value;
+            sendCmdToTarget("setmachine=" + mcName);
+        }
+
     </script>
     <style>
         body {
@@ -163,6 +169,8 @@
         }
         #progress-bar {
             width: 100%;
+            background-color: #444;
+            border-color: #666;
         }
         #footer-area p {
             font-size: 0.8rem;
@@ -177,6 +185,23 @@
         #control-area span {
             margin: 5px 0;      
         }
+        .select-style {
+           height: 29px;
+           overflow: hidden;
+           width: 100%;
+           border-radius: 5px;
+           background-color: #444;
+           color: #fff;
+        }
+        .select-style select {
+            background: transparent;
+            border: none;
+            font-size: 14px;
+            height: 29px;
+            padding: 5px; /* If you add too much padding here, the options won't show in IE */
+            width: 100%;
+            color: #fff;
+        }
     </style>
 </head>
 
@@ -185,6 +210,17 @@
     <div>
         <div id="heading-area" class="layout-region">
             <h1>Bus Raider Control Panel</h1>
+        </div>
+        <div id="machine-select-area" class="layout-region">
+            <form class="machine-select-form">
+                <p>Select target machine</p>
+                <div class="select-style">
+                  <select id="machine-select" onchange="setMachine()">
+                    <option>TRS80</option>
+                    <option>Rob's Z80</option>
+                  </select>
+                </div>
+            </form>
         </div>
         <div id="drop-area" class="layout-region">
             <form class="file-upload-form">
@@ -197,8 +233,8 @@
         <div id="control-area" class="layout-region">
             <span class="button" onclick="sendCmdToTarget('programtarget')">Send to RC2014</span>
             <span class="button" onclick="sendCmdToTarget('resettarget')">Reset RC2014</span>
-            <span class="button" onclick="sendCmdToTarget('ioclrtarget')">Clear all RC2014 IO</span>
             <span class="button" onclick="sendCmdToTarget('cleartarget')">Clear Target Buffer</span>
+            <span class="button" onclick="sendCmdToTarget('ioclrtarget')">Clear all RC2014 IO</span>
         </div>
         <div id="footer-area" class="layout-region">
             <p>Developed by Rob Dobson 2018, inspired by RC2014 and PiGFX</p>

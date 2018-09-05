@@ -22,7 +22,7 @@ class RestAPIBusRaider
 
     void apiTargetCommand(String &reqStr, String &respStr)
     {
-        bool rslt = false;
+        bool rslt = true;
         // Get command
         String targetCmd = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 1);
         Log.trace("RestAPIBusRaider: Command %s\n", targetCmd.c_str());

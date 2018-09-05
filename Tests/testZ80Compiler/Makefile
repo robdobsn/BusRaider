@@ -1,11 +1,8 @@
 
-COMPIL ?= zcc
-CFLAGS = +trs80 -lndos -lm -create-app -subtype=disk
-
-all: test.cmd
-	zcc  +trs80 -lndos -lm -create-app -subtype=disk test.c -o test
+all: test.c
+	zcc +z80 -vn -O3 -startup=0 -clib=new test.c -o test.bin -lm -create-app
 	curl http://192.168.86.89/targetcmd/cleartarget
-	curl -F "file=@test.cmd" http://192.168.86.89/upload
+	curl -F "file=@test_CODE.bin" http://192.168.86.89/upload
 	curl http://192.168.86.89/targetcmd/programtarget
 	curl http://192.168.86.89/targetcmd/resettarget
 

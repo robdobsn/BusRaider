@@ -11,7 +11,9 @@
 extern "C" {
 #endif
 
-extern void cmdHandler_init();
+typedef void cmdHandler_changeMachineCallbackType(const char* machineName);
+
+extern void cmdHandler_init(cmdHandler_changeMachineCallbackType* pChangeMcCallback);
 
 extern void cmdHandler_service();
 

@@ -26,6 +26,7 @@ static uint8_t* _pReceivedFileDataPtr = NULL;
 static int _receivedFileBufSize = 0;
 static int _receivedFileBytesRx = 0;
 static int _receivedBlockCount = 0;
+static cmdHandler_changeMachineCallbackType* __pChangeMcCallback = NULL;
 
 // Structure for command handler state
 void cmdHandler_sendChar(uint8_t ch)
@@ -240,6 +241,23 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         LogWrite(FromCmdHandler, LOG_DEBUG, "srectarget, len %d", dataLen);
         srec_decode(targetDataBlockStore, cmdHandler_sinkAddr, pData, dataLen);
     }
+    else if (strncmp(cmdName, "setmachine", strlen("setmachine")) == 0)
+    {
+        // Get machine name
+        const char* pMcName = strstr(cmdName,"=");
+        if (pMcName)
+        {
+            // Move to first char of actual name
+            pMcName++;
+            if (__pChangeMcCallback != NULL)
+                __pChangeMcCallback(pMcName);
+            LogWrite(FromCmdHandler, LOG_DEBUG, "changemachine, to %s", pMcName);
+        }
+    }
+    else
+    {
+        LogWrite(FromCmdHandler, LOG_DEBUG, "unknown command %s", cmdName);
+    }
 }
 
 void cmdHandler_frameHandler(const uint8_t *framebuffer, int framelength)
@@ -271,8 +289,9 @@ void cmdHandler_frameHandler(const uint8_t *framebuffer, int framelength)
 }
 
 // Init the destinations for SREC and TREC records
-void cmdHandler_init()
+void cmdHandler_init(cmdHandler_changeMachineCallbackType* pChangeMcCallback)
 {
+    __pChangeMcCallback = pChangeMcCallback;
     minihdlc_init(cmdHandler_sendChar, cmdHandler_frameHandler);
     _receivedFileName[0] = 0;
 }

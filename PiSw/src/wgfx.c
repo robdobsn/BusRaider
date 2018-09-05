@@ -29,7 +29,7 @@ typedef struct WgfxWindowDef {
 
 #define WGFX_MAX_WINDOWS 5
 static WgfxWindowDef __wgfxWindows[WGFX_MAX_WINDOWS];
-static int __wgfxNumWindows = 0;
+static bool __wgfxWindowValid[WGFX_MAX_WINDOWS];
 static bool __wgfxDMAActive = false;
 
 typedef struct {
@@ -87,6 +87,10 @@ void wgfx_init(unsigned int desiredWidth, unsigned int desiredHeight)
     delayMicroseconds(10000);
     wgfx_set_framebuffer(p_fb, v_w, v_h, pitch, fbsize);
     wgfx_clear();
+
+    // Reset window validity
+    for (int i = 0; i < WGFX_MAX_WINDOWS; i++)
+        __wgfxWindowValid[i] = false;
 }
 
 void wgfx_set_framebuffer(void* p_framebuffer, unsigned int width, unsigned int height,
@@ -192,7 +196,7 @@ void wgfx_set_window(int winIdx, int tlx, int tly, int width, int height,
     //     pFontToUse->pFontData[1],
     //     pFontToUse->pFontData[2]);
 
-    __wgfxNumWindows = winIdx + 1;
+    __wgfxWindowValid[winIdx] = true;
 }
 
 void wgfx_set_console_window(int winIdx)
@@ -278,33 +282,35 @@ void wgfx_term_putstring(const char* str)
     wgfx_term_render_cursor();
 }
 
-void wgfx_putc(int windowIdx, unsigned int col, unsigned int row, unsigned char ch)
+void wgfx_putc(int winIdx, unsigned int col, unsigned int row, unsigned char ch)
 {
     if (col >= ctx.term.numCols)
         return;
     if (row >= ctx.term.numRows)
         return;
-    if (windowIdx < 0 || windowIdx >= __wgfxNumWindows)
+    if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS)
+        return;
+    if (!__wgfxWindowValid[winIdx])
         return;
 
     // Wait for previous operation (dma) to complete
     wgfx_wait_for_prev_operation();
 
     // Pointer to framebuffer where char cell starts
-    unsigned char* pBuf = wgfx_get_win_pfb(windowIdx, col, row);
+    unsigned char* pBuf = wgfx_get_win_pfb(winIdx, col, row);
     // Pointer to font data to write into char cell
-    unsigned char* pFont = __wgfxWindows[windowIdx].pFont->pFontData + ch * __wgfxWindows[windowIdx].pFont->bytesPerChar;
+    unsigned char* pFont = __wgfxWindows[winIdx].pFont->pFontData + ch * __wgfxWindows[winIdx].pFont->bytesPerChar;
 
     // For each bit in the font character write the appropriate data to the pixel in framebuffer
     unsigned char* pBufCur = pBuf;
-    int fgColour = ((__wgfxWindows[windowIdx].foregroundColour != -1) ?
-                    __wgfxWindows[windowIdx].foregroundColour : ctx.fg);
-    int bgColour = ((__wgfxWindows[windowIdx].backgroundColour != -1) ?
-                    __wgfxWindows[windowIdx].backgroundColour : ctx.bg);
-    int cellHeight = __wgfxWindows[windowIdx].cellHeight;
-    int yPixScale = __wgfxWindows[windowIdx].yPixScale;
-    int cellWidth = __wgfxWindows[windowIdx].cellWidth;
-    int xPixScale = __wgfxWindows[windowIdx].xPixScale;
+    int fgColour = ((__wgfxWindows[winIdx].foregroundColour != -1) ?
+                    __wgfxWindows[winIdx].foregroundColour : ctx.fg);
+    int bgColour = ((__wgfxWindows[winIdx].backgroundColour != -1) ?
+                    __wgfxWindows[winIdx].backgroundColour : ctx.bg);
+    int cellHeight = __wgfxWindows[winIdx].cellHeight;
+    int yPixScale = __wgfxWindows[winIdx].yPixScale;
+    int cellWidth = __wgfxWindows[winIdx].cellWidth;
+    int xPixScale = __wgfxWindows[winIdx].xPixScale;
     for (int y = 0; y < cellHeight; y++) {
         for (int i = 0; i < yPixScale; i++) {
             pBufCur = pBuf;
@@ -318,45 +324,47 @@ void wgfx_putc(int windowIdx, unsigned int col, unsigned int row, unsigned char 
             }
             pBuf += ctx.pitch;
         }
-        pFont += __wgfxWindows[windowIdx].pFont->bytesAcross;
+        pFont += __wgfxWindows[winIdx].pFont->bytesAcross;
     }
 }
 
-void wgfxSetMonoPixel(int windowIdx, int x, int y, int value)
+void wgfxSetMonoPixel(int winIdx, int x, int y, int value)
 {
     // Wait for previous operation (dma) to complete
     wgfx_wait_for_prev_operation();
-    unsigned char* pBuf = wgfx_get_win_pfb_xy(windowIdx, x, y);
-    int fgColour = ((__wgfxWindows[windowIdx].foregroundColour != -1) ?
-                    __wgfxWindows[windowIdx].foregroundColour : ctx.fg);
-    int bgColour = ((__wgfxWindows[windowIdx].backgroundColour != -1) ?
-                    __wgfxWindows[windowIdx].backgroundColour : ctx.bg);
+    unsigned char* pBuf = wgfx_get_win_pfb_xy(winIdx, x, y);
+    int fgColour = ((__wgfxWindows[winIdx].foregroundColour != -1) ?
+                    __wgfxWindows[winIdx].foregroundColour : ctx.fg);
+    int bgColour = ((__wgfxWindows[winIdx].backgroundColour != -1) ?
+                    __wgfxWindows[winIdx].backgroundColour : ctx.bg);
     *pBuf = value ? fgColour : bgColour;
 }
 
 // Write data from a char cell in a window
-void wgfx_write_cell(int windowIdx, unsigned int col, unsigned int row, unsigned char* pCellBuf)
+void wgfx_write_cell(int winIdx, unsigned int col, unsigned int row, unsigned char* pCellBuf)
 {
     if (col >= ctx.term.numCols)
         return;
     if (row >= ctx.term.numRows)
         return;
-    if (windowIdx < 0 || windowIdx >= __wgfxNumWindows)
+    if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS)
+        return;
+    if (!__wgfxWindowValid[winIdx])
         return;
 
     // Wait for previous operation (dma) to complete
     wgfx_wait_for_prev_operation();
 
     // Pointer to framebuffer where char cell starts
-    unsigned char* pBuf = wgfx_get_win_pfb(windowIdx, col, row);
+    unsigned char* pBuf = wgfx_get_win_pfb(winIdx, col, row);
 
     // Write data from cell buffer
     unsigned char* pBufCur = pBuf;
-    for (int y = 0; y < __wgfxWindows[windowIdx].cellHeight; y++) {
-        for (int i = 0; i < __wgfxWindows[windowIdx].yPixScale; i++) {
+    for (int y = 0; y < __wgfxWindows[winIdx].cellHeight; y++) {
+        for (int i = 0; i < __wgfxWindows[winIdx].yPixScale; i++) {
             pBufCur = pBuf;
-            for (int x = 0; x < __wgfxWindows[windowIdx].cellWidth; x++) {
-                for (int j = 0; j < __wgfxWindows[windowIdx].xPixScale; j++) {
+            for (int x = 0; x < __wgfxWindows[winIdx].cellWidth; x++) {
+                for (int j = 0; j < __wgfxWindows[winIdx].xPixScale; j++) {
                     *pBufCur++ = *pCellBuf++;
                 }
             }
@@ -366,28 +374,30 @@ void wgfx_write_cell(int windowIdx, unsigned int col, unsigned int row, unsigned
 }
 
 // Read data from a char cell in a window
-void wgfx_read_cell(int windowIdx, unsigned int col, unsigned int row, unsigned char* pCellBuf)
+void wgfx_read_cell(int winIdx, unsigned int col, unsigned int row, unsigned char* pCellBuf)
 {
     if (col >= ctx.term.numCols)
         return;
     if (row >= ctx.term.numRows)
         return;
-    if (windowIdx < 0 || windowIdx >= __wgfxNumWindows)
+    if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS)
+        return;
+    if (!__wgfxWindowValid[winIdx])
         return;
 
     // Wait for previous operation (dma) to complete
     wgfx_wait_for_prev_operation();
 
     // Pointer to framebuffer where char cell starts
-    unsigned char* pBuf = wgfx_get_win_pfb(windowIdx, col, row);
+    unsigned char* pBuf = wgfx_get_win_pfb(winIdx, col, row);
 
     // Write data from cell buffer
     unsigned char* pBufCur = pBuf;
-    for (int y = 0; y < __wgfxWindows[windowIdx].cellHeight; y++) {
-        for (int i = 0; i < __wgfxWindows[windowIdx].yPixScale; i++) {
+    for (int y = 0; y < __wgfxWindows[winIdx].cellHeight; y++) {
+        for (int i = 0; i < __wgfxWindows[winIdx].yPixScale; i++) {
             pBufCur = pBuf;
-            for (int x = 0; x < __wgfxWindows[windowIdx].cellWidth; x++) {
-                for (int j = 0; j < __wgfxWindows[windowIdx].xPixScale; j++) {
+            for (int x = 0; x < __wgfxWindows[winIdx].cellWidth; x++) {
+                for (int j = 0; j < __wgfxWindows[winIdx].xPixScale; j++) {
                     *pCellBuf++ = *pBufCur++;
                 }
             }
@@ -453,9 +463,9 @@ void wgfx_wait_for_prev_operation()
 #define USE_DMA_FOR_SCROLL 1
 
 // Positive values for rows scroll up, negative down
-void wgfx_scroll(int windowIdx, int rows)
+void wgfx_scroll(int winIdx, int rows)
 {
-    if (windowIdx < 0 || windowIdx >= WGFX_MAX_WINDOWS || rows == 0)
+    if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS || rows == 0)
         return;
 
     // Wait for previous operation (dma) to complete
@@ -467,10 +477,10 @@ void wgfx_scroll(int windowIdx, int rows)
     unsigned char* pBlankEnd = NULL;
     if (rows > 0)
     {
-        unsigned char* pDest = wgfx_get_win_pfb(windowIdx, 0, 0);
-        unsigned char* pSrc = wgfx_get_win_pfb(windowIdx, 0, numRows);
-        unsigned char* pEnd = wgfx_get_win_pfb(windowIdx, 0, ctx.term.numRows);
-        pBlankStart = wgfx_get_win_pfb(windowIdx, 0, ctx.term.numRows-numRows);
+        unsigned char* pDest = wgfx_get_win_pfb(winIdx, 0, 0);
+        unsigned char* pSrc = wgfx_get_win_pfb(winIdx, 0, numRows);
+        unsigned char* pEnd = wgfx_get_win_pfb(winIdx, 0, ctx.term.numRows);
+        pBlankStart = wgfx_get_win_pfb(winIdx, 0, ctx.term.numRows-numRows);
         pBlankEnd = pEnd;
 
 #ifdef USE_DMA_FOR_SCROLL
@@ -505,11 +515,11 @@ void wgfx_scroll(int windowIdx, int rows)
     }
     else
     {
-        unsigned char* pDest = wgfx_get_win_pfb(windowIdx, 0, ctx.term.numRows) - 1;
-        unsigned char* pSrc = wgfx_get_win_pfb(windowIdx, 0, ctx.term.numRows-numRows) - 1;
-        unsigned char* pEnd = wgfx_get_win_pfb(windowIdx, 0, 0);
+        unsigned char* pDest = wgfx_get_win_pfb(winIdx, 0, ctx.term.numRows) - 1;
+        unsigned char* pSrc = wgfx_get_win_pfb(winIdx, 0, ctx.term.numRows-numRows) - 1;
+        unsigned char* pEnd = wgfx_get_win_pfb(winIdx, 0, 0);
         pBlankStart = pEnd;
-        pBlankEnd = wgfx_get_win_pfb(windowIdx, 0, numRows);
+        pBlankEnd = wgfx_get_win_pfb(winIdx, 0, numRows);
         pBlankEnd = pSrc;
         while (pSrc > pEnd)
         {
