@@ -27,6 +27,7 @@ static int _receivedFileBufSize = 0;
 static int _receivedFileBytesRx = 0;
 static int _receivedBlockCount = 0;
 static cmdHandler_changeMachineCallbackType* __pChangeMcCallback = NULL;
+static char _receivedFileStartInfo[CMD_HANDLER_MAX_CMD_STR_LEN+1];
 
 // Structure for command handler state
 void cmdHandler_sendChar(uint8_t ch)
@@ -63,6 +64,9 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         int fileLen = strtol(fileLenStr, NULL, 10);
         if (fileLen <= 0)
             return;
+
+        // Copy start info
+        strncpy(_receivedFileStartInfo, pCmdJson, CMD_HANDLER_MAX_CMD_STR_LEN);
 
         // Allocate space for file
         if (_pReceivedFileDataPtr != NULL)
@@ -151,53 +155,20 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
 
                 // Call the copyblock function in it's new location
                 blockCopyExecRelocatableFnT* pCopyBlockFn = (blockCopyExecRelocatableFnT*) pCopyBlockNewLocation;
-
                 LogWrite(FromCmdHandler, LOG_DEBUG, "Address of copyBlockFn %08x, len %d", pCopyBlockNewLocation, blockCopyExecRelocatableLen);
 
                 // Call the copyBlock function in its new location using it to move the program
                 // to 0x8000 the base address for Pi programs
                 (*pCopyBlockFn) ((uint8_t*)0x8000, _pReceivedFileDataPtr, _receivedFileBytesRx, (uint8_t*)0x8000);
-
-                // // Allocate again for test
-                // uint8_t* pTest = nmalloc_malloc(_receivedFileBytesRx);
-                // void* retVal = (*pCopyBlockFn) (pTest, _pReceivedFileDataPtr, _receivedFileBytesRx);
-
-                // // Check it
-                // LogWrite(FromCmdHandler, LOG_DEBUG, "Address of test %08x, len %d, retVal %08x", pTest, blockCopyExecRelocatableLen, retVal);
-                // for (int i = 0; i < _receivedFileBytesRx; i++)
-                // {
-                //     if (pTest[i] != _pReceivedFileDataPtr[i])
-                //     {
-                //         LogWrite(FromCmdHandler, LOG_DEBUG, "Incorrect data at %d", i);
-                //         break;
-                //     }
-                // }
-
-                // LogWrite(FromCmdHandler, LOG_DEBUG, "Here");
-
-                return;
-            }
-
-
-            // TODO - move the following code to specific machine
-            if (stricmp(pDot, ".CMD") == 0)
-            {
-                LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd CMD File %s, len %d", _receivedFileName, _receivedFileBytesRx);
-                McBase* pMc = McManager::getMachine();
-                if (pMc)
-                    pMc->fileHander("{\"fileType\":\"cmd\"}", _pReceivedFileDataPtr, _receivedFileBytesRx);
                 return;
             }
         }
 
-        // TODO - move the following code to specific machine
-
-        // Falling through to here so treat as binary file
-        LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd BIN File %s, len %d", _receivedFileName, _receivedFileBytesRx);
+        // Falling through to here so offer to the machine specific handler
+        LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
         McBase* pMc = McManager::getMachine();
         if (pMc)
-            pMc->fileHander("{\"fileType\":\"bin\"}", _pReceivedFileDataPtr, _receivedFileBytesRx);
-
+            pMc->fileHander(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx);
     }
     else if (strcmp(cmdName, "cleartarget") == 0)
     {
@@ -294,6 +265,7 @@ void cmdHandler_init(cmdHandler_changeMachineCallbackType* pChangeMcCallback)
     __pChangeMcCallback = pChangeMcCallback;
     minihdlc_init(cmdHandler_sendChar, cmdHandler_frameHandler);
     _receivedFileName[0] = 0;
+    _receivedFileStartInfo[0] = 0;
 }
 
 void cmdHandler_service()

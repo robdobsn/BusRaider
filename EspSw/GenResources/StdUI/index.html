@@ -167,10 +167,32 @@
         #fileElem {
             display: none;
         }
-        #progress-bar {
+        progress {
             width: 100%;
+            min-height:100%;
             background-color: #444;
-            border-color: #666;
+            border-color: #333;
+            border-radius: 5px;
+            color: #9595de;
+        }
+        progress::-webkit-progress-bar {
+            width: 100%;
+            min-height:100%;
+            background-color: #444;
+            border-color: #333;
+            border-radius: 5px;
+        }
+        /* Firefox */
+        progress::-moz-progress-bar {
+            background-color: #9595de;
+            border-radius: 5px;
+            border-color: #333;
+        }
+        /* Chrome */
+        progress::-webkit-progress-value {
+            background-color: #9595de;
+            border-radius: 5px;
+            border-color: #333;
         }
         #footer-area p {
             font-size: 0.8rem;

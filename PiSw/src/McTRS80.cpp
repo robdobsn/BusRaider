@@ -264,18 +264,26 @@ void McTRS80::keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[
 // Handle a file
 void McTRS80::fileHander(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
 {
-    // Get the file type
+    // Get the file type (extension of file name)
     #define MAX_VALUE_STR 30
-    char fileType[MAX_VALUE_STR+1];
-    if (!jsonGetValueForKey("fileType", pFileInfo, fileType, MAX_VALUE_STR))
+    #define MAX_TRS80_FILE_NAME_STR 100
+    char fileName[MAX_TRS80_FILE_NAME_STR+1];
+    if (!jsonGetValueForKey("fileName", pFileInfo, fileName, MAX_TRS80_FILE_NAME_STR))
         return;
-    if (stricmp(fileType, "cmd") == 0)
+    // Check type of file (assume extension is delimited by .)
+    const char* pFileType = strstr(fileName, ".");
+    const char* pEmpty = "";
+    if (pFileType == NULL)
+        pFileType = pEmpty;
+    if (stricmp(pFileType, ".cmd") == 0)
     {
+        // TRS80 command file
         LogWrite(LogPrefix, LOG_DEBUG, "Processing TRS80 CMD file len %d", fileLen);
         mc_trs80_cmdfile_proc(targetDataBlockStore, handleExecAddr, pFileData, fileLen);
     }
-    else if (stricmp(fileType, "bin") == 0)
+    else
     {
+        // Treat everything else as a binary file
         uint16_t baseAddr = 0;
         char baseAddrStr[MAX_VALUE_STR+1];
         if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
