@@ -44,6 +44,7 @@ extern void wgfx_term_putstring(const char* str);
 extern void wgfx_putc(int windowIdx, unsigned int col, unsigned int row, unsigned char ch);
 
 extern void wgfxSetMonoPixel(int windowIdx, int x, int y, int value);
+extern void wgfxSetColourPixel(int winIdx, int x, int y, int colour);
 
 extern void wgfx_set_window(int winIdx, int tlx, int tly, int width, int height,
     int cellWidth, int cellHeight, int xPixScale, int yPixScale,

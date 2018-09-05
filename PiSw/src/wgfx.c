@@ -337,7 +337,25 @@ void wgfxSetMonoPixel(int winIdx, int x, int y, int value)
                     __wgfxWindows[winIdx].foregroundColour : ctx.fg);
     int bgColour = ((__wgfxWindows[winIdx].backgroundColour != -1) ?
                     __wgfxWindows[winIdx].backgroundColour : ctx.bg);
-    *pBuf = value ? fgColour : bgColour;
+    for (int iy = 0; iy < __wgfxWindows[winIdx].yPixScale; iy++)
+    {
+        unsigned char* pBufL = pBuf + iy * ctx.pitch;
+        for (int ix = 0; ix < __wgfxWindows[winIdx].xPixScale; ix++)
+            *pBufL++ = value ? fgColour : bgColour;
+    }
+}
+
+void wgfxSetColourPixel(int winIdx, int x, int y, int colour)
+{
+    // Wait for previous operation (dma) to complete
+    wgfx_wait_for_prev_operation();
+    unsigned char* pBuf = wgfx_get_win_pfb_xy(winIdx, x, y);
+    for (int iy = 0; iy < __wgfxWindows[winIdx].yPixScale; iy++)
+    {
+        unsigned char* pBufL = pBuf + iy * ctx.pitch;
+        for (int ix = 0; ix < __wgfxWindows[winIdx].xPixScale; ix++)
+            *pBufL++ = colour;
+    }
 }
 
 // Write data from a char cell in a window

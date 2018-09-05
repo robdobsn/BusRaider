@@ -17,6 +17,7 @@
 #include "McManager.h"
 #include "McTRS80.h"
 #include "McRobsZ80.h"
+#include "McZXSpectrum.h"
 
 // Baud rate
 #define MAIN_UART_BAUD_RATE 115200
@@ -83,6 +84,7 @@ extern "C" void entry_point()
     // Add machines
     new McTRS80();
     new McRobsZ80();
+    new McZXSpectrum();
 
     // Enable first machine
     McManager::setMachineIdx(0);

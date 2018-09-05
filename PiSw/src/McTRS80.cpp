@@ -266,9 +266,9 @@ void McTRS80::fileHander(const char* pFileInfo, const uint8_t* pFileData, int fi
 {
     // Get the file type (extension of file name)
     #define MAX_VALUE_STR 30
-    #define MAX_TRS80_FILE_NAME_STR 100
-    char fileName[MAX_TRS80_FILE_NAME_STR+1];
-    if (!jsonGetValueForKey("fileName", pFileInfo, fileName, MAX_TRS80_FILE_NAME_STR))
+    #define MAX_FILE_NAME_STR 100
+    char fileName[MAX_FILE_NAME_STR+1];
+    if (!jsonGetValueForKey("fileName", pFileInfo, fileName, MAX_FILE_NAME_STR))
         return;
     // Check type of file (assume extension is delimited by .)
     const char* pFileType = strstr(fileName, ".");

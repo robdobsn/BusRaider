@@ -5,7 +5,7 @@ CPPFLAGS = -fno-rtti -fno-exceptions -fno-sized-deallocation
 
 
 ## Important!!! asm.o must be the first object to be linked!
-OOB = asm.o pi_bus_raider.o busraider.o systemfont.o mc_trs80l3font.o mc_trs80_cmdfile.o target_memory_map.o cmd_handler.o uart.o irq.o utils.o framebuffer.o postman.o wgfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o raspihwconfig.o timer.o piwiring.o rdutils.o minihdlc.o srecparser.o jsmnR.o McBase.o McManager.o McTRS80.o McRobsZ80.o rdstdcpp.o
+OOB = asm.o pi_bus_raider.o busraider.o systemfont.o mc_trs80l3font.o mc_trs80_cmdfile.o target_memory_map.o cmd_handler.o uart.o irq.o utils.o framebuffer.o postman.o wgfx.o dma.o nmalloc.o uspios_wrapper.o ee_printf.o raspihwconfig.o timer.o piwiring.o rdutils.o minihdlc.o srecparser.o jsmnR.o McBase.o McManager.o McTRS80.o McRobsZ80.o McZXSpectrum.o rdstdcpp.o
 
 BUILD_DIR = build
 SRC_DIR = src
