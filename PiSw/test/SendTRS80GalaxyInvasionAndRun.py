@@ -6,55 +6,47 @@ import time
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
-galaxyData = []
-try:
-    with open(r"../../TargetSW/TRS80/Games/galinv1d.cmd", "rb") as galaxyFile:
-        galaxyData = galaxyFile.read()
-except:
-    print("Not found ... trying alternate")
-
-if len(galaxyData) == 0:
+def getFileData(fileFolder, fileName):
+    inData = []
     try:
-        with open(r"TargetSW/TRS80/Games/galinv1d.cmd", "rb") as galaxyFile:
-            galaxyData = galaxyFile.read()
+        with open(r"../../" + fileFolder + fileName, "rb") as inFile:
+            inData = inFile.read()
     except:
-        print("Not found there either")
-        exit()
+        pass
+    if len(inData) == 0:
+        try:
+            with open(fileFolder + fileName, "rb") as inFile:
+                inData = inFile.read()
+        except:
+            print("Unable to load file ", fileFolder + fileName)
+            exit(1)
+    return inData
 
-romFrame = bytearray(b"{\"cmdName\":\"filetarget\",\"fileType\":\"trs80bin\"}\0")
-romFrame += romData
+def formFileFrame(fileFolder, fileName):
+    fileFrame = bytearray(b"{\"cmdName\":\"FileTarget\",\"fileName\":") + bytearray(fileName, "utf-8") + bytearray(b"}\0")
+    fileFrame += getFileData(fileFolder, fileName)
+    return fileFrame
 
-galaxyFrame = bytearray(b"{\"cmdName\":\"filetarget\",\"fileType\":\"trs80cmd\"}\0")
-galaxyFrame += galaxyData
+romFrame = formFileFrame(r"TargetSW/TRS80/ROMS/", r"level1.rom")
+programFrame = formFileFrame(r"TargetSW/TRS80/Games/", r"galinv1d.cmd")
 
-clearFrame = b"{\"cmdName\":\"cleartarget\"}\0"
-resetFrame = b"{\"cmdName\":\"resettarget\"}\0"
-progFrame = b"{\"cmdName\":\"programtarget\"}\0"
-ioclearFrame = b"{\"cmdName\":\"ioclrtarget\"}\0"
+clearFrame = b"{\"cmdName\":\"ClearTarget\"}\0"
+progFrame = b"{\"cmdName\":\"ProgramAndReset\"}\0"
+setMCFrame = b"{\"cmdName\":\"SetMachine=TRS80\"}\0"
 
-with serial.Serial('COM6', 921600) as s:
+with serial.Serial('COM6', 115200) as s:
     h = HDLC(s)
+    # h.sendFrame(setMCFrame)
+    # print("Sent setmachine=TRS80 len", len(setMCFrame))
+    # time.sleep(2.0)
     h.sendFrame(clearFrame)
-    print("Sent cleartarget len", len(clearFrame))
-    time.sleep(1.0)
-    h.sendFrame(ioclearFrame)
-    print("Sent ioclear len", len(ioclearFrame))
+    print("Clear Target Buffer")
     time.sleep(1.0)
     h.sendFrame(romFrame)
-    print("Sent ROM srcs len", len(romFrame))
-    time.sleep(1.0)
+    print("Sent ROM", len(romFrame))
+    time.sleep(2.1)
+    h.sendFrame(programFrame)
+    print("Sent Program", len(romFrame))
+    time.sleep(2.1)
     h.sendFrame(progFrame)
-    print("Sent progtarget len", len(progFrame))
-    time.sleep(2.0)
-    h.sendFrame(resetFrame)
-    print("Sent resettarget len", len(resetFrame))
-    time.sleep(2.0)    
-    h.sendFrame(galaxyFrame)
-    print("Sent Galaxy Invasion srcs len", len(galaxyFrame))
-    time.sleep(1.0)
-    h.sendFrame(progFrame)
-    print("Sent progtarget len", len(progFrame))
-    time.sleep(2.0)
-    h.sendFrame(resetFrame)
-    print("Sent resettarget len", len(resetFrame))
-    time.sleep(2.0)
+    print("Sent Program and Reset")

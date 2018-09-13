@@ -51,7 +51,7 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         return;
 
     // Check for simple commands
-    if (strcmp(cmdName, "ufStart") == 0)
+    if (stricmp(cmdName, "ufStart") == 0)
     {
         // Start a file upload - get file name
         if (!jsonGetValueForKey("fileName", pCmdJson, _receivedFileName, MAX_FILE_NAME_STR))
@@ -90,7 +90,7 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         }
 
     }
-    else if (strcmp(cmdName, "ufBlock") == 0)
+    else if (stricmp(cmdName, "ufBlock") == 0)
     {
         // Check file reception in progress
         if (!_pReceivedFileDataPtr)
@@ -117,7 +117,7 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         // LogWrite(FromCmdHandler, LOG_DEBUG, "efBlock, len %d, blocks %d", 
         //             _receivedFileBytesRx, _receivedBlockCount);
     }
-    else if (strcmp(cmdName, "ufEnd") == 0)
+    else if (stricmp(cmdName, "ufEnd") == 0)
     {
         // Check file reception in progress
         if (!_pReceivedFileDataPtr)
@@ -170,49 +170,66 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         if (pMc)
             pMc->fileHander(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx);
     }
-    else if (strcmp(cmdName, "cleartarget") == 0)
+    else if (stricmp(cmdName, "ClearTarget") == 0)
     {
         targetClear();
     }
-    else if (strcmp(cmdName, "programtarget") == 0)
+    else if ((stricmp(cmdName, "ProgramAndReset") == 0) || (stricmp(cmdName, "ProgramTarget") == 0))
     {
         if (targetGetNumBlocks() == 0) {
             // Nothing new to write
-            LogWrite(FromCmdHandler, LOG_DEBUG, "programtarget - nothing to write");
+            LogWrite(FromCmdHandler, LOG_DEBUG, "ProgramTarget - nothing to write");
         } else {
-
+            // Handle programming in one BUSRQ/BUSACK pass
+            if (br_req_and_take_bus() != BR_OK)
+            {
+                LogWrite(FromCmdHandler, LOG_DEBUG, "ProgramTarget - failed to capture bus");   
+                return;
+            }
+            // Write the blocks
             for (int i = 0; i < targetGetNumBlocks(); i++) {
                 TargetMemoryBlock* pBlock = targetGetMemoryBlock(i);
-                LogWrite(FromCmdHandler, LOG_DEBUG,"programtarget start %08x len %d", pBlock->start, pBlock->len);
-                br_write_block(pBlock->start, targetMemoryPtr() + pBlock->start, pBlock->len, 1, 0);
+                LogWrite(FromCmdHandler, LOG_DEBUG,"ProgramTarget start %08x len %d", pBlock->start, pBlock->len);
+                br_write_block(pBlock->start, targetMemoryPtr() + pBlock->start, pBlock->len, false, false);
             }
+            // Written
+            LogWrite(FromCmdHandler, LOG_DEBUG, "ProgramTarget - written %d blocks", targetGetNumBlocks());
 
-            LogWrite(FromCmdHandler, LOG_DEBUG, "programtarget - written %d blocks", targetGetNumBlocks());
+            // Check for reset too
+            if (stricmp(cmdName, "ProgramAndReset") == 0)
+            {
+                LogWrite(FromCmdHandler, LOG_DEBUG, "Resetting target");
+                br_release_control(true);
+            }
+            else
+            {
+                br_release_control(false);
+            }
         }
     }
-    else if (strcmp(cmdName, "resettarget") == 0)
+    else if (stricmp(cmdName, "ResetTarget") == 0)
     {
-        LogWrite(FromCmdHandler, LOG_DEBUG, "resettarget");
+        LogWrite(FromCmdHandler, LOG_DEBUG, "ResetTarget");
         br_reset_host();
     }
-    else if (strcmp(cmdName, "ioclrtarget") == 0)
+    else if (stricmp(cmdName, "IOClrTarget") == 0)
     {
-        LogWrite(FromCmdHandler, LOG_DEBUG, "ioclrtarget");
+        LogWrite(FromCmdHandler, LOG_DEBUG, "IO Clear Target");
         br_clear_all_io();       
     }
-    else if (strcmp(cmdName, "filetarget") == 0)
+    else if (stricmp(cmdName, "FileTarget") == 0)
     {
-        LogWrite(FromCmdHandler, LOG_DEBUG, "filetarget, len %d", dataLen);
+        LogWrite(FromCmdHandler, LOG_DEBUG, "File to Target, len %d", dataLen);
         McBase* pMc = McManager::getMachine();
         if (pMc)
             pMc->fileHander(pCmdJson, pData, dataLen);
     }
-    else if (strcmp(cmdName, "srectarget") == 0)
+    else if (stricmp(cmdName, "SRECTarget") == 0)
     {
-        LogWrite(FromCmdHandler, LOG_DEBUG, "srectarget, len %d", dataLen);
+        LogWrite(FromCmdHandler, LOG_DEBUG, "SREC to Target, len %d", dataLen);
         srec_decode(targetDataBlockStore, cmdHandler_sinkAddr, pData, dataLen);
     }
-    else if (strncmp(cmdName, "setmachine", strlen("setmachine")) == 0)
+    else if (strnicmp(cmdName, "SetMachine", strlen("SetMachine")) == 0)
     {
         // Get machine name
         const char* pMcName = strstr(cmdName,"=");
@@ -222,12 +239,12 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
             pMcName++;
             if (__pChangeMcCallback != NULL)
                 __pChangeMcCallback(pMcName);
-            LogWrite(FromCmdHandler, LOG_DEBUG, "changemachine, to %s", pMcName);
+            LogWrite(FromCmdHandler, LOG_DEBUG, "Set Machine to %s", pMcName);
         }
     }
     else
     {
-        LogWrite(FromCmdHandler, LOG_DEBUG, "unknown command %s", cmdName);
+        LogWrite(FromCmdHandler, LOG_DEBUG, "Unknown command %s", cmdName);
     }
 }
 

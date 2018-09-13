@@ -1,0 +1,16 @@
+
+IF !DEFINED_startup
+	defc	DEFINED_startup = 1
+	defc startup = 0
+	IFNDEF startup
+	ENDIF
+ENDIF
+
+
+IF !DEFINED_CRT_ORG_CODE
+	defc	DEFINED_CRT_ORG_CODE = 1
+	defc CRT_ORG_CODE = 0
+	IFNDEF CRT_ORG_CODE
+	ENDIF
+ENDIF
+

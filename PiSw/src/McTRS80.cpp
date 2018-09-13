@@ -71,7 +71,7 @@ void McTRS80::displayRefresh()
     {
         for (int i = 0; i < cols; i++)
         {
-            register int cellIdx = k * cols + i;
+            int cellIdx = k * cols + i;
             if (!_screenBufferValid || (_screenBuffer[cellIdx] != pScrnBuffer[cellIdx]))
             {
                 wgfx_putc(MC_WINDOW_NUMBER, i, k, pScrnBuffer[cellIdx]);

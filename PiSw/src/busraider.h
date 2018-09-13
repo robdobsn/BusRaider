@@ -41,7 +41,6 @@ typedef enum {
 #define BR_MUX_LOW_BIT_POS 9
 #define BR_MUX_CTRL_BIT_MASK (0x07 << BR_MUX_LOW_BIT_POS)
 #define BR_MUX_HADDR_SER_LOW 0x00
-#define BR_MUX_HADDR_SER_HIGH 0x04 // Actually sets MUX to LADDR_CLR (ok as LADDR is latched)
 #define BR_MUX_LADDR_CLR_BAR_LOW 0x04
 #define BR_MUX_DATA_OE_BAR_LOW 0x01
 #define BR_MUX_RESET_Z80_BAR_LOW 0x05
@@ -49,6 +48,15 @@ typedef enum {
 #define BR_MUX_NMI_BAR_LOW 0x06
 #define BR_MUX_LADDR_OE_BAR 0x03
 #define BR_MUX_HADDR_OE_BAR 0x07
+/*
+// The following is used when HADDR_SER needs to be HIGH - the default is low
+// It actually sets MUX to DATA_OE_BAR - this is ok as PIB is either in our out
+// at this stage so data will be pulled into or out of the 
+#define BR_MUX_HADDR_SER_HIGH BR_MUX_DATA_OE_BAR_LOW 
+*/
+
+// This is used when HADDR_SER needs to be HIGH - default is LOW based on mux input 0
+#define BR_MUX_HADDR_SER_HIGH BR_MUX_LADDR_CLR_BAR_LOW
 
 // Pi pins used for control of host bus
 #define BR_BUSRQ_BAR 19 // SPI1 MISO
@@ -92,7 +100,7 @@ extern int br_bus_acknowledged();
 // Take control of bus
 extern void br_take_control();
 // Release control of bus
-extern void br_release_control();
+extern void br_release_control(bool resetTargetOnRelease);
 // Request and take bus
 extern BR_RETURN_TYPE br_req_and_take_bus();
 // Set address

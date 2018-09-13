@@ -6,46 +6,63 @@ import time
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
-testCodeRelPath = "testZ80Lissajous/lissajous_CODE.bin"
-#testCodeRelPath = "testZ80AsmFill/testZ80ASMFill.bin"
+testCodePath = r"Tests/testZ80Lissajous"
+testCodeFile = r"/lissajous_CODE.bin"
+testSetMcToRobs = True
+# testCodePath = r"Tests/testZ80AsmTestMem/"
+# testCodeFile = r"testZ80AsmTestMem.bin"
+# testSetMcToRobs = False
 
-romData = []
-try:
-    with open(r"../../Tests/" + testCodeRelPath, "rb") as romFile:
-        romData = romFile.read()
-except:
-    print("Not found ... trying alternate")
-
-if len(romData) == 0:
+def getFileData(fileFolder, fileName):
+    inData = []
     try:
-        with open(r"Tests/" + testCodeRelPath, "rb") as romFile:
-            romData = romFile.read()
+        with open(r"../../" + fileFolder + fileName, "rb") as inFile:
+            inData = inFile.read()
     except:
-        print("Not found there either")
-        exit()
+        pass
+    if len(inData) == 0:
+        try:
+            with open(fileFolder + fileName, "rb") as inFile:
+                inData = inFile.read()
+        except:
+            print("Unable to load file ", fileFolder + fileName)
+            exit(1)
+    return inData
 
-romFrame = bytearray(b"{\"cmdName\":\"filetarget\",\"fileName\":\"test.bin\"}\0")
-romFrame += romData
+def formFileFrame(fileFolder, fileName):
+    fileFrame = bytearray(b"{\"cmdName\":\"FileTarget\",\"fileName\":") + bytearray(fileName, "utf-8") + bytearray(b"}\0")
+    fileFrame += getFileData(fileFolder, fileName)
+    return fileFrame
 
-clearFrame = b"{\"cmdName\":\"cleartarget\"}\0"
-resetFrame = b"{\"cmdName\":\"resettarget\"}\0"
-progFrame = b"{\"cmdName\":\"programtarget\"}\0"
-ioclearFrame = b"{\"cmdName\":\"ioclrtarget\"}\0"
-setMCFrame = b"{\"cmdName\":\"setmachine=Rob's Z80\"}\0"
+romFrame = formFileFrame(testCodePath, testCodeFile)
+
+testData = bytearray()
+for i in range(4096):
+    testData.append((i + 33) % 256)
+#testData[22] = 0
+setTestDataFrame = b"{\"cmdName\":\"FileTarget\",,\"fileName\":\"test.bin\",\"baseAddr\":\"4000\"}\0" 
+setTestDataFrame += testData
+
+clearFrame = b"{\"cmdName\":\"ClearTarget\"}\0"
+#resetFrame = b"{\"cmdName\":\"ResetTarget\"}\0"
+progFrame = b"{\"cmdName\":\"ProgramAndReset\"}\0"
+ioclearFrame = b"{\"cmdName\":\"IOClrTarget\"}\0"
+setMCFrame = b"{\"cmdName\":\"SetMachine=Rob's Z80\"}\0"
 
 with serial.Serial('COM6', 115200) as s:
     h = HDLC(s)
-    h.sendFrame(setMCFrame)
-    print("Sent setmachine=RobsZ80 len", len(setMCFrame))
-    time.sleep(2.0)
+    if testSetMcToRobs:
+        h.sendFrame(setMCFrame)
+        print("Set Machine to RobsZ80")
+        time.sleep(2.0)
     h.sendFrame(clearFrame)
-    print("Sent cleartarget len", len(clearFrame))
+    print("Clear Target Buffer")
     time.sleep(1.0)
     h.sendFrame(romFrame)
-    print("Sent ROM srcs len", len(romFrame))
+    print("Sent ROM", len(romFrame))
+    time.sleep(0.1)
+    h.sendFrame(setTestDataFrame)
+    print("Sent Test Data", len(setTestDataFrame))
     time.sleep(0.1)
     h.sendFrame(progFrame)
-    print("Sent progtarget len", len(progFrame))
-    time.sleep(0.1)
-    h.sendFrame(resetFrame)
-    print("Sent resettarget len", len(resetFrame))
+    print("Sent Program and Reset")

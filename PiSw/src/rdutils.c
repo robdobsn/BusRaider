@@ -72,6 +72,19 @@ int stricmp(const char* str1, const char* str2)
     return (0);
 }
 
+int strnicmp(const char* str1, const char* str2, size_t num)
+{
+    if (num == 0)
+        return (0);
+    do {
+        if (rdtolower(*str1) != rdtolower(*str2++))
+            return (rdtolower(*str1) - rdtolower(*(--str2)));
+        if (*str1++ == 0)
+            break;
+    } while (--num != 0);
+    return (0);
+}
+
 // strstr from Apple open source
 const char *strstr(const char* string, const char* substring)
 {

@@ -72,7 +72,6 @@ void br_init()
 // Reset the host
 void br_reset_host()
 {
-    ee_printf("br_reset_host\n");
     // Reset by taking reset_bar low and then high
     br_mux_set(BR_MUX_RESET_Z80_BAR_LOW);
     delayMicroseconds(1000);
@@ -122,7 +121,7 @@ void br_take_control()
 }
 
 // Release control of bus
-void br_release_control()
+void br_release_control(bool resetTargetOnRelease)
 {
     // Control bus
     pinMode(BR_WR_BAR, INPUT);
@@ -131,8 +130,21 @@ void br_release_control()
     pinMode(BR_IORQ_BAR, INPUT);
     // Address bus not enabled
     digitalWrite(BR_PUSH_ADDR_BAR, 1);
-    // No longer request bus
-    digitalWrite(BR_BUSRQ_BAR, 1);
+    // Check for reset
+    if (resetTargetOnRelease)
+    {
+        // Reset by taking reset_bar low and then high
+        br_mux_set(BR_MUX_RESET_Z80_BAR_LOW);
+        // No longer request bus
+        digitalWrite(BR_BUSRQ_BAR, 1);
+        delayMicroseconds(1000);
+        br_mux_clear();
+    }
+    else
+    {
+        // No longer request bus
+        digitalWrite(BR_BUSRQ_BAR, 1);
+    }
 }
 
 // Request bus, wait until available and take control
@@ -148,7 +160,7 @@ BR_RETURN_TYPE br_req_and_take_bus()
         }
     }
     if (!br_bus_acknowledged()) {
-        br_release_control();
+        br_release_control(false);
         return BR_NO_BUS_ACK;
     }
 
@@ -368,8 +380,8 @@ BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int b
 
         // Check if we've rolled over the lowest 8 bits
         if ((addr & 0xff) == 0) {
-            // Set the high address again
-            br_set_high_addr(addr >> 8);
+            // Set the address again
+            br_set_full_addr(addr);
         }
     }
 
@@ -379,7 +391,7 @@ BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int b
     // Check if we need to release bus
     if (busRqAndRelease) {
         // release bus
-        br_release_control();
+        br_release_control(false);
     }
     return BR_OK;
 }
@@ -416,15 +428,15 @@ BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int bu
 
         // Check if we've rolled over the lowest 8 bits
         if ((addr & 0xff) == 0) {
-            // Set the high address again
-            br_set_high_addr(addr >> 8);
+            // Set the address again
+            br_set_full_addr(addr);
         }
     }
 
     // Check if we need to release bus
     if (busRqAndRelease) {
         // release bus
-        br_release_control();
+        br_release_control(false);
     }
     return BR_OK;
 }
