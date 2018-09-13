@@ -1,3 +1,4 @@
+// Minimal JSON parser in c
 // Adapted from jsmnSpark at https://github.com/pkourany/JSMNSpark
 // Merged changes from original https://github.com/zserge/jsmn
 // Rob Dobson 2017-2018
