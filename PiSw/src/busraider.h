@@ -19,7 +19,6 @@ typedef enum {
     BR_NO_BUS_ACK = 2,
 } BR_RETURN_TYPE;
 
-
 // Control bus bits used to pass to machines, etc
 #define BR_CTRL_BUS_RD 0
 #define BR_CTRL_BUS_WR 1
@@ -27,13 +26,38 @@ typedef enum {
 #define BR_CTRL_BUS_IORQ 3
 #define BR_CTRL_BUS_M1 4
 
+// Multiplexer
+// Wiring is a little off as A0, A1, A2 on 74HC138 are Pi 11, 9, 10 respectively
+// Pi GPIO0    74HC138      CTRL Value
+// 11 10 09    A2 A1 A0     
+//  0  0  0     0  0  0     PI_HADDR_SER
+//  0  0  1     0  1  0     PI_DATA_OE_BAR
+//  0  1  0     1  0  0     PI_IRQ_BAR
+//  0  1  1     1  1  0     PI_LADDR_OE_BAR
+//  1  0  0     0  0  1     PI_LADDR_CLR_BAR
+//  1  0  1     0  1  1     PI_RESET_Z80_BAR
+//  1  1  0     1  0  1     PI_NMI_BAR
+//  1  1  1     1  1  1     PI_HADDR_OE_BAR
+#define BR_MUX_LOW_BIT_POS 9
+#define BR_MUX_CTRL_BIT_MASK (0x07 << BR_MUX_LOW_BIT_POS)
+#define BR_MUX_HADDR_SER_LOW 0x00
+#define BR_MUX_HADDR_SER_HIGH 0x04 // Actually sets MUX to LADDR_CLR (ok as LADDR is latched)
+#define BR_MUX_LADDR_CLR_BAR_LOW 0x04
+#define BR_MUX_DATA_OE_BAR_LOW 0x01
+#define BR_MUX_RESET_Z80_BAR_LOW 0x05
+#define BR_MUX_IRQ_BAR_LOW 0x02
+#define BR_MUX_NMI_BAR_LOW 0x06
+#define BR_MUX_LADDR_OE_BAR 0x03
+#define BR_MUX_HADDR_OE_BAR 0x07
+
 // Pi pins used for control of host bus
-#define BR_BUSRQ 19 // SPI1 MISO
+#define BR_BUSRQ_BAR 19 // SPI1 MISO
 #define BR_BUSACK_BAR 2 // SDA
-#define BR_RESET 4 // CPCLK0
-#define BR_NMI 8 // SPI0 CE0
-#define BR_IRQ 10 // SPI0 MOSI
-#define BR_WAIT 9 // SPI0 MISO
+#define BR_MUX_0 11 // SPI0 SCLK
+#define BR_MUX_1 9 // SPI0 MISO
+#define BR_MUX_2 10 // SPI0 MOSI
+#define BR_IORQ_WAIT_EN 12 // GPIO12
+#define BR_MREQ_WAIT_EN 13 // GPIO13
 #define BR_WR_BAR 17 // SPI1 CE1
 #define BR_RD_BAR 18 // SPI1 CE0
 #define BR_MREQ_BAR 0 // ID_SD
@@ -41,15 +65,10 @@ typedef enum {
 #define BR_DATA_BUS 20 // GPIO20..27
 #define BR_PUSH_ADDR_BAR 3 // SCL
 #define BR_HADDR_CK 7 // SPI0 CE1
-#define BR_HADDR_SER 5
 #define BR_LADDR_CK 16 // SPI1 CE2
-#define BR_LADDR_CLR_BAR 13 // PWM1
 #define BR_DATA_DIR_IN 6
-#define BR_DATA_OE_BAR 12 // PWM0
-#define BR_LADDR_OE_BAR 11 // SPI0 SCLK
-#define BR_M1_BAR 5 // NOTE THAT CURRENTLY THIS IS USED FOR SOMETHING IN V1.3 HARDWARE 
-#define BR_CLOCK_PIN -1 // NOTE THIS IS CURRENTLY USED FOR RESET IN V1.3
-			// TODO Change to Pin 4 - and reallocate RESET
+#define BR_M1_BAR 5 // GPIO5
+#define BR_CLOCK_PIN 4 // GPIO4
 
 // Direct access to Pi PIB (used for data transfer to/from host data bus)
 #define BR_PIB_MASK (~((uint32_t)0xff << BR_DATA_BUS))

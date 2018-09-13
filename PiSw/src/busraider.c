@@ -6,20 +6,17 @@
 #include "timer.h"
 #include "irq.h"
 #include "utils.h"
-
-// Following pins are jumpered - to allow SPI bus usage if not needed
-// Uncomment the following lines to enable these pins
-// #define BR_ENABLE_NMI 1
-// #define BR_ENABLE_IRQ 1
-#define BR_ENABLE_WAIT_STATES 1
-// Use Low address read
-#define BR_ENABLE_LADDR_READ 1
+#include "ee_printf.h"
 
 // Uncomment the following to use bitwise access to busses and pins on Pi
-// #define USE_BITWISE_BUS_ACCESS 1
+// #define USE_BITWISE_DATA_BUS_ACCESS 1
+// #define USE_BITWISE_CTRL_BUS_ACCESS 1
 
 // Callback on bus access
 static br_bus_access_callback_fntype* __br_pBusAccessCallback = NULL;
+
+// Current wait state mask for restoring wait enablement after change
+static uint32_t __br_wait_state_en_mask = 0;
 
 // Set a pin to be an output and set initial value for that pin
 void br_set_pin_out(int pin, int val)
@@ -29,80 +26,81 @@ void br_set_pin_out(int pin, int val)
     digitalWrite(pin, val);
 }
 
+void br_mux_set_pins_output()
+{
+    br_set_pin_out(BR_MUX_0, 0);
+    br_set_pin_out(BR_MUX_1, 0);
+    br_set_pin_out(BR_MUX_2, 0);
+}
+
+void br_mux_clear()
+{
+    // Clear to a safe setting - sets HADDR_SER low
+    W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
+}
+
+void br_mux_set(int muxVal)
+{
+    // Clear first as this is a safe setting - sets HADDR_SER low
+    W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
+    // Now set bits required
+    W32(GPSET0, muxVal << BR_MUX_LOW_BIT_POS);
+}
+
 // Initialise the bus raider
 void br_init()
 {
     // Pins not set here as outputs will be inputs (inc PIB used for data bus)
+    // Setup the multiplexer
+    br_mux_set_pins_output();
     // Bus Request
-    br_set_pin_out(BR_BUSRQ, 0);
-    // RESET Z80
-    br_set_pin_out(BR_RESET, 0);
-// NMI
-#ifdef BR_ENABLE_NMI
-    br_set_pin_out(BR_NMI, 0);
-#endif
-// IRQ
-#ifdef BR_ENABLE_IRQ
-    br_set_pin_out(BR_IRQ, 0);
-#endif
-// WAIT
-#ifdef BR_ENABLE_WAIT_STATES
-    // Clear WAIT initially - leaving LOW disables WAIT generation
-    br_set_pin_out(BR_WAIT, 0);
-#endif
-// Low address read
-#ifdef BR_ENABLE_LADDR_READ
-    br_set_pin_out(BR_LADDR_OE_BAR, 1);
-#endif
+    br_set_pin_out(BR_BUSRQ_BAR, 1);
+    // Clear wait states initially - leaving LOW disables wait state generation
+    br_set_pin_out(BR_MREQ_WAIT_EN, 0);
+    br_set_pin_out(BR_IORQ_WAIT_EN, 0);
+    __br_wait_state_en_mask = 0;
     // Address push
     br_set_pin_out(BR_PUSH_ADDR_BAR, 1);
     // High address clock
     br_set_pin_out(BR_HADDR_CK, 0);
-    // High address serial
-    br_set_pin_out(BR_HADDR_SER, 0);
     // Low address clock
     br_set_pin_out(BR_LADDR_CK, 0);
-    // Low address clear
-    br_set_pin_out(BR_LADDR_CLR_BAR, 0);
     // Data bus direction
     br_set_pin_out(BR_DATA_DIR_IN, 1);
-    // Data bus output enable
-    br_set_pin_out(BR_DATA_OE_BAR, 1);
 }
 
 // Reset the host
 void br_reset_host()
 {
-    // Reset by taking reset line high and low (it is inverted compared to host line)
-    digitalWrite(BR_RESET, 1);
+    ee_printf("br_reset_host\n");
+    // Reset by taking reset_bar low and then high
+    br_mux_set(BR_MUX_RESET_Z80_BAR_LOW);
     delayMicroseconds(1000);
-    digitalWrite(BR_RESET, 0);
+    br_mux_clear();
 }
 
 // Non-maskable interrupt the host
 void br_nmi_host()
 {
-// NMI by taking nmi line high and low (it is inverted compared to host line)
-#ifdef BR_ENABLE_NMI
-    digitalWrite(BR_NMI, 1);
-    digitalWrite(BR_NMI, 0);
-#endif
+    // NMI by taking nmi_bar line low and high
+    br_mux_set(BR_MUX_NMI_BAR_LOW);
+    delayMicroseconds(10);
+    br_mux_clear();
 }
 
 // Maskable interrupt the host
 void br_irq_host()
 {
-// IRQ by taking irq line high and low (it is inverted compared to host line)
-#ifdef BR_ENABLE_IRQ
-    digitalWrite(BR_IRQ, 1);
-    digitalWrite(BR_IRQ, 0);
-#endif
+    // IRQ by taking irq_bar line low and high
+    br_mux_set(BR_MUX_IRQ_BAR_LOW);
+    delayMicroseconds(10);
+    br_mux_clear();
 }
 
 // Request access to the bus
 void br_request_bus()
 {
-    digitalWrite(BR_BUSRQ, 1);
+    digitalWrite(BR_BUSRQ_BAR, 0);
 }
 
 // Check if bus request has been acknowledged
@@ -119,8 +117,6 @@ void br_take_control()
     br_set_pin_out(BR_RD_BAR, 1);
     br_set_pin_out(BR_MREQ_BAR, 1);
     br_set_pin_out(BR_IORQ_BAR, 1);
-    // Data bus not enabled
-    digitalWrite(BR_DATA_OE_BAR, 1);
     // Address bus enabled
     digitalWrite(BR_PUSH_ADDR_BAR, 0);
 }
@@ -133,12 +129,10 @@ void br_release_control()
     pinMode(BR_RD_BAR, INPUT);
     pinMode(BR_MREQ_BAR, INPUT);
     pinMode(BR_IORQ_BAR, INPUT);
-    // Data bus not enabled
-    digitalWrite(BR_DATA_OE_BAR, 1);
     // Address bus not enabled
     digitalWrite(BR_PUSH_ADDR_BAR, 1);
     // No longer request bus
-    digitalWrite(BR_BUSRQ, 0);
+    digitalWrite(BR_BUSRQ_BAR, 1);
 }
 
 // Request bus, wait until available and take control
@@ -169,8 +163,8 @@ BR_RETURN_TYPE br_req_and_take_bus()
 void br_set_low_addr(uint32_t lowAddrByte)
 {
     // Clear initially
-    W32(GPCLR0, 1 << BR_LADDR_CLR_BAR);
-    W32(GPSET0, 1 << BR_LADDR_CLR_BAR);
+    br_mux_set(BR_MUX_LADDR_CLR_BAR_LOW);
+    br_mux_clear();
     // Clock the required value in - requires one more count than
     // expected as the output register is one clock pulse behind the counter
     for (uint32_t i = 0; i < (lowAddrByte & 0xff) + 1; i++) {
@@ -198,15 +192,17 @@ void br_set_high_addr(uint32_t highAddrByte)
     for (uint32_t i = 0; i < 9; i++) {
         // Set or clear serial pin to shift register
         if (highAddrByte & 0x80)
-            W32(GPSET0, 1 << BR_HADDR_SER);
+            br_mux_set(BR_MUX_HADDR_SER_HIGH);
         else
-            W32(GPCLR0, 1 << BR_HADDR_SER);
+            br_mux_set(BR_MUX_HADDR_SER_LOW);
         // Shift the address value for next bit
         highAddrByte = highAddrByte << 1;
         // Clock the bit
         W32(GPSET0, 1 << BR_HADDR_CK);
         W32(GPCLR0, 1 << BR_HADDR_CK);
     }
+    // Clear multiplexer
+    br_mux_clear();
 }
 
 // Set the full address
@@ -221,7 +217,7 @@ void br_set_full_addr(unsigned int addr)
 // Set the PIB (pins used for data bus access) to outputs (from Pi)
 void br_set_pib_output()
 {
-#ifdef USE_BITWISE_BUS_ACCESS
+#ifdef USE_BITWISE_DATA_BUS_ACCESS
     for (uint32_t i = 0; i < 8; i++) {
         pinMode(BR_DATA_BUS + i, OUTPUT);
     }
@@ -233,7 +229,7 @@ void br_set_pib_output()
 // Set the PIB (pins used for data bus access) to inputs (to Pi)
 void br_set_pib_input()
 {
-#ifdef USE_BITWISE_BUS_ACCESS
+#ifdef USE_BITWISE_DATA_BUS_ACCESS
     for (uint32_t i = 0; i < 8; i++) {
         pinMode(BR_DATA_BUS + i, INPUT);
     }
@@ -245,7 +241,7 @@ void br_set_pib_input()
 // Set a value onto the PIB (pins used for data bus access)
 void br_set_pib_value(uint8_t val)
 {
-#ifdef USE_BITWISE_BUS_ACCESS
+#ifdef USE_BITWISE_DATA_BUS_ACCESS
     // uint32_t va0 = R32(GPLEV0);
     // uint32_t va1 = (R32(GPLEV0) & BR_PIB_MASK) | (((uint32_t)val) << BR_DATA_BUS);
     for (uint32_t i = 0; i < 8; i++) {
@@ -263,7 +259,7 @@ void br_set_pib_value(uint8_t val)
 // Get a value from the PIB (pins used for data bus access)
 uint8_t br_get_pib_value()
 {
-#ifdef USE_BITWISE_BUS_ACCESS
+#ifdef USE_BITWISE_DATA_BUS_ACCESS
     uint8_t val = 0;
     for (uint32_t i = 0; i < 8; i++) {
         int bitVal = digitalRead(BR_DATA_BUS + i);
@@ -289,22 +285,24 @@ void br_write_byte(uint32_t byte, int iorq)
     // Set the data onto the PIB
     br_set_pib_value(byte);
     // Perform the write
-#ifdef USE_BITWISE_BUS_ACCESS
+#ifdef USE_BITWISE_CTRL_BUS_ACCESS
     digitalWrite(BR_DATA_DIR_IN, 0);
-    digitalWrite(BR_DATA_OE_BAR, 0);
-    digitalWrite(BR_MREQ_BAR, 0);
+    br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
+    digitalWrite(iorq ? BR_IORQ_BAR : BR_MREQ_BAR, 0);
     digitalWrite(BR_WR_BAR, 0);
     digitalWrite(BR_WR_BAR, 1);
-    digitalWrite((iorq ? BR_IORQ_BAR : BR_MREQ_BAR), 1);
-    digitalWrite(BR_DATA_OE_BAR, 1);
+    digitalWrite(iorq ? BR_IORQ_BAR : BR_MREQ_BAR, 1);
+    br_mux_clear();
     digitalWrite(BR_DATA_DIR_IN, 1);
 #else
     // Clear DIR_IN (so make direction out), enable data output onto data bus and MREQ_BAR active
-    W32(GPCLR0, (1 << BR_DATA_DIR_IN) | (1 << BR_DATA_OE_BAR) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)));
+    W32(GPCLR0, (1 << BR_DATA_DIR_IN) | BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)));
+    W32(GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
     // Write the data by setting WR_BAR active
     W32(GPCLR0, (1 << BR_WR_BAR));
     // Deactivate and leave data direction set to inwards
-    W32(GPSET0, (1 << BR_DATA_DIR_IN) | (1 << BR_DATA_OE_BAR) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_WR_BAR));
+    W32(GPSET0, (1 << BR_DATA_DIR_IN) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_WR_BAR));
+    W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
 #endif
 }
 
@@ -317,22 +315,24 @@ void br_write_byte(uint32_t byte, int iorq)
 uint8_t br_read_byte(int iorq)
 {
     // Read the byte
-#ifdef USE_BITWISE_BUS_ACCESS
+#ifdef USE_BITWISE_CTRL_BUS_ACCESS
     digitalWrite(BR_DATA_DIR_IN, 1);
-    digitalWrite(BR_DATA_OE_BAR, 0);
+    br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
     digitalWrite((iorq ? BR_IORQ_BAR : BR_MREQ_BAR), 0);
     digitalWrite(BR_RD_BAR, 0);
     uint8_t val = br_get_pib_value();
     digitalWrite(BR_RD_BAR, 1);
     digitalWrite((iorq ? BR_IORQ_BAR : BR_MREQ_BAR), 1);
-    digitalWrite(BR_DATA_OE_BAR, 1);
+    br_mux_clear();
 #else
     // enable data output onto PIB (data-dir must be inwards already), MREQ_BAR and RD_BAR both active
-    W32(GPCLR0, (1 << BR_DATA_OE_BAR) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
+    W32(GPCLR0, BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
+    W32(GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
     // Get the data
     uint8_t val = br_get_pib_value();
     // Deactivate leaving data-dir inwards
-    W32(GPSET0, (1 << BR_DATA_OE_BAR) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
+    W32(GPSET0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
+    W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
 #endif
     return val;
 }
@@ -548,6 +548,9 @@ void br_service()
 void br_enable_wait_states()
 {
 #ifdef BR_ENABLE_WAIT_STATES
+
+    __br_wait_state_en_mask = ????;
+
     // Clear WAIT to stop any wait happening
     digitalWrite(BR_WAIT, 0);
 
@@ -574,9 +577,13 @@ void br_wait_state_isr(void* pData)
     pData = pData;
 
     // Read the low address
-    digitalWrite(BR_LADDR_OE_BAR, 0);
-    uint32_t lowAddr = br_get_pib_value() & 0xff;
-    digitalWrite(BR_LADDR_OE_BAR, 1);
+    br_mux_set(BR_MUX_LADDR_OE_BAR);
+    uint32_t addr = br_get_pib_value() & 0xff;
+    // Read the high address
+    br_mux_set(BR_MUX_HADDR_OE_BAR);
+    addr |= (br_get_pib_value() & 0xff) << 8;
+    // Clear the mux to deactivate output enables
+    br_mux_clear();
 
     // Read the control lines
     uint32_t busVals = R32(GPLEV0);
@@ -595,28 +602,28 @@ void br_wait_state_isr(void* pData)
     if (isWriting)
     {
         digitalWrite(BR_DATA_DIR_IN, 1);
-        digitalWrite(BR_DATA_OE_BAR, 0);
+        br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
         dataBusVals = br_get_pib_value() & 0xff;
-        digitalWrite(BR_DATA_OE_BAR, 0);
+        br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
     }
 
     // Send this to anything listening
     uint32_t retVal = 0;
     if (__br_pBusAccessCallback)
-        retVal = __br_pBusAccessCallback(lowAddr, dataBusVals, ctrlBusVals) & 0xff;
+        retVal = __br_pBusAccessCallback(addr, dataBusVals, ctrlBusVals) & 0xff;
 
     // If not writing then put the returned data onto the bus
     if (!isWriting)
     {
         digitalWrite(BR_DATA_DIR_IN, 0);
-        digitalWrite(BR_DATA_OE_BAR, 0);
+        br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
         br_set_pib_output();
         br_set_pib_value(retVal);
     }
 
     // Clear the WAIT state
-    W32(GPCLR0, 1 << BR_WAIT);
-    W32(GPSET0, 1 << BR_WAIT);
+    W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
+    W32(GPSET0, __br_wait_state_en_mask);
     // Clear detected edge on any pin
     W32(GPEDS0, 0xffffffff);  
 

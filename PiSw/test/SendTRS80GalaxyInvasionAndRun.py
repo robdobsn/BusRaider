@@ -6,8 +6,20 @@ import time
 
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
-with open(r"../TRS80SW/galinv1d.cmd", "rb") as galaxyFile:
-    galaxyData = galaxyFile.read()
+galaxyData = []
+try:
+    with open(r"../../TargetSW/TRS80/Games/galinv1d.cmd", "rb") as galaxyFile:
+        galaxyData = galaxyFile.read()
+except:
+    print("Not found ... trying alternate")
+
+if len(galaxyData) == 0:
+    try:
+        with open(r"TargetSW/TRS80/Games/galinv1d.cmd", "rb") as galaxyFile:
+            galaxyData = galaxyFile.read()
+    except:
+        print("Not found there either")
+        exit()
 
 romFrame = bytearray(b"{\"cmdName\":\"filetarget\",\"fileType\":\"trs80bin\"}\0")
 romFrame += romData
