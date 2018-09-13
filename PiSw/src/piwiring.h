@@ -1,4 +1,4 @@
-// Bus Raider
+// Bus Raider Wiring Library (like Arduino)
 // Rob Dobson 2018
 
 #pragma once
