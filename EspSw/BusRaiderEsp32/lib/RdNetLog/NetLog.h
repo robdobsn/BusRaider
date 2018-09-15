@@ -65,7 +65,7 @@ class NetLog : public Print
         _pConfigBase = NULL;
         _httpPort = 5076;
         _logToSerial = true;
-        _logToCommandSerial = true;
+        _logToCommandSerial = false;
         _serialPort = 0;
     }
 
@@ -188,8 +188,8 @@ class NetLog : public Print
         _httpPort = pConfig->getLong("HTTPPort", 5076);
         _httpLogUrl = pConfig->getString("HTTPUrl", "");
         // Get Serial settings
-        _logToSerial = pConfig->getLong("SerialFlag", 0) != 0;
-        _serialPort = pConfig->getLong("SerialPort", 5076);
+        _logToSerial = pConfig->getLong("SerialFlag", 1) != 0;
+        _serialPort = pConfig->getLong("SerialPort", 0);
         
         // Debug
         if (_logToSerial && _serialPort == 0)
