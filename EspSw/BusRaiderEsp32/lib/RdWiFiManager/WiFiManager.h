@@ -5,19 +5,10 @@
 
 #include <Arduino.h>
 #include <ArduinoLog.h>
-#if defined (ESP8266)
-#include <ESP8266WiFi.h>
-#include "ConfigEEPROM.h"
-#else
 #include <WiFi.h>
 #include "ConfigNVS.h"
-#endif
 #include "StatusLed.h"
-#if !defined (ESP8266)
 #include <ESPmDNS.h>
-#else
-#include <ESP8266mDNS.h>
-#endif
 
 class WiFiManager
 {
@@ -32,7 +23,6 @@ class WiFiManager
     static constexpr unsigned long TIME_BETWEEN_WIFI_BEGIN_ATTEMPTS_MS = 60000;
     ConfigBase *_pConfigBase;
     static StatusLed *_pStatusLed;
-    bool _dnsStarted;
 
   public:
     WiFiManager()
@@ -42,7 +32,6 @@ class WiFiManager
         _wifiFirstBeginDone = false;
         _pConfigBase = NULL;
         _pStatusLed = NULL;
-        _dnsStarted = false;
     }
 
     bool isEnabled()
@@ -66,10 +55,8 @@ class WiFiManager
         _password = pSysConfig->getString("WiFiPW", "");
         _hostname = pSysConfig->getString("WiFiHostname", _defaultHostname.c_str());
         // Set an event handler for WiFi events
-#ifndef ESP8266
         if (_wifiEnabled)
             WiFi.onEvent(wiFiEventHandler);
-#endif
     }
 
     void service()
@@ -78,17 +65,11 @@ class WiFiManager
             return;
         if (WiFi.status() != WL_CONNECTED)
         {
-#ifdef ESP8266
-            if (_pStatusLed)
-                _pStatusLed->setCode(0);
-#endif            
             if ((!_wifiFirstBeginDone) || (Utils::isTimeout(millis(), _lastWifiBeginAttemptMs, TIME_BETWEEN_WIFI_BEGIN_ATTEMPTS_MS)))
             {
                 _wifiFirstBeginDone = true;
                 WiFi.begin(_ssid.c_str(), _password.c_str());
-#ifndef ESP8266
                 WiFi.setHostname(_hostname.c_str());
-#endif
                 _lastWifiBeginAttemptMs = millis();
                 Log.notice("WiFiManager: WiFi not connected - WiFi.begin with SSID %s\n", _ssid.c_str());
             }
@@ -138,8 +119,6 @@ class WiFiManager
 
     static void wiFiEventHandler(WiFiEvent_t event)
     {
-    #ifndef ESP8266
-
         switch (event)
         {
         case SYSTEM_EVENT_STA_GOT_IP:
@@ -175,6 +154,5 @@ class WiFiManager
             // Log.notice("WiFiManager: unknown event %d\n", event);
             break;
         }
-#endif
     }
 };

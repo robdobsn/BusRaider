@@ -2,7 +2,6 @@
 // Rob Dobson 2018
 
 // API used for web, MQTT and BLE (future)
-//   Query status:   /q                   - returns network status & app status (lock/unlock/open/closed/bell)
 //   Get version:    /v                   - returns version info
 //   Set WiFi:       /w/ssss/pppp/hhhh    - ssss = ssid, pppp = password - assumes WPA2, hhhh = hostname
 //                                        - does not clear previous WiFi so clear first if required
@@ -22,10 +21,11 @@
 //                                        - ur is the HTTP url logging messages are POSTed to
 
 // System type
-const char* systemType = "BusRaiderESP32";
+#define SYSTEM_TYPE_NAME "BusRaiderESP32"
+const char* systemType = SYSTEM_TYPE_NAME;
 
 // System version
-const char* systemVersion = "1.000.003";
+const char* systemVersion = "1.000.004";
 
 // Build date
 const char* buildDate = __DATE__;
@@ -75,12 +75,12 @@ RdOTAUpdate otaUpdate;
 // Hardware config
 static const char *hwConfigJSON = {
     "{"
-    "\"unitName\": \"BusRaiderRSP32\","
+    "\"unitName\":" SYSTEM_TYPE_NAME ","
     "\"wifiEnabled\":1,"
     "\"mqttEnabled\":0,"
     "\"webServerEnabled\":1,"
     "\"webServerPort\":80,"
-    "\"OTAUpdate\":{\"enabled\":0,\"server\":\"someserver\",\"port\":5076},"
+    "\"OTAUpdate\":{\"enabled\":0,\"server\":\"domoticzoff\",\"port\":5076},"
     "\"wifiLed\":{\"ledPin\":\"13\",\"ledOnMs\":200,\"ledShortOffMs\":200,\"ledLongOffMs\":750},"
     "\"serialConsole\":{\"portNum\":0},"
     "\"commandSerial\":{\"portNum\":1}"
@@ -112,8 +112,8 @@ NetLog netLog(Serial, mqttManager, commandSerial);
 RestAPISystem restAPISystem(wifiManager, mqttManager, otaUpdate, netLog, systemType, systemVersion);
 
 // REST API BusRaider
-#include "RestAPIBusRaider.h"
-RestAPIBusRaider restAPIBusRaider(commandSerial);
+// #include "RestAPIBusRaider.h"
+// RestAPIBusRaider restAPIBusRaider(commandSerial);
 
 // Debug loop used to time main loop
 #include "DebugLoopTimer.h"
@@ -132,20 +132,12 @@ DebugLoopTimer debugLoopTimer(10000, debugLoopInfoCallback);
 #include "SerialConsole.h"
 SerialConsole serialConsole;
 
-/*
-void fileUploadHandler(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
-{
-    if (request && (request->contentLength() > 0))
-        commandSerial.fileUploadPart(filename, request->contentLength(), index, data, len, final);
-}
-*/
-
 // Setup
 void setup()
 {
     // Logging
     Serial.begin(115200);
-    Log.begin(LOG_LEVEL_TRACE, &Serial);
+    Log.begin(LOG_LEVEL_TRACE, &netLog);
 
     // Message
     Log.notice("%s %s (built %s %s)\n", systemType, systemVersion, buildDate, buildTime);
@@ -167,7 +159,7 @@ void setup()
 
     // Add API endpoints
     restAPISystem.setup(restAPIEndpoints);
-    restAPIBusRaider.setup(restAPIEndpoints);
+    // restAPIBusRaider.setup(restAPIEndpoints);
 
     // Serial console
     serialConsole.setup(hwConfig, restAPIEndpoints);
@@ -183,16 +175,10 @@ void setup()
     mqttManager.setup(hwConfig, &mqttConfig);
 
     // Setup CommandSerial
-    commandSerial.setup(hwConfig);
+    // commandSerial.setup(hwConfig);
 
     // Network logging
     netLog.setup(&netLogConfig, wifiManager.getHostname().c_str());
-/*
-    // File upload
-    String uploadResponseStr;
-    Utils::setJsonBoolResult(uploadResponseStr, true);
-    webServer.addFileUploadHandler(fileUploadHandler, uploadResponseStr.c_str());
-*/
 
     // Add debug blocks
     debugLoopTimer.blockAdd(0, "Web");
@@ -247,6 +233,6 @@ void loop()
 
     // Service CommandSerial
     debugLoopTimer.blockStart(4);
-    commandSerial.service();
+    // commandSerial.service();
     debugLoopTimer.blockEnd(4);
 }
