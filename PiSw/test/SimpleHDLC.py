@@ -104,7 +104,6 @@ class HDLC(object):
                 return True
 
     def _readByte(self, b):
-        print(".")
         assert 0 <= b <= 255
         if b == 0x7E:
             # Start or End

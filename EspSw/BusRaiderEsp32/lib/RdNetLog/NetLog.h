@@ -135,6 +135,22 @@ class NetLog : public Print
         }
     }
 
+    void setCmdSerial(bool onOffFlag)
+    {
+        // Set values
+        bool dataChanged = (_logToCommandSerial != onOffFlag);
+        _logToCommandSerial = onOffFlag;
+        // Persist if changed
+        if (dataChanged)
+        {
+            if (_pConfigBase)
+            {
+                _pConfigBase->setConfigData(formConfigStr().c_str());
+                _pConfigBase->writeConfig();
+            }
+        }
+    }
+
     void setHTTP(bool httpFlag, const char* ipAddr, const char* portStr, const char* httpLogUrl)
     {
         // Set values
@@ -190,13 +206,15 @@ class NetLog : public Print
         // Get Serial settings
         _logToSerial = pConfig->getLong("SerialFlag", 1) != 0;
         _serialPort = pConfig->getLong("SerialPort", 0);
+        // Get CommandSerial settings
+        _logToCommandSerial = pConfig->getLong("CmdSerial", 0) != 0;
         
         // Debug
         if (_logToSerial && _serialPort == 0)
-            Serial.printf("NetLog: logLevel %d, mqttFlag %d topic %s, httpFlag %d, ip %s, port %d, url %s, serialFlag %d, serialPort %d\n",
+            Serial.printf("NetLog: logLevel %d, mqttFlag %d topic %s, httpFlag %d, ip %s, port %d, url %s, serialFlag %d, serialPort %d, cmdSerial %d\n",
                     _loggingThreshold, _logToMQTT, _mqttLogTopic.c_str(),
                     _logToHTTP, _httpIpAddr.c_str(), _httpPort, _httpLogUrl.c_str(),
-                    _logToSerial, _serialPort);
+                    _logToSerial, _serialPort, _logToCommandSerial);
     }
 
     String formConfigStr()
@@ -211,6 +229,7 @@ class NetLog : public Print
                         "\",\"HTTPUrl\":\"" + _httpLogUrl +
                         "\",\"SerialFlag\":\"" + _logToSerial + 
                         "\",\"SerialPort\":\"" + String(_serialPort) + 
+                        "\",\"CmdSerial\":\"" + String(_logToCommandSerial) + 
                         "\"}";
     }
 

@@ -83,7 +83,7 @@ static const char *hwConfigJSON = {
     "\"OTAUpdate\":{\"enabled\":0,\"server\":\"domoticzoff\",\"port\":5076},"
     "\"wifiLed\":{\"ledPin\":\"13\",\"ledOnMs\":200,\"ledShortOffMs\":200,\"ledLongOffMs\":750},"
     "\"serialConsole\":{\"portNum\":0},"
-    "\"commandSerial\":{\"portNum\":1}"
+    "\"commandSerial\":{\"portNum\":2,\"baudRate\":115200}"
     "}"
 };
 
@@ -112,8 +112,8 @@ NetLog netLog(Serial, mqttManager, commandSerial);
 RestAPISystem restAPISystem(wifiManager, mqttManager, otaUpdate, netLog, systemType, systemVersion);
 
 // REST API BusRaider
-// #include "RestAPIBusRaider.h"
-// RestAPIBusRaider restAPIBusRaider(commandSerial);
+#include "RestAPIBusRaider.h"
+RestAPIBusRaider restAPIBusRaider(commandSerial);
 
 // Debug loop used to time main loop
 #include "DebugLoopTimer.h"
@@ -159,7 +159,7 @@ void setup()
 
     // Add API endpoints
     restAPISystem.setup(restAPIEndpoints);
-    // restAPIBusRaider.setup(restAPIEndpoints);
+    restAPIBusRaider.setup(restAPIEndpoints);
 
     // Serial console
     serialConsole.setup(hwConfig, restAPIEndpoints);
@@ -175,7 +175,7 @@ void setup()
     mqttManager.setup(hwConfig, &mqttConfig);
 
     // Setup CommandSerial
-    // commandSerial.setup(hwConfig);
+    commandSerial.setup(hwConfig);
 
     // Network logging
     netLog.setup(&netLogConfig, wifiManager.getHostname().c_str());
@@ -233,6 +233,6 @@ void loop()
 
     // Service CommandSerial
     debugLoopTimer.blockStart(4);
-    // commandSerial.service();
+    commandSerial.service();
     debugLoopTimer.blockEnd(4);
 }

@@ -5,7 +5,7 @@
 #include "Arduino.h"
 #include "HardwareSerial.h"
 #include "Utils.h"
-#include "minihdlc.h"
+#include "MiniHDLC.h"
 #include "ConfigBase.h"
 #include "ArduinoLog.h"
 
@@ -15,8 +15,12 @@ class CommandSerial
     // Serial
     static HardwareSerial *_pSerial;
 
-    // Serial port number
+    // Serial port details
     int _serialPortNum;
+    int _baudRate;
+
+    // HDLC processor
+    MiniHDLC _miniHDLC;
 
     // Upload of files
     bool _uploadInProgress;
@@ -27,12 +31,13 @@ class CommandSerial
     static const int MAX_BETWEEN_BLOCKS_MS = 20000;
 
   public:
-    CommandSerial()
+    CommandSerial() : _miniHDLC(sendChar, frameHandler, true)
     {
         _pSerial = NULL;
         _serialPortNum = -1;
         _uploadInProgress = false;
         _blockCount = 0;
+        _baudRate = 115200;
     }
 
     static void sendChar(uint8_t ch)
@@ -50,10 +55,14 @@ class CommandSerial
     {
         // Get config
         ConfigBase csConfig(config.getString("commandSerial", "").c_str());
-        Log.trace("CommandSerial: config %s\n", csConfig.getConfigData());
+        // Log.trace("CommandSerial: config %s\n", csConfig.getConfigData());
 
         // Get serial port
-        _serialPortNum = csConfig.getLong("port", -1);
+        _serialPortNum = csConfig.getLong("portNum", -1);
+        _baudRate = csConfig.getLong("baudRate", 115200);
+
+        // Debug
+        Log.trace("CommandSerial: portNum %d, baudRate %d\n", _serialPortNum, _baudRate);
 
         // Setup port
         if (_serialPortNum == -1)
@@ -62,17 +71,14 @@ class CommandSerial
         // Setup serial port
         _pSerial = new HardwareSerial(_serialPortNum);
         if (_pSerial)
-            _pSerial->begin(115200);
-
-        // HDLC
-        minihdlc_init(sendChar, frameHandler);
+            _pSerial->begin(_baudRate);
     }
     
     // Log message
     void logMessage(String& msg)
     {
-        String frame = "{\"cmdName\":\"logMessage\",\"msg\":\"" + msg + "}";
-        minihdlc_send_frame((const uint8_t*)frame.c_str(), frame.length());
+        String frame = "{\"cmdName\":\"logMessage\",\"msg\":\"" + msg + "}\0";
+        _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
     }
 
     // Service 
@@ -83,14 +89,14 @@ class CommandSerial
             return;
 
         // See if characters to be processed
-        for (int rxCtr = 0; rxCtr < 100; rxCtr++)
+        for (int rxCtr = 0; rxCtr < 1000; rxCtr++)
         {
             int rxCh = _pSerial->read();
             if (rxCh < 0)
                 break;
 
             // Handle char
-            minihdlc_char_receiver(rxCh);
+            _miniHDLC.handleChar(rxCh);
         }
 
         if (_uploadInProgress)
@@ -112,7 +118,7 @@ class CommandSerial
     void sendFileStartRecord(String& filename, int fileLength)
     {
         String frame = "{\"cmdName\":\"ufStart\",\"fileName\":\"" + filename + "\",\"fileLen\":" + String(fileLength) + "}";
-        minihdlc_send_frame((const uint8_t*)frame.c_str(), frame.length());
+        _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
     }
 
     void sendFileBlock(size_t index, uint8_t *data, size_t len)
@@ -123,20 +129,20 @@ class CommandSerial
         memcpy(pFrameBuf, header.c_str(), headerLen);
         pFrameBuf[headerLen] = 0;
         memcpy(pFrameBuf + headerLen + 1, data, len);
-        minihdlc_send_frame(pFrameBuf, headerLen + len + 1);
+        _miniHDLC.sendFrame(pFrameBuf, headerLen + len + 1);
         delete [] pFrameBuf;
     }
 
     void sendFileEndRecord(int blockCount)
     {
         String frame = "{\"cmdName\":\"ufEnd\",\"blockCount\":\"" + String(blockCount) + "\"}";
-        minihdlc_send_frame((const uint8_t*)frame.c_str(), frame.length());
+        _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
     }
 
     void sendTargetCommand(String& targetCmd)
     {
-        String frame = "{\"cmdName\":\"" + targetCmd + "\"}";
-        minihdlc_send_frame((const uint8_t*)frame.c_str(), frame.length());
+        String frame = "{\"cmdName\":\"" + targetCmd + "\"}\0";
+        _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
     }
 
     void fileUploadPart(String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool final)
