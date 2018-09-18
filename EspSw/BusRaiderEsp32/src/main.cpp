@@ -107,13 +107,17 @@ CommandSerial commandSerial;
 #include "NetLog.h"
 NetLog netLog(Serial, mqttManager, commandSerial);
 
+// Machine interface
+#include "MachineInterface.h"
+MachineInterface machineInterface;
+
 // REST API System
 #include "RestAPISystem.h"
 RestAPISystem restAPISystem(wifiManager, mqttManager, otaUpdate, netLog, systemType, systemVersion);
 
 // REST API BusRaider
 #include "RestAPIBusRaider.h"
-RestAPIBusRaider restAPIBusRaider(commandSerial);
+RestAPIBusRaider restAPIBusRaider(commandSerial, machineInterface);
 
 // Debug loop used to time main loop
 #include "DebugLoopTimer.h"
@@ -154,19 +158,19 @@ void setup()
     // NetLog Config
     netLogConfig.setup();
 
-    // Firmware update
-    otaUpdate.setup(hwConfig, systemType, systemVersion);
-
-    // Add API endpoints
-    restAPISystem.setup(restAPIEndpoints);
-    restAPIBusRaider.setup(restAPIEndpoints);
-
     // Serial console
     serialConsole.setup(hwConfig, restAPIEndpoints);
 
     // WiFi Manager
     wifiManager.setup(hwConfig, &wifiConfig, systemType, &wifiStatusLed);
 
+    // Add API endpoints
+    restAPISystem.setup(restAPIEndpoints);
+    restAPIBusRaider.setup(restAPIEndpoints);
+
+    // Firmware update
+    otaUpdate.setup(hwConfig, systemType, systemVersion);
+    
     // Web server
     webServer.setup(hwConfig);
     webServer.addEndpoints(restAPIEndpoints);
@@ -186,6 +190,7 @@ void setup()
     debugLoopTimer.blockAdd(2, "MQTT");
     debugLoopTimer.blockAdd(3, "OTA");
     debugLoopTimer.blockAdd(4, "Command");
+    debugLoopTimer.blockAdd(5, "MachineIF");
 }
 
 // Loop
@@ -235,4 +240,10 @@ void loop()
     debugLoopTimer.blockStart(4);
     commandSerial.service();
     debugLoopTimer.blockEnd(4);
+
+    // Service MachineInterface
+    debugLoopTimer.blockStart(5);
+    machineInterface.service();
+    debugLoopTimer.blockEnd(5);
+    
 }

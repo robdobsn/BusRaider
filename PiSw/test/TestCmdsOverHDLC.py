@@ -10,11 +10,8 @@ def onFrame(fr):
     
 logging.basicConfig(level=os.environ.get("LOGLEVEL", "INFO"))
 
-with open(r"../../TargetSW/TRS80/Games/galinv1d.cmd", "rb") as galaxyFile:
-    galaxyData = galaxyFile.read()
-    
 galaxyFrame = bytearray(b"{\"cmdName\":\"filetarget\",\"fileType\":\"trs80cmd\"}\0")
-galaxyFrame += galaxyData
+galaxyFrame += bytearray(b"TESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTEST")
 
 with serial.Serial('COM15', 115200) as s:
     h = HDLC(s)
@@ -23,10 +20,11 @@ with serial.Serial('COM15', 115200) as s:
     while True:
         if msvcrt.kbhit():
             k = msvcrt.getch()
-            if k == "h":
+#            print(k[0])
+            if k[0] == ord("h"):
                 h.sendFrame(galaxyFrame)
-                print("Sent cmd len", len(galaxyFrame), galaxyFrame)
-            elif k == " ":                   
+                print("Sent cmd len", len(galaxyFrame))
+            elif k[0] == ord('\x1b'):
                 h.stopReader()
                 exit(0)
         

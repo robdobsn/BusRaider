@@ -95,7 +95,7 @@ class HDLC(object):
             self.error_callback(s)
 
     def _readBytes(self, size):
-        while size > 0:
+        for i in range(size):
             b = bytearray(self.serial.read(1))
             if len(b) < 1:
                 return False

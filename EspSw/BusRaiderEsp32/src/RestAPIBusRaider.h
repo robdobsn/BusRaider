@@ -5,14 +5,17 @@
 #include <Arduino.h>
 #include "RestAPIEndpoints.h"
 #include "CommandSerial.h"
+#include "MachineInterface.h"
 
 class RestAPIBusRaider
 {
   private:
     CommandSerial& _commandSerial;
+    MachineInterface& _machineInterface;
 
   public:
-    RestAPIBusRaider(CommandSerial &commandSerial) : _commandSerial(commandSerial)
+    RestAPIBusRaider(CommandSerial &commandSerial, MachineInterface &machineInterface) :
+             _commandSerial(commandSerial), _machineInterface(machineInterface)
     {
     }
 
