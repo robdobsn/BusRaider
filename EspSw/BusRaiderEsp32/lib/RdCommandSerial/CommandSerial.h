@@ -55,14 +55,14 @@ class CommandSerial
     {
         // Get config
         ConfigBase csConfig(config.getString("commandSerial", "").c_str());
-        // Log.trace("CommandSerial: config %s\n", csConfig.getConfigData());
+        Log.trace("CommandSerial: config %s\n", csConfig.getConfigData());
 
         // Get serial port
         _serialPortNum = csConfig.getLong("portNum", -1);
         _baudRate = csConfig.getLong("baudRate", 115200);
 
         // Debug
-        Log.trace("CommandSerial: portNum %d, baudRate %d\n", _serialPortNum, _baudRate);
+        // Log.trace("CommandSerial: portNum %d, baudRate %d\n", _serialPortNum, _baudRate);
 
         // Setup port
         if (_serialPortNum == -1)
@@ -71,7 +71,26 @@ class CommandSerial
         // Setup serial port
         _pSerial = new HardwareSerial(_serialPortNum);
         if (_pSerial)
-            _pSerial->begin(_baudRate);
+        {
+            if (_serialPortNum == 1)
+            {
+                _pSerial->begin(_baudRate, SERIAL_8N1, 16, 17, false);
+                Log.trace("CommandSerial: portNum %d, baudRate %d, rxPin, txPin\n",
+                             _serialPortNum, _baudRate, 16, 17);
+            }
+            else if (_serialPortNum == 2)
+            {
+                _pSerial->begin(_baudRate, SERIAL_8N1, 26, 25, false);
+                Log.trace("CommandSerial: portNum %d, baudRate %d, rxPin, txPin\n",
+                             _serialPortNum, _baudRate, 26, 25);
+            }
+            else
+            {
+                _pSerial->begin(_baudRate);
+                Log.trace("CommandSerial: portNum %d, baudRate %d, rxPin, txPin\n",
+                             _serialPortNum, _baudRate, 3, 1);
+            }
+        }
     }
     
     // Log message

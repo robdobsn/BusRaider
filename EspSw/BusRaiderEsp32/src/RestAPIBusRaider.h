@@ -29,13 +29,13 @@ class RestAPIBusRaider
         // Get command
         String targetCmd = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 1);
         Log.trace("RestAPIBusRaider: Command %s\n", targetCmd.c_str());
-        // _commandSerial.sendTargetCommand(targetCmd);
+        _commandSerial.sendTargetCommand(targetCmd);
         Utils::setJsonBoolResult(respStr, rslt);
     }
 
     void apiFileStart(String &reqStr, String &respStr)
     {
-        // Log.trace("RestAPIBusRaider: apiFileStart %s\n", reqStr.c_str());
+        Log.trace("RestAPIBusRaider: apiFileStart %s\n", reqStr.c_str());
         Log.notice("apiFileStart\n");
         Utils::setJsonBoolResult(respStr, true);
     }
@@ -44,14 +44,8 @@ class RestAPIBusRaider
                     uint8_t *data, size_t len, bool final)
     {
         Log.notice("apiUp %d, %d, %d, %d\n", contentLen, index, len, final);
-        
-        // if (request && (request->contentLength() > 0))
-        //     commandSerial.fileUploadPart(filename, request->contentLength(), index, data, len, final);
-        // String uploadResponseStr;
-        // Utils::setJsonBoolResult(uploadResponseStr, true);
-        // request->send(200, "application/json", _fileUploadResponseJson.c_str()
-        // Log.trace("RestAPIBusRaider: apiFileUpload %s index %s len %d final %d\n", 
-        //             filename.c_str(), index, len, final);
+        if (contentLen > 0)
+            commandSerial.fileUploadPart(filename, contentLen, index, data, len, final);
     }
 
     void setup(RestAPIEndpoints &endpoints)

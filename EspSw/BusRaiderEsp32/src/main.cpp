@@ -83,7 +83,7 @@ static const char *hwConfigJSON = {
     "\"OTAUpdate\":{\"enabled\":0,\"server\":\"domoticzoff\",\"port\":5076},"
     "\"wifiLed\":{\"ledPin\":\"13\",\"ledOnMs\":200,\"ledShortOffMs\":200,\"ledLongOffMs\":750},"
     "\"serialConsole\":{\"portNum\":0},"
-    "\"commandSerial\":{\"portNum\":2,\"baudRate\":115200}"
+    "\"commandSerial\":{\"portNum\":1,\"baudRate\":115200}"
     "}"
 };
 
