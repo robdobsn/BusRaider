@@ -536,6 +536,7 @@ void br_wait_state_isr(void* pData)
     pData = pData;
 
     // Read the low address
+    br_set_pib_input();
     br_mux_set(BR_MUX_LADDR_OE_BAR);
     uint32_t addr = br_get_pib_value() & 0xff;
     // Read the high address
@@ -582,29 +583,42 @@ void br_wait_state_isr(void* pData)
 
     // Clear the WAIT state
     W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
+
+    // Any read or IRQ vector placed on the data bus happens in here 
+    // So need to make sure it is long enough
+    // but not too long!
+    // The code below that checks for the IORQ & MREQ edges is too slow
+    // on an 8MHz Z80 but could be used on slower machines?
+
+    // If not writing and result from memory access request 
+    // then we need to wait until the request is complete
+    // if (!isWriting && (retVal != BR_MEM_ACCESS_RSLT_NOT_DECODED))
+    // {
+    //     // Wait until the request has completed (both IORQ_BAR and MREQ_BAR high)
+    //     uint32_t ctrlBusMask = ((1 << BR_CTRL_BUS_MREQ) | (1 << BR_CTRL_BUS_IORQ));
+    //     int hangAvoidCount = 0;
+    //     while ((R32(GPLEV0) & ctrlBusMask) != ctrlBusMask)
+    //     {
+    //         // Stop waiting if this takes more than 1000 loops
+    //         // (which will be way longer than the 1uS or less it should take)
+    //         hangAvoidCount++;
+    //         if (hangAvoidCount > 1000)
+    //         {
+    //             break;
+    //         }
+    //     }
+    // }
+
+    // Clear the mux and set data direction in again
+    W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
+    W32(GPSET0, 1 << BR_DATA_DIR_IN);
+    br_set_pib_input();
+
+    // Reset the wait state
     W32(GPSET0, __br_wait_state_en_mask);
     // Clear detected edge on any pin
     W32(GPEDS0, 0xffffffff);  
 
-    // If not writing and result from memory access request 
-    // then we need to wait until the request is complete
-    if (!isWriting && (retVal != BR_MEM_ACCESS_RSLT_NOT_DECODED))
-    {
-        // Wait until the request has completed (both IORQ_BAR and MREQ_BAR high)
-        uint32_t ctrlBusMask = ((1 << BR_CTRL_BUS_MREQ) | (1 << BR_CTRL_BUS_IORQ));
-        int hangAvoidCount = 0;
-        while ((R32(GPLEV0) & ctrlBusMask) != ctrlBusMask)
-        {
-            // Stop waiting if this takes more than 1000 loops
-            // (which will be way longer than the 1uS or less it should take)
-            hangAvoidCount++;
-            if (hangAvoidCount > 1000)
-                break;
-        }
-        // Put the bus back to how it should be left
-        br_set_pib_input();
-        digitalWrite(BR_DATA_DIR_IN, 1);
-    }
 
 #ifdef INSTRUMENT_BUSRAIDER_FIQ
     // Form key from the control lines

@@ -157,12 +157,12 @@ uint32_t McZXSpectrum::getKeyPressed(const int* keyCodes, int keyCodesLen)
     uint32_t retVal = 0xff;
     for (int i = 0; i < MAX_KEYS; i++)
     {
-        int bitMask = 0x80;
+        int bitMask = 0x01;
         for (int j = 0; j < keyCodesLen; j++)
         {
             if (_curKeys[i] == keyCodes[j])
                 retVal &= ~bitMask;
-            bitMask = bitMask >> 1;
+            bitMask = bitMask << 1;
         }
     }
     return retVal;
@@ -172,19 +172,27 @@ uint32_t McZXSpectrum::getKeyPressed(const int* keyCodes, int keyCodesLen)
 uint32_t McZXSpectrum::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
 {
     // Check for read
-    if (flags & BR_CTRL_BUS_RD)
+    if (flags & (1 << BR_CTRL_BUS_RD))
     {
 
         // Note that in the following I've used the KEY_HANJA as a placeholder
         // as I think it is a key that won't normally occur
 
+        // Check for special codes in the key buffer
+        bool specialKeyBackspace = false;
+        for (int i = 0; i < MAX_KEYS; i++)
+        {
+            if (_curKeys[i] == KEY_BACKSPACE)
+                specialKeyBackspace = true;
+        }
         // Check if address is keyboard
         if (addr == 0xfefe)
         {
             static const int keys[] = {KEY_HANJA, KEY_Z, KEY_X, KEY_C, KEY_V};
             uint32_t keysPressed = getKeyPressed(keys, sizeof(keys)/sizeof(int));
-            if (((_curKeyModifiers & KEY_MOD_LSHIFT) != 0) || (_curKeyModifiers & KEY_MOD_RSHIFT) != 0)
-                keysPressed &= 0x7f;
+            if (specialKeyBackspace || ((_curKeyModifiers & KEY_MOD_LSHIFT) != 0) ||
+                             (_curKeyModifiers & KEY_MOD_RSHIFT) != 0)
+                keysPressed &= 0xfe;
             return keysPressed;
         }
         else if (addr == 0xfdfe)
@@ -205,7 +213,10 @@ uint32_t McZXSpectrum::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[m
         else if (addr == 0xeffe)
         {
             static const int keys[] = {KEY_0, KEY_9, KEY_8, KEY_7, KEY_6};
-            return getKeyPressed(keys, sizeof(keys)/sizeof(int));
+            uint32_t keysPressed = getKeyPressed(keys, sizeof(keys)/sizeof(int));
+            if (specialKeyBackspace)
+                keysPressed &= 0xfe;
+            return keysPressed;
         }
         else if (addr == 0xdffe)
         {
@@ -222,7 +233,7 @@ uint32_t McZXSpectrum::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[m
             static const int keys[] = {KEY_SPACE, KEY_HANJA, KEY_M, KEY_N, KEY_B};
             uint32_t keysPressed = getKeyPressed(keys, sizeof(keys)/sizeof(int));
             if (((_curKeyModifiers & KEY_MOD_LALT) != 0) || (_curKeyModifiers & KEY_MOD_RALT) != 0)
-                keysPressed &= 0xdf;
+                keysPressed &= 0xfd;
             return keysPressed;
         }
 

@@ -111,7 +111,7 @@ void McRobsZ80::fileHander(const char* pFileInfo, const uint8_t* pFileData, int 
 uint32_t McRobsZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
 {
     // Check for read
-    if (flags & BR_CTRL_BUS_RD)
+    if (flags & (1 << BR_CTRL_BUS_RD))
     {
         return BR_MEM_ACCESS_RSLT_NOT_DECODED;
     }
