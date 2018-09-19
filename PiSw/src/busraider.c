@@ -473,6 +473,7 @@ volatile int iorqPortsRead[256];
 volatile int iorqPortsWritten[256];
 volatile int iorqPortsOther[256];
 volatile int iorqIsNotActive = 0;
+volatile int iorqCount = 0;
 
 // Enable wait-states
 void br_enable_wait_states(bool enWaitOnIORQ, bool enWaitOnMREQ)
@@ -493,17 +494,9 @@ void br_enable_wait_states(bool enWaitOnIORQ, bool enWaitOnMREQ)
         __br_wait_state_en_mask = __br_wait_state_en_mask | (1 << BR_MREQ_WAIT_EN);
     W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
 
-    ee_printf("Mask %x\n", __br_wait_state_en_mask);
-
     // Check if any wait-states to be generated
     if (__br_wait_state_en_mask == 0)
         return;
-
-    ee_printf("Setting IORQ WAIT EN %x\n", __br_wait_state_en_mask);
-
-    digitalWrite(BR_IORQ_WAIT_EN, 1);
-
-    ee_printf("Reading IORQ WAIT EN %x\n", digitalRead(BR_IORQ_WAIT_EN));
 
     // Set wait-state generation
     W32(GPSET0, __br_wait_state_en_mask);
@@ -524,6 +517,8 @@ void br_enable_wait_states(bool enWaitOnIORQ, bool enWaitOnMREQ)
 
 void br_wait_state_isr(void* pData)
 {
+    iorqCount++;
+
     pData = pData;
     
     // Read the low address
@@ -571,7 +566,7 @@ void br_service()
         }
         if (iorqIsNotActive > 0)
             ee_printf("Not actv %d", iorqIsNotActive);
-        ee_printf("\nIORQ_WAIT_EN %d\n",digitalRead(BR_IORQ_WAIT_EN));
+        ee_printf("\nIORQ_WAIT_EN %d count %d\n",digitalRead(BR_IORQ_WAIT_EN), iorqCount);
         loopCtr = 0;
     }
 }

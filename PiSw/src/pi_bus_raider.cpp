@@ -101,6 +101,9 @@ extern "C" void entry_point()
     // Number of machines
     ee_printf("%d machines supported\n", McManager::getNumMachines());
 
+    // Bus raider setup
+    br_init();
+
     // Enable first machine
     McManager::setMachineIdx(0);
 
@@ -138,9 +141,6 @@ extern "C" void entry_point()
     //     ee_printf("%02d ", i);
     // }
     // wgfx_set_fg(15);
-
-    // Bus raider setup
-    br_init();
 
     // Waiting...
     ee_printf("Waiting for UART data (%d,8,N,1)\n", MAIN_UART_BAUD_RATE);
