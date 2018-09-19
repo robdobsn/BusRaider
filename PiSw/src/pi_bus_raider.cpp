@@ -114,18 +114,22 @@ extern "C" void entry_point()
     ee_printf("%d machines supported\n", McManager::getNumMachines());
 
     // USB
-    if (USPiInitialize()) {
+    if (USPiInitialize()) 
+    {
         ee_printf("Checking for keyboards...");
 
-        if (USPiKeyboardAvailable()) {
+        if (USPiKeyboardAvailable()) 
+        {
             USPiKeyboardRegisterKeyStatusHandlerRaw(_keypress_raw_handler);
             ee_printf("keyboard found\n");
-        } else {
+        } else 
+        {
             wgfx_set_fg(9);
             ee_printf("keyboard not found\n");
             wgfx_set_fg(15);
         }
-    } else {
+    } else 
+    {
         ee_printf("USB initialization failed\n");
     }
     ee_printf("\n");
@@ -146,18 +150,25 @@ extern "C" void entry_point()
 
     ee_printf("Waiting for UART data (%d,8,N,1)\n", MAIN_UART_BAUD_RATE);
 
+    // Refresh rate
     const unsigned long reqUpdateUs = 1000000 / pMcDescr->displayRefreshRatePerSec;
-
     #define REFRESH_RATE_WINDOW_SIZE_MS 2000
     int refreshCount = 0;
     unsigned long curRateSampleWindowStart = micros();
     unsigned long lastDisplayUpdateUs = 0;
     unsigned long dispTime = 0;
 
-    while (1) {
+    // Status update rate and last timer
+    unsigned long lastStatusUpdateMs = 0;
+    const unsigned long STATUS_UPDATE_RATE_MS = 3000;
+
+    // Loop forever
+    while (1) 
+    {
 
         // Handle target machine display updates
-        if (timer_isTimeout(micros(), lastDisplayUpdateUs, reqUpdateUs)) {
+        if (timer_isTimeout(micros(), lastDisplayUpdateUs, reqUpdateUs)) 
+        {
             // Check valid
             dispTime = micros();
             lastDisplayUpdateUs = micros();
@@ -169,7 +180,8 @@ extern "C" void entry_point()
         }
 
         // Handle refresh rate calculation
-        if (timer_isTimeout(micros(), curRateSampleWindowStart, REFRESH_RATE_WINDOW_SIZE_MS * 1000)) {
+        if (timer_isTimeout(micros(), curRateSampleWindowStart, REFRESH_RATE_WINDOW_SIZE_MS * 1000)) 
+        {
             int refreshRate = refreshCount * 1000 / REFRESH_RATE_WINDOW_SIZE_MS;
             // uart_printf("Rate %d per sec, requs %ld dispTime %ld\n", refreshCount / 2, reqUpdateUs, dispTime);
             wgfx_putc(1, 150, 0, '0' + (refreshRate % 10));
@@ -178,6 +190,14 @@ extern "C" void entry_point()
                 wgfx_putc(1, 148, 0, '0' + ((refreshRate / 100) % 10));
             refreshCount = 0;
             curRateSampleWindowStart = micros();
+        }
+
+        // Handle status update to ESP32
+        if (timer_isTimeout(micros(), lastStatusUpdateMs, STATUS_UPDATE_RATE_MS * 1000)) 
+        {
+            // Send status update
+            cmdHandler_sendStatusUpdate();
+            lastStatusUpdateMs = micros();
         }
 
         // Service command handler

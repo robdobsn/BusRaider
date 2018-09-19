@@ -9,6 +9,8 @@
 #include "ConfigBase.h"
 #include "ArduinoLog.h"
 
+typedef void CommandSerialFrameRxFnType(const uint8_t *framebuffer, int framelength);
+
 class CommandSerial
 {
   private:
@@ -30,6 +32,9 @@ class CommandSerial
     static const int MAX_UPLOAD_MS = 600000;
     static const int MAX_BETWEEN_BLOCKS_MS = 20000;
 
+    // Frame handling callback
+    static CommandSerialFrameRxFnType* _pFrameRxCallback;
+
   public:
     CommandSerial() : _miniHDLC(sendChar, frameHandler, true)
     {
@@ -38,6 +43,8 @@ class CommandSerial
         _uploadInProgress = false;
         _blockCount = 0;
         _baudRate = 115200;
+        _pFrameRxCallback = NULL;
+
     }
 
     static void sendChar(uint8_t ch)
@@ -48,11 +55,17 @@ class CommandSerial
 
     static void frameHandler(const uint8_t *framebuffer, int framelength)
     {
+        // Handle received frames
+        if (_pFrameRxCallback)
+            _pFrameRxCallback(framebuffer, framelength);
         Log.notice("HDLC frame received, len %d\n", framelength);
     }
 
-    void setup(ConfigBase& config)
+    void setup(ConfigBase& config, CommandSerialFrameRxFnType* pFrameRxCallback)
     {
+        // Callback
+        _pFrameRxCallback = pFrameRxCallback;
+
         // Get config
         ConfigBase csConfig(config.getString("commandSerial", "").c_str());
         Log.trace("CommandSerial: config %s\n", csConfig.getConfigData());

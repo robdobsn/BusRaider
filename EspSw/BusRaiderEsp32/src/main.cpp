@@ -119,6 +119,10 @@ RestAPISystem restAPISystem(wifiManager, mqttManager, otaUpdate, netLog, systemT
 #include "RestAPIBusRaider.h"
 RestAPIBusRaider restAPIBusRaider(commandSerial, machineInterface);
 
+// Serial console - for configuration
+#include "SerialConsole.h"
+SerialConsole serialConsole;
+
 // Debug loop used to time main loop
 #include "DebugLoopTimer.h"
 
@@ -132,9 +136,11 @@ void debugLoopInfoCallback(String &infoStr)
 }
 DebugLoopTimer debugLoopTimer(10000, debugLoopInfoCallback);
 
-// Serial console - for configuration
-#include "SerialConsole.h"
-SerialConsole serialConsole;
+// Handler of frames received from Pi
+void piFrameHandler(const uint8_t *framebuffer, int framelength)
+{
+    machineInterface.handleRxFrame(framebuffer, framelength);
+}
 
 // Setup
 void setup()
@@ -179,7 +185,7 @@ void setup()
     mqttManager.setup(hwConfig, &mqttConfig);
 
     // Setup CommandSerial
-    commandSerial.setup(hwConfig);
+    commandSerial.setup(hwConfig, piFrameHandler);
 
     // Network logging
     netLog.setup(&netLogConfig, wifiManager.getHostname().c_str());

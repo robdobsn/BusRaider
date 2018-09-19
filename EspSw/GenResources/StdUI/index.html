@@ -28,6 +28,27 @@
 
             // Handle dropped files
             dropArea.addEventListener('drop', handleDrop, false);
+
+            // Populate machine list
+            callAjax("/querystatus", populateMcList);
+        }
+
+        function populateMcList(jsonResp) {
+            let status = JSON.parse(jsonResp);
+            // Clear list and fill
+            let mcListSelect = document.getElementById("machine-select");
+            if (mcListSelect) {
+                for (let i = 0; i < mcListSelect.options.length; i++)
+                    mcListSelect.remove(i);
+                for (let i = 0; i < status.machineList.length; i++) {
+                    let option = document.createElement('option');
+                    option.text = status.machineList[i];
+                    option.value = status.machineList[i];
+                    mcListSelect.add(option);
+                }
+                // Set current machine
+                mcListSelect.value = status.machineCur;
+            }
         }
 
         function preventDefaults(e) {
@@ -109,6 +130,18 @@
             var mcName = document.getElementById("machine-select").value;
             sendCmdToTarget("setmachine=" + mcName);
         }
+
+        function callAjax(url, callback) {
+            // code for IE7+, Firefox, Chrome, Opera, Safari
+            let xmlhttp = new XMLHttpRequest();
+            xmlhttp.onreadystatechange = function () {
+                if (xmlhttp.readyState === 4 && xmlhttp.status === 200) {
+                    callback(xmlhttp.responseText);
+                }
+            };
+            xmlhttp.open("GET", url, true);
+            xmlhttp.send();
+        }        
 
     </script>
     <style>
@@ -238,9 +271,6 @@
                 <p>Select target machine</p>
                 <div class="select-style">
                   <select id="machine-select" onchange="setMachine()">
-                    <option>TRS80</option>
-                    <option>Rob's Z80</option>
-                    <option>ZX Spectrum</option>
                   </select>
                 </div>
             </form>

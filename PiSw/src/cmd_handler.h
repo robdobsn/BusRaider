@@ -20,6 +20,9 @@ extern void cmdHandler_service();
 // Handle a single char
 extern void cmdHandler_handle_char(int ch);
 
+// Status update
+extern void cmdHandler_sendStatusUpdate();
+
 #ifdef __cplusplus
 }
 #endif

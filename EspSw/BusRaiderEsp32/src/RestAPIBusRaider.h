@@ -36,7 +36,6 @@ class RestAPIBusRaider
     void apiFileStart(String &reqStr, String &respStr)
     {
         Log.trace("RestAPIBusRaider: apiFileStart %s\n", reqStr.c_str());
-        Log.notice("apiFileStart\n");
         Utils::setJsonBoolResult(respStr, true);
     }
 
@@ -46,6 +45,12 @@ class RestAPIBusRaider
         Log.notice("apiUp %d, %d, %d, %d\n", contentLen, index, len, final);
         if (contentLen > 0)
             commandSerial.fileUploadPart(filename, contentLen, index, data, len, final);
+    }
+
+    void apiQueryStatus(String &reqStr, String &respStr)
+    {
+        Log.trace("RestAPIBusRaider: apiQueryStatus %s\n", reqStr.c_str());
+        respStr = machineInterface.getStatus();
     }
 
     void setup(RestAPIEndpoints &endpoints)
@@ -70,6 +75,12 @@ class RestAPIBusRaider
                                     std::placeholders::_1, std::placeholders::_2, 
                                     std::placeholders::_3, std::placeholders::_4,
                                     std::placeholders::_5, std::placeholders::_6));
+        endpoints.addEndpoint("querystatus", 
+                            RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                            RestAPIEndpointDef::ENDPOINT_GET, 
+                            std::bind(&RestAPIBusRaider::apiQueryStatus, this,
+                                    std::placeholders::_1, std::placeholders::_2),
+                            "Query status");
     }
 
 };

@@ -137,17 +137,17 @@ void minihdlc_send_frame(const uint8_t* framebuffer, int frame_length)
         minihdlc_sendchar((uint8_t)data);
         frame_length--;
     }
-    data = low(fcs);
-    if ((data == CONTROL_ESCAPE_OCTET) || (data == FRAME_BOUNDARY_OCTET)) {
-        minihdlc_sendchar((uint8_t)CONTROL_ESCAPE_OCTET);
-        data ^= (uint8_t)INVERT_OCTET;
-    }
-    minihdlc_sendchar((uint8_t)data);
     data = high(fcs);
     if ((data == CONTROL_ESCAPE_OCTET) || (data == FRAME_BOUNDARY_OCTET)) {
         minihdlc_sendchar(CONTROL_ESCAPE_OCTET);
         data ^= INVERT_OCTET;
     }
     minihdlc_sendchar(data);
+    data = low(fcs);
+    if ((data == CONTROL_ESCAPE_OCTET) || (data == FRAME_BOUNDARY_OCTET)) {
+        minihdlc_sendchar((uint8_t)CONTROL_ESCAPE_OCTET);
+        data ^= (uint8_t)INVERT_OCTET;
+    }
+    minihdlc_sendchar((uint8_t)data);
     minihdlc_sendchar(FRAME_BOUNDARY_OCTET);
 }

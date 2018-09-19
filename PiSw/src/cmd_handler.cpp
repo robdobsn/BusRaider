@@ -276,6 +276,18 @@ void cmdHandler_frameHandler(const uint8_t *framebuffer, int framelength)
     cmdHandler_procCommand(cmdStr, pDataPtr, dataLen);
 }
 
+// Send status update
+void cmdHandler_sendStatusUpdate()
+{
+    static const int MAX_STATUS_CMD_STR_LEN = 1500;
+    static char statusStr[MAX_STATUS_CMD_STR_LEN+1];
+    const char* mcJSON = McManager::getMachineJSON();
+    strncpy(statusStr, "{\"cmdName\":\"statusUpdate\",", MAX_STATUS_CMD_STR_LEN);
+    strncpy(statusStr+strlen(statusStr), mcJSON, MAX_STATUS_CMD_STR_LEN);
+    strncpy(statusStr+strlen(statusStr), "}", MAX_STATUS_CMD_STR_LEN);
+    minihdlc_send_frame((const uint8_t*)statusStr, strlen(statusStr)+1);
+}
+
 // Init the destinations for SREC and TREC records
 void cmdHandler_init(cmdHandler_changeMachineCallbackType* pChangeMcCallback)
 {
