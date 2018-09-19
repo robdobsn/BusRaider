@@ -33,7 +33,11 @@ class McManager
     static McBase* getMachine()
     {
         if ((_curMachineIdx < 0) || (_curMachineIdx >= _numMachines))
+        {
+            if (_numMachines > 0)
+                return _pMachines[0];
             return NULL;
+        }
         return _pMachines[_curMachineIdx];
     }
 

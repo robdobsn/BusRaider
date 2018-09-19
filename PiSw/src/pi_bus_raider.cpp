@@ -86,18 +86,6 @@ extern "C" void entry_point()
     new McRobsZ80();
     new McZXSpectrum();
 
-    // Enable first machine
-    McManager::setMachineIdx(0);
-
-    // Get current machine to check things are working
-    if (!McManager::getMachine())
-    {
-        uart_printf("Failed to construct machine\n");
-    }
-
-    // Get machine descriptor table
-    McDescriptorTable* pMcDescr = McManager::getDescriptorTable(0);
-
     // Initialise graphics system
     wgfx_init(1366, 768);
 
@@ -112,6 +100,15 @@ extern "C" void entry_point()
 
     // Number of machines
     ee_printf("%d machines supported\n", McManager::getNumMachines());
+
+    // Enable first machine
+    McManager::setMachineIdx(0);
+
+    // Get current machine to check things are working
+    if (!McManager::getMachine())
+    {
+        ee_printf("Failed to construct default machine\n");
+    }
 
     // USB
     if (USPiInitialize()) 
@@ -145,12 +142,11 @@ extern "C" void entry_point()
     // Bus raider setup
     br_init();
 
-    // Bus raider enable wait states
-    br_enable_wait_states();
-
+    // Waiting...
     ee_printf("Waiting for UART data (%d,8,N,1)\n", MAIN_UART_BAUD_RATE);
 
     // Refresh rate
+    McDescriptorTable* pMcDescr = McManager::getDescriptorTable(0);
     const unsigned long reqUpdateUs = 1000000 / pMcDescr->displayRefreshRatePerSec;
     #define REFRESH_RATE_WINDOW_SIZE_MS 2000
     int refreshCount = 0;

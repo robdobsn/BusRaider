@@ -12,6 +12,9 @@
 // #define USE_BITWISE_DATA_BUS_ACCESS 1
 // #define USE_BITWISE_CTRL_BUS_ACCESS 1
 
+// Command out this line to disable WAIT state generation altogether
+#define BR_ENABLE_WAIT_STATES 1
+
 // Callback on bus access
 static br_bus_access_callback_fntype* __br_pBusAccessCallback = NULL;
 
@@ -472,7 +475,7 @@ volatile int iorqPortsOther[256];
 volatile int iorqIsNotActive = 0;
 
 // Enable wait-states
-void br_enable_wait_states()
+void br_enable_wait_states(bool enWaitOnIORQ, bool enWaitOnMREQ)
 {
 
     for (int i = 0; i < 256; i++)
@@ -482,23 +485,41 @@ void br_enable_wait_states()
         iorqPortsOther[i] = 0;
     }
 
-#ifdef BR_ENABLE_WAIT_STATES
-    // Clear WAIT to stop any wait happening
-    digitalWrite(BR_WAIT, 0);
+    // Enable wait state generation
+    __br_wait_state_en_mask = 0;
+    if (enWaitOnIORQ)
+        __br_wait_state_en_mask = __br_wait_state_en_mask | (1 << BR_IORQ_WAIT_EN);
+    if (enWaitOnMREQ)
+        __br_wait_state_en_mask = __br_wait_state_en_mask | (1 << BR_MREQ_WAIT_EN);
+    W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
+
+    ee_printf("Mask %x\n", __br_wait_state_en_mask);
+
+    // Check if any wait-states to be generated
+    if (__br_wait_state_en_mask == 0)
+        return;
+
+    ee_printf("Setting IORQ WAIT EN %x\n", __br_wait_state_en_mask);
+
+    digitalWrite(BR_IORQ_WAIT_EN, 1);
+
+    ee_printf("Reading IORQ WAIT EN %x\n", digitalRead(BR_IORQ_WAIT_EN));
+
+    // Set wait-state generation
+    W32(GPSET0, __br_wait_state_en_mask);
 
     // Set vector for WAIT state interrupt
     irq_set_wait_state_handler(br_wait_state_isr);
 
-    // Setup edge triggering on falling edge of MREQ
+    // Setup edge triggering on falling edge of IORQ
     W32(GPEDS0, 1 << BR_IORQ_BAR);  // Clear any current detected edge
     W32(GPFEN0, 1 << BR_IORQ_BAR);  // Set falling edge detect
 
+    // Enable FIQ interrupts on GPIO[3] which is any GPIO pin
     W32(IRQ_FIQ_CONTROL, (1 << 7) | 52);
-    enable_fiq();
 
-    // Allow WAIT generation
-    digitalWrite(BR_WAIT, 1);
-#endif
+    // Enable Fast Interrupts
+    enable_fiq();
 }
 
 void br_wait_state_isr(void* pData)
@@ -506,9 +527,10 @@ void br_wait_state_isr(void* pData)
     pData = pData;
     
     // Read the low address
-    digitalWrite(BR_LADDR_OE_BAR, 0);
-    uint8_t lowAddr = br_get_pib_value() & 0xff;
-    digitalWrite(BR_LADDR_OE_BAR, 1);
+    br_mux_set(BR_MUX_LADDR_OE_BAR);
+    uint32_t lowAddr = br_get_pib_value() & 0xff;
+    // Clear the mux to deactivate output enables
+    br_mux_clear();
 
     // Read the control lines
     uint32_t busVals = R32(GPLEV0);
@@ -528,8 +550,8 @@ void br_wait_state_isr(void* pData)
         iorqIsNotActive++;
 
     // Clear the WAIT state
-    W32(GPCLR0, 1 << BR_WAIT);
-    W32(GPSET0, 1 << BR_WAIT);
+    W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
+    W32(GPSET0, __br_wait_state_en_mask);
     // Clear detected edge on any pin
     W32(GPEDS0, 0xffffffff);  
 }
@@ -540,7 +562,7 @@ int loopCtr = 0;
 void br_service()
 {
     loopCtr++;
-    if (loopCtr > 100000)
+    if (loopCtr > 500000)
     {
         for (int i = 0; i < 256; i++)
         {
@@ -549,22 +571,32 @@ void br_service()
         }
         if (iorqIsNotActive > 0)
             ee_printf("Not actv %d", iorqIsNotActive);
-        ee_printf("\n");
+        ee_printf("\nIORQ_WAIT_EN %d\n",digitalRead(BR_IORQ_WAIT_EN));
         loopCtr = 0;
     }
 }
 
-#else
+#else // NOT TEST_BUSRAIDER_FIQ
 
 // Enable wait-states
-void br_enable_wait_states()
+void br_enable_wait_states(bool enWaitOnIORQ, bool enWaitOnMREQ)
 {
+    // Enable wait state generation
+    __br_wait_state_en_mask = 0;
+    if (enWaitOnIORQ)
+        __br_wait_state_en_mask = __br_wait_state_en_mask | (1 << BR_IORQ_WAIT_EN);
+    if (enWaitOnMREQ)
+        __br_wait_state_en_mask = __br_wait_state_en_mask | (1 << BR_MREQ_WAIT_EN);
+    W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
+
+    // Check if any wait-states to be generated
+    if (__br_wait_state_en_mask == 0)
+        return;
+
 #ifdef BR_ENABLE_WAIT_STATES
 
-    __br_wait_state_en_mask = ????;
-
-    // Clear WAIT to stop any wait happening
-    digitalWrite(BR_WAIT, 0);
+    // Set wait-state generation
+    W32(GPSET0, __br_wait_state_en_mask);
 
     // Set vector for WAIT state interrupt
     irq_set_wait_state_handler(br_wait_state_isr);
@@ -579,9 +611,7 @@ void br_enable_wait_states()
     // Enable Fast Interrupts
     enable_fiq();
 
-    // Allow WAIT state generation
-    digitalWrite(BR_WAIT, 1);
-#endif
+#endif  
 }
 
 void br_wait_state_isr(void* pData)
@@ -600,7 +630,7 @@ void br_wait_state_isr(void* pData)
     // Read the control lines
     uint32_t busVals = R32(GPLEV0);
 
-    // Set the appropriate bits for up-line communication
+    // Get the appropriate bits for up-line communication
     uint32_t ctrlBusVals = 
         (((busVals & (1 << BR_RD_BAR)) == 0) ? (1 << BR_CTRL_BUS_RD) : 0) |
         (((busVals & (1 << BR_WR_BAR)) == 0) ? (1 << BR_CTRL_BUS_WR) : 0) |

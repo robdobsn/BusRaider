@@ -120,7 +120,7 @@ extern uint8_t br_read_byte(int iorq);
 extern BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
 extern BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
 // Enable WAIT
-extern void br_enable_wait_states();
+extern void br_enable_wait_states(bool enWaitOnIORQ, bool enWaitOnMREQ);
 extern void br_wait_state_isr(void* pData);
 
 // Clear IO
