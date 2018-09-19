@@ -4,6 +4,7 @@
 #include "McBase.h"
 #include "McManager.h"
 #include "ee_printf.h"
+#include "usb_hid_keys.h"
 
 class McZXSpectrum : public McBase
 {
@@ -20,11 +21,17 @@ class McZXSpectrum : public McBase
 
     static void handleExecAddr(uint32_t execAddr);
 
+    static const int MAX_KEYS = 6;
+    static unsigned char _curKeyModifiers;
+    static unsigned char _curKeys[MAX_KEYS];
+
   public:
 
     McZXSpectrum() : McBase()
     {
         _screenBufferValid = false;
+        for (int i = 0; i < MAX_KEYS; i++)
+            _curKeys[i] = KEY_NONE;
     }
 
     // Enable machine
@@ -51,4 +58,6 @@ class McZXSpectrum : public McBase
     // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
     static uint32_t memoryRequestCallback(uint32_t addr, uint32_t data, uint32_t flags);
 
+  private:
+    static uint32_t getKeyPressed(const int* keyCodes, int keyCodesLen);
 };

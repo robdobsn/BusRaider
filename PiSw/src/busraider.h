@@ -19,6 +19,8 @@ typedef enum {
     BR_NO_BUS_ACK = 2,
 } BR_RETURN_TYPE;
 
+#define BR_MEM_ACCESS_RSLT_NOT_DECODED 0x8000
+
 // Control bus bits used to pass to machines, etc
 #define BR_CTRL_BUS_RD 0
 #define BR_CTRL_BUS_WR 1
@@ -120,7 +122,7 @@ extern uint8_t br_read_byte(int iorq);
 extern BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
 extern BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
 // Enable WAIT
-extern void br_enable_wait_states(bool enWaitOnIORQ, bool enWaitOnMREQ);
+extern void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ);
 extern void br_wait_state_isr(void* pData);
 
 // Clear IO

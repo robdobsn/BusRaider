@@ -10,6 +10,9 @@
 
 static const char* LogPrefix = "ZXSpectrum";
 
+unsigned char McZXSpectrum::_curKeyModifiers = 0;
+unsigned char McZXSpectrum::_curKeys[MAX_KEYS];
+
 McDescriptorTable McZXSpectrum::_descriptorTable = {
     // Machine name
     "ZX Spectrum",
@@ -31,8 +34,11 @@ McDescriptorTable McZXSpectrum::_descriptorTable = {
 // Enable machine
 void McZXSpectrum::enable()
 {
+    _screenBufferValid = false;
     LogWrite(LogPrefix, LOG_DEBUG, "Enabling");
     br_set_bus_access_callback(memoryRequestCallback);
+        // Bus raider enable wait states on IORQ
+    br_enable_mem_and_io_access(true, false);
 }
 
 // Disable machine
@@ -110,11 +116,17 @@ void McZXSpectrum::displayRefresh()
     for (uint32_t colrIdx = ZXSPECTRUM_PIXEL_RAM_SIZE; colrIdx < ZXSPECTRUM_DISP_RAM_SIZE; colrIdx++)
         _screenBuffer[colrIdx] = pScrnBuffer[colrIdx];
     _screenBufferValid = true;
+
+    // Generate a maskable interrupt to trigger Spectrum's keyboard ISR
+    br_irq_host();
 }
 
 // Handle a key press
 void McZXSpectrum::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_unused]] const unsigned char rawKeys[6])
 {
+    _curKeyModifiers = ucModifiers;
+    for (int i = 0; (i < MAX_KEYS) && (i < 6); i++)
+        _curKeys[i] = rawKeys[i];
 }
 
 // Handle a file
@@ -140,16 +152,85 @@ void McZXSpectrum::fileHander(const char* pFileInfo, const uint8_t* pFileData, i
     targetDataBlockStore(baseAddr, pFileData, fileLen);
 }
 
+uint32_t McZXSpectrum::getKeyPressed(const int* keyCodes, int keyCodesLen)
+{
+    uint32_t retVal = 0xff;
+    for (int i = 0; i < MAX_KEYS; i++)
+    {
+        int bitMask = 0x80;
+        for (int j = 0; j < keyCodesLen; j++)
+        {
+            if (_curKeys[i] == keyCodes[j])
+                retVal &= ~bitMask;
+            bitMask = bitMask >> 1;
+        }
+    }
+    return retVal;
+}
+
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
 uint32_t McZXSpectrum::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
 {
     // Check for read
     if (flags & BR_CTRL_BUS_RD)
     {
-        return 0;
+
+        // Note that in the following I've used the KEY_HANJA as a placeholder
+        // as I think it is a key that won't normally occur
+
+        // Check if address is keyboard
+        if (addr == 0xfefe)
+        {
+            static const int keys[] = {KEY_HANJA, KEY_Z, KEY_X, KEY_C, KEY_V};
+            uint32_t keysPressed = getKeyPressed(keys, sizeof(keys)/sizeof(int));
+            if (((_curKeyModifiers & KEY_MOD_LSHIFT) != 0) || (_curKeyModifiers & KEY_MOD_RSHIFT) != 0)
+                keysPressed &= 0x7f;
+            return keysPressed;
+        }
+        else if (addr == 0xfdfe)
+        {
+            static const int keys[] = {KEY_A, KEY_S, KEY_D, KEY_F, KEY_G};
+            return getKeyPressed(keys, sizeof(keys)/sizeof(int));
+        }
+        else if (addr == 0xfbfe)
+        {
+            static const int keys[] = {KEY_Q, KEY_W, KEY_E, KEY_R, KEY_T};
+            return getKeyPressed(keys, sizeof(keys)/sizeof(int));
+        }
+        else if (addr == 0xf7fe)
+        {
+            static const int keys[] = {KEY_1, KEY_2, KEY_3, KEY_4, KEY_5};
+            return getKeyPressed(keys, sizeof(keys)/sizeof(int));
+        }
+        else if (addr == 0xeffe)
+        {
+            static const int keys[] = {KEY_0, KEY_9, KEY_8, KEY_7, KEY_6};
+            return getKeyPressed(keys, sizeof(keys)/sizeof(int));
+        }
+        else if (addr == 0xdffe)
+        {
+            static const int keys[] = {KEY_P, KEY_O, KEY_I, KEY_U, KEY_Y};
+            return getKeyPressed(keys, sizeof(keys)/sizeof(int));
+        }
+        else if (addr == 0xbffe)
+        {
+            static const int keys[] = {KEY_ENTER, KEY_L, KEY_K, KEY_J, KEY_H};
+            return getKeyPressed(keys, sizeof(keys)/sizeof(int));
+        }
+        else if (addr == 0x7ffe)
+        {
+            static const int keys[] = {KEY_SPACE, KEY_HANJA, KEY_M, KEY_N, KEY_B};
+            uint32_t keysPressed = getKeyPressed(keys, sizeof(keys)/sizeof(int));
+            if (((_curKeyModifiers & KEY_MOD_LALT) != 0) || (_curKeyModifiers & KEY_MOD_RALT) != 0)
+                keysPressed &= 0xdf;
+            return keysPressed;
+        }
+
+        // Other IO ports not decoded
+        return BR_MEM_ACCESS_RSLT_NOT_DECODED;
     }
 
-    // Not read
-    return 0;
+    // Not decoded
+    return BR_MEM_ACCESS_RSLT_NOT_DECODED;
 }
 

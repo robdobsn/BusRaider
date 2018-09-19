@@ -12,8 +12,11 @@
 // #define USE_BITWISE_DATA_BUS_ACCESS 1
 // #define USE_BITWISE_CTRL_BUS_ACCESS 1
 
-// Command out this line to disable WAIT state generation altogether
-#define BR_ENABLE_WAIT_STATES 1
+// Comment out this line to disable WAIT state generation altogether
+#define BR_ENABLE_WAIT_AND_FIQ 1
+
+// Instrument FIQ
+// #define INSTRUMENT_BUSRAIDER_FIQ 1
 
 // Callback on bus access
 static br_bus_access_callback_fntype* __br_pBusAccessCallback = NULL;
@@ -465,117 +468,27 @@ void br_remove_bus_access_callback()
     __br_pBusAccessCallback = NULL;
 }
 
-// #define TEST_BUSRAIDER_FIQ 1
+#ifdef INSTRUMENT_BUSRAIDER_FIQ
 
-#ifdef TEST_BUSRAIDER_FIQ
-
-volatile int iorqPortsRead[256];
-volatile int iorqPortsWritten[256];
-volatile int iorqPortsOther[256];
+#define MAX_IO_PORT_VALS 1000
+volatile uint32_t iorqPortAccess[MAX_IO_PORT_VALS];
 volatile int iorqIsNotActive = 0;
 volatile int iorqCount = 0;
-
-// Enable wait-states
-void br_enable_wait_states(bool enWaitOnIORQ, bool enWaitOnMREQ)
-{
-
-    for (int i = 0; i < 256; i++)
-    {
-        iorqPortsRead[i] = 0;
-        iorqPortsWritten[i] = 0;
-        iorqPortsOther[i] = 0;
-    }
-
-    // Enable wait state generation
-    __br_wait_state_en_mask = 0;
-    if (enWaitOnIORQ)
-        __br_wait_state_en_mask = __br_wait_state_en_mask | (1 << BR_IORQ_WAIT_EN);
-    if (enWaitOnMREQ)
-        __br_wait_state_en_mask = __br_wait_state_en_mask | (1 << BR_MREQ_WAIT_EN);
-    W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
-
-    // Check if any wait-states to be generated
-    if (__br_wait_state_en_mask == 0)
-        return;
-
-    // Set wait-state generation
-    W32(GPSET0, __br_wait_state_en_mask);
-
-    // Set vector for WAIT state interrupt
-    irq_set_wait_state_handler(br_wait_state_isr);
-
-    // Setup edge triggering on falling edge of IORQ
-    W32(GPEDS0, 1 << BR_IORQ_BAR);  // Clear any current detected edge
-    W32(GPFEN0, 1 << BR_IORQ_BAR);  // Set falling edge detect
-
-    // Enable FIQ interrupts on GPIO[3] which is any GPIO pin
-    W32(IRQ_FIQ_CONTROL, (1 << 7) | 52);
-
-    // Enable Fast Interrupts
-    enable_fiq();
-}
-
-void br_wait_state_isr(void* pData)
-{
-    iorqCount++;
-
-    pData = pData;
-    
-    // Read the low address
-    br_mux_set(BR_MUX_LADDR_OE_BAR);
-    uint32_t lowAddr = br_get_pib_value() & 0xff;
-    // Clear the mux to deactivate output enables
-    br_mux_clear();
-
-    // Read the control lines
-    uint32_t busVals = R32(GPLEV0);
-    if ((busVals & (1 << BR_RD_BAR)) == 0)
-    {
-        iorqPortsRead[lowAddr]++;
-    }
-    else if ((busVals & (1 << BR_WR_BAR)) == 0)
-    {
-        iorqPortsWritten[lowAddr]++;
-    }
-    else
-    {
-        iorqPortsOther[lowAddr]++;
-    }
-    if (busVals & (iorqIsNotActive != 0))
-        iorqIsNotActive++;
-
-    // Clear the WAIT state
-    W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
-    W32(GPSET0, __br_wait_state_en_mask);
-    // Clear detected edge on any pin
-    W32(GPEDS0, 0xffffffff);  
-}
-
 #include "ee_printf.h"
-
 int loopCtr = 0;
-void br_service()
+
+#endif
+
+// Enable wait-states and FIQ
+void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ)
 {
-    loopCtr++;
-    if (loopCtr > 500000)
+#ifdef INSTRUMENT_BUSRAIDER_FIQ
+    for (int i = 0; i < MAX_IO_PORT_VALS; i++)
     {
-        for (int i = 0; i < 256; i++)
-        {
-            if (iorqPortsRead[i] > 0 || iorqPortsWritten[i] > 0 || iorqPortsOther[i] > 0)
-                ee_printf("%d r %d w %d o %d\n", i, iorqPortsRead[i], iorqPortsWritten[i], iorqPortsOther[i]);
-        }
-        if (iorqIsNotActive > 0)
-            ee_printf("Not actv %d", iorqIsNotActive);
-        ee_printf("\nIORQ_WAIT_EN %d count %d\n",digitalRead(BR_IORQ_WAIT_EN), iorqCount);
-        loopCtr = 0;
+        iorqPortAccess[i] = 0;
     }
-}
+#endif
 
-#else // NOT TEST_BUSRAIDER_FIQ
-
-// Enable wait-states
-void br_enable_wait_states(bool enWaitOnIORQ, bool enWaitOnMREQ)
-{
     // Enable wait state generation
     __br_wait_state_en_mask = 0;
     if (enWaitOnIORQ)
@@ -588,7 +501,7 @@ void br_enable_wait_states(bool enWaitOnIORQ, bool enWaitOnMREQ)
     if (__br_wait_state_en_mask == 0)
         return;
 
-#ifdef BR_ENABLE_WAIT_STATES
+#ifdef BR_ENABLE_WAIT_AND_FIQ
 
     // Set wait-state generation
     W32(GPSET0, __br_wait_state_en_mask);
@@ -597,8 +510,17 @@ void br_enable_wait_states(bool enWaitOnIORQ, bool enWaitOnMREQ)
     irq_set_wait_state_handler(br_wait_state_isr);
 
     // Setup edge triggering on falling edge of IORQ
-    W32(GPEDS0, 1 << BR_IORQ_BAR);  // Clear any current detected edge
-    W32(GPFEN0, 1 << BR_IORQ_BAR);  // Set falling edge detect
+    // Clear any current detected edges
+    W32(GPEDS0, (1 << BR_IORQ_BAR) | (1 << BR_MREQ_BAR));  
+    // Set falling edge detect
+    if (enWaitOnIORQ)
+        W32(GPFEN0, R32(GPFEN0) | (1 << BR_IORQ_BAR));
+    else
+        W32(GPFEN0, R32(GPFEN0) & (~(1 << BR_IORQ_BAR)));
+    if (enWaitOnMREQ)
+        W32(GPFEN0, R32(GPFEN0) | (1 << BR_MREQ_BAR));
+    else
+        W32(GPFEN0, R32(GPFEN0) & (~(1 << BR_MREQ_BAR)));
 
     // Enable FIQ interrupts on GPIO[3] which is any GPIO pin
     W32(IRQ_FIQ_CONTROL, (1 << 7) | 52);
@@ -647,15 +569,15 @@ void br_wait_state_isr(void* pData)
     // Send this to anything listening
     uint32_t retVal = 0;
     if (__br_pBusAccessCallback)
-        retVal = __br_pBusAccessCallback(addr, dataBusVals, ctrlBusVals) & 0xff;
+        retVal = __br_pBusAccessCallback(addr, dataBusVals, ctrlBusVals);
 
-    // If not writing then put the returned data onto the bus
-    if (!isWriting)
+    // If not writing and result is valid then put the returned data onto the bus
+    if (!isWriting && (retVal != BR_MEM_ACCESS_RSLT_NOT_DECODED))
     {
         digitalWrite(BR_DATA_DIR_IN, 0);
         br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
         br_set_pib_output();
-        br_set_pib_value(retVal);
+        br_set_pib_value(retVal & 0xff);
     }
 
     // Clear the WAIT state
@@ -664,8 +586,9 @@ void br_wait_state_isr(void* pData)
     // Clear detected edge on any pin
     W32(GPEDS0, 0xffffffff);  
 
-    // If not writing then we need to wait until the request is complete
-    if (!isWriting)
+    // If not writing and result from memory access request 
+    // then we need to wait until the request is complete
+    if (!isWriting && (retVal != BR_MEM_ACCESS_RSLT_NOT_DECODED))
     {
         // Wait until the request has completed (both IORQ_BAR and MREQ_BAR high)
         uint32_t ctrlBusMask = ((1 << BR_CTRL_BUS_MREQ) | (1 << BR_CTRL_BUS_IORQ));
@@ -683,10 +606,77 @@ void br_wait_state_isr(void* pData)
         digitalWrite(BR_DATA_DIR_IN, 1);
     }
 
+#ifdef INSTRUMENT_BUSRAIDER_FIQ
+    // Form key from the control lines
+    uint32_t accVal = 0x00;
+    if ((busVals & (1 << BR_RD_BAR)) == 0)
+        accVal |= 0x01;
+    if ((busVals & (1 << BR_WR_BAR)) == 0)
+        accVal |= 0x02;
+    if (accVal == 0)
+        accVal = 0x03;
+
+    // Form key
+    uint32_t keyVal = (accVal << 16) | addr; 
+
+    int firstUnused = -1;
+    for (int i = 0; i < MAX_IO_PORT_VALS; i++)
+    {
+        // Check for key
+        if ((iorqPortAccess[i] & 0x3ffff) == keyVal)
+        {
+            // Inc count if we can
+            uint32_t count = iorqPortAccess[i] >> 18;
+            if (count != 0x3fff)
+                count++;
+            iorqPortAccess[i] = (iorqPortAccess[i] & 0x3ffff) | (count << 18);
+            break;
+        }
+        else if (iorqPortAccess[i] == 0)
+        {
+            firstUnused = i;
+            break;
+        }
+    }
+    if (firstUnused != -1)
+    {
+        iorqPortAccess[firstUnused] = keyVal | (1 << 18);
+    }
+
+    if (busVals & (iorqIsNotActive != 0))
+        iorqIsNotActive++;
+#endif
+
 }
 
 void br_service()
 {
-}
+#ifdef INSTRUMENT_BUSRAIDER_FIQ
+    loopCtr++;
+    if (loopCtr > 500000)
+    {
+        bool anyOut = false;
+        for (int i = 0; i < MAX_IO_PORT_VALS; i++)
+        {
+            if (iorqPortAccess[i] == 0)
+                break;
 
+            int accVal = (iorqPortAccess[i] >> 16) & 0x03;
+            anyOut = true;
+            ee_printf("port %x %c %c count %d; ",
+                    iorqPortAccess[i] & 0xffff,
+                    ((accVal & 0x01) != 0) ? 'R' : ' ',
+                    ((accVal & 0x02) != 0) ? 'W' : ' ',
+                    iorqPortAccess[i] >> 18);
+        }
+        if (iorqIsNotActive > 0)
+        {
+            if (anyOut)
+                ee_printf("\n");
+            ee_printf("Not actv %d, ", iorqIsNotActive);
+        }
+        ee_printf("IORQ_WAIT_EN %d count %d\n",digitalRead(BR_IORQ_WAIT_EN), iorqCount);
+        loopCtr = 0;
+    }
 #endif
+}

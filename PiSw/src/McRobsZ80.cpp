@@ -31,6 +31,7 @@ McDescriptorTable McRobsZ80::_descriptorTable = {
 // Enable machine
 void McRobsZ80::enable()
 {
+    _screenBufferValid = false;
     LogWrite(LogPrefix, LOG_DEBUG, "Enabling");
     br_set_bus_access_callback(memoryRequestCallback);
 }
@@ -112,10 +113,10 @@ uint32_t McRobsZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[mayb
     // Check for read
     if (flags & BR_CTRL_BUS_RD)
     {
-        return 0;
+        return BR_MEM_ACCESS_RSLT_NOT_DECODED;
     }
 
-    // Not read
-    return 0;
+    // Not decoded
+    return BR_MEM_ACCESS_RSLT_NOT_DECODED;
 }
 

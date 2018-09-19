@@ -41,7 +41,7 @@ void McTRS80::enable()
     LogWrite(LogPrefix, LOG_DEBUG, "Enabling TRS80");
     br_set_bus_access_callback(memoryRequestCallback);
     // Bus raider enable wait states on IORQ
-    br_enable_wait_states(true, false);
+    br_enable_mem_and_io_access(true, false);
 }
 
 // Disable machine
@@ -49,7 +49,7 @@ void McTRS80::disable()
 {
     LogWrite(LogPrefix, LOG_DEBUG, "Disabling TRS80");
     // Bus raider disable wait states
-    br_enable_wait_states(false, false);
+    br_enable_mem_and_io_access(false, false);
     br_remove_bus_access_callback();
 }
 
@@ -309,9 +309,12 @@ uint32_t McTRS80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_
             // Indicate no buttons are pressed
             return 0xff;
         }
+
+        // Other IO ports are not decoded
+        return BR_MEM_ACCESS_RSLT_NOT_DECODED;
     }
 
-    // Not read
-    return 0;
+    // Not decoded
+    return BR_MEM_ACCESS_RSLT_NOT_DECODED;
 }
 
