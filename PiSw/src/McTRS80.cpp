@@ -7,11 +7,11 @@
 #include "busraider.h"
 #include "rdutils.h"
 #include "target_memory_map.h"
-#include "mc_trs80_cmdfile.h"
+#include "McTRS80CmdFormat.h"
+
+const char* McTRS80::_logPrefix = "TRS80";
 
 extern WgfxFont __TRS80Level3Font;
-
-static const char* LogPrefix = "TRS80";
 
 McDescriptorTable McTRS80::_descriptorTable = {
     // Machine name
@@ -38,7 +38,7 @@ void McTRS80::enable()
     _screenBufferValid = false;
     _keyBufferDirty = false;
 
-    LogWrite(LogPrefix, LOG_DEBUG, "Enabling TRS80");
+    LogWrite(_logPrefix, LOG_DEBUG, "Enabling TRS80");
     br_set_bus_access_callback(memoryRequestCallback);
     // Bus raider enable wait states on IORQ
     br_enable_mem_and_io_access(true, false);
@@ -47,7 +47,7 @@ void McTRS80::enable()
 // Disable machine
 void McTRS80::disable()
 {
-    LogWrite(LogPrefix, LOG_DEBUG, "Disabling TRS80");
+    LogWrite(_logPrefix, LOG_DEBUG, "Disabling TRS80");
     // Bus raider disable wait states
     br_enable_mem_and_io_access(false, false);
     br_remove_bus_access_callback();
@@ -58,7 +58,7 @@ void McTRS80::handleExecAddr(uint32_t execAddr)
     // Handle the execution address
     uint8_t jumpCmd[3] = { 0xc3, uint8_t(execAddr & 0xff), uint8_t((execAddr >> 8) & 0xff) };
     targetDataBlockStore(0, jumpCmd, 3);
-    LogWrite(LogPrefix, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
+    LogWrite(_logPrefix, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
@@ -282,8 +282,9 @@ void McTRS80::fileHander(const char* pFileInfo, const uint8_t* pFileData, int fi
     if (stricmp(pFileType, ".cmd") == 0)
     {
         // TRS80 command file
-        LogWrite(LogPrefix, LOG_DEBUG, "Processing TRS80 CMD file len %d", fileLen);
-        mc_trs80_cmdfile_proc(targetDataBlockStore, handleExecAddr, pFileData, fileLen);
+        McTRS80CmdFormat cmdFormat;
+        LogWrite(_logPrefix, LOG_DEBUG, "Processing TRS80 CMD file len %d", fileLen);
+        cmdFormat.proc(targetDataBlockStore, handleExecAddr, pFileData, fileLen);
     }
     else
     {
@@ -292,7 +293,7 @@ void McTRS80::fileHander(const char* pFileInfo, const uint8_t* pFileData, int fi
         char baseAddrStr[MAX_VALUE_STR+1];
         if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
             baseAddr = strtol(baseAddrStr, NULL, 16);
-        LogWrite(LogPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
+        LogWrite(_logPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
         targetDataBlockStore(baseAddr, pFileData, fileLen);
     }
 }

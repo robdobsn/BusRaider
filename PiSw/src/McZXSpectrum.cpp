@@ -7,8 +7,9 @@
 #include "busraider.h"
 #include "rdutils.h"
 #include "target_memory_map.h"
+#include "McZXSpectrumTZXFormat.h"
 
-static const char* LogPrefix = "ZXSpectrum";
+const char* McZXSpectrum::_logPrefix = "ZXSpectrum";
 
 unsigned char McZXSpectrum::_curKeyModifiers = 0;
 unsigned char McZXSpectrum::_curKeys[MAX_KEYS];
@@ -35,7 +36,7 @@ McDescriptorTable McZXSpectrum::_descriptorTable = {
 void McZXSpectrum::enable()
 {
     _screenBufferValid = false;
-    LogWrite(LogPrefix, LOG_DEBUG, "Enabling");
+    LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
     br_set_bus_access_callback(memoryRequestCallback);
         // Bus raider enable wait states on IORQ
     br_enable_mem_and_io_access(true, false);
@@ -44,16 +45,14 @@ void McZXSpectrum::enable()
 // Disable machine
 void McZXSpectrum::disable()
 {
-    LogWrite(LogPrefix, LOG_DEBUG, "Disabling");
+    LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
     br_remove_bus_access_callback();
 }
 
 void McZXSpectrum::handleExecAddr(uint32_t execAddr)
 {
     // Handle the execution address
-    uint8_t jumpCmd[3] = { 0xc3, uint8_t(execAddr & 0xff), uint8_t((execAddr >> 8) & 0xff) };
-    targetDataBlockStore(0, jumpCmd, 3);
-    LogWrite(LogPrefix, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
+    LogWrite(_logPrefix, LOG_DEBUG, "Doing nothing with exec addr %04x\n", execAddr);
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
@@ -138,18 +137,31 @@ void McZXSpectrum::fileHander(const char* pFileInfo, const uint8_t* pFileData, i
     char fileName[MAX_FILE_NAME_STR+1];
     if (!jsonGetValueForKey("fileName", pFileInfo, fileName, MAX_FILE_NAME_STR))
         return;
+
     // Get type of file (assume extension is delimited by .)
     const char* pFileType = strstr(fileName, ".");
     const char* pEmpty = "";
     if (pFileType == NULL)
         pFileType = pEmpty;
-    // Treat everything as a binary file
-    uint16_t baseAddr = 0;
-    char baseAddrStr[MAX_VALUE_STR+1];
-    if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
-        baseAddr = strtol(baseAddrStr, NULL, 16);
-    LogWrite(LogPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
-    targetDataBlockStore(baseAddr, pFileData, fileLen);
+
+    // See if it is TZX format
+    if (stricmp(pFileType, ".tzx") == 0)
+    {
+        // TZX
+        McZXSpectrumTZXFormat tzxFormatHandler;
+        LogWrite(_logPrefix, LOG_DEBUG, "Processing TZX file len %d", fileLen);
+        tzxFormatHandler.proc(targetDataBlockStore, handleExecAddr, pFileData, fileLen);
+    }
+    else
+    {
+        // Treat everything else as a binary file
+        uint16_t baseAddr = 0;
+        char baseAddrStr[MAX_VALUE_STR+1];
+        if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
+            baseAddr = strtol(baseAddrStr, NULL, 16);
+        LogWrite(_logPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
+        targetDataBlockStore(baseAddr, pFileData, fileLen);
+    }
 }
 
 uint32_t McZXSpectrum::getKeyPressed(const int* keyCodes, int keyCodesLen)

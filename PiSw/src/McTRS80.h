@@ -8,6 +8,7 @@
 class McTRS80 : public McBase
 {
   private:
+    static const char* _logPrefix;
     static constexpr uint32_t TRS80_KEYBOARD_ADDR = 0x3800;
     static constexpr uint32_t TRS80_KEYBOARD_RAM_SIZE = 0x0100;
     static constexpr uint32_t TRS80_DISP_RAM_ADDR = 0x3c00;

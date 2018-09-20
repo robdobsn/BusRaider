@@ -1,17 +1,18 @@
 // Bus Raider
 // Rob Dobson 2018
 
-#include "mc_trs80_cmdfile.h"
+#include "McTRS80CmdFormat.h"
 #include "ee_printf.h"
 
-static const char FromTrs80CmdFile[] = "TRS80CmdFile";
+const char *McTRS80CmdFormat::_logPrefix = "McTRS80Cmd";
 
-void mc_trs80_cmdfile_init()
+McTRS80CmdFormat::McTRS80CmdFormat()
 {
-
 }
 
-void mc_trs80_cmdfile_proc(CmdFileParserDataCallback* pDataCallback, CmdFileParserAddrCallback* pAddrCallback, const uint8_t* pData, int dataLen)
+void McTRS80CmdFormat::proc(FileParserDataCallback* pDataCallback, 
+            FileParserAddrCallback* pAddrCallback, 
+            const uint8_t* pData, int dataLen)
 {
     int pos = 0;
     while (pos < dataLen - 2)
@@ -36,7 +37,7 @@ void mc_trs80_cmdfile_proc(CmdFileParserDataCallback* pDataCallback, CmdFilePars
                 else
                     length -= 2;
                 pDataCallback(addr, pData+pos, length);
-                LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: Code segment addr %04x len %04x", addr, length);
+                LogWrite(_logPrefix, LOG_DEBUG, "CmdFile: Code segment addr %04x len %04x", addr, length);
                 break;
             }
             case 2:
@@ -47,40 +48,40 @@ void mc_trs80_cmdfile_proc(CmdFileParserDataCallback* pDataCallback, CmdFilePars
                 {
                     execAddr = pData[pos];
                     pAddrCallback(execAddr);
-                    LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: ExecAddr8 %04x", execAddr);
+                    LogWrite(_logPrefix, LOG_DEBUG, "CmdFile: ExecAddr8 %04x", execAddr);
                 }
                 else if (length == 2)
                 {
                     execAddr = pData[pos] + (((uint32_t)pData[pos+1]) << 8);
                     pos+=2;
                     pAddrCallback(execAddr);
-                    LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: ExecAddr16 %04x", execAddr);
+                    LogWrite(_logPrefix, LOG_DEBUG, "CmdFile: ExecAddr16 %04x", execAddr);
                 }
                 else
                 {
-                    LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: Error in exec addr");
+                    LogWrite(_logPrefix, LOG_DEBUG, "CmdFile: Error in exec addr");
                 }
                 break;
             }
             case 3:
             {
                 // Non exec marker
-                LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: Non exec marker");
+                LogWrite(_logPrefix, LOG_DEBUG, "CmdFile: Non exec marker");
                 return;
             }
             case 4:
             {
-                LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: End of partitioned data");
+                LogWrite(_logPrefix, LOG_DEBUG, "CmdFile: End of partitioned data");
                 break;
             }
             case 5:
             {
-                LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: Title");
+                LogWrite(_logPrefix, LOG_DEBUG, "CmdFile: Title");
                 break;
             }
             default:
             {
-                LogWrite(FromTrs80CmdFile, LOG_DEBUG, "CmdFile: Undecoded block %02x", code);
+                LogWrite(_logPrefix, LOG_DEBUG, "CmdFile: Undecoded block %02x", code);
                 break;
             }
         }

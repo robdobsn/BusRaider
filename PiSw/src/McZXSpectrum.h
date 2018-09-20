@@ -25,6 +25,8 @@ class McZXSpectrum : public McBase
     static unsigned char _curKeyModifiers;
     static unsigned char _curKeys[MAX_KEYS];
 
+    static const char* _logPrefix;
+
   public:
 
     McZXSpectrum() : McBase()
