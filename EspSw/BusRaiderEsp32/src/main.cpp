@@ -83,7 +83,8 @@ static const char *hwConfigJSON = {
     "\"OTAUpdate\":{\"enabled\":0,\"server\":\"domoticzoff\",\"port\":5076},"
     "\"wifiLed\":{\"ledPin\":\"13\",\"ledOnMs\":200,\"ledShortOffMs\":200,\"ledLongOffMs\":750},"
     "\"serialConsole\":{\"portNum\":0},"
-    "\"commandSerial\":{\"portNum\":1,\"baudRate\":115200}"
+    "\"commandSerial\":{\"portNum\":1,\"baudRate\":115200},"
+    "\"machineIF\":{\"portNum\":2,\"baudRate\":115200},"
     "}"
 };
 
@@ -189,6 +190,9 @@ void setup()
 
     // Network logging
     netLog.setup(&netLogConfig, wifiManager.getHostname().c_str());
+
+    // Machine interface
+    machineInterface.setup(hwConfig);
 
     // Add debug blocks
     debugLoopTimer.blockAdd(0, "Web");

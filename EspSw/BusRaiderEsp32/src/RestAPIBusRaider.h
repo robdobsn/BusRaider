@@ -12,15 +12,24 @@ class RestAPIBusRaider
   private:
     CommandSerial& _commandSerial;
     MachineInterface& _machineInterface;
+    static const int TIME_TO_WAIT_BEFORE_RESTART_MS = 1000;
+    uint32_t _restartPendingStartMs;
+    bool _restartPending;
 
   public:
     RestAPIBusRaider(CommandSerial &commandSerial, MachineInterface &machineInterface) :
              _commandSerial(commandSerial), _machineInterface(machineInterface)
     {
+        _restartPending = false;
+        _restartPendingStartMs = 0;
     }
 
     void service()
     {
+        if (_restartPending && Utils::isTimeout(millis(), _restartPendingStartMs, TIME_TO_WAIT_BEFORE_RESTART_MS))
+        {
+            ESP.restart();
+        }
     }
 
     void apiTargetCommand(String &reqStr, String &respStr)
@@ -33,9 +42,9 @@ class RestAPIBusRaider
         Utils::setJsonBoolResult(respStr, rslt);
     }
 
-    void apiFileStart(String &reqStr, String &respStr)
+    void apiFileComplete(String &reqStr, String &respStr)
     {
-        Log.trace("RestAPIBusRaider: apiFileStart %s\n", reqStr.c_str());
+        Log.trace("RestAPIBusRaider: apiFileComplete %s\n", reqStr.c_str());
         Utils::setJsonBoolResult(respStr, true);
     }
 
@@ -52,7 +61,59 @@ class RestAPIBusRaider
         Log.trace("RestAPIBusRaider: apiQueryStatus %s\n", reqStr.c_str());
         respStr = machineInterface.getStatus();
     }
+    
+    void apiESPFirmwarePart(String filename, size_t contentLen, size_t index, 
+                    uint8_t *data, size_t len, bool final)
+    {
+        Log.notice("apiESPFirmwarePart %d, %d, %d, %d\n", contentLen, index, len, final);
+        // Check if first part
+        if (index == 0)
+        {
+            // Abort any existing update process
+            Update.abort();
 
+            // Check the update can be started
+            bool enoughSpace = Update.begin(UPDATE_SIZE_UNKNOWN, U_FLASH);
+            if (!enoughSpace)
+            {
+                Log.notice("OTAUpdate: Not enough space for firmware\n");
+                return;
+            }
+        }
+        // Check if in progress
+        if (Update.isRunning())
+        {
+            bool bytesWritten = Update.write(data, len);
+            if (bytesWritten != len)
+            {
+                Log.warning("apiESPFirmwarePart failed to write correct amount %d != %d\n",
+                            bytesWritten, len);
+            }
+        }
+        // Check if final block
+        if (final)
+        {
+            if (Update.isFinished())
+            {
+                Log.warning("apiESPFirmwarePart finished - rebooting ...\n");
+                Update.end();
+                _restartPendingStartMs = millis();
+                _restartPending = true;
+            }
+            else
+            {
+                Log.warning("apiESPFirmwarePart final block but not finished - abort!\n");
+                Update.abort();
+            }
+        }
+    }
+
+    void apiESPFirmwareUpdateDone(String &reqStr, String &respStr)
+    {
+        Log.trace("RestAPIBusRaider: apiESPFirmwareUpdate %s\n", reqStr.c_str());
+        Utils::setJsonBoolResult(respStr, true);
+    }
+    
     void setup(RestAPIEndpoints &endpoints)
     {
         endpoints.addEndpoint("targetcmd", 
@@ -64,7 +125,7 @@ class RestAPIBusRaider
         endpoints.addEndpoint("upload", 
                             RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                             RestAPIEndpointDef::ENDPOINT_POST,
-                            std::bind(&RestAPIBusRaider::apiFileStart, this, 
+                            std::bind(&RestAPIBusRaider::apiFileComplete, this, 
                                     std::placeholders::_1, std::placeholders::_2),
                             "Upload file", "application/json", 
                             NULL, 
@@ -74,13 +135,27 @@ class RestAPIBusRaider
                             std::bind(&RestAPIBusRaider::apiFileUpload, this, 
                                     std::placeholders::_1, std::placeholders::_2, 
                                     std::placeholders::_3, std::placeholders::_4,
-                                    std::placeholders::_5, std::placeholders::_6));
+                                    std::placeholders::_5, std::placeholders::_6));                                    
         endpoints.addEndpoint("querystatus", 
                             RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                             RestAPIEndpointDef::ENDPOINT_GET, 
                             std::bind(&RestAPIBusRaider::apiQueryStatus, this,
                                     std::placeholders::_1, std::placeholders::_2),
                             "Query status");
+        endpoints.addEndpoint("espFirmwareUpdate", 
+                            RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                            RestAPIEndpointDef::ENDPOINT_POST,
+                            std::bind(&RestAPIBusRaider::apiESPFirmwareUpdateDone, this, 
+                                    std::placeholders::_1, std::placeholders::_2),
+                            "Update ESP32 firmware", "application/json", 
+                            NULL, 
+                            true, 
+                            NULL,
+                            NULL,
+                            std::bind(&RestAPIBusRaider::apiESPFirmwarePart, this, 
+                                    std::placeholders::_1, std::placeholders::_2, 
+                                    std::placeholders::_3, std::placeholders::_4,
+                                    std::placeholders::_5, std::placeholders::_6));
     }
 
 };
