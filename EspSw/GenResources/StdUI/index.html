@@ -4,6 +4,7 @@
 <head>
     <title>Bus Raider</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="TerminalEmulator.js"></script>
     <script type="text/javascript">
         function bodyIsLoaded() {
             window.pageState = {
@@ -31,6 +32,17 @@
 
             // Populate machine list
             callAjax("/querystatus", populateMcList);
+
+            // Create terminal emulator
+            var term = new TerminalEmulator("term", true, true, 80, 25, true);
+            term.setInputCallback(cb);
+            let termArea = document.getElementById("terminal-area");
+            termArea.appendChild(term.html);
+        }
+
+        function cb(ch)
+        {
+            // alert(ch + "==>" + ch.charCodeAt(0));
         }
 
         function populateMcList(jsonResp) {
@@ -288,6 +300,8 @@
             <span class="button" onclick="sendCmdToTarget('resettarget')">Reset RC2014</span>
             <span class="button" onclick="sendCmdToTarget('cleartarget')">Clear Target Buffer</span>
             <span class="button" onclick="sendCmdToTarget('ioclrtarget')">Clear all RC2014 IO</span>
+        </div>
+        <div id="terminal-area" class="layout-region">
         </div>
         <div id="footer-area" class="layout-region">
             <p>Developed by Rob Dobson 2018, inspired by RC2014 and PiGFX</p>
