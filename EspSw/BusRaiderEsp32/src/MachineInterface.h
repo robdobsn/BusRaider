@@ -125,7 +125,7 @@ class MachineInterface
     void service()
     {
         // Check for serial chars received
-        if (_pSerial)
+        if (_pSerial && _pWebSocket)
         {
             String charsReceived;
             const int MAX_CHARS_TO_PROCESS = 100;
@@ -148,10 +148,7 @@ class MachineInterface
             {
                 String keyJSON = "{\"dataType\":\"key\",\"val\":\"" +
                                  Utils::escapeJSON(charsReceived) + "\"}";
-                if (_pWebSocket)
-                {
-                    _pWebSocket->printfAll("%s", keyJSON.c_str());
-                }
+                _pWebSocket->printfAll("%s", keyJSON.c_str());
             }
         }
     }
