@@ -94,7 +94,7 @@ extern "C" void entry_point()
 
     // Initial message
     wgfx_set_fg(11);
-    ee_printf("RC2014 Bus Raider V1.02\n");
+    ee_printf("RC2014 Bus Raider V1.03\n");
     wgfx_set_fg(15);
     ee_printf("Rob Dobson 2018 (inspired by PiGFX)\n\n");
 

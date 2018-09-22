@@ -7,6 +7,8 @@
 #include "CommandSerial.h"
 #include "MachineInterface.h"
 
+// #define SUPPORT_WEB_TERMINAL_REST 1
+
 class RestAPIBusRaider
 {
   private:
@@ -41,6 +43,20 @@ class RestAPIBusRaider
         _commandSerial.sendTargetCommand(targetCmd);
         Utils::setJsonBoolResult(respStr, rslt);
     }
+
+#ifdef SUPPORT_WEB_TERMINAL_REST
+    void apiPostCharsDone(String &reqStr, String &respStr)
+    {
+        bool rslt = true;
+        Utils::setJsonBoolResult(respStr, rslt);
+    }
+
+    void apiPostCharsBody(uint8_t *data, size_t len, size_t index, size_t total)
+    {
+        // Log.trace("Rest %s %d %d %d\n", ss, len, index, total);
+        // machineInterface.sendSerialRxDataToHost(data, len);
+    }
+#endif
 
     void apiFileComplete(String &reqStr, String &respStr)
     {
@@ -122,6 +138,20 @@ class RestAPIBusRaider
                             std::bind(&RestAPIBusRaider::apiTargetCommand, this,
                                     std::placeholders::_1, std::placeholders::_2),
                             "Target command");
+#ifdef SUPPORT_WEB_TERMINAL_REST
+        endpoints.addEndpoint("postchars", 
+                            RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                            RestAPIEndpointDef::ENDPOINT_POST, 
+                            std::bind(&RestAPIBusRaider::apiPostCharsDone, this,
+                                    std::placeholders::_1, std::placeholders::_2),
+                            "PostChars to host machine", "application/json", 
+                            NULL, 
+                            true, 
+                            NULL,
+                            std::bind(&RestAPIBusRaider::apiPostCharsBody, this, 
+                                    std::placeholders::_1, std::placeholders::_2, 
+                                    std::placeholders::_3, std::placeholders::_4));
+#endif
         endpoints.addEndpoint("upload", 
                             RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                             RestAPIEndpointDef::ENDPOINT_POST,
