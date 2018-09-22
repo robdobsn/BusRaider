@@ -17,7 +17,7 @@
 class WebServer
 {
   public:
-    AsyncWebServer *_pServer;
+    AsyncWebServer* _pServer;
     bool _begun;
     bool _webServerEnabled;
 
