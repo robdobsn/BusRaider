@@ -10,6 +10,11 @@
             window.pageState = {
                 uploadProgress: []
             }
+
+            // Select
+            this.setupSelectMachine();
+
+            // Drag and drop
             let dropArea = document.getElementById("drop-area");
 
             // Prevent default drag behaviors
@@ -34,14 +39,41 @@
             callAjax("/querystatus", populateMcList);
 
             // Create terminal emulator
-            var term = new TerminalEmulator("term", true, true, 80, 25, true);
-            term.setInputCallback(cb);
+            window.pageState.term = new TerminalEmulator("term", true, true, 80, 25, false, 25);
+            window.pageState.term.setInputCallback(terminalEmulatorCharCallback);
             let termArea = document.getElementById("terminal-area");
-            termArea.appendChild(term.html);
+            termArea.appendChild(window.pageState.term.html);
+
+        //     // Start websocket after a time - prevents Firefox error on opening socket
+        //     setTimeout(this.startWebSocket, 1000);
+        // }
+
+        // function startWebSocket()
+        // {
+            // Open a web socket for communcation of keystrokes with the terminal
+            window.pageState.terminalKeysSocket = new WebSocket("ws://" + location.host + "/ws", "keys");
+            window.pageState.terminalKeysSocket.onopen = function () 
+            {
+                console.log("Web socket open");
+            }
+            window.pageState.terminalKeysSocket.onmessage = function(event)
+            {
+                console.log(event.data);
+                let eventInfo = JSON.parse(event.data);
+                if (eventInfo && eventInfo.dataType === "key")
+                    window.pageState.term.showString(eventInfo.val);
+            }
         }
 
-        function cb(ch)
+        function terminalEmulatorCharCallback(ch)
         {
+            if (window.pageState.terminalKeysSocket)
+            {
+                let msg = { dataType: "key", val: ch };
+                let jsonRaw = JSON.stringify(msg);
+                window.pageState.terminalKeysSocket.send(jsonRaw);
+                // window.pageState.terminalKeysSocket.send("{\"dataType\":\"key\",\"val\":\"" + ch + "\"}");
+            }
             // alert(ch + "==>" + ch.charCodeAt(0));
         }
 
@@ -49,7 +81,7 @@
             let status = JSON.parse(jsonResp);
             // Clear list and fill
             let mcListSelect = document.getElementById("machine-select");
-            if (mcListSelect) {
+            if (mcListSelect && status.machineList) {
                 for (let i = 0; i < mcListSelect.options.length; i++)
                     mcListSelect.remove(i);
                 for (let i = 0; i < status.machineList.length; i++) {
@@ -61,6 +93,8 @@
                 // Set current machine
                 mcListSelect.value = status.machineCur;
             }
+            // Re-setup select
+            this.setupSelectMachine();
         }
 
         function preventDefaults(e) {
@@ -153,7 +187,81 @@
             };
             xmlhttp.open("GET", url, true);
             xmlhttp.send();
-        }        
+        }    
+
+        function setupSelectMachine() {
+            let selectS = document.getElementsByClassName("select-style");
+            for (let i = 0; i < selectS.length; i++) {
+                selEl = selectS[i].getElementsByTagName("select")[0];
+                // Selected item div
+                let selItemDiv = document.createElement("div");
+                selItemDiv.setAttribute("class", "select-selected");
+                selItemDiv.innerHTML = selEl.options[selEl.selectedIndex].innerHTML;
+                selectS[i].appendChild(selItemDiv);
+                // Options div
+                let optionsDiv = document.createElement("div");
+                optionsDiv.setAttribute("class", "select-items select-hide");
+                for (let j = 0; j < selEl.length; j++) {
+                    // Option div (for each option)
+                    let optionDiv = document.createElement("div");
+                    optionDiv.innerHTML = selEl.options[j].innerHTML;
+                    optionDiv.addEventListener("click", function (event) {
+                        // Handle item click = select item
+                        let selection = this.parentNode.parentNode.getElementsByTagName("select")[0];
+                        let prevSibling = this.parentNode.previousSibling;
+                        for (let k = 0; k < selection.length; k++) {
+                            if (selection.options[k].innerHTML == this.innerHTML) {
+                                selection.selectedIndex = k;
+                                prevSibling.innerHTML = this.innerHTML;
+                                let sameAsSel = this.parentNode.getElementsByClassName("same-as-selected");
+                                for (n = 0; n < sameAsSel.length; n++) {
+                                    sameAsSel[n].removeAttribute("class");
+                                }
+                                this.setAttribute("class", "same-as-selected");
+                                break;
+                            }
+                        }
+                        prevSibling.click();
+                    });
+                    optionsDiv.appendChild(optionDiv);
+                    // Last item only
+                    if (j == selEl.length-1)
+                        optionDiv.setAttribute("class", "select-last-option");
+                }
+                selectS[i].appendChild(optionsDiv);
+                selItemDiv.addEventListener("click", function (event) {
+                    // Select box clicked = close other select boxes & open/close current
+                    event.stopPropagation();
+                    closeAllSelect(this);
+                    this.nextSibling.classList.toggle("select-hide");
+                    this.classList.toggle("select-arrow-active");
+                });
+            }
+
+            function closeAllSelect(elmnt) {
+                // Close all selects
+                let selArray = [];
+                let selectedItems = document.getElementsByClassName("select-items");
+                let selectsSelected = document.getElementsByClassName("select-selected");
+                for (let i = 0; i < selectsSelected.length; i++) {
+                    if (elmnt == selectsSelected[i]) {
+                        selArray.push(i)
+                    }
+                    else {
+                        selectsSelected[i].classList.remove("select-arrow-active");
+                    }
+                }
+                for (i = 0; i < selectedItems.length; i++) {
+                    if (selArray.indexOf(i)) {
+                        selectedItems[i].classList.add("select-hide");
+                    }
+                }
+            }
+
+            // Click outside the document - close all selects
+            document.addEventListener("click", closeAllSelect);
+        }
+    
 
     </script>
     <style>
@@ -253,22 +361,66 @@
             margin: 5px 0;      
         }
         .select-style {
-           height: 29px;
-           overflow: hidden;
-           width: 100%;
-           border-radius: 5px;
-           background-color: #444;
-           color: #fff;
+            position: relative;
         }
         .select-style select {
-            background: transparent;
-            border: none;
-            font-size: 14px;
-            height: 29px;
-            padding: 5px; /* If you add too much padding here, the options won't show in IE */
-            width: 100%;
-            color: #fff;
+            display: none;
         }
+        .select-selected {
+            background-color: #444;
+        }
+        /* Style arrow in select element */
+        .select-selected:after {
+            position: absolute;
+            content: "";
+            top: 14px;
+            right: 10px;
+            width: 0;
+            height: 0;
+            border: 6px solid transparent;
+            border-color: #fff transparent transparent transparent;
+        }
+        /* Point arrow upwards when the select open*/
+            .select-selected.select-arrow-active:after {
+            border-color: transparent transparent #fff transparent;
+            top: 7px;
+        }
+        /* Style items including the selected */
+            .select-items div,.select-selected {
+            color: #ffffff;
+            padding: 8px;
+            border: 1px solid transparent;
+            border-color: transparent transparent rgba(0, 0, 0, 0.1) transparent;
+            cursor: pointer;
+            user-select: none;
+            border-radius: 5px;
+        }
+        .select-selected.select-arrow-active {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+        .select-last-option {
+            border-bottom-left-radius: 5px;
+            border-bottom-right-radius: 5px;
+        }
+        /* Style items */
+        .select-items {
+            position: absolute;
+            background-color: #444;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 99;
+            border-bottom-left-radius: 5px;
+            border-bottom-right-radius: 5px;
+        }
+        /* Hide items when the select closed */
+        .select-hide {
+            display: none;
+        }
+        .select-items div:hover, .same-as-selected {
+            background-color: rgba(0, 0, 0, 0.1);
+        }        
     </style>
 </head>
 
