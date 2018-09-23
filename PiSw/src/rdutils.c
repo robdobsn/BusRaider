@@ -35,7 +35,6 @@ void system_init()
 {
     // Heap init
     nmalloc_set_memory_area((unsigned char*)(pheap_space), heap_sz);
-
 }
 
 char* strncpy(char* dest, const char* src, size_t num)
@@ -204,6 +203,43 @@ char rdtolower(char c)
 int rdisalpha(int c)
 {
     return ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ? 1 : 0);
+}
+
+void strrev(unsigned char *str)
+{
+    int i;
+    int j;
+    unsigned char a;
+    unsigned len = strlen((const char *)str);
+    for (i = 0, j = len - 1; i < j; i++, j--)
+    {
+        a = str[i];
+        str[i] = str[j];
+        str[j] = a;
+    }
+}
+
+int rditoa(int num, unsigned char* str, int len, int base)
+{
+    int sum = num;
+    int i = 0;
+    int digit;
+    if (len == 0)
+        return -1;
+    do
+    {
+        digit = sum % base;
+        if (digit < 0xA)
+            str[i++] = '0' + digit;
+        else
+            str[i++] = 'A' + digit - 0xA;
+        sum /= base;
+    }while (sum && (i < (len - 1)));
+    if (i == (len - 1) && sum)
+        return -1;
+    str[i] = '\0';
+    strrev(str);
+    return 0;
 }
 
 /*
