@@ -25,7 +25,7 @@
 const char* systemType = SYSTEM_TYPE_NAME;
 
 // System version
-const char* systemVersion = "1.000.004";
+const char* systemVersion = "1.000.005";
 
 // Build date
 const char* buildDate = __DATE__;
