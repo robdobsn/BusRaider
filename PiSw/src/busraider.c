@@ -568,7 +568,7 @@ void br_wait_state_isr(void* pData)
     }
 
     // Send this to anything listening
-    uint32_t retVal = 0;
+    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
     if (__br_pBusAccessCallback)
         retVal = __br_pBusAccessCallback(addr, dataBusVals, ctrlBusVals);
 
