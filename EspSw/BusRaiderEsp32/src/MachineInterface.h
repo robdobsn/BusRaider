@@ -3,6 +3,8 @@
 
 #pragma once
 
+// #define USE_WEBSOCKET_TERMINAL 1
+
 class MachineInterface
 {
   private:
@@ -42,6 +44,7 @@ class MachineInterface
         _pWebServer = pWebServer;
 
         // Add web socket handler
+#ifdef USE_WEBSOCKET_TERMINAL
         if (_pWebServer)
         {
             String wsPath = csConfig.getString("wsPath", "");
@@ -70,17 +73,7 @@ class MachineInterface
                 }
             }
         }
-
-        //             if (_pWebServer->_pServer) {
-        //   _pWebServer->_pServer->on("/testws", HTTP_GET, [](AsyncWebServerRequest *request) {
-        //       const char* resp = "<head><script>function test() {"
-        //            "var exampleSocket = new WebSocket(\"ws://192.168.86.44/ws\", "
-        //            "\"protocolOne\"); exampleSocket.onopen = function () {"
-        //          "exampleSocket.send(\"Here's some text that the server is urgently awaiting!\"); }; }"
-        //           "</script></head><body onload=\"test()\">Hello</body>";
-        //       request->send(200, "text/html", resp);
-        //   }); }
-
+#endif
         // Get serial port
         _serialPortNum = csConfig.getLong("portNum", -1);
         _baudRate = csConfig.getLong("baudRate", 115200);
@@ -125,6 +118,7 @@ class MachineInterface
     void service()
     {
         // Check for serial chars received
+#ifdef USE_WEBSOCKET_TERMINAL
         if (_pSerial && _pWebSocket)
         {
             String charsReceived;
@@ -151,6 +145,7 @@ class MachineInterface
                 _pWebSocket->printfAll("%s", keyJSON.c_str());
             }
         }
+#endif
     }
 
     void handleRxFrame(const uint8_t *framebuffer, int framelength)
@@ -247,6 +242,7 @@ class MachineInterface
     //     return -1;
     // }
 
+#ifdef USE_WEBSOCKET_TERMINAL
     void wsEventHandler(AsyncWebSocket *server,
                         AsyncWebSocketClient *client,
                         AwsEventType type,
@@ -359,4 +355,5 @@ class MachineInterface
             }
         }
     }
+#endif
 };

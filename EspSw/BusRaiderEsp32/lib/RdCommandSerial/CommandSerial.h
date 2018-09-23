@@ -75,7 +75,7 @@ class CommandSerial
         _baudRate = csConfig.getLong("baudRate", 115200);
 
         // Debug
-        // Log.trace("CommandSerial: portNum %d, baudRate %d\n", _serialPortNum, _baudRate);
+        Log.trace("CommandSerial: portNum %d, baudRate %d\n", _serialPortNum, _baudRate);
 
         // Setup port
         if (_serialPortNum == -1)
