@@ -284,13 +284,13 @@ void wgfx_term_putstring(const char* str)
 
 void wgfx_putc(int winIdx, unsigned int col, unsigned int row, unsigned char ch)
 {
-    if (col >= ctx.term.numCols)
-        return;
-    if (row >= ctx.term.numRows)
-        return;
     if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS)
         return;
     if (!__wgfxWindowValid[winIdx])
+        return;
+    if ((int)col >= __wgfxWindows[winIdx].width / (__wgfxWindows[winIdx].cellWidth * __wgfxWindows[winIdx].xPixScale))
+        return;
+    if ((int)row >= __wgfxWindows[winIdx].height / (__wgfxWindows[winIdx].cellHeight * __wgfxWindows[winIdx].yPixScale))
         return;
 
     // Wait for previous operation (dma) to complete
