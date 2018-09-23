@@ -28,6 +28,7 @@ static int _receivedFileBytesRx = 0;
 static int _receivedBlockCount = 0;
 static cmdHandler_changeMachineCallbackType* __pChangeMcCallback = NULL;
 static char _receivedFileStartInfo[CMD_HANDLER_MAX_CMD_STR_LEN+1];
+static cmdHandler_rxcharCallbackType* _pRxCharFromHostCallback = NULL;
 
 // Structure for command handler state
 void cmdHandler_sendChar(uint8_t ch)
@@ -242,6 +243,12 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
             LogWrite(FromCmdHandler, LOG_DEBUG, "Set Machine to %s", pMcName);
         }
     }
+    else if (stricmp(cmdName, "RxHost") == 0)
+    {
+        // LogWrite(FromCmdHandler, LOG_DEBUG, "RxFromHost, len %d", dataLen);
+        if (_pRxCharFromHostCallback)
+            _pRxCharFromHostCallback(pData, dataLen);
+    }
     else
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "Unknown command %s", cmdName);
@@ -288,6 +295,17 @@ void cmdHandler_sendStatusUpdate()
     minihdlc_send_frame((const uint8_t*)statusStr, strlen(statusStr)+1);
 }
 
+// Send status update
+void cmdHandler_sendKeyCode(int keyCode)
+{
+    static const int MAX_KEY_CMD_STR_LEN = 100;
+    static char keyStr[MAX_KEY_CMD_STR_LEN+1];
+    strncpy(keyStr, "{\"cmdName\":\"keyCode\",\"key\":", MAX_KEY_CMD_STR_LEN);
+    rditoa(keyCode, (uint8_t*)(keyStr+strlen(keyStr)), 10, 10);
+    strncpy(keyStr+strlen(keyStr), "}", MAX_KEY_CMD_STR_LEN);
+    minihdlc_send_frame((const uint8_t*)keyStr, strlen(keyStr)+1);
+}
+
 // Init the destinations for SREC and TREC records
 void cmdHandler_init(cmdHandler_changeMachineCallbackType* pChangeMcCallback)
 {
@@ -312,3 +330,11 @@ void cmdHandler_service()
         minihdlc_char_receiver(ch);
     }
 }
+
+// Set callback for received chars
+void cmd_handler_set_rxchar_callback(cmdHandler_rxcharCallbackType* pRxCharCallback)
+{
+    _pRxCharFromHostCallback = pRxCharCallback;
+}
+
+

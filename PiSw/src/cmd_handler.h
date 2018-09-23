@@ -12,6 +12,7 @@ extern "C" {
 #endif
 
 typedef void cmdHandler_changeMachineCallbackType(const char* machineName);
+typedef void cmdHandler_rxcharCallbackType(const uint8_t* rxChars, int rxLen);
 
 extern void cmdHandler_init(cmdHandler_changeMachineCallbackType* pChangeMcCallback);
 
@@ -22,6 +23,12 @@ extern void cmdHandler_handle_char(int ch);
 
 // Status update
 extern void cmdHandler_sendStatusUpdate();
+
+// Send key
+extern void cmdHandler_sendKeyCode(int keyCode);
+
+// Set callback for received chars
+extern void cmd_handler_set_rxchar_callback(cmdHandler_rxcharCallbackType* pRxCharCallback);
 
 #ifdef __cplusplus
 }

@@ -36,7 +36,7 @@ class CommandSerial
     static CommandSerialFrameRxFnType* _pFrameRxCallback;
 
   public:
-    CommandSerial() : _miniHDLC(sendChar, frameHandler, true)
+    CommandSerial() : _miniHDLC(sendCharToCmdPort, frameHandler, true)
     {
         _pSerial = NULL;
         _serialPortNum = -1;
@@ -45,20 +45,6 @@ class CommandSerial
         _baudRate = 115200;
         _pFrameRxCallback = NULL;
 
-    }
-
-    static void sendChar(uint8_t ch)
-    {
-        if (_pSerial)
-            _pSerial->write(ch);
-    }
-
-    static void frameHandler(const uint8_t *framebuffer, int framelength)
-    {
-        // Handle received frames
-        if (_pFrameRxCallback)
-            _pFrameRxCallback(framebuffer, framelength);
-        Log.notice("HDLC frame received, len %d\n", framelength);
     }
 
     void setup(ConfigBase& config, CommandSerialFrameRxFnType* pFrameRxCallback)
@@ -171,10 +157,22 @@ class CommandSerial
         _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
     }
 
-    void sendTargetCommand(String& targetCmd)
+    void sendTargetCommand(const String& targetCmd)
     {
         String frame = "{\"cmdName\":\"" + targetCmd + "\"}\0";
         _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
+    }
+
+    void sendTargetData(const String& cmdName, const uint8_t* pData, int len, int index)
+    {
+        String header = "{\"cmdName\":\"" + cmdName + "\",\"index\":" + String(index) + ",\"len\":" + String(len) + "}";
+        int headerLen = header.length();
+        uint8_t* pFrameBuf = new uint8_t[headerLen + len + 1];
+        memcpy(pFrameBuf, header.c_str(), headerLen);
+        pFrameBuf[headerLen] = 0;
+        memcpy(pFrameBuf + headerLen + 1, pData, len);
+        _miniHDLC.sendFrame(pFrameBuf, headerLen + len + 1);
+        delete [] pFrameBuf;
     }
 
     void fileUploadPart(String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool final)
@@ -205,4 +203,18 @@ class CommandSerial
         }
     }
 
+private:
+    static void sendCharToCmdPort(uint8_t ch)
+    {
+        if (_pSerial)
+            _pSerial->write(ch);
+    }
+
+    static void frameHandler(const uint8_t *framebuffer, int framelength)
+    {
+        // Handle received frames
+        if (_pFrameRxCallback)
+            _pFrameRxCallback(framebuffer, framelength);
+        // Log.trace("HDLC frame received, len %d\n", framelength);
+    }
 };

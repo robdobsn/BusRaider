@@ -24,6 +24,10 @@ McDescriptorTable McManager::defaultDescriptorTable = {
     // Clock
     .clockFrequencyHz = 1000000
 };
+
+uint8_t McManager::_rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];
+int McManager::_rxHostCharsBufferLen = 0;
+
 TargetClockGenerator McManager::_clockGen;
 
 void McManager::add(McBase* pMachine)
@@ -91,8 +95,7 @@ bool McManager::setMachineByName(const char* mcName)
     {
         if (stricmp(mcName, _pMachines[i]->getDescriptorTable(0)->machineName) == 0)
         {
-            setMachineIdx(i);
-            return true;
+            return setMachineIdx(i);
         }
     }
     return false;

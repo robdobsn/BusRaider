@@ -192,7 +192,7 @@ void setup()
     netLog.setup(&netLogConfig, wifiManager.getHostname().c_str());
 
     // Machine interface
-    machineInterface.setup(hwConfig, &webServer);
+    machineInterface.setup(hwConfig, &webServer, &commandSerial);
 
     // Add debug blocks
     debugLoopTimer.blockAdd(0, "Web");

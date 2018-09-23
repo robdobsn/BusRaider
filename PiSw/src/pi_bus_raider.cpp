@@ -18,6 +18,7 @@
 #include "McTRS80.h"
 #include "McRobsZ80.h"
 #include "McZXSpectrum.h"
+#include "McTerminal.h"
 
 // Baud rate
 #define MAIN_UART_BAUD_RATE 115200
@@ -81,10 +82,14 @@ extern "C" void entry_point()
     targetClear();
     cmdHandler_init(set_machine_by_name);
 
+    // Init machine manager
+    McManager::init();
+
     // Add machines
     new McTRS80();
     new McRobsZ80();
     new McZXSpectrum();
+    new McTerminal();
 
     // Initialise graphics system
     wgfx_init(1366, 768);

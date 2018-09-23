@@ -4,7 +4,7 @@ MEMORY
     ram : ORIGIN = 0x8000, LENGTH = 512M
 }
 
-heap_size = 20M;
+heap_size = 30M;
 
 SECTIONS
 {

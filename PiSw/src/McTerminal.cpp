@@ -1,0 +1,334 @@
+// Bus Raider Machine Serial Terminal
+// Rob Dobson 2018
+
+#include "McTerminal.h"
+#include "usb_hid_keys.h"
+#include "wgfx.h"
+#include "busraider.h"
+#include "rdutils.h"
+#include "target_memory_map.h"
+#include "nmalloc.h"
+#include "timer.h"
+
+const char* McTerminal::_logPrefix = "McTerm";
+
+McDescriptorTable McTerminal::_descriptorTable = {
+    // Machine name
+    "Serial Terminal",
+    // Required display refresh rate
+    .displayRefreshRatePerSec = 30,
+    .displayPixelsX = 80*8,
+    .displayPixelsY = 30*16,
+    .displayCellX = 8,
+    .displayCellY = 16,
+    .pixelScaleX = 1,
+    .pixelScaleY = 1,
+    .pFont = &__systemFont,
+    .displayForeground = WGFX_WHITE,
+    .displayBackground = WGFX_BLACK,
+    // Clock
+    .clockFrequencyHz = 7000000
+};
+
+int McTerminal::_shiftDigitKeyMap[SHIFT_DIGIT_KEY_MAP_LEN] =
+    { '!', '"', '#', '$', '%', '^', '&', '*', '(', ')' };
+
+McTerminal::McTerminal() : McBase()
+{
+    _termCols = DEFAULT_TERM_COLS;
+    _termRows = DEFAULT_TERM_ROWS;
+    _screenBufferValid = false;
+    _curPosX = _curPosY = 0;
+    _cursorShow = true;
+    _cursorBlinkLastUs = 0;
+    _cursorBlinkRateMs = 500;
+    _cursorIsOn = false;
+    _cursorChar = '_';
+    clearScreen();
+}
+
+// Enable machine
+void McTerminal::enable()
+{
+    // Invalidate screen buffer
+    _screenBufferValid = false;
+    LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
+    br_set_bus_access_callback(memoryRequestCallback);
+}
+
+// Disable machine
+void McTerminal::disable()
+{
+    LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
+    br_remove_bus_access_callback();
+}
+
+// Handle display refresh (called at a rate indicated by the machine's descriptor table)
+void McTerminal::displayRefresh()
+{
+    // Use this to get keys from host and display
+    int numCharsAvailable = McManager::getNumCharsReceivedFromHost();
+    if (numCharsAvailable != 0)
+    {
+        // Get chars
+        uint8_t* pCharBuf = (uint8_t*)nmalloc_malloc(numCharsAvailable+1);
+        if (!pCharBuf)
+            return;
+        int gotChars = McManager::getCharsReceivedFromHost(pCharBuf, numCharsAvailable);
+        // LogWrite(_logPrefix, LOG_DEBUG, "Got Rx Chars act len = %d\n", gotChars);
+        
+        // Handle each char
+        for (int i = 0; i < gotChars; i++)
+        {
+            // Send to terminal window
+            dispChar(pCharBuf[i]);
+        }
+
+        // Release chars
+        nmalloc_free((void**)(&pCharBuf));
+    }
+
+    // Write to the display on the Pi Zero
+    for (int k = 0; k < _termRows; k++) 
+    {
+        for (int i = 0; i < _termCols; i++)
+        {
+            int cellIdx = k * _termCols + i;
+            if (!_screenBufferValid || (_screenBuffer[cellIdx] != _screenChars[cellIdx]))
+            {
+                wgfx_putc(MC_WINDOW_NUMBER, i, k, _screenChars[cellIdx]);
+                _screenBuffer[cellIdx] = _screenChars[cellIdx];
+            }
+        }
+    }
+    _screenBufferValid = true;
+
+    // Show the cursor as required
+    if (_cursorShow)
+    {
+        if (timer_isTimeout(micros(), _cursorBlinkLastUs, _cursorBlinkRateMs*1000))
+        {
+            if (_cursorIsOn)
+            {
+                int cellIdx = _curPosY * _termCols + _curPosX;
+                wgfx_putc(MC_WINDOW_NUMBER, _curPosX, _curPosY, _screenChars[cellIdx]);
+            }
+            else
+            {
+                wgfx_putc(MC_WINDOW_NUMBER, _curPosX, _curPosY, _cursorChar);
+            }
+            _cursorIsOn = !_cursorIsOn;
+            _cursorBlinkLastUs = micros();
+        }
+    }
+}
+
+// Handle a key press
+void McTerminal::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_unused]] const unsigned char rawKeys[6])
+{
+    // Send chars to host
+    int asciiCode = 0;
+    int rawKey = rawKeys[0];
+    bool shiftPressed = (ucModifiers & KEY_MOD_LSHIFT) || (ucModifiers & KEY_MOD_RSHIFT);
+    // bool ctrlPressed = (ucModifiers & KEY_MOD_LCTRL) || (ucModifiers & KEY_MOD_RCTRL);
+    if ((rawKey == KEY_NONE) || (rawKey == KEY_ERR_OVF))
+        return;
+    if ((rawKey >= KEY_A) && (rawKey <= KEY_Z)) {
+        // Handle A-Z
+        asciiCode = (rawKey-KEY_A) + (shiftPressed ? 'A' : 'a');
+    } else if ((rawKey >= KEY_1) && (rawKey <= KEY_9)) {
+        // Handle 1..9
+        if (!shiftPressed)
+            asciiCode = (rawKey-KEY_1) + '1';
+        else
+            asciiCode = _shiftDigitKeyMap[rawKey-KEY_1];
+    } else if (rawKey == KEY_0) {
+        // Handle 0 )
+        asciiCode = shiftPressed ? _shiftDigitKeyMap[9] : '0';
+    } else if (rawKey == KEY_SEMICOLON) {
+        // Handle ; :
+        asciiCode = shiftPressed ? ':' : ';';
+    } else if (rawKey == KEY_APOSTROPHE) {
+        // Handle ' @
+        asciiCode = shiftPressed ? '@' : '\'';
+    } else if (rawKey == KEY_COMMA) {
+        // Handle , <
+        asciiCode = shiftPressed ? '<' : ',';
+    } else if (rawKey == KEY_DOT) {
+        // Handle . >
+        asciiCode = shiftPressed ? '>' : '.';
+    } else if (rawKey == KEY_EQUAL) {
+        // Handle = +
+        asciiCode = shiftPressed ? '+' : '=';        
+    } else if (rawKey == KEY_MINUS) {
+        // Handle - _
+        asciiCode = shiftPressed ? '_' : '-';        
+    } else if (rawKey == KEY_SLASH) {
+        // Handle / ?
+        asciiCode = shiftPressed ? '?' : '/';        
+    } else if (rawKey == KEY_ENTER) {
+        // Handle Enter
+        asciiCode = 0x0d;
+    } else if (rawKey == KEY_BACKSPACE) {
+        // Handle backspace
+        asciiCode = 0x08;
+    } else if (rawKey == KEY_ESC) {
+        // Handle ESC
+        asciiCode = 0x1d;        
+    } else if (rawKey == KEY_UP) {
+        // Handle Up
+        asciiCode = 0x11;
+    } else if (rawKey == KEY_DOWN) {
+        // Handle Down
+        asciiCode = 0x12;
+    } else if (rawKey == KEY_LEFT) {
+        // Handle Left
+        asciiCode = 0x13;
+    } else if (rawKey == KEY_RIGHT) {
+        // Handle Right
+        asciiCode = 0x14;
+    } else if (rawKey == KEY_SPACE) {
+        // Handle Space
+        asciiCode = 0x20;
+    }
+    if (asciiCode == 0)
+        return;
+
+    // Send to host
+    cmdHandler_sendKeyCode(asciiCode);
+}
+
+// Handle a file
+void McTerminal::fileHander(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
+{
+    // Get the file type (extension of file name)
+    #define MAX_VALUE_STR 30
+    #define MAX_FILE_NAME_STR 100
+    char fileName[MAX_FILE_NAME_STR+1];
+    if (!jsonGetValueForKey("fileName", pFileInfo, fileName, MAX_FILE_NAME_STR))
+        return;
+
+    // Get type of file (assume extension is delimited by .)
+    const char* pFileType = strstr(fileName, ".");
+    const char* pEmpty = "";
+    if (pFileType == NULL)
+        pFileType = pEmpty;
+
+    // Treat everything as a binary file
+    uint16_t baseAddr = 0;
+    char baseAddrStr[MAX_VALUE_STR+1];
+    if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
+        baseAddr = strtol(baseAddrStr, NULL, 16);
+    LogWrite(_logPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
+    targetDataBlockStore(baseAddr, pFileData, fileLen);
+}
+
+// Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
+uint32_t McTerminal::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
+{
+    return BR_MEM_ACCESS_RSLT_NOT_DECODED;
+}
+
+void McTerminal::clearScreen()
+{
+    for (int i = 0; i < _termRows * _termCols; i++)
+        _screenChars[i] = ' ';
+    _curPosX = 0;
+    _curPosY = 0;
+}
+
+void McTerminal::dispChar(uint8_t ch)
+{
+    switch(ch)
+    {
+        case 0x0d:
+        {
+            moveAndCheckCurPos(-1,-1,0,1);
+            break;
+        }
+        case 0x0a:
+        {
+            _curPosX = 0;
+            break;
+        }
+        case 0x08:
+        {
+            moveAndCheckCurPos(-1,-1,-1,0);
+            _screenChars[_curPosY * _termCols + _curPosX] = ' ';
+            break;
+        }
+        case 0x0c:
+        {
+            clearScreen();
+            break;
+        }
+        case 0x09:
+        {
+            break;
+        }
+        default:
+        {
+            // Show char at cursor
+            _screenChars[_curPosY * _termCols + _curPosX] = ch;
+
+            // Move cursor
+            moveAndCheckCurPos(-1, -1, 1, 0);
+            break;
+        }
+    }
+}
+
+void McTerminal::vscrollBuffer(int rows)
+{
+    if (rows >= _termRows)
+    {
+        clearScreen();
+        return;
+    }
+
+    // Move chars
+    int charsToMove = (_termRows - rows) * _termCols;
+    int charsToWipe = rows * _termCols;
+    memcpy(_screenChars, _screenChars+charsToWipe, charsToMove);
+
+    // Clear remaining
+    for (int i = charsToMove; i < _termRows * _termCols; i++)
+        _screenChars[i] = ' ';
+
+    // Set buffer dirty to ensure rewritten
+    _screenBufferValid = false;
+}
+
+void McTerminal::moveAndCheckCurPos(int absX, int absY, int relX, int relY)
+{
+    if (_cursorIsOn)
+    {
+        int cellIdx = _curPosY * _termCols + _curPosX;
+        wgfx_putc(MC_WINDOW_NUMBER, _curPosX, _curPosY, _screenChars[cellIdx]);
+    }
+    // LogWrite("Th", LOG_DEBUG, "%d %d %d %d cur %d %d", absX, absY, relX, relY, _curPosX, _curPosY);
+    if (absX >= 0)
+        _curPosX = absX;
+    if (absY >= 0)
+        _curPosY = absY;
+    if (_curPosX+relX >= 0)
+        _curPosX += relX;
+    else
+        _curPosX = 0;
+    _curPosY += relY;
+    if (_curPosX >= _termCols)
+    {
+        _curPosX = 0;
+        _curPosY++;
+    }
+    if (_curPosY >= _termRows)
+    {
+        vscrollBuffer(1);
+        _curPosY -= 1;
+    }
+    if (_curPosX < 0)
+        _curPosX = 0;
+    if (_curPosY < 0)
+        _curPosY = 0;
+    // LogWrite("Th", LOG_DEBUG, "after %d %d %d %d cur %d %d", absX, absY, relX, relY, _curPosX, _curPosY);
+}

@@ -7,11 +7,16 @@
 #include "McBase.h"
 #include "TargetClockGenerator.h"
 #include "ee_printf.h"
+#include "cmd_handler.h"
 
 class McManager
 {
   private:
     static McDescriptorTable defaultDescriptorTable;
+    static const int MAX_RX_HOST_CHARS = 2000;
+    static uint8_t _rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];
+    static int _rxHostCharsBufferLen;
+
   public:
 
     static const int MAX_MACHINES = 10;
@@ -75,6 +80,46 @@ class McManager
 
         // Ret
         return mcString;
+    }
+
+    static void handleRxCharFromHost(const uint8_t* pRxChars, int rxLen)
+    {
+        // Check for overflow
+        if (rxLen + _rxHostCharsBufferLen >= MAX_RX_HOST_CHARS)
+        {
+            // Discard old data as probably not being used
+            _rxHostCharsBufferLen = 0;
+        }
+
+        // Check there is space
+        if (rxLen + _rxHostCharsBufferLen >= MAX_RX_HOST_CHARS)
+            return;
+
+        // Add to buffer
+        memcpy(_rxHostCharsBuffer+_rxHostCharsBufferLen, pRxChars, rxLen);
+        _rxHostCharsBufferLen += rxLen;
+        *(_rxHostCharsBuffer+_rxHostCharsBufferLen) = 0;
+    }
+
+    static int getNumCharsReceivedFromHost()
+    {
+        return _rxHostCharsBufferLen;
+    }
+
+    static int getCharsReceivedFromHost(uint8_t* pBuf, int bufMaxLen)
+    {
+        if ((!pBuf) || (bufMaxLen < _rxHostCharsBufferLen))
+            return 0;
+        memcpy(pBuf, _rxHostCharsBuffer, _rxHostCharsBufferLen);
+        int retVal = _rxHostCharsBufferLen;
+        _rxHostCharsBufferLen = 0;
+        return retVal;
+    }
+
+    static void init()
+    {
+        // Add a callback for received characters from host
+        cmd_handler_set_rxchar_callback(handleRxCharFromHost);
     }
 
 };

@@ -3,6 +3,9 @@
 
 #pragma once
 
+#include "WebServer.h"
+#include "CommandSerial.h"
+
 // #define USE_WEBSOCKET_TERMINAL 1
 
 class MachineInterface
@@ -11,14 +14,17 @@ class MachineInterface
     String _cachedStatusJSON;
 
     // Serial
-    HardwareSerial *_pSerial;
+    HardwareSerial* _pTargetSerial;
 
     // Serial port details
     int _serialPortNum;
     int _baudRate;
 
     // Web server
-    WebServer *_pWebServer;
+    WebServer* _pWebServer;
+
+    // Command serial
+    CommandSerial* _pCommandSerial;
 
     // Web socket for communication of keystrokes
     AsyncWebSocket *_pWebSocket;
@@ -27,21 +33,22 @@ class MachineInterface
     MachineInterface()
     {
         _cachedStatusJSON = "{}";
-        _pSerial = NULL;
+        _pTargetSerial = NULL;
         _serialPortNum = -1;
         _baudRate = 115200;
         _pWebServer = NULL;
         _pWebSocket = NULL;
     }
 
-    void setup(ConfigBase &config, WebServer *pWebServer)
+    void setup(ConfigBase &config, WebServer *pWebServer, CommandSerial* pCommandSerial)
     {
         // Get config
         ConfigBase csConfig(config.getString("machineIF", "").c_str());
         Log.trace("MachineInterface: config %s\n", csConfig.getConfigData());
 
-        // Save webserver
+        // Save webserver and command serial
         _pWebServer = pWebServer;
+        _pCommandSerial = pCommandSerial;
 
         // Add web socket handler
 #ifdef USE_WEBSOCKET_TERMINAL
@@ -86,24 +93,24 @@ class MachineInterface
             return;
 
         // Setup serial port
-        _pSerial = new HardwareSerial(_serialPortNum);
-        if (_pSerial)
+        _pTargetSerial = new HardwareSerial(_serialPortNum);
+        if (_pTargetSerial)
         {
             if (_serialPortNum == 1)
             {
-                _pSerial->begin(_baudRate, SERIAL_8N1, 16, 17, false);
+                _pTargetSerial->begin(_baudRate, SERIAL_8N1, 16, 17, false);
                 Log.trace("MachineInterface: portNum %d, baudRate %d, rxPin, txPin\n",
                           _serialPortNum, _baudRate, 16, 17);
             }
             else if (_serialPortNum == 2)
             {
-                _pSerial->begin(_baudRate, SERIAL_8N1, 26, 25, false);
+                _pTargetSerial->begin(_baudRate, SERIAL_8N1, 26, 25, false);
                 Log.trace("MachineInterface: portNum %d, baudRate %d, rxPin, txPin\n",
                           _serialPortNum, _baudRate, 26, 25);
             }
             else
             {
-                _pSerial->begin(_baudRate);
+                _pTargetSerial->begin(_baudRate);
                 Log.trace("MachineInterface: portNum %d, baudRate %d, rxPin, txPin\n",
                           _serialPortNum, _baudRate, 3, 1);
             }
@@ -117,35 +124,44 @@ class MachineInterface
 
     void service()
     {
-        // Check for serial chars received
-#ifdef USE_WEBSOCKET_TERMINAL
-        if (_pSerial && _pWebSocket)
+        // Check for serial chars received from target
+        if (_pTargetSerial)
         {
             String charsReceived;
             const int MAX_CHARS_TO_PROCESS = 100;
             // See if characters to be processed
             for (int rxCtr = 0; rxCtr < MAX_CHARS_TO_PROCESS; rxCtr++)
             {
-                int rxCh = _pSerial->read();
+                int rxCh = _pTargetSerial->read();
                 if (rxCh < 0)
                     break;
 
                 // Add char to string
-                charsReceived += (char)rxCh;
+                charsReceived.concat((char)rxCh);
 
-                // Debug
-                Serial.printf("%c", rxCh);
             }
 
-            // Send any string of chars received to web socket
+            // Handle any string of chars received
             if (charsReceived.length() > 0)
             {
-                String keyJSON = "{\"dataType\":\"key\",\"val\":\"" +
-                                 Utils::escapeJSON(charsReceived) + "\"}";
-                _pWebSocket->printfAll("%s", keyJSON.c_str());
+                // Debug
+                Log.trace("McIF RxChars %s\n", charsReceived.c_str());
+            
+                // Send to Pi
+                if (_pCommandSerial)
+                    _pCommandSerial->sendTargetData("RxHost", 
+                            (const uint8_t*)charsReceived.c_str(), charsReceived.length(), 0);
+#ifdef USE_WEBSOCKET_TERMINAL
+                // Send to websocket
+                if (_pWebSocket)
+                {
+                    String keyJSON = "{\"dataType\":\"key\",\"val\":\"" +
+                                    Utils::escapeJSON(charsReceived) + "\"}";
+                    _pWebSocket->printfAll("%s", keyJSON.c_str());
+                }
+#endif
             }
         }
-#endif
     }
 
     void handleRxFrame(const uint8_t *framebuffer, int framelength)
@@ -163,6 +179,14 @@ class MachineInterface
         {
             // Store the status frame
             _cachedStatusJSON = (const char *)framebuffer;
+        }
+        else if (cmdName.equalsIgnoreCase("keyCode"))
+        {
+            // Send key to target
+            int asciiCode = RdJson::getLong("key", 0, (const char*)framebuffer);
+            if (_pTargetSerial && (asciiCode != 0))
+                _pTargetSerial->write((char)asciiCode);
+            Log.trace("McIF sent target char %x\n", (char)asciiCode);
         }
     }
 
@@ -275,7 +299,7 @@ class MachineInterface
         else if (type == WS_EVT_DATA)
         {
             // Check serial to host is open
-            if (!_pSerial)
+            if (!_pTargetSerial)
                 return;
 
             // Extract the data
@@ -349,7 +373,7 @@ class MachineInterface
                 else
                 {
                     // Send key to host
-                    _pSerial->write((char)ascKey);
+                    _pTargetSerial->write((char)ascKey);
                     Log.trace("McIF to host char %x\n", (char)ascKey);
                 }
             }
