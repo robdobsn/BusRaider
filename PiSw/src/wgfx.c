@@ -282,6 +282,23 @@ void wgfx_term_putstring(const char* str)
     wgfx_term_render_cursor();
 }
 
+int wgfx_get_term_width()
+{
+    return ctx.term.numCols;
+}
+
+void wgfx_puts(int winIdx, unsigned int col, unsigned int row, uint8_t* pStr)
+{
+    if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS)
+        return;
+    while(*pStr)
+    {
+        if ((int)col >= __wgfxWindows[winIdx].width / (__wgfxWindows[winIdx].cellWidth * __wgfxWindows[winIdx].xPixScale))
+            break;
+        wgfx_putc(winIdx, col++, row, *pStr++);
+    }
+}
+
 void wgfx_putc(int winIdx, unsigned int col, unsigned int row, unsigned char ch)
 {
     if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS)

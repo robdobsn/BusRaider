@@ -99,7 +99,7 @@ extern "C" void entry_point()
 
     // Initial message
     wgfx_set_fg(11);
-    ee_printf("RC2014 Bus Raider V1.03\n");
+    ee_printf("RC2014 Bus Raider V1.6.001\n");
     wgfx_set_fg(15);
     ee_printf("Rob Dobson 2018 (inspired by PiGFX)\n\n");
 
@@ -184,11 +184,16 @@ extern "C" void entry_point()
         if (timer_isTimeout(micros(), curRateSampleWindowStart, REFRESH_RATE_WINDOW_SIZE_MS * 1000)) 
         {
             int refreshRate = refreshCount * 1000 / REFRESH_RATE_WINDOW_SIZE_MS;
-            // uart_printf("Rate %d per sec, requs %ld dispTime %ld\n", refreshCount / 2, reqUpdateUs, dispTime);
-            wgfx_putc(1, 150, 0, '0' + (refreshRate % 10));
-            wgfx_putc(1, 149, 0, '0' + ((refreshRate / 10) % 10));
-            if (refreshRate / 100 != 0)
-                wgfx_putc(1, 148, 0, '0' + ((refreshRate / 100) % 10));
+            const int MAX_REFRESH_STR_LEN = 20;
+            char refreshStr[MAX_REFRESH_STR_LEN+1];
+            rditoa(refreshRate, (uint8_t*)refreshStr, MAX_REFRESH_STR_LEN, 10);
+            strncpy(refreshStr+strlen(refreshStr), "fps", MAX_REFRESH_STR_LEN);
+            wgfx_puts(1, wgfx_get_term_width()-strlen(refreshStr)-1, 0, (uint8_t*)refreshStr);
+            // // uart_printf("Rate %d per sec, requs %ld dispTime %ld\n", refreshCount / 2, reqUpdateUs, dispTime);
+            // wgfx_putc(1, 150, 0, '0' + (refreshRate % 10));
+            // wgfx_putc(1, 149, 0, '0' + ((refreshRate / 10) % 10));
+            // if (refreshRate / 100 != 0)
+            //     wgfx_putc(1, 148, 0, '0' + ((refreshRate / 100) % 10));
             refreshCount = 0;
             curRateSampleWindowStart = micros();
         }
