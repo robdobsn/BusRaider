@@ -15,25 +15,27 @@
             this.setupSelectMachine(this.setMachine);
 
             // Drag and drop
-            let dropArea = document.getElementById("drop-area");
+            let dropZones = document.getElementsByClassName("drop-zone");
+            Array.from(dropZones).forEach(function(dropZone) {
 
-            // Prevent default drag behaviors
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                dropArea.addEventListener(eventName, preventDefaults, false)
-                document.body.addEventListener(eventName, preventDefaults, false)
-            });
+                // Prevent default drag behaviors
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, preventDefaults, false)
+                    document.body.addEventListener(eventName, preventDefaults, false)
+                });
 
-            // Highlight drop area when item is dragged over it
-            ['dragenter', 'dragover'].forEach(eventName => {
-                dropArea.addEventListener(eventName, highlight, false)
-            });
+                // Highlight drop area when item is dragged over it
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, highlight, false)
+                });
 
-            ['dragleave', 'drop'].forEach(eventName => {
-                dropArea.addEventListener(eventName, unhighlight, false)
-            });
+                ['dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, unhighlight, false)
+                });
 
-            // Handle dropped files
-            dropArea.addEventListener('drop', handleDrop, false);
+                // Handle dropped files
+                dropZone.addEventListener('drop', handleDrop, false);
+            }); 
 
             // Populate machine list
             callAjax("/querystatus", populateMcList);
@@ -97,58 +99,80 @@
         }
 
         function highlight(e) {
-            let dropArea = document.getElementById("drop-area");
+            let regionId = e.currentTarget.id;
+            let dropArea = document.getElementById(regionId);
             dropArea.classList.add('highlight');
         }
 
         function unhighlight(e) {
-            let dropArea = document.getElementById("drop-area");
-            dropArea.classList.remove('active');
+            let regionId = e.currentTarget.id;
+            let dropArea = document.getElementById(regionId);
+            dropArea.classList.remove('highlight');
         }
 
         function handleDrop(e) {
             var dt = e.dataTransfer;
             var files = dt.files;
-            handleFiles(files);
+            let regionId = e.currentTarget.id;
+            if (regionId === "upload-only")
+                uploadOnlyFiles(files);
+            else
+                uploadAndRunFiles(files);
         }
 
-        function initializeProgress(numFiles) {
+        function initializeProgress(numFiles, progressBarName) {
             window.pageState.uploadProgress = []
-            let progressBar = document.getElementById('progress-bar');
+            let progressBar = document.getElementById(progressBarName);
             progressBar.value = 0;
             for (let i = numFiles; i > 0; i--) {
                 window.pageState.uploadProgress.push(0);
             }
         }
 
-        function updateProgress(fileNumber, percent) {
-            let progressBar = document.getElementById('progress-bar');
+        function updateProgress(fileNumber, percent, progressBarName) {
+            let progressBar = document.getElementById(progressBarName);
             window.pageState.uploadProgress[fileNumber] = percent;
             let total = window.pageState.uploadProgress.reduce((tot, curr) => tot + curr, 0) / window.pageState.uploadProgress.length;
             // console.debug('update', fileNumber, percent, total);
             progressBar.value = total;
         }
 
-        function handleFiles(files) {
+        function uploadOnlyFiles(files) {
             files = [...files];
-            initializeProgress(files.length);
-            files.forEach(uploadFile);
+            initializeProgress(files.length, 'progress-bar-buffer');
+            files.forEach(uploadOnlyFile);
         }
 
-        function uploadFile(file, i) {
+        function uploadOnlyFile(file, i)
+        {
+            uploadFileSpecUrl("/upload", 'progress-bar-buffer', file, i)
+        }
+
+        function uploadAndRunFiles(files) {
+            files = [...files];
+            initializeProgress(files.length, 'progress-bar-run');
+            files.forEach(uploadAndRunFile);
+        }
+
+        function uploadAndRunFile(file, i)
+        {
+            uploadFileSpecUrl("/uploadandrun", 'progress-bar-run', file, i)
+        }
+
+        function uploadFileSpecUrl(url, progressBarName, file, i) {
             var xhr = new XMLHttpRequest();
             var formData = new FormData();
-            xhr.open('POST', "/upload", true);
+            xhr.open('POST', url, true);
             xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
 
             // Update progress (can be used to show progress indicator)
             xhr.upload.addEventListener("progress", function(e) {
-                updateProgress(i, (e.loaded * 100.0 / e.total) || 100)
+                updateProgress(i, (e.loaded * 100.0 / e.total) || 100, progressBarName)
             });
 
             xhr.addEventListener('readystatechange', function(e) {
                 if (xhr.readyState == 4 && xhr.status == 200) {
-                    updateProgress(i, 100) // <- Add this
+                    updateProgress(i, 100, progressBarName) // <- Add this
                 } else if (xhr.readyState == 4 && xhr.status != 200) {
                     // Error. Inform the user
                 }
@@ -285,12 +309,12 @@
             padding: 20px;
             background: #202020;
         }
-        #drop-area {
+        .drop-zone {
             border: 2px dashed #ccc;
         }
         
-        #drop-area.highlight {
-            border-color: purple;
+        .drop-zone.highlight {
+            border: 2px solid #9595de;
         }
         
         p {
@@ -324,6 +348,7 @@
             border-color: #333;
             border-radius: 5px;
             color: #9595de;
+            margin-bottom: 6px;
         }
         progress::-webkit-progress-bar {
             width: 100%;
@@ -424,30 +449,36 @@
 
     <div>
         <div id="heading-area" class="layout-region">
-            <h1>Bus Raider Control Panel</h1>
+            <h1>Bus-Raider Control Panel</h1>
         </div>
         <div id="machine-select-area" class="layout-region">
             <form class="machine-select-form">
                 <p>Select target machine</p>
                 <div class="select-style">
-                  <select id="machine-select">
-                  </select>
+                    <select id="machine-select">
+                    </select>
                 </div>
             </form>
         </div>
-        <div id="drop-area" class="layout-region">
+        <div id="upload-and-run" class="layout-region drop-zone">
             <form class="file-upload-form">
-                <p>Drop files to upload to the Bus Raider</p>
-                <input type="file" id="fileElem" onchange="handleFiles(this.files)">
+                <p>Drop files to upload and immediately run on the target</p>
+                <input type="file" id="fileElem" onchange="uploadAndRunFiles(this.files)">
+                <label class="button" for="fileElem">Select a file to run</label>
+            </form>
+            <progress id="progress-bar-run" max=100 value=0></progress>
+        </div>
+        <div id="upload-only" class="layout-region drop-zone">
+            <form class="file-upload-form">
+                <p>Drop files to upload to the Bus-Raider's buffer</p>
+                <input type="file" id="fileElem" onchange="uploadOnlyFiles(this.files)">
                 <label class="button" for="fileElem">Select a file to upload</label>
             </form>
-            <progress id="progress-bar" max=100 value=0></progress>
-        </div>
-        <div id="control-area" class="layout-region">
-            <span class="button" onclick="sendCmdToTarget('programtarget')">Send to RC2014</span>
-            <span class="button" onclick="sendCmdToTarget('resettarget')">Reset RC2014</span>
-            <span class="button" onclick="sendCmdToTarget('cleartarget')">Clear Target Buffer</span>
-            <span class="button" onclick="sendCmdToTarget('ioclrtarget')">Clear all RC2014 IO</span>
+            <progress id="progress-bar-buffer" max=100 value=0></progress>
+            <span class="button" onclick="sendCmdToTarget('cleartarget')">Clear Bus-Raider's buffer</span>
+            <span class="button" onclick="sendCmdToTarget('programtarget')">Send to target</span>
+            <span class="button" onclick="sendCmdToTarget('resettarget')">Reset target</span>
+            <!-- <span class="button" onclick="sendCmdToTarget('ioclrtarget')">Clear all RC2014 IO</span> -->
         </div>
 <!--         <div id="terminal-area" class="layout-region">
         </div>

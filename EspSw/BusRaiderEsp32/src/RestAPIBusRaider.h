@@ -58,13 +58,20 @@ class RestAPIBusRaider
     }
 #endif
 
-    void apiFileComplete(String &reqStr, String &respStr)
+    void apiFileUploadComplete(String &reqStr, String &respStr)
     {
-        Log.trace("RestAPIBusRaider: apiFileComplete %s\n", reqStr.c_str());
+        Log.trace("RestAPIBusRaider: apiUploadOnlyComplete %s\n", reqStr.c_str());
         Utils::setJsonBoolResult(respStr, true);
     }
 
-    void apiFileUpload(String filename, size_t contentLen, size_t index, 
+    void apiFileUploadAndRunComplete(String &reqStr, String &respStr)
+    {
+        Log.trace("RestAPIBusRaider: apiUploadAndRunComplete %s\n", reqStr.c_str());
+        _commandSerial.sendTargetCommand("ProgramAndReset");
+        Utils::setJsonBoolResult(respStr, true);
+    }
+
+    void apiFileUploadPart(String filename, size_t contentLen, size_t index, 
                     uint8_t *data, size_t len, bool final)
     {
         Log.notice("apiUp %d, %d, %d, %d\n", contentLen, index, len, final);
@@ -155,14 +162,28 @@ class RestAPIBusRaider
         endpoints.addEndpoint("upload", 
                             RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                             RestAPIEndpointDef::ENDPOINT_POST,
-                            std::bind(&RestAPIBusRaider::apiFileComplete, this, 
+                            std::bind(&RestAPIBusRaider::apiFileUploadComplete, this, 
                                     std::placeholders::_1, std::placeholders::_2),
                             "Upload file", "application/json", 
                             NULL, 
                             true, 
                             NULL,
                             NULL,
-                            std::bind(&RestAPIBusRaider::apiFileUpload, this, 
+                            std::bind(&RestAPIBusRaider::apiFileUploadPart, this, 
+                                    std::placeholders::_1, std::placeholders::_2, 
+                                    std::placeholders::_3, std::placeholders::_4,
+                                    std::placeholders::_5, std::placeholders::_6));                                    
+        endpoints.addEndpoint("uploadandrun", 
+                            RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                            RestAPIEndpointDef::ENDPOINT_POST,
+                            std::bind(&RestAPIBusRaider::apiFileUploadAndRunComplete, this, 
+                                    std::placeholders::_1, std::placeholders::_2),
+                            "Upload and run file", "application/json", 
+                            NULL, 
+                            true, 
+                            NULL,
+                            NULL,
+                            std::bind(&RestAPIBusRaider::apiFileUploadPart, this, 
                                     std::placeholders::_1, std::placeholders::_2, 
                                     std::placeholders::_3, std::placeholders::_4,
                                     std::placeholders::_5, std::placeholders::_6));                                    
