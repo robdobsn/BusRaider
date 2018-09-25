@@ -207,6 +207,8 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
                 br_release_control(false);
             }
         }
+        // Clear buffer
+        targetClear();
     }
     else if (stricmp(cmdName, "ResetTarget") == 0)
     {

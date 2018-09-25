@@ -244,7 +244,7 @@ uint32_t McZXSpectrum::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[m
         {
             static const int keys[] = {KEY_SPACE, KEY_HANJA, KEY_M, KEY_N, KEY_B};
             uint32_t keysPressed = getKeyPressed(keys, sizeof(keys)/sizeof(int));
-            if (((_curKeyModifiers & KEY_MOD_LALT) != 0) || (_curKeyModifiers & KEY_MOD_RALT) != 0)
+            if (((_curKeyModifiers & KEY_MOD_LCTRL) != 0) || (_curKeyModifiers & KEY_MOD_RCTRL) != 0)
                 keysPressed &= 0xfd;
             return keysPressed;
         }

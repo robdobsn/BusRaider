@@ -86,10 +86,10 @@ extern "C" void entry_point()
     McManager::init();
 
     // Add machines
+    new McTerminal();
     new McTRS80();
     new McRobsZ80();
     new McZXSpectrum();
-    new McTerminal();
 
     // Initialise graphics system
     wgfx_init(1366, 768);

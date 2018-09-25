@@ -33,8 +33,8 @@ void lissajous(float mult1, float mult2, float phase)
 	int yScale = 100;
 	int xCentre = X_PIXELS/2;
 	int yCentre = Y_PIXELS/2;
-	float endPt = 2.0 * M_PI;
-	for (float t = 0; t < endPt; t += 0.001)
+	float endPt = 3 * M_PI;
+	for (float t = 0; t <= endPt; t += 0.005)
 	{
 		float x = sin(t * mult1 + phase) * xScale + xCentre;
 		float y = cos(t * mult2) * yScale + yCentre;
