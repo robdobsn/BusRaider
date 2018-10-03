@@ -138,7 +138,7 @@ void debugLoopInfoCallback(String &infoStr)
 DebugLoopTimer debugLoopTimer(10000, debugLoopInfoCallback);
 
 // Handler of frames received from Pi
-void piFrameHandler(const uint8_t *framebuffer, int framelength)
+void cmdSerialFrameHandler(const uint8_t *framebuffer, int framelength)
 {
     machineInterface.handleRxFrame(framebuffer, framelength);
 }
@@ -186,7 +186,7 @@ void setup()
     mqttManager.setup(hwConfig, &mqttConfig);
 
     // Setup CommandSerial
-    commandSerial.setup(hwConfig, piFrameHandler);
+    commandSerial.setup(hwConfig, cmdSerialFrameHandler);
 
     // Network logging
     netLog.setup(&netLogConfig, wifiManager.getHostname().c_str());
