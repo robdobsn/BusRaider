@@ -54,6 +54,9 @@ class WiFiManager
         _ssid = pSysConfig->getString("WiFiSSID", "");
         _password = pSysConfig->getString("WiFiPW", "");
         _hostname = pSysConfig->getString("WiFiHostname", _defaultHostname.c_str());
+        // Set an event handler for WiFi events
+        if (_wifiEnabled)
+            WiFi.onEvent(wiFiEventHandler);
     }
 
     void service()
@@ -65,10 +68,8 @@ class WiFiManager
             if ((!_wifiFirstBeginDone) || (Utils::isTimeout(millis(), _lastWifiBeginAttemptMs, TIME_BETWEEN_WIFI_BEGIN_ATTEMPTS_MS)))
             {
                 _wifiFirstBeginDone = true;
-                WiFi.onEvent(wiFiEventHandler);
                 WiFi.begin(_ssid.c_str(), _password.c_str());
                 WiFi.setHostname(_hostname.c_str());
-                // Set an event handler for WiFi events
                 _lastWifiBeginAttemptMs = millis();
                 Log.notice("WiFiManager: notConn WiFi.begin SSID %s\n", _ssid.c_str());
             }
