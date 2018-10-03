@@ -81,9 +81,9 @@ static const char *hwConfigJSON = {
     "\"webServerEnabled\":1,"
     "\"webServerPort\":80,"
     "\"OTAUpdate\":{\"enabled\":0,\"server\":\"domoticzoff\",\"port\":5076},"
-    "\"wifiLed\":{\"ledPin\":\"13\",\"ledOnMs\":200,\"ledShortOffMs\":200,\"ledLongOffMs\":750},"
     "\"serialConsole\":{\"portNum\":0},"
     "\"commandSerial\":{\"portNum\":1,\"baudRate\":115200},"
+    "\"wifiLed\":{\"ledPin\":\"13\",\"ledOnMs\":200,\"ledShortOffMs\":200,\"ledLongOffMs\":750},"
     "\"machineIF\":{\"portNum\":2,\"baudRate\":115200,\"wsPath\":\"/ws\"},"
     "}"
 };
@@ -104,6 +104,10 @@ ConfigNVS netLogConfig("netLog", 200);
 #include "CommandSerial.h"
 CommandSerial commandSerial;
 
+// Serial console - for configuration
+#include "SerialConsole.h"
+SerialConsole serialConsole;
+
 // NetLog
 #include "NetLog.h"
 NetLog netLog(Serial, mqttManager, commandSerial);
@@ -119,10 +123,6 @@ RestAPISystem restAPISystem(wifiManager, mqttManager, otaUpdate, netLog, systemT
 // REST API BusRaider
 #include "RestAPIBusRaider.h"
 RestAPIBusRaider restAPIBusRaider(commandSerial, machineInterface);
-
-// Serial console - for configuration
-#include "SerialConsole.h"
-SerialConsole serialConsole;
 
 // Debug loop used to time main loop
 #include "DebugLoopTimer.h"
