@@ -1,9 +1,8 @@
-// Modified from https://github.com/mengguang/minihdlc
+// HDLC Bit and Bytewise
+// Rob Dobson 2018
+// Very loosely based on https://github.com/mengguang/minihdlc
 
-#include <Arduino.h>
-#include <ArduinoLog.h>
 #include "MiniHDLC.h"
-#include <stdint.h>
 
 // CRC Lookup table
 const uint16_t MiniHDLC::_CRCTable[256] = { 
@@ -25,9 +24,43 @@ const uint16_t MiniHDLC::_CRCTable[256] = {
     0xef1f,0xff3e,0xcf5d,0xdf7c,0xaf9b,0xbfba,0x8fd9,0x9ff8,0x6e17,0x7e36,0x4e55,0x5e74,0x2e93,0x3eb2,0x0ed1,0x1ef0
 };
 
-// Callback functions
-MiniHDLCPutChFnType* MiniHDLC::_pPutChFn = NULL;
-MiniHDLCFrameRxFnType* MiniHDLC::_pFrameRxFn = NULL;
+// Function to handle a single bit received
+void MiniHDLC::handleBit(uint8_t bit)
+{
+	// Shift previous bits up to make space and add new
+	_bitwiseLast8Bits = _bitwiseLast8Bits >> 1;
+	_bitwiseLast8Bits |= (bit ? 0x80 : 0);
+
+	// Check for frame start flag
+	if (_bitwiseLast8Bits == FRAME_BOUNDARY_OCTET)
+	{
+		// Handle with the byte-based handler
+		handleChar(FRAME_BOUNDARY_OCTET);
+		_bitwiseByte = 0;
+		_bitwiseBitCount = 0;
+		return;
+	}
+
+	// Check for bit stuffing - HDLC abhors a sequence of more
+	// than 5 ones in regular data and stuffs a 0 in this case
+	// So here we detect that situation and ignore that 0
+	if ((_bitwiseLast8Bits & 0xfc) == 0x7c)
+		return;
+
+	// Add the received bit into the byte
+	_bitwiseByte = _bitwiseByte >> 1;
+	_bitwiseByte |= (bit ? 0x80 : 0);
+
+	// Count the bits received and handle each byte-full
+	_bitwiseBitCount++;
+	if (_bitwiseBitCount == 8)
+	{
+		// Handle byte-wise
+		handleChar(_bitwiseByte);
+		_bitwiseByte = 0;
+		_bitwiseBitCount = 0;
+	}
+}
 
 // Function to find valid HDLC frame from incoming data
 void MiniHDLC::handleChar(uint8_t ch)
@@ -35,16 +68,11 @@ void MiniHDLC::handleChar(uint8_t ch)
     // Check boundary
     if (ch == FRAME_BOUNDARY_OCTET) 
     {
-        if (_inEscapeSeq) 
-        {
-            // No longer in escape
-            _inEscapeSeq = false;
-        }
-        else if (_framePos >= 2) 
+        if (_framePos >= 2) 
         {
             // Valid frame ?
             uint16_t rxcrc = _rxBuffer[_framePos - 2] | (((uint16_t)_rxBuffer[_framePos-1]) << 8);
-            if (_bigEndian)
+            if (_bigEndianCRC)
                 rxcrc = _rxBuffer[_framePos - 1] | (((uint16_t)_rxBuffer[_framePos - 2]) << 8);
             // Log.trace("...len %d calc %x rxcrc %x\n", _framePos, _frameCRC, rxcrc);
             // for (int i = 0; i < _framePos-2; i++)
@@ -62,12 +90,17 @@ void MiniHDLC::handleChar(uint8_t ch)
             if (rxcrc == _frameCRC)
             {
                 // Log.trace("FRAMEOK\n");
+                // Null terminate the frame (in case used as a string)
+                _rxBuffer[_framePos-2] = 0;
+
                 // Handle the frame
-                (*_pFrameRxFn)(_rxBuffer, _framePos - 2);
+                if(_frameRxFn)
+                    _frameRxFn(_rxBuffer, _framePos - 2);
             }
         }
 
         // Ready for new frame
+        _inEscapeSeq = false;
         _framePos = 0;
         _frameCRC = CRC16_CCITT_INIT_VAL;
         return;
@@ -128,7 +161,7 @@ void MiniHDLC::sendFrame(const uint8_t *pFrame, int frameLen)
     // Get CRC in the correct order
     uint8_t fcs1 = fcs & 0xff;
     uint8_t fcs2 = (fcs >> 8) & 0xff;
-    if (_bigEndian)
+    if (_bigEndianCRC)
     {
         fcs1 = (fcs >> 8) & 0xff;
         fcs2 = fcs & 0xff;
@@ -140,4 +173,81 @@ void MiniHDLC::sendFrame(const uint8_t *pFrame, int frameLen)
 
     // Boundary
     sendChar(FRAME_BOUNDARY_OCTET);
+}
+
+uint16_t MiniHDLC::crcUpdateCCITT(unsigned short fcs, unsigned char value)
+{
+	return (fcs << 8) ^ _CRCTable[((fcs >> 8) ^ value) & 0xff];
+}
+
+void MiniHDLC::sendChar(uint8_t ch)
+{
+	if (_bitwiseHDLC)
+	{
+		// Send each bit
+		uint8_t bitData = ch;
+		for (int i = 0; i < 8; i++)
+		{
+			if (_putChFn)
+				_putChFn(bitData & 0x01);
+			bitData = bitData >> 1;
+		}
+	}
+	else
+	{
+		// Send byte-wise
+		if (_putChFn)
+			_putChFn(ch);
+	}
+}
+
+void MiniHDLC::sendCharWithStuffing(uint8_t ch)
+{
+	if (_bitwiseHDLC)
+	{
+		// Send making sure we don't exceed 5 x 1s in a row
+		uint8_t bitData = ch;
+		for (int i = 0; i < 8; i++)
+		{
+			// Put the actual bit
+			if (_putChFn)
+				_putChFn(bitData & 0x01);
+
+			// Handle bit stuffing
+			if (bitData & 0x01)
+			{
+				// Count 1s
+				_bitwiseSendOnesCount++;
+				if (_bitwiseSendOnesCount == 5)
+				{
+					// Stuff a 0 to avoid 6 consecutive 1s
+					if (_putChFn)
+						_putChFn(0);
+					_bitwiseSendOnesCount = 0;
+				}
+			}
+			else
+			{
+				// Reset count of consecutive 1s
+				_bitwiseSendOnesCount = 0;
+			}
+			// Shift to next bit
+			bitData = bitData >> 1;
+		}
+	}
+	else
+	{
+		// Just send it
+		sendChar(ch);
+	}
+}
+
+void MiniHDLC::sendEscaped(uint8_t ch)
+{
+	if ((ch == CONTROL_ESCAPE_OCTET) || (ch == FRAME_BOUNDARY_OCTET))
+	{
+		sendCharWithStuffing(CONTROL_ESCAPE_OCTET);
+		ch ^= INVERT_OCTET;
+	}
+	sendCharWithStuffing(ch);
 }

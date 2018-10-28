@@ -3,6 +3,3 @@
 
 #include "CommandSerial.h"
 
-HardwareSerial* CommandSerial::_pSerial = NULL;
-
-CommandSerialFrameRxFnType* CommandSerial::_pFrameRxCallback = NULL;

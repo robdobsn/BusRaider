@@ -244,7 +244,7 @@ void loop()
     debugLoopTimer.blockEnd(3);
 
     // Service NetLog
-    netLog.service();
+    netLog.service(serialConsole.getXonXoff());
 
     // Service CommandSerial
     debugLoopTimer.blockStart(4);

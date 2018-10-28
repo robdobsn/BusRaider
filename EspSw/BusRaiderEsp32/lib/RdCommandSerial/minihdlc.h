@@ -1,18 +1,27 @@
-// HDLC
+// HDLC Bit and Bytewise
 // Rob Dobson 2018
+// This HDLC implementation doesn't completely conform to HDLC
+// Currently STX and ETX are not sent
+// There is no flow control
+// Bit and Byte oriented HDLC is supported with appropriate bit/byte stuffing
 
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
 #include <stdbool.h>
+#include <functional>
 
-typedef void MiniHDLCPutChFnType(uint8_t ch);
-typedef void MiniHDLCFrameRxFnType(const uint8_t *framebuffer, int framelength);
+// Put byte or bit callback function type
+typedef std::function<void(uint8_t ch)> MiniHDLCPutChFnType;
+
+// Received frame callback function type
+typedef std::function<void(const uint8_t *framebuffer, int framelength)> MiniHDLCFrameRxFnType;
 
 // MiniHDLC
 class MiniHDLC
 {
-  private:
+private:
     // If either of the following two octets appears in the transmitted data, an escape octet is sent,
     // followed by the original data octet with bit 5 inverted
 
@@ -36,56 +45,60 @@ class MiniHDLC
     // CRC table
     static const uint16_t _CRCTable[256];
 
-    // Callback functions for PutCh and FrameRx
-    static MiniHDLCPutChFnType* _pPutChFn;
-    static MiniHDLCFrameRxFnType* _pFrameRxFn;
+    // Callback functions for PutCh/PutBit and FrameRx
+    MiniHDLCPutChFnType _putChFn;
+    MiniHDLCFrameRxFnType _frameRxFn;
+
+    // Bitwise HDLC flag (otherwise byte-wise)
+    bool _bitwiseHDLC;
 
     // Send FCS (CRC) big-endian - i.e. high byte first
-    bool _bigEndian;
+    bool _bigEndianCRC;
 
     // State vars
     int _framePos;
     uint16_t _frameCRC;
     bool _inEscapeSeq;
 
+    // Bitwise state
+    uint8_t _bitwiseLast8Bits;
+    uint8_t _bitwiseByte;
+    int _bitwiseBitCount;
+    int _bitwiseSendOnesCount;
+
     // Receive buffer
     uint8_t _rxBuffer[MINIHDLC_MAX_FRAME_LENGTH + 1];
 
   private:
-    uint16_t crcUpdateCCITT(unsigned short fcs, unsigned char value) 
-    {
-        return (fcs << 8) ^ _CRCTable[((fcs >> 8) ^ value) & 0xff];
-    }
-
-    void sendChar(uint8_t ch)
-    {
-        if (_pPutChFn)
-            (*_pPutChFn)(ch);
-    }
-
-    void sendEscaped(uint8_t ch)
-    {
-        if ((ch == CONTROL_ESCAPE_OCTET) || (ch == FRAME_BOUNDARY_OCTET)) 
-        {
-            sendChar(CONTROL_ESCAPE_OCTET);
-            ch ^= INVERT_OCTET;
-        }
-        sendChar(ch);
-    }
+    uint16_t crcUpdateCCITT(unsigned short fcs, unsigned char value);
+    void sendChar(uint8_t ch);
+    void sendCharWithStuffing(uint8_t ch);
+    void sendEscaped(uint8_t ch);
 
   public:
-    MiniHDLC(MiniHDLCPutChFnType* pPutChFn, MiniHDLCFrameRxFnType* pFrameRxFn, bool bigEndian)
+    // Constructor for HDLC
+    // If bitwise HDLC then the first parameter will receive bits not bytes 
+    MiniHDLC(MiniHDLCPutChFnType putChFn, MiniHDLCFrameRxFnType frameRxFn,
+				bool bigEndianCRC = true, bool bitwiseHDLC = false)
     {
-         _pPutChFn = pPutChFn;
-        _pFrameRxFn = pFrameRxFn;
+        _putChFn = putChFn;
+        _frameRxFn = frameRxFn;
         _framePos = 0;
         _frameCRC = CRC16_CCITT_INIT_VAL;
         _inEscapeSeq = false;
-        _bigEndian = bigEndian;
+        _bigEndianCRC = bigEndianCRC;
+        _bitwiseHDLC = bitwiseHDLC;
+        _bitwiseLast8Bits = 0;
+        _bitwiseByte = 0;
+        _bitwiseBitCount = 0;
+        _bitwiseSendOnesCount = 0;
     }
 
-    // Called by external function that has data to process
+    // Called by external function that has byte-wise data to process
     void handleChar(uint8_t ch);
+
+    // Called by external function that has bit-wise data to process
+    void handleBit(uint8_t bit);
 
     // Called to send a frame
     void sendFrame(const uint8_t *pData, int frameLen);

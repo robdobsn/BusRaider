@@ -4,7 +4,7 @@
 // Each pointer is only updated by one source (ISR or main thread)
 class RingBufferPosn
 {
-  public:
+public:
     volatile unsigned int _putPos;
     volatile unsigned int _getPos;
     unsigned int _bufLen;
@@ -25,6 +25,17 @@ class RingBufferPosn
     {
         _getPos = _putPos = 0;
     }
+
+    inline unsigned int posToGet()
+    {
+        return _getPos;
+    }
+
+    inline unsigned int posToPut()
+    {
+        return _putPos;
+    }
+
     bool canPut()
     {
         if (_bufLen == 0)
@@ -66,10 +77,10 @@ class RingBufferPosn
 
     unsigned int count()
     {
-        unsigned int getPos = _getPos;
-        if (getPos <= _putPos)
-            return _putPos - getPos;
-        return _bufLen - getPos + _putPos;
+        unsigned int posToGet = _getPos;
+        if (posToGet <= _putPos)
+            return _putPos - posToGet;
+        return _bufLen - posToGet + _putPos;
     }
 
     // Get Nth element prior to the put position

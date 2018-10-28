@@ -7,7 +7,6 @@
 #include "Utils.h"
 #include "MiniHDLC.h"
 #include "ConfigBase.h"
-#include "ArduinoLog.h"
 
 typedef void CommandSerialFrameRxFnType(const uint8_t *framebuffer, int framelength);
 
@@ -15,7 +14,7 @@ class CommandSerial
 {
   private:
     // Serial
-    static HardwareSerial *_pSerial;
+    HardwareSerial *_pSerial;
 
     // Serial port details
     int _serialPortNum;
@@ -33,10 +32,12 @@ class CommandSerial
     static const int MAX_BETWEEN_BLOCKS_MS = 20000;
 
     // Frame handling callback
-    static CommandSerialFrameRxFnType* _pFrameRxCallback;
+    CommandSerialFrameRxFnType* _pFrameRxCallback;
 
   public:
-    CommandSerial() : _miniHDLC(sendCharToCmdPort, frameHandler, true)
+    CommandSerial() : _miniHDLC(std::bind(&CommandSerial::sendCharToCmdPort, this, std::placeholders::_1), 
+                std::bind(&CommandSerial::frameHandler, this, std::placeholders::_1, std::placeholders::_2),
+                    true, false)
     {
         _pSerial = NULL;
         _serialPortNum = -1;
@@ -54,14 +55,11 @@ class CommandSerial
 
         // Get config
         ConfigBase csConfig(config.getString("commandSerial", "").c_str());
-        Log.trace("CommandSerial: config %s\n", csConfig.getConfigData());
+        Serial.printf("CommandSerial: config %s\n", csConfig.getConfigData());
 
         // Get serial port
         _serialPortNum = csConfig.getLong("portNum", -1);
         _baudRate = csConfig.getLong("baudRate", 115200);
-
-        // Debug
-        Log.trace("CommandSerial: portNum %d, baudRate %d\n", _serialPortNum, _baudRate);
 
         // Setup port
         if (_serialPortNum == -1)
@@ -74,28 +72,55 @@ class CommandSerial
             if (_serialPortNum == 1)
             {
                 _pSerial->begin(_baudRate, SERIAL_8N1, 16, 17, false);
-                Log.trace("CommandSerial: portNum %d, baudRate %d, rxPin, txPin\n",
+                Serial.printf("CommandSerial: portNum %d, baudRate %d, rxPin %d, txPin %d\n",
                              _serialPortNum, _baudRate, 16, 17);
             }
             else if (_serialPortNum == 2)
             {
                 _pSerial->begin(_baudRate, SERIAL_8N1, 26, 25, false);
-                Log.trace("CommandSerial: portNum %d, baudRate %d, rxPin, txPin\n",
+                Serial.printf("CommandSerial: portNum %d, baudRate %d, rxPin %d, txPin %d\n",
                              _serialPortNum, _baudRate, 26, 25);
             }
             else
             {
                 _pSerial->begin(_baudRate);
-                Log.trace("CommandSerial: portNum %d, baudRate %d, rxPin, txPin\n",
+                Serial.printf("CommandSerial: portNum %d, baudRate %d, rxPin %d, txPin %d\n",
                              _serialPortNum, _baudRate, 3, 1);
             }
+        }
+        else
+        {
+            Serial.printf("CommandSerial: failed portNum %d, baudRate %d\n",
+                            _serialPortNum, _baudRate);
         }
     }
     
     // Log message
     void logMessage(String& msg)
     {
-        String frame = "{\"cmdName\":\"logMessage\",\"msg\":\"" + msg + "}\0";
+        // Don't use Logging here as CmdSerial can be used by NetLog and this becomes circular
+        // Serial.printf("CommandSerial: send frame %s\n", msg.c_str());
+
+        // Log over HDLC
+        String frame = "{\"cmdName\":\"logMsg\",\"msg\":\"" + msg + "}\0";
+        _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
+    }
+
+    // Event message
+    void eventMessage(String& msgJson)
+    {
+        // Serial.printf("CommandSerial: event Msg %s\n", msgJson.c_str());
+
+        String frame = "{\"cmdName\":\"eventMsg\"," + msgJson + "}\0";
+        _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
+    }
+
+    // Event message
+    void responseMessage(String& msgJson)
+    {
+        // Serial.printf("CommandSerial: response Msg %s\n", msgJson.c_str());
+
+        String frame = "{\"cmdName\":\"respMsg\"," + msgJson + "}\0";
         _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
     }
 
@@ -123,12 +148,12 @@ class CommandSerial
             if (Utils::isTimeout(millis(), _uploadLastBlockMs, MAX_BETWEEN_BLOCKS_MS))
             {
                 _uploadInProgress = false;
-                Log.notice("CommandSerial: Upload timed out\n");
+                Serial.printf("CommandSerial: Upload timed out\n");
             }
             if (Utils::isTimeout(millis(), _uploadStartMs, MAX_UPLOAD_MS))
             {
                 _uploadInProgress = false;
-                Log.notice("CommandSerial: Upload timed out\n");
+                Serial.printf("CommandSerial: Upload timed out\n");
             }
         }
     }
@@ -177,7 +202,7 @@ class CommandSerial
 
     void fileUploadPart(String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool final)
     {
-        Log.notice("CommandSerial: %s, total %d, idx %d, len %d, final %d\n", filename.c_str(), fileLength, index, len, final);
+        Serial.printf("CommandSerial: %s, total %d, idx %d, len %d, final %d\n", filename.c_str(), fileLength, index, len, final);
 
         // Check if first block in an upload
         if (!_uploadInProgress)
@@ -204,17 +229,17 @@ class CommandSerial
     }
 
 private:
-    static void sendCharToCmdPort(uint8_t ch)
+    void sendCharToCmdPort(uint8_t ch)
     {
         if (_pSerial)
             _pSerial->write(ch);
     }
 
-    static void frameHandler(const uint8_t *framebuffer, int framelength)
+    void frameHandler(const uint8_t *framebuffer, int framelength)
     {
         // Handle received frames
         if (_pFrameRxCallback)
             _pFrameRxCallback(framebuffer, framelength);
-        // Log.trace("HDLC frame received, len %d\n", framelength);
+        // Serial.printf("HDLC frame received, len %d\n", framelength);
     }
 };
