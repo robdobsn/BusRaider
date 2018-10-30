@@ -5,6 +5,7 @@
 
 #include "WebServer.h"
 #include "CommandSerial.h"
+#include "AsyncTelnetServer.h"
 
 // #define USE_WEBSOCKET_TERMINAL 1
 
@@ -27,7 +28,10 @@ class MachineInterface
     CommandSerial* _pCommandSerial;
 
     // Web socket for communication of keystrokes
-    AsyncWebSocket *_pWebSocket;
+    AsyncWebSocket* _pWebSocket;
+
+    // Telnet server
+    AsyncTelnetServer* _pTelnetServer;
 
   public:
     MachineInterface()
@@ -38,9 +42,11 @@ class MachineInterface
         _baudRate = 115200;
         _pWebServer = NULL;
         _pWebSocket = NULL;
+        _pTelnetServer = NULL;
     }
 
-    void setup(ConfigBase &config, WebServer *pWebServer, CommandSerial* pCommandSerial)
+    void setup(ConfigBase &config, WebServer *pWebServer, CommandSerial* pCommandSerial,
+                AsyncTelnetServer* pTelnetServer)
     {
         // Get config
         ConfigBase csConfig(config.getString("machineIF", "").c_str());
@@ -49,6 +55,25 @@ class MachineInterface
         // Save webserver and command serial
         _pWebServer = pWebServer;
         _pCommandSerial = pCommandSerial;
+        _pTelnetServer = pTelnetServer;
+
+        // Set the telnet callback
+        if (_pTelnetServer)
+        {
+            _pTelnetServer->onData([this](void* cbArg, const char* pData, int numChars) 
+            {
+                (void)cbArg;
+                // Send chars
+                const char* pBuf = pData;
+                for (int i = 0; i < numChars; i++)
+                {
+                    if (this->_pTargetSerial)
+                        this->_pTargetSerial->write(*pBuf++);
+
+                }
+            }, this);
+        }
+            // _pTelnetServer->onData(telnetDataCallback);
 
         // Add web socket handler
 #ifdef USE_WEBSOCKET_TERMINAL
@@ -151,6 +176,11 @@ class MachineInterface
                 if (_pCommandSerial)
                     _pCommandSerial->sendTargetData("RxHost", 
                             (const uint8_t*)charsReceived.c_str(), charsReceived.length(), 0);
+
+                // Send to Telnet
+                if (_pTelnetServer)
+                    _pTelnetServer->sendChars(charsReceived.c_str(), charsReceived.length());
+
 #ifdef USE_WEBSOCKET_TERMINAL
                 // Send to websocket
                 if (_pWebSocket)
@@ -164,6 +194,19 @@ class MachineInterface
         }
     }
 
+    // void telnetDataCallback(void* cbArg, const char* pData, int numChars)
+    // {
+    //     (void)cbArg;
+    //     // Send chars
+    //     const char* pBuf = pData;
+    //     for (int i = 0; i < numChars; i++)
+    //     {
+    //         if (_pTargetSerial)
+    //             _pTargetSerial->write(*pBuf++);
+
+    //     }
+    // }
+
     void handleRxFrame(const uint8_t *framebuffer, int framelength)
     {
         // Extract frame type
@@ -171,10 +214,12 @@ class MachineInterface
             return;
 
         // Ensure string is terminated
-        ((char *)framebuffer)[framelength] = 0;
+        char* pStr = new char[framelength+1];
+        memcpy(pStr, framebuffer, framelength);
+        pStr[framelength] = 0;
 
         // Get command
-        String cmdName = RdJson::getString("cmdName", "", (const char *)framebuffer);
+        String cmdName = RdJson::getString("cmdName", "", pStr);
         if (cmdName.equalsIgnoreCase("statusUpdate"))
         {
             // Store the status frame
@@ -188,6 +233,9 @@ class MachineInterface
                 _pTargetSerial->write((char)asciiCode);
             Log.trace("McIF sent target char %x\n", (char)asciiCode);
         }
+
+        // Tidy up
+        delete [] pStr;
     }
 
     // int convertEscKey(String& keyStr)

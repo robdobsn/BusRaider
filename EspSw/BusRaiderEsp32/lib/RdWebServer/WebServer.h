@@ -94,21 +94,21 @@ class WebServer
             
                 // Handler for main request URL
                 [pEndpoint](AsyncWebServerRequest *request) {
-                // Default response
-                String respStr("{ \"rslt\": \"unknown\" }");
+                    // Default response
+                    String respStr("{ \"rslt\": \"unknown\" }");
 
-                // Make the required action
-                if (pEndpoint->_endpointType == RestAPIEndpointDef::ENDPOINT_CALLBACK)
-                {
-                    String reqUrl = request->url();
+                    // Make the required action
+                    if (pEndpoint->_endpointType == RestAPIEndpointDef::ENDPOINT_CALLBACK)
+                    {
+                        String reqUrl = request->url();
                         Log.verbose("WebServer: Calling %s url %s\n", pEndpoint->_endpointStr.c_str(), request->url().c_str());
                         pEndpoint->callback(reqUrl, respStr);
-                }
-                else
-                {
-                    Log.trace("WebServer: Unknown type %s url %s\n", pEndpoint->_endpointStr.c_str(), request->url().c_str());
-                }
-                request->send(200, "application/json", respStr.c_str());
+                    }
+                    else
+                    {
+                        Log.trace("WebServer: Unknown type %s url %s\n", pEndpoint->_endpointStr.c_str(), request->url().c_str());
+                    }
+                    request->send(200, "application/json", respStr.c_str());
                 },
                 
                 // Handler for upload (as in a file upload)

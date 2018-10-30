@@ -31,6 +31,8 @@
         "system_error": "cpp",
         "vector": "cpp",
         "fstream": "cpp",
-        "unordered_map": "cpp"
+        "unordered_map": "cpp",
+        "deque": "cpp",
+        "unordered_set": "cpp"
     }
 }

@@ -25,7 +25,7 @@
 const char* systemType = SYSTEM_TYPE_NAME;
 
 // System version
-const char* systemVersion = "1.001.001";
+const char* systemVersion = "1.002.001";
 
 // Build date
 const char* buildDate = __DATE__;
@@ -71,6 +71,11 @@ MQTTManager mqttManager(wifiManager, restAPIEndpoints);
 // Firmware update
 #include <RdOTAUpdate.h>
 RdOTAUpdate otaUpdate;
+
+// Telnet server
+#include "AsyncTelnetServer.h"
+const int TELNET_PORT = 23;
+AsyncTelnetServer telnetServer(TELNET_PORT);
 
 // Hardware config
 static const char *hwConfigJSON = {
@@ -148,7 +153,7 @@ void setup()
 {
     // Logging
     Serial.begin(115200);
-    Log.begin(LOG_LEVEL_TRACE, &netLog);
+    Log.begin(LOG_LEVEL_VERBOSE, &netLog);
 
     // Message
     Log.notice("%s %s (built %s %s)\n", systemType, systemVersion, buildDate, buildTime);
@@ -191,8 +196,11 @@ void setup()
     // Network logging
     netLog.setup(&netLogConfig, wifiManager.getHostname().c_str());
 
+    // Telnet server
+    telnetServer.begin();
+
     // Machine interface
-    machineInterface.setup(hwConfig, &webServer, &commandSerial);
+    machineInterface.setup(hwConfig, &webServer, &commandSerial, &telnetServer);
 
     // Add debug blocks
     debugLoopTimer.blockAdd(0, "Web");
