@@ -99,10 +99,10 @@ extern "C" void entry_point()
 
     // Initial message
     wgfx_set_fg(11);
-    ee_printf("RC2014 Bus Raider V1.6.015\n");
+    ee_printf("RC2014 Bus Raider V1.6.021\n");
     ee_printf("Rob Dobson 2018 (inspired by PiGFX)\n\n");
     wgfx_set_fg(15);
-    
+
     // Number of machines
     ee_printf("%d machines supported\n", McManager::getNumMachines());
 
