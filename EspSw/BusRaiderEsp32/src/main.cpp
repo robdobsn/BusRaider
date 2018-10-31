@@ -153,7 +153,7 @@ void setup()
 {
     // Logging
     Serial.begin(115200);
-    Log.begin(LOG_LEVEL_VERBOSE, &netLog);
+    Log.begin(LOG_LEVEL_TRACE, &netLog);
 
     // Message
     Log.notice("%s %s (built %s %s)\n", systemType, systemVersion, buildDate, buildTime);
@@ -200,7 +200,8 @@ void setup()
     telnetServer.begin();
 
     // Machine interface
-    machineInterface.setup(hwConfig, &webServer, &commandSerial, &telnetServer);
+    machineInterface.setup(hwConfig, &webServer, &commandSerial, 
+                &telnetServer, &restAPIEndpoints);
 
     // Add debug blocks
     debugLoopTimer.blockAdd(0, "Web");

@@ -30,7 +30,7 @@ all: pi_bus_raider.elf kernel list
 	arm-none-eabi-objcopy --srec-forceS3 pi_bus_raider.elf -O srec pi_bus_raider.srec
 
 run: pi_bus_raider.img kernel
-	curl -F "file=@pi_bus_raider.img" http://192.168.86.67/upload
+	curl -F "file=@pi_bus_raider.img" http://192.168.86.148/upload
 
 kernel: pi_bus_raider.img
 	cp pi_bus_raider.img bin/kernel.img

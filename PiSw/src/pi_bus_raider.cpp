@@ -67,7 +67,7 @@ extern "C" void entry_point()
 {
 
     // Logging
-    LogSetLevel(LOG_DEBUG);
+    LogSetLevel(LOG_NOTICE);
     
     // System init
     system_init();
@@ -99,10 +99,10 @@ extern "C" void entry_point()
 
     // Initial message
     wgfx_set_fg(11);
-    ee_printf("RC2014 Bus Raider V1.6.001\n");
-    wgfx_set_fg(15);
+    ee_printf("RC2014 Bus Raider V1.6.015\n");
     ee_printf("Rob Dobson 2018 (inspired by PiGFX)\n\n");
-
+    wgfx_set_fg(15);
+    
     // Number of machines
     ee_printf("%d machines supported\n", McManager::getNumMachines());
 
@@ -148,7 +148,7 @@ extern "C" void entry_point()
     // wgfx_set_fg(15);
 
     // Waiting...
-    ee_printf("Waiting for UART data (%d,8,N,1)\n", MAIN_UART_BAUD_RATE);
+    // ee_printf("Waiting for UART data (%d,8,N,1)\n", MAIN_UART_BAUD_RATE);
 
     // Refresh rate
     McDescriptorTable* pMcDescr = McManager::getDescriptorTable(0);
@@ -188,7 +188,9 @@ extern "C" void entry_point()
             char refreshStr[MAX_REFRESH_STR_LEN+1];
             rditoa(refreshRate, (uint8_t*)refreshStr, MAX_REFRESH_STR_LEN, 10);
             strncpy(refreshStr+strlen(refreshStr), "fps", MAX_REFRESH_STR_LEN);
-            wgfx_puts(1, wgfx_get_term_width()-strlen(refreshStr)-1, 0, (uint8_t*)refreshStr);
+            wgfx_set_fg(11);
+            wgfx_puts(1, wgfx_get_term_width()-strlen(refreshStr)-1, 1, (uint8_t*)refreshStr);
+            wgfx_set_fg(15);
             // // uart_printf("Rate %d per sec, requs %ld dispTime %ld\n", refreshCount / 2, reqUpdateUs, dispTime);
             // wgfx_putc(1, 150, 0, '0' + (refreshRate % 10));
             // wgfx_putc(1, 149, 0, '0' + ((refreshRate / 10) % 10));
@@ -196,13 +198,39 @@ extern "C" void entry_point()
             //     wgfx_putc(1, 148, 0, '0' + ((refreshRate / 100) % 10));
             refreshCount = 0;
             curRateSampleWindowStart = micros();
+
+            // Show ESP health info
+            bool ipAddrValid = false;
+            char* ipAddr = NULL;
+            char* wifiStatusChar = NULL;
+            char* wifiSSID = NULL;
+            cmdHandler_getESPHealth(&ipAddrValid, &ipAddr, &wifiStatusChar, &wifiSSID);
+            const int MAX_STATUS_STR_LEN = 50;
+            char statusStr[MAX_STATUS_STR_LEN+1];
+            statusStr[0] = 0;
+            switch(*wifiStatusChar)
+            {
+                case 'C': 
+                    strncpy(statusStr, "WiFi ", MAX_STATUS_STR_LEN); 
+                    if (ipAddrValid)
+                    {
+                        strncpy(statusStr+strlen(statusStr), ipAddr, MAX_STATUS_STR_LEN);
+                    }
+                    break;
+                default: 
+                    strncpy(statusStr, "WiFi not connected", MAX_STATUS_STR_LEN);
+                    break;
+            }
+            wgfx_set_fg(11);
+            wgfx_puts(1, wgfx_get_term_width()-strlen(statusStr)-1, 0, (uint8_t*)statusStr);
+            wgfx_set_fg(15);
         }
 
         // Handle status update to ESP32
         if (timer_isTimeout(micros(), lastStatusUpdateMs, STATUS_UPDATE_RATE_MS * 1000)) 
         {
-            // Send status update
-            cmdHandler_sendStatusUpdate();
+            // Send and request status update
+            cmdHandler_sendReqStatusUpdate();
             lastStatusUpdateMs = micros();
         }
 

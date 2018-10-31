@@ -6,6 +6,7 @@
 #include "WebServer.h"
 #include "CommandSerial.h"
 #include "AsyncTelnetServer.h"
+#include "RestAPIEndpoints.h"
 
 // #define USE_WEBSOCKET_TERMINAL 1
 
@@ -33,6 +34,9 @@ class MachineInterface
     // Telnet server
     AsyncTelnetServer* _pTelnetServer;
 
+    // REST API
+    RestAPIEndpoints* _pRestAPIEndpoints;
+
   public:
     MachineInterface()
     {
@@ -43,10 +47,11 @@ class MachineInterface
         _pWebServer = NULL;
         _pWebSocket = NULL;
         _pTelnetServer = NULL;
+        _pRestAPIEndpoints = NULL;
     }
 
     void setup(ConfigBase &config, WebServer *pWebServer, CommandSerial* pCommandSerial,
-                AsyncTelnetServer* pTelnetServer)
+                AsyncTelnetServer* pTelnetServer, RestAPIEndpoints* pRestAPIEndpoints)
     {
         // Get config
         ConfigBase csConfig(config.getString("machineIF", "").c_str());
@@ -56,6 +61,7 @@ class MachineInterface
         _pWebServer = pWebServer;
         _pCommandSerial = pCommandSerial;
         _pTelnetServer = pTelnetServer;
+        _pRestAPIEndpoints = pRestAPIEndpoints;
 
         // Set the telnet callback
         if (_pTelnetServer)
@@ -170,7 +176,7 @@ class MachineInterface
             if (charsReceived.length() > 0)
             {
                 // Debug
-                Log.trace("McIF RxChars %s\n", charsReceived.c_str());
+                Log.verbose("McIF RxChars %s\n", charsReceived.c_str());
             
                 // Send to Pi
                 if (_pCommandSerial)
@@ -223,15 +229,26 @@ class MachineInterface
         if (cmdName.equalsIgnoreCase("statusUpdate"))
         {
             // Store the status frame
-            _cachedStatusJSON = (const char *)framebuffer;
+            _cachedStatusJSON = (const char *)pStr;
         }
         else if (cmdName.equalsIgnoreCase("keyCode"))
         {
             // Send key to target
-            int asciiCode = RdJson::getLong("key", 0, (const char*)framebuffer);
+            int asciiCode = RdJson::getLong("key", 0, pStr);
             if (_pTargetSerial && (asciiCode != 0))
                 _pTargetSerial->write((char)asciiCode);
             Log.trace("McIF sent target char %x\n", (char)asciiCode);
+        }
+        else if (cmdName.equalsIgnoreCase("apiReq"))
+        {
+            String requestStr = RdJson::getString("req", "", pStr);
+            if (_pRestAPIEndpoints && requestStr.length() != 0)
+            {
+                String respStr;
+                _pRestAPIEndpoints->handleApiRequest(requestStr.c_str(), respStr);
+                if (_pCommandSerial)
+                    _pCommandSerial->responseMessage(respStr);
+            }
         }
 
         // Tidy up

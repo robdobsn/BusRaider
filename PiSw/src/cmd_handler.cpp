@@ -30,6 +30,23 @@ static cmdHandler_changeMachineCallbackType* __pChangeMcCallback = NULL;
 static char _receivedFileStartInfo[CMD_HANDLER_MAX_CMD_STR_LEN+1];
 static cmdHandler_rxcharCallbackType* _pRxCharFromHostCallback = NULL;
 
+#define MAX_ESP_HEALTH_STR 1000
+#define MAX_IP_ADDR_STR 30
+#define MAX_WIFI_CONN_STR 30
+#define MAX_WIFI_SSID_STR 100
+static bool _espIPAddressValid = false;
+static char _espIPAddress[MAX_IP_ADDR_STR] = "";
+static char _espWifiConnStr[MAX_WIFI_CONN_STR] = "";
+static char _espWifiSSID[MAX_WIFI_SSID_STR] = "";
+
+void cmdHandler_getESPHealth(bool* espIPAddressValid, char** espIPAddress, char** espWifiConnStr, char** espWifiSSID)
+{
+    *espIPAddressValid = _espIPAddressValid;
+    *espIPAddress = _espIPAddress;
+    *espWifiConnStr = _espWifiConnStr;
+    *espWifiSSID = _espWifiSSID;
+}
+
 // Structure for command handler state
 void cmdHandler_sendChar(uint8_t ch)
 {
@@ -251,6 +268,22 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         if (_pRxCharFromHostCallback)
             _pRxCharFromHostCallback(pData, dataLen);
     }
+    else if (stricmp(cmdName, "respMsg") == 0)
+    {
+        // LogWrite(FromCmdHandler, LOG_DEBUG, "RxFromHost RespMsg");
+        // Get espHealth field
+        char espHealthJson[MAX_ESP_HEALTH_STR];
+        if (!jsonGetValueForKey("espHealth", pCmdJson, espHealthJson, MAX_ESP_HEALTH_STR))
+            return;
+        if (!jsonGetValueForKey("wifiIP", espHealthJson, _espIPAddress, MAX_IP_ADDR_STR+1))
+            return;
+        if (!jsonGetValueForKey("wifiConn", espHealthJson, _espWifiConnStr, MAX_WIFI_CONN_STR+1))
+            return;
+        if (!jsonGetValueForKey("ssid", espHealthJson, _espWifiSSID, MAX_WIFI_SSID_STR+1))
+            return;
+        // LogWrite(FromCmdHandler, LOG_DEBUG, "Ip Address %s", _espIPAddress);
+        _espIPAddressValid = (strcmp(_espIPAddress, "0.0.0.0") != 0);
+    }
     else
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "Unknown command %s", cmdName);
@@ -286,14 +319,19 @@ void cmdHandler_frameHandler(const uint8_t *framebuffer, int framelength)
 }
 
 // Send status update
-void cmdHandler_sendStatusUpdate()
+void cmdHandler_sendReqStatusUpdate()
 {
+    // Send update
     static const int MAX_STATUS_CMD_STR_LEN = 1500;
     static char statusStr[MAX_STATUS_CMD_STR_LEN+1];
     const char* mcJSON = McManager::getMachineJSON();
     strncpy(statusStr, "{\"cmdName\":\"statusUpdate\",", MAX_STATUS_CMD_STR_LEN);
     strncpy(statusStr+strlen(statusStr), mcJSON, MAX_STATUS_CMD_STR_LEN);
     strncpy(statusStr+strlen(statusStr), "}", MAX_STATUS_CMD_STR_LEN);
+    minihdlc_send_frame((const uint8_t*)statusStr, strlen(statusStr)+1);
+
+    // Request update
+    strncpy(statusStr, "{\"cmdName\":\"apiReq\",\"req\":\"queryESPHealth\"}", MAX_STATUS_CMD_STR_LEN);
     minihdlc_send_frame((const uint8_t*)statusStr, strlen(statusStr)+1);
 }
 

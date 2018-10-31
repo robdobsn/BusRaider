@@ -22,13 +22,16 @@ extern void cmdHandler_service();
 extern void cmdHandler_handle_char(int ch);
 
 // Status update
-extern void cmdHandler_sendStatusUpdate();
+extern void cmdHandler_sendReqStatusUpdate();
 
 // Send key
 extern void cmdHandler_sendKeyCode(int keyCode);
 
 // Set callback for received chars
 extern void cmd_handler_set_rxchar_callback(cmdHandler_rxcharCallbackType* pRxCharCallback);
+
+// Get ESP health info
+extern void cmdHandler_getESPHealth(bool* espIPAddressValid, char** espIPAddress, char** espWifiConnStr, char** espWifiSSID);
 
 #ifdef __cplusplus
 }

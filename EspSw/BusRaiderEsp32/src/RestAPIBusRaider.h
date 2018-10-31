@@ -74,21 +74,29 @@ class RestAPIBusRaider
     void apiFileUploadPart(String filename, size_t contentLen, size_t index, 
                     uint8_t *data, size_t len, bool final)
     {
-        Log.notice("apiUp %d, %d, %d, %d\n", contentLen, index, len, final);
+        Log.verbose("apiUp %d, %d, %d, %d\n", contentLen, index, len, final);
         if (contentLen > 0)
             commandSerial.fileUploadPart(filename, contentLen, index, data, len, final);
     }
 
     void apiQueryStatus(String &reqStr, String &respStr)
     {
-        Log.trace("RestAPIBusRaider: apiQueryStatus %s\n", reqStr.c_str());
+        Log.verbose("RestAPIBusRaider: apiQueryStatus %s\n", reqStr.c_str());
         respStr = machineInterface.getStatus();
     }
     
+    void apiQueryESPHealth(String &reqStr, String &respStr)
+    {
+        Log.verbose("RestAPIBusRaider: queryESPHealth %s\n", reqStr.c_str());
+        String healthStr;
+        RestAPISystem::reportHealth(0, NULL, &healthStr);
+        respStr = "\"espHealth\":{" + healthStr + "}";
+    }
+
     void apiESPFirmwarePart(String filename, size_t contentLen, size_t index, 
                     uint8_t *data, size_t len, bool final)
     {
-        Log.notice("apiESPFirmwarePart %d, %d, %d, %d\n", contentLen, index, len, final);
+        Log.trace("apiESPFirmwarePart %d, %d, %d, %d\n", contentLen, index, len, final);
         // Check if first part
         if (index == 0)
         {
@@ -193,6 +201,12 @@ class RestAPIBusRaider
                             std::bind(&RestAPIBusRaider::apiQueryStatus, this,
                                     std::placeholders::_1, std::placeholders::_2),
                             "Query status");
+        endpoints.addEndpoint("queryESPHealth", 
+                            RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                            RestAPIEndpointDef::ENDPOINT_GET, 
+                            std::bind(&RestAPIBusRaider::apiQueryESPHealth, this,
+                                    std::placeholders::_1, std::placeholders::_2),
+                            "Query ESP Health");
         endpoints.addEndpoint("espFirmwareUpdate", 
                             RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                             RestAPIEndpointDef::ENDPOINT_POST,
