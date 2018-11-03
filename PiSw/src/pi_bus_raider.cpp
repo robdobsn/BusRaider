@@ -20,11 +20,51 @@
 #include "McZXSpectrum.h"
 #include "McTerminal.h"
 
+// Program details
+static const char* PROG_VERSION = "RC2014 Bus Raider V1.6.024";
+static const char* PROG_CREDITS = "Rob Dobson 2018 (inspired by PiGFX)";
+
 // Baud rate
 #define MAIN_UART_BAUD_RATE 115200
 
+// Immediate mode
+#define IMM_MODE_LINE_MAXLEN 100
+bool _immediateMode = false;
+char _immediateModeLine[IMM_MODE_LINE_MAXLEN+1];
+int _immediateModeLineLen = 0;
+
 static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char rawKeys[6])
 {
+    // Check for immediate mode
+    if (rawKeys[0] == KEY_F2)
+    {
+        _immediateMode = true;
+        return;
+    }
+    if (_immediateMode)
+    {
+        if (_immediateModeLineLen < IMM_MODE_LINE_MAXLEN)
+        {
+            int asciiCode = McTerminal::convertRawToAscii(ucModifiers, rawKeys);
+            if (asciiCode == 0x08)
+            {
+                if (_immediateModeLineLen > 0)
+                    _immediateModeLineLen--;
+            }
+            else if (asciiCode == 0x0d)
+            {
+                _immediateMode = false;
+            }
+            else if ((asciiCode >= 32) && (asciiCode < 127))
+            {
+                _immediateModeLine[_immediateModeLineLen++] = asciiCode;
+            }
+            wgfx_term_putchar(asciiCode);
+        }
+        return;
+    }
+
+    // Send to the target machine to process
     // ee_printf("KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
     McBase* pMc = McManager::getMachine();
     if (pMc)
@@ -67,7 +107,7 @@ extern "C" void entry_point()
 {
 
     // Logging
-    LogSetLevel(LOG_NOTICE);
+    LogSetLevel(LOG_DEBUG);
     
     // System init
     system_init();
@@ -76,6 +116,7 @@ extern "C" void entry_point()
     timers_init();
 
     // UART
+
     uart_init(MAIN_UART_BAUD_RATE, 1);
 
     // Target machine memory and command handler
@@ -96,12 +137,6 @@ extern "C" void entry_point()
 
     // Layout display for the selected machine
     layout_display();
-
-    // Initial message
-    wgfx_set_fg(11);
-    ee_printf("RC2014 Bus Raider V1.6.021\n");
-    ee_printf("Rob Dobson 2018 (inspired by PiGFX)\n\n");
-    wgfx_set_fg(15);
 
     // Number of machines
     ee_printf("%d machines supported\n", McManager::getNumMachines());
@@ -183,21 +218,11 @@ extern "C" void entry_point()
         // Handle refresh rate calculation
         if (timer_isTimeout(micros(), curRateSampleWindowStart, REFRESH_RATE_WINDOW_SIZE_MS * 1000)) 
         {
-            int refreshRate = refreshCount * 1000 / REFRESH_RATE_WINDOW_SIZE_MS;
-            const int MAX_REFRESH_STR_LEN = 20;
-            char refreshStr[MAX_REFRESH_STR_LEN+1];
-            rditoa(refreshRate, (uint8_t*)refreshStr, MAX_REFRESH_STR_LEN, 10);
-            strncpy(refreshStr+strlen(refreshStr), "fps", MAX_REFRESH_STR_LEN);
-            wgfx_set_fg(11);
-            wgfx_puts(1, wgfx_get_term_width()-strlen(refreshStr)-1, 1, (uint8_t*)refreshStr);
-            wgfx_set_fg(15);
-            // // uart_printf("Rate %d per sec, requs %ld dispTime %ld\n", refreshCount / 2, reqUpdateUs, dispTime);
-            // wgfx_putc(1, 150, 0, '0' + (refreshRate % 10));
-            // wgfx_putc(1, 149, 0, '0' + ((refreshRate / 10) % 10));
-            // if (refreshRate / 100 != 0)
-            //     wgfx_putc(1, 148, 0, '0' + ((refreshRate / 100) % 10));
-            refreshCount = 0;
-            curRateSampleWindowStart = micros();
+            // Initial message
+            wgfx_set_fg(11); // 11 = yellow
+            int lineIdx = 0;
+            wgfx_puts(1, wgfx_get_term_width()-strlen(PROG_VERSION)-1, lineIdx++, (uint8_t*)PROG_VERSION);
+            wgfx_puts(1, wgfx_get_term_width()-strlen(PROG_CREDITS)-1, lineIdx++, (uint8_t*)PROG_CREDITS);
 
             // Show ESP health info
             bool ipAddrValid = false;
@@ -221,8 +246,24 @@ extern "C" void entry_point()
                     strncpy(statusStr, "WiFi not connected", MAX_STATUS_STR_LEN);
                     break;
             }
-            wgfx_set_fg(11);
-            wgfx_puts(1, wgfx_get_term_width()-strlen(statusStr)-1, 0, (uint8_t*)statusStr);
+            wgfx_puts(1, wgfx_get_term_width()-strlen(statusStr)-1, lineIdx++, (uint8_t*)statusStr);
+
+            // Refresh rate
+            int refreshRate = refreshCount * 1000 / REFRESH_RATE_WINDOW_SIZE_MS;
+            const int MAX_REFRESH_STR_LEN = 20;
+            char refreshStr[MAX_REFRESH_STR_LEN+1];
+            rditoa(refreshRate, (uint8_t*)refreshStr, MAX_REFRESH_STR_LEN, 10);
+            strncpy(refreshStr+strlen(refreshStr), "fps", MAX_REFRESH_STR_LEN);
+            wgfx_puts(1, wgfx_get_term_width()-strlen(refreshStr)-1, lineIdx++, (uint8_t*)refreshStr);
+            // // uart_printf("Rate %d per sec, requs %ld dispTime %ld\n", refreshCount / 2, reqUpdateUs, dispTime);
+            // wgfx_putc(1, 150, 0, '0' + (refreshRate % 10));
+            // wgfx_putc(1, 149, 0, '0' + ((refreshRate / 10) % 10));
+            // if (refreshRate / 100 != 0)
+            //     wgfx_putc(1, 148, 0, '0' + ((refreshRate / 100) % 10));
+
+            // Ready for next time
+            refreshCount = 0;
+            curRateSampleWindowStart = micros();
             wgfx_set_fg(15);
         }
 

@@ -25,7 +25,7 @@
 const char* systemType = SYSTEM_TYPE_NAME;
 
 // System version
-const char* systemVersion = "1.002.012";
+const char* systemVersion = "1.002.016";
 
 // Build date
 const char* buildDate = __DATE__;
@@ -55,6 +55,10 @@ StatusLed wifiStatusLed;
 // // WiFi Manager
 #include "WiFiManager.h"
 WiFiManager wifiManager;
+
+// File manager
+#include "FileManager.h"
+FileManager fileManager;
 
 // API Endpoints
 #include "RestAPIEndpoints.h"
@@ -88,8 +92,9 @@ static const char *hwConfigJSON = {
     "\"OTAUpdate\":{\"enabled\":0,\"server\":\"domoticzoff\",\"port\":5076},"
     "\"serialConsole\":{\"portNum\":0},"
     "\"commandSerial\":{\"portNum\":1,\"baudRate\":115200},"
+    "\"fileManager\":{\"spiffsEnabled\":1,\"spiffsFormatIfCorrupt\",1},"
     "\"wifiLed\":{\"ledPin\":\"13\",\"ledOnMs\":200,\"ledShortOffMs\":200,\"ledLongOffMs\":750},"
-    "\"machineIF\":{\"portNum\":2,\"baudRate\":115200,\"wsPath\":\"/ws\"},"
+    "\"machineIF\":{\"portNum\":2,\"baudRate\":115200,\"wsPath\":\"/ws\",\"demoPin\":0},"
     "}"
 };
 
@@ -105,9 +110,9 @@ ConfigNVS mqttConfig("mqtt", 200);
 // Config for network logging
 ConfigNVS netLogConfig("netLog", 200);
 
-// Comms (with Pi)
+// CommandSerial port - used to monitor activity remotely and send commands
 #include "CommandSerial.h"
-CommandSerial commandSerial;
+CommandSerial commandSerial(fileManager);
 
 // Serial console - for configuration
 #include "SerialConsole.h"
@@ -123,11 +128,13 @@ MachineInterface machineInterface;
 
 // REST API System
 #include "RestAPISystem.h"
-RestAPISystem restAPISystem(wifiManager, mqttManager, otaUpdate, netLog, systemType, systemVersion);
+RestAPISystem restAPISystem(wifiManager, mqttManager, 
+            otaUpdate, netLog, fileManager,
+            systemType, systemVersion);
 
 // REST API BusRaider
 #include "RestAPIBusRaider.h"
-RestAPIBusRaider restAPIBusRaider(commandSerial, machineInterface);
+RestAPIBusRaider restAPIBusRaider(commandSerial, machineInterface, fileManager);
 
 // Debug loop used to time main loop
 #include "DebugLoopTimer.h"
@@ -142,18 +149,12 @@ void debugLoopInfoCallback(String &infoStr)
 }
 DebugLoopTimer debugLoopTimer(10000, debugLoopInfoCallback);
 
-// Handler of frames received from Pi
-void cmdSerialFrameHandler(const uint8_t *framebuffer, int framelength)
-{
-    machineInterface.handleRxFrame(framebuffer, framelength);
-}
-
 // Setup
 void setup()
 {
     // Logging
     Serial.begin(115200);
-    Log.begin(LOG_LEVEL_TRACE, &netLog);
+    Log.begin(LOG_LEVEL_VERBOSE, &netLog);
 
     // Message
     Log.notice("%s %s (built %s %s)\n", systemType, systemVersion, buildDate, buildTime);
@@ -163,6 +164,9 @@ void setup()
 
     // WiFi Config
     wifiConfig.setup();
+
+    // File system
+    fileManager.setup(hwConfig);
 
     // MQTT Config
     mqttConfig.setup();
@@ -191,7 +195,7 @@ void setup()
     mqttManager.setup(hwConfig, &mqttConfig);
 
     // Setup CommandSerial
-    commandSerial.setup(hwConfig, cmdSerialFrameHandler);
+    commandSerial.setup(hwConfig);
 
     // Network logging
     netLog.setup(&netLogConfig, wifiManager.getHostname().c_str());
@@ -201,7 +205,7 @@ void setup()
 
     // Machine interface
     machineInterface.setup(hwConfig, &webServer, &commandSerial, 
-                &telnetServer, &restAPIEndpoints);
+                &telnetServer, &restAPIEndpoints, &fileManager);
 
     // Add debug blocks
     debugLoopTimer.blockAdd(0, "Web");

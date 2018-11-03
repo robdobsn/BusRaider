@@ -112,10 +112,10 @@ class WebServer
                 },
                 
                 // Handler for upload (as in a file upload)
-                [pEndpoint](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) {
+                [pEndpoint](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool finalBlock) {
                     pEndpoint->callbackUpload(filename, 
                                 request ? request->contentLength() : 0, 
-                                index, data, len, final);
+                                index, data, len, finalBlock);
                 },
                 
                 // Handler for body

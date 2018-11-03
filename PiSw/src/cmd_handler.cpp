@@ -21,11 +21,13 @@
 static const char* FromCmdHandler = "CmdHander";
 
 #define MAX_FILE_NAME_STR 100
+#define MAX_FILE_TYPE_STR 40
 char _receivedFileName[MAX_FILE_NAME_STR+1];
 static uint8_t* _pReceivedFileDataPtr = NULL;
 static int _receivedFileBufSize = 0;
 static int _receivedFileBytesRx = 0;
 static int _receivedBlockCount = 0;
+static char _pReceivedFileType[MAX_FILE_TYPE_STR+1];
 static cmdHandler_changeMachineCallbackType* __pChangeMcCallback = NULL;
 static char _receivedFileStartInfo[CMD_HANDLER_MAX_CMD_STR_LEN+1];
 static cmdHandler_rxcharCallbackType* _pRxCharFromHostCallback = NULL;
@@ -73,6 +75,10 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
     {
         // Start a file upload - get file name
         if (!jsonGetValueForKey("fileName", pCmdJson, _receivedFileName, MAX_FILE_NAME_STR))
+            return;
+
+        // Get file type
+        if (!jsonGetValueForKey("fileType", pCmdJson, _pReceivedFileType, MAX_FILE_TYPE_STR))
             return;
 
         // Get file length
@@ -153,43 +159,41 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
             return;
         }
 
-        // Check type of file (assume extension is delimited by .)
-        const char* pDot = strstr(_receivedFileName, ".");
-        if (pDot != NULL)
+        // Check file type
+        if (stricmp(_pReceivedFileType, "firmware") == 0)
         {
-            // Handle IMG files as firmware update for Pi itself
-            if (stricmp(pDot, ".IMG") == 0)
+            LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd IMG firmware update File %s, len %d", _receivedFileName, _receivedFileBytesRx);
+
+            // Copy the blockCopyExecRelocatable() code to HEAP space
+            uint8_t* pCopyBlockNewLocation = (uint8_t*)nmalloc_malloc(blockCopyExecRelocatableLen);
+            if (!pCopyBlockNewLocation)
             {
-                LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd IMG firmware update File %s, len %d", _receivedFileName, _receivedFileBytesRx);
-
-                // Copy the blockCopyExecRelocatable() code to HEAP space
-                uint8_t* pCopyBlockNewLocation = (uint8_t*)nmalloc_malloc(blockCopyExecRelocatableLen);
-                if (!pCopyBlockNewLocation)
-                {
-                    LogWrite(FromCmdHandler, LOG_ERROR, "cannot create space for blockCopyExecRelocatable fn, len %d", blockCopyExecRelocatableLen);
-                    return;
-                }
-                memcpy((void*)pCopyBlockNewLocation, (void*)blockCopyExecRelocatable, blockCopyExecRelocatableLen);
-
-                // Call the copyblock function in it's new location
-                blockCopyExecRelocatableFnT* pCopyBlockFn = (blockCopyExecRelocatableFnT*) pCopyBlockNewLocation;
-                LogWrite(FromCmdHandler, LOG_DEBUG, "Address of copyBlockFn %08x, len %d", pCopyBlockNewLocation, blockCopyExecRelocatableLen);
-
-                // Call the copyBlock function in its new location using it to move the program
-                // to 0x8000 the base address for Pi programs
-                (*pCopyBlockFn) ((uint8_t*)0x8000, _pReceivedFileDataPtr, _receivedFileBytesRx, (uint8_t*)0x8000);
+                LogWrite(FromCmdHandler, LOG_ERROR, "cannot create space for blockCopyExecRelocatable fn, len %d", blockCopyExecRelocatableLen);
                 return;
             }
-        }
+            memcpy((void*)pCopyBlockNewLocation, (void*)blockCopyExecRelocatable, blockCopyExecRelocatableLen);
 
-        // Falling through to here so offer to the machine specific handler
-        LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
-        McBase* pMc = McManager::getMachine();
-        if (pMc)
-            pMc->fileHander(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx);
+            // Call the copyblock function in it's new location
+            blockCopyExecRelocatableFnT* pCopyBlockFn = (blockCopyExecRelocatableFnT*) pCopyBlockNewLocation;
+            LogWrite(FromCmdHandler, LOG_DEBUG, "Address of copyBlockFn %08x, len %d", pCopyBlockNewLocation, blockCopyExecRelocatableLen);
+
+            // Call the copyBlock function in its new location using it to move the program
+            // to 0x8000 the base address for Pi programs
+            (*pCopyBlockFn) ((uint8_t*)0x8000, _pReceivedFileDataPtr, _receivedFileBytesRx, (uint8_t*)0x8000);
+        }
+        else
+        {
+            // Falling through to here so offer to the machine specific handler
+            LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
+            McBase* pMc = McManager::getMachine();
+            if (pMc)
+                pMc->fileHander(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx);
+
+        }
     }
     else if (stricmp(cmdName, "ClearTarget") == 0)
     {
+        LogWrite(FromCmdHandler, LOG_DEBUG, "ClearTarget");
         targetClear();
     }
     else if ((stricmp(cmdName, "ProgramAndReset") == 0) || (stricmp(cmdName, "ProgramTarget") == 0))

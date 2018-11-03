@@ -1,6 +1,16 @@
 // Machine Interface
 // Rob Dobson 2018
 
+// Provides some wiring for the Bus Raider
+// The ESP32 has three serial interfaces:
+// - programming/logging
+// - Pi
+// - Target serial (e.g. Z80 68B50)
+
+// The CommandSerial.h file contains code which communicates with the Pi using and HDLC frame protocol
+// when a frame is ready from the Pi it is handled by this MachineInterface
+// This MachineInterface also handles the target serial port communication including telnet support
+
 #pragma once
 
 #include "WebServer.h"
@@ -12,24 +22,28 @@
 
 class MachineInterface
 {
-  private:
+private:
+    // Cache for machine status so that it can be quickly returned
+    // when needed
     String _cachedStatusJSON;
 
     // Serial
     HardwareSerial* _pTargetSerial;
 
     // Serial port details
-    int _serialPortNum;
-    int _baudRate;
+    int _targetSerialPortNum;
+    int _targetSerialBaudRate;
 
-    // Web server
+    // Web server ptr (copy)
     WebServer* _pWebServer;
 
-    // Command serial
+    // Command serial ptr (copy)
     CommandSerial* _pCommandSerial;
 
     // Web socket for communication of keystrokes
+#ifdef USE_WEBSOCKET_TERMINAL
     AsyncWebSocket* _pWebSocket;
+#endif
 
     // Telnet server
     AsyncTelnetServer* _pTelnetServer;
@@ -37,21 +51,40 @@ class MachineInterface
     // REST API
     RestAPIEndpoints* _pRestAPIEndpoints;
 
-  public:
+    // File manager
+    FileManager* _pFileManager;
+
+    // Demo handling
+    int _demoPin;
+    uint32_t _demoPinDebounceTime;
+    int _demoPinDebounceVal;
+    static const int DEMO_PIN_DEBOUNCE_MS = 50;
+    int _demoProgramIdx;
+
+public:
     MachineInterface()
     {
         _cachedStatusJSON = "{}";
         _pTargetSerial = NULL;
-        _serialPortNum = -1;
-        _baudRate = 115200;
+        _targetSerialPortNum = -1;
+        _targetSerialBaudRate = 115200;
         _pWebServer = NULL;
+        _pFileManager = NULL;
+#ifdef USE_WEBSOCKET_TERMINAL
         _pWebSocket = NULL;
+#endif
         _pTelnetServer = NULL;
         _pRestAPIEndpoints = NULL;
+        _demoPin = -1;
+        _demoPinDebounceTime = 0;
+        _demoPinDebounceVal = 0;
+        _demoProgramIdx = 0;
     }
 
+    // Setup
     void setup(ConfigBase &config, WebServer *pWebServer, CommandSerial* pCommandSerial,
-                AsyncTelnetServer* pTelnetServer, RestAPIEndpoints* pRestAPIEndpoints)
+                AsyncTelnetServer* pTelnetServer, RestAPIEndpoints* pRestAPIEndpoints,
+                FileManager* pFileManager)
     {
         // Get config
         ConfigBase csConfig(config.getString("machineIF", "").c_str());
@@ -62,6 +95,7 @@ class MachineInterface
         _pCommandSerial = pCommandSerial;
         _pTelnetServer = pTelnetServer;
         _pRestAPIEndpoints = pRestAPIEndpoints;
+        _pFileManager = pFileManager;
 
         // Set the telnet callback
         if (_pTelnetServer)
@@ -79,7 +113,62 @@ class MachineInterface
                 }
             }, this);
         }
-            // _pTelnetServer->onData(telnetDataCallback);
+        
+        // Set callback on frame received from Pi
+        if (_pCommandSerial)
+        {
+            _pCommandSerial->setCallbackOnRxFrame([this](const uint8_t *framebuffer, int framelength) {
+                handleFrameRxFromPi(framebuffer, framelength);
+            });
+        }
+
+        // Get target serial port
+        _targetSerialPortNum = csConfig.getLong("portNum", -1);
+        _targetSerialBaudRate = csConfig.getLong("baudRate", 115200);
+
+        // Debug
+        Log.trace("MachineInterface: portNum %d, baudRate %d\n", _targetSerialPortNum, _targetSerialBaudRate);
+
+        // Check target serial port
+        if (_targetSerialPortNum == -1)
+            return;
+
+        // Setup target serial port
+        _pTargetSerial = new HardwareSerial(_targetSerialPortNum);
+        if (_pTargetSerial)
+        {
+            if (_targetSerialPortNum == 1)
+            {
+                _pTargetSerial->begin(_targetSerialBaudRate, SERIAL_8N1, 16, 17, false);
+                Log.trace("MachineInterface: portNum %d, baudRate %d, rxPin, txPin\n",
+                          _targetSerialPortNum, _targetSerialBaudRate, 16, 17);
+            }
+            else if (_targetSerialPortNum == 2)
+            {
+                _pTargetSerial->begin(_targetSerialBaudRate, SERIAL_8N1, 26, 25, false);
+                Log.trace("MachineInterface: portNum %d, baudRate %d, rxPin, txPin\n",
+                          _targetSerialPortNum, _targetSerialBaudRate, 26, 25);
+            }
+            else
+            {
+                _pTargetSerial->begin(_targetSerialBaudRate);
+                Log.trace("MachineInterface: portNum %d, baudRate %d, rxPin, txPin\n",
+                          _targetSerialPortNum, _targetSerialBaudRate, 3, 1);
+            }
+        }
+
+        // Get demo button
+        String demoPinStr = csConfig.getString("demoPin", "");
+        _demoPin = -1;
+        _demoPinDebounceTime = millis();
+        _demoPinDebounceVal = 0;
+        if (demoPinStr.length() != 0)
+            _demoPin = ConfigPinMap::getPinFromName(demoPinStr.c_str());
+        if (_demoPin != -1)
+        {
+            pinMode(_demoPin, INPUT);
+            _demoPinDebounceVal = digitalRead(_demoPin);
+        }
 
         // Add web socket handler
 #ifdef USE_WEBSOCKET_TERMINAL
@@ -111,46 +200,7 @@ class MachineInterface
                 }
             }
         }
-#endif
-        // Get serial port
-        _serialPortNum = csConfig.getLong("portNum", -1);
-        _baudRate = csConfig.getLong("baudRate", 115200);
-
-        // Debug
-        Log.trace("MachineInterface: portNum %d, baudRate %d\n", _serialPortNum, _baudRate);
-
-        // Setup port
-        if (_serialPortNum == -1)
-            return;
-
-        // Setup serial port
-        _pTargetSerial = new HardwareSerial(_serialPortNum);
-        if (_pTargetSerial)
-        {
-            if (_serialPortNum == 1)
-            {
-                _pTargetSerial->begin(_baudRate, SERIAL_8N1, 16, 17, false);
-                Log.trace("MachineInterface: portNum %d, baudRate %d, rxPin, txPin\n",
-                          _serialPortNum, _baudRate, 16, 17);
-            }
-            else if (_serialPortNum == 2)
-            {
-                _pTargetSerial->begin(_baudRate, SERIAL_8N1, 26, 25, false);
-                Log.trace("MachineInterface: portNum %d, baudRate %d, rxPin, txPin\n",
-                          _serialPortNum, _baudRate, 26, 25);
-            }
-            else
-            {
-                _pTargetSerial->begin(_baudRate);
-                Log.trace("MachineInterface: portNum %d, baudRate %d, rxPin, txPin\n",
-                          _serialPortNum, _baudRate, 3, 1);
-            }
-        }
-    }
-
-    const char *getStatus()
-    {
-        return _cachedStatusJSON.c_str();
+#endif        
     }
 
     void service()
@@ -172,7 +222,7 @@ class MachineInterface
 
             }
 
-            // Handle any string of chars received
+            // Handle any string of chars received from target
             if (charsReceived.length() > 0)
             {
                 // Debug
@@ -198,22 +248,62 @@ class MachineInterface
 #endif
             }
         }
+
+        // Handle demo button
+        if (_demoPin != -1)
+        {
+            // Check for change of value
+            if (digitalRead(_demoPin) != _demoPinDebounceVal)
+            {
+                if (Utils::isTimeout(millis(), _demoPinDebounceTime, DEMO_PIN_DEBOUNCE_MS))
+                {
+                    if (_demoPinDebounceVal != 0)
+                    {
+                        // Handle pin press
+                        Log.notice("MachineInterface: demo pin pressed\n");
+
+                        // Select the next program to download
+                        if (_pFileManager)
+                        {
+                            String filesJson;
+                            if (_pFileManager->getFilesJSON("SPIFFS", "/", filesJson))
+                            {
+                                // Get the index of file to upload
+                                String filesList = RdJson::getString("files", "[]", filesJson.c_str());
+                                int fileListLen = 0;
+                                RdJson::getType(fileListLen, filesList.c_str());
+                                _demoProgramIdx = _demoProgramIdx % fileListLen;
+
+                                // Get filename
+                                String fileinfoToUpload = RdJson::getString(("[" + String(_demoProgramIdx) + "]").c_str(),
+                                                "", filesList.c_str());
+                                String filenameToUpload = RdJson::getString("name", "", fileinfoToUpload.c_str());
+                                // Handle upload
+                                Log.notice("MachineInterface: demo %d %s\n", _demoProgramIdx,
+                                                filenameToUpload.c_str());
+                                if (filenameToUpload.length() > 0)
+                                {
+                                    String apiCmd = "runfileontarget/SPIFFS/" + filenameToUpload;
+                                    String respStr;
+                                    if (_pRestAPIEndpoints)
+                                        _pRestAPIEndpoints->handleApiRequest(apiCmd.c_str(), respStr);
+                                }
+                                _demoProgramIdx++;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                _demoPinDebounceTime = millis();
+            }
+            
+        }
     }
 
-    // void telnetDataCallback(void* cbArg, const char* pData, int numChars)
-    // {
-    //     (void)cbArg;
-    //     // Send chars
-    //     const char* pBuf = pData;
-    //     for (int i = 0; i < numChars; i++)
-    //     {
-    //         if (_pTargetSerial)
-    //             _pTargetSerial->write(*pBuf++);
-
-    //     }
-    // }
-
-    void handleRxFrame(const uint8_t *framebuffer, int framelength)
+    // Handle a frame received from the Pi
+    void handleFrameRxFromPi(const uint8_t *framebuffer, int framelength)
     {
         // Extract frame type
         if ((framelength < 0) || (framelength > 1500))
@@ -228,7 +318,7 @@ class MachineInterface
         String cmdName = RdJson::getString("cmdName", "", pStr);
         if (cmdName.equalsIgnoreCase("statusUpdate"))
         {
-            // Store the status frame
+            // Cache the status frame
             _cachedStatusJSON = (const char *)pStr;
         }
         else if (cmdName.equalsIgnoreCase("keyCode"))
@@ -253,6 +343,11 @@ class MachineInterface
 
         // Tidy up
         delete [] pStr;
+    }
+
+    const char *getStatus()
+    {
+        return _cachedStatusJSON.c_str();
     }
 
     // int convertEscKey(String& keyStr)

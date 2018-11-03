@@ -6,6 +6,7 @@
 #include "RestAPIEndpoints.h"
 #include "CommandSerial.h"
 #include "MachineInterface.h"
+#include "FileManager.h"
 
 // #define SUPPORT_WEB_TERMINAL_REST 1
 
@@ -14,13 +15,14 @@ class RestAPIBusRaider
   private:
     CommandSerial& _commandSerial;
     MachineInterface& _machineInterface;
+    FileManager& _fileManager;    
     static const int TIME_TO_WAIT_BEFORE_RESTART_MS = 1000;
     uint32_t _restartPendingStartMs;
     bool _restartPending;
 
   public:
-    RestAPIBusRaider(CommandSerial &commandSerial, MachineInterface &machineInterface) :
-             _commandSerial(commandSerial), _machineInterface(machineInterface)
+    RestAPIBusRaider(CommandSerial &commandSerial, MachineInterface &machineInterface, FileManager& fileManager) :
+             _commandSerial(commandSerial), _machineInterface(machineInterface), _fileManager(fileManager)
     {
         _restartPending = false;
         _restartPendingStartMs = 0;
@@ -58,34 +60,92 @@ class RestAPIBusRaider
     }
 #endif
 
-    void apiFileUploadComplete(String &reqStr, String &respStr)
+    void apiUploadToFileManComplete(String &reqStr, String &respStr)
     {
-        Log.trace("RestAPIBusRaider: apiUploadOnlyComplete %s\n", reqStr.c_str());
+        Log.trace("RestAPIBusRaider: apiUploadToFileManComplete %s\n", reqStr.c_str());
         Utils::setJsonBoolResult(respStr, true);
     }
 
-    void apiFileUploadAndRunComplete(String &reqStr, String &respStr)
+    void apiUploadToFileManPart(String filename, size_t contentLen, size_t index, 
+                    uint8_t *data, size_t len, bool finalBlock)
+    {
+        Log.verbose("RestAPIBusRaider: apiUpToFileMan %d, %d, %d, %d\n", contentLen, index, len, finalBlock);
+        if (contentLen > 0)
+            _fileManager.uploadAPIBlockHandler("SPIFFS", filename, contentLen, index, data, len, finalBlock);
+    }
+
+    void apiUploadPiSwComplete(String &reqStr, String &respStr)
+    {
+        Log.trace("RestAPIBusRaider: apiUploadPiSwComplete %s\n", reqStr.c_str());
+        Utils::setJsonBoolResult(respStr, true);
+    }
+
+    void apiUploadPiSwPart(String filename, size_t contentLen, size_t index, 
+                    uint8_t *data, size_t len, bool finalBlock)
+    {
+        Log.verbose("RestAPIBusRaider: apiUploadPiSwPart %d, %d, %d, %d\n", contentLen, index, len, finalBlock);
+        if (contentLen > 0)
+            _commandSerial.uploadAPIBlockHandler("firmware", filename, contentLen, index, data, len, finalBlock);
+    }
+
+    void apiUploadAndRunComplete(String &reqStr, String &respStr)
     {
         Log.trace("RestAPIBusRaider: apiUploadAndRunComplete %s\n", reqStr.c_str());
         _commandSerial.sendTargetCommand("ProgramAndReset");
         Utils::setJsonBoolResult(respStr, true);
     }
 
-    void apiFileUploadPart(String filename, size_t contentLen, size_t index, 
-                    uint8_t *data, size_t len, bool final)
+    void apiUploadAndRunPart(String filename, size_t contentLen, size_t index, 
+                    uint8_t *data, size_t len, bool finalBlock)
     {
-        Log.verbose("apiUp %d, %d, %d, %d\n", contentLen, index, len, final);
+        Log.verbose("apiUp&Run %d, %d, %d, %d\n", contentLen, index, len, finalBlock);
         if (contentLen > 0)
-            commandSerial.fileUploadPart(filename, contentLen, index, data, len, final);
+            _commandSerial.uploadAPIBlockHandler("target", filename, contentLen, index, data, len, finalBlock);
     }
 
-    void apiQueryStatus(String &reqStr, String &respStr)
+    void apiSendFileToTargetBuffer(const String &reqStr, String &respStr)
+    {
+        // Clear target first
+        _commandSerial.sendTargetCommand("ClearTarget");
+        // File system
+        String fileSystemStr = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 1);
+        // Filename        
+        String filename = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 2);
+        Log.verbose("apiSendFileToBuf filename %s\n", filename.c_str());
+        _commandSerial.startUploadFromFileSystem(fileSystemStr, filename);
+    }
+
+    void apiAppendFileToTargetBuffer(const String &reqStr, String &respStr)
+    {
+        // Clear target first
+        _commandSerial.sendTargetCommand("ClearTarget");
+        // File system
+        String fileSystemStr = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 1);
+        // Filename        
+        String filename = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 2);
+        Log.verbose("apiAppendFileToBuf filename %s\n", filename.c_str());
+        _commandSerial.startUploadFromFileSystem(fileSystemStr, filename);
+    }
+
+    void runFileOnTarget(const String &reqStr, String &respStr)
+    {
+        // Clear target first
+        _commandSerial.sendTargetCommand("ClearTarget");
+        // File system
+        String fileSystemStr = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 1);
+        // Filename        
+        String filename = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 2);
+        Log.verbose("runFileOnTarget filename %s\n", filename.c_str());
+        _commandSerial.startUploadFromFileSystem(fileSystemStr, filename, "ProgramAndReset");
+    }
+
+    void apiQueryStatus(const String &reqStr, String &respStr)
     {
         Log.verbose("RestAPIBusRaider: apiQueryStatus %s\n", reqStr.c_str());
         respStr = machineInterface.getStatus();
     }
     
-    void apiQueryESPHealth(String &reqStr, String &respStr)
+    void apiQueryESPHealth(const String &reqStr, String &respStr)
     {
         Log.verbose("RestAPIBusRaider: queryESPHealth %s\n", reqStr.c_str());
         String healthStr;
@@ -94,9 +154,9 @@ class RestAPIBusRaider
     }
 
     void apiESPFirmwarePart(String filename, size_t contentLen, size_t index, 
-                    uint8_t *data, size_t len, bool final)
+                    uint8_t *data, size_t len, bool finalBlock)
     {
-        Log.trace("apiESPFirmwarePart %d, %d, %d, %d\n", contentLen, index, len, final);
+        Log.trace("apiESPFirmwarePart %d, %d, %d, %d\n", contentLen, index, len, finalBlock);
         // Check if first part
         if (index == 0)
         {
@@ -122,7 +182,7 @@ class RestAPIBusRaider
             }
         }
         // Check if final block
-        if (final)
+        if (finalBlock)
         {
             if (Update.isFinished())
             {
@@ -153,6 +213,24 @@ class RestAPIBusRaider
                             std::bind(&RestAPIBusRaider::apiTargetCommand, this,
                                     std::placeholders::_1, std::placeholders::_2),
                             "Target command");
+        endpoints.addEndpoint("sendfiletotargetbuffer", 
+                            RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                            RestAPIEndpointDef::ENDPOINT_GET, 
+                            std::bind(&RestAPIBusRaider::apiSendFileToTargetBuffer, this,
+                                    std::placeholders::_1, std::placeholders::_2),
+                            "Send file to target buffer - from file system to target buffer");                            
+        endpoints.addEndpoint("appendfiletotargetbuffer", 
+                            RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                            RestAPIEndpointDef::ENDPOINT_GET, 
+                            std::bind(&RestAPIBusRaider::apiAppendFileToTargetBuffer, this,
+                                    std::placeholders::_1, std::placeholders::_2),
+                            "Append file to target buffer - from file system to target buffer");                            
+        endpoints.addEndpoint("runfileontarget", 
+                            RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                            RestAPIEndpointDef::ENDPOINT_GET, 
+                            std::bind(&RestAPIBusRaider::runFileOnTarget, this,
+                                    std::placeholders::_1, std::placeholders::_2),
+                            "Run file on target - /fileSystem/filename - from file system");                            
 #ifdef SUPPORT_WEB_TERMINAL_REST
         endpoints.addEndpoint("postchars", 
                             RestAPIEndpointDef::ENDPOINT_CALLBACK, 
@@ -167,31 +245,45 @@ class RestAPIBusRaider
                                     std::placeholders::_1, std::placeholders::_2, 
                                     std::placeholders::_3, std::placeholders::_4));
 #endif
-        endpoints.addEndpoint("upload", 
+        endpoints.addEndpoint("uploadpisw", 
                             RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                             RestAPIEndpointDef::ENDPOINT_POST,
-                            std::bind(&RestAPIBusRaider::apiFileUploadComplete, this, 
+                            std::bind(&RestAPIBusRaider::apiUploadPiSwComplete, this, 
+                                    std::placeholders::_1, std::placeholders::_2),
+                            "Upload Pi Software", "application/json", 
+                            NULL, 
+                            true, 
+                            NULL,
+                            NULL,
+                            std::bind(&RestAPIBusRaider::apiUploadPiSwPart, this, 
+                                    std::placeholders::_1, std::placeholders::_2, 
+                                    std::placeholders::_3, std::placeholders::_4,
+                                    std::placeholders::_5, std::placeholders::_6));                                    
+        endpoints.addEndpoint("uploadtofileman", 
+                            RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                            RestAPIEndpointDef::ENDPOINT_POST,
+                            std::bind(&RestAPIBusRaider::apiUploadToFileManComplete, this, 
                                     std::placeholders::_1, std::placeholders::_2),
                             "Upload file", "application/json", 
                             NULL, 
                             true, 
                             NULL,
                             NULL,
-                            std::bind(&RestAPIBusRaider::apiFileUploadPart, this, 
+                            std::bind(&RestAPIBusRaider::apiUploadToFileManPart, this, 
                                     std::placeholders::_1, std::placeholders::_2, 
                                     std::placeholders::_3, std::placeholders::_4,
                                     std::placeholders::_5, std::placeholders::_6));                                    
         endpoints.addEndpoint("uploadandrun", 
                             RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                             RestAPIEndpointDef::ENDPOINT_POST,
-                            std::bind(&RestAPIBusRaider::apiFileUploadAndRunComplete, this, 
+                            std::bind(&RestAPIBusRaider::apiUploadAndRunComplete, this, 
                                     std::placeholders::_1, std::placeholders::_2),
                             "Upload and run file", "application/json", 
                             NULL, 
                             true, 
                             NULL,
                             NULL,
-                            std::bind(&RestAPIBusRaider::apiFileUploadPart, this, 
+                            std::bind(&RestAPIBusRaider::apiUploadAndRunPart, this, 
                                     std::placeholders::_1, std::placeholders::_2, 
                                     std::placeholders::_3, std::placeholders::_4,
                                     std::placeholders::_5, std::placeholders::_6));                                    

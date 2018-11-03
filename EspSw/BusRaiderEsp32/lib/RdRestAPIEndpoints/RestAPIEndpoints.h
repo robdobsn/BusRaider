@@ -9,7 +9,7 @@
 // Callback function for any endpoint
 typedef std::function<void(String &reqStr, String &respStr)> RestAPIFunction;
 typedef std::function<void(uint8_t *pData, size_t len, size_t index, size_t total)> RestAPIFnBody;
-typedef std::function<void(String filename, size_t contentLen, size_t index, uint8_t *data, size_t len, bool final)> RestAPIFnUpload;
+typedef std::function<void(String filename, size_t contentLen, size_t index, uint8_t *data, size_t len, bool finalBlock)> RestAPIFnUpload;
 
 // Definition of an endpoint
 class RestAPIEndpointDef
@@ -82,10 +82,10 @@ class RestAPIEndpointDef
     }
 
     void callbackUpload(String &filename, size_t contentLen, size_t index,
-                         uint8_t *data, size_t len, bool final)
+                         uint8_t *data, size_t len, bool finalBlock)
     {
         if (_callbackUpload)
-            _callbackUpload(filename, contentLen, index, data, len, final);
+            _callbackUpload(filename, contentLen, index, data, len, finalBlock);
     }
 
 };
@@ -192,6 +192,7 @@ class RestAPIEndpoints
             argStart++;
         }
         // Check against valid commands
+        bool endpointMatched = false;
         int numEndpoints = getNumEndpoints();
         Log.verbose("RestAPIEndpoints: reqStr %s requestEndpoint %s, num endpoints %d\n", 
                     requestStr, requestEndpoint.c_str(), numEndpoints);
@@ -210,7 +211,12 @@ class RestAPIEndpoints
             {
                 String reqStr(requestStr);
                 pEndpoint->callback(reqStr, retStr);
+                endpointMatched = true;
             }
+        }
+        if (!endpointMatched)
+        {
+            Log.notice("RestAPIEndpoints: endpoint %s not found\n", requestEndpoint.c_str());
         }
     }
 

@@ -39,6 +39,7 @@ extern void wgfx_set_framebuffer(void* p_framebuffer, unsigned int width, unsign
     unsigned int pitch, unsigned int size);
 extern void wgfx_clear();
 
+extern void wgfx_term_putchar(char ch);
 extern void wgfx_term_putstring(const char* str);
 extern int wgfx_get_term_width();
 

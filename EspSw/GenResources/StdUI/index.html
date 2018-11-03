@@ -8,7 +8,8 @@
     <script type="text/javascript">
         function bodyIsLoaded() {
             window.pageState = {
-                uploadProgress: []
+                uploadProgress: [],
+                latestFileInfo: null
             }
 
             // Select
@@ -39,6 +40,9 @@
 
             // Populate machine list
             callAjax("/querystatus", populateMcList);
+
+            // Request file list to display
+            fileListUpdate();
 
             // // Create terminal emulator
             // window.pageState.term = new TerminalEmulator("term", true, true, 80, 25, false, 25);
@@ -114,8 +118,8 @@
             var dt = e.dataTransfer;
             var files = dt.files;
             let regionId = e.currentTarget.id;
-            if (regionId === "upload-only")
-                uploadOnlyFiles(files);
+            if (regionId === "file-manager")
+                uploadToFileManager(files);
             else
                 uploadAndRunFiles(files);
         }
@@ -137,15 +141,15 @@
             progressBar.value = total;
         }
 
-        function uploadOnlyFiles(files) {
+        function uploadToFileManager(files) {
             files = [...files];
-            initializeProgress(files.length, 'progress-bar-buffer');
+            initializeProgress(files.length, 'progress-bar-file-manager');
             files.forEach(uploadOnlyFile);
         }
 
         function uploadOnlyFile(file, i)
         {
-            uploadFileSpecUrl("/upload", 'progress-bar-buffer', file, i)
+            uploadFileSpecUrl("/uploadtofileman", 'progress-bar-file-manager', file, i)
         }
 
         function uploadAndRunFiles(files) {
@@ -172,9 +176,10 @@
 
             xhr.addEventListener('readystatechange', function(e) {
                 if (xhr.readyState == 4 && xhr.status == 200) {
-                    updateProgress(i, 100, progressBarName) // <- Add this
+                    updateProgress(i, 100, progressBarName)
+                    fileListUpdate();
                 } else if (xhr.readyState == 4 && xhr.status != 200) {
-                    // Error. Inform the user
+                    // Error
                 }
             });
 
@@ -195,17 +200,29 @@
             sendCmdToTarget("setmachine=" + mcName);
         }
 
-        function callAjax(url, callback) {
-            // code for IE7+, Firefox, Chrome, Opera, Safari
+        function callAjax(url, okCallback, failCallback)
+        {
             let xmlhttp = new XMLHttpRequest();
-            xmlhttp.onreadystatechange = function () {
-                if (xmlhttp.readyState === 4 && xmlhttp.status === 200) {
-                    callback(xmlhttp.responseText);
+            xmlhttp.onreadystatechange = function()
+            {
+                if (xmlhttp.readyState === 4)
+                {
+                    if (xmlhttp.status === 200)
+                    {
+                        if ((okCallback !== undefined) && (typeof okCallback !== 'undefined'))
+                            okCallback(xmlhttp.responseText);
+                    }
+                    else
+                    {
+                        if ((failCallback !== undefined) && (typeof failCallback !== 'undefined'))
+                            failCallback(xmlhttp);
+                    }
                 }
             };
+
             xmlhttp.open("GET", url, true);
             xmlhttp.send();
-        }    
+        }
 
         function setupSelectMachine(callback) {
             let selectS = document.getElementsByClassName("select-style");
@@ -282,10 +299,101 @@
             // Click outside the document - close all selects
             document.addEventListener("click", closeAllSelect);
         }
-    
 
+        function fileListUpdate()
+        {
+            callAjax("/filelist/SPIFFS", fileListUpdateOk, fileListUpdateFail)
+            // fileListUpdateOk('{"rslt":"ok","diskSize":1374476,"diskUsed":4518,"folder":"/","files":[{"name":"/level1.rom","size":4096}]}');
+        }
+
+        function fileListUpdateFail()
+        {
+        }
+
+        function fileSizeSI(size) {
+            let e = (Math.log(size) / Math.log(1e3)) | 0;
+            return +(size / Math.pow(1e3, e)).toFixed(2) + ' ' + ('kMGTPEZY'[e - 1] || '') + 'B';
+        }
+
+        function fileListUpdateOk(resp)
+        {
+            // Parse status received
+            let fileListInfo = JSON.parse(resp);
+            window.pageState.latestfileListInfo = fileListInfo;
+
+            // Show info
+            if (fileListInfo.diskSize)
+            {
+                let fileSystemInfo = document.getElementById("file-system-info");
+                let fsInfoStr = "<b>Disk Size:</b> " + fileSizeSI(fileListInfo.diskSize) + ", <b>Free Bytes:</b> " + fileSizeSI(fileListInfo.diskSize - fileListInfo.diskUsed);
+                fileSystemInfo.innerHTML = fsInfoStr;
+            }
+
+            // Clear the table
+            let tabFiles = document.getElementById("table_files");
+            let rowCount = tabFiles.rows.length;
+            for (let i = rowCount-1; i > 0; i--)
+                tabFiles.deleteRow(i);
+
+            // Add rows
+            for (let i = 0; i < fileListInfo.files.length; i++)
+            {
+                let filename = fileListInfo.files[i].name;
+                filename = filename.replace("/","");
+                let filesize = fileListInfo.files[i].size;
+                let row = '<tr data-file="' + filename + '">';
+                row += '<td class=file-actions">'
+                row += '<a class="btn btn-fileaction tooltip" onclick="deleteFile(\'' + filename + '\')">'
+                row += '<svg class="icon-action"><use xlink:href="#ico-delete"></use></svg>'
+                row += '<span class="tooltiptext">Delete file</span>'
+                row += '</a>'
+                row += '<a class="btn btn-fileaction tooltip" onclick="sendFileToTargetBuffer(\'' + filename + '\')">'
+                row += '<svg class="icon-action"><use xlink:href="#icon-send"></use></svg>'
+                row += '<span class="tooltiptext">Send to target buffer</span>'
+                row += '</a>'
+                row += '<a class="btn btn-fileaction tooltip" onclick="appendFileToTargetBuffer(\'' + filename + '\')">'
+                row += '<svg class="icon-action"><use xlink:href="#icon-send-plus"></use></svg>'
+                row += '<span class="tooltiptext">Append to target buffer</span>'
+                row += '</a>'
+                row += '<a class="btn btn-fileaction tooltip" onclick="runFileOnTarget(\'' + filename + '\')">'
+                row += '<svg class="icon-action"><use xlink:href="#ico-play"></use></svg>'
+                row += '<span class="tooltiptext">Run file now</span>'                
+                row += '</a>'
+                row += '</td>'
+                row += '<td class="file-name">' + filename + '</td>';
+                row += '<td class="file-size hidden-xs">' + fileSizeSI(filesize) + '</td>';
+                row += '</tr>';
+                let newRow = tabFiles.insertRow(tabFiles.rows.length);
+                newRow.innerHTML = row;
+            }
+        }
+
+        function deleteFile(filename)
+        {
+            callAjax("/deleteFile/SPIFFS/" + filename);
+            fileListUpdate();
+        }
+
+        function sendFileToTargetBuffer(filename)
+        {
+            callAjax("/sendfiletotargetbuffer/SPIFFS/" + filename);
+        }
+
+        function appendFileToTargetBuffer(filename)
+        {
+            callAjax("/appendfiletotargetbuffer/SPIFFS/" + filename);
+        }
+
+        function runFileOnTarget(filename)
+        {
+            callAjax("/runfileontarget/SPIFFS/" + filename);
+        }
+    
     </script>
     <style>
+        * {
+            box-sizing: border-box;
+        }
         body {
             font-family: Helvetica;
             line-height: 1.4em;
@@ -301,6 +409,30 @@
             color: #369;
         }
         
+        th {
+            text-align: left;
+            font-weight: normal;
+            color: #e0e0e0;
+        }
+        td, th {
+            padding: 0;
+            display: table-cell;
+            text-align: left;
+        }
+        table {
+            border-spacing: 0;
+            border-collapse: collapse;
+        }
+        a {
+            text-decoration: none;
+            background-color: transparent;
+            cursor: pointer;
+            color: #e0e0e0;
+        }
+        td>a {
+            color: #337ab7;
+        } 
+
         .layout-region {
             border: 2px #ccc;
             border-radius: 20px;
@@ -338,6 +470,36 @@
             background: #666;
         }
         
+        .btn {
+            display: inline-block;
+            padding: 6px 12px;
+            margin-bottom: 0;
+            font-size: 14px;
+            font-weight: normal;
+            line-height: 1.42857143;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+            touch-action: manipulation;
+            cursor: pointer;
+            user-select: none;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            text-decoration: none;
+        }
+
+        .btn-fileaction {
+            padding: 0 5px;
+        }
+
+        .icon-action {
+            color: #e0e0e0;
+            fill: #e0e0e0;
+            width: 32px;
+            height: 32px;
+            vertical-align: middle;
+        }
+
         #fileElem {
             display: none;
         }
@@ -441,7 +603,72 @@
         }
         .select-items div:hover, .same-as-selected {
             background-color: rgba(0, 0, 0, 0.1);
-        }        
+        }
+        .uiPanelSub {
+            margin-bottom: 10px;
+        }
+        .uiTable {
+            border: 0;
+            width: 100%;
+            max-width: 100%;
+            border-spacing: 0;
+            border-collapse: collapse;
+            background-color: transparent;
+            text-align: center;
+            vertical-align: middle !important;
+        }
+        .uiTable>thead>tr>th {
+            vertical-align: bottom;
+            border-bottom: 2px solid #666;
+        }
+        .uiTable>thead>tr>th, .uiTable>tbody>tr>th, .uiTable>tfoot>tr>th, .uiTable>thead>tr>td, .uiTable>tbody>tr>td, .uiTable>tfoot>tr>td {
+            padding: 8px;
+            line-height: 1.42857143;
+            vertical-align: center;
+            border-top: 1px solid #666;
+        }
+        .uiTable>caption+thead>tr:first-child>th, .uiTable>colgroup+thead>tr:first-child>th, .uiTable>thead:first-child>tr:first-child>th, .uiTable>caption+thead>tr:first-child>td, .uiTable>colgroup+thead>tr:first-child>td, .uiTable>thead:first-child>tr:first-child>td {
+            border-top: 0;
+        }
+        .uiTableBordered>thead>tr>th, .uiTableBordered>tbody>tr>th, .uiTableBordered>tfoot>tr>th, .uiTableBordered>thead>tr>td, .uiTableBordered>tbody>tr>td, .uiTableBordered>tfoot>tr>td {
+            border: 1px solid #666;
+        }
+        .uiTableBordered>thead>tr>th, .table-bordered>thead>tr>td {
+            border-bottom-width: 2px;
+        }
+        .uiTableBordered {
+            border: 1px solid #666;
+            vertical-align: center;
+        }
+        .uiTableFiles {
+            margin-bottom: 15px;
+        }
+        .tooltip {
+            position: relative;
+            display: inline-block;
+            border-bottom: 1px dotted black;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 120px;
+            background-color: black;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+            position: absolute;
+            z-index: 1;
+            bottom: 100%;
+            left: 50%;
+            margin-left: -60px;   
+            /* Fade in tooltip - takes 1 second to go from 0% to 100% opac: */
+            opacity: 0;
+            transition: opacity 1s;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
     </style>
 </head>
 
@@ -452,33 +679,69 @@
             <h1>Bus-Raider Control Panel</h1>
         </div>
         <div id="machine-select-area" class="layout-region">
-            <form class="machine-select-form">
-                <p>Select target machine</p>
-                <div class="select-style">
-                    <select id="machine-select">
-                    </select>
-                </div>
-            </form>
+            <div class="uiPanelSub">
+                <form class="machine-select-form">
+                    <p>Select target machine</p>
+                    <div class="select-style">
+                        <select id="machine-select">
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="uiPanelSub">
+                <span class="button" onclick="sendCmdToTarget('resettarget')">Reset target</span>
+                <span class="button" onclick="sendCmdToTarget('cleartarget')">Clear target buffer</span>
+                <span class="button" onclick="sendCmdToTarget('programtarget')">Program from buffer</span>
+                <span class="button" onclick="sendCmdToTarget('programandreset')">Program and reset</span>
+            </div>
         </div>
         <div id="upload-and-run" class="layout-region drop-zone">
-            <form class="file-upload-form">
-                <p>Drop files to upload and immediately run on the target</p>
-                <input type="file" id="fileElem" onchange="uploadAndRunFiles(this.files)">
-                <label class="button" for="fileElem">Select a file to run</label>
-            </form>
+            <div class="uiPanelSub">
+                <form class="file-upload-form">
+                    <p>Drop files to immediately run on the target</p>
+                    <input type="file" id="fileElem" onchange="uploadAndRunFiles(this.files)">
+                    <label class="button" for="fileElem">Select a file to immediately run</label>
+                </form>
+            </div>
             <progress id="progress-bar-run" max=100 value=0></progress>
         </div>
-        <div id="upload-only" class="layout-region drop-zone">
+<!--         <div id="upload-only" class="layout-region drop-zone">
             <form class="file-upload-form">
                 <p>Drop files to upload to the Bus-Raider's buffer</p>
-                <input type="file" id="fileElem" onchange="uploadOnlyFiles(this.files)">
+                <input type="file" id="fileElem" onchange="uploadToFileManager(this.files)">
                 <label class="button" for="fileElem">Select a file to upload</label>
             </form>
             <progress id="progress-bar-buffer" max=100 value=0></progress>
-            <span class="button" onclick="sendCmdToTarget('cleartarget')">Clear Bus-Raider's buffer</span>
+
             <span class="button" onclick="sendCmdToTarget('programtarget')">Send to target</span>
-            <span class="button" onclick="sendCmdToTarget('resettarget')">Reset target</span>
-            <!-- <span class="button" onclick="sendCmdToTarget('ioclrtarget')">Clear all RC2014 IO</span> -->
+
+            <span class="button" onclick="sendCmdToTarget('ioclrtarget')">Clear all RC2014 IO</span> 
+        </div> -->
+        <div id="file-manager" class="layout-region drop-zone">
+            <form class="file-upload-form">
+                <div class=uiPanelSub>
+                    <p>Drop files to upload to ESP32 file system</p>
+                    <input type="file" id="fileElem" onchange="uploadToFileManager(this.files)">
+                    <label class="button" for="fileElem">Select a file to upload</label>
+                </div>
+                <progress id="progress-bar-file-manager" max=100 value=0></progress>
+                <div id="file-system-info" class="uiPanelSub"><span></span></div>
+                <table class="uiTable uiTableBordered uiTableFiles uiTableStripe" id="table_files">
+                    <thead>
+                        <tr>
+                            <th><a href="#" data-attribute="action">Actions</a>
+                            </th>
+                            <th><a href="#" data-attribute="filename">File Name</a>
+                            </th>
+                            <th><a href="#" data-attribute="size">Size</a>
+                            </th>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </form>
         </div>
 <!--         <div id="terminal-area" class="layout-region">
         </div>
@@ -486,6 +749,34 @@
             <p>Developed by Rob Dobson 2018, inspired by RC2014 and PiGFX</p>
         </div>
     </div>
+
+    <!-- SVG icons -->
+    <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+         xml:space="preserve">
+        <symbol id="icon-send" viewBox="0 0 1200 1200" >
+            <g>
+                <path d="M1200 103l-483 276l-314 -399v423h-399l1196 796v-1096zM483 424v-230l683 953z"
+                      transform="scale(1,-1) translate(0,-1200)"></path>
+            </g>
+        </symbol>
+        <symbol id="icon-send-plus" viewBox="0 0 1200 1200" >
+            <g>
+                <path d="M 507.57247,298.94304 H 318.98641 V 487.52909 H 261.54552 V 298.94304 H 72.959465 V 243.57832 H 261.54552 V 54.992266 h 57.44089 V 243.57832 H 507.57247 Z M 1200,1100.9135 l -483,-276 -314,399 v -423 H 4 L 1200,4.9135045 Z m -717,-321 v 230 L 1166,56.913505 Z"></path>
+            </g>
+        </symbol>
+        <symbol id="ico-play" viewBox="0 0 233 233">
+            <g>
+                <path d="M203.791,99.628L49.307,2.294c-4.567-2.719-10.238-2.266-14.521-2.266
+        c-17.132,0-17.056,13.227-17.056,16.578v198.94c0,2.833-0.075,16.579,17.056,16.579c4.283,0,9.955,0.451,14.521-2.267
+        l154.483-97.333c12.68-7.545,10.489-16.449,10.489-16.449S216.471,107.172,203.791,99.628z"/>
+            </g>
+        </symbol>
+        <symbol id="ico-delete" viewBox="0 0 26 26">
+            <g>
+                <path d="M 11 -0.03125 C 10.164063 -0.03125 9.34375 0.132813 8.75 0.71875 C 8.15625 1.304688 7.96875 2.136719 7.96875 3 L 4 3 C 3.449219 3 3 3.449219 3 4 L 2 4 L 2 6 L 24 6 L 24 4 L 23 4 C 23 3.449219 22.550781 3 22 3 L 18.03125 3 C 18.03125 2.136719 17.84375 1.304688 17.25 0.71875 C 16.65625 0.132813 15.835938 -0.03125 15 -0.03125 Z M 11 2.03125 L 15 2.03125 C 15.546875 2.03125 15.71875 2.160156 15.78125 2.21875 C 15.84375 2.277344 15.96875 2.441406 15.96875 3 L 10.03125 3 C 10.03125 2.441406 10.15625 2.277344 10.21875 2.21875 C 10.28125 2.160156 10.453125 2.03125 11 2.03125 Z M 4 7 L 4 23 C 4 24.652344 5.347656 26 7 26 L 19 26 C 20.652344 26 22 24.652344 22 23 L 22 7 Z M 8 10 L 10 10 L 10 22 L 8 22 Z M 12 10 L 14 10 L 14 22 L 12 22 Z M 16 10 L 18 10 L 18 22 L 16 22 Z "/>
+            </g>
+        </symbol>
+    </svg>
 </body>
 
 </html>

@@ -123,16 +123,14 @@ void McTerminal::displayRefresh()
     }
 }
 
-// Handle a key press
-void McTerminal::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_unused]] const unsigned char rawKeys[6])
+int McTerminal::convertRawToAscii(unsigned char ucModifiers, const unsigned char rawKeys[6])
 {
-    // Send chars to host
     int asciiCode = 0;
     int rawKey = rawKeys[0];
     bool shiftPressed = (ucModifiers & KEY_MOD_LSHIFT) || (ucModifiers & KEY_MOD_RSHIFT);
     // bool ctrlPressed = (ucModifiers & KEY_MOD_LCTRL) || (ucModifiers & KEY_MOD_RCTRL);
     if ((rawKey == KEY_NONE) || (rawKey == KEY_ERR_OVF))
-        return;
+        return 0;
     if ((rawKey >= KEY_A) && (rawKey <= KEY_Z)) {
         // Handle A-Z
         asciiCode = (rawKey-KEY_A) + (shiftPressed ? 'A' : 'a');
@@ -191,6 +189,15 @@ void McTerminal::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_
         // Handle Space
         asciiCode = 0x20;
     }
+    return asciiCode;
+}
+
+// Handle a key press
+void McTerminal::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_unused]] const unsigned char rawKeys[6])
+{
+    int asciiCode = convertRawToAscii(ucModifiers, rawKeys);
+
+    // Send chars to host
     if (asciiCode == 0)
         return;
 

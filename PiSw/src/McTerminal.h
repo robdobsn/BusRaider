@@ -60,6 +60,9 @@ class McTerminal : public McBase
     // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
     static uint32_t memoryRequestCallback(uint32_t addr, uint32_t data, uint32_t flags);
 
+    // Convert raw USB code to ASCII
+    static int convertRawToAscii(unsigned char ucModifiers, const unsigned char rawKeys[6]);
+
   private:
     void clearScreen();
     void dispChar(uint8_t ch);
