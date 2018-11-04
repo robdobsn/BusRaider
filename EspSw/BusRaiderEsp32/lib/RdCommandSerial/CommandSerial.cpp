@@ -3,11 +3,13 @@
 
 #include "CommandSerial.h"
 
+static const char* MODULE_PREFIX = "CommandSerial: ";
+
 void CommandSerial::setup(ConfigBase& config)
 {
     // Get config
     ConfigBase csConfig(config.getString("commandSerial", "").c_str());
-    Log.notice("CommandSerial: config %s\n", csConfig.getConfigData());
+    Log.notice("%sconfig %s\n", MODULE_PREFIX, csConfig.getConfigData());
 
     // Get serial port
     _serialPortNum = csConfig.getLong("portNum", -1);
@@ -24,25 +26,25 @@ void CommandSerial::setup(ConfigBase& config)
         if (_serialPortNum == 1)
         {
             _pSerial->begin(_baudRate, SERIAL_8N1, 16, 17, false);
-            Log.notice("CommandSerial: portNum %d, baudRate %d, rxPin %d, txPin %d\n",
+            Log.notice("%sportNum %d, baudRate %d, rxPin %d, txPin %d\n", MODULE_PREFIX,
                             _serialPortNum, _baudRate, 16, 17);
         }
         else if (_serialPortNum == 2)
         {
             _pSerial->begin(_baudRate, SERIAL_8N1, 26, 25, false);
-            Log.notice("CommandSerial: portNum %d, baudRate %d, rxPin %d, txPin %d\n",
+            Log.notice("%sportNum %d, baudRate %d, rxPin %d, txPin %d\n", MODULE_PREFIX,
                             _serialPortNum, _baudRate, 26, 25);
         }
         else
         {
             _pSerial->begin(_baudRate);
-            Log.notice("CommandSerial: portNum %d, baudRate %d, rxPin %d, txPin %d\n",
+            Log.notice("%sportNum %d, baudRate %d, rxPin %d, txPin %d\n", MODULE_PREFIX,
                             _serialPortNum, _baudRate, 3, 1);
         }
     }
     else
     {
-        Log.notice("CommandSerial: failed portNum %d, baudRate %d\n",
+        Log.notice("%sfailed portNum %d, baudRate %d\n", MODULE_PREFIX,
                         _serialPortNum, _baudRate);
     }
 }
@@ -136,7 +138,7 @@ void CommandSerial::service()
             {
                 // Tidy up if finished
                 if (!finalChunk)
-                    Log.warning("CommandSerial: upload 0 len but not final\n");
+                    Log.warning("%supload 0 len but not final\n", MODULE_PREFIX);
                 _uploadFromFSInProgress = false;
             }
         }
@@ -150,18 +152,18 @@ void CommandSerial::service()
         {
             _uploadFromFSInProgress = false;
             _uploadFromAPIInProgress = false;
-            Log.notice("CommandSerial: Upload block timed out\n");
+            Log.notice("%sUpload block timed out\n", MODULE_PREFIX);
         }
         if (Utils::isTimeout(millis(), _uploadStartMs, MAX_UPLOAD_MS))
         {
             _uploadFromFSInProgress = false;
             _uploadFromAPIInProgress = false;
-            Log.notice("CommandSerial: Upload timed out\n");
+            Log.notice("%sUpload timed out\n", MODULE_PREFIX);
         }
     }
 }
 
-void CommandSerial::sendFileStartRecord(const char* fileType, String& filename, int fileLength)
+void CommandSerial::sendFileStartRecord(const char* fileType, const String& filename, int fileLength)
 {
     String frame = "{\"cmdName\":\"ufStart\",\"fileType\":\"" + String(fileType) + "\",\"fileName\":\"" + filename + "\",\"fileLen\":" + String(fileLength) + "}";
     _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
@@ -205,9 +207,9 @@ void CommandSerial::sendTargetData(const String& cmdName, const uint8_t* pData, 
     delete [] pFrameBuf;
 }
 
-void CommandSerial::uploadCommonBlockHandler(const char* fileType, String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock)
+void CommandSerial::uploadCommonBlockHandler(const char* fileType, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock)
 {
-    Log.verbose("CommandSerial: %s, total %d, idx %d, len %d, final %d, fs %s api %s\n", 
+    Log.verbose("%s%s, total %d, idx %d, len %d, final %d, fs %s api %s\n", MODULE_PREFIX, 
                 filename.c_str(), fileLength, index, len, finalBlock, 
                 (_uploadFromFSInProgress ? "yes" : "no"), (_uploadFromAPIInProgress ? "yes" : "no"));
 
@@ -216,12 +218,12 @@ void CommandSerial::uploadCommonBlockHandler(const char* fileType, String& filen
     {
         _uploadFileType = fileType;
         sendFileStartRecord(fileType, filename, fileLength);
-        Log.verbose("CommandSerial: new upload started\n");
+        Log.verbose("%snew upload started\n", MODULE_PREFIX);
     }
 
     // Send the block
     sendFileBlock(index, data, len);
-    Log.verbose("CommandSerial: block sent\n");
+    Log.verbose("%sblock sent\n", MODULE_PREFIX);
     _blockCount++;
 
     // For timeouts        
@@ -231,11 +233,12 @@ void CommandSerial::uploadCommonBlockHandler(const char* fileType, String& filen
     if (finalBlock)
     {
         sendFileEndRecord(_blockCount);
-        Log.verbose("CommandSerial: file end sent\n");
+        Log.verbose("%sfile end sent\n", MODULE_PREFIX);
         if (_uploadTargetCommandWhenComplete.length() != 0)
         {
             sendTargetCommand(_uploadTargetCommandWhenComplete);
-            Log.verbose("CommandSerial: post-upload target command sent %s\n", _uploadTargetCommandWhenComplete.c_str());
+            Log.verbose("%spost-upload target command sent %s\n", MODULE_PREFIX,
+                    _uploadTargetCommandWhenComplete.c_str());
         }
         _uploadTargetCommandWhenComplete = "";
         _uploadFromFSInProgress = false;
@@ -244,37 +247,43 @@ void CommandSerial::uploadCommonBlockHandler(const char* fileType, String& filen
 }
 
 // Upload from API
-void CommandSerial::uploadAPIBlockHandler(const char* fileType, String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock)
+void CommandSerial::uploadAPIBlockHandler(const char* fileType, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock)
 {
     // Check there isn't an upload in progress from FS
     if (_uploadFromFSInProgress)
     {
-        Log.notice("CommandSerial: uploadAPIBlockHandler upload already in progress\n");
+        Log.notice("%suploadAPIBlockHandler upload already in progress\n", MODULE_PREFIX);
         return;
     }
 
-    // Upload now in progress
-    _uploadFromAPIInProgress = true;
-    _blockCount = 0;
-    _uploadStartMs = millis();
-    _uploadLastBlockMs = millis();
+    // Check upload from API already in progress
+    if (!_uploadFromAPIInProgress)
+    {
+        // Upload now in progress
+        _uploadFromAPIInProgress = true;
+        _blockCount = 0;
+        _uploadStartMs = millis();
+    }
+    
+    // Commmon handler
+    uploadCommonBlockHandler(fileType, filename, fileLength, index, data, len, finalBlock);
 }
 
 // Upload a file from the file system
-bool CommandSerial::startUploadFromFileSystem(String& fileSystemName, String& filename,
+bool CommandSerial::startUploadFromFileSystem(const String& fileSystemName, const String& filename,
                 const char* pTargetCmdWhenDone)
 {
     // Check no upload is already happening
     if (uploadInProgress())
     {
-        Log.notice("CommandSerial: startUploadFromFileSystem upload already in progress\n");
+        Log.notice("%sstartUploadFromFileSystem upload already in progress\n", MODULE_PREFIX);
         return false;
     }
 
     // Start a chunked file session
     if (!_fileManager.chunkedFileStart(fileSystemName, filename, false))
     {
-        Log.trace("CommandSerial: startUploadFromFileSystem failed to start %s\n", filename);
+        Log.trace("%sstartUploadFromFileSystem failed to start %s\n", MODULE_PREFIX, filename);
         return false;
     }
 

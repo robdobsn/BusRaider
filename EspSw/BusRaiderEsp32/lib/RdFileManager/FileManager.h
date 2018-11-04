@@ -102,6 +102,37 @@ public:
         return true;
     }
 
+    String getFileContents(const char* fileSystem, const String& filename, int maxLen)
+    {
+        // Only SPIFFS supported
+        if (strcmp(fileSystem, "SPIFFS") != 0)
+            return "";
+
+        // Open file
+        File file = SPIFFS.open(filename, FILE_READ);
+        if (!file)
+        {
+            Log.trace("FileManager: failed to open file %s\n", filename);
+            return "";
+        }
+
+        // Buffer
+        uint8_t* pBuf = new uint8_t[maxLen+1];
+        if (!pBuf)
+        {
+            Log.trace("FileManager: failed to allocate %d\n", maxLen);
+            return "";
+        }
+
+        // Read
+        size_t bytesRead = file.read(pBuf, maxLen);
+        file.close();
+        pBuf[bytesRead] = 0;
+        String readData = (char*)pBuf;
+        delete [] pBuf;
+        return readData;
+    }
+
     void uploadAPIBlockHandler(const char* fileSystem, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock)
     {
         Log.trace("FileManager: uploadAPIBlockHandler fileSys %s, filename %s, total %d, idx %d, len %d, final %d\n", 
@@ -119,7 +150,7 @@ public:
         File file = SPIFFS.open("/__tmp__", accessType);
         if (!file)
         {
-            Log.trace("FileManager: failed to open to __tmp__ file\n");
+            Log.trace("FileManager: failed to open __tmp__ file\n");
             return;
         }
         if (!file.write(data, len))

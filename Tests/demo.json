@@ -1,0 +1,6 @@
+{"demo":[
+    {"file":"level1.rom", "mc":"TRS80"},
+    {"file":"galinv1d.cmd", "mc":"TRS80", "preload":["level1.rom"]}
+    {"file":"48.rom", "mc":"ZX Spectrum"},
+    {"file":"lissajous.rom", "mc":"Rob's Z80"}
+]}

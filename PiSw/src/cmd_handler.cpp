@@ -41,6 +41,9 @@ static char _espIPAddress[MAX_IP_ADDR_STR] = "";
 static char _espWifiConnStr[MAX_WIFI_CONN_STR] = "";
 static char _espWifiSSID[MAX_WIFI_SSID_STR] = "";
 
+// OTA update space
+extern uint8_t* __otaUpdateBuffer;
+
 void cmdHandler_getESPHealth(bool* espIPAddressValid, char** espIPAddress, char** espWifiConnStr, char** espWifiSSID)
 {
     *espIPAddressValid = _espIPAddressValid;
@@ -164,14 +167,23 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         {
             LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd IMG firmware update File %s, len %d", _receivedFileName, _receivedFileBytesRx);
 
-            // Copy the blockCopyExecRelocatable() code to HEAP space
-            uint8_t* pCopyBlockNewLocation = (uint8_t*)nmalloc_malloc(blockCopyExecRelocatableLen);
-            if (!pCopyBlockNewLocation)
-            {
-                LogWrite(FromCmdHandler, LOG_ERROR, "cannot create space for blockCopyExecRelocatable fn, len %d", blockCopyExecRelocatableLen);
-                return;
-            }
+            // Copy the blockCopyExecRelocatable() code to otaUpdateBuffer
+            uint8_t* pCopyBlockNewLocation = __otaUpdateBuffer; // (uint8_t*)nmalloc_malloc(blockCopyExecRelocatableLen);
+            // if (!pCopyBlockNewLocation)
+            // {
+            //     LogWrite(FromCmdHandler, LOG_ERROR, "cannot create space for blockCopyExecRelocatable fn, len %d", blockCopyExecRelocatableLen);
+            //     return;
+            // }
             memcpy((void*)pCopyBlockNewLocation, (void*)blockCopyExecRelocatable, blockCopyExecRelocatableLen);
+
+            // Copy the received data to otaUpdateBuffer
+            uint8_t* pRxDataNewLocation = __otaUpdateBuffer + blockCopyExecRelocatableLen; // (uint8_t*)nmalloc_malloc(_receivedFileBytesRx);
+            // if (!pRxDataNewLocation)
+            // {
+            //     LogWrite(FromCmdHandler, LOG_ERROR, "cannot create space for rxDataNewLocation, len %d", _receivedFileBytesRx);
+            //     return;
+            // }
+            memcpy((void*)pRxDataNewLocation, (void*)_pReceivedFileDataPtr, _receivedFileBytesRx);
 
             // Call the copyblock function in it's new location
             blockCopyExecRelocatableFnT* pCopyBlockFn = (blockCopyExecRelocatableFnT*) pCopyBlockNewLocation;
@@ -179,7 +191,7 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
 
             // Call the copyBlock function in its new location using it to move the program
             // to 0x8000 the base address for Pi programs
-            (*pCopyBlockFn) ((uint8_t*)0x8000, _pReceivedFileDataPtr, _receivedFileBytesRx, (uint8_t*)0x8000);
+            (*pCopyBlockFn) ((uint8_t*)0x8000, pRxDataNewLocation, _receivedFileBytesRx, (uint8_t*)0x8000);
         }
         else
         {
@@ -322,21 +334,39 @@ void cmdHandler_frameHandler(const uint8_t *framebuffer, int framelength)
     cmdHandler_procCommand(cmdStr, pDataPtr, dataLen);
 }
 
+void cmdHandler_sendWithJSON(const char* cmdName, const char* cmdJson)
+{
+    // Form and send command
+    static const int MAX_CMD_STR_LEN = 1500;
+    static char cmdStr[MAX_CMD_STR_LEN+1];
+    strncpy(cmdStr, "{\"cmdName\":\"", MAX_CMD_STR_LEN);
+    strncpy(cmdStr+strlen(cmdStr), cmdName, MAX_CMD_STR_LEN);
+    strncpy(cmdStr+strlen(cmdStr), "\",", MAX_CMD_STR_LEN);
+    strncpy(cmdStr+strlen(cmdStr), cmdJson, MAX_CMD_STR_LEN);
+    strncpy(cmdStr+strlen(cmdStr), "}", MAX_CMD_STR_LEN);
+    minihdlc_send_frame((const uint8_t*)cmdStr, strlen(cmdStr)+1);
+}
+
+void cmdHandler_sendAPIReq(const char* reqLine)
+{
+    // Form and send
+    static const int MAX_REQ_STR_LEN = 100;
+    static char reqStr[MAX_REQ_STR_LEN+1];
+    strncpy(reqStr, "\"req\":\"", MAX_REQ_STR_LEN);
+    strncpy(reqStr+strlen(reqStr), reqLine, MAX_REQ_STR_LEN);
+    strncpy(reqStr+strlen(reqStr), "\",", MAX_REQ_STR_LEN);
+    cmdHandler_sendWithJSON("apiReq", reqStr);
+}
+
 // Send status update
 void cmdHandler_sendReqStatusUpdate()
 {
     // Send update
-    static const int MAX_STATUS_CMD_STR_LEN = 1500;
-    static char statusStr[MAX_STATUS_CMD_STR_LEN+1];
     const char* mcJSON = McManager::getMachineJSON();
-    strncpy(statusStr, "{\"cmdName\":\"statusUpdate\",", MAX_STATUS_CMD_STR_LEN);
-    strncpy(statusStr+strlen(statusStr), mcJSON, MAX_STATUS_CMD_STR_LEN);
-    strncpy(statusStr+strlen(statusStr), "}", MAX_STATUS_CMD_STR_LEN);
-    minihdlc_send_frame((const uint8_t*)statusStr, strlen(statusStr)+1);
+    cmdHandler_sendWithJSON("statusUpdate", mcJSON);
 
     // Request update
-    strncpy(statusStr, "{\"cmdName\":\"apiReq\",\"req\":\"queryESPHealth\"}", MAX_STATUS_CMD_STR_LEN);
-    minihdlc_send_frame((const uint8_t*)statusStr, strlen(statusStr)+1);
+    cmdHandler_sendAPIReq("queryESPHealth");
 }
 
 // Send status update

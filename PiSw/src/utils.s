@@ -101,6 +101,7 @@ strcmp:
     bx lr
 
 ;@ blockCopyExecRelocatable - copied to heap and used for firmware update
+;@ params: dest, source, len, execAddr
 .global blockCopyExecRelocatable
 blockCopyExecRelocatable:
     push {r3}

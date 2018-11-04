@@ -21,7 +21,7 @@
 #include "McTerminal.h"
 
 // Program details
-static const char* PROG_VERSION = "RC2014 Bus Raider V1.6.024";
+static const char* PROG_VERSION = "         RC2014 Bus Raider V1.6.028";
 static const char* PROG_CREDITS = "Rob Dobson 2018 (inspired by PiGFX)";
 
 // Baud rate
@@ -38,6 +38,10 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
     // Check for immediate mode
     if (rawKeys[0] == KEY_F2)
     {
+        if (!_immediateMode)
+        {
+            ee_printf("Entering immediate mode, e.g. w/ssid/password/hostname<enter> to setup WiFi ...\n");
+        }
         _immediateMode = true;
         return;
     }
@@ -46,20 +50,32 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
         if (_immediateModeLineLen < IMM_MODE_LINE_MAXLEN)
         {
             int asciiCode = McTerminal::convertRawToAscii(ucModifiers, rawKeys);
+            if (asciiCode == 0)
+                return;
             if (asciiCode == 0x08)
             {
                 if (_immediateModeLineLen > 0)
                     _immediateModeLineLen--;
+                wgfx_term_putchar(asciiCode);
+                wgfx_term_putchar(' ');
             }
             else if (asciiCode == 0x0d)
             {
                 _immediateMode = false;
+                _immediateModeLine[_immediateModeLineLen] = 0;
+                if (_immediateModeLineLen > 0)
+                {
+                    cmdHandler_sendAPIReq(_immediateModeLine);
+                    ee_printf("Sent request to ESP32: %s\n", _immediateModeLine);
+                }
+                _immediateModeLineLen = 0;
             }
             else if ((asciiCode >= 32) && (asciiCode < 127))
             {
                 _immediateModeLine[_immediateModeLineLen++] = asciiCode;
             }
             wgfx_term_putchar(asciiCode);
+            // ee_printf("%x ", asciiCode);
         }
         return;
     }

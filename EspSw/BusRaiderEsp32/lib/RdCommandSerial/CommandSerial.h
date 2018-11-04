@@ -79,19 +79,19 @@ public:
     // Service 
     void service();
 
-    void sendFileStartRecord(const char* fileType, String& filename, int fileLength);
+    void sendFileStartRecord(const char* fileType, const String& filename, int fileLength);
     void sendFileBlock(size_t index, uint8_t *data, size_t len);
     void sendFileEndRecord(int blockCount);
     void sendTargetCommand(const String& targetCmd);
     void sendTargetData(const String& cmdName, const uint8_t* pData, int len, int index);
-    void uploadAPIBlockHandler(const char* fileType, String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock);
+    void uploadAPIBlockHandler(const char* fileType, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock);
 
     // Upload a file from the file system
-    bool startUploadFromFileSystem(String& fileSystemName, String& filename,
+    bool startUploadFromFileSystem(const String& fileSystemName, const String& filename,
                     const char* pTargetCmdWhenDone = NULL);
 
 private:
     void sendCharToCmdPort(uint8_t ch);
     void frameHandler(const uint8_t *framebuffer, int framelength);
-    void uploadCommonBlockHandler(const char* fileType, String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock);
+    void uploadCommonBlockHandler(const char* fileType, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock);
 };

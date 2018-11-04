@@ -4,11 +4,14 @@
 #include "AsyncTelnetServer.h"
 #include "ArduinoLog.h"
 
+static const char* SESSION_PREFIX = "AsyncTelnetSession: ";
+static const char* MODULE_PREFIX = "AsyncTelnetServer: ";
+
 AsyncTelnetSession::AsyncTelnetSession(AsyncTelnetServer *pServer, AsyncClient *pClient)
 {
     _pServer = pServer;
     _pClient = pClient;
-    Log.trace("AsyncTelnetSession: Constructed");
+    Log.trace("%sConstructed", SESSION_PREFIX);
     pClient->onError([](void *sess, AsyncClient *c, int8_t error) {
         AsyncTelnetSession *pSess = (AsyncTelnetSession *)sess;
         pSess->_onError(error);
@@ -37,47 +40,47 @@ AsyncTelnetSession::AsyncTelnetSession(AsyncTelnetServer *pServer, AsyncClient *
 
 AsyncTelnetSession::~AsyncTelnetSession()
 {
-    Log.trace("AsyncTelnetSession: Destructor");
+    Log.trace("%sDestructor", SESSION_PREFIX);
     // Delete the client
     if (_pClient)
     {
         delete _pClient;
-        Log.trace("AsyncTelnetSession: TCP client deleted heap %d pClient %d\n", ESP.getFreeHeap(), int(_pClient));
+        Log.trace("%sTCP client deleted heap %d pClient %d\n", SESSION_PREFIX, ESP.getFreeHeap(), int(_pClient));
     }
     _pClient = NULL;
 }
 
 void AsyncTelnetSession::_onError(int8_t error)
 {
-    Log.trace("AsyncTelnetSession: Error %d\n", error);
+    Log.trace("%sError %d\n", SESSION_PREFIX, error);
 }
 
 void AsyncTelnetSession::_onAck(size_t len, uint32_t time)
 {
-    Log.verbose("AsyncTelnetSession: Ack len %d time %d\n", len, time);
+    Log.verbose("%sAck len %d time %d\n", SESSION_PREFIX, len, time);
 }
 
 void AsyncTelnetSession::_onDisconnect()
 {
-    Log.trace("AsyncTelnetSession: disconnected");
+    Log.trace("%sdisconnected", SESSION_PREFIX);
     _pServer->_handleDisconnect(this);
 }
 
 void AsyncTelnetSession::_onTimeout(uint32_t time)
 {
-    Log.trace("AsyncTelnetSession: Timeout %d\n", time);
+    Log.trace("%sTimeout %d\n", SESSION_PREFIX, time);
 }
 
 void AsyncTelnetSession::_onData(void *buf, size_t len)
 {
-    Log.verbose("AsyncTelnetSession: Data len %d\n", len);
+    Log.verbose("%sData len %d\n", SESSION_PREFIX, len);
     if (_pServer)
         _pServer->_handleData((const char*)buf, len);
 }
 
 void AsyncTelnetSession::_onPoll()
 {
-    Log.verbose("AsyncTelnetSession: Poll heap free %d\n", xPortGetFreeHeapSize());
+    Log.verbose("%sPoll heap free %d\n", SESSION_PREFIX, xPortGetFreeHeapSize());
 }
 
 void AsyncTelnetSession::forceClose()
@@ -147,13 +150,13 @@ AsyncTelnetServer::AsyncTelnetServer(int port) : _server(port)
             c->free();
             delete c;
             if (pAsyncTelnetSession == NULL)
-                Log.warning("AsyncTelnetServer: Unable to allocate mem for AsyncTelnetSession");
+                Log.warning("%sUnable to allocate mem for AsyncTelnetSession", MODULE_PREFIX);
             else
-                Log.trace("AsyncTelnetServer: Too many sessions already");
+                Log.trace("%sToo many sessions already", MODULE_PREFIX);
         }
         else
         {
-            Log.trace("AsyncTelnetServer: Session created heap %d pClient %d pSess %d\n", ESP.getFreeHeap(), int(c), int(pAsyncTelnetSession));
+            Log.trace("%sSession created heap %d pClient %d pSess %d\n", MODULE_PREFIX, ESP.getFreeHeap(), int(c), int(pAsyncTelnetSession));
         }
     }, this);
 }
@@ -185,12 +188,12 @@ void AsyncTelnetServer::_handleDisconnect(AsyncTelnetSession *pSess)
             // Delete session
             delete pSess;
             deleted = true;
-            Log.trace("AsyncTelnetSession: Session deleted heap %d pSess %d\n", ESP.getFreeHeap(), int(pSess));
+            Log.trace("%sSession deleted heap %d pSess %d\n", MODULE_PREFIX, ESP.getFreeHeap(), int(pSess));
         }
     }
     if (!deleted)
     {
-        Log.trace("AsyncTelnetSession: Can't delete session pSess %d - not found\n", int(pSess));
+        Log.trace("%sCan't delete session pSess %d - not found\n", MODULE_PREFIX, int(pSess));
     }
 }
 

@@ -158,6 +158,7 @@ public:
 
     static const jsmnrtype_t getType(int& arrayLen, const char* pSourceStr)
     {
+        arrayLen = 0;
         // Check for null
         if (!pSourceStr)
             return JSMNR_UNDEFINED;

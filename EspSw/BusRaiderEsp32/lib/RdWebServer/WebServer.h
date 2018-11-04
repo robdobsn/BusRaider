@@ -13,6 +13,8 @@
 #include <ESPAsyncWebServer.h>
 #include "RestAPIEndpoints.h"
 #include "WebAutogenResources.h"
+#include "ConfigBase.h"
+#include "ConfigPinMap.h"
 
 class WebServer
 {

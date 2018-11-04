@@ -117,8 +117,6 @@ class RestAPIBusRaider
 
     void apiAppendFileToTargetBuffer(const String &reqStr, String &respStr)
     {
-        // Clear target first
-        _commandSerial.sendTargetCommand("ClearTarget");
         // File system
         String fileSystemStr = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 1);
         // Filename        

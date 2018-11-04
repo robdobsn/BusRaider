@@ -95,7 +95,7 @@ class WiFiManager
     {
         _ssid = ssid;
         _password = pw;
-        if (hostname.length() > 0)
+        if (hostname.length() == 0)
         {
             _hostname = hostname;
             Log.trace("WiFiManager: hostname not set, staying with %s\n", _hostname.c_str());

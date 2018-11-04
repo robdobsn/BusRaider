@@ -4,7 +4,8 @@ MEMORY
     ram : ORIGIN = 0x8000, LENGTH = 512M
 }
 
-heap_size = 30M;
+heap_size = 50M;
+otaUpdateBufferSize = 10M;
 
 SECTIONS
 {
@@ -27,6 +28,13 @@ SECTIONS
         _heap_end = .;
     } > ram 
 
+    .otaUpdateBuffer ALIGN(4): {
+        _otaUpdateBufferStart = .;
+        . = . + otaUpdateBufferSize;
+        _otaUpdateBufferEnd = .;
+    } > ram
+    
     .ARM.attributes 0 : { *(.ARM.attributes) }
+
 }
 

@@ -32,6 +32,9 @@ pheap_space: .word _heap_start
 .globl heap_sz
 heap_sz: .word heap_size
 
+.globl __otaUpdateBuffer
+__otaUpdateBuffer: .word _otaUpdateBufferStart
+
 ;@ Initial entry point
 _reset_:
     mov     r0, #0x8000
