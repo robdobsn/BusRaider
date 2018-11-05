@@ -168,26 +168,20 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
             LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd IMG firmware update File %s, len %d", _receivedFileName, _receivedFileBytesRx);
 
             // Copy the blockCopyExecRelocatable() code to otaUpdateBuffer
-            uint8_t* pCopyBlockNewLocation = __otaUpdateBuffer; // (uint8_t*)nmalloc_malloc(blockCopyExecRelocatableLen);
-            // if (!pCopyBlockNewLocation)
-            // {
-            //     LogWrite(FromCmdHandler, LOG_ERROR, "cannot create space for blockCopyExecRelocatable fn, len %d", blockCopyExecRelocatableLen);
-            //     return;
-            // }
+            uint8_t* pCopyBlockNewLocation = __otaUpdateBuffer;
             memcpy((void*)pCopyBlockNewLocation, (void*)blockCopyExecRelocatable, blockCopyExecRelocatableLen);
 
             // Copy the received data to otaUpdateBuffer
-            uint8_t* pRxDataNewLocation = __otaUpdateBuffer + blockCopyExecRelocatableLen; // (uint8_t*)nmalloc_malloc(_receivedFileBytesRx);
-            // if (!pRxDataNewLocation)
-            // {
-            //     LogWrite(FromCmdHandler, LOG_ERROR, "cannot create space for rxDataNewLocation, len %d", _receivedFileBytesRx);
-            //     return;
-            // }
+            uint8_t* pRxDataNewLocation = __otaUpdateBuffer + blockCopyExecRelocatableLen;
             memcpy((void*)pRxDataNewLocation, (void*)_pReceivedFileDataPtr, _receivedFileBytesRx);
 
             // Call the copyblock function in it's new location
             blockCopyExecRelocatableFnT* pCopyBlockFn = (blockCopyExecRelocatableFnT*) pCopyBlockNewLocation;
             LogWrite(FromCmdHandler, LOG_DEBUG, "Address of copyBlockFn %08x, len %d", pCopyBlockNewLocation, blockCopyExecRelocatableLen);
+
+            // Disable interrupts
+            disable_irq();
+            disable_fiq();
 
             // Call the copyBlock function in its new location using it to move the program
             // to 0x8000 the base address for Pi programs

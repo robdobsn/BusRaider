@@ -21,8 +21,10 @@
 #include "McTerminal.h"
 
 // Program details
-static const char* PROG_VERSION = "         RC2014 Bus Raider V1.6.028";
-static const char* PROG_CREDITS = "Rob Dobson 2018 (inspired by PiGFX)";
+static const char* PROG_VERSION = "             RC2014 Bus Raider V1.6.032";
+static const char* PROG_CREDITS = "    Rob Dobson 2018 (inspired by PiGFX)";
+static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
+static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
 
 // Baud rate
 #define MAIN_UART_BAUD_RATE 115200
@@ -239,6 +241,8 @@ extern "C" void entry_point()
             int lineIdx = 0;
             wgfx_puts(1, wgfx_get_term_width()-strlen(PROG_VERSION)-1, lineIdx++, (uint8_t*)PROG_VERSION);
             wgfx_puts(1, wgfx_get_term_width()-strlen(PROG_CREDITS)-1, lineIdx++, (uint8_t*)PROG_CREDITS);
+            wgfx_puts(1, wgfx_get_term_width()-strlen(PROG_LINKS_1)-1, lineIdx++, (uint8_t*)PROG_LINKS_1);
+            wgfx_puts(1, wgfx_get_term_width()-strlen(PROG_LINKS_2)-1, lineIdx++, (uint8_t*)PROG_LINKS_2);
 
             // Show ESP health info
             bool ipAddrValid = false;
@@ -266,9 +270,10 @@ extern "C" void entry_point()
 
             // Refresh rate
             int refreshRate = refreshCount * 1000 / REFRESH_RATE_WINDOW_SIZE_MS;
-            const int MAX_REFRESH_STR_LEN = 20;
+            const int MAX_REFRESH_STR_LEN = 40;
             char refreshStr[MAX_REFRESH_STR_LEN+1];
-            rditoa(refreshRate, (uint8_t*)refreshStr, MAX_REFRESH_STR_LEN, 10);
+            strncpy(refreshStr, "Refresh ", MAX_REFRESH_STR_LEN);
+            rditoa(refreshRate, (uint8_t*)(refreshStr+strlen(refreshStr)), MAX_REFRESH_STR_LEN, 10);
             strncpy(refreshStr+strlen(refreshStr), "fps", MAX_REFRESH_STR_LEN);
             wgfx_puts(1, wgfx_get_term_width()-strlen(refreshStr)-1, lineIdx++, (uint8_t*)refreshStr);
             // // uart_printf("Rate %d per sec, requs %ld dispTime %ld\n", refreshCount / 2, reqUpdateUs, dispTime);
