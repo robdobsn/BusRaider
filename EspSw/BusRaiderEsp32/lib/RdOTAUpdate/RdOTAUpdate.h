@@ -11,7 +11,7 @@
 
 class RdOTAUpdate
 {
-  private:
+private:
 
     // Enabled
     bool _otaEnabled;
@@ -78,7 +78,7 @@ class RdOTAUpdate
     // TCP client
     WiFiClient _wifiClient;
 
-  public:
+public:
     RdOTAUpdate()
     {
         _otaEnabled = false;

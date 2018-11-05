@@ -11,7 +11,7 @@
 
 class SwSerial : public Stream
 {
-  private:
+private:
     // Tx Timer
     hw_timer_t *_txTimer = NULL;
 
@@ -187,7 +187,7 @@ class SwSerial : public Stream
         }
     }
 
-  public:
+public:
     SwSerial(int txPin, int rxPin, int txBufferSize = 500, int rxBufferSize = 500)
     {
         // Buffers

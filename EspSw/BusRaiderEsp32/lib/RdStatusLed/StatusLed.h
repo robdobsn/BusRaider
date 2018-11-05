@@ -10,7 +10,7 @@
 
 class StatusLed
 {
-  public:
+public:
     StatusLed()
     {
         _isSetup = false;
@@ -20,7 +20,7 @@ class StatusLed
     void setCode(int code);
     void service();
 
-  private:
+private:
     bool _isSetup;
     int _ledPin;
     int _ledCode;

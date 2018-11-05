@@ -18,11 +18,11 @@
 
 class MQTTManager
 {
-  public:
+public:
     // Default MQTT Port
     static constexpr int DEFAULT_MQTT_PORT = 1883;
 
-  private:
+private:
 
     // Max accepted payload length
     static const int MAX_PAYLOAD_LEN = 5000;
@@ -70,7 +70,7 @@ unsigned long  _stressTestLastSendTime;
 int _stressTestCounts[3];
 #endif
 
-  public:
+public:
 #ifdef MQTT_USE_ASYNC_MQTT
     MQTTManager(WiFiManager &wifiManager, RestAPIEndpoints &endpoints) : 
             _wifiManager(wifiManager), _restAPIEndpoints(endpoints)

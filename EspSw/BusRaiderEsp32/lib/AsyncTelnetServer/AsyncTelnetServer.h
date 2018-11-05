@@ -13,7 +13,7 @@ class AsyncTelnetServer;
 
 class AsyncTelnetSession
 {
-  private:
+private:
     AsyncClient *_pClient;
     AsyncTelnetServer *_pServer;
 
@@ -24,7 +24,7 @@ class AsyncTelnetSession
     void _onData(void *buf, size_t len);
     void _onPoll();
 
-  public:
+public:
     AsyncTelnetSession(AsyncTelnetServer *pServer, AsyncClient *pClient);
     ~AsyncTelnetSession();
     void forceClose();

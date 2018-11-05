@@ -7,7 +7,7 @@
 
 class ConfigPinMap
 {
-  public:
+public:
     static const char *_pinMapOtherStr[];
     static int _pinMapOtherPin[];
     static int _pinMapOtherLen;

@@ -7,11 +7,11 @@
 
 class ConfigBase
 {
-  protected:
+protected:
     // Data is stored in a single string as JSON
     String _dataStrJSON;
 
-  public:
+public:
     ConfigBase()
     {
         setConfigData("");

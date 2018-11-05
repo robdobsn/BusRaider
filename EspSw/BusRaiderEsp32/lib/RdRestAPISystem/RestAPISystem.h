@@ -12,7 +12,7 @@
 
 class RestAPISystem
 {
-  private:
+private:
     bool _deviceRestartPending;
     unsigned long _deviceRestartMs;
     static const int DEVICE_RESTART_DELAY_MS = 1000;
@@ -31,7 +31,7 @@ class RestAPISystem
     String _systemType;
     String _systemVersion;
     
-  public:
+public:
     RestAPISystem(WiFiManager& wifiManager, MQTTManager& mqttManager,
                 RdOTAUpdate& otaUpdate, NetLog& netLog,
                 FileManager& fileManager,

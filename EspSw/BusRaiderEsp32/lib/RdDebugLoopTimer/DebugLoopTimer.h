@@ -11,7 +11,7 @@ typedef void (*DebugLoopTimer_InfoStrCb)(String &infoStr);
 
 class DebugLoopTimer
 {
-  private:
+private:
     // Timing of the loop - used to determine if blocking/slow processes are delaying the loop iteration
     unsigned long _loopTimeAvgSum;
     unsigned long _loopTimeAvgCount;
@@ -29,7 +29,7 @@ class DebugLoopTimer
     unsigned long _blockMaxTime[_maxTimingBlocks];
     String _blockName[_maxTimingBlocks];
 
-  public:
+public:
     DebugLoopTimer(long reportingPeriodMs, DebugLoopTimer_InfoStrCb infoStrCallback)
     {
         clearVals();

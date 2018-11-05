@@ -8,7 +8,7 @@
 
 class ConfigNVS : public ConfigBase
 {
-  private:
+private:
     // Max length of config data
     int _configMaxDataLen;
 
@@ -18,7 +18,7 @@ class ConfigNVS : public ConfigBase
     // Arduino preferences instance
     Preferences _preferences;
 
-  public:
+public:
     ConfigNVS(const char *configNamespace, int configMaxlen)
     {
         _configNamespace = configNamespace;

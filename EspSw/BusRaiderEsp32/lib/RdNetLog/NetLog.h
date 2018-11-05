@@ -62,7 +62,7 @@ private:
     uint8_t *_pChBuffer;
     RingBufferPosn _chBufferPosn;
 
-  public:
+public:
     NetLog(Print& output, MQTTManager& mqttManager, CommandSerial& commandSerial,
             int pauseBufferMaxChars = 1000, uint32_t pauseTimeMs = 15000) :
         _output(output),

@@ -11,7 +11,7 @@ class ConfigBase;
 
 class WiFiManager
 {
-  private:
+private:
     bool _wifiEnabled;
     String _ssid;
     String _password;
@@ -23,7 +23,7 @@ class WiFiManager
     ConfigBase* _pConfigBase;
     static StatusLed* _pStatusLed;
 
-  public:
+public:
     WiFiManager()
     {
         _wifiEnabled = false;
