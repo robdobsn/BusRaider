@@ -239,7 +239,7 @@ void CommandSerial::uploadCommonBlockHandler(const char* fileType, const String&
     // Check if that was the final block
     if (finalBlock)
     {
-        sendFileEndRecord(_blockCount);
+        sendFileEndRecord(_blockCount, NULL);
         Log.verbose("%sfile end sent\n", MODULE_PREFIX);
         if (_uploadTargetCommandWhenComplete.length() != 0)
         {
@@ -278,7 +278,8 @@ void CommandSerial::uploadAPIBlockHandler(const char* fileType, const String& re
 
 // Upload a file from the file system
 // Request is in the format of HTTP query parameters (e.g. "?baseAddr=1234")
-bool CommandSerial::startUploadFromFileSystem(const String& fileSystemName, const String& uploadRequest, const String& filename,
+bool CommandSerial::startUploadFromFileSystem(const String& fileSystemName, 
+                const String& uploadRequest, const String& filename,
                 const char* pTargetCmdWhenDone)
 {
     // Check no upload is already happening

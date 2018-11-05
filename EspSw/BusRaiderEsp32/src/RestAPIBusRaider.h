@@ -39,15 +39,22 @@ public:
     void apiUploadToFileManComplete(String &reqStr, String &respStr);
     void apiUploadToFileManPart(String& req, String& filename, size_t contentLen, size_t index, 
                     uint8_t *data, size_t len, bool finalBlock);
+
     void apiUploadPiSwComplete(String &reqStr, String &respStr);
     void apiUploadPiSwPart(String& req, String& filename, size_t contentLen, size_t index, 
                     uint8_t *data, size_t len, bool finalBlock);
+
+    void apiUploadAppendComplete(String &reqStr, String &respStr);
+    void apiUploadAppendPart(String& req, String& filename, size_t contentLen, size_t index, 
+                    uint8_t *data, size_t len, bool finalBlock);
+
     void apiUploadAndRunComplete(String &reqStr, String &respStr);
-    void apiUploadAndRunBody(String& req, uint8_t *pData, size_t len, size_t index, size_t total);
     void apiUploadAndRunPart(String& req, String& filename, size_t contentLen, size_t index, 
                     uint8_t *data, size_t len, bool finalBlock);
+
     void apiSendFileToTargetBuffer(const String &reqStr, String &respStr);
     void apiAppendFileToTargetBuffer(const String &reqStr, String &respStr);
+
     void runFileOnTarget(const String &reqStr, String &respStr);
     void apiQueryStatus(const String &reqStr, String &respStr);
     void apiQueryESPHealth(const String &reqStr, String &respStr);

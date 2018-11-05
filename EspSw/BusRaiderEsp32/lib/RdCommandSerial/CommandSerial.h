@@ -82,7 +82,7 @@ public:
 
     void sendFileStartRecord(const char* fileType, const String& req, const String& filename, int fileLength);
     void sendFileBlock(size_t index, uint8_t *data, size_t len);
-    void sendFileEndRecord(int blockCount, const char* pAdditionalJsonNameValues = NULL);
+    void sendFileEndRecord(int blockCount, const char* pAdditionalJsonNameValues);
     void sendTargetCommand(const String& targetCmd);
     void sendTargetData(const String& cmdName, const uint8_t* pData, int len, int index);
     void uploadAPIBlockHandler(const char* fileType, const String& req, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock);
@@ -90,7 +90,7 @@ public:
     // Upload a file from the file system
     // Request is in the format of HTTP query parameters (e.g. "?baseAddr=1234")
     bool startUploadFromFileSystem(const String& fileSystemName, const String& request, const String& filename,
-                    const char* pTargetCmdWhenDone = NULL);
+                    const char* pTargetCmdWhenDone);
 
 private:
     void sendCharToCmdPort(uint8_t ch);

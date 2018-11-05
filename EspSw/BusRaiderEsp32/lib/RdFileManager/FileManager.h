@@ -35,6 +35,9 @@ public:
     // Configure
     void setup(ConfigBase& config);
 
+    // Reformat
+    void reformat(const String& fileSystemStr, String& respStr);
+
     // Get a list of files on the file system as a JSON format string
     // {"rslt":"ok","diskSize":123456,"diskUsed":1234,"folder":"/","files":[{"name":"file1.txt","size":223},{"name":"file2.txt","size":234}]}
     bool getFilesJSON(const String& fileSystemStr, const String& folderStr, String& respStr);

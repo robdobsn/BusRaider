@@ -15,7 +15,7 @@
 #include "nmalloc.h"
 #include "McManager.h"
 
-#define CMD_HANDLER_MAX_CMD_STR_LEN 400
+#define CMD_HANDLER_MAX_CMD_STR_LEN 200
 #define MAX_INT_ARG_STR_LEN 10
 
 static const char* FromCmdHandler = "CmdHander";
@@ -63,18 +63,18 @@ void cmdHandler_sinkAddr(uint32_t addr)
     LogWrite(FromCmdHandler, LOG_DEBUG, "CmdHandler: got addr from SREC %04x", addr);
 }
 
-void appendJson(char* jsonStr, const char* jsonToAppend)
-{
-    // Find closing brace in jsonStr
-    char* pClosingBrace = strstr(jsonStr, "}");
-    if (!pClosingBrace)
-        return;
-    // Find opening brace in append string
-    const char* pOpeningBrace = strstr(jsonToAppend, "{");
-    if (!pOpeningBrace)
-        return;
-    strncpy(pClosingBrace, pOpeningBrace+1, CMD_HANDLER_MAX_CMD_STR_LEN);
-}
+// void appendJson(char* jsonStr, const char* jsonToAppend)
+// {
+//     // Find closing brace in jsonStr
+//     char* pClosingBrace = strstr(jsonStr, "}");
+//     if (!pClosingBrace)
+//         return;
+//     // Find opening brace in append string
+//     const char* pOpeningBrace = strstr(jsonToAppend, "{");
+//     if (!pOpeningBrace)
+//         return;
+//     strncpy(pClosingBrace, pOpeningBrace+1, CMD_HANDLER_MAX_CMD_STR_LEN);
+// }
 
 void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int dataLen)
 {
@@ -204,9 +204,7 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         {
             // Falling through to here so offer to the machine specific handler
             // appendJson(_receivedFileStartInfo, pCmdJson);
-            LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd File %s, len %d, jsonLen %d", _receivedFileName, _receivedFileBytesRx,
-                            strlen(_receivedFileStartInfo));
-            LogWrite(FromCmdHandler, LOG_DEBUG, _receivedFileStartInfo);
+            LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
             McBase* pMc = McManager::getMachine();
             if (pMc)
                 pMc->fileHandler(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx);

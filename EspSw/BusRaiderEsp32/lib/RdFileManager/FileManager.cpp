@@ -2,6 +2,7 @@
 // Rob Dobson 2018
 
 #include "FileManager.h"
+#include "Utils.h"
 
 static const char* MODULE_PREFIX = "FileManager: ";
 
@@ -23,6 +24,14 @@ void FileManager::setup(ConfigBase& config)
     }
 }
     
+void FileManager::reformat(const String& fileSystemStr, String& respStr)
+{
+    // Reformat
+    bool rslt = SPIFFS.format();
+    Utils::setJsonBoolResult(respStr, rslt);
+    Log.warning("%sReformat SPIFFS result %d\n", MODULE_PREFIX, rslt);
+}
+
 bool FileManager::getFilesJSON(const String& fileSystemStr, const String& folderStr, String& respStr)
 {
     // Check file system supported
@@ -183,6 +192,7 @@ bool FileManager::chunkedFileStart(const String& fileSystemStr, const String& fi
     _chunkedFileInProgress = true;
     _chunkedFilePos = 0;
     _chunkOnLineEndings = readByLine;
+    Log.verbose("%schunkedFileStart filename %s size %d\n", MODULE_PREFIX, filename.c_str(), _chunkedFileLen);
     return true;
 }
 
@@ -205,9 +215,10 @@ uint8_t* FileManager::chunkFileNext(String& filename, int& fileLen, int& chunkPo
         Log.trace("%schunkNext failed open %s\n", MODULE_PREFIX, _chunkedFilename.c_str());
         return NULL;
     }
-    if (!file.seek(_chunkedFilePos))
+    if ((_chunkedFilePos != 0) && (!file.seek(_chunkedFilePos)))
     {
-        Log.trace("%schunkNext failed seek %d\n", MODULE_PREFIX, _chunkedFilePos);
+        Log.trace("%schunkNext failed seek in filename %s to %d\n", MODULE_PREFIX, 
+                        _chunkedFilename.c_str(), _chunkedFilePos);
         file.close();
         return NULL;
     }

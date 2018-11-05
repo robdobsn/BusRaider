@@ -224,7 +224,7 @@ void MachineInterface::service()
             // Log.notice("WOULD UPLOAD %s\n", preloadName.c_str());
             
             // Send
-            _pCommandSerial->startUploadFromFileSystem("SPIFFS", "", preloadName);
+            _pCommandSerial->startUploadFromFileSystem("SPIFFS", "", preloadName, "");
             break;
         }
         case DEMO_STATE_LOAD:

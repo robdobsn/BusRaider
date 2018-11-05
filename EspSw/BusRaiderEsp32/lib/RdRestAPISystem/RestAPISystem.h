@@ -48,20 +48,36 @@ public:
         _systemVersion = systemVersion;
     }
 
+    // Call frequently
     void service();
+
+    // WiFi settings
     void apiWifiSet(String &reqStr, String &respStr);
     void apiWifiClear(String &reqStr, String &respStr);
     void apiWifiExtAntenna(String &reqStr, String &respStr);
     void apiWifiIntAntenna(String &reqStr, String &respStr);
+
+    // MQTT settings
     void apiMQTTSet(String &reqStr, String &respStr);
+
+    // Reset machine
     void apiReset(String &reqStr, String& respStr);
+
+    // Netlog settings
     void apiNetLogLevel(String &reqStr, String &respStr);
     void apiNetLogMQTT(String &reqStr, String &respStr);
     void apiNetLogSerial(String &reqStr, String &respStr);
     void apiNetLogCmdSerial(String &reqStr, String &respStr);
     void apiNetLogHTTP(String &reqStr, String &respStr);
+
+    // Check for OTA updates
     void apiCheckUpdate(String &reqStr, String& respStr);
+    
+    // Get system version
     void apiGetVersion(String &reqStr, String& respStr);
+
+    // Format file system
+    void apiReformatFS(String &reqStr, String& respStr);
 
     // List files on a file system
     // Uses FileManager.h

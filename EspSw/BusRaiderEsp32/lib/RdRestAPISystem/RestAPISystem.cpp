@@ -171,6 +171,14 @@ void RestAPISystem::apiGetVersion(String &reqStr, String& respStr)
     respStr = "{\"sysType\":\""+ _systemType + "\", \"version\":\"" + _systemVersion + "\"}";
 }
 
+// Format file system
+void RestAPISystem::apiReformatFS(String &reqStr, String& respStr)
+{
+    // File system
+    String fileSystemStr = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 1);
+    _fileManager.reformat(fileSystemStr, respStr);
+}
+
 // List files on a file system
 // Uses FileManager.h
 // In the reqStr the first part of the path is the file system name (e.g. SD or SPIFFS)
@@ -248,6 +256,9 @@ void RestAPISystem::setup(RestAPIEndpoints &endpoints)
     endpoints.addEndpoint("logcmd", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET, 
                     std::bind(&RestAPISystem::apiNetLogCmdSerial, this, std::placeholders::_1, std::placeholders::_2), 
                     "Set log to cmdSerial /enable/port");
+    endpoints.addEndpoint("reformatfs", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET, 
+                    std::bind(&RestAPISystem::apiReformatFS, this, std::placeholders::_1, std::placeholders::_2), 
+                    "Reformat file system /SPIFFS");
     endpoints.addEndpoint("filelist", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET, 
                     std::bind(&RestAPISystem::apiFileList, this, std::placeholders::_1, std::placeholders::_2), 
                     "List files in folder /SPIFFS/folder ... ~ for / in folder");
