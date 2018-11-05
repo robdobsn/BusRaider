@@ -9,7 +9,6 @@
 //   Set MQTT:       /mq/ss/ii/oo/pp      - ss = server, ii and oo are in/out topics, pp = port
 //                                        - in topics / should be replaced by ~ 
 //                                        - (e.g. /devicename/in becomes ~devicename~in)
-//   Check updates:  /checkupdate         - check for updates on the update server
 //   Reset:          /reset               - reset device
 //   Log level:      /loglevel/lll        - Logging level (for MQTT and HTTP)
 //                                        - lll one of v (verbose), t (trace), n (notice), w (warning), e (error), f (fatal)
@@ -19,13 +18,19 @@
 //                                        - oo = 0 or 1 for off/on
 //                                        - ip is the IP address of the computer to log to (or hostname) and po is the port
 //                                        - ur is the HTTP url logging messages are POSTed to
+//   Log to serial:  /logserial/en/port   - Control logging to serial
+//                                        - en = 0 or 1 for off/on
+//                                        - port is the port number 0 = standard USB port
+//   Log to cmd:     /logcmd/en           - Control logging to command port (extra serial if configured)
+//                                        - en = 0 or 1 for off/on
+
 
 // System type
 #define SYSTEM_TYPE_NAME "BusRaiderESP32"
 const char* systemType = SYSTEM_TYPE_NAME;
 
 // System version
-const char* systemVersion = "1.002.021";
+const char* systemVersion = "1.002.024";
 
 // Build date
 const char* buildDate = __DATE__;
@@ -66,6 +71,7 @@ RestAPIEndpoints restAPIEndpoints;
 
 // Web server
 #include "WebServer.h"
+#include "WebAutogenResources.h"
 WebServer webServer;
 
 // MQTT
@@ -189,6 +195,7 @@ void setup()
     
     // Web server
     webServer.setup(hwConfig);
+    webServer.addStaticResources(__webAutogenResources, __webAutogenResourcesCount);
     webServer.addEndpoints(restAPIEndpoints);
 
     // MQTT

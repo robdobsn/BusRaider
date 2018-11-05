@@ -2,6 +2,7 @@
 // Rob Dobson 2018
 
 #include "MQTTManager.h"
+#include "Utils.h"
 
 #ifdef MQTT_USE_ASYNC_MQTT
 

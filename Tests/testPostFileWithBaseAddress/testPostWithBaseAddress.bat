@@ -1,0 +1,1 @@
+curl -F "baseAdd=1234;file=@test.bin" http://192.168.86.148/uploadandrun

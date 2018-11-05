@@ -190,7 +190,7 @@ extern "C" void entry_point()
     {
         ee_printf("USB initialization failed\n");
     }
-    ee_printf("\n");
+    ee_printf("\nPress F2 for immediate mode\n");
 
     // Debug show colour palette
     // for (int i = 0; i < 255; i++)

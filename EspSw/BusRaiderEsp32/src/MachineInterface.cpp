@@ -12,6 +12,7 @@
 // This MachineInterface also handles the target serial port communication including telnet support
 
 #include "MachineInterface.h"
+#include "ConfigPinMap.h"
 
 static const char* MODULE_PREFIX = "MachineInterface: ";
 
