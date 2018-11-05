@@ -129,7 +129,7 @@ void McZXSpectrum::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[mayb
 }
 
 // Handle a file
-void McZXSpectrum::fileHander(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
+void McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
 {
     // Get the file type (extension of file name)
     #define MAX_VALUE_STR 30

@@ -9,11 +9,12 @@
 
 class AsyncWebServer;
 class AsyncWebServerResponse;
+class AsyncWebServerRequest;
 class WebServerResource;
 
 class WebServer
 {
-  public:
+public:
     AsyncWebServer* _pServer;
     bool _begun;
     bool _webServerEnabled;
@@ -33,7 +34,8 @@ class WebServer
     // Add resources to the web server
     void addStaticResources(const WebServerResource *pResources, int numResources);
     static void parseAndAddHeaders(AsyncWebServerResponse *response, const char *pHeaders);
+    static String recreatedReqUrl(AsyncWebServerRequest *request);
 
-  private:
+private:
     void addStaticResource(const WebServerResource *pResource, const char *pAliasPath = NULL);
 };

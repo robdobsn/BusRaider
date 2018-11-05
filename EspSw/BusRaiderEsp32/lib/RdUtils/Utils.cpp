@@ -179,3 +179,78 @@ String Utils::escapeJSON(const String& inStr)
     }
     return outStr;
 }
+
+// Convert HTTP query format to JSON
+// JSON only contains name/value pairs and not {}
+String Utils::getJSONFromHTTPQueryStr(const char* inStr, bool mustStartWithQuestionMark)
+{
+    String outStr;
+    outStr.reserve((strlen(inStr) * 3) / 2);
+    const char* pStr = inStr;
+    bool isActive = !mustStartWithQuestionMark;
+    String curName;
+    String curVal;
+    bool inValue = false;
+    while (*pStr)
+    {
+        // Handle start of query
+        if (!isActive)
+        {
+            if (*pStr != '?')
+            {
+                pStr++;
+                continue;
+            }
+            isActive = true;
+        }
+        
+        // Ignore ? symbol
+        if (*pStr == '?')
+        {
+            pStr++;
+            continue;
+        }
+
+        // Check for separator values
+        if (*pStr == '=')
+        {
+            inValue = true;
+            curVal = "";
+            pStr++;
+            continue;
+        }
+
+        // Check for delimiter
+        if (*pStr == '&')
+        {
+            // Store value
+            if (inValue && (curName.length() > 0))
+            {
+                if (outStr.length() > 0)
+                    outStr += ",";
+                outStr += "\"" + curName + "\":" + "\"" + curVal + "\"";
+            }
+            inValue = false;
+            curName = "";
+            pStr++;
+            continue;
+        }
+
+        // Form name or value
+        if (inValue)
+            curVal += *pStr;
+        else
+            curName += *pStr;
+        pStr++;
+    }
+
+    // Finish up
+    if (inValue && (curName.length() > 0))
+    {
+        if (outStr.length() > 0)
+            outStr += ",";
+        outStr += "\"" + curName + "\":" + "\"" + curVal + "\"";
+    }
+    return outStr;
+}
+

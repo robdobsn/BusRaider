@@ -48,12 +48,12 @@ void RestAPIBusRaider::apiUploadToFileManComplete(String &reqStr, String &respSt
     Utils::setJsonBoolResult(respStr, true);
 }
 
-void RestAPIBusRaider::apiUploadToFileManPart(String filename, size_t contentLen, size_t index, 
+void RestAPIBusRaider::apiUploadToFileManPart(String& req, String& filename, size_t contentLen, size_t index, 
                 uint8_t *data, size_t len, bool finalBlock)
 {
     Log.verbose("%sapiUpToFileMan %d, %d, %d, %d\n", MODULE_PREFIX, contentLen, index, len, finalBlock);
     if (contentLen > 0)
-        _fileManager.uploadAPIBlockHandler("SPIFFS", filename, contentLen, index, data, len, finalBlock);
+        _fileManager.uploadAPIBlockHandler("SPIFFS", req, filename, contentLen, index, data, len, finalBlock);
 }
 
 void RestAPIBusRaider::apiUploadPiSwComplete(String &reqStr, String &respStr)
@@ -62,12 +62,12 @@ void RestAPIBusRaider::apiUploadPiSwComplete(String &reqStr, String &respStr)
     Utils::setJsonBoolResult(respStr, true);
 }
 
-void RestAPIBusRaider::apiUploadPiSwPart(String filename, size_t contentLen, size_t index, 
+void RestAPIBusRaider::apiUploadPiSwPart(String& req, String& filename, size_t contentLen, size_t index, 
                 uint8_t *data, size_t len, bool finalBlock)
 {
     Log.verbose("%sapiUploadPiSwPart %d, %d, %d, %d\n", MODULE_PREFIX, contentLen, index, len, finalBlock);
     if (contentLen > 0)
-        _commandSerial.uploadAPIBlockHandler("firmware", filename, contentLen, index, data, len, finalBlock);
+        _commandSerial.uploadAPIBlockHandler("firmware", req, filename, contentLen, index, data, len, finalBlock);
 }
 
 void RestAPIBusRaider::apiUploadAndRunComplete(String &reqStr, String &respStr)
@@ -77,17 +77,17 @@ void RestAPIBusRaider::apiUploadAndRunComplete(String &reqStr, String &respStr)
     Utils::setJsonBoolResult(respStr, true);
 }
 
-void RestAPIBusRaider::apiUploadAndRunBody(uint8_t *pData, size_t len, size_t index, size_t total)
+void RestAPIBusRaider::apiUploadAndRunBody(String& req, uint8_t *pData, size_t len, size_t index, size_t total)
 {
     Log.verbose("%sapiUp&RunBody len %d, index %d, total %d\n", MODULE_PREFIX, len, index, total);
 }
 
-void RestAPIBusRaider::apiUploadAndRunPart(String filename, size_t contentLen, size_t index, 
+void RestAPIBusRaider::apiUploadAndRunPart(String& req, String& filename, size_t contentLen, size_t index, 
                 uint8_t *data, size_t len, bool finalBlock)
 {
     Log.verbose("%sapiUp&Run %d, %d, %d, %d\n", MODULE_PREFIX, contentLen, index, len, finalBlock);
     if (contentLen > 0)
-        _commandSerial.uploadAPIBlockHandler("target", filename, contentLen, index, data, len, finalBlock);
+        _commandSerial.uploadAPIBlockHandler("target", req, filename, contentLen, index, data, len, finalBlock);
 }
 
 void RestAPIBusRaider::apiSendFileToTargetBuffer(const String &reqStr, String &respStr)
@@ -99,7 +99,7 @@ void RestAPIBusRaider::apiSendFileToTargetBuffer(const String &reqStr, String &r
     // Filename        
     String filename = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 2);
     Log.verbose("%sapiSendFileToBuf filename %s\n", MODULE_PREFIX, filename.c_str());
-    _commandSerial.startUploadFromFileSystem(fileSystemStr, filename);
+    _commandSerial.startUploadFromFileSystem(fileSystemStr, reqStr, filename);
 }
 
 void RestAPIBusRaider::apiAppendFileToTargetBuffer(const String &reqStr, String &respStr)
@@ -109,7 +109,7 @@ void RestAPIBusRaider::apiAppendFileToTargetBuffer(const String &reqStr, String 
     // Filename        
     String filename = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 2);
     Log.verbose("%sapiAppendFileToBuf filename %s\n", MODULE_PREFIX, filename.c_str());
-    _commandSerial.startUploadFromFileSystem(fileSystemStr, filename);
+    _commandSerial.startUploadFromFileSystem(fileSystemStr, reqStr, filename);
 }
 
 void RestAPIBusRaider::runFileOnTarget(const String &reqStr, String &respStr)
@@ -138,7 +138,7 @@ void RestAPIBusRaider::apiQueryESPHealth(const String &reqStr, String &respStr)
     respStr = "\"espHealth\":{" + healthStr + "}";
 }
 
-void RestAPIBusRaider::apiESPFirmwarePart(String filename, size_t contentLen, size_t index, 
+void RestAPIBusRaider::apiESPFirmwarePart(String& req, String& filename, size_t contentLen, size_t index, 
                 uint8_t *data, size_t len, bool finalBlock)
 {
     Log.trace("%sapiESPFirmwarePart %d, %d, %d, %d\n", MODULE_PREFIX, contentLen, index, len, finalBlock);
@@ -243,7 +243,8 @@ void RestAPIBusRaider::setup(RestAPIEndpoints &endpoints)
                         std::bind(&RestAPIBusRaider::apiUploadPiSwPart, this, 
                                 std::placeholders::_1, std::placeholders::_2, 
                                 std::placeholders::_3, std::placeholders::_4,
-                                std::placeholders::_5, std::placeholders::_6));                                    
+                                std::placeholders::_5, std::placeholders::_6,
+                                std::placeholders::_7));
     endpoints.addEndpoint("uploadtofileman", 
                         RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                         RestAPIEndpointDef::ENDPOINT_POST,
@@ -257,7 +258,8 @@ void RestAPIBusRaider::setup(RestAPIEndpoints &endpoints)
                         std::bind(&RestAPIBusRaider::apiUploadToFileManPart, this, 
                                 std::placeholders::_1, std::placeholders::_2, 
                                 std::placeholders::_3, std::placeholders::_4,
-                                std::placeholders::_5, std::placeholders::_6));                                    
+                                std::placeholders::_5, std::placeholders::_6,
+                                std::placeholders::_7));                                    
     endpoints.addEndpoint("uploadandrun", 
                         RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                         RestAPIEndpointDef::ENDPOINT_POST,
@@ -269,11 +271,13 @@ void RestAPIBusRaider::setup(RestAPIEndpoints &endpoints)
                         NULL,
                         std::bind(&RestAPIBusRaider::apiUploadAndRunBody, this, 
                                 std::placeholders::_1, std::placeholders::_2, 
-                                std::placeholders::_3, std::placeholders::_4),
+                                std::placeholders::_3, std::placeholders::_4,
+                                std::placeholders::_5),
                         std::bind(&RestAPIBusRaider::apiUploadAndRunPart, this, 
                                 std::placeholders::_1, std::placeholders::_2, 
                                 std::placeholders::_3, std::placeholders::_4,
-                                std::placeholders::_5, std::placeholders::_6));                                    
+                                std::placeholders::_5, std::placeholders::_6,
+                                std::placeholders::_7));                                    
     endpoints.addEndpoint("querystatus", 
                         RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                         RestAPIEndpointDef::ENDPOINT_GET, 
@@ -299,5 +303,6 @@ void RestAPIBusRaider::setup(RestAPIEndpoints &endpoints)
                         std::bind(&RestAPIBusRaider::apiESPFirmwarePart, this, 
                                 std::placeholders::_1, std::placeholders::_2, 
                                 std::placeholders::_3, std::placeholders::_4,
-                                std::placeholders::_5, std::placeholders::_6));
+                                std::placeholders::_5, std::placeholders::_6,
+                                std::placeholders::_7));
 }

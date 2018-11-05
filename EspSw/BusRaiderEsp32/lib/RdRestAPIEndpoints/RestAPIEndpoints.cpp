@@ -171,7 +171,7 @@ const char* RestAPIEndpoints::getArgPtrAndLen(const char *argStr, int argIdx, in
 
     while (true)
     {
-        if ((*pCh == '/') || (*pCh == '\0'))
+        if ((*pCh == '/') || (*pCh == '?') || (*pCh == '\0'))
         {
             if (curArgIdx == argIdx)
             {

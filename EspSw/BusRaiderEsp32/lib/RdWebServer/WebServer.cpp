@@ -34,6 +34,22 @@ void WebServer::setup(ConfigBase& hwConfig)
     }
 }
 
+String WebServer::recreatedReqUrl(AsyncWebServerRequest *request)
+{
+    String reqUrl = request->url();
+    // Add parameters
+    int numArgs = request->args();
+    for(int i = 0; i < numArgs; i++)
+    {
+        if (i == 0)
+            reqUrl += "?";
+        else
+            reqUrl += "&";
+        reqUrl = reqUrl + request->argName(i) + "=" + request->arg(i);
+    }
+    return reqUrl;
+}
+
 void WebServer::addEndpoints(RestAPIEndpoints &endpoints)
 {
     // Check enabled
@@ -84,7 +100,7 @@ void WebServer::addEndpoints(RestAPIEndpoints &endpoints)
                 // Make the required action
                 if (pEndpoint->_endpointType == RestAPIEndpointDef::ENDPOINT_CALLBACK)
                 {
-                    String reqUrl = request->url();
+                    String reqUrl = recreatedReqUrl(request);
                     Log.verbose("%sCalling %s url %s\n", MODULE_PREFIX,
                                     pEndpoint->_endpointStr.c_str(), request->url().c_str());
                     pEndpoint->callback(reqUrl, respStr);
@@ -99,14 +115,16 @@ void WebServer::addEndpoints(RestAPIEndpoints &endpoints)
             
             // Handler for upload (as in a file upload)
             [pEndpoint](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool finalBlock) {
-                pEndpoint->callbackUpload(filename, 
+                String reqUrl = recreatedReqUrl(request);
+                pEndpoint->callbackUpload(reqUrl, filename, 
                             request ? request->contentLength() : 0, 
                             index, data, len, finalBlock);
             },
             
             // Handler for body
             [pEndpoint](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
-                pEndpoint->callbackBody(data, len, index, total);
+                String reqUrl = recreatedReqUrl(request);
+                pEndpoint->callbackBody(reqUrl, data, len, index, total);
             }
         );
     }

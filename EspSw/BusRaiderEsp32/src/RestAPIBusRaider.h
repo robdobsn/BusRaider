@@ -12,7 +12,7 @@
 
 class RestAPIBusRaider
 {
-  private:
+private:
     CommandSerial& _commandSerial;
     MachineInterface& _machineInterface;
     FileManager& _fileManager;    
@@ -20,7 +20,7 @@ class RestAPIBusRaider
     uint32_t _restartPendingStartMs;
     bool _restartPending;
 
-  public:
+public:
     RestAPIBusRaider(CommandSerial &commandSerial, MachineInterface &machineInterface, FileManager& fileManager) :
              _commandSerial(commandSerial), _machineInterface(machineInterface), _fileManager(fileManager)
     {
@@ -37,21 +37,21 @@ class RestAPIBusRaider
 #endif
 
     void apiUploadToFileManComplete(String &reqStr, String &respStr);
-    void apiUploadToFileManPart(String filename, size_t contentLen, size_t index, 
+    void apiUploadToFileManPart(String& req, String& filename, size_t contentLen, size_t index, 
                     uint8_t *data, size_t len, bool finalBlock);
     void apiUploadPiSwComplete(String &reqStr, String &respStr);
-    void apiUploadPiSwPart(String filename, size_t contentLen, size_t index, 
+    void apiUploadPiSwPart(String& req, String& filename, size_t contentLen, size_t index, 
                     uint8_t *data, size_t len, bool finalBlock);
     void apiUploadAndRunComplete(String &reqStr, String &respStr);
-    void apiUploadAndRunBody(uint8_t *pData, size_t len, size_t index, size_t total);
-    void apiUploadAndRunPart(String filename, size_t contentLen, size_t index, 
+    void apiUploadAndRunBody(String& req, uint8_t *pData, size_t len, size_t index, size_t total);
+    void apiUploadAndRunPart(String& req, String& filename, size_t contentLen, size_t index, 
                     uint8_t *data, size_t len, bool finalBlock);
     void apiSendFileToTargetBuffer(const String &reqStr, String &respStr);
     void apiAppendFileToTargetBuffer(const String &reqStr, String &respStr);
     void runFileOnTarget(const String &reqStr, String &respStr);
     void apiQueryStatus(const String &reqStr, String &respStr);
     void apiQueryESPHealth(const String &reqStr, String &respStr);
-    void apiESPFirmwarePart(String filename, size_t contentLen, size_t index, 
+    void apiESPFirmwarePart(String& req, String& filename, size_t contentLen, size_t index, 
                     uint8_t *data, size_t len, bool finalBlock);
     void apiESPFirmwareUpdateDone(String &reqStr, String &respStr);
     void setup(RestAPIEndpoints &endpoints);

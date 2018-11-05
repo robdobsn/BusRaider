@@ -132,7 +132,8 @@ void CommandSerial::service()
             if (pData && (chunkLen != 0))
             {
                 // Handle the chunk
-                uploadCommonBlockHandler(_uploadFileType.c_str(), filename, fileLen, chunkPos, pData, chunkLen, finalChunk); 
+                uploadCommonBlockHandler(_uploadFileType.c_str(), _uploadFromFSRequest, filename, 
+                            fileLen, chunkPos, pData, chunkLen, finalChunk); 
             }
             else
             {
@@ -163,9 +164,13 @@ void CommandSerial::service()
     }
 }
 
-void CommandSerial::sendFileStartRecord(const char* fileType, const String& filename, int fileLength)
+void CommandSerial::sendFileStartRecord(const char* fileType, const String& req, const String& filename, int fileLength)
 {
-    String frame = "{\"cmdName\":\"ufStart\",\"fileType\":\"" + String(fileType) + "\",\"fileName\":\"" + filename + "\",\"fileLen\":" + String(fileLength) + "}";
+    String reqParams = Utils::getJSONFromHTTPQueryStr(req.c_str(), true);
+    String frame = "{\"cmdName\":\"ufStart\",\"fileType\":\"" + String(fileType) + "\",\"fileName\":\"" + filename +
+                "\",\"fileLen\":" + String(fileLength) + 
+                ((reqParams.length() > 0) ? ("," + reqParams) : "") +
+                "}";
     _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
 }
 
@@ -181,9 +186,10 @@ void CommandSerial::sendFileBlock(size_t index, uint8_t *data, size_t len)
     delete [] pFrameBuf;
 }
 
-void CommandSerial::sendFileEndRecord(int blockCount)
+void CommandSerial::sendFileEndRecord(int blockCount, const char* pAdditionalJsonNameValues)
 {
-    String frame = "{\"cmdName\":\"ufEnd\",\"blockCount\":\"" + String(blockCount) + "\"}";
+    String frame = "{\"cmdName\":\"ufEnd\",\"blockCount\":\"" + String(blockCount) + "\"" +
+            (pAdditionalJsonNameValues ? ("," + String(pAdditionalJsonNameValues)) : "") + "}";
     _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
 }
 
@@ -207,7 +213,8 @@ void CommandSerial::sendTargetData(const String& cmdName, const uint8_t* pData, 
     delete [] pFrameBuf;
 }
 
-void CommandSerial::uploadCommonBlockHandler(const char* fileType, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock)
+void CommandSerial::uploadCommonBlockHandler(const char* fileType, const String& req, 
+            const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock)
 {
     Log.verbose("%s%s, total %d, idx %d, len %d, final %d, fs %s api %s\n", MODULE_PREFIX, 
                 filename.c_str(), fileLength, index, len, finalBlock, 
@@ -217,7 +224,7 @@ void CommandSerial::uploadCommonBlockHandler(const char* fileType, const String&
     if (_blockCount == 0)
     {
         _uploadFileType = fileType;
-        sendFileStartRecord(fileType, filename, fileLength);
+        sendFileStartRecord(fileType, req, filename, fileLength);
         Log.verbose("%snew upload started\n", MODULE_PREFIX);
     }
 
@@ -247,7 +254,7 @@ void CommandSerial::uploadCommonBlockHandler(const char* fileType, const String&
 }
 
 // Upload from API
-void CommandSerial::uploadAPIBlockHandler(const char* fileType, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock)
+void CommandSerial::uploadAPIBlockHandler(const char* fileType, const String& req, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock)
 {
     // Check there isn't an upload in progress from FS
     if (_uploadFromFSInProgress)
@@ -266,11 +273,12 @@ void CommandSerial::uploadAPIBlockHandler(const char* fileType, const String& fi
     }
     
     // Commmon handler
-    uploadCommonBlockHandler(fileType, filename, fileLength, index, data, len, finalBlock);
+    uploadCommonBlockHandler(fileType, req, filename, fileLength, index, data, len, finalBlock);
 }
 
 // Upload a file from the file system
-bool CommandSerial::startUploadFromFileSystem(const String& fileSystemName, const String& filename,
+// Request is in the format of HTTP query parameters (e.g. "?baseAddr=1234")
+bool CommandSerial::startUploadFromFileSystem(const String& fileSystemName, const String& uploadRequest, const String& filename,
                 const char* pTargetCmdWhenDone)
 {
     // Check no upload is already happening
@@ -289,6 +297,7 @@ bool CommandSerial::startUploadFromFileSystem(const String& fileSystemName, cons
 
     // Upload now in progress
     _uploadFromFSInProgress = true;
+    _uploadFromFSRequest = uploadRequest;
     _blockCount = 0;
     _uploadStartMs = millis();
     _uploadLastBlockMs = millis();

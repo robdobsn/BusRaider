@@ -49,6 +49,6 @@ class McBase
     virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]) = 0;
 
     // Handle a file
-    virtual void fileHander(const char* pFileInfo, const uint8_t* pFileData, int fileLen) = 0;
+    virtual void fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen) = 0;
 
 };

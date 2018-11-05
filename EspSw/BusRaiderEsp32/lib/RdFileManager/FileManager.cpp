@@ -107,7 +107,7 @@ String FileManager::getFileContents(const char* fileSystem, const String& filena
     return readData;
 }
 
-void FileManager::uploadAPIBlockHandler(const char* fileSystem, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock)
+void FileManager::uploadAPIBlockHandler(const char* fileSystem, const String& req, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock)
 {
     Log.trace("%suploadAPIBlockHandler fileSys %s, filename %s, total %d, idx %d, len %d, final %d\n", MODULE_PREFIX, 
                 fileSystem, filename.c_str(), fileLength, index, len, finalBlock);

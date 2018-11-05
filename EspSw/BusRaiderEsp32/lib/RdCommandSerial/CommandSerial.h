@@ -27,6 +27,7 @@ private:
     // Upload of files
     bool _uploadFromFSInProgress;
     bool _uploadFromAPIInProgress;
+    String _uploadFromFSRequest;
     int _blockCount;
     unsigned long _uploadStartMs;
     unsigned long _uploadLastBlockMs;
@@ -79,19 +80,20 @@ public:
     // Service 
     void service();
 
-    void sendFileStartRecord(const char* fileType, const String& filename, int fileLength);
+    void sendFileStartRecord(const char* fileType, const String& req, const String& filename, int fileLength);
     void sendFileBlock(size_t index, uint8_t *data, size_t len);
-    void sendFileEndRecord(int blockCount);
+    void sendFileEndRecord(int blockCount, const char* pAdditionalJsonNameValues = NULL);
     void sendTargetCommand(const String& targetCmd);
     void sendTargetData(const String& cmdName, const uint8_t* pData, int len, int index);
-    void uploadAPIBlockHandler(const char* fileType, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock);
+    void uploadAPIBlockHandler(const char* fileType, const String& req, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock);
 
     // Upload a file from the file system
-    bool startUploadFromFileSystem(const String& fileSystemName, const String& filename,
+    // Request is in the format of HTTP query parameters (e.g. "?baseAddr=1234")
+    bool startUploadFromFileSystem(const String& fileSystemName, const String& request, const String& filename,
                     const char* pTargetCmdWhenDone = NULL);
 
 private:
     void sendCharToCmdPort(uint8_t ch);
     void frameHandler(const uint8_t *framebuffer, int framelength);
-    void uploadCommonBlockHandler(const char* fileType, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock);
+    void uploadCommonBlockHandler(const char* fileType, const String& req, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock);
 };

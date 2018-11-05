@@ -7,7 +7,7 @@
 
 class Utils
 {
-  public:
+public:
 
     // Test for a timeout handling wrap around
     // Usage: isTimeout(millis(), myLastTime, 1000)
@@ -28,4 +28,8 @@ class Utils
 
     // Escape a string in JSON
     static String escapeJSON(const String& inStr);
+
+    // Convert HTTP query format to JSON
+    // JSON only contains name/value pairs and not {}
+    static String getJSONFromHTTPQueryStr(const char* inStr, bool mustStartWithQuestionMark = true);
 };

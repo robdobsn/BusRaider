@@ -43,7 +43,7 @@ public:
     String getFileContents(const char* fileSystem, const String& filename, int maxLen);
 
     // Handle a file upload block - same API as ESPAsyncWebServer file handler
-    void uploadAPIBlockHandler(const char* fileSystem, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock);
+    void uploadAPIBlockHandler(const char* fileSystem, const String& req, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock);
 
     // Delete file on file system
     bool deleteFile(const String& fileSystemStr, const String& filename);

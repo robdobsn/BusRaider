@@ -18,7 +18,7 @@ extern char* strncpy(char* dest, const char* src, size_t num);
 extern int strncmp(const char* str1, const char* str2, size_t num);
 extern int stricmp(const char* str1, const char* str2);
 extern int strnicmp(const char* str1, const char* str2, size_t num);
-extern const char *strstr(const char* string, const char* substring);
+extern char *strstr(const char* string, const char* substring);
 extern char rdtolower(char c);
 extern char rdisupper (unsigned char c);
 extern int rdisdigit(int c);

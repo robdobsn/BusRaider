@@ -8,13 +8,13 @@
 
 // Callback function for any endpoint
 typedef std::function<void(String &reqStr, String &respStr)> RestAPIFunction;
-typedef std::function<void(uint8_t *pData, size_t len, size_t index, size_t total)> RestAPIFnBody;
-typedef std::function<void(String filename, size_t contentLen, size_t index, uint8_t *data, size_t len, bool finalBlock)> RestAPIFnUpload;
+typedef std::function<void(String &reqStr, uint8_t *pData, size_t len, size_t index, size_t total)> RestAPIFnBody;
+typedef std::function<void(String &reqStr, String& filename, size_t contentLen, size_t index, uint8_t *data, size_t len, bool finalBlock)> RestAPIFnUpload;
 
 // Definition of an endpoint
 class RestAPIEndpointDef
 {
-  public:
+public:
     enum EndpointType
     {
         ENDPOINT_NONE = 0,
@@ -75,17 +75,17 @@ class RestAPIEndpointDef
             _callback(req, resp);
     }
 
-    void callbackBody(uint8_t *pData, size_t len, size_t index, size_t total)
+    void callbackBody(String&req, uint8_t *pData, size_t len, size_t index, size_t total)
     {
         if (_callbackBody)
-            _callbackBody(pData, len, index, total);
+            _callbackBody(req, pData, len, index, total);
     }
 
-    void callbackUpload(String &filename, size_t contentLen, size_t index,
+    void callbackUpload(String&req, String &filename, size_t contentLen, size_t index,
                          uint8_t *data, size_t len, bool finalBlock)
     {
         if (_callbackUpload)
-            _callbackUpload(filename, contentLen, index, data, len, finalBlock);
+            _callbackUpload(req, filename, contentLen, index, data, len, finalBlock);
     }
 
 };
@@ -93,7 +93,7 @@ class RestAPIEndpointDef
 // Collection of endpoints
 class RestAPIEndpoints
 {
-  public:
+public:
     // Max endpoints we can accommodate
     static const int MAX_WEB_SERVER_ENDPOINTS = 50;
 
@@ -150,7 +150,7 @@ class RestAPIEndpoints
 
     static const char *getEndpointMethodStr(RestAPIEndpointDef::EndpointMethod endpointMethod);
 
-  private:
+private:
     // Endpoint list
     RestAPIEndpointDef *_pEndpoints[MAX_WEB_SERVER_ENDPOINTS];
     int _numEndpoints;

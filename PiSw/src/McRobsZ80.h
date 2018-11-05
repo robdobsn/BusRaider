@@ -44,7 +44,7 @@ class McRobsZ80 : public McBase
     virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]);
 
     // Handle a file
-    virtual void fileHander(const char* pFileInfo, const uint8_t* pFileData, int fileLen);
+    virtual void fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen);
 
     // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
     static uint32_t memoryRequestCallback(uint32_t addr, uint32_t data, uint32_t flags);

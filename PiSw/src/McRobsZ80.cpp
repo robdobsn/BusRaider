@@ -85,7 +85,7 @@ void McRobsZ80::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_u
 }
 
 // Handle a file
-void McRobsZ80::fileHander(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
+void McRobsZ80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
 {
     // Get the file type (extension of file name)
     #define MAX_VALUE_STR 30

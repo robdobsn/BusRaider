@@ -224,7 +224,7 @@ void MachineInterface::service()
             // Log.notice("WOULD UPLOAD %s\n", preloadName.c_str());
             
             // Send
-            _pCommandSerial->startUploadFromFileSystem("SPIFFS", preloadName);
+            _pCommandSerial->startUploadFromFileSystem("SPIFFS", "", preloadName);
             break;
         }
         case DEMO_STATE_LOAD:
@@ -236,7 +236,7 @@ void MachineInterface::service()
             // Log.notice("WOULD UPLOAD %s\n", _demoFileToRun.c_str());
 
             // Send and run
-            _pCommandSerial->startUploadFromFileSystem("SPIFFS", _demoFileToRun, "ProgramAndReset");
+            _pCommandSerial->startUploadFromFileSystem("SPIFFS", "", _demoFileToRun, "ProgramAndReset");
             _demoState = DEMO_STATE_IDLE;
             break;
         }

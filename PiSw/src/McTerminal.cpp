@@ -206,7 +206,7 @@ void McTerminal::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_
 }
 
 // Handle a file
-void McTerminal::fileHander(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
+void McTerminal::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
 {
     // Get the file type (extension of file name)
     #define MAX_VALUE_STR 30
