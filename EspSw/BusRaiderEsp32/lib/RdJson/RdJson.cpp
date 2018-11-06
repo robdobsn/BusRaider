@@ -512,7 +512,7 @@ int RdJson::recreateJson(const char* js, jsmnrtok_t* t,
         return 0;
     }
     if (t->type == JSMNR_PRIMITIVE) {
-        Log.trace("#Found primitive size %d, start %d, end %d",
+        Log.trace("#Found primitive size %d, start %d, end %d\n",
                   t->size, t->start, t->end);
         Log.trace("%.*s", t->end - t->start, js + t->start);
         char* pStr = safeStringDup(js + t->start,
@@ -522,7 +522,7 @@ int RdJson::recreateJson(const char* js, jsmnrtok_t* t,
         return 1;
     }
     else if (t->type == JSMNR_STRING) {
-        Log.trace("#Found string size %d, start %d, end %d",
+        Log.trace("#Found string size %d, start %d, end %d\n",
                   t->size, t->start, t->end);
         Log.trace("'%.*s'", t->end - t->start, js + t->start);
         char* pStr = safeStringDup(js + t->start,
@@ -534,7 +534,7 @@ int RdJson::recreateJson(const char* js, jsmnrtok_t* t,
         return 1;
     }
     else if (t->type == JSMNR_OBJECT) {
-        Log.trace("#Found object size %d, start %d, end %d",
+        Log.trace("#Found object size %d, start %d, end %d\n",
                   t->size, t->start, t->end);
         j = 0;
         outStr.concat("{");
@@ -555,7 +555,7 @@ int RdJson::recreateJson(const char* js, jsmnrtok_t* t,
         return j + 1;
     }
     else if (t->type == JSMNR_ARRAY) {
-        Log.trace("#Found array size %d, start %d, end %d",
+        Log.trace("#Found array size %d, start %d, end %d\n",
                   t->size, t->start, t->end);
         j = 0;
         outStr.concat("[");
@@ -584,7 +584,7 @@ bool RdJson::doPrint(const char* jsonStr)
     int tokenCountRslt = JSMNR_parse(&parser, jsonStr, strlen(jsonStr),
                                      NULL, 1000);
     if (tokenCountRslt < 0) {
-        Log.info("JSON parse result: %d", tokenCountRslt);
+        Log.info("JSON parse result: %d\n", tokenCountRslt);
         return false;
     }
     jsmnrtok_t* pTokens = new jsmnrtok_t[tokenCountRslt];
@@ -592,7 +592,7 @@ bool RdJson::doPrint(const char* jsonStr)
     tokenCountRslt = JSMNR_parse(&parser, jsonStr, strlen(jsonStr),
                                  pTokens, tokenCountRslt);
     if (tokenCountRslt < 0) {
-        Log.info("JSON parse result: %d", tokenCountRslt);
+        Log.info("JSON parse result: %d\n", tokenCountRslt);
         delete pTokens;
         return false;
     }

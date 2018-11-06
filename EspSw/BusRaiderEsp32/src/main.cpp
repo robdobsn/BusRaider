@@ -12,10 +12,10 @@
 //   Reset:          /reset               - reset device
 //   Log level:      /loglevel/lll        - Logging level (for MQTT and HTTP)
 //                                        - lll one of v (verbose), t (trace), n (notice), w (warning), e (error), f (fatal)
-//   Log to MQTT:    /logmqtt/oo/topic    - Control logging to MQTT
-//                                        - oo = 0 or 1 for off/on, topic is the topic logging messages are sent to
-//   Log to HTTP:    /loghttp/oo/ip/po/ur - Control logging to HTTP
-//                                        - oo = 0 or 1 for off/on
+//   Log to MQTT:    /logmqtt/en/topic    - Control logging to MQTT
+//                                        - en = 0 or 1 for off/on, topic is the topic logging messages are sent to
+//   Log to HTTP:    /loghttp/en/ip/po/ur - Control logging to HTTP
+//                                        - en = 0 or 1 for off/on
 //                                        - ip is the IP address of the computer to log to (or hostname) and po is the port
 //                                        - ur is the HTTP url logging messages are POSTed to
 //   Log to serial:  /logserial/en/port   - Control logging to serial
@@ -186,13 +186,13 @@ void setup()
     // WiFi Manager
     wifiManager.setup(hwConfig, &wifiConfig, systemType, &wifiStatusLed);
 
+    // Firmware update
+    otaUpdate.setup(hwConfig, systemType, systemVersion);
+
     // Add API endpoints
     restAPISystem.setup(restAPIEndpoints);
     restAPIBusRaider.setup(restAPIEndpoints);
 
-    // Firmware update
-    otaUpdate.setup(hwConfig, systemType, systemVersion);
-    
     // Web server
     webServer.setup(hwConfig);
     webServer.addStaticResources(__webAutogenResources, __webAutogenResourcesCount);
