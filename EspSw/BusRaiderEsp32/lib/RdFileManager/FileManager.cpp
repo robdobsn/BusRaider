@@ -1,8 +1,11 @@
 // FileManager 
 // Rob Dobson 2018
 
+#include "RdJson.h"
 #include "FileManager.h"
 #include "Utils.h"
+#include <FS.h>
+#include <SPIFFS.h>
 
 static const char* MODULE_PREFIX = "FileManager: ";
 
@@ -95,7 +98,7 @@ String FileManager::getFileContents(const char* fileSystem, const String& filena
     File file = SPIFFS.open(filename, FILE_READ);
     if (!file)
     {
-        Log.trace("%sfailed to open file %s\n", MODULE_PREFIX, filename);
+        Log.trace("%sfailed to open file to read %s\n", MODULE_PREFIX, filename.c_str());
         return "";
     }
 
@@ -114,6 +117,26 @@ String FileManager::getFileContents(const char* fileSystem, const String& filena
     String readData = (char*)pBuf;
     delete [] pBuf;
     return readData;
+}
+
+bool FileManager::setFileContents(const char* fileSystem, const String& filename, String& fileContents)
+{
+    // Only SPIFFS supported
+    if (strcmp(fileSystem, "SPIFFS") != 0)
+        return false;
+
+    // Open file
+    File file = SPIFFS.open(filename, FILE_WRITE);
+    if (!file)
+    {
+        Log.trace("%sfailed to open file to write %s\n", MODULE_PREFIX, filename.c_str());
+        return "";
+    }
+
+    // Write
+    size_t bytesWritten = file.write((uint8_t*)(fileContents.c_str()), fileContents.length());
+    file.close();
+    return bytesWritten == fileContents.length();
 }
 
 void FileManager::uploadAPIBlockHandler(const char* fileSystem, const String& req, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock)
@@ -181,7 +204,7 @@ bool FileManager::chunkedFileStart(const String& fileSystemStr, const String& fi
     File file = SPIFFS.open("/" + filename, FILE_READ);
     if (!file)
     {
-        Log.trace("%schunked failed to open to %s file\n", MODULE_PREFIX, filename.c_str());
+        Log.trace("%schunked failed to open %s file\n", MODULE_PREFIX, filename.c_str());
         return false;
     }
     _chunkedFileLen = file.size();

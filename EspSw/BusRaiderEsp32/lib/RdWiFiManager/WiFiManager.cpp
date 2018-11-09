@@ -5,12 +5,12 @@
 #include <ArduinoLog.h>
 #include <WiFi.h>
 #include "ConfigNVS.h"
-#include "StatusLed.h"
+#include "StatusIndicator.h"
 #include <ESPmDNS.h>
 
 static const char* MODULE_PREFIX = "WiFiManager: ";
 
-StatusLed *WiFiManager::_pStatusLed = NULL;
+StatusIndicator *WiFiManager::_pStatusLed = NULL;
 
 String WiFiManager::_hostname;
 
@@ -24,7 +24,7 @@ String WiFiManager::getHostname()
     return _hostname;
 }
 
-void WiFiManager::setup(ConfigBase& hwConfig, ConfigBase *pSysConfig, const char *defaultHostname, StatusLed *pStatusLed)
+void WiFiManager::setup(ConfigBase& hwConfig, ConfigBase *pSysConfig, const char *defaultHostname, StatusIndicator *pStatusLed)
 {
     _wifiEnabled = hwConfig.getLong("wifiEnabled", 0) != 0;
     _pConfigBase = pSysConfig;

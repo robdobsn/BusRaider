@@ -30,7 +30,7 @@
 const char* systemType = SYSTEM_TYPE_NAME;
 
 // System version
-const char* systemVersion = "1.002.032";
+const char* systemVersion = "1.002.034";
 
 // Build date
 const char* buildDate = __DATE__;
@@ -51,8 +51,8 @@ const char* buildTime = __TIME__;
 #include <Utils.h>
 
 // Status LED
-#include "StatusLed.h"
-StatusLed wifiStatusLed;
+#include "StatusIndicator.h"
+StatusIndicator wifiStatusLed;
 
 // Config
 #include "ConfigNVS.h"
@@ -98,8 +98,8 @@ static const char *hwConfigJSON = {
     "\"OTAUpdate\":{\"enabled\":0,\"server\":\"domoticzoff\",\"port\":5076},"
     "\"serialConsole\":{\"portNum\":0},"
     "\"commandSerial\":{\"portNum\":1,\"baudRate\":115200},"
-    "\"fileManager\":{\"spiffsEnabled\":1,\"spiffsFormatIfCorrupt\",1},"
-    "\"wifiLed\":{\"ledPin\":\"13\",\"ledOnMs\":200,\"ledShortOffMs\":200,\"ledLongOffMs\":750},"
+    "\"fileManager\":{\"spiffsEnabled\":1,\"spiffsFormatIfCorrupt\":1},"
+    "\"wifiLed\":{\"hwPin\":\"13\",\"onMs\":200,\"shortOffMs\":200,\"longOffMs\":750},"
     "\"machineIF\":{\"portNum\":2,\"baudRate\":115200,\"wsPath\":\"/ws\",\"demoPin\":0},"
     "}"
 };
@@ -134,7 +134,7 @@ MachineInterface machineInterface;
 
 // REST API System
 #include "RestAPISystem.h"
-RestAPISystem restAPISystem(wifiManager, mqttManager, 
+RestAPISystem restAPISystem(wifiManager, mqttManager,
             otaUpdate, netLog, fileManager,
             systemType, systemVersion);
 
@@ -168,11 +168,11 @@ void setup()
     // Status Led
     wifiStatusLed.setup(hwConfig, "wifiLed");
 
-    // WiFi Config
-    wifiConfig.setup();
-
     // File system
     fileManager.setup(hwConfig);
+
+    // WiFi Config
+    wifiConfig.setup();
 
     // MQTT Config
     mqttConfig.setup();

@@ -2,9 +2,8 @@
 // Rob Dobson 2018
 
 #pragma once
-#include "Arduino.h"
-#include "FS.h"
-#include "SPIFFS.h"
+
+#include <Arduino.h>
 #include "ConfigBase.h"
 
 class FileManager
@@ -42,8 +41,9 @@ public:
     // {"rslt":"ok","diskSize":123456,"diskUsed":1234,"folder":"/","files":[{"name":"file1.txt","size":223},{"name":"file2.txt","size":234}]}
     bool getFilesJSON(const String& fileSystemStr, const String& folderStr, String& respStr);
 
-    // Get file contents as a string
+    // Get/Set file contents as a string
     String getFileContents(const char* fileSystem, const String& filename, int maxLen);
+    bool setFileContents(const char* fileSystem, const String& filename, String& fileContents);
 
     // Handle a file upload block - same API as ESPAsyncWebServer file handler
     void uploadAPIBlockHandler(const char* fileSystem, const String& req, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock);

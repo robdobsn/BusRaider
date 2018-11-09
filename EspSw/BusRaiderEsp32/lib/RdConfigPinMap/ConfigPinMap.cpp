@@ -1,7 +1,7 @@
 // Config Pin Map (maps as string to a pin on a processor)
 // Rob Dobson 2016-2018
 
-#include "Arduino.h"
+#include <Arduino.h>
 #include "ConfigPinMap.h"
 
 #if defined(ESP32)

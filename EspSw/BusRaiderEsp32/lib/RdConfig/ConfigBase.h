@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include <RdJson.h>
+#include "RdJson.h"
 
 class ConfigBase
 {

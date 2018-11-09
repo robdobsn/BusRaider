@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Arduino.h"
+#include <Arduino.h>
 
 typedef void (*DebugLoopTimer_InfoStrCb)(String &infoStr);
 

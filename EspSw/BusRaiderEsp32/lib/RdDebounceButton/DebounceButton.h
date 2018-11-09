@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "Arduino.h"
+#include <Arduino.h>
 #include <functional>
 
 typedef std::function<void(int val)> DebounceButtonCallback;

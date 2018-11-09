@@ -6,7 +6,7 @@
 #include <Arduino.h>
 #include "WiFi.h"
 
-class StatusLed;
+class StatusIndicator;
 class ConfigBase;
 
 class WiFiManager
@@ -21,7 +21,7 @@ private:
     bool _wifiFirstBeginDone;
     static constexpr unsigned long TIME_BETWEEN_WIFI_BEGIN_ATTEMPTS_MS = 60000;
     ConfigBase* _pConfigBase;
-    static StatusLed* _pStatusLed;
+    static StatusIndicator* _pStatusLed;
 
 public:
     WiFiManager()
@@ -35,7 +35,7 @@ public:
 
     bool isEnabled();
     String getHostname();
-    void setup(ConfigBase& hwConfig, ConfigBase *pSysConfig, const char *defaultHostname, StatusLed *pStatusLed);
+    void setup(ConfigBase& hwConfig, ConfigBase *pSysConfig, const char *defaultHostname, StatusIndicator *pStatusLed);
     void service();
     bool isConnected();
     String formConfigStr();
