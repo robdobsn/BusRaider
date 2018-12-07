@@ -65,7 +65,7 @@ class TargetClockGenerator
         // https://www.raspberrypi.org/documentation/hardware/raspberrypi/bcm2835/BCM2835-ARM-Peripherals.pdf
 
         // Disable in any case
-      static const uint32_t clockGenPLLD = 6; // pp 107
+        static const uint32_t clockGenPLLD = 6; // pp 107
         W32(ARM_CM_GP0CTL, ARM_CM_PASSWD | clockGenPLLD);
         if (!en)
             return;
@@ -87,6 +87,8 @@ class TargetClockGenerator
 
         // Set the divisor
         uint32_t divisor = 500000000 / _freqReqd;
+        if (divisor > 4095)
+            divisor = 4095;
         W32(ARM_CM_GP0DIV, ARM_CM_PASSWD | divisor << 12);
 
         // Enable (or disable) as required
@@ -95,8 +97,9 @@ class TargetClockGenerator
         W32(ARM_CM_GP0CTL, ARM_CM_PASSWD | enMask | clockGenPLLD);
 
         // Debug
-        ee_printf("ClockGen: Enabled at %d (div %d), pin %d, mode %d\n",
-                        _freqReqd, divisor, _outputPin, _altMode);
+        uint32_t freqGenerated = 500000000 / divisor;
+        ee_printf("ClockGen: Enabled freqGen %d (req %d ... div= %d), pin %d, mode %d\n",
+                        freqGenerated, _freqReqd, divisor, _outputPin, _altMode);
     }
 
 };

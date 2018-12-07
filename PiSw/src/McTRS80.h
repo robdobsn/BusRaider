@@ -7,7 +7,7 @@
 
 class McTRS80 : public McBase
 {
-  private:
+private:
     static const char* _logPrefix;
     static constexpr uint32_t TRS80_KEYBOARD_ADDR = 0x3800;
     static constexpr uint32_t TRS80_KEYBOARD_RAM_SIZE = 0x0100;
@@ -22,7 +22,7 @@ class McTRS80 : public McBase
 
     static void handleExecAddr(uint32_t execAddr);
 
-  public:
+public:
 
     McTRS80() : McBase()
     {
@@ -57,6 +57,8 @@ class McTRS80 : public McBase
 
     // Handle a file
     virtual void fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen);
+
+private:
 
     // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
     static uint32_t memoryRequestCallback(uint32_t addr, uint32_t data, uint32_t flags);

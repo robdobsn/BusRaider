@@ -80,6 +80,9 @@ typedef enum {
 #define BR_M1_BAR 5 // GPIO5
 #define BR_CLOCK_PIN 4 // GPIO4
 
+// Pi debug pin
+#define BR_DEBUG_PI_SPI0_CE0 8 // SPI0 CE0
+
 // Direct access to Pi PIB (used for data transfer to/from host data bus)
 #define BR_PIB_MASK (~((uint32_t)0xff << BR_DATA_BUS))
 #define BR_PIB_GPF_REG GPFSEL2
@@ -122,7 +125,8 @@ extern uint8_t br_read_byte(int iorq);
 extern BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
 extern BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
 // Enable WAIT
-extern void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ);
+extern void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ,
+                bool singleStepIO, bool singleStepInstructions, bool singleStepMemRDWR);
 extern void br_wait_state_isr(void* pData);
 
 // Clear IO
@@ -131,9 +135,19 @@ extern void br_clear_all_io();
 // Service
 extern void br_service();
 
+// Wait interrupts
+extern void br_clear_wait_interrupt();
+extern void br_disable_wait_interrupt();
+extern void br_enable_wait_interrupt();
+
 // Set and remove callbacks on bus access
 extern void br_set_bus_access_callback(br_bus_access_callback_fntype* pBusAccessCallback);
 extern void br_remove_bus_access_callback();
+
+// Single step
+extern void br_single_step_get_current(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags);
+extern bool br_get_single_step_stopped();
+extern bool br_single_step_next();
 
 #ifdef __cplusplus
 }

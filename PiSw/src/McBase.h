@@ -45,6 +45,18 @@ class McBase
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
     virtual void displayRefresh() = 0;
 
+    // Handle reset for the machine - if false returned then the bus raider will issue a hardware reset
+    virtual bool reset()
+    {
+        return false;
+    }
+
+    // Handle single-step for the machine - if false returned then the bus raider will issue a bus step
+    virtual bool step()
+    {
+        return false;
+    }
+
     // Handle a key press
     virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]) = 0;
 

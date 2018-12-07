@@ -11,7 +11,7 @@ OOB = vectors.o pi_bus_raider.o busraider.o systemfont.o target_memory_map.o cmd
 			minihdlc.o srecparser.o jsmnR.o rdstdcpp.o \
 			McBase.o McManager.o \
 			McTRS80.o mc_trs80l3font.o \
-			McRobsZ80.o McTRS80CmdFormat.o \
+			McRobsZ80.o McDebugZ80.o McTRS80CmdFormat.o \
 			McZXSpectrum.o McZXSpectrumTZXFormat.o \
 			McTerminal.o
 
@@ -30,7 +30,7 @@ all: pi_bus_raider.elf kernel list
 	arm-none-eabi-objcopy --srec-forceS3 pi_bus_raider.elf -O srec pi_bus_raider.srec
 
 run: pi_bus_raider.img kernel
-	curl -F "file=@pi_bus_raider.img" http://192.168.86.148/uploadpisw
+	curl -F "file=@pi_bus_raider.img" http://192.168.86.145/uploadpisw
 
 kernel: pi_bus_raider.img
 	cp pi_bus_raider.img bin/kernel.img

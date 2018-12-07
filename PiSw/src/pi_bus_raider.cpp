@@ -17,11 +17,12 @@
 #include "McManager.h"
 #include "McTRS80.h"
 #include "McRobsZ80.h"
+#include "McDebugZ80.h"
 #include "McZXSpectrum.h"
 #include "McTerminal.h"
 
 // Program details
-static const char* PROG_VERSION = "             RC2014 Bus Raider V1.6.038";
+static const char* PROG_VERSION = "             RC2014 Bus Raider V1.6.042";
 static const char* PROG_CREDITS = "    Rob Dobson 2018 (inspired by PiGFX)";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
@@ -148,6 +149,7 @@ extern "C" void entry_point()
     new McTerminal();
     new McTRS80();
     new McRobsZ80();
+    new McDebugZ80();
     new McZXSpectrum();
 
     // Initialise graphics system
@@ -163,7 +165,7 @@ extern "C" void entry_point()
     br_init();
 
     // Enable first machine
-    McManager::setMachineIdx(0);
+    McManager::setMachineIdx(3);
 
     // Get current machine to check things are working
     if (!McManager::getMachine())
@@ -211,14 +213,23 @@ extern "C" void entry_point()
     unsigned long curRateSampleWindowStart = micros();
     unsigned long lastDisplayUpdateUs = 0;
     unsigned long dispTime = 0;
+    bool lastActivityTickerState = false;
 
     // Status update rate and last timer
     unsigned long lastStatusUpdateMs = 0;
     const unsigned long STATUS_UPDATE_RATE_MS = 3000;
 
+    // Single step debug 
+    // TODO
+    bool wasStepStopped = false;
+
     // Loop forever
     while (1) 
     {
+
+        // W32(GPSET0, 1 << BR_DEBUG_PI_SPI0_CE0);
+        // W32(GPCLR0, 1 << BR_DEBUG_PI_SPI0_CE0);
+        // continue;
 
         // Handle target machine display updates
         if (timer_isTimeout(micros(), lastDisplayUpdateUs, reqUpdateUs)) 
@@ -271,8 +282,12 @@ extern "C" void entry_point()
             // Refresh rate
             int refreshRate = refreshCount * 1000 / REFRESH_RATE_WINDOW_SIZE_MS;
             const int MAX_REFRESH_STR_LEN = 40;
+            const char* refreshText = "Refresh ";
             char refreshStr[MAX_REFRESH_STR_LEN+1];
-            strncpy(refreshStr, "Refresh ", MAX_REFRESH_STR_LEN);
+            refreshStr[0] = lastActivityTickerState ? '|' : '-';
+            refreshStr[1] = ' ';
+            lastActivityTickerState = !lastActivityTickerState;
+            strncpy(refreshStr+2, refreshText, MAX_REFRESH_STR_LEN);
             rditoa(refreshRate, (uint8_t*)(refreshStr+strlen(refreshStr)), MAX_REFRESH_STR_LEN, 10);
             strncpy(refreshStr+strlen(refreshStr), "fps", MAX_REFRESH_STR_LEN);
             wgfx_puts(1, wgfx_get_term_width()-strlen(refreshStr)-1, lineIdx++, (uint8_t*)refreshStr);
@@ -281,6 +296,18 @@ extern "C" void entry_point()
             // wgfx_putc(1, 149, 0, '0' + ((refreshRate / 10) % 10));
             // if (refreshRate / 100 != 0)
             //     wgfx_putc(1, 148, 0, '0' + ((refreshRate / 100) % 10));
+
+            // Step
+            if (br_get_single_step_stopped() && !wasStepStopped)
+            {
+                wasStepStopped = br_get_single_step_stopped();
+                uint32_t addr = 0;
+                uint32_t data = 0;
+                uint32_t flags = 0;
+                br_single_step_get_current(&addr, &data, &flags);
+                LogWrite("Main", LOG_WARNING, "STOPPED addr %04x data %02x flags %02x",
+                                addr, data, flags);
+            }
 
             // Ready for next time
             refreshCount = 0;

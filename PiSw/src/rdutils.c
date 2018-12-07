@@ -22,9 +22,9 @@ unsigned int R32(unsigned int addr)
 int timer_isTimeout(unsigned long curTime, unsigned long lastTime, unsigned long maxDuration)
 {
     if (curTime >= lastTime) {
-        return (curTime > lastTime + maxDuration);
+        return curTime > lastTime + maxDuration;
     }
-    return (ULONG_MAX - (lastTime - curTime) > maxDuration);
+    return ((ULONG_MAX - lastTime) + curTime) > maxDuration;
 }
 
 // Heap space
@@ -85,7 +85,7 @@ int strnicmp(const char* str1, const char* str2, size_t num)
 }
 
 // strstr from Apple open source
-const char *strstr(const char* string, const char* substring)
+char *strstr(const char* string, const char* substring)
 {
     const char *a, *b;
 
@@ -96,7 +96,7 @@ const char *strstr(const char* string, const char* substring)
 
     b = substring;
     if (*b == 0) {
-    return string;
+    return (char*)string;
     }
     for ( ; *string != 0; string += 1) {
     if (*string != *b) {
@@ -105,7 +105,7 @@ const char *strstr(const char* string, const char* substring)
     a = string;
     while (1) {
         if (*b == 0) {
-        return string;
+        return (char*)string;
         }
         if (*a++ != *b++) {
         break;
@@ -325,13 +325,21 @@ long strtol(const char *nptr, char **endptr, register int base)
     return (acc);
 }
 
-void * memcpy (void *dest, const void *src, size_t len)
+void* memcpy (void* dest, const void* src, size_t len)
 {
     char *d = dest;
     const char *s = src;
     while (len--)
        *d++ = *s++;
     return dest;
+}
+
+void *memset (void* pBuffer, int nValue, size_t nLength)
+{
+    char *p = (char*)pBuffer;
+    while (nLength--)
+        *p++ = (char) nValue;
+    return pBuffer;
 }
 
 void __cxa_pure_virtual()
