@@ -1,0 +1,6 @@
+__head                          = $0000 ; G 
+loopstart                       = $0000 ; L testZ80ASMCharInc
+loophere                        = $0002 ; L testZ80ASMCharInc
+loopin                          = $0009 ; L testZ80ASMCharInc
+__size                          = $0019 ; G 
+__tail                          = $0019 ; G 

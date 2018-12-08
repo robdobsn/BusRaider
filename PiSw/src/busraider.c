@@ -18,6 +18,9 @@
 // Comment out this line to disable WAIT state generation altogether
 #define BR_ENABLE_WAIT_AND_FIQ 1
 
+// Hardware versions
+// #define HARDWARE_VERSION_1_6 1
+
 // Instrument FIQ
 // #define INSTRUMENT_BUSRAIDER_FIQ 1
 
@@ -348,21 +351,32 @@ void br_write_byte(uint32_t byte, int iorq)
 #ifdef USE_BITWISE_CTRL_BUS_ACCESS
     digitalWrite(BR_DATA_DIR_IN, 0);
     br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
+#ifndef HARDWARE_VERSION_1_6
+    br_mux_clear();
+#endif
     digitalWrite(iorq ? BR_IORQ_BAR : BR_MREQ_BAR, 0);
     digitalWrite(BR_WR_BAR, 0);
     digitalWrite(BR_WR_BAR, 1);
     digitalWrite(iorq ? BR_IORQ_BAR : BR_MREQ_BAR, 1);
+#ifdef HARDWARE_VERSION_1_6
     br_mux_clear();
+#endif
     digitalWrite(BR_DATA_DIR_IN, 1);
 #else
     // Clear DIR_IN (so make direction out), enable data output onto data bus and MREQ_BAR active
     W32(GPCLR0, (1 << BR_DATA_DIR_IN) | BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)));
     W32(GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
+#ifndef HARDWARE_VERSION_1_6
+    W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
+#endif
     // Write the data by setting WR_BAR active
     W32(GPCLR0, (1 << BR_WR_BAR));
     // Deactivate and leave data direction set to inwards
     W32(GPSET0, (1 << BR_DATA_DIR_IN) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_WR_BAR));
+    // Clear the MUX
+#ifdef HARDWARE_VERSION_1_6
     W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
+#endif
 #endif
 }
 
@@ -378,21 +392,32 @@ uint8_t br_read_byte(int iorq)
 #ifdef USE_BITWISE_CTRL_BUS_ACCESS
     digitalWrite(BR_DATA_DIR_IN, 1);
     br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
+#ifndef HARDWARE_VERSION_1_6
+    br_mux_clear();
+#endif
     digitalWrite((iorq ? BR_IORQ_BAR : BR_MREQ_BAR), 0);
     digitalWrite(BR_RD_BAR, 0);
     uint8_t val = br_get_pib_value();
     digitalWrite(BR_RD_BAR, 1);
     digitalWrite((iorq ? BR_IORQ_BAR : BR_MREQ_BAR), 1);
+#ifdef HARDWARE_VERSION_1_6
     br_mux_clear();
+#endif
 #else
     // enable data output onto PIB (data-dir must be inwards already), MREQ_BAR and RD_BAR both active
     W32(GPCLR0, BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
     W32(GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
+#ifndef HARDWARE_VERSION_1_6
+    W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
+#endif
     // Get the data
     uint8_t val = br_get_pib_value();
     // Deactivate leaving data-dir inwards
     W32(GPSET0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
+    // Clear the MUX
+#ifdef HARDWARE_VERSION_1_6
     W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
+#endif
 #endif
     return val;
 }
@@ -447,7 +472,6 @@ BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int b
 // Read a consecutive block of memory from host
 // Assumes:
 // - control of host bus has been requested and acknowledged
-// - PIB is already set to input
 // - data direction on data bus driver is set to input (default)
 BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq)
 {
@@ -461,6 +485,9 @@ BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int bu
 
     // Set the address to initial value
     br_set_full_addr(addr);
+
+    // Set PIB to input
+    br_set_pib_input();
 
     // Iterate data
     for (uint32_t i = 0; i < len; i++) {
@@ -677,7 +704,7 @@ void br_wait_state_isr(void* pData)
             digitalWrite(BR_DATA_DIR_IN, 1);
             br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
             dataBusVals = br_get_pib_value() & 0xff;
-            br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
+            br_mux_clear();
         }
 
         // Send this to anything listening
@@ -690,6 +717,10 @@ void br_wait_state_isr(void* pData)
         {
             digitalWrite(BR_DATA_DIR_IN, 0);
             br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
+#ifndef HARDWARE_VERSION_1_6
+            // In HW version 1.7 onwards there is a flip-flop to handle data OE
+            br_mux_clear();
+#endif
             br_set_pib_output();
             br_set_pib_value(retVal & 0xff);
         }
@@ -749,6 +780,7 @@ void br_wait_state_isr(void* pData)
             // Re-enable the wait state generation
             W32(GPSET0, __br_wait_state_en_mask);
 
+#ifdef HARDWARE_VERSION_1_6            
             // Read the control lines
             if (!isWriting && (retVal != BR_MEM_ACCESS_RSLT_NOT_DECODED))
             {
@@ -771,6 +803,7 @@ void br_wait_state_isr(void* pData)
             W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
             W32(GPSET0, 1 << BR_DATA_DIR_IN);
             br_set_pib_input();
+#endif
         }
         else
         {
@@ -825,11 +858,7 @@ bool br_single_step_next()
     // Release wait for one step
     __br_single_step_in_progress = false;
 
-    // Clear detected edge on any pin
-    W32(GPEDS0, 0xffffffff);
-
-    // Clear the WAIT state flip-flop
-    W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
+#ifdef HARDWARE_VERSION_1_6            
 
     // Any read or IRQ vector placed on the data bus happens in here 
     // So need to make sure it is long enough
@@ -864,6 +893,13 @@ bool br_single_step_next()
     W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
     W32(GPSET0, 1 << BR_DATA_DIR_IN);
     br_set_pib_input();
+#endif
+
+    // Clear detected edge on any pin
+    W32(GPEDS0, 0xffffffff);
+
+    // Clear the WAIT state flip-flop
+    W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
 
     // Re-enable the wait state generation
     W32(GPSET0, __br_wait_state_en_mask);

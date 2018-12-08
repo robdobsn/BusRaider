@@ -14,6 +14,8 @@ uint8_t McDebugZ80::_systemRAM[DEBUGZ80_RAM_SIZE];
 
 volatile bool McDebugZ80::_scrnBufDirtyFlag = true;
 
+extern WgfxFont __TRS80Level3Font;
+
 McDebugZ80::McDebugZ80() : McBase()
 {
 }
@@ -23,17 +25,17 @@ McDescriptorTable McDebugZ80::_descriptorTable = {
     "Debug Z80",
     // Required display refresh rate
     .displayRefreshRatePerSec = 30,
-    .displayPixelsX = 512,
-    .displayPixelsY = 256,
+    .displayPixelsX = 8 * 64,
+    .displayPixelsY = 24 * 16,
     .displayCellX = 8,
-    .displayCellY = 16,
+    .displayCellY = 24,
     .pixelScaleX = 2,
-    .pixelScaleY = 2,
-    .pFont = &__systemFont,
-    .displayForeground = WGFX_WHITE,
+    .pixelScaleY = 1,
+    .pFont = &__TRS80Level3Font,
+    .displayForeground = WGFX_GREEN,
     .displayBackground = WGFX_BLACK,
     // Clock
-    .clockFrequencyHz = 100000
+    .clockFrequencyHz = 1000000
 };
 
 
@@ -73,20 +75,18 @@ void McDebugZ80::displayRefresh()
     if (_scrnBufDirtyFlag)
     {
         _scrnBufDirtyFlag = false;
-        int bytesPerRow = _descriptorTable.displayPixelsX/8;
-        for (uint32_t bufIdx = 0; bufIdx < DEBUGZ80_DISP_RAM_SIZE; bufIdx++)
+        // Write to the display on the Pi Zero
+        int cols = _descriptorTable.displayPixelsX / _descriptorTable.displayCellX;
+        int rows = _descriptorTable.displayPixelsY / _descriptorTable.displayCellY;
+        for (int k = 0; k < rows; k++) 
         {
-            if (_pScrnBufCopy[bufIdx] != _systemRAM[bufIdx + DEBUGZ80_DISP_RAM_ADDR])
+            for (int i = 0; i < cols; i++)
             {
-                _pScrnBufCopy[bufIdx] = _systemRAM[bufIdx + DEBUGZ80_DISP_RAM_ADDR];
-                // Set the pixels in this byte
-                int pixMask = 0x80;
-                for (int i = 0; i < 8; i++)
+                int cellIdx = k * cols + i;
+                if (_pScrnBufCopy[cellIdx] != _systemRAM[cellIdx + DEBUGZ80_DISP_RAM_ADDR])
                 {
-                    int x = ((bufIdx % bytesPerRow) * 8) + i;
-                    int y = bufIdx / bytesPerRow;
-                    wgfxSetMonoPixel(MC_WINDOW_NUMBER, x, y, (_pScrnBufCopy[bufIdx] & pixMask) ? 1 : 0);
-                    pixMask = pixMask >> 1;
+                    _pScrnBufCopy[cellIdx] = _systemRAM[cellIdx + DEBUGZ80_DISP_RAM_ADDR];
+                    wgfx_putc(MC_WINDOW_NUMBER, i, k, _pScrnBufCopy[cellIdx]);
                 }
             }
         }
@@ -136,12 +136,18 @@ void McDebugZ80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, in
 // Handle reset for the machine - if false returned then the bus raider will issue a hardware reset
 bool McDebugZ80::reset()
 {
-    static uint8_t program[] = { 0x3e, 0xf0, 0x21, 0x00, 0xc0, 0x11, 0x01, 0xc0, 0x77, 0x01, 0x00, 0x40, 0xed, 0xb0, 0x3c, 0xfe,
-                    0x7e, 0xc2, 0x02, 0x00, 0xc3, 0x00, 0x00 };
+    // static uint8_t program[] = { 0x3e, 0xf0, 0x21, 0x00, 0xc0, 0x11, 0x01, 0xc0, 0x77, 0x01, 0x00, 0x40, 0xed, 0xb0, 0x3c, 0xfe,
+    //                 0x7e, 0xc2, 0x02, 0x00, 0xc3, 0x00, 0x00 };
     // static uint8_t program[] = { 0xc3, 0x00, 0x00 };
+    static uint8_t program[] = { 0x1e, 0x30, 0x21, 0x00, 0xc0, 0x73, 0x01, 0xff, 0x1f, 0x0b, 0x78, 0xb1, 0xc2, 0x09, 0x00, 
+                    0x1c, 0x7b, 0xfe, 0x3a, 0xc2, 0x02, 0x00, 0xc3, 0x00, 0x00 };
     memset(_systemRAM, 0, DEBUGZ80_RAM_SIZE);
     memcpy(_systemRAM, program, sizeof(program));
-    memset(_pScrnBufCopy, 0, DEBUGZ80_DISP_RAM_SIZE);
+    memset(_pScrnBufCopy, 0xff, DEBUGZ80_DISP_RAM_SIZE);
+
+    static uint8_t testChars[] = "Hello world";
+    memcpy(&_systemRAM[DEBUGZ80_DISP_RAM_ADDR], testChars, sizeof(testChars));
+    _scrnBufDirtyFlag = true;
     
     LogWrite(_logPrefix, LOG_WARNING, "RESETTING");
     br_reset_host();
@@ -164,15 +170,15 @@ uint32_t McDebugZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[may
     {
         if (flags & (1 << BR_CTRL_BUS_MREQ))
         {
-            if (addr < 3)
-            {
-                debugVals[addr+1] = _systemRAM[addr];
-            }
-            else
-            {
-                if (debugVals[0] == -1)
-                    debugVals[0] = addr; 
-            }
+            // if (addr < 3)
+            // {
+            //     debugVals[addr+1] = _systemRAM[addr];
+            // }
+            // else
+            // {
+            //     if (debugVals[0] == -1)
+            //         debugVals[0] = addr; 
+            // }
 
             return _systemRAM[addr];
         }

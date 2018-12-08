@@ -1,0 +1,3 @@
+loopstart                       = $0000 ; L 
+loophere                        = $0002 ; L 
+loopin                          = $0009 ; L 
