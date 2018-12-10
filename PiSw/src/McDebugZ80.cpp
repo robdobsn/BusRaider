@@ -35,7 +35,7 @@ McDescriptorTable McDebugZ80::_descriptorTable = {
     .displayForeground = WGFX_GREEN,
     .displayBackground = WGFX_BLACK,
     // Clock
-    .clockFrequencyHz = 1000000
+    .clockFrequencyHz = 200000
 };
 
 
@@ -65,8 +65,9 @@ void McDebugZ80::handleExecAddr(uint32_t execAddr)
     LogWrite(_logPrefix, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
 }
 
-static int debugVals[10] = { -1,-1,-1,-1,-1,-1,-1,-1,-1,-1 };
-static int lastDebug[10] = { -1,-1,-1,-1,-1,-1,-1,-1,-1,-1 };
+static int debugVals[40];
+static int lastDebug[40];
+static int debugCur = 0;
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
 void McDebugZ80::displayRefresh()
@@ -92,11 +93,14 @@ void McDebugZ80::displayRefresh()
         }
     }
 
-    for (unsigned int i = 0; i < sizeof(debugVals)/sizeof(debugVals[0]); i++)
+    for (unsigned int i = 0; i < sizeof(debugVals)/sizeof(debugVals[0]); i+=4)
     {   
         if ((lastDebug[i] != debugVals[i]) && (debugVals[i] != -1))
         {
-            LogWrite(_logPrefix, LOG_WARNING, "debug %d == %02x", i, debugVals[i]);
+            int flags = debugVals[i+3];
+            LogWrite(_logPrefix, LOG_WARNING, "debug %04x %02x %02x %c%c%c%c%c%c", debugVals[i], debugVals[i+1], debugVals[i+2],
+                        flags & 0x01 ? 'R': ' ', flags & 0x02 ? 'W': ' ', flags & 0x04 ? 'M': ' ',
+                        flags & 0x08 ? 'I': ' ', flags & 0x10 ? '1': ' ', flags & 0x20 ? 'T': ' ');
             lastDebug[i] = debugVals[i];
         }
     }
@@ -149,15 +153,15 @@ bool McDebugZ80::reset()
     memcpy(&_systemRAM[DEBUGZ80_DISP_RAM_ADDR], testChars, sizeof(testChars));
     _scrnBufDirtyFlag = true;
     
-    LogWrite(_logPrefix, LOG_WARNING, "RESETTING");
-    br_reset_host();
-    LogWrite(_logPrefix, LOG_WARNING, "RESETDEBUGVARS");
+    br_disable_wait_interrupt();
+    debugCur = 0;
     for (unsigned int i = 0; i < sizeof(debugVals)/sizeof(debugVals[0]); i++)
     {   
         lastDebug[i] = -1;
         debugVals[i] = -1;
     }
     LogWrite(_logPrefix, LOG_WARNING, "RESET");
+    br_reset_host();
 
     return true;
 }
@@ -166,31 +170,13 @@ bool McDebugZ80::reset()
 uint32_t McDebugZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
 {
     // Check for read
+    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
     if (flags & (1 << BR_CTRL_BUS_RD))
     {
         if (flags & (1 << BR_CTRL_BUS_MREQ))
         {
-            // if (addr < 3)
-            // {
-            //     debugVals[addr+1] = _systemRAM[addr];
-            // }
-            // else
-            // {
-            //     if (debugVals[0] == -1)
-            //         debugVals[0] = addr; 
-            // }
-
-            return _systemRAM[addr];
+            retVal = _systemRAM[addr];
         }
-        // // Decode port
-        // if (addr == 0x13)  // Joystick
-        // {
-        //     // Indicate no buttons are pressed
-        //     return 0xff;
-        // }
-
-        // Other IO ports are not decoded
-        return BR_MEM_ACCESS_RSLT_NOT_DECODED;
     }
     else if (flags & (1 << BR_CTRL_BUS_WR))
     {
@@ -200,17 +186,20 @@ uint32_t McDebugZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[may
             {
                 _scrnBufDirtyFlag = true;
                 _systemRAM[addr] = data;
-                if (addr == 0xc000)
-                {
-                    debugVals[5] = addr >> 8;
-                    debugVals[6] = addr & 0xff;
-                    debugVals[4] = data;
-                }
+                retVal = 0;
             }
         }
     }
 
-    // Not decoded
-    return BR_MEM_ACCESS_RSLT_NOT_DECODED;
+    // Store
+    if (debugCur < sizeof(debugVals)/sizeof(debugVals[0]))
+    {
+        debugVals[debugCur++] = addr;
+        debugVals[debugCur++] = data;
+        debugVals[debugCur++] = retVal;
+        debugVals[debugCur++] = flags;
+    }
+
+    return retVal;
 }
 

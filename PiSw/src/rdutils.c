@@ -7,13 +7,13 @@
 #include "jsmnR.h"
 #include "ee_printf.h"
 
-void W32(unsigned int addr, unsigned int val)
+void PUTW32(unsigned int addr, unsigned int val)
 {
     volatile unsigned int* pAddr = (volatile unsigned int*)addr;
     *pAddr = val;
 }
 
-unsigned int R32(unsigned int addr)
+unsigned int GETW32(unsigned int addr)
 {
     volatile unsigned int* pAddr = (volatile unsigned int*)addr;
     return *pAddr;

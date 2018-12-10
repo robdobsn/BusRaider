@@ -77,6 +77,21 @@ _reset_:
 
 .global fiq_handler_
 fiq_handler_:
+
+    # ldr r8, =#0x20200000
+    # mov r9, #0x100
+    # mvn r10, #0
+    # mov r11, #0x3000
+    # str r9, [r8, #0x1C]
+    # str r10, [r8, #0x40]
+    # str r11, [r8, #0x28]
+    # str r11, [r8, #0x1C]
+    # str r9, [r8, #0x28]
+    # subs pc,lr,#4
+
+
+
+
     ;@ FIQ swaps out R8..R14
     push {r0,r1,r2,r3,r4,r5,r6,r7,lr}
     bl c_firq_handler

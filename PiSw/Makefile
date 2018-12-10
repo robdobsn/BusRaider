@@ -30,7 +30,7 @@ all: pi_bus_raider.elf kernel list
 	arm-none-eabi-objcopy --srec-forceS3 pi_bus_raider.elf -O srec pi_bus_raider.srec
 
 run: pi_bus_raider.img kernel
-	curl -F "file=@pi_bus_raider.img" http://192.168.86.145/uploadpisw
+	curl -F "file=@pi_bus_raider.img" http://192.168.86.143/uploadpisw
 
 kernel: pi_bus_raider.img
 	cp pi_bus_raider.img bin/kernel.img
@@ -41,7 +41,7 @@ list: pi_bus_raider.elf
 debug: pi_bus_raider.elf
 	cd JTAG && ./run_gdb.sh
 
-$(BUILD_DIR)/%.o : $(SRC_DIR)/%.c 
+$(BUILD_DIR)/%.o : $(SRC_DIR)/%.c	
 	@$(ARMGNU)-gcc $(CFLAGS) -c $< -o $@
 	@echo "CC $<"
 

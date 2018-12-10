@@ -79,6 +79,8 @@ void br_mux_set(int muxVal)
 // Initialise the bus raider
 void br_init()
 {
+    // Disable FIQ - used for wait state handling
+    disable_fiq();
     // Pins not set here as outputs will be inputs (inc PIB used for data bus)
     // Setup the multiplexer
     br_mux_set_pins_output();
@@ -105,6 +107,15 @@ void br_init()
     __br_wait_interrupt_enabled = false;
 }
 
+// Hold host in reset state - call br_reset_host() to clear reset
+void br_reset_hold_host()
+{
+    // Reset by taking reset_bar low
+    br_mux_set(BR_MUX_RESET_Z80_BAR_LOW);
+
+}
+
+
 // Reset the host
 void br_reset_host()
 {
@@ -119,6 +130,15 @@ void br_reset_host()
     while (!timer_isTimeout(micros(), timeNow, 100)) {
         // Do nothing
     }
+
+    // Clear detected edge on any pin
+    W32(GPEDS0, 0xffffffff);
+
+    // Clear WAIT flip-flop
+    W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
+
+    // // Re-enable the wait state generation
+    W32(GPSET0, __br_wait_state_en_mask);
 
     // Clear wait interrupt conditions and enable
     br_clear_wait_interrupt();
@@ -162,6 +182,8 @@ int br_bus_acknowledged()
 // Take control of bus
 void br_take_control()
 {
+    // Disable interrupts
+    br_disable_wait_interrupt();
     // control bus
     br_set_pin_out(BR_WR_BAR, 1);
     br_set_pin_out(BR_RD_BAR, 1);
@@ -181,6 +203,9 @@ void br_release_control(bool resetTargetOnRelease)
     pinMode(BR_IORQ_BAR, INPUT);
     // Address bus not enabled
     digitalWrite(BR_PUSH_ADDR_BAR, 1);
+    // Re-enable interrupts if required
+    if (__br_wait_interrupt_enabled)
+        br_enable_wait_interrupt();
     // Check for reset
     if (resetTargetOnRelease)
     {
@@ -188,7 +213,7 @@ void br_release_control(bool resetTargetOnRelease)
         br_mux_set(BR_MUX_RESET_Z80_BAR_LOW);
         // No longer request bus
         digitalWrite(BR_BUSRQ_BAR, 1);
-        delayMicroseconds(1000);
+        delayMicroseconds(100);
         br_mux_clear();
     }
     else
@@ -599,9 +624,9 @@ void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ,
     else
         W32(GPFEN0, R32(GPFEN0) & (~(1 << BR_IORQ_BAR)));
     if (enWaitOnMREQ)
-        W32(GPFEN0, R32(GPFEN0) | (1 << BR_MREQ_BAR));
+        W32(GPFEN0, R32(GPFEN0) | (1 << BR_WAIT_BAR));
     else
-        W32(GPFEN0, R32(GPFEN0) & (~(1 << BR_MREQ_BAR)));
+        W32(GPFEN0, R32(GPFEN0) & (~(1 << BR_WAIT_BAR)));
 
     // Enable FIQ interrupts on GPIO[3] which is any GPIO pin
     W32(IRQ_FIQ_CONTROL, (1 << 7) | 52);
@@ -637,20 +662,10 @@ void br_wait_state_isr(void* pData)
 
     // return;
 
-    // delayMicroseconds(5);
-
-    // Read the low address
+    // Set the PIB to input
     br_set_pib_input();
-    br_mux_set(BR_MUX_LADDR_OE_BAR);
-    uint32_t addr = br_get_pib_value() & 0xff;
-    // Read the high address
-    br_mux_set(BR_MUX_HADDR_OE_BAR);
-    addr |= (br_get_pib_value() & 0xff) << 8;
-    // Clear the mux to deactivate output enables
-    br_mux_clear();
 
-    // Read the control lines
-    uint32_t busVals = R32(GPLEV0);
+#ifdef HARDWARE_VERSION_1_6
 
     // There should be a read or write active or there should be M1 and IORQ active 
     // to signal interrupt ack - if not wait some time until there is
@@ -662,7 +677,7 @@ void br_wait_state_isr(void* pData)
                 (((busVals & (1 << BR_RD_BAR)) == 0) || ((busVals & (1 << BR_WR_BAR)) == 0))  ) )
             break;
         // IORQ && M1
-        if ((((busVals & (1 << BR_IORQ_BAR)) == 0) || ((busVals & (1 << BR_M1_BAR)) == 0)))
+        if ((((busVals & (1 << BR_IORQ_BAR)) == 0) || ((busVals & (1 << BR_M1_PIB_BAR)) == 0)))
             break;
         // Refresh
         if (((busVals & (1 << BR_MREQ_BAR)) != 0) && ((busVals & (1 << BR_IORQ_BAR)) != 0))
@@ -687,14 +702,36 @@ void br_wait_state_isr(void* pData)
         W32(GPSET0, __br_wait_state_en_mask);
     }
     else
+#endif
     {
+
+        // Read the low address
+        br_mux_set(BR_MUX_LADDR_OE_BAR);
+        delayMicroseconds(1);
+        uint32_t addr = (R32(GPLEV0) >> BR_DATA_BUS) & 0xff;
+        // delayMicroseconds(1);
+        // Read the control lines
+        // uint32_t addr = (busVals >> BR_DATA_BUS) & 0xff;
+        // Read the high address
+        br_mux_set(BR_MUX_HADDR_OE_BAR);
+        delayMicroseconds(1);
+        addr |= ((GETW32(GPLEV0) >> (BR_DATA_BUS-8)) & 0xff00);
+
+        // delayMicroseconds(1);
+        // addr |= ((uint32_t)br_get_pib_value()) << 8;
+        // Clear the mux to deactivate output enables
+        br_mux_clear();
+        delayMicroseconds(1);
+        uint32_t busVals = GETW32(GPLEV0);
+
         // Get the appropriate bits for up-line communication
         uint32_t ctrlBusVals = 
             (((busVals & (1 << BR_RD_BAR)) == 0) ? (1 << BR_CTRL_BUS_RD) : 0) |
             (((busVals & (1 << BR_WR_BAR)) == 0) ? (1 << BR_CTRL_BUS_WR) : 0) |
             (((busVals & (1 << BR_MREQ_BAR)) == 0) ? (1 << BR_CTRL_BUS_MREQ) : 0) |
             (((busVals & (1 << BR_IORQ_BAR)) == 0) ? (1 << BR_CTRL_BUS_IORQ) : 0) |
-            (((busVals & (1 << BR_M1_BAR)) == 0) ? (1 << BR_CTRL_BUS_M1) : 0);
+            (((busVals & (1 << BR_WAIT_BAR)) == 0) ? (1 << BR_CTRL_BUS_WAIT) : 0) |
+            (((GETW32(GPLEV0) & (1 << BR_M1_PIB_BAR)) == 0) ? (1 << BR_CTRL_BUS_M1) : 0);
 
         // Read the data bus if the target machine is writing
         uint32_t dataBusVals = 0;
@@ -703,7 +740,8 @@ void br_wait_state_isr(void* pData)
         {
             digitalWrite(BR_DATA_DIR_IN, 1);
             br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
-            dataBusVals = br_get_pib_value() & 0xff;
+            delayMicroseconds(1);
+            dataBusVals = (GETW32(GPLEV0) >> BR_DATA_BUS) & 0xff;
             br_mux_clear();
         }
 
@@ -716,65 +754,66 @@ void br_wait_state_isr(void* pData)
         if (!isWriting && (retVal != BR_MEM_ACCESS_RSLT_NOT_DECODED))
         {
             digitalWrite(BR_DATA_DIR_IN, 0);
+            br_set_pib_output();
+            br_set_pib_value(retVal & 0xff);
             br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
 #ifndef HARDWARE_VERSION_1_6
             // In HW version 1.7 onwards there is a flip-flop to handle data OE
             br_mux_clear();
 #endif
-            br_set_pib_output();
-            br_set_pib_value(retVal & 0xff);
         }
 
-    #ifdef INSTRUMENT_BUSRAIDER_FIQ
-        // Form key from the control lines
-        uint32_t accVal = 0x00;
-        if ((busVals & (1 << BR_RD_BAR)) == 0)
-            accVal |= 0x01;
-        if ((busVals & (1 << BR_WR_BAR)) == 0)
-            accVal |= 0x02;
-        if (accVal == 0)
-            accVal = 0x03;
+    // #ifdef INSTRUMENT_BUSRAIDER_FIQ
+    //     // Form key from the control lines
+    //     uint32_t accVal = 0x00;
+    //     if ((busVals & (1 << BR_RD_BAR)) == 0)
+    //         accVal |= 0x01;
+    //     if ((busVals & (1 << BR_WR_BAR)) == 0)
+    //         accVal |= 0x02;
+    //     if (accVal == 0)
+    //         accVal = 0x03;
 
-        // Form key
-        uint32_t keyVal = (accVal << 16) | addr; 
-        int firstUnused = -1;
-        for (int i = 0; i < MAX_IO_PORT_VALS; i++)
-        {
-            // Check for key
-            if ((iorqPortAccess[i] & 0x3ffff) == keyVal)
-            {
-                // Inc count if we can
-                uint32_t count = iorqPortAccess[i] >> 18;
-                if (count != 0x3fff)
-                    count++;
-                iorqPortAccess[i] = (iorqPortAccess[i] & 0x3ffff) | (count << 18);
-                break;
-            }
-            else if (iorqPortAccess[i] == 0)
-            {
-                firstUnused = i;
-                break;
-            }
-        }
-        if (firstUnused != -1)
-        {
-            iorqPortAccess[firstUnused] = keyVal | (1 << 18);
-        }
+    //     // Form key
+    //     uint32_t keyVal = (accVal << 16) | addr; 
+    //     int firstUnused = -1;
+    //     for (int i = 0; i < MAX_IO_PORT_VALS; i++)
+    //     {
+    //         // Check for key
+    //         if ((iorqPortAccess[i] & 0x3ffff) == keyVal)
+    //         {
+    //             // Inc count if we can
+    //             uint32_t count = iorqPortAccess[i] >> 18;
+    //             if (count != 0x3fff)
+    //                 count++;
+    //             iorqPortAccess[i] = (iorqPortAccess[i] & 0x3ffff) | (count << 18);
+    //             break;
+    //         }
+    //         else if (iorqPortAccess[i] == 0)
+    //         {
+    //             firstUnused = i;
+    //             break;
+    //         }
+    //     }
+    //     if (firstUnused != -1)
+    //     {
+    //         iorqPortAccess[firstUnused] = keyVal | (1 << 18);
+    //     }
 
-        if (busVals & (iorqIsNotActive != 0))
-            iorqIsNotActive++;
-    #endif
+    //     if (busVals & (iorqIsNotActive != 0))
+    //         iorqIsNotActive++;
+    // #endif
 
         // Check if single-stepping
-        if (!__br_single_step_any || 
-            (!(__br_single_step_io && ((busVals & (1 << BR_IORQ_BAR)) == 0) && ((busVals & (1 << BR_M1_BAR)) != 0))) ||
-            (!(__br_single_step_instructions && ((busVals & (1 << BR_MREQ_BAR)) == 0) && ((busVals & (1 << BR_M1_BAR)) == 0))) ||
-            (!(__br_single_step_mem_rdwr && ((busVals & (1 << BR_MREQ_BAR)) == 0) && ((busVals & (1 << BR_M1_BAR)) != 0))))
-        {
+        // if (!__br_single_step_any || 
+        //     (!(__br_single_step_io && ((busVals & (1 << BR_IORQ_BAR)) == 0) && ((busVals & (1 << BR_M1_PIB_BAR)) != 0))) ||
+        //     (!(__br_single_step_instructions && ((busVals & (1 << BR_MREQ_BAR)) == 0) && ((busVals & (1 << BR_M1_PIB_BAR)) == 0))) ||
+        //     (!(__br_single_step_mem_rdwr && ((busVals & (1 << BR_MREQ_BAR)) == 0) && ((busVals & (1 << BR_M1_PIB_BAR)) != 0))))
+        // {
             // Clear detected edge on any pin
             W32(GPEDS0, 0xffffffff);
 
             // Clear the WAIT state flip-flop
+            W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
             W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
 
             // Re-enable the wait state generation
@@ -804,14 +843,14 @@ void br_wait_state_isr(void* pData)
             W32(GPSET0, 1 << BR_DATA_DIR_IN);
             br_set_pib_input();
 #endif
-        }
-        else
-        {
-            __br_single_step_in_progress = true;
-            __br_single_step_addr = addr;
-            __br_single_step_data = isWriting ? retVal : dataBusVals;
-            __br_single_step_flags = ctrlBusVals;
-        }
+        // }
+        // else
+        // {
+        //     __br_single_step_in_progress = true;
+        //     __br_single_step_addr = addr;
+        //     __br_single_step_data = isWriting ? retVal : dataBusVals;
+        //     __br_single_step_flags = ctrlBusVals;
+        // }
     }
 
     #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
@@ -833,6 +872,9 @@ void br_disable_wait_interrupt()
 
 void br_enable_wait_interrupt()
 {
+    // Clear interrupts first
+    br_clear_wait_interrupt();
+
     // Enable Fast Interrupts
     enable_fiq();
 }
