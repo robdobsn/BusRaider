@@ -1,0 +1,88 @@
+# PiBusRaider
+# Copyright Rob Dobson 2018
+# MIT License
+
+cmake_minimum_required (VERSION 3.12)
+set(PROJ_NAME BusRaider)
+set(PROJECT_ELF ${PROJ_NAME}.elf)
+
+# enable_language(ASM)
+
+# set(CMAKE_SYSTEM_NAME Generic)
+# set(CMAKE_SYSTEM_PROCESSOR BCM2835)
+
+# enable_language(ASM)
+
+# set(CMAKE_C_COMPILER "arm-none-eabi-gcc.exe")
+# set(CMAKE_CXX_COMPILER "arm-none-eabi-g++.exe")
+# set(CMAKE_ASM_COMPILER "arm-none-eabi-as.exe")
+
+# set(CMAKE_EXE_LINKER_FLAGS "--specs=nosys.specs" CACHE INTERNAL "")
+
+# set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+# set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+# set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+# set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
+# set(CMAKE_C_FLAGS "-Wall -Wextra -O3 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard")
+# set(CMAKE_CXX_FLAGS "-fno-rtti -fno-exceptions -fno-sized-deallocation")
+# set(CMAKE_C_LINK_FLAGS "")
+
+project (${PROJ_NAME} C CXX ASM)
+
+# file(WRITE main.cpp "int main(void) { return 0; }")
+# set(testApp "testApp")
+
+# list(
+#     APPEND testApp_sources
+#         main.cpp
+# )
+
+# add_executable(
+#     BusRaider
+#     ${testApp_sources}
+# )
+
+add_library(USPI STATIC ./uspi/lib/libuspi.a)
+set_target_properties(USPI PROPERTIES LINKER_LANGUAGE C)
+file(GLOB_RECURSE SOURCE_FILES "./src/*.s" "./src/*.c" "./src/*.cpp" "./src/*.h")
+add_executable(${PROJECT_ELF} ${SOURCE_FILES})
+target_link_libraries(${PROJECT_ELF} ${CMAKE_SOURCE_DIR}/uspi/lib/libuspi.a gcc)
+
+# target_compile_options(BusRaider PUBLIC $<$<COMPILE_LANGUAGE:C>:-Wall -Wextra -O3 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard>)
+# target_compile_options(BusRaider PUBLIC $<$<COMPILE_LANGUAGE:CXX>:-Wall -Wextra -O3 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard -fno-rtti -fno-exceptions -fno-sized-deallocation>)
+
+set(CMAKE_C_FLAGS "-Wall -Wextra -O3 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard")
+set(CMAKE_CXX_FLAGS "-Wall -Wextra -O3 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard -fno-rtti -fno-exceptions -fno-sized-deallocation")
+set(CMAKE_CXX_LINK_FLAGS "-nostdlib -T ../memmap")
+# set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Map=${PROJECT_SOURCE_DIR}/build/${PROJECT_NAME}.map")
+
+SET(CMAKE_CXX_LINK_EXECUTABLE "arm-none-eabi-ld.exe -T../memmap <OBJECTS> ../uspi/lib/libuspi.a -o <TARGET_NAME> libgcc.a")
+
+# set(HEX_FILE ${PROJECT_NAME}.hex)
+# set(BIN_FILE ${PROJECT_NAME}.bin)
+# add_custom_command(OUTPUT $(HEX_FILE) 
+#             COMMAND ${CMAKE_OBJCOPY} -Oihex ${PROJECT_ELF} ${HEX_FILE}
+#             DEPENDS ${PROJECT_ELF})
+# add_custom_target(${PROJECT_NAME}
+#             ALL
+#             DEPENDS ${HEX_FILE})
+# set_target_properties(${PROJECT_NAME}
+#             PROPERTIES OUTPUT_NAME ${PROJECT_ELF})
+
+# add_custom_command(TARGET ${PROJECT_ELF} POST_BUILD
+#         COMMAND "${CMAKE_OBJCOPY}" -Oihex "$<TARGET_FILE:${PROJECT_ELF}>" "${HEX_FILE}"
+#         COMMAND "${CMAKE_OBJCOPY}" -Obinary "$<TARGET_FILE:${PROJECT_ELF}>" "${BIN_FILE}"
+#         COMMENT "Building ${HEX_FILE} \nBuilding ${BIN_FILE}")
+
+# add_custom_command(TARGET ${PROJECT_ELF} POST_BUILD 
+#   COMMAND "${CMAKE_COMMAND}" -E copy 
+#      "$<TARGET_FILE:${PROJECT_ELF}>"
+#      "../bin/$<TARGET_FILE_NAME:${PROJECT_NAME}.elf>" 
+#   COMMENT "Copying to output directory")
+
+add_custom_command(TARGET ${PROJECT_ELF} POST_BUILD 
+  COMMAND "${CMAKE_OBJCOPY}" -O binary
+     "$<TARGET_FILE:${PROJECT_ELF}>"
+     "../bin/kernel.img2" 
+  COMMENT "Copying to output directory")
