@@ -13,9 +13,6 @@ private:
     // File manager
     FileManager& _fileManager;
 
-    // Max length of config data
-    int _configMaxDataLen;
-
     // Config filesystem
     String _fileSystem;
 

@@ -9,6 +9,8 @@
 #include "MQTTManager.h"
 #include "NetLog.h"
 #include "FileManager.h"
+#include "NTPClient.h"
+#include "CommandScheduler.h"
 
 class RestAPISystem
 {
@@ -28,17 +30,21 @@ private:
     RdOTAUpdate& _otaUpdate;
     NetLog& _netLog;
     FileManager& _fileManager;
+    NTPClient& _ntpClient;
+    CommandScheduler& _commandScheduler;
     String _systemType;
     String _systemVersion;
     
 public:
     RestAPISystem(WiFiManager& wifiManager, MQTTManager& mqttManager,
                 RdOTAUpdate& otaUpdate, NetLog& netLog,
-                FileManager& fileManager,
+                FileManager& fileManager, NTPClient& ntpClient,
+                CommandScheduler& commandScheduler,
                 const char* systemType, const char* systemVersion) :
                 _wifiManager(wifiManager), _mqttManager(mqttManager), 
                 _otaUpdate(otaUpdate), _netLog(netLog),
-                _fileManager(fileManager)
+                _fileManager(fileManager), _ntpClient(ntpClient),
+                _commandScheduler(commandScheduler)
     {
         _deviceRestartPending = false;
         _deviceRestartMs = 0;
@@ -47,6 +53,11 @@ public:
         _systemType = systemType;
         _systemVersion = systemVersion;
     }
+
+    // Setup and status
+    void setup(RestAPIEndpoints &endpoints);
+    static String getWifiStatusStr();
+    static int reportHealth(int bitPosStart, unsigned long *pOutHash, String *pOutStr);
 
     // Call frequently
     void service();
@@ -70,6 +81,15 @@ public:
     void apiNetLogCmdSerial(String &reqStr, String &respStr);
     void apiNetLogHTTP(String &reqStr, String &respStr);
 
+    // Command scheduler
+    void apiCmdSchedGetConfig(String &reqStr, String &respStr);
+    void apiPostCmdSchedule(String &reqStr, String &respStr);
+    void apiPostCmdScheduleBody(String& reqStr, uint8_t *pData, size_t len, size_t index, size_t total);
+
+    // NTP settings
+    void apiNTPGetConfig(String &reqStr, String &respStr);
+    void apiNTPSetConfig(String &reqStr, String &respStr);
+
     // Check for OTA updates
     void apiCheckUpdate(String &reqStr, String& respStr);
     
@@ -81,18 +101,32 @@ public:
 
     // List files on a file system
     // Uses FileManager.h
-    // In the reqStr the first part of the path is the file system name (e.g. SD or SPIFFS)
+    // In the reqStr the first part of the path is the file system name (e.g. sd or spiffs, can be blank to default)
     // The second part of the path is the folder - note that / must be replaced with ~ in folder
     void apiFileList(String &reqStr, String& respStr);
 
+    // Read file contents
+    // Uses FileManager.h
+    // In the reqStr the first part of the path is the file system name (e.g. sd or spiffs)
+    // The second part of the path is the folder and filename - note that / must be replaced with ~ in folder
+    void apiFileRead(String &reqStr, String& respStr);
+
     // Delete file on the file system
     // Uses FileManager.h
-    // In the reqStr the first part of the path is the file system name (e.g. SD or SPIFFS)
+    // In the reqStr the first part of the path is the file system name (e.g. sd or spiffs)
     // The second part of the path is the filename - note that / must be replaced with ~ in filename
     void apiDeleteFile(String &reqStr, String& respStr);
 
-    void setup(RestAPIEndpoints &endpoints);
+    // Upload file to file system - completed
+    void apiUploadToFileManComplete(String &reqStr, String &respStr);
 
-    static String getWifiStatusStr();
-    static int reportHealth(int bitPosStart, unsigned long *pOutHash, String *pOutStr);
+    // Upload file to file system - part of file (from HTTP POST file)
+    void apiUploadToFileManPart(String& req, String& filename, size_t contentLen, size_t index, 
+                uint8_t *data, size_t len, bool finalBlock);
+
+    // ESP Firmware update
+    void apiESPFirmwarePart(String& req, String& filename, size_t contentLen, size_t index, 
+                    uint8_t *data, size_t len, bool finalBlock);
+    void apiESPFirmwareUpdateDone(String &reqStr, String &respStr);
+
 };

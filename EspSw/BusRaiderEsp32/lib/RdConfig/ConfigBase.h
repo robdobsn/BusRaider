@@ -4,6 +4,10 @@
 #pragma once
 
 #include "RdJson.h"
+#include <vector>
+#include <functional>
+
+typedef std::function<void()> ConfigChangeCallbackType;
 
 class ConfigBase
 {
@@ -11,10 +15,18 @@ protected:
     // Data is stored in a single string as JSON
     String _dataStrJSON;
 
+    // Max length of config data
+    int _configMaxDataLen;
+
 public:
     ConfigBase()
     {
-        setConfigData("");
+        _configMaxDataLen = 0;
+    }
+
+    ConfigBase(int maxDataLen) :
+        _configMaxDataLen(maxDataLen)
+    {
     }
 
     ConfigBase(const char* configStr)
@@ -27,15 +39,15 @@ public:
     }
 
     // Get config data string
-    virtual const char *getConfigData()
+    virtual const char *getConfigCStrPtr()
     {
         return _dataStrJSON.c_str();
     }
 
-    // Get pointer to config WString
-    virtual String* getConfigStrPtr()
+    // Get reference to config WString
+    virtual String& getConfigString()
     {
-        return &_dataStrJSON;
+        return _dataStrJSON;
     }
 
     // Set the configuration data directly
@@ -45,6 +57,12 @@ public:
             _dataStrJSON = "{}";
         else
             _dataStrJSON = configJSONStr;
+    }
+
+    // Get max length
+    int getMaxLen()
+    {
+        return _configMaxDataLen;
     }
 
     virtual String getString(const char *dataPath, const char *defaultValue)
@@ -69,5 +87,10 @@ public:
     virtual bool writeConfig()
     {
         return false;
+    }
+
+    // Register change callback
+    virtual void registerChangeCallback(ConfigChangeCallbackType configChangeCallback)
+    {
     }
 };

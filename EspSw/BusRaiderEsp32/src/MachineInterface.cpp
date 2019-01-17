@@ -26,7 +26,7 @@ void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandS
 {
     // Get config
     ConfigBase csConfig(config.getString("machineIF", "").c_str());
-    Log.trace("%sconfig %s\n", MODULE_PREFIX, csConfig.getConfigData());
+    Log.trace("%sconfig %s\n", MODULE_PREFIX, csConfig.getConfigCStrPtr());
 
     // Save webserver and command serial
     _pWebServer = pWebServer;

@@ -9,6 +9,7 @@
 //   Set MQTT:       /mq/ss/ii/oo/pp      - ss = server, ii and oo are in/out topics, pp = port
 //                                        - in topics / should be replaced by ~ 
 //                                        - (e.g. /devicename/in becomes ~devicename~in)
+//   Check updates:  /checkupdate           - check for updates on the update server
 //   Reset:          /reset               - reset device
 //   Log level:      /loglevel/lll        - Logging level (for MQTT and HTTP)
 //                                        - lll one of v (verbose), t (trace), n (notice), w (warning), e (error), f (fatal)
@@ -23,14 +24,19 @@
 //                                        - port is the port number 0 = standard USB port
 //   Log to cmd:     /logcmd/en           - Control logging to command port (extra serial if configured)
 //                                        - en = 0 or 1 for off/on
+//   Set NTP:        /ntp/gmt/dst/s1/s2/s3  - Set NTP server(s)
+//                                          - gmt = GMT offset in seconds, dst = Daylight Savings Offset in seconds
+//                                          - s1, s2, s3 = NTP servers, e.g. pool.ntp.org
 
+// Don't include this code if unit testing
+#ifndef UNIT_TEST
 
-// System type
+// System type - this is duplicated here to make it easier for automated updater which parses the systemName = "aaaa" line
 #define SYSTEM_TYPE_NAME "BusRaiderESP32"
-const char* systemType = SYSTEM_TYPE_NAME;
+const char* systemType = "BusRaiderESP32";
 
 // System version
-const char* systemVersion = "1.002.034";
+const char* systemVersion = "1.003.034";
 
 // Build date
 const char* buildDate = __DATE__;
@@ -57,9 +63,13 @@ StatusIndicator wifiStatusLed;
 // Config
 #include "ConfigNVS.h"
 
-// // WiFi Manager
+// WiFi Manager
 #include "WiFiManager.h"
 WiFiManager wifiManager;
+
+// NTP Client
+#include "NTPClient.h"
+NTPClient ntpClient;
 
 // File manager
 #include "FileManager.h"
@@ -95,10 +105,13 @@ static const char *hwConfigJSON = {
     "\"mqttEnabled\":0,"
     "\"webServerEnabled\":1,"
     "\"webServerPort\":80,"
-    "\"OTAUpdate\":{\"enabled\":0,\"server\":\"domoticzoff\",\"port\":5076},"
+    "\"OTAUpdate\":{\"enabled\":1,\"server\":\"192.168.86.235\",\"port\":5076,\"directOk\":1},"
     "\"serialConsole\":{\"portNum\":0},"
     "\"commandSerial\":{\"portNum\":1,\"baudRate\":115200},"
-    "\"fileManager\":{\"spiffsEnabled\":1,\"spiffsFormatIfCorrupt\":1},"
+    "\"ntpConfig\":{\"ntpServer\":\"pool.ntp.org\", \"gmtOffsetSecs\":0, \"dstOffsetSecs\":0},"
+    "\"fileManager\":{\"spiffsEnabled\":1,\"spiffsFormatIfCorrupt\":1,"
+        "\"sdEnabled\": 1,\"sdMOSI\": \"23\",\"sdMISO\": \"19\",\"sdCLK\": \"18\",\"sdCS\": \"4\""
+    "},"
     "\"wifiLed\":{\"hwPin\":\"13\",\"onMs\":200,\"shortOffMs\":200,\"longOffMs\":750},"
     "\"machineIF\":{\"portNum\":2,\"baudRate\":115200,\"wsPath\":\"/ws\",\"demoPin\":0},"
     "}"
@@ -110,11 +123,21 @@ ConfigBase hwConfig(hwConfigJSON);
 // Config for WiFi
 ConfigNVS wifiConfig("wifi", 100);
 
+// Config for NTP
+ConfigNVS ntpConfig("ntp", 200);
+
 // Config for MQTT
 ConfigNVS mqttConfig("mqtt", 200);
 
 // Config for network logging
 ConfigNVS netLogConfig("netLog", 200);
+
+// Config for CommandScheduler
+ConfigNVS cmdSchedulerConfig("cmdSched", 500);
+
+// CommandScheduler - time-based commands
+#include "CommandScheduler.h"
+CommandScheduler commandScheduler;
 
 // CommandSerial port - used to monitor activity remotely and send commands
 #include "CommandSerial.h"
@@ -135,7 +158,8 @@ MachineInterface machineInterface;
 // REST API System
 #include "RestAPISystem.h"
 RestAPISystem restAPISystem(wifiManager, mqttManager,
-            otaUpdate, netLog, fileManager,
+                            otaUpdate, netLog, fileManager, ntpClient,
+                            commandScheduler,
             systemType, systemVersion);
 
 // REST API BusRaider
@@ -149,7 +173,7 @@ RestAPIBusRaider restAPIBusRaider(commandSerial, machineInterface, fileManager);
 void debugLoopInfoCallback(String &infoStr)
 {
     if (wifiManager.isEnabled())
-        infoStr = wifiManager.getHostname() + " SSID " + WiFi.SSID() + " IP " + WiFi.localIP().toString() + " Heap " + String(ESP.getFreeHeap());
+        infoStr = wifiManager.getHostname() + " V" + String(systemVersion) + " SSID " + WiFi.SSID() + " IP " + WiFi.localIP().toString() + " Heap " + String(ESP.getFreeHeap());
     else
         infoStr = "WiFi Disabled, Heap " + String(ESP.getFreeHeap());
 }
@@ -166,7 +190,7 @@ void setup()
     Log.notice("%s %s (built %s %s)\n", systemType, systemVersion, buildDate, buildTime);
 
     // Status Led
-    wifiStatusLed.setup(hwConfig, "wifiLed");
+    wifiStatusLed.setup(&hwConfig, "wifiLed");
 
     // File system
     fileManager.setup(hwConfig);
@@ -197,6 +221,9 @@ void setup()
     webServer.setup(hwConfig);
     webServer.addStaticResources(__webAutogenResources, __webAutogenResourcesCount);
     webServer.addEndpoints(restAPIEndpoints);
+    webServer.serveStaticFiles("/files/spiffs", "/spiffs/");
+    webServer.serveStaticFiles("/files/sd", "/sd/");
+    webServer.enableAsyncEvents("/events");
 
     // MQTT
     mqttManager.setup(hwConfig, &mqttConfig);
@@ -215,12 +242,19 @@ void setup()
                 &telnetServer, &restAPIEndpoints, &fileManager);
 
     // Add debug blocks
-    debugLoopTimer.blockAdd(0, "Web");
-    debugLoopTimer.blockAdd(1, "Console");
-    debugLoopTimer.blockAdd(2, "MQTT");
-    debugLoopTimer.blockAdd(3, "OTA");
-    debugLoopTimer.blockAdd(4, "Command");
-    debugLoopTimer.blockAdd(5, "MachineIF");
+    debugLoopTimer.blockAdd(0, "LoopTimer");
+    debugLoopTimer.blockAdd(1, "WiFi");
+    debugLoopTimer.blockAdd(2, "Web");
+    debugLoopTimer.blockAdd(3, "SysAPI");
+    debugLoopTimer.blockAdd(4, "Console");
+    debugLoopTimer.blockAdd(5, "MQTT");
+    debugLoopTimer.blockAdd(6, "OTA");
+    debugLoopTimer.blockAdd(7, "NetLog");
+    debugLoopTimer.blockAdd(8, "NTP");
+    debugLoopTimer.blockAdd(9, "Sched");
+    debugLoopTimer.blockAdd(10, "WifiLed");
+    debugLoopTimer.blockAdd(11, "Command");
+    debugLoopTimer.blockAdd(12, "MachineIF");
 }
 
 // Loop
@@ -228,52 +262,74 @@ void loop()
 {
 
     // Debug loop Timing
+    debugLoopTimer.blockStart(0);
     debugLoopTimer.service();
+    debugLoopTimer.blockEnd(0);
 
     // Service WiFi
+    debugLoopTimer.blockStart(1);
     wifiManager.service();
+    debugLoopTimer.blockEnd(1);
 
     // Service the web server
     if (wifiManager.isConnected())
     {
         // Begin the web server
-        debugLoopTimer.blockStart(0);
+        debugLoopTimer.blockStart(2);
         webServer.begin(true);
-        debugLoopTimer.blockEnd(0);
+        debugLoopTimer.blockEnd(2);
     }
 
-    // Service the status LED
-    wifiStatusLed.service();
-
     // Service the system API (restart)
-    restAPISystem.service();
-
-    // Serial console
-    debugLoopTimer.blockStart(1);
-    serialConsole.service();
-    debugLoopTimer.blockEnd(1);
-
-    // Service MQTT
-    debugLoopTimer.blockStart(2);
-    mqttManager.service();
-    debugLoopTimer.blockEnd(2);
-
-    // Service OTA Update
     debugLoopTimer.blockStart(3);
-    otaUpdate.service();
+    restAPISystem.service();
     debugLoopTimer.blockEnd(3);
 
-    // Service NetLog
-    netLog.service(serialConsole.getXonXoff());
-
-    // Service CommandSerial
+    // Serial console
     debugLoopTimer.blockStart(4);
-    commandSerial.service();
+    serialConsole.service();
     debugLoopTimer.blockEnd(4);
 
-    // Service MachineInterface
+    // Service MQTT
     debugLoopTimer.blockStart(5);
-    machineInterface.service();
+    mqttManager.service();
     debugLoopTimer.blockEnd(5);
+
+    // Service OTA Update
+    debugLoopTimer.blockStart(6);
+    otaUpdate.service();
+    debugLoopTimer.blockEnd(6);
+
+    // Service NetLog
+    debugLoopTimer.blockStart(7);
+    netLog.service(serialConsole.getXonXoff());
+    debugLoopTimer.blockStart(7);
+
+    // Service NTP
+    debugLoopTimer.blockStart(8);
+    ntpClient.service();
+    debugLoopTimer.blockEnd(8);
+
+    // Service command scheduler
+    debugLoopTimer.blockStart(9);
+    commandScheduler.service();
+    debugLoopTimer.blockEnd(9);
+
+    // Service the status LED
+    debugLoopTimer.blockStart(10);
+    wifiStatusLed.service();
+    debugLoopTimer.blockEnd(10);
+
+    // Service CommandSerial
+    debugLoopTimer.blockStart(11);
+    commandSerial.service();
+    debugLoopTimer.blockEnd(11);
+
+    // Service MachineInterface
+    debugLoopTimer.blockStart(12);
+    machineInterface.service();
+    debugLoopTimer.blockEnd(12);
     
 }
+
+#endif // UNIT_TEST

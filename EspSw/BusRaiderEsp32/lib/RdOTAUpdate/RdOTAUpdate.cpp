@@ -6,11 +6,37 @@
 
 static const char* MODULE_PREFIX = "OTAUpdate: ";
 
+RdOTAUpdate::RdOTAUpdate()
+{
+    _otaEnabled = false;
+    _otaDirectEnabled = false;
+    // Header parsing
+    _lastLineBlank = false;
+    _headerComplete = false;
+    _contentDataLength = 0;
+    _contentRxCount = 0;
+    // Progress
+    _targetFileLength = 0;
+    _updateBytesWritten = 0;
+    _updateHasBeenStarted = false;
+    // Flag indicating a firmware update check needed
+    _firmwareCheckRequired = false;
+    // Initially idle
+    _otaUpdateState = OTA_UPDATE_STATE_IDLE;
+    // Restart pending
+    _directUpdateRestartPending = false;
+    _directUpdateRestartPendingStartMs = 0;
+    // Direct update status
+    _otaDirectUpdateHandle = -1;
+    _otaDirectInProgress = false;
+}
+
 void RdOTAUpdate::setup(ConfigBase& config, const char *projectName, const char *currentVers)
 {            
     // Get config
     ConfigBase otaConfig(config.getString("OTAUpdate", "").c_str());
     _otaEnabled = otaConfig.getLong("enabled", 0) != 0;
+    _otaDirectEnabled = (otaConfig.getLong("directOk", 1) != 0) && _otaEnabled;
     // Project name must match the file store naming
     _projectName = projectName;
     _currentVers = currentVers;
@@ -36,6 +62,13 @@ void RdOTAUpdate::service()
     // Check if enabled
     if (!_otaEnabled)
         return;
+
+    // Check if OTA direct restart is pending
+    if (_directUpdateRestartPending && 
+            Utils::isTimeout(millis(), _directUpdateRestartPendingStartMs, TIME_TO_WAIT_BEFORE_RESTART_MS))
+    {
+        ESP.restart();
+    }
 
     // Time to check for firmware?
     if (_firmwareCheckRequired)
@@ -149,7 +182,7 @@ void RdOTAUpdate::startUpdateProcess()
 void RdOTAUpdate::startVersionCheck()
 {
     // Indicate starting
-    Log.trace("%sStaring version check ..............................\n", MODULE_PREFIX);
+    Log.notice("%sStaring version check ..............................\n", MODULE_PREFIX);
     // Log.verbose("OTAUpdate: Client space %d\n", _tcpClient.space());
     String requestStr = HTTP_REQUEST_BASE;
     requestStr.replace("[project]", _projectName);
@@ -165,7 +198,7 @@ void RdOTAUpdate::startVersionCheck()
 
 void RdOTAUpdate::startDownloadProcess()
 {
-    Log.trace("%sGetting update binary ..............................\n", MODULE_PREFIX);
+    Log.notice("%sGetting update binary ..............................\n", MODULE_PREFIX);
     // Log.verbose("Client space %d\n", _tcpClient.space());
     String requestStr = HTTP_REQUEST_BASE;
     requestStr.replace("[project]", _projectName);
@@ -193,8 +226,8 @@ void RdOTAUpdate::abortUpdateProcess()
     // Now idle again
     setState(OTA_UPDATE_STATE_IDLE);
 
-    // Debug
-    Log.trace("%sUpdate process aborted\n", MODULE_PREFIX);
+    // Aborted
+    Log.notice("%sUpdate process aborted\n", MODULE_PREFIX);
 }
 
 void RdOTAUpdate::setState(OTAUpdateState newState)
@@ -362,7 +395,7 @@ void RdOTAUpdate::onDataReceived(uint8_t *pDataReceived, size_t dataReceivedLen)
                     String fileVersionStr = extractValueByName(_fileInfo, "version");
                     String fileName = extractValueByName(_fileInfo, "filename");
                     String fileMD5 = extractValueByName(_fileInfo, "MD5");
-                    Log.trace("%sVersion %s, Filename %s, ND5 %s\n", MODULE_PREFIX, fileVersionStr.c_str(), fileName.c_str(), fileMD5.c_str());
+                    Log.notice("%sLatestVersion %s, Filename %s, ND5 %s\n", MODULE_PREFIX, fileVersionStr.c_str(), fileName.c_str(), fileMD5.c_str());
                     if (fileVersionStr.length() == 0)
                     {
                         Log.trace("%sCannot extract version from fileInfo\n", MODULE_PREFIX);
@@ -376,6 +409,7 @@ void RdOTAUpdate::onDataReceived(uint8_t *pDataReceived, size_t dataReceivedLen)
                         return;
                     }
                     // Check version against current
+                    Log.notice("%sRunningVersion is %s\n", MODULE_PREFIX, _currentVers.c_str());
                     bool versionNeedsUpdating = checkVersionString(fileVersionStr.c_str());
                     if (versionNeedsUpdating)
                     {
@@ -389,7 +423,7 @@ void RdOTAUpdate::onDataReceived(uint8_t *pDataReceived, size_t dataReceivedLen)
                     }
                     else
                     {
-                        Log.trace("%sNo update required\n", MODULE_PREFIX);
+                        Log.notice("%sNo update required\n", MODULE_PREFIX);
                         setState(OTA_UPDATE_STATE_IDLE);
                         return;
                     }
@@ -429,7 +463,7 @@ void RdOTAUpdate::onDataReceived(uint8_t *pDataReceived, size_t dataReceivedLen)
                     }
                     else
                     {
-                        Log.trace("%sDownloading started\n", MODULE_PREFIX);
+                        Log.notice("%sDownloading started\n", MODULE_PREFIX);
                         // Start the update process
                         if (updateStart(_contentDataLength))
                         {
@@ -450,4 +484,93 @@ void RdOTAUpdate::onDataReceived(uint8_t *pDataReceived, size_t dataReceivedLen)
             }
         }
     }
+}
+
+void RdOTAUpdate::directFirmwareUpdatePart(String &filename, size_t contentLen, size_t index,
+                                           uint8_t *data, size_t len, bool finalBlock)
+{
+    // Check enabled
+    if (!_otaDirectEnabled)
+    {
+        Log.warning("%sapiESPFirmwarePart OTA Direct Disabled\n", MODULE_PREFIX);
+        return;
+    }
+    Log.trace("%sapiESPFirmwarePart %d, %d, %d, %d\n", MODULE_PREFIX, contentLen, index, len, finalBlock);
+    const esp_partition_t* update_partition = esp_ota_get_next_update_partition(NULL);
+    // Check if first part
+    if (index == 0)
+    {
+
+        Log.warning("%sapiESPFirmwarePart first block contentLen %d len %d\n", MODULE_PREFIX, contentLen, len);
+
+        const esp_partition_t *configured = esp_ota_get_boot_partition();
+        const esp_partition_t *running = esp_ota_get_running_partition();
+
+        if (configured != running) 
+        {
+            Log.warning("%sapiESPFirmwarePart configured OTA boot partition at offset 0x%x, but running from offset 0x%x\n",
+                        MODULE_PREFIX, configured->address, running->address);
+            Log.warning("%sapiESPFirmwarePart (this can happen if either the OTA boot data or preferred boot image become corrupted somehow.)\n",
+                        MODULE_PREFIX);
+        }
+        Log.warning("%sapiESPFirmwarePart running partition type %d subtype %d (offset 0x%x)\n",
+                    MODULE_PREFIX, running->type, running->subtype, running->address);
+
+        Log.warning("%swriting to partition subtype %d at offset 0x%x\n",
+                MODULE_PREFIX, update_partition->subtype, update_partition->address);
+
+        esp_err_t err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &_otaDirectUpdateHandle);
+        if (err != ESP_OK) 
+        {
+            Log.warning("%sesp_ota_begin failed, error=%d\n", MODULE_PREFIX, err);
+        }
+        else
+        {
+            _otaDirectInProgress = true;
+            Log.warning("%sesp_ota_begin succeeded\n", MODULE_PREFIX);
+        }
+    }
+
+    // Check if in progress
+    if (_otaDirectInProgress)
+    {
+        esp_err_t err = esp_ota_write(_otaDirectUpdateHandle, (const void *)data, len);
+        if (err != ESP_OK) 
+        {
+            Log.warning("%sesp_ota_write failed! err=0x%x\n", MODULE_PREFIX, err);
+        }
+    }
+
+    // Check if final block
+    if (finalBlock && _otaDirectInProgress)
+    {
+        _otaDirectInProgress = false;
+        if (esp_ota_end(_otaDirectUpdateHandle) != ESP_OK) 
+        {
+            Log.warning("%sesp_ota_end failed!\n", MODULE_PREFIX);
+        }
+        else
+        {
+            esp_err_t err = esp_ota_set_boot_partition(update_partition);
+            if (err != ESP_OK) 
+            {
+                Log.warning("%sesp_ota_set_boot_partition failed! err=0x%x\n", MODULE_PREFIX, err);
+            }
+            else
+            {
+                Log.notice("%sesp_ota_set_boot_partition ok ... reboot pending\n", MODULE_PREFIX, err);
+                _directUpdateRestartPendingStartMs = millis();
+                _directUpdateRestartPending = true;
+            }
+        }
+    }
+}
+
+void RdOTAUpdate::directFirmwareUpdateDone()
+{
+    if (_otaDirectInProgress)
+    {
+        esp_ota_end(_otaDirectUpdateHandle);
+    }
+    Log.trace("%sapiESPFirmwareUpdate DONE\n", MODULE_PREFIX);
 }

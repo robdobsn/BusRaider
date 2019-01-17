@@ -129,7 +129,7 @@ void NetLog::setup(ConfigBase *pConfig, const char* systemName)
     if (!pConfig)
         return;
     if (_logToSerial && _serialPort == 0)
-        Serial.printf("NetLog: Setup from %s\n", pConfig->getConfigData());
+        Serial.printf("NetLog: Setup from %s\n", pConfig->getConfigCStrPtr());
     // Get the log level
     _loggingThreshold = pConfig->getLong("LogLevel", LOG_LEVEL_SILENT);
     // Get MQTT settings
@@ -311,7 +311,7 @@ void NetLog::service(char xonXoffChar)
         {
             uint8_t rxBuf[MAX_RX_BUFFER_SIZE];
             int numRead = _wifiClient.read(rxBuf, numToRead);
-            Log.verbose("OTAUpdate: wifiClient reading %d available %d read %d\n", numToRead, numAvail, numRead);
+            Log.verbose("NetLog: wifiClient reading %d available %d read %d\n", numToRead, numAvail, numRead);
             // Currently just discard received data on the TCP socket
         }
     }

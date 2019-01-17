@@ -3,7 +3,7 @@
 
 #pragma once
 
-// #define MQTT_USE_ASYNC_MQTT 1
+#define MQTT_USE_ASYNC_MQTT 1
 
 #include "WiFiManager.h"
 #include "RestAPIEndpoints.h"
