@@ -26,14 +26,17 @@ LIBUSPI=uspi/lib/libuspi.a
 
 all: pi_bus_raider.elf kernel list
 	$(MAKE) -C ./uspi/lib 
-	ctags src/.
 	arm-none-eabi-objcopy --srec-forceS3 pi_bus_raider.elf -O srec pi_bus_raider.srec
 
 run: pi_bus_raider.img kernel
-	curl -F "file=@pi_bus_raider.img" http://192.168.86.148/uploadpisw
+	curl -F "file=@pi_bus_raider.img" http://192.168.86.192/uploadpisw
 
 kernel: pi_bus_raider.img
+ifdef OS
+	copy pi_bus_raider.img bin\kernel.img
+else
 	cp pi_bus_raider.img bin/kernel.img
+endif
 
 list: pi_bus_raider.elf
 	$(ARMGNU)-objdump -D pi_bus_raider.elf > pi_bus_raider.list
@@ -65,7 +68,12 @@ pi_bus_raider.elf : $(OBJS) $(LIBUSPI)
 	@echo "LD $@"
 
 .PHONY clean :
+ifdef OS
+	del $(BUILD_DIR)\*.o
+	del *.elf
+	del *.img
+else
 	rm -f $(BUILD_DIR)/*.o
 	rm -f *.elf
 	rm -f *.img
-	rm -f tags
+endif
