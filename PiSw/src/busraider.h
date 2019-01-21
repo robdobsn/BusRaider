@@ -96,6 +96,8 @@ typedef enum {
 extern void br_init();
 // Reset host
 extern void br_reset_host();
+// Hold host in reset state - call br_reset_host() to clear reset
+extern void br_reset_hold_host();
 // NMI host
 extern void br_nmi_host();
 // IRQ host
@@ -127,7 +129,8 @@ extern uint8_t br_read_byte(int iorq);
 extern BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
 extern BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
 // Enable WAIT
-extern void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ);
+extern void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ,
+                bool singleStepIO, bool singleStepInstructions, bool singleStepMemRDWR);
 extern void br_wait_state_isr(void* pData);
 
 // Clear IO
@@ -136,9 +139,19 @@ extern void br_clear_all_io();
 // Service
 extern void br_service();
 
+// Wait interrupts
+extern void br_clear_wait_interrupt();
+extern void br_disable_wait_interrupt();
+extern void br_enable_wait_interrupt();
+
 // Set and remove callbacks on bus access
 extern void br_set_bus_access_callback(br_bus_access_callback_fntype* pBusAccessCallback);
 extern void br_remove_bus_access_callback();
+
+// Single step
+extern void br_single_step_get_current(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags);
+extern bool br_get_single_step_stopped();
+extern bool br_single_step_next();
 
 #ifdef __cplusplus
 }

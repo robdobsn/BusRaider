@@ -27,6 +27,20 @@ static br_bus_access_callback_fntype* __br_pBusAccessCallback = NULL;
 // Current wait state mask for restoring wait enablement after change
 static uint32_t __br_wait_state_en_mask = 0;
 
+// Single stepping modes
+bool __br_single_step_any = false;
+bool __br_single_step_io = false;
+bool __br_single_step_instructions = false;
+bool __br_single_step_mem_rdwr = false;
+
+// Single step is in progress - i.e. wait is active
+volatile bool __br_single_step_in_progress = false;
+
+// Bus values while single stepping
+uint32_t __br_single_step_addr = 0;
+uint32_t __br_single_step_data = 0;
+uint32_t __br_single_step_flags = 0;
+
 // Set a pin to be an output and set initial value for that pin
 void br_set_pin_out(int pin, int val)
 {
@@ -93,6 +107,7 @@ void br_reset_host()
     // Reset by taking reset_bar low and then high
     br_mux_set(BR_MUX_RESET_Z80_BAR_LOW);
     delayMicroseconds(1000);
+    // Remove the reset condition
     br_mux_clear();
 }
 
@@ -490,8 +505,15 @@ int loopCtr = 0;
 #endif
 
 // Enable wait-states and FIQ
-void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ)
+void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ,
+           bool singleStepIO, bool singleStepInstructions, bool singleStepMemRDWR)
 {
+    // Store single step flags
+    __br_single_step_io = singleStepIO;
+    __br_single_step_instructions = singleStepInstructions;
+    __br_single_step_mem_rdwr = singleStepMemRDWR;
+    __br_single_step_any = __br_single_step_io | __br_single_step_instructions | __br_single_step_mem_rdwr;
+
 #ifdef INSTRUMENT_BUSRAIDER_FIQ
     for (int i = 0; i < MAX_IO_PORT_VALS; i++)
     {
@@ -671,6 +693,60 @@ void br_wait_state_isr(void* pData)
         iorqIsNotActive++;
 #endif
 
+}
+
+void br_clear_wait_interrupt()
+{
+    // Clear detected edge on any pin
+    W32(GPEDS0, 0xffffffff);
+}
+
+void br_disable_wait_interrupt()
+{
+    // Disable Fast Interrupts
+    disable_fiq();
+}
+
+void br_enable_wait_interrupt()
+{
+    // Clear interrupts first
+    br_clear_wait_interrupt();
+
+    // Enable Fast Interrupts
+    enable_fiq();
+}
+
+void br_single_step_get_current(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags)
+{
+    *pAddr = __br_single_step_addr;
+    *pData = __br_single_step_data;
+    *pFlags = __br_single_step_flags;
+}
+
+bool br_get_single_step_stopped()
+{
+    return __br_single_step_in_progress;
+}
+
+bool br_single_step_next()
+{
+    // Check if single stepping
+    if (!__br_single_step_in_progress)
+        return false;
+
+    // Release wait for one step
+    __br_single_step_in_progress = false;
+
+    // Clear detected edge on any pin
+    W32(GPEDS0, 0xffffffff);
+
+    // Clear the WAIT state flip-flop
+    W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
+
+    // Re-enable the wait state generation
+    W32(GPSET0, __br_wait_state_en_mask);
+
+    return true;
 }
 
 void br_service()

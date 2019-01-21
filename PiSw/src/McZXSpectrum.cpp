@@ -39,13 +39,14 @@ void McZXSpectrum::enable()
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
     br_set_bus_access_callback(memoryRequestCallback);
     // Bus raider enable wait states on IORQ
-    br_enable_mem_and_io_access(true, false);
+    br_enable_mem_and_io_access(true, false, false, false, false);
 }
 
 // Disable machine
 void McZXSpectrum::disable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
+    br_enable_mem_and_io_access(false, false, false, false, false);
     br_remove_bus_access_callback();
 }
 

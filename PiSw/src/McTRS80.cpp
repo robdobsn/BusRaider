@@ -41,7 +41,7 @@ void McTRS80::enable()
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling TRS80");
     br_set_bus_access_callback(memoryRequestCallback);
     // Bus raider enable wait states on IORQ
-    br_enable_mem_and_io_access(true, false);
+    br_enable_mem_and_io_access(true, false, false, false, false);
 }
 
 // Disable machine
@@ -49,7 +49,7 @@ void McTRS80::disable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling TRS80");
     // Bus raider disable wait states
-    br_enable_mem_and_io_access(false, false);
+    br_enable_mem_and_io_access(false, false, false, false, false);
     br_remove_bus_access_callback();
 }
 

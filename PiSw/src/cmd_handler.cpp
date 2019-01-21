@@ -254,7 +254,22 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
     else if (stricmp(cmdName, "ResetTarget") == 0)
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "ResetTarget");
+        bool resetDone = false;
+        McBase* pMc = McManager::getMachine();
+        if (pMc)
+            resetDone = pMc->reset();
+        if (!resetDone)
             br_reset_host();
+    }
+    else if (stricmp(cmdName, "Step") == 0)
+    {
+        LogWrite(FromCmdHandler, LOG_DEBUG, "Step");
+        bool stepDone = false;
+        McBase* pMc = McManager::getMachine();
+        if (pMc)
+            stepDone = pMc->step();
+        if (!stepDone)
+            br_single_step_next();
     }
     else if (stricmp(cmdName, "IOClrTarget") == 0)
     {
