@@ -119,7 +119,21 @@ void br_reset_host()
 
     // Reset by taking reset_bar low and then high
     br_mux_set(BR_MUX_RESET_Z80_BAR_LOW);
-    delayMicroseconds(1000);
+
+    // Delay for a short time
+    uint32_t timeNow = micros();
+    while (!timer_isTimeout(micros(), timeNow, 100)) {
+        // Do nothing
+    }
+
+    // Clear detected edge on any pin
+    W32(GPEDS0, 0xffffffff);
+
+    // Clear WAIT flip-flop
+    W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
+
+    // // Re-enable the wait state generation
+    W32(GPSET0, __br_wait_state_en_mask);
 
     // Clear wait interrupt conditions and enable
     br_clear_wait_interrupt();
@@ -373,7 +387,7 @@ void br_write_byte(uint32_t byte, int iorq)
     W32(GPCLR0, (1 << BR_WR_BAR));
     // Deactivate and leave data direction set to inwards
     W32(GPSET0, (1 << BR_DATA_DIR_IN) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_WR_BAR));
-    W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
+    br_mux_clear();
 #endif
 }
 
@@ -403,7 +417,7 @@ uint8_t br_read_byte(int iorq)
     uint8_t val = br_get_pib_value();
     // Deactivate leaving data-dir inwards
     W32(GPSET0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
-    W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
+    br_mux_clear();
 #endif
     return val;
 }

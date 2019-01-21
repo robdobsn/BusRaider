@@ -11,7 +11,7 @@ OOB = vectors.o pi_bus_raider.o busraider.o systemfont.o target_memory_map.o cmd
 			minihdlc.o srecparser.o jsmnR.o rdstdcpp.o \
 			McBase.o McManager.o \
 			McTRS80.o mc_trs80l3font.o \
-			McRobsZ80.o McTRS80CmdFormat.o \
+			McRobsZ80.o McDebugZ80.o McTRS80CmdFormat.o \
 			McZXSpectrum.o McZXSpectrumTZXFormat.o \
 			McTerminal.o
 

@@ -67,7 +67,7 @@ void McDebugZ80::handleExecAddr(uint32_t execAddr)
 
 static int debugVals[40];
 static int lastDebug[40];
-static int debugCur = 0;
+static unsigned int debugCur = 0;
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
 void McDebugZ80::displayRefresh()

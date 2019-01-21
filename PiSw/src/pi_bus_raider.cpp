@@ -17,11 +17,12 @@
 #include "McManager.h"
 #include "McTRS80.h"
 #include "McRobsZ80.h"
+#include "McDebugZ80.h"
 #include "McZXSpectrum.h"
 #include "McTerminal.h"
 
 // Program details
-static const char* PROG_VERSION = "             RC2014 Bus Raider V1.6.045";
+static const char* PROG_VERSION = "             RC2014 Bus Raider V1.6.046";
 static const char* PROG_CREDITS = "    Rob Dobson 2018 (inspired by PiGFX)";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
@@ -148,6 +149,7 @@ extern "C" void entry_point()
     new McTerminal();
     new McTRS80();
     new McRobsZ80();
+    new McDebugZ80();
     new McZXSpectrum();
 
     // Initialise graphics system
