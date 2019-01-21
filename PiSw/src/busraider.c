@@ -486,6 +486,9 @@ BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int bu
     // Set the address to initial value
     br_set_full_addr(addr);
 
+    // Set PIB to input
+    br_set_pib_input();
+
     // Iterate data
     for (uint32_t i = 0; i < len; i++) {
         // Read byte
