@@ -7,6 +7,10 @@ thumbs.db
 .pioenvs/
 .sconsign.dblite
 build/*.o
+tests/**/*.o
+tests/**/*.err
+tests/**/*.lst
+tests/**/*.bin
 
 # User-specific files
 *.suo
