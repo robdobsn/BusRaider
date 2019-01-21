@@ -1,6 +1,6 @@
 
 ARMGNU ?= arm-none-eabi
-CFLAGS = -Wall -Wextra -O3 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard
+CFLAGS = -mcpu=arm6 -mfpu=vfp -Wall -Wextra -O3 -g -nostdlib -nostartfiles -fno-stack-limit -ffreestanding -mfloat-abi=hard
 CPPFLAGS = -fno-rtti -fno-exceptions -fno-sized-deallocation
 
 
@@ -30,7 +30,7 @@ all: pi_bus_raider.elf kernel list
 	arm-none-eabi-objcopy --srec-forceS3 pi_bus_raider.elf -O srec pi_bus_raider.srec
 
 run: pi_bus_raider.img kernel
-	curl -F "file=@pi_bus_raider.img" http://192.168.86.143/uploadpisw
+	curl -F "file=@pi_bus_raider.img" http://192.168.86.148/uploadpisw
 
 kernel: pi_bus_raider.img
 	cp pi_bus_raider.img bin/kernel.img
