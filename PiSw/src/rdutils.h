@@ -7,11 +7,8 @@
 extern "C" {
 #endif
 
-#define W32(addr, val) (*(volatile unsigned *)(addr)) = (val)
-#define R32(addr) (*(volatile unsigned *)(addr))
-
-extern void PUTW32(unsigned int addr, unsigned int val);
-extern unsigned int GETW32(unsigned int addr);
+extern void W32(unsigned int addr, unsigned int val);
+extern unsigned int R32(unsigned int addr);
 
 extern int timer_isTimeout(unsigned long curTime, unsigned long lastTime, unsigned long maxDuration);
 
