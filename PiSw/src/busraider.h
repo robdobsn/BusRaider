@@ -27,6 +27,7 @@ typedef enum {
 #define BR_CTRL_BUS_MREQ 2
 #define BR_CTRL_BUS_IORQ 3
 #define BR_CTRL_BUS_M1 4
+#define BR_CTRL_BUS_WAIT 5
 
 // Multiplexer
 // Wiring is a little off as A0, A1, A2 on 74HC138 are Pi 11, 9, 10 respectively
@@ -73,12 +74,16 @@ typedef enum {
 #define BR_MREQ_BAR 0 // ID_SD
 #define BR_IORQ_BAR 1 // ID_SC
 #define BR_DATA_BUS 20 // GPIO20..27
+#define BR_M1_PIB_BAR 20 // Piggy backing on the PIB (with 10K resistor to avoid conflict)
 #define BR_PUSH_ADDR_BAR 3 // SCL
 #define BR_HADDR_CK 7 // SPI0 CE1
 #define BR_LADDR_CK 16 // SPI1 CE2
 #define BR_DATA_DIR_IN 6
-#define BR_M1_BAR 5 // GPIO5
+#define BR_WAIT_BAR 5 // GPIO5
 #define BR_CLOCK_PIN 4 // GPIO4
+
+// Pi debug pin
+#define BR_DEBUG_PI_SPI0_CE0 8 // SPI0 CE0
 
 // Direct access to Pi PIB (used for data transfer to/from host data bus)
 #define BR_PIB_MASK (~((uint32_t)0xff << BR_DATA_BUS))

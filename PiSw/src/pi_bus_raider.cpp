@@ -21,7 +21,7 @@
 #include "McTerminal.h"
 
 // Program details
-static const char* PROG_VERSION = "             RC2014 Bus Raider V1.6.043";
+static const char* PROG_VERSION = "             RC2014 Bus Raider V1.6.044";
 static const char* PROG_CREDITS = "    Rob Dobson 2018 (inspired by PiGFX)";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";

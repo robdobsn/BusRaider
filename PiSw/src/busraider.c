@@ -12,6 +12,9 @@
 // #define USE_BITWISE_DATA_BUS_ACCESS 1
 // #define USE_BITWISE_CTRL_BUS_ACCESS 1
 
+// Uncomment the following line to use SPI0 CE0 of the Pi as a debug pin
+//#define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
+
 // Comment out this line to disable WAIT state generation altogether
 #define BR_ENABLE_WAIT_AND_FIQ 1
 
@@ -74,6 +77,15 @@ void br_init()
     // Data bus direction
     br_set_pin_out(BR_DATA_DIR_IN, 1);
 }
+
+// Hold host in reset state - call br_reset_host() to clear reset
+void br_reset_hold_host()
+{
+    // Reset by taking reset_bar low
+    br_mux_set(BR_MUX_RESET_Z80_BAR_LOW);
+
+}
+
 
 // Reset the host
 void br_reset_host()
@@ -405,7 +417,6 @@ BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int b
 // Read a consecutive block of memory from host
 // Assumes:
 // - control of host bus has been requested and acknowledged
-// - PIB is already set to input
 // - data direction on data bus driver is set to input (default)
 BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq)
 {
@@ -474,7 +485,6 @@ void br_remove_bus_access_callback()
 volatile uint32_t iorqPortAccess[MAX_IO_PORT_VALS];
 volatile int iorqIsNotActive = 0;
 volatile int iorqCount = 0;
-#include "ee_printf.h"
 int loopCtr = 0;
 
 #endif
@@ -518,9 +528,9 @@ void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ)
     else
         W32(GPFEN0, R32(GPFEN0) & (~(1 << BR_IORQ_BAR)));
     if (enWaitOnMREQ)
-        W32(GPFEN0, R32(GPFEN0) | (1 << BR_MREQ_BAR));
+        W32(GPFEN0, R32(GPFEN0) | (1 << BR_WAIT_BAR));
     else
-        W32(GPFEN0, R32(GPFEN0) & (~(1 << BR_MREQ_BAR)));
+        W32(GPFEN0, R32(GPFEN0) & (~(1 << BR_WAIT_BAR)));
 
     // Enable FIQ interrupts on GPIO[3] which is any GPIO pin
     W32(IRQ_FIQ_CONTROL, (1 << 7) | 52);
@@ -554,7 +564,7 @@ void br_wait_state_isr(void* pData)
             (((busVals & (1 << BR_WR_BAR)) == 0) ? (1 << BR_CTRL_BUS_WR) : 0) |
             (((busVals & (1 << BR_MREQ_BAR)) == 0) ? (1 << BR_CTRL_BUS_MREQ) : 0) |
             (((busVals & (1 << BR_IORQ_BAR)) == 0) ? (1 << BR_CTRL_BUS_IORQ) : 0) |
-        (((busVals & (1 << BR_M1_BAR)) == 0) ? (1 << BR_CTRL_BUS_M1) : 0);
+            (((busVals & (1 << BR_WAIT_BAR)) == 0) ? (1 << BR_CTRL_BUS_WAIT) : 0);
 
         // Read the data bus if the target machine is writing
         uint32_t dataBusVals = 0;
