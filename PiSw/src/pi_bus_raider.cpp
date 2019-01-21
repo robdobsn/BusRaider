@@ -165,6 +165,7 @@ extern "C" void entry_point()
     br_init();
 
     // Enable first machine
+    // McManager::setMachineIdx(0);
     McManager::setMachineIdx(3);
 
     // Get current machine to check things are working
