@@ -376,32 +376,33 @@ void br_write_byte(uint32_t byte, int iorq)
 #ifdef USE_BITWISE_CTRL_BUS_ACCESS
     digitalWrite(BR_DATA_DIR_IN, 0);
     br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
-#ifndef HARDWARE_VERSION_1_6
-    br_mux_clear();
-#endif
+// #ifndef HARDWARE_VERSION_1_6
+//     br_mux_clear();
+// #endif
     digitalWrite(iorq ? BR_IORQ_BAR : BR_MREQ_BAR, 0);
     digitalWrite(BR_WR_BAR, 0);
     digitalWrite(BR_WR_BAR, 1);
     digitalWrite(iorq ? BR_IORQ_BAR : BR_MREQ_BAR, 1);
-#ifdef HARDWARE_VERSION_1_6
+// #ifdef HARDWARE_VERSION_1_6
     br_mux_clear();
-#endif
+// #endif
     digitalWrite(BR_DATA_DIR_IN, 1);
 #else
     // Clear DIR_IN (so make direction out), enable data output onto data bus and MREQ_BAR active
     W32(GPCLR0, (1 << BR_DATA_DIR_IN) | BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)));
     W32(GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
-#ifndef HARDWARE_VERSION_1_6
-    W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
-#endif
+// #ifndef HARDWARE_VERSION_1_6
+//     W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
+// #endif
     // Write the data by setting WR_BAR active
     W32(GPCLR0, (1 << BR_WR_BAR));
     // Deactivate and leave data direction set to inwards
     W32(GPSET0, (1 << BR_DATA_DIR_IN) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_WR_BAR));
     // Clear the MUX
-#ifdef HARDWARE_VERSION_1_6
-    W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
-#endif
+// #ifdef HARDWARE_VERSION_1_6
+    br_mux_clear();
+    // W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
+// #endif
 #endif
 }
 
@@ -417,32 +418,33 @@ uint8_t br_read_byte(int iorq)
 #ifdef USE_BITWISE_CTRL_BUS_ACCESS
     digitalWrite(BR_DATA_DIR_IN, 1);
     br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
-#ifndef HARDWARE_VERSION_1_6
-    br_mux_clear();
-#endif
+// #ifndef HARDWARE_VERSION_1_6
+//     br_mux_clear();
+// #endif
     digitalWrite((iorq ? BR_IORQ_BAR : BR_MREQ_BAR), 0);
     digitalWrite(BR_RD_BAR, 0);
     uint8_t val = br_get_pib_value();
     digitalWrite(BR_RD_BAR, 1);
     digitalWrite((iorq ? BR_IORQ_BAR : BR_MREQ_BAR), 1);
-#ifdef HARDWARE_VERSION_1_6
+// #ifdef HARDWARE_VERSION_1_6
     br_mux_clear();
-#endif
+// #endif
 #else
     // enable data output onto PIB (data-dir must be inwards already), MREQ_BAR and RD_BAR both active
     W32(GPCLR0, BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
     W32(GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
-#ifndef HARDWARE_VERSION_1_6
+// #ifndef HARDWARE_VERSION_1_6
     W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
-#endif
+// #endif
     // Get the data
     uint8_t val = br_get_pib_value();
     // Deactivate leaving data-dir inwards
     W32(GPSET0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
     // Clear the MUX
-#ifdef HARDWARE_VERSION_1_6
-    W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
-#endif
+// #ifdef HARDWARE_VERSION_1_6
+    // W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
+// #endif
+    br_mux_clear();
 #endif
     return val;
 }
