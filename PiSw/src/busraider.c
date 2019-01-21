@@ -110,7 +110,6 @@ void br_reset_hold_host()
 
 }
 
-
 // Reset the host
 void br_reset_host()
 {
@@ -165,6 +164,11 @@ void br_irq_host()
 // Request access to the bus
 void br_request_bus()
 {
+    // Set the PIB to input
+    br_set_pib_input();
+    // Set data bus to input
+    W32(GPSET0, 1 << BR_DATA_DIR_IN);
+    // Request the bus
     digitalWrite(BR_BUSRQ_BAR, 0);
 }
 
@@ -417,6 +421,7 @@ uint8_t br_read_byte(int iorq)
     uint8_t val = br_get_pib_value();
     // Deactivate leaving data-dir inwards
     W32(GPSET0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
+    // Clear the MUX
     br_mux_clear();
 #endif
     return val;
@@ -615,134 +620,70 @@ void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ,
 
 void br_wait_state_isr(void* pData)
 {
+    // pData unused
     pData = pData;
 
     // Read the low address
     br_set_pib_input();
-        br_mux_set(BR_MUX_LADDR_OE_BAR);
+    W32(GPSET0, 1 << BR_DATA_DIR_IN);
+    br_mux_set(BR_MUX_LADDR_OE_BAR);
     uint32_t addr = br_get_pib_value() & 0xff;
-        // Read the high address
-        br_mux_set(BR_MUX_HADDR_OE_BAR);
+
+    // Read the high address
+    br_mux_set(BR_MUX_HADDR_OE_BAR);
     addr |= (br_get_pib_value() & 0xff) << 8;
-        // Clear the mux to deactivate output enables
-        br_mux_clear();
+ 
+    // Clear the mux to deactivate output enables
+    br_mux_clear();
 
     // Read the control lines
     uint32_t busVals = R32(GPLEV0);
 
-        // Get the appropriate bits for up-line communication
-        uint32_t ctrlBusVals = 
-            (((busVals & (1 << BR_RD_BAR)) == 0) ? (1 << BR_CTRL_BUS_RD) : 0) |
-            (((busVals & (1 << BR_WR_BAR)) == 0) ? (1 << BR_CTRL_BUS_WR) : 0) |
-            (((busVals & (1 << BR_MREQ_BAR)) == 0) ? (1 << BR_CTRL_BUS_MREQ) : 0) |
-            (((busVals & (1 << BR_IORQ_BAR)) == 0) ? (1 << BR_CTRL_BUS_IORQ) : 0) |
-            (((busVals & (1 << BR_WAIT_BAR)) == 0) ? (1 << BR_CTRL_BUS_WAIT) : 0);
+    // Get the appropriate bits for up-line communication
+    uint32_t ctrlBusVals = 
+        (((busVals & (1 << BR_RD_BAR)) == 0) ? (1 << BR_CTRL_BUS_RD) : 0) |
+        (((busVals & (1 << BR_WR_BAR)) == 0) ? (1 << BR_CTRL_BUS_WR) : 0) |
+        (((busVals & (1 << BR_MREQ_BAR)) == 0) ? (1 << BR_CTRL_BUS_MREQ) : 0) |
+        (((busVals & (1 << BR_IORQ_BAR)) == 0) ? (1 << BR_CTRL_BUS_IORQ) : 0) |
+        (((busVals & (1 << BR_WAIT_BAR)) == 0) ? (1 << BR_CTRL_BUS_WAIT) : 0) |
+        (((R32(GPLEV0) & (1 << BR_M1_PIB_BAR)) == 0) ? (1 << BR_CTRL_BUS_M1) : 0);
 
-        // Read the data bus if the target machine is writing
-        uint32_t dataBusVals = 0;
-        bool isWriting = (busVals & (1 << BR_WR_BAR)) == 0;
-        if (isWriting)
-        {
-            digitalWrite(BR_DATA_DIR_IN, 1);
-            br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
+    // Read the data bus if the target machine is writing
+    uint32_t dataBusVals = 0;
+    bool isWriting = (busVals & (1 << BR_WR_BAR)) == 0;
+    if (isWriting)
+    {
+        digitalWrite(BR_DATA_DIR_IN, 1);
+        br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
         dataBusVals = br_get_pib_value() & 0xff;
+        br_mux_clear();
+    }
+
+    // Send this to anything listening
+    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
+    if (__br_pBusAccessCallback)
+        retVal = __br_pBusAccessCallback(addr, dataBusVals, ctrlBusVals);
+
+    // If not writing and result is valid then put the returned data onto the bus
+    if (!isWriting && (retVal != BR_MEM_ACCESS_RSLT_NOT_DECODED))
+    {
+        digitalWrite(BR_DATA_DIR_IN, 0);
+        // In HW version 1.7 onwards there is a flip-flop to handle data OE
+        // so prime this flip-flop here
         br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
-        }
+        br_set_pib_output();
+        br_set_pib_value(retVal & 0xff);
+        br_mux_clear();
+    }
 
-        // Send this to anything listening
-        uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
-        if (__br_pBusAccessCallback)
-            retVal = __br_pBusAccessCallback(addr, dataBusVals, ctrlBusVals);
-
-        // If not writing and result is valid then put the returned data onto the bus
-        if (!isWriting && (retVal != BR_MEM_ACCESS_RSLT_NOT_DECODED))
-        {
-            digitalWrite(BR_DATA_DIR_IN, 0);
-        br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
-            br_set_pib_output();
-            br_set_pib_value(retVal & 0xff);
-        }
-
-    // Clear the WAIT state
+    // Clear the WAIT state flip-flop
     W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
 
-    // Any read or IRQ vector placed on the data bus happens in here 
-    // So need to make sure it is long enough
-    // but not too long!
-    // The code below that checks for the IORQ & MREQ edges is too slow
-    // on an 8MHz Z80 but could be used on slower machines?
-
-    // If not writing and result from memory access request 
-    // then we need to wait until the request is complete
-    // if (!isWriting && (retVal != BR_MEM_ACCESS_RSLT_NOT_DECODED))
-    //     {
-    //     // Wait until the request has completed (both IORQ_BAR and MREQ_BAR high)
-    //     uint32_t ctrlBusMask = ((1 << BR_CTRL_BUS_MREQ) | (1 << BR_CTRL_BUS_IORQ));
-    //     int hangAvoidCount = 0;
-    //     while ((R32(GPLEV0) & ctrlBusMask) != ctrlBusMask)
-    //         {
-    //         // Stop waiting if this takes more than 1000 loops
-    //         // (which will be way longer than the 1uS or less it should take)
-    //         hangAvoidCount++;
-    //         if (hangAvoidCount > 1000)
-    //         {
-    //             break;
-    //         }
-    //     }
-    //     }
-
-            // Clear the mux and set data direction in again
-            W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
-            W32(GPSET0, 1 << BR_DATA_DIR_IN);
-            br_set_pib_input();
-
-    // Reset the wait state
+    // // Re-enable the wait state generation
     W32(GPSET0, __br_wait_state_en_mask);
-    // Clear detected edge on any pin
+
+    // // Clear detected edge on any pin
     W32(GPEDS0, 0xffffffff);
-
-
-#ifdef INSTRUMENT_BUSRAIDER_FIQ
-    // Form key from the control lines
-    uint32_t accVal = 0x00;
-    if ((busVals & (1 << BR_RD_BAR)) == 0)
-        accVal |= 0x01;
-    if ((busVals & (1 << BR_WR_BAR)) == 0)
-        accVal |= 0x02;
-    if (accVal == 0)
-        accVal = 0x03;
-
-    // Form key
-    uint32_t keyVal = (accVal << 16) | addr; 
-
-    int firstUnused = -1;
-    for (int i = 0; i < MAX_IO_PORT_VALS; i++)
-{
-        // Check for key
-        if ((iorqPortAccess[i] & 0x3ffff) == keyVal)
-{
-            // Inc count if we can
-            uint32_t count = iorqPortAccess[i] >> 18;
-            if (count != 0x3fff)
-                count++;
-            iorqPortAccess[i] = (iorqPortAccess[i] & 0x3ffff) | (count << 18);
-            break;
-}
-        else if (iorqPortAccess[i] == 0)
-            {
-            firstUnused = i;
-                break;
-            }
-        }
-    if (firstUnused != -1)
-    {
-        iorqPortAccess[firstUnused] = keyVal | (1 << 18);
-    }
-    
-    if (busVals & (iorqIsNotActive != 0))
-        iorqIsNotActive++;
-#endif
-
 }
 
 void br_clear_wait_interrupt()
