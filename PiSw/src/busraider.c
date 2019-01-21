@@ -27,6 +27,9 @@ static br_bus_access_callback_fntype* __br_pBusAccessCallback = NULL;
 // Current wait state mask for restoring wait enablement after change
 static uint32_t __br_wait_state_en_mask = 0;
 
+// Wait interrupt enablement cache (so it can be restored after disable)
+static bool __br_wait_interrupt_enabled = false;
+
 // Single stepping modes
 bool __br_single_step_any = false;
 bool __br_single_step_io = false;
@@ -73,6 +76,8 @@ void br_mux_set(int muxVal)
 // Initialise the bus raider
 void br_init()
 {
+    // Disable FIQ - used for wait state handling
+    br_disable_wait_interrupt();
     // Pins not set here as outputs will be inputs (inc PIB used for data bus)
     // Setup the multiplexer
     br_mux_set_pins_output();
@@ -90,11 +95,16 @@ void br_init()
     br_set_pin_out(BR_LADDR_CK, 0);
     // Data bus direction
     br_set_pin_out(BR_DATA_DIR_IN, 1);
+    // Remember wait interrupts currently disabled
+    __br_wait_interrupt_enabled = false;
 }
 
 // Hold host in reset state - call br_reset_host() to clear reset
 void br_reset_hold_host()
 {
+    // Disable wait interrupts
+    br_disable_wait_interrupt();
+
     // Reset by taking reset_bar low
     br_mux_set(BR_MUX_RESET_Z80_BAR_LOW);
 
@@ -104,9 +114,18 @@ void br_reset_hold_host()
 // Reset the host
 void br_reset_host()
 {
+    // Disable wait interrupts
+    br_disable_wait_interrupt();
+
     // Reset by taking reset_bar low and then high
     br_mux_set(BR_MUX_RESET_Z80_BAR_LOW);
     delayMicroseconds(1000);
+
+    // Clear wait interrupt conditions and enable
+    br_clear_wait_interrupt();
+    if (__br_wait_interrupt_enabled)
+        br_enable_wait_interrupt();
+
     // Remove the reset condition
     br_mux_clear();
 }
@@ -144,11 +163,15 @@ int br_bus_acknowledged()
 // Take control of bus
 void br_take_control()
 {
-    // control bus
+    // Disable interrupts
+    br_disable_wait_interrupt();
+
+    // Control bus
     br_set_pin_out(BR_WR_BAR, 1);
     br_set_pin_out(BR_RD_BAR, 1);
     br_set_pin_out(BR_MREQ_BAR, 1);
     br_set_pin_out(BR_IORQ_BAR, 1);
+
     // Address bus enabled
     digitalWrite(BR_PUSH_ADDR_BAR, 0);
 }
@@ -163,6 +186,9 @@ void br_release_control(bool resetTargetOnRelease)
     pinMode(BR_IORQ_BAR, INPUT);
     // Address bus not enabled
     digitalWrite(BR_PUSH_ADDR_BAR, 1);
+    // Re-enable interrupts if required
+    if (__br_wait_interrupt_enabled)
+        br_enable_wait_interrupt();
     // Check for reset
     if (resetTargetOnRelease)
     {
@@ -170,7 +196,7 @@ void br_release_control(bool resetTargetOnRelease)
         br_mux_set(BR_MUX_RESET_Z80_BAR_LOW);
         // No longer request bus
         digitalWrite(BR_BUSRQ_BAR, 1);
-        delayMicroseconds(1000);
+        delayMicroseconds(100);
         br_mux_clear();
     }
     else
@@ -508,6 +534,9 @@ int loopCtr = 0;
 void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ,
            bool singleStepIO, bool singleStepInstructions, bool singleStepMemRDWR)
 {
+    // Disable interrupts
+    br_disable_wait_interrupt();
+
     // Store single step flags
     __br_single_step_io = singleStepIO;
     __br_single_step_instructions = singleStepInstructions;
@@ -531,7 +560,10 @@ void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ,
 
     // Check if any wait-states to be generated
     if (__br_wait_state_en_mask == 0)
+    {
+        __br_wait_interrupt_enabled = false;
         return;
+    }
 
 #ifdef BR_ENABLE_WAIT_AND_FIQ
 
@@ -558,7 +590,8 @@ void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ,
     W32(IRQ_FIQ_CONTROL, (1 << 7) | 52);
 
     // Enable Fast Interrupts
-    enable_fiq();
+    __br_wait_interrupt_enabled = true;
+    br_enable_wait_interrupt();
 
 #endif  
 }
