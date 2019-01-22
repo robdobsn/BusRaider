@@ -185,7 +185,7 @@ uint32_t McZXSpectrum::getKeyPressed(const int* keyCodes, int keyCodesLen)
 uint32_t McZXSpectrum::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
 {
     // Check for read
-    if (flags & (1 << BR_CTRL_BUS_RD))
+    if (flags & BR_CTRL_BUS_RD_MASK)
     {
 
         // Note that in the following I've used the KEY_HANJA as a placeholder

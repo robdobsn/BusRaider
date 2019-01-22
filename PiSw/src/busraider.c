@@ -651,12 +651,12 @@ void br_wait_state_isr(void* pData)
 
     // Get the appropriate bits for up-line communication
     uint32_t ctrlBusVals = 
-        (((busVals & (1 << BR_RD_BAR)) == 0) ? (1 << BR_CTRL_BUS_RD) : 0) |
-        (((busVals & (1 << BR_WR_BAR)) == 0) ? (1 << BR_CTRL_BUS_WR) : 0) |
-        (((busVals & (1 << BR_MREQ_BAR)) == 0) ? (1 << BR_CTRL_BUS_MREQ) : 0) |
-        (((busVals & (1 << BR_IORQ_BAR)) == 0) ? (1 << BR_CTRL_BUS_IORQ) : 0) |
-        (((busVals & (1 << BR_WAIT_BAR)) == 0) ? (1 << BR_CTRL_BUS_WAIT) : 0) |
-        (((R32(GPLEV0) & (1 << BR_M1_PIB_BAR)) == 0) ? (1 << BR_CTRL_BUS_M1) : 0);
+        (((busVals & (1 << BR_RD_BAR)) == 0) ? BR_CTRL_BUS_RD_MASK : 0) |
+        (((busVals & (1 << BR_WR_BAR)) == 0) ? BR_CTRL_BUS_WR_MASK : 0) |
+        (((busVals & (1 << BR_MREQ_BAR)) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
+        (((busVals & (1 << BR_IORQ_BAR)) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
+        (((busVals & (1 << BR_WAIT_BAR)) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
+        (((R32(GPLEV0) & (1 << BR_M1_PIB_BAR)) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
 
     // Read the data bus if the target machine is writing
     uint32_t dataBusVals = 0;

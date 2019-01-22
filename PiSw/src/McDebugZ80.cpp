@@ -16,6 +16,26 @@ volatile bool McDebugZ80::_scrnBufDirtyFlag = true;
 
 extern WgfxFont __TRS80Level3Font;
 
+// static const int NUM_DEBUG_VALS = 200;
+// class DebugAccessRec
+// {
+// public:
+//     uint32_t addr;
+//     uint32_t expectedAddr;
+//     uint32_t dataFromZ80;
+//     uint32_t expectedData;
+//     uint32_t dataToZ80;
+//     uint32_t flags;
+//     uint32_t expectedFlags;
+// };
+// static DebugAccessRec debugAccessInfo[NUM_DEBUG_VALS];
+// static int debugAccessCount = 0;
+// static int debugAccessLastCount = 0;
+
+// int32_t debugCurBCCount = 0xffff;
+// uint32_t debugCurChVal = '0';
+// uint32_t debugCurAddr = 0;
+
 McDebugZ80::McDebugZ80() : McBase()
 {
 }
@@ -37,7 +57,6 @@ McDescriptorTable McDebugZ80::_descriptorTable = {
     // Clock
     .clockFrequencyHz = 200000
 };
-
 
 // Enable machine
 void McDebugZ80::enable()
@@ -112,6 +131,31 @@ void McDebugZ80::displayRefresh()
         lastSync = debugNoSync;
     }
     // LogWrite(_logPrefix, LOG_WARNING, "Disp: %02x %02x %02x %02x", _systemRAM[0xc000],_systemRAM[0xc001],_systemRAM[0xc002],_systemRAM[0xc003]);
+
+    
+    // Debug values
+    // if (debugAccessLastCount != debugAccessCount)
+    // {
+    //     for (int i = debugAccessLastCount; i < debugAccessCount; i++)
+    //     {
+    //         int flags = debugAccessInfo[i].flags;
+    //         int expFlags = debugAccessInfo[i].expectedFlags;
+    //         LogWrite(_logPrefix, LOG_WARNING, "%2d got %04x %02x %c%c%c%c%c%c exp %04x %02x %c%c%c%c%c%c ToZ80 %02x",
+    //                     i, 
+    //                     debugAccessInfo[i].addr, 
+    //                     debugAccessInfo[i].dataFromZ80, 
+    //                     flags & 0x01 ? 'R': ' ', flags & 0x02 ? 'W': ' ', flags & 0x04 ? 'M': ' ',
+    //                     flags & 0x08 ? 'I': ' ', flags & 0x10 ? '1': ' ', flags & 0x20 ? 'T': ' ',
+    //                     debugAccessInfo[i].expectedAddr, 
+    //                     debugAccessInfo[i].expectedData, 
+    //                     expFlags & 0x01 ? 'R': ' ', expFlags & 0x02 ? 'W': ' ', expFlags & 0x04 ? 'M': ' ',
+    //                     expFlags & 0x08 ? 'I': ' ', expFlags & 0x10 ? '1': ' ', expFlags & 0x20 ? 'T': ' ',
+    //                     debugAccessInfo[i].dataToZ80);
+
+    //     }
+    //     debugAccessLastCount = debugAccessCount;
+    // }
+
 }
 
 // Handle a key press
@@ -162,6 +206,12 @@ bool McDebugZ80::reset()
     
     br_disable_wait_interrupt();
     pinMode(BR_DEBUG_PI_SPI0_CE0, OUTPUT);
+    // debugAccessCount = 0;
+    // debugAccessLastCount = 0;
+    // debugCurBCCount = 0;
+    // debugCurChVal = '0';
+    // debugCurAddr = 0;
+
     debugCur = 0;
     debugNoSync = 0;
     lastSync = 0;
@@ -170,6 +220,7 @@ bool McDebugZ80::reset()
         lastDebug[i] = -1;
         debugVals[i] = -1;
     }
+
     LogWrite(_logPrefix, LOG_WARNING, "RESET");
     br_reset_host();
 
@@ -187,16 +238,16 @@ uint32_t McDebugZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[may
 {
     // Check for read
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
-    if (flags & (1 << BR_CTRL_BUS_RD))
+    if (flags & BR_CTRL_BUS_RD_MASK)
     {
-        if (flags & (1 << BR_CTRL_BUS_MREQ))
+        if (flags & BR_CTRL_BUS_MREQ_MASK)
         {
             retVal = _systemRAM[addr];
         }
     }
-    else if (flags & (1 << BR_CTRL_BUS_WR))
+    else if (flags & BR_CTRL_BUS_WR_MASK)
     {
-        if (flags & (1 << BR_CTRL_BUS_MREQ))
+        if (flags & BR_CTRL_BUS_MREQ_MASK)
         {
             if ((addr >= DEBUGZ80_DISP_RAM_ADDR) && (addr < DEBUGZ80_DISP_RAM_ADDR+DEBUGZ80_DISP_RAM_SIZE))
             {
@@ -230,6 +281,61 @@ uint32_t McDebugZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[may
         debugVals[debugCur++] = retVal;
         debugVals[debugCur++] = flags;
     }
+
+    // Mirror Z80 expected behaviour
+    // uint32_t expCtrl = BR_CTRL_BUS_RD_MASK | BR_CTRL_BUS_MREQ_MASK | BR_CTRL_BUS_WAIT_MASK;
+    // uint32_t nextAddr = debugCurAddr;
+    // uint32_t expData = 0xffff;
+    // switch(debugCurAddr)
+    // {
+    //     case 0: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; debugCurChVal = '0'; break;
+    //     case 1: nextAddr++; break;
+    //     case 2: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
+    //     case 3: nextAddr++; break;
+    //     case 4: nextAddr++; break;
+    //     case 5: nextAddr = 0xc000; expCtrl |= BR_CTRL_BUS_M1_MASK; break;        
+    //     case 6: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; debugCurBCCount = 0xffff; break;
+    //     case 7: nextAddr++; break;
+    //     case 8: nextAddr++; break;
+    //     case 9: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; debugCurBCCount--; break;
+    //     case 10: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
+    //     case 11: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
+    //     case 12: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
+    //     case 13: nextAddr++; break;
+    //     case 14: nextAddr++; if (debugCurBCCount != 0) nextAddr = 9; break;
+    //     case 15: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
+    //     case 16: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; debugCurChVal++; break;
+    //     case 17: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
+    //     case 18: nextAddr++; break;
+    //     case 19: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
+    //     case 20: nextAddr++; break;
+    //     case 21: nextAddr++; if (debugCurChVal <= '9') nextAddr = 2; break;
+    //     case 22: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
+    //     case 23: nextAddr++; break;
+    //     case 24: nextAddr = 0; break;
+    //     case 0xc000: nextAddr = 6; expCtrl = BR_CTRL_BUS_WR_MASK | BR_CTRL_BUS_MREQ_MASK | BR_CTRL_BUS_WAIT_MASK; expData = debugCurChVal; break;
+    // }
+
+    // if ((addr != debugCurAddr) || (expCtrl != flags) || ((expData != 0xffff) && (expData != data)))
+    // {
+    //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+    //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+    //     if (debugAccessCount < 16)
+    //     {
+    //         debugAccessInfo[debugAccessCount].addr = addr;
+    //         debugAccessInfo[debugAccessCount].expectedAddr = debugCurAddr;
+    //         debugAccessInfo[debugAccessCount].dataFromZ80 = data;
+    //         debugAccessInfo[debugAccessCount].expectedData = expData;
+    //         debugAccessInfo[debugAccessCount].dataToZ80 = retVal;
+    //         debugAccessInfo[debugAccessCount].flags = flags;
+    //         debugAccessInfo[debugAccessCount].expectedFlags = expCtrl;
+    //         debugAccessCount++;
+    //         // if (debugCur > sizeof(debugVals)/sizeof(debugVals[0]))
+    //         //     debugCur = 0;
+    //     }
+    // }
+    // debugCurAddr = nextAddr;
+
 
     return retVal;
 }

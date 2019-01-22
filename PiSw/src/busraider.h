@@ -30,6 +30,14 @@ typedef enum {
 #define BR_CTRL_BUS_M1 4
 #define BR_CTRL_BUS_WAIT 5
 
+// Control bit masks
+#define BR_CTRL_BUS_RD_MASK (1 << BR_CTRL_BUS_RD)
+#define BR_CTRL_BUS_WR_MASK (1 << BR_CTRL_BUS_WR)
+#define BR_CTRL_BUS_MREQ_MASK (1 << BR_CTRL_BUS_MREQ)
+#define BR_CTRL_BUS_IORQ_MASK (1 << BR_CTRL_BUS_IORQ)
+#define BR_CTRL_BUS_M1_MASK (1 << BR_CTRL_BUS_M1)
+#define BR_CTRL_BUS_WAIT_MASK (1 << BR_CTRL_BUS_WAIT)
+
 // Multiplexer
 // Wiring is a little off as A0, A1, A2 on 74HC138 are Pi 11, 9, 10 respectively
 // Pi GPIO0    74HC138      CTRL Value

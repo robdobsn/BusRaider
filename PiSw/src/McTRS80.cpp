@@ -302,7 +302,7 @@ void McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
 uint32_t McTRS80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
 {
     // Check for read
-    if (flags & (1 << BR_CTRL_BUS_RD))
+    if (flags & BR_CTRL_BUS_RD_MASK)
     {
         // Decode port
         if (addr == 0x13)  // Joystick
