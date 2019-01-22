@@ -30,19 +30,13 @@ static uint32_t __br_wait_state_en_mask = 0;
 // Wait interrupt enablement cache (so it can be restored after disable)
 static bool __br_wait_interrupt_enabled = false;
 
-// Single stepping modes
-bool __br_single_step_any = false;
-bool __br_single_step_io = false;
-bool __br_single_step_instructions = false;
-bool __br_single_step_mem_rdwr = false;
+// Currently paused - i.e. wait is active
+volatile bool __br_pause_is_paused = false;
 
-// Single step is in progress - i.e. wait is active
-volatile bool __br_single_step_in_progress = false;
-
-// Bus values while single stepping
-uint32_t __br_single_step_addr = 0;
-uint32_t __br_single_step_data = 0;
-uint32_t __br_single_step_flags = 0;
+// // Bus values while single stepping
+uint32_t __br_pause_addr = 0;
+uint32_t __br_pause_data = 0;
+uint32_t __br_pause_flags = 0;
 
 static const int MAX_WAIT_FOR_CTRL_LINES_US = 10000;
 
@@ -555,17 +549,10 @@ int loopCtr = 0;
 #endif
 
 // Enable wait-states and FIQ
-void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ,
-           bool singleStepIO, bool singleStepInstructions, bool singleStepMemRDWR)
+void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ)
 {
     // Disable interrupts
     br_disable_wait_interrupt();
-
-    // Store single step flags
-    __br_single_step_io = singleStepIO;
-    __br_single_step_instructions = singleStepInstructions;
-    __br_single_step_mem_rdwr = singleStepMemRDWR;
-    __br_single_step_any = __br_single_step_io | __br_single_step_instructions | __br_single_step_mem_rdwr;
 
 #ifdef INSTRUMENT_BUSRAIDER_FIQ
     for (int i = 0; i < MAX_IO_PORT_VALS; i++)
@@ -688,7 +675,7 @@ void br_wait_state_isr(void* pData)
         retVal = __br_pBusAccessCallback(addr, dataBusVals, ctrlBusVals);
 
     // If not writing and result is valid then put the returned data onto the bus
-    if (!isWriting && (retVal != BR_MEM_ACCESS_RSLT_NOT_DECODED))
+    if (!isWriting && ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0))
     {
         digitalWrite(BR_DATA_DIR_IN, 0);
         // In HW version 1.7 onwards there is a flip-flop to handle data OE
@@ -699,16 +686,29 @@ void br_wait_state_isr(void* pData)
         br_mux_clear();
     }
 
-    // The order of the following lines is important
-    // The "clear edge detected" line delays the flip-flop reset pulse enough
-    // to make it reliable - without this extra delay clearing the flip-flop isn't
-    // reliable as the pulse can be too short (depending on Raspberry Pi GPIO clocking probably)
-    // Clear the WAIT state flip-flop
-    W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
-    // // Clear detected edge on any pin
-    W32(GPEDS0, 0xffffffff);
-    // // Re-enable the wait state generation
-    W32(GPSET0, __br_wait_state_en_mask);
+    // Check if pause requested
+    __br_pause_is_paused = ((retVal & BR_MEM_ACCESS_RSLT_REQ_PAUSE) != 0);
+    if (!__br_pause_is_paused)
+    {
+        // No pause requested - clear the WAIT state so execution can continue
+        // The order of the following lines is important
+        // The "clear edge detected" line delays the flip-flop reset pulse enough
+        // to make it reliable - without this extra delay clearing the flip-flop isn't
+        // reliable as the pulse can be too short (depending on Raspberry Pi GPIO clocking probably)
+        // Clear the WAIT state flip-flop
+        W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
+        // // Clear detected edge on any pin
+        W32(GPEDS0, 0xffffffff);
+        // // Re-enable the wait state generation
+        W32(GPSET0, __br_wait_state_en_mask);
+    }
+    else
+    {
+        // Store the current address, data and ctrl line state
+        __br_pause_addr = addr;
+        __br_pause_data = isWriting ? dataBusVals : retVal;
+        __br_pause_flags = ctrlBusVals;
+    }
 }
 
 void br_clear_wait_interrupt()
@@ -732,32 +732,32 @@ void br_enable_wait_interrupt()
     enable_fiq();
 }
 
-void br_single_step_get_current(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags)
+void br_pause_get_current(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags)
 {
-    *pAddr = __br_single_step_addr;
-    *pData = __br_single_step_data;
-    *pFlags = __br_single_step_flags;
+    *pAddr = __br_pause_addr;
+    *pData = __br_pause_data;
+    *pFlags = __br_pause_flags;
 }
 
-bool br_get_single_step_stopped()
+bool br_pause_is_paused()
 {
-    return __br_single_step_in_progress;
+    return __br_pause_is_paused;
 }
 
-bool br_single_step_next()
+bool br_pause_release()
 {
-    // Check if single stepping
-    if (!__br_single_step_in_progress)
+    // Check if paused
+    if (!__br_pause_is_paused)
         return false;
 
-    // Release wait for one step
-    __br_single_step_in_progress = false;
-
-    // Clear detected edge on any pin
-    W32(GPEDS0, 0xffffffff);
+    // Release pause
+    __br_pause_is_paused = false;
 
     // Clear the WAIT state flip-flop
     W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
+
+    // Clear detected edge on any pin
+    W32(GPEDS0, 0xffffffff);
 
     // Re-enable the wait state generation
     W32(GPSET0, __br_wait_state_en_mask);

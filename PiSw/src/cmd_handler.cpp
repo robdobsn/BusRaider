@@ -269,7 +269,7 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         if (pMc)
             stepDone = pMc->step();
         if (!stepDone)
-            br_single_step_next();
+            br_pause_release();
     }
     else if (stricmp(cmdName, "IOClrTarget") == 0)
     {

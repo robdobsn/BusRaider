@@ -45,7 +45,7 @@ void McDebugZ80::enable()
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
     br_set_bus_access_callback(memoryRequestCallback);
     // Bus raider enable wait states on MREQ and IORQ
-    br_enable_mem_and_io_access(true, true, false, false, false);
+    br_enable_mem_and_io_access(true, true);
 }
 
 // Disable machine
@@ -53,7 +53,7 @@ void McDebugZ80::disable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
     // Bus raider disable wait states
-    br_enable_mem_and_io_access(false, false, false, false, false);
+    br_enable_mem_and_io_access(false, false);
     br_remove_bus_access_callback();
 }
 

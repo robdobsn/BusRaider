@@ -20,6 +20,7 @@ typedef enum {
 } BR_RETURN_TYPE;
 
 #define BR_MEM_ACCESS_RSLT_NOT_DECODED 0x8000
+#define BR_MEM_ACCESS_RSLT_REQ_PAUSE 0x4000
 
 // Control bus bits used to pass to machines, etc
 #define BR_CTRL_BUS_RD 0
@@ -129,8 +130,7 @@ extern uint8_t br_read_byte(int iorq);
 extern BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
 extern BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
 // Enable WAIT
-extern void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ,
-                bool singleStepIO, bool singleStepInstructions, bool singleStepMemRDWR);
+extern void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ);
 extern void br_wait_state_isr(void* pData);
 
 // Clear IO
@@ -149,9 +149,9 @@ extern void br_set_bus_access_callback(br_bus_access_callback_fntype* pBusAccess
 extern void br_remove_bus_access_callback();
 
 // Single step
-extern void br_single_step_get_current(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags);
-extern bool br_get_single_step_stopped();
-extern bool br_single_step_next();
+extern void br_pause_get_current(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags);
+extern bool br_pause_is_paused();
+extern bool br_pause_release();
 
 #ifdef __cplusplus
 }
