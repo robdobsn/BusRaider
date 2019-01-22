@@ -68,6 +68,8 @@ void McDebugZ80::handleExecAddr(uint32_t execAddr)
 static int debugVals[40];
 static int lastDebug[40];
 static unsigned int debugCur = 0;
+static int debugNoSync = 0;
+static int lastSync = 0;
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
 void McDebugZ80::displayRefresh()
@@ -103,6 +105,11 @@ void McDebugZ80::displayRefresh()
                         flags & 0x08 ? 'I': ' ', flags & 0x10 ? '1': ' ', flags & 0x20 ? 'T': ' ');
             lastDebug[i] = debugVals[i];
         }
+    }
+    if (lastSync != debugNoSync)
+    {
+        LogWrite(_logPrefix, LOG_WARNING, "SyncErrors %d", debugNoSync);
+        lastSync = debugNoSync;
     }
     // LogWrite(_logPrefix, LOG_WARNING, "Disp: %02x %02x %02x %02x", _systemRAM[0xc000],_systemRAM[0xc001],_systemRAM[0xc002],_systemRAM[0xc003]);
 }
@@ -154,7 +161,10 @@ bool McDebugZ80::reset()
     _scrnBufDirtyFlag = true;
     
     br_disable_wait_interrupt();
+    pinMode(BR_DEBUG_PI_SPI0_CE0, OUTPUT);
     debugCur = 0;
+    debugNoSync = 0;
+    lastSync = 0;
     for (unsigned int i = 0; i < sizeof(debugVals)/sizeof(debugVals[0]); i++)
     {   
         lastDebug[i] = -1;
@@ -165,6 +175,12 @@ bool McDebugZ80::reset()
 
     return true;
 }
+
+#define DEBUG_Z80_TEST_PROG 1
+
+#ifdef DEBUG_Z80_TEST_PROG
+uint32_t CurVal = '0';
+#endif
 
 // Handle a request for memory or IO - or possibly something like an interrupt vector in Z80
 uint32_t McDebugZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
@@ -187,6 +203,21 @@ uint32_t McDebugZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[may
                 _scrnBufDirtyFlag = true;
                 _systemRAM[addr] = data;
                 retVal = 0;
+#ifdef DEBUG_Z80_TEST_PROG
+                if (CurVal != data)
+                {
+                    debugNoSync ++;
+                    CurVal = data + 1;
+                    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+                    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+                }
+                else
+                {
+                    CurVal++;
+                }
+                if (CurVal > '9')
+                    CurVal = '0';
+#endif
             }
         }
     }
