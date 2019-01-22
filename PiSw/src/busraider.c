@@ -44,6 +44,8 @@ uint32_t __br_single_step_addr = 0;
 uint32_t __br_single_step_data = 0;
 uint32_t __br_single_step_flags = 0;
 
+static const int MAX_WAIT_FOR_CTRL_LINES_US = 10000;
+
 // Set a pin to be an output and set initial value for that pin
 void br_set_pin_out(int pin, int val)
 {
@@ -636,8 +638,29 @@ void br_wait_state_isr(void* pData)
     // Clear the mux to deactivate output enables
     br_mux_clear();
 
-    // Read the control lines
-    uint32_t busVals = R32(GPLEV0);
+    // Loop until control lines are valid
+    bool ctrlValid = false;
+    int endlessLoopCtr = 0;
+    uint32_t busVals = 0;
+    while(endlessLoopCtr < MAX_WAIT_FOR_CTRL_LINES_US)
+    {
+        // Read the control lines
+        busVals = R32(GPLEV0);
+
+        // Specifically need to wait if MREQ is low but both RD and WR are high (wait for WR to go low)
+        ctrlValid = !(((busVals & (1 << BR_MREQ_BAR)) == 0) && (((busVals & (1 << BR_RD_BAR)) != 0) && ((busVals & (1 << BR_WR_BAR)) != 0)));
+        if (ctrlValid)
+            break;
+
+        // Count loops
+        endlessLoopCtr++;
+
+        // Delay for a short time
+        uint32_t timeNow = micros();
+        while (!timer_isTimeout(micros(), timeNow, 1)) {
+            // Do nothing
+        }
+    }
 
     // Get the appropriate bits for up-line communication
     uint32_t ctrlBusVals = 
@@ -676,14 +699,16 @@ void br_wait_state_isr(void* pData)
         br_mux_clear();
     }
 
+    // The order of the following lines is important
+    // The "clear edge detected" line delays the flip-flop reset pulse enough
+    // to make it reliable - without this extra delay clearing the flip-flop isn't
+    // reliable as the pulse can be too short (depending on Raspberry Pi GPIO clocking probably)
     // Clear the WAIT state flip-flop
     W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
-
-    // // Re-enable the wait state generation
-    W32(GPSET0, __br_wait_state_en_mask);
-
     // // Clear detected edge on any pin
     W32(GPEDS0, 0xffffffff);
+    // // Re-enable the wait state generation
+    W32(GPSET0, __br_wait_state_en_mask);
 }
 
 void br_clear_wait_interrupt()
