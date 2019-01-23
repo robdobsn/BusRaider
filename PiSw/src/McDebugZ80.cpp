@@ -16,25 +16,27 @@ volatile bool McDebugZ80::_scrnBufDirtyFlag = true;
 
 extern WgfxFont __TRS80Level3Font;
 
-// static const int NUM_DEBUG_VALS = 200;
-// class DebugAccessRec
-// {
-// public:
-//     uint32_t addr;
-//     uint32_t expectedAddr;
-//     uint32_t dataFromZ80;
-//     uint32_t expectedData;
-//     uint32_t dataToZ80;
-//     uint32_t flags;
-//     uint32_t expectedFlags;
-// };
-// static DebugAccessRec debugAccessInfo[NUM_DEBUG_VALS];
-// static int debugAccessCount = 0;
-// static int debugAccessLastCount = 0;
+static const int NUM_DEBUG_VALS = 200;
+class DebugAccessRec
+{
+public:
+    uint32_t addr;
+    uint32_t expectedAddr;
+    uint32_t dataFromZ80;
+    uint32_t expectedData;
+    uint32_t dataToZ80;
+    uint32_t flags;
+    uint32_t expectedFlags;
+    uint32_t stepCount;
+};
+static volatile DebugAccessRec debugAccessInfo[NUM_DEBUG_VALS];
+static volatile int debugAccessCount = 0;
+static volatile int debugAccessLastCount = 0;
 
-// int32_t debugCurBCCount = 0xffff;
-// uint32_t debugCurChVal = '0';
-// uint32_t debugCurAddr = 0;
+int32_t volatile debugCurBCCount = 0xffff;
+uint32_t volatile debugCurChVal = '0';
+uint32_t volatile debugCurAddr = 0;
+uint32_t volatile debugStepCount = 0;
 
 McDebugZ80::McDebugZ80() : McBase()
 {
@@ -84,12 +86,6 @@ void McDebugZ80::handleExecAddr(uint32_t execAddr)
     LogWrite(_logPrefix, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
 }
 
-static int debugVals[40];
-static int lastDebug[40];
-static unsigned int debugCur = 0;
-static int debugNoSync = 0;
-static int lastSync = 0;
-
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
 void McDebugZ80::displayRefresh()
 {
@@ -113,49 +109,30 @@ void McDebugZ80::displayRefresh()
             }
         }
     }
-
-    for (unsigned int i = 0; i < sizeof(debugVals)/sizeof(debugVals[0]); i+=4)
-    {   
-        if ((lastDebug[i] != debugVals[i]) && (debugVals[i] != -1))
-        {
-            int flags = debugVals[i+3];
-            LogWrite(_logPrefix, LOG_WARNING, "debug %04x %02x %02x %c%c%c%c%c%c", debugVals[i], debugVals[i+1], debugVals[i+2],
-                        flags & 0x01 ? 'R': ' ', flags & 0x02 ? 'W': ' ', flags & 0x04 ? 'M': ' ',
-                        flags & 0x08 ? 'I': ' ', flags & 0x10 ? '1': ' ', flags & 0x20 ? 'T': ' ');
-            lastDebug[i] = debugVals[i];
-        }
-    }
-    if (lastSync != debugNoSync)
-    {
-        LogWrite(_logPrefix, LOG_WARNING, "SyncErrors %d", debugNoSync);
-        lastSync = debugNoSync;
-    }
-    // LogWrite(_logPrefix, LOG_WARNING, "Disp: %02x %02x %02x %02x", _systemRAM[0xc000],_systemRAM[0xc001],_systemRAM[0xc002],_systemRAM[0xc003]);
-
     
     // Debug values
-    // if (debugAccessLastCount != debugAccessCount)
-    // {
-    //     for (int i = debugAccessLastCount; i < debugAccessCount; i++)
-    //     {
-    //         int flags = debugAccessInfo[i].flags;
-    //         int expFlags = debugAccessInfo[i].expectedFlags;
-    //         LogWrite(_logPrefix, LOG_WARNING, "%2d got %04x %02x %c%c%c%c%c%c exp %04x %02x %c%c%c%c%c%c ToZ80 %02x",
-    //                     i, 
-    //                     debugAccessInfo[i].addr, 
-    //                     debugAccessInfo[i].dataFromZ80, 
-    //                     flags & 0x01 ? 'R': ' ', flags & 0x02 ? 'W': ' ', flags & 0x04 ? 'M': ' ',
-    //                     flags & 0x08 ? 'I': ' ', flags & 0x10 ? '1': ' ', flags & 0x20 ? 'T': ' ',
-    //                     debugAccessInfo[i].expectedAddr, 
-    //                     debugAccessInfo[i].expectedData, 
-    //                     expFlags & 0x01 ? 'R': ' ', expFlags & 0x02 ? 'W': ' ', expFlags & 0x04 ? 'M': ' ',
-    //                     expFlags & 0x08 ? 'I': ' ', expFlags & 0x10 ? '1': ' ', expFlags & 0x20 ? 'T': ' ',
-    //                     debugAccessInfo[i].dataToZ80);
+    if (debugAccessLastCount != debugAccessCount)
+    {
+        for (int i = debugAccessLastCount; i < debugAccessCount; i++)
+        {
+            int flags = debugAccessInfo[i].flags;
+            int expFlags = debugAccessInfo[i].expectedFlags;
+            LogWrite(_logPrefix, LOG_WARNING, "%2d %07d got %04x %02x %c%c%c%c%c%c exp %04x %02x %c%c%c%c%c%c ToZ80 %02x",
+                        i, 
+                        debugAccessInfo[i].stepCount,
+                        debugAccessInfo[i].addr, 
+                        debugAccessInfo[i].dataFromZ80, 
+                        flags & 0x01 ? 'R': ' ', flags & 0x02 ? 'W': ' ', flags & 0x04 ? 'M': ' ',
+                        flags & 0x08 ? 'I': ' ', flags & 0x10 ? '1': ' ', flags & 0x20 ? 'T': ' ',
+                        debugAccessInfo[i].expectedAddr, 
+                        debugAccessInfo[i].expectedData == 0xffff ? 0 : debugAccessInfo[i].expectedData, 
+                        expFlags & 0x01 ? 'R': ' ', expFlags & 0x02 ? 'W': ' ', expFlags & 0x04 ? 'M': ' ',
+                        expFlags & 0x08 ? 'I': ' ', expFlags & 0x10 ? '1': ' ', expFlags & 0x20 ? 'T': ' ',
+                        debugAccessInfo[i].dataToZ80);
 
-    //     }
-    //     debugAccessLastCount = debugAccessCount;
-    // }
-
+        }
+        debugAccessLastCount = debugAccessCount;
+    }
 }
 
 // Handle a key press
@@ -203,35 +180,21 @@ bool McDebugZ80::reset()
     static uint8_t testChars[] = "Hello world";
     memcpy(&_systemRAM[DEBUGZ80_DISP_RAM_ADDR], testChars, sizeof(testChars));
     _scrnBufDirtyFlag = true;
-    
+    // Debug
     br_disable_wait_interrupt();
     pinMode(BR_DEBUG_PI_SPI0_CE0, OUTPUT);
-    // debugAccessCount = 0;
-    // debugAccessLastCount = 0;
-    // debugCurBCCount = 0;
-    // debugCurChVal = '0';
-    // debugCurAddr = 0;
-
-    debugCur = 0;
-    debugNoSync = 0;
-    lastSync = 0;
-    for (unsigned int i = 0; i < sizeof(debugVals)/sizeof(debugVals[0]); i++)
-    {   
-        lastDebug[i] = -1;
-        debugVals[i] = -1;
-    }
-
+    debugAccessCount = 0;
+    debugAccessLastCount = 0;
+    debugCurBCCount = 0;
+    debugCurChVal = '0';
+    debugCurAddr = 0;
+    debugStepCount = 0;
+    // Actual reset
     LogWrite(_logPrefix, LOG_WARNING, "RESET");
     br_reset_host();
 
     return true;
 }
-
-#define DEBUG_Z80_TEST_PROG 1
-
-#ifdef DEBUG_Z80_TEST_PROG
-uint32_t CurVal = '0';
-#endif
 
 // Handle a request for memory or IO - or possibly something like an interrupt vector in Z80
 uint32_t McDebugZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
@@ -254,88 +217,69 @@ uint32_t McDebugZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[may
                 _scrnBufDirtyFlag = true;
                 _systemRAM[addr] = data;
                 retVal = 0;
-#ifdef DEBUG_Z80_TEST_PROG
-                if (CurVal != data)
-                {
-                    debugNoSync ++;
-                    CurVal = data + 1;
-                    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-                    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-                }
-                else
-                {
-                    CurVal++;
-                }
-                if (CurVal > '9')
-                    CurVal = '0';
-#endif
             }
         }
     }
 
-    // Store
-    if (debugCur < sizeof(debugVals)/sizeof(debugVals[0]))
+    // Mirror Z80 expected behaviour
+    uint32_t expCtrl = BR_CTRL_BUS_RD_MASK | BR_CTRL_BUS_MREQ_MASK | BR_CTRL_BUS_WAIT_MASK;
+    uint32_t nextAddr = debugCurAddr;
+    uint32_t expData = 0xffff;
+    switch(debugCurAddr)
     {
-        debugVals[debugCur++] = addr;
-        debugVals[debugCur++] = data;
-        debugVals[debugCur++] = retVal;
-        debugVals[debugCur++] = flags;
+        case 0: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; debugCurChVal = '0'; break;
+        case 1: nextAddr++; break;
+        case 2: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
+        case 3: nextAddr++; break;
+        case 4: nextAddr++; break;
+        case 5: nextAddr = 0xc000; expCtrl |= BR_CTRL_BUS_M1_MASK; break;        
+        case 6: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; debugCurBCCount = 0x1fff; break;
+        case 7: nextAddr++; break;
+        case 8: nextAddr++; break;
+        case 9: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; debugCurBCCount--; break;
+        case 10: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
+        case 11: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
+        case 12: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
+        case 13: nextAddr++; break;
+        case 14: nextAddr++; if (debugCurBCCount != 0) nextAddr = 9; break;
+        case 15: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
+        case 16: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; debugCurChVal++; break;
+        case 17: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
+        case 18: nextAddr++; break;
+        case 19: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
+        case 20: nextAddr++; break;
+        case 21: nextAddr++; if (debugCurChVal <= '9') nextAddr = 2; break;
+        case 22: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
+        case 23: nextAddr++; break;
+        case 24: nextAddr = 0; break;
+        case 0xc000: nextAddr = 6; expCtrl = BR_CTRL_BUS_WR_MASK | BR_CTRL_BUS_MREQ_MASK | BR_CTRL_BUS_WAIT_MASK; expData = debugCurChVal; break;
     }
 
-    // Mirror Z80 expected behaviour
-    // uint32_t expCtrl = BR_CTRL_BUS_RD_MASK | BR_CTRL_BUS_MREQ_MASK | BR_CTRL_BUS_WAIT_MASK;
-    // uint32_t nextAddr = debugCurAddr;
-    // uint32_t expData = 0xffff;
-    // switch(debugCurAddr)
-    // {
-    //     case 0: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; debugCurChVal = '0'; break;
-    //     case 1: nextAddr++; break;
-    //     case 2: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
-    //     case 3: nextAddr++; break;
-    //     case 4: nextAddr++; break;
-    //     case 5: nextAddr = 0xc000; expCtrl |= BR_CTRL_BUS_M1_MASK; break;        
-    //     case 6: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; debugCurBCCount = 0xffff; break;
-    //     case 7: nextAddr++; break;
-    //     case 8: nextAddr++; break;
-    //     case 9: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; debugCurBCCount--; break;
-    //     case 10: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
-    //     case 11: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
-    //     case 12: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
-    //     case 13: nextAddr++; break;
-    //     case 14: nextAddr++; if (debugCurBCCount != 0) nextAddr = 9; break;
-    //     case 15: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
-    //     case 16: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; debugCurChVal++; break;
-    //     case 17: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
-    //     case 18: nextAddr++; break;
-    //     case 19: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
-    //     case 20: nextAddr++; break;
-    //     case 21: nextAddr++; if (debugCurChVal <= '9') nextAddr = 2; break;
-    //     case 22: nextAddr++; expCtrl |= BR_CTRL_BUS_M1_MASK; break;
-    //     case 23: nextAddr++; break;
-    //     case 24: nextAddr = 0; break;
-    //     case 0xc000: nextAddr = 6; expCtrl = BR_CTRL_BUS_WR_MASK | BR_CTRL_BUS_MREQ_MASK | BR_CTRL_BUS_WAIT_MASK; expData = debugCurChVal; break;
-    // }
-
-    // if ((addr != debugCurAddr) || (expCtrl != flags) || ((expData != 0xffff) && (expData != data)))
-    // {
-    //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-    //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-    //     if (debugAccessCount < 16)
-    //     {
-    //         debugAccessInfo[debugAccessCount].addr = addr;
-    //         debugAccessInfo[debugAccessCount].expectedAddr = debugCurAddr;
-    //         debugAccessInfo[debugAccessCount].dataFromZ80 = data;
-    //         debugAccessInfo[debugAccessCount].expectedData = expData;
-    //         debugAccessInfo[debugAccessCount].dataToZ80 = retVal;
-    //         debugAccessInfo[debugAccessCount].flags = flags;
-    //         debugAccessInfo[debugAccessCount].expectedFlags = expCtrl;
-    //         debugAccessCount++;
-    //         // if (debugCur > sizeof(debugVals)/sizeof(debugVals[0]))
-    //         //     debugCur = 0;
-    //     }
-    // }
-    // debugCurAddr = nextAddr;
-
+    if ((addr != debugCurAddr) || (expCtrl != flags) || ((expData != 0xffff) && (expData != data)))
+    {
+        // Debug signal
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        // Only first N errors
+        if (debugAccessCount < 20)
+        {
+            debugAccessInfo[debugAccessCount].addr = addr;
+            debugAccessInfo[debugAccessCount].expectedAddr = debugCurAddr;
+            debugAccessInfo[debugAccessCount].dataFromZ80 = data;
+            debugAccessInfo[debugAccessCount].expectedData = expData;
+            debugAccessInfo[debugAccessCount].dataToZ80 = retVal;
+            debugAccessInfo[debugAccessCount].flags = flags;
+            debugAccessInfo[debugAccessCount].expectedFlags = expCtrl;
+            debugAccessInfo[debugAccessCount].stepCount = debugStepCount;
+            debugAccessCount++;
+        }
+        // Since there was an error we don't know what the next address should be
+        // So guess that it is the next address
+        nextAddr = addr + 1;
+        // Debug signal
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+    }
+    debugCurAddr = nextAddr;
+    debugStepCount++;
 
     return retVal;
 }
