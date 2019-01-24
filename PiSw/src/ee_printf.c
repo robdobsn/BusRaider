@@ -42,6 +42,7 @@ This code is based on a file that contains the following:
 #include "uart.h"
 #include "wgfx.h"
 #include <stdarg.h>
+#include <stddef.h>
 #include "ee_printf.h"
 
 // #define size_t unsigned int

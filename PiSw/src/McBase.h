@@ -2,8 +2,8 @@
 // Rob Dobson 2018
 
 #pragma once
-#include "globaldefs.h"
 #include "wgfxfont.h"
+#include <stdint.h>
 
 static const int MC_WINDOW_NUMBER = 0;
 

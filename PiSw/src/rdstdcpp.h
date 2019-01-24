@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "globaldefs.h"
+#include <stddef.h>
 
 void* operator new(size_t sz);
 void operator delete(void* ptr) noexcept;

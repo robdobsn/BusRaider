@@ -7,6 +7,7 @@
 #include "irq.h"
 #include "nmalloc.h"
 #include "lowlib.h"
+#include <stddef.h>
 
 volatile unsigned int rxhead;
 volatile unsigned int rxtail;

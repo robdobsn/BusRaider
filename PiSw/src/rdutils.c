@@ -1,7 +1,6 @@
 // Bus Raider
 // Rob Dobson 2018
 
-#include "globaldefs.h"
 #include "nmalloc.h"
 #include "jsmnR.h"
 #include "ee_printf.h"

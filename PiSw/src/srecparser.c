@@ -3,6 +3,7 @@
 
 #include "srecparser.h"
 #include "ee_printf.h"
+#include <stddef.h>
 
 #define MAX_SREC_DATA_LEN 200
 

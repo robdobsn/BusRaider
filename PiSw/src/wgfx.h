@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "globaldefs.h"
 #include "wgfxfont.h"
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

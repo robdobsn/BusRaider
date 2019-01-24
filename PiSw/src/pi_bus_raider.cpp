@@ -1,7 +1,6 @@
 // Bus Raider
 // Rob Dobson 2018
 
-#include "globaldefs.h"
 #include "uart.h"
 #include "wgfx.h"
 #include "ee_printf.h"

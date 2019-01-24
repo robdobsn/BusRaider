@@ -2,8 +2,7 @@
 // Rob Dobson 2018
 
 #pragma once
-
-#include "globaldefs.h"
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

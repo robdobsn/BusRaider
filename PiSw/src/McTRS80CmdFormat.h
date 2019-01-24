@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "globaldefs.h"
 #include "McFormatBase.h"
 
 class McTRS80CmdFormat

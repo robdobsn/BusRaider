@@ -1,5 +1,4 @@
 #include "postman.h"
-#include "globaldefs.h"
 #include "ee_printf.h"
 #include "lowlev.h"
 #include "lowlib.h"

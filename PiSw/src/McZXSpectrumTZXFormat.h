@@ -2,7 +2,6 @@
 #pragma once
 
 #ifdef __arm__
-// #include "globaldefs.h"
 #include "ee_printf.h"
 #endif
 

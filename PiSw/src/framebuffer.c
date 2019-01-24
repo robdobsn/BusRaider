@@ -1,5 +1,4 @@
 #include "framebuffer.h"
-#include "globaldefs.h"
 #include "postman.h"
 #include "lowlev.h"
 

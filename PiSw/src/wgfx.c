@@ -7,6 +7,8 @@
 #include "lowlib.h"
 #include "lowlev.h"
 #include "dma.h"
+#include <stdbool.h>
+#include <stddef.h>
 
 extern WgfxFont __systemFont;
 

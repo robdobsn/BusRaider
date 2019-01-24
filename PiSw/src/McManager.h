@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include "globaldefs.h"
 #include "McBase.h"
 #include "TargetClockGenerator.h"
 #include "ee_printf.h"

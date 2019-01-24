@@ -2,14 +2,13 @@
 // Rob Dobson 2018
 
 #pragma once
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 // #define DEBUG_SREC_RX 1
-
-#include "globaldefs.h"
 
 typedef void SrecHandlerDataCallback(uint32_t addr, const uint8_t* pData, uint32_t len);
 typedef void SrecHandlerAddrCallback(uint32_t addr);

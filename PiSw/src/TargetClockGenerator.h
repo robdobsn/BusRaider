@@ -1,7 +1,6 @@
 
 #pragma once
 
-#include "globaldefs.h"
 #include "ee_printf.h"
 #include "busraider.h"
 #include "piwiring.h"

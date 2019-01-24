@@ -4,7 +4,9 @@
 #pragma once
 
 #include "bare_metal_pi_zero.h"
-#include "globaldefs.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
