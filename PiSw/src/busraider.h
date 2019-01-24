@@ -91,6 +91,10 @@ typedef enum {
 #define BR_WAIT_BAR 5 // GPIO5
 #define BR_CLOCK_PIN 4 // GPIO4
 
+// Masks for above
+#define BR_IORQ_WAIT_EN_MASK (1 << BR_IORQ_WAIT_EN)
+#define BR_MREQ_WAIT_EN_MASK (1 << BR_MREQ_WAIT_EN)
+
 // Pi debug pin
 #define BR_DEBUG_PI_SPI0_CE0 8 // SPI0 CE0
 

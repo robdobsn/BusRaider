@@ -122,7 +122,7 @@ void br_reset_host()
     }
 
     // Clear WAIT flip-flop
-    W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
+    W32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
 
     // // Re-enable the wait state generation
     W32(GPSET0, __br_wait_state_en_mask);
@@ -282,7 +282,8 @@ void br_set_high_addr(uint32_t highAddrByte)
             br_mux_set(BR_MUX_HADDR_SER_LOW);
         // Shift the address value for next bit
         highAddrByte = highAddrByte << 1;
-        // Clock the bit
+        // Clock the bit - repeated here as a delay mechanism
+        W32(GPSET0, 1 << BR_HADDR_CK);
         W32(GPSET0, 1 << BR_HADDR_CK);
         W32(GPCLR0, 1 << BR_HADDR_CK);
     }
@@ -564,10 +565,10 @@ void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ)
     // Enable wait state generation
     __br_wait_state_en_mask = 0;
     if (enWaitOnIORQ)
-        __br_wait_state_en_mask = __br_wait_state_en_mask | (1 << BR_IORQ_WAIT_EN);
+        __br_wait_state_en_mask = __br_wait_state_en_mask | BR_IORQ_WAIT_EN_MASK;
     if (enWaitOnMREQ)
-        __br_wait_state_en_mask = __br_wait_state_en_mask | (1 << BR_MREQ_WAIT_EN);
-    W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
+        __br_wait_state_en_mask = __br_wait_state_en_mask | BR_MREQ_WAIT_EN_MASK;
+    W32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
 
     // Check if any wait-states to be generated
     if (__br_wait_state_en_mask == 0)
@@ -607,56 +608,63 @@ void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ)
 #endif  
 }
 
+// Main Interrupt Service Routing for MREQ/IORQ based interrupts
+// The Bus Raider hardware creates WAIT states while this IRQ is running
+// These have to be cleared on exit and the interrupt source register also cleared
 void br_wait_state_isr(void* pData)
 {
-    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-
     // pData unused
     pData = pData;
 
     // Loop until control lines are valid
+    // In a write cycle WR is asserted after MREQ so we need to wait until WR changes before
+    // we can determine what kind of operation is in progress 
     bool ctrlValid = false;
-    int endlessLoopCtr = 0;
+    int avoidLockupCtr = 0;
     uint32_t busVals = 0;
-    while(endlessLoopCtr < MAX_WAIT_FOR_CTRL_LINES_US)
+    while(avoidLockupCtr < MAX_WAIT_FOR_CTRL_LINES_US)
     {
         // Read the control lines
         busVals = R32(GPLEV0);
 
-        // Specifically need to wait if MREQ is low but both RD and WR are high (wait for WR to go low)
+        // Specifically need to wait if MREQ is low but both RD and WR are high (wait for WR to go low in this case)
         ctrlValid = !(((busVals & (1 << BR_MREQ_BAR)) == 0) && (((busVals & (1 << BR_RD_BAR)) != 0) && ((busVals & (1 << BR_WR_BAR)) != 0)));
         if (ctrlValid)
             break;
 
         // Count loops
-        endlessLoopCtr++;
+        avoidLockupCtr++;
 
-        // Delay for a short time
-        uint32_t timeNow = micros();
-        while (!timer_isTimeout(micros(), timeNow, 2)) {
-            // Do nothing
-        }
+        // // Delay for a short time
+        // uint32_t timeNow = micros();
+        // while (!timer_isTimeout(micros(), timeNow, 2)) {
+        //     // Do nothing
+        // }
     }
 
     // Check if we have valid control lines
     if ((!ctrlValid) || ((busVals & (1 << BR_WAIT_BAR)) != 0))
     {
-        // Delay for a short time
-        uint32_t timeNow = micros();
-        while (!timer_isTimeout(micros(), timeNow, 2)) {
-            // Do nothing
-        }
+        // // Delay for a short time
+        // uint32_t timeNow = micros();
+        // while (!timer_isTimeout(micros(), timeNow, 2)) {
+        //     // Do nothing
+        // }
+        // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+
         // Spurious ISR?
-        W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
-        // Delay for a short time
-        timeNow = micros();
-        while (!timer_isTimeout(micros(), timeNow, 2)) {
-            // Do nothing
-        }
+        W32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
+        // // Delay for a short time
+        // timeNow = micros();
+        // while (!timer_isTimeout(micros(), timeNow, 2)) {
+        //     // Do nothing
+        // }
         // // Re-enable the wait state generation
         W32(GPSET0, __br_wait_state_en_mask);
         // // Clear detected edge on any pin
         W32(GPEDS0, 0xffffffff);
+
+                // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
 
         return;
     }
@@ -664,30 +672,30 @@ void br_wait_state_isr(void* pData)
 
 
 
-        // Delay for a short time
-        uint32_t timeNow = micros();
-        while (!timer_isTimeout(micros(), timeNow, 2)) {
-            // Do nothing
-        }
+        // // Delay for a short time
+        // uint32_t timeNow = micros();
+        // while (!timer_isTimeout(micros(), timeNow, 2)) {
+        //     // Do nothing
+        // }
 
     // Read the low address
     br_set_pib_input();
     W32(GPSET0, 1 << BR_DATA_DIR_IN);
     br_mux_set(BR_MUX_LADDR_OE_BAR);
-        // Delay for a short time
-        timeNow = micros();
-        while (!timer_isTimeout(micros(), timeNow, 2)) {
-            // Do nothing
-        }
+        // // Delay for a short time
+        // timeNow = micros();
+        // while (!timer_isTimeout(micros(), timeNow, 2)) {
+        //     // Do nothing
+        // }
     uint32_t addr = br_get_pib_value() & 0xff;
 
     // Read the high address
     br_mux_set(BR_MUX_HADDR_OE_BAR);
-        // Delay for a short time
-        timeNow = micros();
-        while (!timer_isTimeout(micros(), timeNow, 2)) {
-            // Do nothing
-        }
+        // // Delay for a short time
+        // timeNow = micros();
+        // while (!timer_isTimeout(micros(), timeNow, 2)) {
+        //     // Do nothing
+        // }
     addr |= (br_get_pib_value() & 0xff) << 8;
  
     // Clear the mux to deactivate output enables
@@ -710,11 +718,11 @@ void br_wait_state_isr(void* pData)
         digitalWrite(BR_DATA_DIR_IN, 1);
         br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
         dataBusVals = br_get_pib_value() & 0xff;
-        // Delay for a short time
-        timeNow = micros();
-        while (!timer_isTimeout(micros(), timeNow, 2)) {
-            // Do nothing
-        }
+        // // Delay for a short time
+        // timeNow = micros();
+        // while (!timer_isTimeout(micros(), timeNow, 2)) {
+        //     // Do nothing
+        // }
         br_mux_clear();
     }
 
@@ -732,11 +740,11 @@ void br_wait_state_isr(void* pData)
         br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
         br_set_pib_output();
         br_set_pib_value(retVal & 0xff);
-        // Delay for a short time
-        timeNow = micros();
-        while (!timer_isTimeout(micros(), timeNow, 2)) {
-            // Do nothing
-        }
+        // // Delay for a short time
+        // timeNow = micros();
+        // while (!timer_isTimeout(micros(), timeNow, 2)) {
+        //     // Do nothing
+        // }
         br_mux_clear();
     }
 
@@ -746,15 +754,20 @@ void br_wait_state_isr(void* pData)
     __br_pause_is_paused = ((retVal & BR_MEM_ACCESS_RSLT_REQ_PAUSE) != 0);
     if (!__br_pause_is_paused)
     {
+        // TODO - DEBUG - MUST BE REMOVED
+        // W32(GPSET0, 1 << BR_HADDR_CK);
+        // W32(GPSET0, 1 << BR_HADDR_CK);
+        // W32(GPCLR0, 1 << BR_HADDR_CK);
+
         // No pause requested - clear the WAIT state so execution can continue
         // The order of the following lines is important
-        // The "clear edge detected" line delays the flip-flop reset pulse enough
+        // The repeated line delays the flip-flop reset pulse enough
         // to make it reliable - without this extra delay clearing the flip-flop isn't
-        // reliable as the pulse can be too short (depending on Raspberry Pi GPIO clocking probably)
+        // reliable as the pulse can be too short (Raspberry Pi outputs are weedy)
         // Clear the WAIT state flip-flop
-        W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
-        W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
-        W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
+        W32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
+        W32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
+        W32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
         // // Delay for a short time
         // timeNow = micros();
         // while (!timer_isTimeout(micros(), timeNow, 1)) {
@@ -762,8 +775,14 @@ void br_wait_state_isr(void* pData)
         // }
         // // Re-enable the wait state generation
         W32(GPSET0, __br_wait_state_en_mask);
+
         // // Clear detected edge on any pin
         W32(GPEDS0, 0xffffffff);
+        
+        // TODO - DEBUG - MUST BE REMOVED
+        // W32(GPSET0, 1 << BR_HADDR_CK);
+        // W32(GPSET0, 1 << BR_HADDR_CK);
+        // W32(GPCLR0, 1 << BR_HADDR_CK);
     }
     else
     {
@@ -817,7 +836,7 @@ bool br_pause_release()
     __br_pause_is_paused = false;
 
     // Clear the WAIT state flip-flop
-    W32(GPCLR0, (1 << BR_MREQ_WAIT_EN) | (1 << BR_IORQ_WAIT_EN));
+    W32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
 
         // Delay for a short time
         uint32_t timeNow = micros();
