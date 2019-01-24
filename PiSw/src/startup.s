@@ -1,3 +1,7 @@
+// Bus Raider
+// Startup file for Raspberry Pi Zero
+// Rob Dobson 2019
+
 .global bootstrap
 bootstrap:
     ldr pc, _reset_h
@@ -20,19 +24,19 @@ _reset_h:                        .word   _reset_
 
 
 ;@ See linker script file
-.globl bss_start
+.global bss_start
 bss_start: .word __bss_start__
 
-.globl bss_end
+.global bss_end
 bss_end: .word __bss_end__
 
-.globl pheap_space
+.global pheap_space
 pheap_space: .word _heap_start
 
-.globl heap_sz
+.global heap_sz
 heap_sz: .word heap_size
 
-.globl __otaUpdateBuffer
+.global __otaUpdateBuffer
 __otaUpdateBuffer: .word _otaUpdateBufferStart
 
 ;@ Initial entry point
