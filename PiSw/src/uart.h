@@ -1,9 +1,10 @@
 // Bus Raider
-// Rob Dobson 2018
+// UART
+// Rob Dobson 2018-2019
 
 #pragma once
 
-#include "utils.h"
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {

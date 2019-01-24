@@ -5,10 +5,12 @@
 #include "usb_hid_keys.h"
 #include "wgfx.h"
 #include "busraider.h"
-#include "rdutils.h"
 #include "target_memory_map.h"
 #include "nmalloc.h"
-#include "timer.h"
+#include "lowlib.h"
+#include "rdutils.h"
+#include <stdlib.h>
+#include <string.h>
 
 const char* McTerminal::_logPrefix = "McTerm";
 
@@ -106,7 +108,7 @@ void McTerminal::displayRefresh()
     // Show the cursor as required
     if (_cursorShow)
     {
-        if (timer_isTimeout(micros(), _cursorBlinkLastUs, _cursorBlinkRateMs*1000))
+        if (isTimeout(micros(), _cursorBlinkLastUs, _cursorBlinkRateMs*1000))
         {
             if (_cursorIsOn)
             {

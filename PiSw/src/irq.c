@@ -1,6 +1,5 @@
 #include "irq.h"
-#include "ee_printf.h"
-#include "utils.h"
+#include "lowlev.h"
 
 // https://www.raspberrypi.org/documentation/hardware/raspberrypi/bcm2835/BCM2835-ARM-Peripherals.pdf
 // Page 112 onwards 
@@ -20,7 +19,7 @@ void irq_set_usb_handler(IntHandler* pHandler, void* pData)
 {
     __irqHandlerUSBFn = pHandler;
     __irqHandlerUSBData = pData;
-    enable_irq();
+    lowlev_enable_irq();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -37,7 +36,7 @@ void irq_set_uart_handler(IntHandler* pHandler, void* pData)
 {
     __irqHandlerUARTFn = pHandler;
     __irqHandlerUARTData = pData;
-    enable_irq();
+    lowlev_enable_irq();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////

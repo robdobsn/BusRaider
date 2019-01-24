@@ -9,9 +9,6 @@
 extern "C" {
 #endif
 
-extern uint32_t micros();
-extern void delayMicroseconds(uint32_t us);
-
 typedef void _TimerHandler(unsigned hTimer, void* pParam, void* pContext);
 
 extern void timers_init();

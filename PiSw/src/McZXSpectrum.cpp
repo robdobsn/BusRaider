@@ -5,9 +5,11 @@
 #include "usb_hid_keys.h"
 #include "wgfx.h"
 #include "busraider.h"
-#include "rdutils.h"
 #include "target_memory_map.h"
 #include "McZXSpectrumTZXFormat.h"
+#include "rdutils.h"
+#include <stdlib.h>
+#include <string.h>
 
 const char* McZXSpectrum::_logPrefix = "ZXSpectrum";
 
@@ -146,7 +148,7 @@ void McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         pFileType = pEmpty;
 
     // See if it is TZX format
-    if (stricmp(pFileType, ".tzx") == 0)
+    if (strcasecmp(pFileType, ".tzx") == 0)
     {
         // TZX
         McZXSpectrumTZXFormat tzxFormatHandler;

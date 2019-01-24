@@ -40,7 +40,6 @@ This code is based on a file that contains the following:
 */
 
 #include "uart.h"
-#include "utils.h"
 #include "wgfx.h"
 #include <stdarg.h>
 #include "ee_printf.h"

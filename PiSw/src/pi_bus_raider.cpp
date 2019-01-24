@@ -2,17 +2,24 @@
 // Rob Dobson 2018
 
 #include "globaldefs.h"
-#include "utils.h"
 #include "uart.h"
-#include "timer.h"
 #include "wgfx.h"
 #include "ee_printf.h"
 #include "piwiring.h"
 #include "busraider.h"
 #include "cmd_handler.h"
 #include "target_memory_map.h"
-#include "rdutils.h"
-#include "../uspi\include\uspi\types.h"
+
+typedef unsigned char		u8;
+typedef unsigned short		u16;
+typedef unsigned int		u32;
+typedef unsigned long long	u64;
+
+typedef char                s8;
+typedef short               s16;
+typedef int                 s32;
+
+// #include "../uspi\include\uspi\types.h"
 #include "../uspi/include/uspi.h"
 #include "McManager.h"
 #include "McTRS80.h"
@@ -20,9 +27,12 @@
 #include "McDebugZ80.h"
 #include "McZXSpectrum.h"
 #include "McTerminal.h"
+#include "timer.h"
+#include "lowlib.h"
+#include <stdlib.h>
 
 // Program details
-static const char* PROG_VERSION = "             RC2014 Bus Raider V1.6.046";
+static const char* PROG_VERSION = "             RC2014 Bus Raider V1.6.047";
 static const char* PROG_CREDITS = "    Rob Dobson 2018 (inspired by PiGFX)";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
@@ -128,8 +138,8 @@ extern "C" void entry_point()
     // Logging
     LogSetLevel(LOG_DEBUG);
     
-    // System init
-    system_init();
+    // Heap init
+    heapInit();
 
     // Init timers
     timers_init();
@@ -224,7 +234,7 @@ extern "C" void entry_point()
     {
 
         // Handle target machine display updates
-        if (timer_isTimeout(micros(), lastDisplayUpdateUs, reqUpdateUs)) 
+        if (isTimeout(micros(), lastDisplayUpdateUs, reqUpdateUs)) 
         {
             // Check valid
             dispTime = micros();
@@ -237,7 +247,7 @@ extern "C" void entry_point()
         }
 
         // Handle refresh rate calculation
-        if (timer_isTimeout(micros(), curRateSampleWindowStart, REFRESH_RATE_WINDOW_SIZE_MS * 1000)) 
+        if (isTimeout(micros(), curRateSampleWindowStart, REFRESH_RATE_WINDOW_SIZE_MS * 1000)) 
         {
             // Initial message
             wgfx_set_fg(11); // 11 = yellow
@@ -259,14 +269,14 @@ extern "C" void entry_point()
             switch(*wifiStatusChar)
             {
                 case 'C': 
-                    strncpy(statusStr, "WiFi ", MAX_STATUS_STR_LEN); 
+                    strlcpy(statusStr, "WiFi ", MAX_STATUS_STR_LEN); 
                     if (ipAddrValid)
                     {
-                        strncpy(statusStr+strlen(statusStr), ipAddr, MAX_STATUS_STR_LEN);
+                        strlcpy(statusStr+strlen(statusStr), ipAddr, MAX_STATUS_STR_LEN);
                     }
                     break;
                 default: 
-                    strncpy(statusStr, "WiFi not connected", MAX_STATUS_STR_LEN);
+                    strlcpy(statusStr, "WiFi not connected", MAX_STATUS_STR_LEN);
                     break;
             }
             wgfx_puts(1, wgfx_get_term_width()-strlen(statusStr)-1, lineIdx++, (uint8_t*)statusStr);
@@ -279,9 +289,9 @@ extern "C" void entry_point()
             refreshStr[0] = lastActivityTickerState ? '|' : '-';
             refreshStr[1] = ' ';
             lastActivityTickerState = !lastActivityTickerState;
-            strncpy(refreshStr+2, refreshText, MAX_REFRESH_STR_LEN);
-            rditoa(refreshRate, (uint8_t*)(refreshStr+strlen(refreshStr)), MAX_REFRESH_STR_LEN, 10);
-            strncpy(refreshStr+strlen(refreshStr), "fps", MAX_REFRESH_STR_LEN);
+            strlcpy(refreshStr+2, refreshText, MAX_REFRESH_STR_LEN);
+            itoa(refreshRate, (refreshStr+strlen(refreshStr)), MAX_REFRESH_STR_LEN);
+            strlcpy(refreshStr+strlen(refreshStr), "fps", MAX_REFRESH_STR_LEN);
             wgfx_puts(1, wgfx_get_term_width()-strlen(refreshStr)-1, lineIdx++, (uint8_t*)refreshStr);
             // // uart_printf("Rate %d per sec, requs %ld dispTime %ld\n", refreshCount / 2, reqUpdateUs, dispTime);
             // wgfx_putc(1, 150, 0, '0' + (refreshRate % 10));
@@ -296,7 +306,7 @@ extern "C" void entry_point()
         }
 
         // Handle status update to ESP32
-        if (timer_isTimeout(micros(), lastStatusUpdateMs, STATUS_UPDATE_RATE_MS * 1000)) 
+        if (isTimeout(micros(), lastStatusUpdateMs, STATUS_UPDATE_RATE_MS * 1000)) 
         {
             // Send and request status update
             cmdHandler_sendReqStatusUpdate();

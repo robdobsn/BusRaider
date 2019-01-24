@@ -3,13 +3,11 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "bare_metal_pi_zero.h"
-#include "utils.h"
-#include "rdutils.h"
 
 extern uint8_t convModeToVal(uint8_t mode);
 extern void pinMode(uint8_t pin, uint8_t mode);

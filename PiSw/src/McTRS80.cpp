@@ -5,9 +5,11 @@
 #include "usb_hid_keys.h"
 #include "wgfx.h"
 #include "busraider.h"
-#include "rdutils.h"
 #include "target_memory_map.h"
 #include "McTRS80CmdFormat.h"
+#include "rdutils.h"
+#include <stdlib.h>
+#include <string.h>
 
 const char* McTRS80::_logPrefix = "TRS80";
 
@@ -279,7 +281,7 @@ void McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
     const char* pEmpty = "";
     if (pFileType == NULL)
         pFileType = pEmpty;
-    if (stricmp(pFileType, ".cmd") == 0)
+    if (strcasecmp(pFileType, ".cmd") == 0)
     {
         // TRS80 command file
         McTRS80CmdFormat cmdFormat;

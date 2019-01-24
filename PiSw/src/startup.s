@@ -2,8 +2,10 @@
 // Startup file for Raspberry Pi Zero
 // Rob Dobson 2019
 
-.global bootstrap
-bootstrap:
+.section ".text.startup"
+
+.global _startup
+_startup:
     ldr pc, _reset_h
     ldr pc, _undefined_instruction_h
     ldr pc, _software_interrupt_h
@@ -22,8 +24,7 @@ _reset_h:                        .word   _reset_
     _interrupt_h:                .word   irq_handler_ 
     _fast_interrupt_h:           .word   fiq_handler_
 
-
-;@ See linker script file
+// Linker script file used to set these definitions
 .global bss_start
 bss_start: .word __bss_start__
 
@@ -39,8 +40,10 @@ heap_sz: .word heap_size
 .global __otaUpdateBuffer
 __otaUpdateBuffer: .word _otaUpdateBufferStart
 
-;@ Initial entry point
+// Program entry point
 _reset_:
+
+    // Processor is in supervisor mode at startup
     mov     r0, #0x8000
     mov     r1, #0x0000
     ldmia   r0!,{r2, r3, r4, r5, r6, r7, r8, r9}
@@ -49,22 +52,25 @@ _reset_:
     stmia   r1!,{r2, r3, r4, r5, r6, r7, r8, r9}
     mov sp, #0x8000
 
-    ;@ (PSR_IRQ_MODE|PSR_FIQ_DIS|PSR_IRQ_DIS)
+    // (PSR_IRQ_MODE|PSR_FIQ_DIS|PSR_IRQ_DIS)
+    // Set interrupt mode stack pointer
     mov r0,#0xD2
     msr cpsr_c,r0
     mov sp,#0x8000
 
-    ;@ (PSR_FIQ_MODE|PSR_FIQ_DIS|PSR_IRQ_DIS)
+    // (PSR_FIQ_MODE|PSR_FIQ_DIS|PSR_IRQ_DIS)
+    // Set FIQ mode stack pointer
     mov r0,#0xD1
     msr cpsr_c,r0
     mov sp,#0x4000
 
-    ;@ (PSR_SVC_MODE|PSR_FIQ_DIS|PSR_IRQ_DIS)
+    // Back in supervisor mode set the stack pointer
+    // (PSR_SVC_MODE|PSR_FIQ_DIS|PSR_IRQ_DIS)
     mov r0,#0xD3
     msr cpsr_c,r0
     mov sp,#0x8000000
 
-    ;@ Fill BSS with zeros
+    // Fill BSS with zeros
     ldr   r3, bss_start 
     ldr   r2, bss_end
     mov   r0, #0
@@ -76,32 +82,20 @@ _reset_:
     b     1b
 
 2:
-    ;@ Jump to the entry point
+    // Jump to the entry point of the c/cpp code
     bl  entry_point
 
+// FIQ (Fast Interrupt) handler
 .global fiq_handler_
 fiq_handler_:
 
-    # ldr r8, =#0x20200000
-    # mov r9, #0x100
-    # mvn r10, #0
-    # mov r11, #0x3000
-    # str r9, [r8, #0x1C]
-    # str r10, [r8, #0x40]
-    # str r11, [r8, #0x28]
-    # str r11, [r8, #0x1C]
-    # str r9, [r8, #0x28]
-    # subs pc,lr,#4
-
-
-
-
-    ;@ FIQ swaps out R8..R14
+    // FIQ swaps out R8..R14
     push {r0,r1,r2,r3,r4,r5,r6,r7,lr}
     bl c_firq_handler
     pop  {r0,r1,r2,r3,r4,r5,r6,r7,lr}
     subs pc,lr,#4
 
+// In exceptions such as bad instruction
 .global hang
 hang: 
     b hang

@@ -6,7 +6,7 @@
 #include "ee_printf.h"
 #include "irq.h"
 #include "nmalloc.h"
-#include "rdutils.h"
+#include "lowlib.h"
 
 volatile unsigned int rxhead;
 volatile unsigned int rxtail;

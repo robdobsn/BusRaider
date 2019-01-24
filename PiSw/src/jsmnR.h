@@ -4,8 +4,6 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <limits.h>
-#include "utils.h"
-#include "rdutils.h"
 
 /**
  * JSON type identifier. Basic types are:

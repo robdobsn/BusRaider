@@ -9,7 +9,7 @@ set(PROJECT_ELF ${PROJ_NAME}.elf)
 
 project($PROJ_NAME C CXX ASM)
 
-set(ASM_SOURCE_FILES src/startup.s src/utils.s)
+set(ASM_SOURCE_FILES src/startup.s src/lowlev.s)
 file(GLOB_RECURSE C_SOURCE_FILES "./src/*.c")
 file(GLOB_RECURSE CXX_SOURCE_FILES "./src/*.cpp")
 

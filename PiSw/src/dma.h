@@ -1,3 +1,7 @@
+// Bus Raider
+// Dynamic Memory Access
+// Rob Dobson 2019
+
 #pragma once
 
 #define DMA_TI_SRC_INC (1 << 8)

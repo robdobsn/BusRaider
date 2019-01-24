@@ -1,3 +1,6 @@
 {
-    "python.linting.enabled": false
+    "python.linting.enabled": false,
+    "files.associations": {
+        "irq.h": "c"
+    }
 }

@@ -3,10 +3,10 @@
 
 #include "busraider.h"
 #include "piwiring.h"
-#include "timer.h"
 #include "irq.h"
-#include "utils.h"
 #include "ee_printf.h"
+#include "lowlev.h"
+#include "lowlib.h"
 
 // Uncomment the following to use bitwise access to busses and pins on Pi
 // #define USE_BITWISE_DATA_BUS_ACCESS 1
@@ -116,10 +116,7 @@ void br_reset_host()
     br_mux_set(BR_MUX_RESET_Z80_BAR_LOW);
 
     // Delay for a short time
-    uint32_t timeNow = micros();
-    while (!timer_isTimeout(micros(), timeNow, 100)) {
-        // Do nothing
-    }
+    microsDelay(100);
 
     // Clear WAIT flip-flop
     W32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
@@ -144,7 +141,7 @@ void br_nmi_host()
 {
     // NMI by taking nmi_bar line low and high
     br_mux_set(BR_MUX_NMI_BAR_LOW);
-    delayMicroseconds(10);
+    microsDelay(10);
     br_mux_clear();
 }
 
@@ -153,7 +150,7 @@ void br_irq_host()
 {
     // IRQ by taking irq_bar line low and high
     br_mux_set(BR_MUX_IRQ_BAR_LOW);
-    delayMicroseconds(10);
+    microsDelay(10);
     br_mux_clear();
 }
 
@@ -210,7 +207,7 @@ void br_release_control(bool resetTargetOnRelease)
         br_mux_set(BR_MUX_RESET_Z80_BAR_LOW);
         // No longer request bus
         digitalWrite(BR_BUSRQ_BAR, 1);
-        delayMicroseconds(100);
+        microsDelay(100);
         br_mux_clear();
     }
     else
@@ -802,7 +799,7 @@ void br_clear_wait_interrupt()
 void br_disable_wait_interrupt()
 {
     // Disable Fast Interrupts
-    disable_fiq();
+    lowlev_disable_fiq();
 }
 
 void br_enable_wait_interrupt()
@@ -811,7 +808,7 @@ void br_enable_wait_interrupt()
     br_clear_wait_interrupt();
 
     // Enable Fast Interrupts
-    enable_fiq();
+    lowlev_enable_fiq();
 }
 
 void br_pause_get_current(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags)
@@ -838,11 +835,8 @@ bool br_pause_release()
     // Clear the WAIT state flip-flop
     W32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
 
-        // Delay for a short time
-        uint32_t timeNow = micros();
-        while (!timer_isTimeout(micros(), timeNow, 2)) {
-            // Do nothing
-        }
+    // Delay for a short time
+    microsDelay(2);
 
     // Re-enable the wait state generation
     W32(GPSET0, __br_wait_state_en_mask);

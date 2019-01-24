@@ -1,7 +1,7 @@
 #include "raspihwconfig.h"
 #include "postman.h"
-#include "timer.h"
-#include "utils.h"
+#include "lowlev.h"
+#include "lowlib.h"
 
 RHW_RETURN_TYPE rhw_get_mac_address(unsigned char* pOutAddr)
 {
@@ -21,7 +21,7 @@ RHW_RETURN_TYPE rhw_get_mac_address(unsigned char* pOutAddr)
 
     pBuffData[0] = off * 4; // Total message size
 
-    if (POSTMAN_SUCCESS != postman_send(8, mem_v2p((unsigned int)pBuffData)))
+    if (POSTMAN_SUCCESS != postman_send(8, lowlev_mem_v2p((unsigned int)pBuffData)))
         return RHW_POSTMAN_FAIL;
 
     if (POSTMAN_SUCCESS != postman_recv(8, &respmsg))
@@ -58,7 +58,7 @@ RHW_RETURN_TYPE rhw_set_device_power(RHW_DEVICE dev, RHW_POWER_STATE state)
 
     pBuffData[0] = off * 4; // Total message size
 
-    if (POSTMAN_SUCCESS != postman_send(8, mem_v2p((unsigned int)pBuffData)))
+    if (POSTMAN_SUCCESS != postman_send(8, lowlev_mem_v2p((unsigned int)pBuffData)))
         return RHW_POSTMAN_FAIL;
 
     unsigned int n_retries = 10;
@@ -69,7 +69,7 @@ RHW_RETURN_TYPE rhw_set_device_power(RHW_DEVICE dev, RHW_POWER_STATE state)
             success = 1;
             break;
         }
-        delayMicroseconds(500000);
+        microsDelay(500000);
     }
 
     if (!success)

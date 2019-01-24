@@ -5,6 +5,7 @@
 #include "ee_printf.h"
 #include "busraider.h"
 #include "piwiring.h"
+#include "lowlib.h"
 
 class TargetClockGenerator
 {

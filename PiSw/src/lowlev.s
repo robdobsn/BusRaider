@@ -1,6 +1,9 @@
+// Bus Raider
+// Low-level utils
+// Rob Dobson 2019
 
-.global enable_irq
-enable_irq:
+.global lowlev_enable_irq
+lowlev_enable_irq:
     mrs r0,cpsr
     bic r0,r0,#0x80
     msr cpsr_c,r0
@@ -8,26 +11,26 @@ enable_irq:
     ;@cpsie i
     ;@mov pc, lr
 
-.global disable_irq
-disable_irq:
+.global lowlev_disable_irq
+lowlev_disable_irq:
         cpsid i
         mov pc, lr
 
-.global enable_fiq
-enable_fiq:
+.global lowlev_enable_fiq
+lowlev_enable_fiq:
     mrs r0,cpsr
     bic r0,r0,#0x40
     msr cpsr_c,r0
     bx lr
 
-.global disable_fiq
-disable_fiq:
+.global lowlev_disable_fiq
+lowlev_disable_fiq:
     cpsid f
     mov     pc, lr
 
 ;@ Wait for at least r0 cycles
-.global busywait
-busywait:
+.global lowlev_cycleDelay
+lowlev_cycleDelay:
         push {r1}
         mov r0, r0, ASR #1
 bloop:  ;@ eor r1, r0, r1
@@ -100,10 +103,10 @@ strcmp:
     pop {r2,r3}
     bx lr
 
-;@ blockCopyExecRelocatable - copied to heap and used for firmware update
-;@ params: dest, source, len, execAddr
-.global blockCopyExecRelocatable
-blockCopyExecRelocatable:
+// blockCopyExecRelocatable - copied to heap and used for firmware update
+// params: dest, source, len, execAddr
+.global lowlev_blockCopyExecRelocatable
+lowlev_blockCopyExecRelocatable:
     push {r3}
 blockCopyExecRelocatableLoop:
     LDRB r3, [r1], #1
@@ -114,8 +117,8 @@ blockCopyExecRelocatableLoop:
     bx r0
 
 blockCopyExecRelocatableEnd:
-.global blockCopyExecRelocatableLen
-blockCopyExecRelocatableLen: .word blockCopyExecRelocatableEnd-blockCopyExecRelocatable
+.global lowlev_blockCopyExecRelocatableLen
+lowlev_blockCopyExecRelocatableLen: .word blockCopyExecRelocatableEnd-lowlev_blockCopyExecRelocatable
 
 .global utils_goto
 utils_goto:

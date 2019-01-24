@@ -4,8 +4,8 @@
 #include "wgfx.h"
 #include "ee_printf.h"
 #include "framebuffer.h"
-#include "timer.h"
-#include "utils.h"
+#include "lowlib.h"
+#include "lowlev.h"
 #include "dma.h"
 
 extern WgfxFont __systemFont;
@@ -63,7 +63,7 @@ unsigned int __attribute__((aligned(0x100))) mem_buff_dma[16];
 
 void wgfx_init(unsigned int desiredWidth, unsigned int desiredHeight)
 {
-    delayMicroseconds(10000);
+    microsDelay(10000);
     fb_release();
 
     unsigned char* p_fb = 0;
@@ -84,7 +84,7 @@ void wgfx_init(unsigned int desiredWidth, unsigned int desiredHeight)
     }
     // uart_printf("physical fb size %dx%d\n", p_w, p_h);
 
-    delayMicroseconds(10000);
+    microsDelay(10000);
     wgfx_set_framebuffer(p_fb, v_w, v_h, pitch, fbsize);
     wgfx_clear();
 
@@ -519,7 +519,7 @@ void wgfx_scroll(int winIdx, int rows)
         pBlankEnd = pEnd;
 
 #ifdef USE_DMA_FOR_SCROLL
-    unsigned int* BG = (unsigned int*)mem_2uncached( mem_buff_dma );
+    unsigned int* BG = (unsigned int*)lowlev_mem_2uncached( mem_buff_dma );
     *BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
     *(BG+1) = *BG;
     *(BG+2) = *BG;

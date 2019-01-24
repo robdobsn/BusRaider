@@ -2,15 +2,14 @@
 #pragma once
 
 #ifdef __arm__
-#include "globaldefs.h"
-#include "rdutils.h"
+// #include "globaldefs.h"
 #include "ee_printf.h"
-#else
+#endif
+
 #include <stdint.h>
 #include <string.h>
-#include <stdio.h>
-#pragma warning(disable: 4996) 
-#endif
+// #include <stdio.h>
+// #pragma warning(disable: 4996) 
 
 #include "McFormatBase.h"
 
@@ -43,7 +42,7 @@ class McZXSpectrumTZXFormat
   				int recPos, int strLen, char* pDest)
   	{
 		int maxLen = strLen < (dataLen - recPos) ? strLen : (dataLen - recPos);
-  		strncpy(pDest, (const char*) (pData+recPos), maxLen);
+  		strlcpy(pDest, (const char*) (pData+recPos), maxLen+1);
 		pDest[maxLen] = 0;
   	}
 

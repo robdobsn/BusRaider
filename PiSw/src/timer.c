@@ -1,23 +1,8 @@
 // Bus Raider
 // Rob Dobson 2018
 
-#include "ee_printf.h"
-#include "rdutils.h"
 #include "timer.h"
-
-uint32_t micros()
-{
-    static const uint32_t volatile* pTimerLower32Bits = (uint32_t*)0x20003004;
-    return *pTimerLower32Bits;
-}
-
-void delayMicroseconds(uint32_t us)
-{
-    uint32_t timeNow = micros();
-    while (!timer_isTimeout(micros(), timeNow, us)) {
-        // Do nothing
-    }
-}
+#include "lowlib.h"
 
 typedef struct
 {

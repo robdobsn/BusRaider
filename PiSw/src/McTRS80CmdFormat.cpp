@@ -3,6 +3,7 @@
 
 #include "McTRS80CmdFormat.h"
 #include "ee_printf.h"
+#include <string.h>
 
 const char *McTRS80CmdFormat::_logPrefix = "McTRS80Cmd";
 

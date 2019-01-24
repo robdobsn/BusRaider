@@ -5,8 +5,9 @@
 #include "usb_hid_keys.h"
 #include "wgfx.h"
 #include "busraider.h"
-#include "rdutils.h"
 #include "target_memory_map.h"
+#include "rdutils.h"
+#include "stdlib.h"
 
 const char* McDebugZ80::_logPrefix = "DebugZ80";
 

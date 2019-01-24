@@ -5,8 +5,6 @@
 #include "bare_metal_pi_zero.h"
 #include "ee_printf.h"
 #include "uart.h"
-#include "utils.h"
-#include "rdutils.h"
 #include "target_memory_map.h"
 #include "busraider.h"
 #include "minihdlc.h"
@@ -14,6 +12,10 @@
 #include "srecparser.h"
 #include "nmalloc.h"
 #include "McManager.h"
+#include "lowlev.h"
+#include "rdutils.h"
+#include <string.h>
+#include <stdlib.h>
 
 #define CMD_HANDLER_MAX_CMD_STR_LEN 200
 #define MAX_INT_ARG_STR_LEN 10
@@ -73,7 +75,7 @@ void cmdHandler_sinkAddr(uint32_t addr)
 //     const char* pOpeningBrace = strstr(jsonToAppend, "{");
 //     if (!pOpeningBrace)
 //         return;
-//     strncpy(pClosingBrace, pOpeningBrace+1, CMD_HANDLER_MAX_CMD_STR_LEN);
+//     strlcpy(pClosingBrace, pOpeningBrace+1, CMD_HANDLER_MAX_CMD_STR_LEN);
 // }
 
 void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int dataLen)
@@ -87,7 +89,7 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         return;
 
     // Check for simple commands
-    if (stricmp(cmdName, "ufStart") == 0)
+    if (strcasecmp(cmdName, "ufStart") == 0)
     {
         // Start a file upload - get file name
         if (!jsonGetValueForKey("fileName", pCmdJson, _receivedFileName, MAX_FILE_NAME_STR))
@@ -106,7 +108,7 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
             return;
 
         // Copy start info
-        strncpy(_receivedFileStartInfo, pCmdJson, CMD_HANDLER_MAX_CMD_STR_LEN);
+        strlcpy(_receivedFileStartInfo, pCmdJson, CMD_HANDLER_MAX_CMD_STR_LEN);
 
         // Allocate space for file
         if (_pReceivedFileDataPtr != NULL)
@@ -130,7 +132,7 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         }
 
     }
-    else if (stricmp(cmdName, "ufBlock") == 0)
+    else if (strcasecmp(cmdName, "ufBlock") == 0)
     {
         // Check file reception in progress
         if (!_pReceivedFileDataPtr)
@@ -157,7 +159,7 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         // LogWrite(FromCmdHandler, LOG_DEBUG, "efBlock, len %d, blocks %d", 
         //             _receivedFileBytesRx, _receivedBlockCount);
     }
-    else if (stricmp(cmdName, "ufEnd") == 0)
+    else if (strcasecmp(cmdName, "ufEnd") == 0)
     {
         // Check file reception in progress
         if (!_pReceivedFileDataPtr)
@@ -176,25 +178,25 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         }
 
         // Check file type
-        if (stricmp(_pReceivedFileType, "firmware") == 0)
+        if (strcasecmp(_pReceivedFileType, "firmware") == 0)
         {
             LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd IMG firmware update File %s, len %d", _receivedFileName, _receivedFileBytesRx);
 
             // Copy the blockCopyExecRelocatable() code to otaUpdateBuffer
             uint8_t* pCopyBlockNewLocation = __otaUpdateBuffer;
-            memcpy((void*)pCopyBlockNewLocation, (void*)blockCopyExecRelocatable, blockCopyExecRelocatableLen);
+            memcpy((void*)pCopyBlockNewLocation, (void*)lowlev_blockCopyExecRelocatable, lowlev_blockCopyExecRelocatableLen);
 
             // Copy the received data to otaUpdateBuffer
-            uint8_t* pRxDataNewLocation = __otaUpdateBuffer + blockCopyExecRelocatableLen;
+            uint8_t* pRxDataNewLocation = __otaUpdateBuffer + lowlev_blockCopyExecRelocatableLen;
             memcpy((void*)pRxDataNewLocation, (void*)_pReceivedFileDataPtr, _receivedFileBytesRx);
 
             // Call the copyblock function in it's new location
-            blockCopyExecRelocatableFnT* pCopyBlockFn = (blockCopyExecRelocatableFnT*) pCopyBlockNewLocation;
-            LogWrite(FromCmdHandler, LOG_DEBUG, "Address of copyBlockFn %08x, len %d", pCopyBlockNewLocation, blockCopyExecRelocatableLen);
+            lowlev_blockCopyExecRelocatableFnT* pCopyBlockFn = (lowlev_blockCopyExecRelocatableFnT*) pCopyBlockNewLocation;
+            LogWrite(FromCmdHandler, LOG_DEBUG, "Address of copyBlockFn %08x, len %d", pCopyBlockNewLocation, lowlev_blockCopyExecRelocatableLen);
 
             // Disable interrupts
-            disable_irq();
-            disable_fiq();
+            lowlev_disable_irq();
+            lowlev_disable_fiq();
 
             // Call the copyBlock function in its new location using it to move the program
             // to 0x8000 the base address for Pi programs
@@ -211,12 +213,12 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
 
         }
     }
-    else if (stricmp(cmdName, "ClearTarget") == 0)
+    else if (strcasecmp(cmdName, "ClearTarget") == 0)
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "ClearTarget");
         targetClear();
     }
-    else if ((stricmp(cmdName, "ProgramAndReset") == 0) || (stricmp(cmdName, "ProgramTarget") == 0))
+    else if ((strcasecmp(cmdName, "ProgramAndReset") == 0) || (strcasecmp(cmdName, "ProgramTarget") == 0))
     {
         if (targetGetNumBlocks() == 0) {
             // Nothing new to write
@@ -238,7 +240,7 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
             LogWrite(FromCmdHandler, LOG_DEBUG, "ProgramTarget - written %d blocks", targetGetNumBlocks());
 
             // Check for reset too
-            if (stricmp(cmdName, "ProgramAndReset") == 0)
+            if (strcasecmp(cmdName, "ProgramAndReset") == 0)
             {
                 LogWrite(FromCmdHandler, LOG_DEBUG, "Resetting target");
                 br_release_control(true);
@@ -251,7 +253,7 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         // Clear buffer
         targetClear();
     }
-    else if (stricmp(cmdName, "ResetTarget") == 0)
+    else if (strcasecmp(cmdName, "ResetTarget") == 0)
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "ResetTarget");
         bool resetDone = false;
@@ -261,7 +263,7 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         if (!resetDone)
             br_reset_host();
     }
-    else if (stricmp(cmdName, "Step") == 0)
+    else if (strcasecmp(cmdName, "Step") == 0)
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "Step");
         bool stepDone = false;
@@ -271,24 +273,24 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
         if (!stepDone)
             br_pause_release();
     }
-    else if (stricmp(cmdName, "IOClrTarget") == 0)
+    else if (strcasecmp(cmdName, "IOClrTarget") == 0)
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "IO Clear Target");
         br_clear_all_io();       
     }
-    else if (stricmp(cmdName, "FileTarget") == 0)
+    else if (strcasecmp(cmdName, "FileTarget") == 0)
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "File to Target, len %d", dataLen);
         McBase* pMc = McManager::getMachine();
         if (pMc)
             pMc->fileHandler(pCmdJson, pData, dataLen);
     }
-    else if (stricmp(cmdName, "SRECTarget") == 0)
+    else if (strcasecmp(cmdName, "SRECTarget") == 0)
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "SREC to Target, len %d", dataLen);
         srec_decode(targetDataBlockStore, cmdHandler_sinkAddr, pData, dataLen);
     }
-    else if (strnicmp(cmdName, "SetMachine", strlen("SetMachine")) == 0)
+    else if (strncasecmp(cmdName, "SetMachine", strlen("SetMachine")) == 0)
     {
         // Get machine name
         const char* pMcName = strstr(cmdName,"=");
@@ -301,13 +303,13 @@ void cmdHandler_procCommand(const char* pCmdJson, const uint8_t* pData, int data
             LogWrite(FromCmdHandler, LOG_DEBUG, "Set Machine to %s", pMcName);
         }
     }
-    else if (stricmp(cmdName, "RxHost") == 0)
+    else if (strcasecmp(cmdName, "RxHost") == 0)
     {
         // LogWrite(FromCmdHandler, LOG_DEBUG, "RxFromHost, len %d", dataLen);
         if (_pRxCharFromHostCallback)
             _pRxCharFromHostCallback(pData, dataLen);
     }
-    else if (stricmp(cmdName, "respMsg") == 0)
+    else if (strcasecmp(cmdName, "respMsg") == 0)
     {
         // LogWrite(FromCmdHandler, LOG_DEBUG, "RxFromHost RespMsg");
         // Get espHealth field
@@ -362,11 +364,11 @@ void cmdHandler_sendWithJSON(const char* cmdName, const char* cmdJson)
     // Form and send command
     static const int MAX_CMD_STR_LEN = 1500;
     static char cmdStr[MAX_CMD_STR_LEN+1];
-    strncpy(cmdStr, "{\"cmdName\":\"", MAX_CMD_STR_LEN);
-    strncpy(cmdStr+strlen(cmdStr), cmdName, MAX_CMD_STR_LEN);
-    strncpy(cmdStr+strlen(cmdStr), "\",", MAX_CMD_STR_LEN);
-    strncpy(cmdStr+strlen(cmdStr), cmdJson, MAX_CMD_STR_LEN);
-    strncpy(cmdStr+strlen(cmdStr), "}", MAX_CMD_STR_LEN);
+    strlcpy(cmdStr, "{\"cmdName\":\"", MAX_CMD_STR_LEN);
+    strlcpy(cmdStr+strlen(cmdStr), cmdName, MAX_CMD_STR_LEN);
+    strlcpy(cmdStr+strlen(cmdStr), "\",", MAX_CMD_STR_LEN);
+    strlcpy(cmdStr+strlen(cmdStr), cmdJson, MAX_CMD_STR_LEN);
+    strlcpy(cmdStr+strlen(cmdStr), "}", MAX_CMD_STR_LEN);
     minihdlc_send_frame((const uint8_t*)cmdStr, strlen(cmdStr)+1);
 }
 
@@ -375,9 +377,9 @@ void cmdHandler_sendAPIReq(const char* reqLine)
     // Form and send
     static const int MAX_REQ_STR_LEN = 100;
     static char reqStr[MAX_REQ_STR_LEN+1];
-    strncpy(reqStr, "\"req\":\"", MAX_REQ_STR_LEN);
-    strncpy(reqStr+strlen(reqStr), reqLine, MAX_REQ_STR_LEN);
-    strncpy(reqStr+strlen(reqStr), "\",", MAX_REQ_STR_LEN);
+    strlcpy(reqStr, "\"req\":\"", MAX_REQ_STR_LEN);
+    strlcpy(reqStr+strlen(reqStr), reqLine, MAX_REQ_STR_LEN);
+    strlcpy(reqStr+strlen(reqStr), "\",", MAX_REQ_STR_LEN);
     cmdHandler_sendWithJSON("apiReq", reqStr);
 }
 
@@ -397,9 +399,9 @@ void cmdHandler_sendKeyCode(int keyCode)
 {
     static const int MAX_KEY_CMD_STR_LEN = 100;
     static char keyStr[MAX_KEY_CMD_STR_LEN+1];
-    strncpy(keyStr, "{\"cmdName\":\"keyCode\",\"key\":", MAX_KEY_CMD_STR_LEN);
+    strlcpy(keyStr, "{\"cmdName\":\"keyCode\",\"key\":", MAX_KEY_CMD_STR_LEN);
     rditoa(keyCode, (uint8_t*)(keyStr+strlen(keyStr)), 10, 10);
-    strncpy(keyStr+strlen(keyStr), "}", MAX_KEY_CMD_STR_LEN);
+    strlcpy(keyStr+strlen(keyStr), "}", MAX_KEY_CMD_STR_LEN);
     minihdlc_send_frame((const uint8_t*)keyStr, strlen(keyStr)+1);
 }
 

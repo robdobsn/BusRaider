@@ -2,6 +2,9 @@
 // Rob Dobson 2018
 
 #include "piwiring.h"
+#include "bare_metal_pi_zero.h"
+#include "lowlev.h"
+#include "lowlib.h"
 
 uint8_t convModeToVal(uint8_t mode)
 {
@@ -42,12 +45,12 @@ void pinMode(uint8_t pin, uint8_t mode)
     // Check for pull-up / pull-down
     if ((modeVal & 0xf0) != 0) {
         W32(GPPUD, modeVal >> 4);
-        busywait(150);
+        lowlev_cycleDelay(150);
         if (pin < 32)
             W32(GPPUDCLK0, 1 << pin);
         else
             W32(GPPUDCLK1, 1 << (pin - 32));
-        busywait(150);
+        lowlev_cycleDelay(150);
         W32(GPPUD, 0);
         if (pin < 32)
             W32(GPPUDCLK0, 0);

@@ -8,6 +8,7 @@
 #include "TargetClockGenerator.h"
 #include "ee_printf.h"
 #include "cmd_handler.h"
+#include <string.h> 
 
 class McManager
 {
@@ -60,23 +61,23 @@ class McManager
         static char mcString[MAX_MC_JSON_LEN+1];
 
         // Machine list
-        strncpy(mcString, "\"machineList\":[", MAX_MC_JSON_LEN);
+        strlcpy(mcString, "\"machineList\":[", MAX_MC_JSON_LEN);
         for (int i = 0; i < getNumMachines(); i++)
         {
             if (i != 0)
-                strncpy(mcString+strlen(mcString),",", MAX_MC_JSON_LEN);
-            strncpy(mcString+strlen(mcString),"\"", MAX_MC_JSON_LEN);
-            strncpy(mcString+strlen(mcString), _pMachines[i]->getDescriptorTable(0)->machineName, MAX_MC_JSON_LEN);
-            strncpy(mcString+strlen(mcString),"\"", MAX_MC_JSON_LEN);
+                strlcpy(mcString+strlen(mcString),",", MAX_MC_JSON_LEN);
+            strlcpy(mcString+strlen(mcString),"\"", MAX_MC_JSON_LEN);
+            strlcpy(mcString+strlen(mcString), _pMachines[i]->getDescriptorTable(0)->machineName, MAX_MC_JSON_LEN);
+            strlcpy(mcString+strlen(mcString),"\"", MAX_MC_JSON_LEN);
         }
-        strncpy(mcString+strlen(mcString),"]", MAX_MC_JSON_LEN);
+        strlcpy(mcString+strlen(mcString),"]", MAX_MC_JSON_LEN);
 
         // Current machine
-        strncpy(mcString+strlen(mcString),",\"machineCur\":", MAX_MC_JSON_LEN);
-        strncpy(mcString+strlen(mcString), "\"", MAX_MC_JSON_LEN);
+        strlcpy(mcString+strlen(mcString),",\"machineCur\":", MAX_MC_JSON_LEN);
+        strlcpy(mcString+strlen(mcString), "\"", MAX_MC_JSON_LEN);
         if ((_curMachineIdx >= 0) && (_curMachineIdx < _numMachines))
-            strncpy(mcString+strlen(mcString), getDescriptorTable(_curMachineIdx)->machineName, MAX_MC_JSON_LEN);
-        strncpy(mcString+strlen(mcString), "\"", MAX_MC_JSON_LEN);
+            strlcpy(mcString+strlen(mcString), getDescriptorTable(_curMachineIdx)->machineName, MAX_MC_JSON_LEN);
+        strlcpy(mcString+strlen(mcString), "\"", MAX_MC_JSON_LEN);
 
         // Ret
         return mcString;

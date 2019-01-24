@@ -5,7 +5,7 @@
 
 #include "jsmnR.h"
 #include "ee_printf.h"
-#include "rdutils.h"
+#include <string.h>
 
 static const char* FromJSMNR = "JSMNR";
 /**
@@ -342,7 +342,7 @@ void JSMNR_logLongStr(const char* headerMsg, const char* toLog, bool infoLevel)
     for (unsigned int i = 0; i < strlen(toLog); i+=linLen)
     {
         char pBuf[linLen+1];
-        strncpy(pBuf, toLog+i, linLen);
+        strlcpy(pBuf, toLog+i, linLen+1);
         pBuf[linLen] = 0;
         if (infoLevel)
             LogWrite(FromJSMNR, LOG_NOTICE, pBuf);

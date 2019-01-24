@@ -5,6 +5,7 @@
 #include "raspihwconfig.h"
 #include "timer.h"
 #include "uart.h"
+#include "lowlib.h"
 
 void* malloc(unsigned nSize) // result must be 4-byte aligned
 {
@@ -18,12 +19,12 @@ void free(void* pBlock)
 
 void MsDelay(unsigned nMilliSeconds)
 {
-    delayMicroseconds(nMilliSeconds * 1000);
+    microsDelay(nMilliSeconds * 1000);
 }
 
 void usDelay(unsigned nMicroSeconds)
 {
-    delayMicroseconds(nMicroSeconds);
+    microsDelay(nMicroSeconds);
 }
 
 unsigned StartKernelTimer(unsigned nHzDelay, // in HZ units (see "system configuration" above)
@@ -51,7 +52,7 @@ int SetPowerStateOn(unsigned nDeviceId) // "set power state" to "on", wait until
     if (RHW_SUCCESS != rhw_set_device_power((RHW_DEVICE)nDeviceId, RHW_POWER_ON)) {
         return 0;
     }
-    delayMicroseconds(500000); // Wait some more for wireless keyboards startup time
+    microsDelay(500000); // Wait some more for wireless keyboards startup time
     return 1;
 }
 
@@ -70,7 +71,7 @@ void uspi_assertion_failed(const char* pExpr, const char* pFile, unsigned nLine)
     ee_printf("ASSERTION FAILED: %s, in %s (Line %d)\n", pExpr, pFile, nLine);
 
     while (1)
-        delayMicroseconds(1000000);
+        microsDelay(1000000);
 }
 
 void DebugHexdump(const void* pBuffer, unsigned nBufLen, const char* pSource /* = 0 */)

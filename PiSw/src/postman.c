@@ -1,17 +1,16 @@
 #include "postman.h"
 #include "globaldefs.h"
-#include "rdutils.h"
-#include "timer.h"
-#include "utils.h"
 #include "ee_printf.h"
+#include "lowlev.h"
+#include "lowlib.h"
 
 //#define POSTMAN_DEBUG 1
 
 #define MAPPED_REGISTERS_BASE 0x20000000
 
-static volatile unsigned int* MAILBOX0READ = (unsigned int*)mem_p2v(MAPPED_REGISTERS_BASE + 0xB880);
-static volatile unsigned int* MAILBOX0STATUS = (unsigned int*)mem_p2v(MAPPED_REGISTERS_BASE + 0xB898);
-static volatile unsigned int* MAILBOX0WRITE = (unsigned int*)mem_p2v(MAPPED_REGISTERS_BASE + 0xB8A0);
+static volatile unsigned int* MAILBOX0READ = (unsigned int*)lowlev_mem_p2v(MAPPED_REGISTERS_BASE + 0xB880);
+static volatile unsigned int* MAILBOX0STATUS = (unsigned int*)lowlev_mem_p2v(MAPPED_REGISTERS_BASE + 0xB898);
+static volatile unsigned int* MAILBOX0WRITE = (unsigned int*)lowlev_mem_p2v(MAPPED_REGISTERS_BASE + 0xB8A0);
 
 POSTMAN_RETURN_TYPE postman_recv(unsigned int channel, unsigned int* out_data)
 {
@@ -28,22 +27,22 @@ POSTMAN_RETURN_TYPE postman_recv(unsigned int channel, unsigned int* out_data)
 
     while (n_skipped < MAILBOX_MAX_MSG_TO_SKIP) {
         // waits for mailbox being ready
-        flushcache();
+        lowlev_flushcache();
         while (*MAILBOX0STATUS & 0x40000000) //30th bit is zero when ready
         {
 #ifdef POSTMAN_DEBUG
             uart_printf("Mailbox empty, waiting...\n");
 #endif
-            if (timer_isTimeout(micros(), start_time, MAILBOX_WAIT_TIMEOUT)) {
+            if (isTimeout(micros(), start_time, MAILBOX_WAIT_TIMEOUT)) {
                 return POSTMAN_RECV_TIMEOUT;
             }
-            flushcache();
+            lowlev_flushcache();
         }
 
         // read the message
-        dmb();
+        lowlev_dmb();
         unsigned int msg = *MAILBOX0READ;
-        dmb();
+        lowlev_dmb();
 
 #ifdef POSTMAN_DEBUG
         uart_printf("Received from channel 0x%x\n", msg & 0xf);
@@ -56,7 +55,7 @@ POSTMAN_RETURN_TYPE postman_recv(unsigned int channel, unsigned int* out_data)
             return POSTMAN_SUCCESS;
         }
 
-        if (timer_isTimeout(micros(), start_time, MAILBOX_WAIT_TIMEOUT)) {
+        if (isTimeout(micros(), start_time, MAILBOX_WAIT_TIMEOUT)) {
             return POSTMAN_RECV_TIMEOUT;
         }
 
@@ -85,12 +84,12 @@ POSTMAN_RETURN_TYPE postman_send(unsigned int channel, unsigned int data)
 #ifdef POSTMAN_DEBUG
         uart_printf("Mailbox full, waiting...\n");
 #endif
-        if (timer_isTimeout(micros(), start_time, MAILBOX_WAIT_TIMEOUT)) {
+        if (isTimeout(micros(), start_time, MAILBOX_WAIT_TIMEOUT)) {
             return POSTMAN_SEND_TIMEOUT;
         }
     }
 
-    dmb();
+    lowlev_dmb();
     *MAILBOX0WRITE = data | channel; //lowest 4 bits for the mailbox, top 28 bits for the data
 
 #ifdef POSTMAN_DEBUG

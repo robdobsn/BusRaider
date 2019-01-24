@@ -3,6 +3,7 @@
 
 #include "McManager.h"
 #include "wgfx.h"
+#include <string.h>
 
 McBase* McManager::_pMachines[McManager::MAX_MACHINES];
 int McManager::_numMachines = 0;
@@ -93,7 +94,7 @@ bool McManager::setMachineByName(const char* mcName)
     // Find machine
     for (int i = 0; i < _numMachines; i++)
     {
-        if (stricmp(mcName, _pMachines[i]->getDescriptorTable(0)->machineName) == 0)
+        if (strncasecmp(mcName, _pMachines[i]->getDescriptorTable(0)->machineName, MAX_MACHINE_NAME_LEN) == 0)
         {
             return setMachineIdx(i);
         }

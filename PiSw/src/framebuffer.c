@@ -1,8 +1,7 @@
 #include "framebuffer.h"
-#include "ee_printf.h"
 #include "globaldefs.h"
 #include "postman.h"
-#include "utils.h"
+#include "lowlev.h"
 
 // #define FRAMEBUFFER_DEBUG 1
 
@@ -84,7 +83,7 @@ FB_RETURN_TYPE fb_init(unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w,
     volatile unsigned int mailbuffer[256] __attribute__((aligned(16)));
 
     /* Physical memory address of the mailbuffer, for passing to VC */
-    unsigned int physical_mb = mem_v2p((unsigned int)mailbuffer);
+    unsigned int physical_mb = lowlev_mem_v2p((unsigned int)mailbuffer);
 
     /* Get the display size */
     mailbuffer[0] = 8 * 4; // Total size
@@ -182,7 +181,7 @@ FB_RETURN_TYPE fb_init(unsigned int ph_w, unsigned int ph_h, unsigned int vrt_w,
     /* physical_screenbase is the address of the screen in RAM
      *   * screenbase needs to be the screen address in virtual memory
      *       */
-    *pp_fb = (void*)mem_p2v(physical_screenbase);
+    *pp_fb = (void*)lowlev_mem_p2v(physical_screenbase);
 
 #ifdef FRAMEBUFFER_DEBUG
     uart_printf("Screen addr: %08x, Size %d\r\n", (unsigned int)*pp_fb, *pfbsize);
@@ -234,7 +233,7 @@ FB_RETURN_TYPE fb_release()
 
     pBuffData[0] = off * 4; // Total message size
 
-    unsigned int physical_mb = mem_v2p((unsigned int)pBuffData);
+    unsigned int physical_mb = lowlev_mem_v2p((unsigned int)pBuffData);
     if (POSTMAN_SUCCESS != postman_send(8, physical_mb))
         return FB_POSTMAN_FAIL;
 
@@ -275,7 +274,7 @@ FB_RETURN_TYPE fb_set_grayscale_palette()
 
     pBuffData[0] = off * 4; // Total message size
 
-    unsigned int physical_mb = mem_v2p((unsigned int)pBuffData);
+    unsigned int physical_mb = lowlev_mem_v2p((unsigned int)pBuffData);
     if (POSTMAN_SUCCESS != postman_send(8, physical_mb))
         return FB_POSTMAN_FAIL;
 
@@ -313,7 +312,7 @@ FB_RETURN_TYPE fb_set_xterm_palette()
 
     pBuffData[0] = off * 4; // Total message size
 
-    unsigned int physical_mb = mem_v2p((unsigned int)pBuffData);
+    unsigned int physical_mb = lowlev_mem_v2p((unsigned int)pBuffData);
     if (POSTMAN_SUCCESS != postman_send(8, physical_mb))
         return FB_POSTMAN_FAIL;
 
@@ -343,7 +342,7 @@ FB_RETURN_TYPE fb_blank_screen(unsigned int blank)
 
     pBuffData[0] = off * 4; // Total message size
 
-    unsigned int physical_mb = mem_v2p((unsigned int)pBuffData);
+    unsigned int physical_mb = lowlev_mem_v2p((unsigned int)pBuffData);
     if (POSTMAN_SUCCESS != postman_send(8, physical_mb))
         return FB_POSTMAN_FAIL;
 
@@ -373,7 +372,7 @@ FB_RETURN_TYPE fb_set_depth(unsigned int* pDepth)
 
     pBuffData[0] = off * 4; // Total message size
 
-    postman_send(8, mem_v2p((unsigned int)pBuffData));
+    postman_send(8, lowlev_mem_v2p((unsigned int)pBuffData));
     postman_recv(8, &respmsg);
 
     if (pBuffData[1] != 0x80000000) {
@@ -401,7 +400,7 @@ FB_RETURN_TYPE fb_get_pitch(unsigned int* pPitch)
 
     pBuffData[0] = off * 4; // Total message size
 
-    postman_send(8, mem_v2p((unsigned int)pBuffData));
+    postman_send(8, lowlev_mem_v2p((unsigned int)pBuffData));
     postman_recv(8, &respmsg);
 
     if (pBuffData[1] != 0x80000000) {
@@ -431,7 +430,7 @@ FB_RETURN_TYPE fb_get_physical_buffer_size(unsigned int* pWidth, unsigned int* p
 
     pBuffData[0] = off * 4; // Total message size
 
-    postman_send(8, mem_v2p((unsigned int)pBuffData));
+    postman_send(8, lowlev_mem_v2p((unsigned int)pBuffData));
     postman_recv(8, &respmsg);
 
     if (pBuffData[1] != 0x80000000) {
@@ -463,7 +462,7 @@ FB_RETURN_TYPE fb_set_physical_buffer_size(unsigned int* pWidth, unsigned int* p
 
     pBuffData[0] = off * 4; // Total message size
 
-    postman_send(8, mem_v2p((unsigned int)pBuffData));
+    postman_send(8, lowlev_mem_v2p((unsigned int)pBuffData));
     postman_recv(8, &respmsg);
 
     if (pBuffData[1] != 0x80000000) {
@@ -495,7 +494,7 @@ FB_RETURN_TYPE fb_allocate_buffer(void** ppBuffer, unsigned int* pBufferSize)
 
     pBuffData[0] = off * 4; // Total message size
 
-    postman_send(8, mem_v2p((unsigned int)pBuffData));
+    postman_send(8, lowlev_mem_v2p((unsigned int)pBuffData));
     postman_recv(8, &respmsg);
 
     if (pBuffData[1] != 0x80000000) {
@@ -525,7 +524,7 @@ FB_RETURN_TYPE fb_get_virtual_buffer_size(unsigned int* pVWidth, unsigned int* p
 
     pBuffData[0] = off * 4; // Total message size
 
-    postman_send(8, mem_v2p((unsigned int)pBuffData));
+    postman_send(8, lowlev_mem_v2p((unsigned int)pBuffData));
     postman_recv(8, &respmsg);
 
     if (pBuffData[1] != 0x80000000) {
@@ -557,7 +556,7 @@ FB_RETURN_TYPE fb_set_virtual_buffer_size(unsigned int* pWidth, unsigned int* pH
 
     pBuffData[0] = off * 4; // Total message size
 
-    postman_send(8, mem_v2p((unsigned int)pBuffData));
+    postman_send(8, lowlev_mem_v2p((unsigned int)pBuffData));
     postman_recv(8, &respmsg);
 
     if (pBuffData[1] != 0x80000000) {
@@ -589,7 +588,7 @@ FB_RETURN_TYPE fb_set_virtual_offset(unsigned int pX, unsigned int pY)
 
     pBuffData[0] = off * 4; // Total message size
 
-    postman_send(8, mem_v2p((unsigned int)pBuffData));
+    postman_send(8, lowlev_mem_v2p((unsigned int)pBuffData));
     postman_recv(8, &respmsg);
 
     if (pBuffData[1] != 0x80000000) {
