@@ -14,7 +14,7 @@
 // #define USE_BITWISE_CTRL_BUS_ACCESS 1
 
 // Uncomment the following line to use SPI0 CE0 of the Pi as a debug pin
-#define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
+// #define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
 
 // Comment out this line to disable WAIT state generation altogether
 // #define BR_ENABLE_WAIT_AND_FIQ 1
@@ -45,15 +45,15 @@ static const int MAX_WAIT_FOR_CTRL_LINES_US = 10000;
 // #define CYCLES_DELAY_FOR_WRITE_TO_TARGET 2
 
 // Period target read control bus line is asserted during a read
-//#define CYCLES_DELAY_FOR_READ_FROM_TARGET 2
+#define CYCLES_DELAY_FOR_READ_FROM_TARGET 2
 
 // Delay in machine cycles for mux set
-#define CYCLES_DELAY_FOR_MUX_SET 10
+//#define CYCLES_DELAY_FOR_MUX_SET 10
 
 // Delay in machine cycles for setting the pulse width when clearing/incrementing the address counter/shift-reg
-#define CYCLES_DELAY_FOR_CLEAR_LOW_ADDR 10
-#define CYCLES_DELAY_FOR_LOW_ADDR_SET 10
-#define CYCLES_DELAY_FOR_HIGH_ADDR_SET 10
+#define CYCLES_DELAY_FOR_CLEAR_LOW_ADDR 5
+#define CYCLES_DELAY_FOR_LOW_ADDR_SET 2
+#define CYCLES_DELAY_FOR_HIGH_ADDR_SET 5
 
 // Set a pin to be an output and set initial value for that pin
 void br_set_pin_out(int pin, int val)
@@ -547,26 +547,36 @@ BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int bu
     // Set PIB to input
     br_set_pib_input();
 
-#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-#endif
-    microsDelay(20);
-
     // Set the address to initial value
     br_set_full_addr(addr);
 
-    microsDelay(20);
-#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-#endif
+    // Enable data onto to PIB
+    WR32(GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
 
     // Iterate data
     for (uint32_t i = 0; i < len; i++) {
-        // Read byte
-        *pData = br_read_byte(iorq);
 
-        // Increment the lower address counter
-        br_inc_low_addr();
+        // IORQ_BAR / MREQ_BAR and RD_BAR both active
+        WR32(GPCLR0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
+        
+        // Delay to allow data bus to settle
+    #ifdef CYCLES_DELAY_FOR_READ_FROM_TARGET
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_TARGET);
+    #endif
+        
+        // Get the data
+        *pData = (RD32(GPLEV0) >> BR_DATA_BUS) & 0xff;
+
+        // Deactivate IORQ/MREQ and RD and clock the low address
+        WR32(GPSET0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR) | (1 << BR_LADDR_CK));
+
+        // Low address clock pulse period
+#ifdef CYCLES_DELAY_FOR_LOW_ADDR_SET
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
+#endif
+
+        // Clock pulse high again
+        WR32(GPCLR0, 1 << BR_LADDR_CK);
 
         // Increment addresses
         pData++;
@@ -574,10 +584,22 @@ BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int bu
 
         // Check if we've rolled over the lowest 8 bits
         if ((addr & 0xff) == 0) {
+#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+#endif
+
             // Set the address again
             br_set_full_addr(addr);
+
+#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+#endif
+
         }
     }
+
+    // Data no longer enabled onto PIB
+    br_mux_clear();
 
     // Check if we need to release bus
     if (busRqAndRelease) {
