@@ -23,6 +23,7 @@ extern unsigned int uart_read_byte();
 extern unsigned int uart_read_hex();
 extern void uart_write_hex_u8(unsigned int d);
 extern void uart_write_hex_u32(unsigned int d);
+extern unsigned int uart_get_line_status(void);
 
 extern volatile int globalUartCount;
 extern volatile int globalUartDebug;

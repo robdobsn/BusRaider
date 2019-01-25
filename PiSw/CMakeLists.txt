@@ -17,7 +17,7 @@ add_executable(${PROJECT_ELF} "${ASM_SOURCE_FILES}" "${C_SOURCE_FILES}" "${CXX_S
 
 target_link_libraries(${PROJECT_ELF} ${PROJECT_SOURCE_DIR}/uspi/lib/libuspi.a)
 
-set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0" )
+set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3" )
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostartfiles" )
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall" )
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra" )

@@ -41,6 +41,15 @@ uint32_t __br_pause_flags = 0;
 
 static const int MAX_WAIT_FOR_CTRL_LINES_US = 10000;
 
+// Delay after GPIO write to allow settling
+static const int CYCLES_DELAY_FOR_GPIO = 10;
+
+// Period target write control bus line is asserted during a write
+static const int CYCLES_DELAY_FOR_WRITE_TO_TARGET = 10;
+
+// Period target read control bus line is asserted during a read
+static const int CYCLES_DELAY_FOR_READ_FROM_TARGET = 10;
+
 // Set a pin to be an output and set initial value for that pin
 void br_set_pin_out(int pin, int val)
 {
@@ -59,15 +68,17 @@ void br_mux_set_pins_output()
 void br_mux_clear()
 {
     // Clear to a safe setting - sets HADDR_SER low
-    W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
+    WR32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
 }
 
 void br_mux_set(int muxVal)
 {
     // Clear first as this is a safe setting - sets HADDR_SER low
-    W32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
+    WR32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
     // Now set bits required
-    W32(GPSET0, muxVal << BR_MUX_LOW_BIT_POS);
+    WR32(GPSET0, muxVal << BR_MUX_LOW_BIT_POS);
+    // Delay a few cycles
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_GPIO);
 }
 
 // Initialise the bus raider
@@ -116,14 +127,14 @@ void br_reset_host()
     // Reset by taking reset_bar low and then high
     br_mux_set(BR_MUX_RESET_Z80_BAR_LOW);
 
-    // Delay for a short time
+    // Hold the reset line low
     microsDelay(100);
 
     // Clear WAIT flip-flop
-    W32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
+    WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
 
     // // Re-enable the wait state generation
-    W32(GPSET0, __br_wait_state_en_mask);
+    WR32(GPSET0, __br_wait_state_en_mask);
 
     // Clear wait interrupt conditions and enable
     br_clear_wait_interrupt();
@@ -134,7 +145,7 @@ void br_reset_host()
     br_mux_clear();
 
     // Clear detected edge on any pin
-    W32(GPEDS0, 0xffffffff);
+    WR32(GPEDS0, 0xffffffff);
 }
 
 // Non-maskable interrupt the host
@@ -161,7 +172,7 @@ void br_request_bus()
     // Set the PIB to input
     br_set_pib_input();
     // Set data bus to input
-    W32(GPSET0, 1 << BR_DATA_DIR_IN);
+    WR32(GPSET0, 1 << BR_DATA_DIR_IN);
     // Request the bus
     digitalWrite(BR_BUSRQ_BAR, 0);
 }
@@ -169,7 +180,7 @@ void br_request_bus()
 // Check if bus request has been acknowledged
 int br_bus_acknowledged()
 {
-    return (R32(GPLEV0) & (1 << BR_BUSACK_BAR)) == 0;
+    return (RD32(GPLEV0) & (1 << BR_BUSACK_BAR)) == 0;
 }
 
 // Take control of bus
@@ -196,11 +207,14 @@ void br_release_control(bool resetTargetOnRelease)
     pinMode(BR_RD_BAR, INPUT);
     pinMode(BR_MREQ_BAR, INPUT);
     pinMode(BR_IORQ_BAR, INPUT);
+
     // Address bus not enabled
     digitalWrite(BR_PUSH_ADDR_BAR, 1);
+    
     // Re-enable interrupts if required
     if (__br_wait_interrupt_enabled)
         br_enable_wait_interrupt();
+    
     // Check for reset
     if (resetTargetOnRelease)
     {
@@ -208,7 +222,7 @@ void br_release_control(bool resetTargetOnRelease)
         br_mux_set(BR_MUX_RESET_Z80_BAR_LOW);
         // No longer request bus
         digitalWrite(BR_BUSRQ_BAR, 1);
-        microsDelay(100);
+        microsDelay(10);
         br_mux_clear();
     }
     else
@@ -251,8 +265,10 @@ void br_set_low_addr(uint32_t lowAddrByte)
     // Clock the required value in - requires one more count than
     // expected as the output register is one clock pulse behind the counter
     for (uint32_t i = 0; i < (lowAddrByte & 0xff) + 1; i++) {
-        W32(GPSET0, 1 << BR_LADDR_CK);
-        W32(GPCLR0, 1 << BR_LADDR_CK);
+        WR32(GPSET0, 1 << BR_LADDR_CK);
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_GPIO);
+        WR32(GPCLR0, 1 << BR_LADDR_CK);
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_GPIO);
     }
 }
 
@@ -261,8 +277,10 @@ void br_set_low_addr(uint32_t lowAddrByte)
 // - some other code will set push-addr to enable onto the address bus
 void br_inc_low_addr()
 {
-    W32(GPSET0, 1 << BR_LADDR_CK);
-    W32(GPCLR0, 1 << BR_LADDR_CK);
+    WR32(GPSET0, 1 << BR_LADDR_CK);
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_GPIO);
+    WR32(GPCLR0, 1 << BR_LADDR_CK);
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_GPIO);
 }
 
 // Set the high address value
@@ -280,10 +298,11 @@ void br_set_high_addr(uint32_t highAddrByte)
             br_mux_set(BR_MUX_HADDR_SER_LOW);
         // Shift the address value for next bit
         highAddrByte = highAddrByte << 1;
-        // Clock the bit - repeated here as a delay mechanism
-        W32(GPSET0, 1 << BR_HADDR_CK);
-        W32(GPSET0, 1 << BR_HADDR_CK);
-        W32(GPCLR0, 1 << BR_HADDR_CK);
+        // Clock the bit
+        WR32(GPSET0, 1 << BR_HADDR_CK);
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_GPIO);
+        WR32(GPCLR0, 1 << BR_HADDR_CK);
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_GPIO);
     }
     // Clear multiplexer
     br_mux_clear();
@@ -306,7 +325,7 @@ void br_set_pib_output()
         pinMode(BR_DATA_BUS + i, OUTPUT);
     }
 #else
-    W32(BR_PIB_GPF_REG, (R32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_OUTPUT);
+    WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_OUTPUT);
 #endif
 }
 
@@ -318,7 +337,7 @@ void br_set_pib_input()
         pinMode(BR_DATA_BUS + i, INPUT);
     }
 #else
-    W32(BR_PIB_GPF_REG, (R32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_INPUT);
+    WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_INPUT);
 #endif
 }
 
@@ -326,8 +345,8 @@ void br_set_pib_input()
 void br_set_pib_value(uint8_t val)
 {
 #ifdef USE_BITWISE_DATA_BUS_ACCESS
-    // uint32_t va0 = R32(GPLEV0);
-    // uint32_t va1 = (R32(GPLEV0) & BR_PIB_MASK) | (((uint32_t)val) << BR_DATA_BUS);
+    // uint32_t va0 = RD32(GPLEV0);
+    // uint32_t va1 = (RD32(GPLEV0) & BR_PIB_MASK) | (((uint32_t)val) << BR_DATA_BUS);
     for (uint32_t i = 0; i < 8; i++) {
         digitalWrite(BR_DATA_BUS + i, val & 0x01);
         val = val >> 1;
@@ -335,8 +354,8 @@ void br_set_pib_value(uint8_t val)
 #else
     uint32_t setBits = ((uint32_t)val) << BR_DATA_BUS;
     uint32_t clrBits = (~(((uint32_t)val) << BR_DATA_BUS)) & (~BR_PIB_MASK);
-    W32(GPSET0, setBits);
-    W32(GPCLR0, clrBits);
+    WR32(GPSET0, setBits);
+    WR32(GPCLR0, clrBits);
 #endif
 }
 
@@ -354,7 +373,7 @@ uint8_t br_get_pib_value()
     // ee_printf("\n");
     return val;
 #else
-    uint32_t busVals = R32(GPLEV0);
+    uint32_t busVals = RD32(GPLEV0);
     return (busVals >> BR_DATA_BUS) & 0xff;
 #endif
 }
@@ -380,12 +399,14 @@ void br_write_byte(uint32_t byte, int iorq)
     digitalWrite(BR_DATA_DIR_IN, 1);
 #else
     // Clear DIR_IN (so make direction out), enable data output onto data bus and MREQ_BAR active
-    W32(GPCLR0, (1 << BR_DATA_DIR_IN) | BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)));
-    W32(GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
+    WR32(GPCLR0, (1 << BR_DATA_DIR_IN) | BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)));
+    WR32(GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
     // Write the data by setting WR_BAR active
-    W32(GPCLR0, (1 << BR_WR_BAR));
+    WR32(GPCLR0, (1 << BR_WR_BAR));
+    // Target write delay
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_WRITE_TO_TARGET);
     // Deactivate and leave data direction set to inwards
-    W32(GPSET0, (1 << BR_DATA_DIR_IN) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_WR_BAR));
+    WR32(GPSET0, (1 << BR_DATA_DIR_IN) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_WR_BAR));
     br_mux_clear();
 #endif
 }
@@ -410,12 +431,14 @@ uint8_t br_read_byte(int iorq)
     br_mux_clear();
 #else
     // enable data output onto PIB (data-dir must be inwards already), MREQ_BAR and RD_BAR both active
-    W32(GPCLR0, BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
-    W32(GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
+    WR32(GPCLR0, BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
+    WR32(GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
+    // Delay to allow data to settle
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_TARGET);
     // Get the data
     uint8_t val = br_get_pib_value();
     // Deactivate leaving data-dir inwards
-    W32(GPSET0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
+    WR32(GPSET0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
     // Clear the MUX
     br_mux_clear();
 #endif
@@ -566,7 +589,7 @@ void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ)
         __br_wait_state_en_mask = __br_wait_state_en_mask | BR_IORQ_WAIT_EN_MASK;
     if (enWaitOnMREQ)
         __br_wait_state_en_mask = __br_wait_state_en_mask | BR_MREQ_WAIT_EN_MASK;
-    W32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
+    WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
 
     // Check if any wait-states to be generated
     if (__br_wait_state_en_mask == 0)
@@ -578,26 +601,26 @@ void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ)
 #ifdef BR_ENABLE_WAIT_AND_FIQ
 
     // Set wait-state generation
-    W32(GPSET0, __br_wait_state_en_mask);
+    WR32(GPSET0, __br_wait_state_en_mask);
 
     // Set vector for WAIT state interrupt
     irq_set_wait_state_handler(br_wait_state_isr);
 
     // Setup edge triggering on falling edge of IORQ
     // Clear any current detected edges
-    W32(GPEDS0, (1 << BR_IORQ_BAR) | (1 << BR_MREQ_BAR));  
+    WR32(GPEDS0, (1 << BR_IORQ_BAR) | (1 << BR_MREQ_BAR));  
     // Set falling edge detect
     if (enWaitOnIORQ)
-        W32(GPFEN0, R32(GPFEN0) | (1 << BR_IORQ_BAR));
+        WR32(GPFEN0, RD32(GPFEN0) | (1 << BR_IORQ_BAR));
     else
-        W32(GPFEN0, R32(GPFEN0) & (~(1 << BR_IORQ_BAR)));
+        WR32(GPFEN0, RD32(GPFEN0) & (~(1 << BR_IORQ_BAR)));
     if (enWaitOnMREQ)
-        W32(GPFEN0, R32(GPFEN0) | (1 << BR_WAIT_BAR));
+        WR32(GPFEN0, RD32(GPFEN0) | (1 << BR_WAIT_BAR));
     else
-        W32(GPFEN0, R32(GPFEN0) & (~(1 << BR_WAIT_BAR)));
+        WR32(GPFEN0, RD32(GPFEN0) & (~(1 << BR_WAIT_BAR)));
 
     // Enable FIQ interrupts on GPIO[3] which is any GPIO pin
-    W32(IRQ_FIQ_CONTROL, (1 << 7) | 52);
+    WR32(IRQ_FIQ_CONTROL, (1 << 7) | 52);
 
     // Enable Fast Interrupts
     __br_wait_interrupt_enabled = true;
@@ -623,7 +646,7 @@ void br_wait_state_isr(void* pData)
     while(avoidLockupCtr < MAX_WAIT_FOR_CTRL_LINES_US)
     {
         // Read the control lines
-        busVals = R32(GPLEV0);
+        busVals = RD32(GPLEV0);
 
         // Specifically need to wait if MREQ is low but both RD and WR are high (wait for WR to go low in this case)
         ctrlValid = !(((busVals & (1 << BR_MREQ_BAR)) == 0) && (((busVals & (1 << BR_RD_BAR)) != 0) && ((busVals & (1 << BR_WR_BAR)) != 0)));
@@ -651,16 +674,16 @@ void br_wait_state_isr(void* pData)
         // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
 
         // Spurious ISR?
-        W32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
+        WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
         // // Delay for a short time
         // timeNow = micros();
         // while (!timer_isTimeout(micros(), timeNow, 2)) {
         //     // Do nothing
         // }
         // // Re-enable the wait state generation
-        W32(GPSET0, __br_wait_state_en_mask);
+        WR32(GPSET0, __br_wait_state_en_mask);
         // // Clear detected edge on any pin
-        W32(GPEDS0, 0xffffffff);
+        WR32(GPEDS0, 0xffffffff);
 
                 // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
 
@@ -678,7 +701,7 @@ void br_wait_state_isr(void* pData)
 
     // Read the low address
     br_set_pib_input();
-    W32(GPSET0, 1 << BR_DATA_DIR_IN);
+    WR32(GPSET0, 1 << BR_DATA_DIR_IN);
     br_mux_set(BR_MUX_LADDR_OE_BAR);
         // // Delay for a short time
         // timeNow = micros();
@@ -706,7 +729,7 @@ void br_wait_state_isr(void* pData)
         (((busVals & (1 << BR_MREQ_BAR)) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
         (((busVals & (1 << BR_IORQ_BAR)) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
         (((busVals & (1 << BR_WAIT_BAR)) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
-        (((R32(GPLEV0) & (1 << BR_M1_PIB_BAR)) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
+        (((RD32(GPLEV0) & (1 << BR_M1_PIB_BAR)) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
 
     // Read the data bus if the target machine is writing
     uint32_t dataBusVals = 0;
@@ -753,9 +776,9 @@ void br_wait_state_isr(void* pData)
     if (!__br_pause_is_paused)
     {
         // TODO - DEBUG - MUST BE REMOVED
-        // W32(GPSET0, 1 << BR_HADDR_CK);
-        // W32(GPSET0, 1 << BR_HADDR_CK);
-        // W32(GPCLR0, 1 << BR_HADDR_CK);
+        // WR32(GPSET0, 1 << BR_HADDR_CK);
+        // WR32(GPSET0, 1 << BR_HADDR_CK);
+        // WR32(GPCLR0, 1 << BR_HADDR_CK);
 
         // No pause requested - clear the WAIT state so execution can continue
         // The order of the following lines is important
@@ -763,24 +786,24 @@ void br_wait_state_isr(void* pData)
         // to make it reliable - without this extra delay clearing the flip-flop isn't
         // reliable as the pulse can be too short (Raspberry Pi outputs are weedy)
         // Clear the WAIT state flip-flop
-        W32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
-        W32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
-        W32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
+        WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
+        WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
+        WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
         // // Delay for a short time
         // timeNow = micros();
         // while (!timer_isTimeout(micros(), timeNow, 1)) {
         //     // Do nothing
         // }
         // // Re-enable the wait state generation
-        W32(GPSET0, __br_wait_state_en_mask);
+        WR32(GPSET0, __br_wait_state_en_mask);
 
         // // Clear detected edge on any pin
-        W32(GPEDS0, 0xffffffff);
+        WR32(GPEDS0, 0xffffffff);
         
         // TODO - DEBUG - MUST BE REMOVED
-        // W32(GPSET0, 1 << BR_HADDR_CK);
-        // W32(GPSET0, 1 << BR_HADDR_CK);
-        // W32(GPCLR0, 1 << BR_HADDR_CK);
+        // WR32(GPSET0, 1 << BR_HADDR_CK);
+        // WR32(GPSET0, 1 << BR_HADDR_CK);
+        // WR32(GPCLR0, 1 << BR_HADDR_CK);
     }
     else
     {
@@ -794,7 +817,7 @@ void br_wait_state_isr(void* pData)
 void br_clear_wait_interrupt()
 {
     // Clear detected edge on any pin
-    W32(GPEDS0, 0xffffffff);
+    WR32(GPEDS0, 0xffffffff);
 }
 
 void br_disable_wait_interrupt()
@@ -834,16 +857,16 @@ bool br_pause_release()
     __br_pause_is_paused = false;
 
     // Clear the WAIT state flip-flop
-    W32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
+    WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
 
     // Delay for a short time
     microsDelay(2);
 
     // Re-enable the wait state generation
-    W32(GPSET0, __br_wait_state_en_mask);
+    WR32(GPSET0, __br_wait_state_en_mask);
 
     // Clear detected edge on any pin
-    W32(GPEDS0, 0xffffffff);
+    WR32(GPEDS0, 0xffffffff);
 
     return true;
 }

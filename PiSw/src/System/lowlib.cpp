@@ -11,18 +11,6 @@
 extern "C" {
 #endif
 
-void W32(unsigned int addr, unsigned int val)
-{
-    volatile unsigned int* pAddr = (volatile unsigned int*)addr;
-    *pAddr = val;
-}
-
-unsigned int R32(unsigned int addr)
-{
-    volatile unsigned int* pAddr = (volatile unsigned int*)addr;
-    return *pAddr;
-}
-
 uint32_t micros()
 {
     static const uint32_t volatile* pTimerLower32Bits = (uint32_t*)0x20003004;

@@ -67,7 +67,7 @@ class TargetClockGenerator
 
         // Disable in any case
         static const uint32_t clockGenPLLD = 6; // pp 107
-        W32(ARM_CM_GP0CTL, ARM_CM_PASSWD | clockGenPLLD);
+        WR32(ARM_CM_GP0CTL, ARM_CM_PASSWD | clockGenPLLD);
         if (!en)
             return;
 
@@ -79,7 +79,7 @@ class TargetClockGenerator
         static const uint32_t clockGenBusyMask = 0x80;
         for (int i = 0; i < 1000; i++)
         {
-            if ((R32(ARM_CM_GP0CTL) & clockGenBusyMask) == 0)
+            if ((RD32(ARM_CM_GP0CTL) & clockGenBusyMask) == 0)
                 break;
         }
 
@@ -90,12 +90,12 @@ class TargetClockGenerator
         uint32_t divisor = 500000000 / _freqReqd;
         if (divisor > 4095)
             divisor = 4095;
-        W32(ARM_CM_GP0DIV, ARM_CM_PASSWD | divisor << 12);
+        WR32(ARM_CM_GP0DIV, ARM_CM_PASSWD | divisor << 12);
 
         // Enable (or disable) as required
         static const uint32_t clockGenEnabledMask = 0x10;  // pp107
         uint32_t enMask = en ? clockGenEnabledMask : 0;
-        W32(ARM_CM_GP0CTL, ARM_CM_PASSWD | enMask | clockGenPLLD);
+        WR32(ARM_CM_GP0CTL, ARM_CM_PASSWD | enMask | clockGenPLLD);
 
         // Debug
         uint32_t freqGenerated = 500000000 / divisor;
