@@ -61,15 +61,11 @@ typedef enum {
 #define BR_MUX_NMI_BAR_LOW 0x06
 #define BR_MUX_LADDR_OE_BAR 0x03
 #define BR_MUX_HADDR_OE_BAR 0x07
-/*
-// The following is used when HADDR_SER needs to be HIGH - the default is low
-// It actually sets MUX to DATA_OE_BAR - this is ok as PIB is either in our out
-// at this stage so data will be pulled into or out of the 
-#define BR_MUX_HADDR_SER_HIGH BR_MUX_DATA_OE_BAR_LOW 
-*/
 
-// This is used when HADDR_SER needs to be HIGH - default is LOW based on mux input 0
-#define BR_MUX_HADDR_SER_HIGH BR_MUX_LADDR_CLR_BAR_LOW
+// The following is used when HADDR_SER needs to be HIGH - the default is low
+// It actually sets MUX to BR_MUX_HADDR_OE_BAR - this is ok as PIB is input
+// at this stage
+#define BR_MUX_HADDR_SER_HIGH BR_MUX_HADDR_OE_BAR 
 
 // Pi pins used for control of host bus
 #define BR_BUSRQ_BAR 19 // SPI1 MISO
