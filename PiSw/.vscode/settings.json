@@ -1,6 +1,7 @@
 {
     "python.linting.enabled": false,
     "files.associations": {
-        "irq.h": "c"
+        "irq.h": "c",
+        "wgfxfont.h": "c"
     }
 }

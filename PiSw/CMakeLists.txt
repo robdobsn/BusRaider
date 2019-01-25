@@ -9,9 +9,9 @@ set(PROJECT_ELF ${PROJ_NAME}.elf)
 
 project($PROJ_NAME C CXX ASM)
 
-set(ASM_SOURCE_FILES src/startup.s src/lowlev.s)
-file(GLOB_RECURSE C_SOURCE_FILES "./src/*.c")
-file(GLOB_RECURSE CXX_SOURCE_FILES "./src/*.cpp")
+set(ASM_SOURCE_FILES src/System/startup.s src/System/lowlev.s)
+file(GLOB_RECURSE C_SOURCE_FILES "./src/*.c" "./src/System" "./src/Utils" "./src/TargetBus" "./src/CommandInterface" "./src/Fonts")
+file(GLOB_RECURSE CXX_SOURCE_FILES "./src/*.cpp" "./src/System" "./src/Utils" "./src/TargetBus" "./src/CommandInterface" "./src/Fonts" "./src/Machines" "./src/FileFormats")
 
 add_executable(${PROJECT_ELF} "${ASM_SOURCE_FILES}" "${C_SOURCE_FILES}" "${CXX_SOURCE_FILES}" )
 

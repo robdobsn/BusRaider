@@ -1,13 +1,23 @@
 // Bus Raider
 // Rob Dobson 2018
 
-#include "uart.h"
-#include "wgfx.h"
-#include "ee_printf.h"
-#include "piwiring.h"
-#include "busraider.h"
-#include "cmd_handler.h"
-#include "target_memory_map.h"
+#include "System/uart.h"
+#include "System/wgfx.h"
+#include "System/ee_printf.h"
+#include "TargetBus/piwiring.h"
+#include "TargetBus/busraider.h"
+#include "TargetBus/target_memory_map.h"
+#include "CommandInterface/cmd_handler.h"
+#include "Utils/rdutils.h"
+#include "Machines/McManager.h"
+#include "Machines/McTRS80.h"
+#include "Machines/McRobsZ80.h"
+#include "Machines/McDebugZ80.h"
+#include "Machines/McZXSpectrum.h"
+#include "Machines/McTerminal.h"
+#include "System/timer.h"
+#include "System/lowlib.h"
+#include <stdlib.h>
 
 typedef unsigned char		u8;
 typedef unsigned short		u16;
@@ -20,15 +30,6 @@ typedef int                 s32;
 
 // #include "../uspi\include\uspi\types.h"
 #include "../uspi/include/uspi.h"
-#include "McManager.h"
-#include "McTRS80.h"
-#include "McRobsZ80.h"
-#include "McDebugZ80.h"
-#include "McZXSpectrum.h"
-#include "McTerminal.h"
-#include "timer.h"
-#include "lowlib.h"
-#include <stdlib.h>
 
 // Program details
 static const char* PROG_VERSION = "             RC2014 Bus Raider V1.6.047";
@@ -284,13 +285,14 @@ extern "C" void entry_point()
             int refreshRate = refreshCount * 1000 / REFRESH_RATE_WINDOW_SIZE_MS;
             const int MAX_REFRESH_STR_LEN = 40;
             const char* refreshText = "Refresh ";
-            char refreshStr[MAX_REFRESH_STR_LEN+1];
+            char refreshStr[MAX_REFRESH_STR_LEN+1] = "  ";
             refreshStr[0] = lastActivityTickerState ? '|' : '-';
-            refreshStr[1] = ' ';
             lastActivityTickerState = !lastActivityTickerState;
-            strlcpy(refreshStr+2, refreshText, MAX_REFRESH_STR_LEN);
-            itoa(refreshRate, (refreshStr+strlen(refreshStr)), MAX_REFRESH_STR_LEN);
-            strlcpy(refreshStr+strlen(refreshStr), "fps", MAX_REFRESH_STR_LEN);
+            strlcat(refreshStr, refreshText, MAX_REFRESH_STR_LEN);
+            uint8_t rateStr[20];
+            rditoa(refreshRate, rateStr, MAX_REFRESH_STR_LEN, 10);
+            strlcat(refreshStr, (char*)rateStr, MAX_REFRESH_STR_LEN);
+            strlcat(refreshStr, "fps", MAX_REFRESH_STR_LEN);
             wgfx_puts(1, wgfx_get_term_width()-strlen(refreshStr)-1, lineIdx++, (uint8_t*)refreshStr);
             // // uart_printf("Rate %d per sec, requs %ld dispTime %ld\n", refreshCount / 2, reqUpdateUs, dispTime);
             // wgfx_putc(1, 150, 0, '0' + (refreshRate % 10));
