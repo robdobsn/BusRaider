@@ -432,6 +432,9 @@ static char* flt(char* str, double num, int size, int precision, char fmt, int f
 
 #endif
 
+#pragma GCC push_options
+#pragma GCC optimize ("O0")
+
 static int ee_vsprintf(char* buf, const char* fmt, va_list args)
 {
     int len;
@@ -603,6 +606,7 @@ static int ee_vsprintf(char* buf, const char* fmt, va_list args)
     *str = '\0';
     return str - buf;
 }
+#pragma GCC pop_options
 
 void uart_send_char(char c)
 {
