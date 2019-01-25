@@ -10,10 +10,10 @@
 #include "../System/bare_metal_pi_zero.h"
 
 // Uncomment the following line to use SPI0 CE0 of the Pi as a debug pin
-// #define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
+#define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
 
 // Comment out this line to disable WAIT state generation altogether
-// #define BR_ENABLE_WAIT_AND_FIQ 1
+#define BR_ENABLE_WAIT_AND_FIQ 1
 
 // Instrument FIQ
 // #define INSTRUMENT_BUSRAIDER_FIQ 1
@@ -40,16 +40,14 @@ static const int MAX_WAIT_FOR_CTRL_LINES_US = 10000;
 // Period target write control bus line is asserted during a write
 // #define CYCLES_DELAY_FOR_WRITE_TO_TARGET 2
 
-// Period target read control bus line is asserted during a read
-#define CYCLES_DELAY_FOR_READ_FROM_TARGET 2
-
-// Delay in machine cycles for mux set
-//#define CYCLES_DELAY_FOR_MUX_SET 10
+// Period target read control bus line is asserted during a read from the PIB (any bus element)
+#define CYCLES_DELAY_FOR_READ_FROM_PIB 2
 
 // Delay in machine cycles for setting the pulse width when clearing/incrementing the address counter/shift-reg
 #define CYCLES_DELAY_FOR_CLEAR_LOW_ADDR 5
 #define CYCLES_DELAY_FOR_LOW_ADDR_SET 2
 #define CYCLES_DELAY_FOR_HIGH_ADDR_SET 5
+#define CYCLES_DELAY_FOR_WAIT_CLEAR 5
 
 // Set a pin to be an output and set initial value for that pin
 void br_set_pin_out(int pin, int val)
@@ -78,9 +76,6 @@ void br_mux_set(int muxVal)
     WR32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
     // Now set bits required
     WR32(GPSET0, muxVal << BR_MUX_LOW_BIT_POS);
-#ifdef CYCLES_DELAY_FOR_MUX_SET
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_MUX_SET);
-#endif    
 }
 
 // Initialise the bus raider
@@ -390,7 +385,7 @@ uint8_t br_read_byte(int iorq)
     WR32(GPCLR0, BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
     WR32(GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
     // Delay to allow data to settle
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_TARGET);
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
     // Get the data
     uint8_t val = (RD32(GPLEV0) >> BR_DATA_BUS) & 0xff;
     // Deactivate leaving data-dir inwards
@@ -480,9 +475,7 @@ BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int bu
         WR32(GPCLR0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
         
         // Delay to allow data bus to settle
-    #ifdef CYCLES_DELAY_FOR_READ_FROM_TARGET
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_TARGET);
-    #endif
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
         
         // Get the data
         *pData = (RD32(GPLEV0) >> BR_DATA_BUS) & 0xff;
@@ -634,53 +627,59 @@ void br_wait_state_isr(void* pData)
 
         // Count loops
         avoidLockupCtr++;
-
-    // TODO - delay??
-
     }
 
     // Check if we have valid control lines
     if ((!ctrlValid) || ((busVals & (1 << BR_WAIT_BAR)) != 0))
     {
 
-            // TODO - delay??
-
-        // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+#endif
 
         // Spurious ISR?
         WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
 
-    // TODO - delay??
+        // Pulse needs to be wide enough to clear flip-flop reliably
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_WAIT_CLEAR);
 
         // Re-enable the wait state generation
         WR32(GPSET0, __br_wait_state_en_mask);
+
         // Clear detected edge on any pin
         WR32(GPEDS0, 0xffffffff);
 
-                // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-
+#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+#endif
         return;
     }
 
-    // TODO - delay??
-
-
-    // Read the low address
+    // Enable the low address onto the PIB
     br_set_pib_input();
     WR32(GPSET0, 1 << BR_DATA_DIR_IN);
     br_mux_set(BR_MUX_LADDR_OE_BAR);
 
-    // TODO - delay??
+    // Delay to allow data to settle
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
 
+    // Get low address value
     uint32_t addr = br_get_pib_value() & 0xff;
 
     // Read the high address
     br_mux_set(BR_MUX_HADDR_OE_BAR);
 
+    // Delay to allow data to settle
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
+
+    // Or in the high address
     addr |= (br_get_pib_value() & 0xff) << 8;
  
     // Clear the mux to deactivate output enables
     br_mux_clear();
+
+    // Delay to allow data to settle
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
 
     // Get the appropriate bits for up-line communication
     uint32_t ctrlBusVals = 
@@ -696,9 +695,17 @@ void br_wait_state_isr(void* pData)
     bool isWriting = (busVals & (1 << BR_WR_BAR)) == 0;
     if (isWriting)
     {
+        // Enable data bus onto PIB
         digitalWrite(BR_DATA_DIR_IN, 1);
         br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
+
+        // Delay to allow data to settle
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
+
+        // Read the data bus values
         dataBusVals = br_get_pib_value() & 0xff;
+
+        // Clear Mux
         br_mux_clear();
     }
 
@@ -710,9 +717,10 @@ void br_wait_state_isr(void* pData)
     // If not writing and result is valid then put the returned data onto the bus
     if (!isWriting && ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0))
     {
+        // Now driving data onto the target data bus
         digitalWrite(BR_DATA_DIR_IN, 0);
-        // In HW version 1.7 onwards there is a flip-flop to handle data OE
-        // so prime this flip-flop here
+        // A flip-flop to handles data OE during the IORQ/MREQ cycle and 
+        // deactivates at the end of that cycle - so prime this flip-flop here
         br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
         br_set_pib_output();
         br_set_pib_value(retVal & 0xff);
@@ -731,19 +739,13 @@ void br_wait_state_isr(void* pData)
         // WR32(GPCLR0, 1 << BR_HADDR_CK);
 
         // No pause requested - clear the WAIT state so execution can continue
-        // The order of the following lines is important
-        // The repeated line delays the flip-flop reset pulse enough
-        // to make it reliable - without this extra delay clearing the flip-flop isn't
-        // reliable as the pulse can be too short (Raspberry Pi outputs are weedy)
         // Clear the WAIT state flip-flop
         WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
-        WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
-        WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
-        // Delay for a short time
 
-    // TODO - delay??
+        // Pulse needs to be wide enough to clear flip-flop reliably
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_WAIT_CLEAR);
 
-        // // Re-enable the wait state generation
+        // Re-enable the wait state generation as defined by the global mask
         WR32(GPSET0, __br_wait_state_en_mask);
 
         // // Clear detected edge on any pin
