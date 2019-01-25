@@ -9,10 +9,6 @@
 #include "../System/lowlib.h"
 #include "../System/bare_metal_pi_zero.h"
 
-// Uncomment the following to use bitwise access to busses and pins on Pi
-// #define USE_BITWISE_DATA_BUS_ACCESS 1
-// #define USE_BITWISE_CTRL_BUS_ACCESS 1
-
 // Uncomment the following line to use SPI0 CE0 of the Pi as a debug pin
 // #define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
 
@@ -268,27 +264,19 @@ BR_RETURN_TYPE br_req_and_take_bus()
 // - some other code will set push-addr to enable onto the address bus
 void br_set_low_addr(uint32_t lowAddrByte)
 {
-#ifdef CYCLES_DELAY_FOR_CLEAR_LOW_ADDR
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_CLEAR_LOW_ADDR);
-#endif
     // Clear initially
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_CLEAR_LOW_ADDR);
     br_mux_set(BR_MUX_LADDR_CLR_BAR_LOW);
     // Delay a few cycles
-#ifdef CYCLES_DELAY_FOR_CLEAR_LOW_ADDR
     lowlev_cycleDelay(CYCLES_DELAY_FOR_CLEAR_LOW_ADDR);
-#endif
     br_mux_clear();
     // Clock the required value in - requires one more count than
     // expected as the output register is one clock pulse behind the counter
     for (uint32_t i = 0; i < (lowAddrByte & 0xff) + 1; i++) {
         WR32(GPSET0, 1 << BR_LADDR_CK);
-#ifdef CYCLES_DELAY_FOR_LOW_ADDR_SET
         lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-#endif
         WR32(GPCLR0, 1 << BR_LADDR_CK);
-#ifdef CYCLES_DELAY_FOR_LOW_ADDR_SET
         lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-#endif
     }
 }
 
@@ -298,13 +286,9 @@ void br_set_low_addr(uint32_t lowAddrByte)
 void br_inc_low_addr()
 {
     WR32(GPSET0, 1 << BR_LADDR_CK);
-#ifdef CYCLES_DELAY_FOR_LOW_ADDR_SET
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-#endif
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
     WR32(GPCLR0, 1 << BR_LADDR_CK);
-#ifdef CYCLES_DELAY_FOR_LOW_ADDR_SET
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-#endif
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
 }
 
 // Set the high address value
@@ -321,22 +305,16 @@ void br_set_high_addr(uint32_t highAddrByte)
         else
             br_mux_set(BR_MUX_HADDR_SER_LOW);
         // Delay to allow settling
-#ifdef CYCLES_DELAY_FOR_HIGH_ADDR_SET
         lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
-#endif
         // Shift the address value for next bit
         highAddrByte = highAddrByte << 1;
         // Clock the bit
         WR32(GPSET0, 1 << BR_HADDR_CK);
-#ifdef CYCLES_DELAY_FOR_HIGH_ADDR_SET
         lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
-#endif
         WR32(GPCLR0, 1 << BR_HADDR_CK);
     }
-#ifdef CYCLES_DELAY_FOR_HIGH_ADDR_SET
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
-#endif
     // Clear multiplexer
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
     br_mux_clear();
 }
 
@@ -352,61 +330,28 @@ void br_set_full_addr(unsigned int addr)
 // Set the PIB (pins used for data bus access) to outputs (from Pi)
 void br_set_pib_output()
 {
-#ifdef USE_BITWISE_DATA_BUS_ACCESS
-    for (uint32_t i = 0; i < 8; i++) {
-        pinMode(BR_DATA_BUS + i, OUTPUT);
-    }
-#else
     WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_OUTPUT);
-#endif
 }
 
 // Set the PIB (pins used for data bus access) to inputs (to Pi)
 void br_set_pib_input()
 {
-#ifdef USE_BITWISE_DATA_BUS_ACCESS
-    for (uint32_t i = 0; i < 8; i++) {
-        pinMode(BR_DATA_BUS + i, INPUT);
-    }
-#else
     WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_INPUT);
-#endif
 }
 
 // Set a value onto the PIB (pins used for data bus access)
 void br_set_pib_value(uint8_t val)
 {
-#ifdef USE_BITWISE_DATA_BUS_ACCESS
-    // uint32_t va0 = RD32(GPLEV0);
-    // uint32_t va1 = (RD32(GPLEV0) & BR_PIB_MASK) | (((uint32_t)val) << BR_DATA_BUS);
-    for (uint32_t i = 0; i < 8; i++) {
-        digitalWrite(BR_DATA_BUS + i, val & 0x01);
-        val = val >> 1;
-    }
-#else
     uint32_t setBits = ((uint32_t)val) << BR_DATA_BUS;
     uint32_t clrBits = (~(((uint32_t)val) << BR_DATA_BUS)) & (~BR_PIB_MASK);
     WR32(GPSET0, setBits);
     WR32(GPCLR0, clrBits);
-#endif
 }
 
 // Get a value from the PIB (pins used for data bus access)
 uint8_t br_get_pib_value()
 {
-#ifdef USE_BITWISE_DATA_BUS_ACCESS
-    uint8_t val = 0;
-    for (uint32_t i = 0; i < 8; i++) {
-        int bitVal = digitalRead(BR_DATA_BUS + i);
-        // ee_printf("%d ", bitVal);
-        val = val >> 1;
-        val = val | ((bitVal != 0) ? 0x80 : 0);
-    }
-    // ee_printf("\n");
-    return val;
-#else
     return (RD32(GPLEV0) >> BR_DATA_BUS) & 0xff;
-#endif
 }
 
 // Write a single byte to currently set address (or IO port)
@@ -419,16 +364,6 @@ void br_write_byte(uint32_t byte, int iorq)
     // Set the data onto the PIB
     br_set_pib_value(byte);
     // Perform the write
-#ifdef USE_BITWISE_CTRL_BUS_ACCESS
-    digitalWrite(BR_DATA_DIR_IN, 0);
-    br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
-    digitalWrite(iorq ? BR_IORQ_BAR : BR_MREQ_BAR, 0);
-    digitalWrite(BR_WR_BAR, 0);
-    digitalWrite(BR_WR_BAR, 1);
-    digitalWrite(iorq ? BR_IORQ_BAR : BR_MREQ_BAR, 1);
-    br_mux_clear();
-    digitalWrite(BR_DATA_DIR_IN, 1);
-#else
     // Clear DIR_IN (so make direction out), enable data output onto data bus and MREQ_BAR active
     WR32(GPCLR0, (1 << BR_DATA_DIR_IN) | BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)));
     WR32(GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
@@ -441,7 +376,6 @@ void br_write_byte(uint32_t byte, int iorq)
     // Deactivate and leave data direction set to inwards
     WR32(GPSET0, (1 << BR_DATA_DIR_IN) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_WR_BAR));
     br_mux_clear();
-#endif
 }
 
 // Read a single byte from currently set address (or IO port)
@@ -452,31 +386,17 @@ void br_write_byte(uint32_t byte, int iorq)
 // - data direction on data bus driver is set to input (default)
 uint8_t br_read_byte(int iorq)
 {
-    // Read the byte
-#ifdef USE_BITWISE_CTRL_BUS_ACCESS
-    digitalWrite(BR_DATA_DIR_IN, 1);
-    br_mux_set(BR_MUX_DATA_OE_BAR_LOW);
-    digitalWrite((iorq ? BR_IORQ_BAR : BR_MREQ_BAR), 0);
-    digitalWrite(BR_RD_BAR, 0);
-    uint8_t val = br_get_pib_value();
-    digitalWrite(BR_RD_BAR, 1);
-    digitalWrite((iorq ? BR_IORQ_BAR : BR_MREQ_BAR), 1);
-    br_mux_clear();
-#else
-    // enable data output onto PIB (data-dir must be inwards already), MREQ_BAR and RD_BAR both active
+    // Enable data output onto PIB (data-dir must be inwards already), MREQ_BAR and RD_BAR both active
     WR32(GPCLR0, BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
     WR32(GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
     // Delay to allow data to settle
-#ifdef CYCLES_DELAY_FOR_READ_FROM_TARGET
     lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_TARGET);
-#endif
     // Get the data
     uint8_t val = (RD32(GPLEV0) >> BR_DATA_BUS) & 0xff;
     // Deactivate leaving data-dir inwards
     WR32(GPSET0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
     // Clear the MUX to a safe setting - sets HADDR_SER low
     WR32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
-#endif
     return val;
 }
 
@@ -571,9 +491,7 @@ BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int bu
         WR32(GPSET0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR) | (1 << BR_LADDR_CK));
 
         // Low address clock pulse period
-#ifdef CYCLES_DELAY_FOR_LOW_ADDR_SET
         lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-#endif
 
         // Clock pulse high again
         WR32(GPCLR0, 1 << BR_LADDR_CK);
@@ -584,17 +502,8 @@ BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int bu
 
         // Check if we've rolled over the lowest 8 bits
         if ((addr & 0xff) == 0) {
-#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-#endif
-
             // Set the address again
             br_set_full_addr(addr);
-
-#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-#endif
-
         }
     }
 
