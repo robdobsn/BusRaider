@@ -1,7 +1,9 @@
 
 #include <circle/bcm2835.h>
 #include <circle/memio.h>
-
+#include <stdint.h>
+#include <stdbool.h>
+#include <stddef.h>
 
 void pinRawWrite(int pinNumber, bool val)
 {
@@ -39,7 +41,6 @@ bool pinRawRead(int pinNumber)
         return ((read32(ARM_GPIO_GPLEV0) >> pinNumber) & 0x01) != 0;
     return ((read32(ARM_GPIO_GPLEV0+0x04) >> (pinNumber - 32)) & 0x01) != 0;
 }
-
 
 uint32_t micros()
 {

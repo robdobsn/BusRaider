@@ -34,7 +34,7 @@
 #include <circle/types.h>
 
 // #include "CommandInterface/CommandHandler.h"
-#include "TargetBus/BusRaider.h"
+#include "Target/BusRaider.h"
 
 enum TShutdownMode
 {
@@ -70,7 +70,7 @@ private:
 	volatile TShutdownMode m_ShutdownMode;
 
 	static CKernel *s_pThis;
-	
+
 private:
 	static void KeyPressedHandler (const char *pString);
 	static void ShutdownHandler (void);

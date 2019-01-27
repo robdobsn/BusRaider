@@ -24,16 +24,16 @@ BusRaiderCBFnType* BusRaider::_pBusAccessCallback = NULL;
 static const int MAX_WAIT_FOR_CTRL_LINES_US = 10000;
 
 // Period target write control bus line is asserted during a write
-#define CYCLES_DELAY_FOR_WRITE_TO_TARGET 100
+#define CYCLES_DELAY_FOR_WRITE_TO_TARGET 500
 
 // Period target read control bus line is asserted during a read from the PIB (any bus element)
-#define CYCLES_DELAY_FOR_READ_FROM_PIB 100
+#define CYCLES_DELAY_FOR_READ_FROM_PIB 500
 
 // Delay in machine cycles for setting the pulse width when clearing/incrementing the address counter/shift-reg
-#define CYCLES_DELAY_FOR_CLEAR_LOW_ADDR 100
-#define CYCLES_DELAY_FOR_LOW_ADDR_SET 100
-#define CYCLES_DELAY_FOR_HIGH_ADDR_SET 100
-#define CYCLES_DELAY_FOR_WAIT_CLEAR 100
+#define CYCLES_DELAY_FOR_CLEAR_LOW_ADDR 500
+#define CYCLES_DELAY_FOR_LOW_ADDR_SET 500
+#define CYCLES_DELAY_FOR_HIGH_ADDR_SET 500
+#define CYCLES_DELAY_FOR_WAIT_CLEAR 500
 
 BusRaider::BusRaider()
 {
@@ -525,6 +525,11 @@ BR_RETURN_TYPE BusRaider::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
     }
     return BR_OK;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Enable interrupts
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Utility Functions

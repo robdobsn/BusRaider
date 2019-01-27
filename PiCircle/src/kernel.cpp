@@ -25,6 +25,10 @@
 #include <assert.h>
 
 #include "testTiming.h"
+#include "Target/TargetScreen.h"
+#include "Target/TargetFonts.h"
+#include "Fonts/FontTRS80Level1.h"
+#include "System/lowlev.h"
 
 static const char FromKernel[] = "kernel";
 
@@ -91,6 +95,8 @@ boolean CKernel::Initialize (void)
 
 TShutdownMode CKernel::Run (void)
 {
+	m_Screen.Write("\E[17;40r",8);
+
 	m_Logger.Write (FromKernel, LogNotice, "Compile time: " __DATE__ " " __TIME__);
 
 	CUSBKeyboardDevice *pKeyboard = (CUSBKeyboardDevice *) m_DeviceNameService.GetDevice ("ukbd1", FALSE);
@@ -110,27 +116,59 @@ TShutdownMode CKernel::Run (void)
 
 	m_Logger.Write (FromKernel, LogNotice, "Just type something!");
 
-	for (unsigned nCount = 0; m_ShutdownMode == ShutdownNone; nCount++)
+
+	TargetFonts targetFonts;
+	targetFonts.addFont(FontTRS80Level1::getFont());
+	TargetScreen targetScreen(m_Screen, targetFonts, m_Logger);
+	targetScreen.setup(0,0,64,16,"TRS80Level1", HIGH_COLOR, BLACK_COLOR, 0, 0, 2, 2);
+
+	while (1)
 	{
-		// CUSBKeyboardDevice::UpdateLEDs() must not be called in interrupt context,
-		// that's why this must be done here. This does nothing in raw mode.
-		pKeyboard->UpdateLEDs ();
+		uint8_t pData[1024];
+		_busRaider.blockRead(0, pData, 1024, true, false);
+		for (int i = 0; i < 16; i++)
+		{
+			for (int j = 0; j < 64; j++)
+			{
+				targetScreen.putChar(pData[i*64+j], j, i);
+			}
+		}
+		CTimer::SimpleMsDelay(1000);
 
-		m_Screen.Rotor (0, nCount);
-		m_Timer.MsDelay (100);
-
-		testTiming(1);
+		uint32_t nowM = micros();
+		lowlevCycleDelay(1000000);
+		uint32_t diffM = micros() - nowM;
+		m_Logger.Write(FromKernel, LogNotice, "uS %d", diffM);
 
 	}
+	// targetScreen.putChar('A',0,0);
+	// targetScreen.putChar('A',40,0);
 
+	// for (unsigned nCount = 0; m_ShutdownMode == ShutdownNone; nCount++)
+	// {
+	// 	// CUSBKeyboardDevice::UpdateLEDs() must not be called in interrupt context,
+	// 	// that's why this must be done here. This does nothing in raw mode.
+	// 	pKeyboard->UpdateLEDs ();
 
+	// 	m_Screen.Rotor (0, nCount);
+	// 	m_Timer.MsDelay (100);
+
+	// 	m_Screen.Write("Hello\n", 6);
+	// 	testTiming(1);
+
+	// }
 	return ShutdownReboot;
 }
+
+int curPos = 0;
 
 void CKernel::KeyPressedHandler (const char *pString)
 {
 	assert (s_pThis != 0);
-	s_pThis->m_Screen.Write (pString, strlen (pString));
+	// s_pThis->m_Screen.Write (pString, strlen (pString));
+	uint8_t pD[] = "A";
+	pD[0] = pString[0];
+	s_pThis->_busRaider.blockWrite(curPos++, pD, 1, true, false);
 }
 
 void CKernel::ShutdownHandler (void)
