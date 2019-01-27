@@ -22,7 +22,13 @@
 
 #include <circle/memory.h>
 #include <circle/actled.h>
+#include <circle/koptions.h>
+#include <circle/devicenameservice.h>
+#include <circle/screen.h>
+#include <circle/serial.h>
+#include <circle/logger.h>
 #include <circle/types.h>
+
 // #include "CommandInterface/CommandHandler.h"
 #include "TargetBus/BusRaider.h"
 
@@ -45,13 +51,23 @@ public:
 
 private:
 	// do not change this order
-	CMemorySystem	m_Memory;
-	CActLED		m_ActLED;
-	
+	CMemorySystem		m_Memory;
+	CActLED			m_ActLED;
+	CKernelOptions		m_Options;
+	CDeviceNameService	m_DeviceNameService;
+	CScreenDevice		m_Screen;
+	CSerialDevice		m_Serial;
+	CLogger			m_Logger;
+
+	// Command handler
 	// CommandHandler m_commandHandler;
 
 	// Bus Raider
 	BusRaider _busRaider;
+
+private:
+	void testTiming(int loops);
+
 };
 
 #endif
