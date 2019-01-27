@@ -26,7 +26,11 @@
 #include <circle/devicenameservice.h>
 #include <circle/screen.h>
 #include <circle/serial.h>
+#include <circle/exceptionhandler.h>
+#include <circle/interrupt.h>
+#include <circle/timer.h>
 #include <circle/logger.h>
+#include <circle/usb/dwhcidevice.h>
 #include <circle/types.h>
 
 // #include "CommandInterface/CommandHandler.h"
@@ -52,13 +56,28 @@ public:
 private:
 	// do not change this order
 	CMemorySystem		m_Memory;
-	CActLED			m_ActLED;
+	CActLED				m_ActLED;
 	CKernelOptions		m_Options;
 	CDeviceNameService	m_DeviceNameService;
 	CScreenDevice		m_Screen;
 	CSerialDevice		m_Serial;
-	CLogger			m_Logger;
+	CExceptionHandler	m_ExceptionHandler;
+	CInterruptSystem	m_Interrupt;
+	CTimer				m_Timer;
+	CLogger				m_Logger;
+	CDWHCIDevice		m_DWHCI;
 
+	volatile TShutdownMode m_ShutdownMode;
+
+	static CKernel *s_pThis;
+	
+private:
+	static void KeyPressedHandler (const char *pString);
+	static void ShutdownHandler (void);
+
+	static void KeyStatusHandlerRaw (unsigned char ucModifiers, const unsigned char RawKeys[6]);
+
+private:
 	// Command handler
 	// CommandHandler m_commandHandler;
 
@@ -66,7 +85,7 @@ private:
 	BusRaider _busRaider;
 
 private:
-	void testTiming(int loops);
+	void testTiming(int secs);
 
 };
 
