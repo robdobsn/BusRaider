@@ -24,6 +24,27 @@ const uint16_t MiniHDLC::_CRCTable[256] = {
     0xef1f,0xff3e,0xcf5d,0xdf7c,0xaf9b,0xbfba,0x8fd9,0x9ff8,0x6e17,0x7e36,0x4e55,0x5e74,0x2e93,0x3eb2,0x0ed1,0x1ef0
 };
 
+#ifndef USE_STD_FUNCTION_AND_BIND
+    MiniHDLCPutChFnType MiniHDLC::_putChFn = NULL;
+    MiniHDLCFrameRxFnType MiniHDLC::_frameRxFn = NULL;
+#endif
+
+MiniHDLC::MiniHDLC(MiniHDLCPutChFnType putChFn, MiniHDLCFrameRxFnType frameRxFn,
+				bool bigEndianCRC, bool bitwiseHDLC)
+{
+    _putChFn = putChFn;
+    _frameRxFn = frameRxFn;
+    _framePos = 0;
+    _frameCRC = CRC16_CCITT_INIT_VAL;
+    _inEscapeSeq = false;
+    _bigEndianCRC = bigEndianCRC;
+    _bitwiseHDLC = bitwiseHDLC;
+    _bitwiseLast8Bits = 0;
+    _bitwiseByte = 0;
+    _bitwiseBitCount = 0;
+    _bitwiseSendOnesCount = 0;
+}
+
 // Function to handle a single bit received
 void MiniHDLC::handleBit(uint8_t bit)
 {
@@ -137,6 +158,13 @@ void MiniHDLC::handleChar(uint8_t ch)
         _framePos = 0;
         _frameCRC = CRC16_CCITT_INIT_VAL;
     }
+}
+
+void MiniHDLC::handleBuffer(uint8_t* pBuf, int numBytes)
+{
+    // Iterate bytes
+    for (int i = 0; i < numBytes; i++)
+        handleChar(pBuf[i]);
 }
 
 // Wrap given data in HDLC frame and send it out byte at a time

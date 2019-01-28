@@ -13,7 +13,7 @@
 class TargetScreen
 {
 public:
-    TargetScreen(CScreenDevice& screen, TargetFonts& targetFonts, CLogger& logger);
+    TargetScreen(CScreenDevice& screen, TargetFonts& targetFonts);
     ~TargetScreen();
 
     void setup(int tlx, int tly, int width, int height,
@@ -28,7 +28,6 @@ public:
 private:
     CScreenDevice& _screen;
     TargetFonts& _targetFonts;
-    CLogger _logger;
     TargetFont* _pFont;
     int _tlx;
     int _tly;

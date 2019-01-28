@@ -30,17 +30,23 @@
 #include "Fonts/FontTRS80Level1.h"
 #include "System/lowlev.h"
 
+void DoChangeMachine(const char* mcName)
+{
+
+}
+
 static const char FromKernel[] = "kernel";
 
 CKernel *CKernel::s_pThis = 0;
 
 CKernel::CKernel (void)
-:	m_Memory (TRUE),
-	m_Screen (m_Options.GetWidth (), m_Options.GetHeight ()),
+:	m_Screen (m_Options.GetWidth (), m_Options.GetHeight ()),
+	m_Serial(CInterruptSystem::Get(), false),
 	m_Timer (&m_Interrupt),
 	m_Logger (m_Options.GetLogLevel (), &m_Timer),
 	m_DWHCI (&m_Interrupt, &m_Timer),
-	m_ShutdownMode (ShutdownNone)
+	m_ShutdownMode (ShutdownNone),
+	_commandHandler(m_Serial, DoChangeMachine)
 {
 	s_pThis = this;
 	m_ActLED.Blink (5);	// show we are alive
@@ -54,6 +60,11 @@ CKernel::~CKernel (void)
 boolean CKernel::Initialize (void)
 {
 	boolean bOK = TRUE;
+
+	if (bOK)
+	{
+		bOK = m_Interrupt.Initialize ();
+	}
 
 	if (bOK)
 	{
@@ -76,11 +87,6 @@ boolean CKernel::Initialize (void)
 		bOK = m_Logger.Initialize (pTarget);
 	}
 	
-	if (bOK)
-	{
-		bOK = m_Interrupt.Initialize ();
-	}
-
 	if (bOK)
 	{
 		bOK = m_Timer.Initialize ();
@@ -116,31 +122,61 @@ TShutdownMode CKernel::Run (void)
 
 	m_Logger.Write (FromKernel, LogNotice, "Just type something!");
 
-
 	TargetFonts targetFonts;
 	targetFonts.addFont(FontTRS80Level1::getFont());
-	TargetScreen targetScreen(m_Screen, targetFonts, m_Logger);
+	TargetScreen targetScreen(m_Screen, targetFonts);
 	targetScreen.setup(0,0,64,16,"TRS80Level1", HIGH_COLOR, BLACK_COLOR, 0, 0, 2, 2);
 
-	while (1)
+	u32 mic = micros();
+	// int rxCount = 0;
+	// int rxTotal = 0;
+	while(1)
 	{
-		uint8_t pData[1024];
-		_busRaider.blockRead(0, pData, 1024, true, false);
-		for (int i = 0; i < 16; i++)
+		if (micros() > mic + 1000000)
 		{
-			for (int j = 0; j < 64; j++)
-			{
-				targetScreen.putChar(pData[i*64+j], j, i);
-			}
+			// writeStr("{\"cmdName\":\"apiReq\",\"req\":\"queryESPHealth\"}");
+			m_Logger.Write(FromKernel, LogNotice, "num %d tot %d frameData %d", _commandHandler.numRead, 
+						_commandHandler.totalRead, _commandHandler.bytesRx);
+			_commandHandler.numRead = 0;
+			// m_Logger.Write (FromKernel, LogNotice, "rx %d total %d", rxCount, rxTotal);
+			// rxCount = 0;
+			mic = micros();
 		}
-		CTimer::SimpleMsDelay(1000);
-
-		uint32_t nowM = micros();
-		lowlevCycleDelay(1000000);
-		uint32_t diffM = micros() - nowM;
-		m_Logger.Write(FromKernel, LogNotice, "uS %d", diffM);
-
+		_commandHandler.service();
+		// unsigned char buf[1000];
+		// int numRead = m_Serial.Read(buf, sizeof buf);
+		// rxCount += numRead;
+		// rxTotal += numRead;
 	}
+
+	// uint32_t curMicros = micros();
+	// while (1)
+	// {
+
+	// 	if (micros() > curMicros + 1000000)
+	// 	{
+	// 		uint8_t pData[1024];
+	// 		_busRaider.blockRead(0, pData, 1024, true, false);
+	// 		for (int i = 0; i < 16; i++)
+	// 		{
+	// 			for (int j = 0; j < 64; j++)
+	// 			{
+	// 				targetScreen.putChar(pData[i*64+j], j, i);
+	// 			}
+	// 		}
+	// 		m_Logger.Write(FromKernel, LogNotice, "num %d tot %d", _commandHandler.numRead, _commandHandler.totalRead);
+	// 		_commandHandler.numRead = 0;
+	// 		curMicros = micros();
+	// 	}
+	// 	// CTimer::SimpleMsDelay(100);
+
+	// 	_commandHandler.service();
+	// }
+		// uint32_t nowM = micros();
+		// lowlevCycleDelay(1000000);
+		// uint32_t diffM = micros() - nowM;
+		// m_Logger.Write(FromKernel, LogNotice, "uS %d", diffM);
+
 	// targetScreen.putChar('A',0,0);
 	// targetScreen.putChar('A',40,0);
 

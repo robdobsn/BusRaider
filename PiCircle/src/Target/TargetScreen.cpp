@@ -4,8 +4,8 @@
 
 #include "TargetScreen.h"
 
-TargetScreen::TargetScreen(CScreenDevice& screen, TargetFonts& targetFonts, CLogger& logger) :
-             _screen(screen), _targetFonts(targetFonts), _logger(logger)
+TargetScreen::TargetScreen(CScreenDevice& screen, TargetFonts& targetFonts) :
+             _screen(screen), _targetFonts(targetFonts)
 {
     _pFont = NULL;
 }
@@ -51,7 +51,7 @@ void TargetScreen::putChar(int ch, int xPos, int yPos)
     // Show character
     int nPosX = xPos * _cellWidth * _xPixScale;
     int nPosY = yPos * _cellHeight * _yPixScale;
-    // _logger.Write("TargetScreen", LogNotice, "xPos %d yPos %d cellHeight %d yScale %d cellWidth %d xScale %d foreG %d backG %d tColour %d",
+    // CLogger::Get()->Write("TargetScreen", LogNotice, "xPos %d yPos %d cellHeight %d yScale %d cellWidth %d xScale %d foreG %d backG %d tColour %d",
     //             nPosX, nPosY, _cellHeight, _yPixScale, _cellWidth, _xPixScale, _foregroundColour, _backgroundColour, sizeof(TScreenColor));
     for (int y = 0; y < _cellHeight; y++) 
     {
