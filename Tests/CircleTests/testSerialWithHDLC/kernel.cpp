@@ -29,16 +29,19 @@ static const char FromKernel[] = "kernel";
 
 CKernel *CKernel::s_pThis = 0;
 
+int CKernel::_frameCount = 0;
+
 CKernel::CKernel (void)
 :	m_Screen (m_Options.GetWidth (), m_Options.GetHeight ()),
 	m_Serial (&m_Interrupt),
 	m_Timer (&m_Interrupt),
 	m_Logger (m_Options.GetLogLevel (), &m_Timer),
 	m_DWHCI (&m_Interrupt, &m_Timer),
-	m_ShutdownMode (ShutdownNone)	
+	m_ShutdownMode (ShutdownNone),
+	_miniHDLC(miniHDLCPutCh, miniHDLCFrameRx)
 {
 	s_pThis = this;
-	
+
 	// m_ActLED.Blink (5);	// show we are alive
 }
 
@@ -123,8 +126,9 @@ TShutdownMode CKernel::Run (void)
 			{
 				rxTotal += numRead;
 				rxLoop += numRead;
+				_miniHDLC.handleBuffer(buf, numRead);
 			}
-			if (m_Timer.GetTicks() > curTicks + 500)
+			if (m_Timer.GetTicks() > curTicks + 1000)
 				break;
 		// }
 		}
@@ -170,6 +174,18 @@ TShutdownMode CKernel::Run (void)
 	// CTimer::SimpleMsDelay(1000);
 	// }
 	return ShutdownReboot;
+}
+
+void CKernel::miniHDLCPutCh(uint8_t ch)
+{
+
+}
+
+void CKernel::miniHDLCFrameRx(const uint8_t *framebuffer, int framelength)
+{
+	assert (s_pThis != 0);
+	_frameCount++;
+	s_pThis->m_Logger.Write(FromKernel, LogNotice, "Got frame %d", _frameCount);
 }
 
 void CKernel::KeyPressedHandler (const char *pString)

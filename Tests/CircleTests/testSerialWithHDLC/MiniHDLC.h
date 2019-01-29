@@ -20,8 +20,8 @@ typedef std::function<void(uint8_t ch)> MiniHDLCPutChFnType;
 // Received frame callback function type
 typedef std::function<void(const uint8_t *framebuffer, int framelength)> MiniHDLCFrameRxFnType;
 #else
-typedef void MiniHDLCPutChFnType(uint8_t ch);
-typedef void MiniHDLCFrameRxFnType(const uint8_t *framebuffer, int framelength);
+typedef void (*MiniHDLCPutChFnType)(uint8_t ch);
+typedef void (*MiniHDLCFrameRxFnType)(const uint8_t *framebuffer, int framelength);
 #endif
 
 // MiniHDLC
@@ -30,7 +30,7 @@ class MiniHDLC
 public:
     // Constructor for HDLC
     // If bitwise HDLC then the first parameter will receive bits not bytes 
-    MiniHDLC(MiniHDLCPutChFnType* putChFn, MiniHDLCFrameRxFnType* frameRxFn,
+    MiniHDLC(MiniHDLCPutChFnType putChFn, MiniHDLCFrameRxFnType frameRxFn,
 				bool bigEndianCRC = true, bool bitwiseHDLC = false);
 
     // Called by external function that has byte-wise data to process
@@ -72,8 +72,8 @@ private:
     MiniHDLCPutChFnType _putChFn;
     MiniHDLCFrameRxFnType _frameRxFn;
 #else
-    static MiniHDLCPutChFnType* _putChFn;
-    static MiniHDLCFrameRxFnType* _frameRxFn;
+    static MiniHDLCPutChFnType _putChFn;
+    static MiniHDLCFrameRxFnType _frameRxFn;
 #endif
 
     // Bitwise HDLC flag (otherwise byte-wise)

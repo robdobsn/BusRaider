@@ -6,7 +6,7 @@ SERIALPORT  ?= COM39
 
 CIRCLEHOME = ../../../PiCircle/circle
 
-OBJS	= main.o kernel.o rdserial.o
+OBJS	= main.o kernel.o rdserial.o MiniHDLC.o
 
 LIBS = $(CIRCLEHOME)/lib/usb/libusb.a \
 	  $(CIRCLEHOME)/lib/input/libinput.a \
@@ -24,7 +24,7 @@ DEP = $(OBJS:%.o=%.d)
 	@echo "  CPP   $@"
 	mkdir -p $(@D)
 	@$(CPP) $(CPPFLAGS) -MMD -c -o $@ $<
-
+	
 $(TARGET).srec: $(TARGET).img
 	@echo "  COPY  $(TARGET).srec"
 	@$(PREFIX)objcopy $(TARGET).elf -O srec $(TARGET).srec
@@ -35,6 +35,10 @@ run: $(TARGET).srec
 test:
 	python $(CIRCLEHOME)/sample/03-screentext/testserial.py ABC $(SERIALPORT) $(FLASHBAUD)
 
-ft: $(TARGET).hex
+ft1: $(TARGET).hex
 	python $(CIRCLEHOME)/tools/flasher.py $(TARGET).hex $(SERIALPORT) $(FLASHBAUD)
-	python testserial.py ABC $(SERIALPORT) $(FLASHBAUD)
+	python testserial.py test1 $(SERIALPORT) $(FLASHBAUD)
+
+ft2: $(TARGET).hex
+	python $(CIRCLEHOME)/tools/flasher.py $(TARGET).hex $(SERIALPORT) $(FLASHBAUD)
+	python testserial.py test2 $(SERIALPORT) $(FLASHBAUD)

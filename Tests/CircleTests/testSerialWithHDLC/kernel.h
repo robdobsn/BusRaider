@@ -21,6 +21,7 @@
 #define _kernel_h
 
 #include "rdserial.h"
+#include "MiniHDLC.h"
 #include <circle/memory.h>
 #include <circle/actled.h>
 #include <circle/koptions.h>
@@ -53,8 +54,10 @@ public:
 private:
 	static void KeyPressedHandler (const char *pString);
 	static void ShutdownHandler (void);
-
 	static void KeyStatusHandlerRaw (unsigned char ucModifiers, const unsigned char RawKeys[6]);
+
+	static void miniHDLCPutCh(uint8_t ch);
+	static void miniHDLCFrameRx(const uint8_t *framebuffer, int framelength);
 
 private:
 	// do not change this order
@@ -73,6 +76,9 @@ private:
 	volatile TShutdownMode m_ShutdownMode;
 
 	static CKernel *s_pThis;
+
+	MiniHDLC _miniHDLC;
+	static int _frameCount;
 };
 
 #endif

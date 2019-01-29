@@ -25,11 +25,11 @@ const uint16_t MiniHDLC::_CRCTable[256] = {
 };
 
 #ifndef USE_STD_FUNCTION_AND_BIND
-    MiniHDLCPutChFnType* MiniHDLC::_putChFn = NULL;
-    MiniHDLCFrameRxFnType* MiniHDLC::_frameRxFn = NULL;
+    MiniHDLCPutChFnType MiniHDLC::_putChFn = NULL;
+    MiniHDLCFrameRxFnType MiniHDLC::_frameRxFn = NULL;
 #endif
 
-MiniHDLC::MiniHDLC(MiniHDLCPutChFnType* putChFn, MiniHDLCFrameRxFnType* frameRxFn,
+MiniHDLC::MiniHDLC(MiniHDLCPutChFnType putChFn, MiniHDLCFrameRxFnType frameRxFn,
 				bool bigEndianCRC, bool bitwiseHDLC)
 {
     _putChFn = putChFn;
