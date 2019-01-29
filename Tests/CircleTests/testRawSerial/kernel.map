@@ -1,0 +1,1175 @@
+Archive member included to satisfy reference by file (symbol)
+
+c:/program files (x86)/gnu tools arm embedded/7 2017-q4-major/bin/../lib/gcc/arm-none-eabi/7.2.1/hard/libgcc.a(_udivsi3.o)
+                              rdserial.o (__aeabi_uidiv)
+c:/program files (x86)/gnu tools arm embedded/7 2017-q4-major/bin/../lib/gcc/arm-none-eabi/7.2.1/hard/libgcc.a(_dvmd_tls.o)
+                              c:/program files (x86)/gnu tools arm embedded/7 2017-q4-major/bin/../lib/gcc/arm-none-eabi/7.2.1/hard/libgcc.a(_udivsi3.o) (__aeabi_idiv0)
+../../../PiCircle/circle/lib/libcircle.a(actled.o)
+                              kernel.o (CActLED::~CActLED())
+../../../PiCircle/circle/lib/libcircle.a(assert.o)
+                              rdserial.o (assertion_failed)
+../../../PiCircle/circle/lib/libcircle.a(bcmpropertytags.o)
+                              ../../../PiCircle/circle/lib/libcircle.a(actled.o) (CBcmPropertyTags::CBcmPropertyTags())
+../../../PiCircle/circle/lib/libcircle.a(debug.o)
+                              ../../../PiCircle/circle/lib/libcircle.a(assert.o) (debug_stacktrace(unsigned int const*, char const*))
+../../../PiCircle/circle/lib/libcircle.a(device.o)
+                              rdserial.o (CDevice::~CDevice())
+../../../PiCircle/circle/lib/libcircle.a(devicenameservice.o)
+                              kernel.o (CDeviceNameService::CDeviceNameService())
+../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+                              rdserial.o (CGPIOPin::~CGPIOPin())
+../../../PiCircle/circle/lib/libcircle.a(interrupt.o)
+                              kernel.o (CInterruptSystem::CInterruptSystem())
+../../../PiCircle/circle/lib/libcircle.a(koptions.o)
+                              kernel.o (CKernelOptions::~CKernelOptions())
+../../../PiCircle/circle/lib/libcircle.a(logger.o)
+                              kernel.o (CLogger::CLogger(unsigned int, CTimer*))
+../../../PiCircle/circle/lib/libcircle.a(machineinfo.o)
+                              ../../../PiCircle/circle/lib/libcircle.a(logger.o) (CMachineInfo::GetMachineName() const)
+../../../PiCircle/circle/lib/libcircle.a(screen.o)
+                              kernel.o (CScreenDevice::~CScreenDevice())
+../../../PiCircle/circle/lib/libcircle.a(string.o)
+                              kernel.o (CString::~CString())
+../../../PiCircle/circle/lib/libcircle.a(sysinit.o)
+                              main.o (halt)
+../../../PiCircle/circle/lib/libcircle.a(timer.o)
+                              kernel.o (CTimer::CTimer(CInterruptSystem*))
+../../../PiCircle/circle/lib/libcircle.a(util.o)
+                              ../../../PiCircle/circle/lib/libcircle.a(screen.o) (memset)
+../../../PiCircle/circle/lib/libcircle.a(util_fast.o)
+                              ../../../PiCircle/circle/lib/libcircle.a(bcmpropertytags.o) (memcpy)
+../../../PiCircle/circle/lib/libcircle.a(virtualgpiopin.o)
+                              ../../../PiCircle/circle/lib/libcircle.a(actled.o) (CVirtualGPIOPin::CVirtualGPIOPin(unsigned int))
+../../../PiCircle/circle/lib/libcircle.a(exceptionhandler.o)
+                              kernel.o (CExceptionHandler::CExceptionHandler())
+../../../PiCircle/circle/lib/libcircle.a(exceptionstub.o)
+                              ../../../PiCircle/circle/lib/libcircle.a(exceptionhandler.o) (PrefetchAbortStub)
+../../../PiCircle/circle/lib/libcircle.a(memory.o)
+                              kernel.o (CMemorySystem::~CMemorySystem())
+../../../PiCircle/circle/lib/libcircle.a(pagetable.o)
+                              ../../../PiCircle/circle/lib/libcircle.a(memory.o) (CPageTable::CPageTable(unsigned int))
+../../../PiCircle/circle/lib/libcircle.a(startup.o)
+                              (_start)
+../../../PiCircle/circle/lib/libcircle.a(synchronize.o)
+                              rdserial.o (EnterCritical)
+../../../PiCircle/circle/lib/libcircle.a(new.o)
+                              ../../../PiCircle/circle/lib/libcircle.a(actled.o) (operator new(unsigned int))
+../../../PiCircle/circle/lib/libcircle.a(alloc.o)
+                              ../../../PiCircle/circle/lib/libcircle.a(memory.o) (mem_init)
+../../../PiCircle/circle/lib/libcircle.a(bcmframebuffer.o)
+                              ../../../PiCircle/circle/lib/libcircle.a(screen.o) (CBcmFrameBuffer::CBcmFrameBuffer(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int))
+../../../PiCircle/circle/lib/libcircle.a(bcmmailbox.o)
+                              ../../../PiCircle/circle/lib/libcircle.a(bcmpropertytags.o) (CBcmMailBox::CBcmMailBox(unsigned int))
+../../../PiCircle/circle/lib/libcircle.a(chargenerator.o)
+                              ../../../PiCircle/circle/lib/libcircle.a(screen.o) (CCharGenerator::CCharGenerator())
+../../../PiCircle/circle/lib/libcircle.a(delayloop.o)
+                              ../../../PiCircle/circle/lib/libcircle.a(timer.o) (DelayLoop)
+../../../PiCircle/circle/lib/libcircle.a(gpiomanager.o)
+                              ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o) (CGPIOManager::ConnectInterrupt(CGPIOPin*))
+../../../PiCircle/circle/lib/libcircle.a(ptrlist.o)
+                              ../../../PiCircle/circle/lib/libcircle.a(timer.o) (CPtrList::CPtrList())
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+Address of section .init set to 0x8000
+
+.init           0x00008000       0x64
+ *(.init)
+ .init          0x00008000       0x64 ../../../PiCircle/circle/lib/libcircle.a(startup.o)
+                0x00008000                _start
+
+.text           0x00008068     0x9b64
+ *(.text*)
+ .text          0x00008068        0x0 main.o
+ .text.startup  0x00008068       0x3c main.o
+                0x00008068                main
+ .text          0x000080a4      0x2b4 kernel.o
+                0x000080a4                CKernel::CKernel()
+                0x000080a4                CKernel::CKernel()
+                0x0000815c                CKernel::Initialize()
+                0x000081f8                CKernel::~CKernel()
+                0x000081f8                CKernel::~CKernel()
+                0x00008268                CKernel::Run()
+ .text          0x00008358      0xcbc rdserial.o
+                0x00008358                CRdSerialDevice::Read(void*, unsigned int)
+                0x00008524                CRdSerialDevice::CRdSerialDevice(CInterruptSystem*, bool)
+                0x00008524                CRdSerialDevice::CRdSerialDevice(CInterruptSystem*, bool)
+                0x000085e4                CRdSerialDevice::Initialize(unsigned int)
+                0x0000879c                CRdSerialDevice::GetOptions() const
+                0x000087a8                CRdSerialDevice::SetOptions(unsigned int)
+                0x000087b4                CRdSerialDevice::RegisterMagicReceivedHandler(char const*, void (*)())
+                0x00008894                CRdSerialDevice::AvailableForWrite()
+                0x0000891c                CRdSerialDevice::AvailableForRead()
+                0x000089a0                CRdSerialDevice::Peek()
+                0x00008a4c                CRdSerialDevice::Flush()
+                0x00008a70                CRdSerialDevice::Write(unsigned char)
+                0x00008b58                CRdSerialDevice::Write(void const*, unsigned int)
+                0x00008d10                CRdSerialDevice::InterruptHandler()
+                0x00008ef4                CRdSerialDevice::InterruptStub(void*)
+                0x00008f34                CRdSerialDevice::~CRdSerialDevice()
+                0x00008f34                CRdSerialDevice::~CRdSerialDevice()
+                0x00008ff0                CRdSerialDevice::~CRdSerialDevice()
+ .text          0x00009014      0x114 c:/program files (x86)/gnu tools arm embedded/7 2017-q4-major/bin/../lib/gcc/arm-none-eabi/7.2.1/hard/libgcc.a(_udivsi3.o)
+                0x00009014                __aeabi_uidiv
+                0x00009014                __udivsi3
+                0x00009108                __aeabi_uidivmod
+ .text          0x00009128        0x4 c:/program files (x86)/gnu tools arm embedded/7 2017-q4-major/bin/../lib/gcc/arm-none-eabi/7.2.1/hard/libgcc.a(_dvmd_tls.o)
+                0x00009128                __aeabi_idiv0
+                0x00009128                __aeabi_ldiv0
+ .text          0x0000912c      0x244 ../../../PiCircle/circle/lib/libcircle.a(actled.o)
+                0x0000912c                CActLED::~CActLED()
+                0x0000912c                CActLED::~CActLED()
+                0x00009140                CActLED::On()
+                0x00009170                CActLED::Off()
+                0x000091a8                CActLED::CActLED()
+                0x000091a8                CActLED::CActLED()
+                0x00009314                CActLED::Blink(unsigned int, unsigned int, unsigned int)
+                0x00009360                CActLED::Get()
+ .text          0x00009370       0x90 ../../../PiCircle/circle/lib/libcircle.a(assert.o)
+                0x00009370                assertion_failed
+ .text          0x00009400      0x27c ../../../PiCircle/circle/lib/libcircle.a(bcmpropertytags.o)
+                0x00009400                CBcmPropertyTags::CBcmPropertyTags()
+                0x00009400                CBcmPropertyTags::CBcmPropertyTags()
+                0x00009418                CBcmPropertyTags::~CBcmPropertyTags()
+                0x00009418                CBcmPropertyTags::~CBcmPropertyTags()
+                0x0000942c                CBcmPropertyTags::GetTags(void*, unsigned int)
+                0x0000955c                CBcmPropertyTags::GetTag(unsigned int, void*, unsigned int, unsigned int)
+ .text          0x0000967c      0x1bc ../../../PiCircle/circle/lib/libcircle.a(debug.o)
+                0x0000967c                debug_hexdump(void const*, unsigned int, char const*)
+                0x00009794                debug_stacktrace(unsigned int const*, char const*)
+ .text          0x00009838       0x40 ../../../PiCircle/circle/lib/libcircle.a(device.o)
+                0x00009838                CDevice::~CDevice()
+                0x00009838                CDevice::~CDevice()
+                0x0000983c                CDevice::Write(void const*, unsigned int)
+                0x0000983c                CDevice::Read(void*, unsigned int)
+                0x00009844                CDevice::Seek(unsigned long long)
+                0x00009850                CDevice::~CDevice()
+                0x00009868                CDevice::CDevice()
+                0x00009868                CDevice::CDevice()
+ .text          0x00009878      0x634 ../../../PiCircle/circle/lib/libcircle.a(devicenameservice.o)
+                0x00009878                CDeviceNameService::CDeviceNameService()
+                0x00009878                CDeviceNameService::CDeviceNameService()
+                0x000098c4                CDeviceNameService::~CDeviceNameService()
+                0x000098c4                CDeviceNameService::~CDeviceNameService()
+                0x0000992c                CDeviceNameService::AddDevice(char const*, CDevice*, bool)
+                0x000099e8                CDeviceNameService::RemoveDevice(char const*, bool)
+                0x00009b20                CDeviceNameService::GetDevice(char const*, bool)
+                0x00009c2c                CDeviceNameService::Get()
+                0x00009c64                CDeviceNameService::AddDevice(char const*, unsigned int, CDevice*, bool)
+                0x00009ccc                CDeviceNameService::RemoveDevice(char const*, unsigned int, bool)
+                0x00009d2c                CDeviceNameService::GetDevice(char const*, unsigned int, bool)
+                0x00009d94                CDeviceNameService::ListDevices(CDevice*)
+ .text          0x00009eac      0xd38 ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+                0x00009eac                CGPIOPin::~CGPIOPin()
+                0x00009eac                CGPIOPin::~CGPIOPin()
+                0x00009eb0                CGPIOPin::~CGPIOPin()
+                0x00009ec8                CGPIOPin::CGPIOPin()
+                0x00009ec8                CGPIOPin::CGPIOPin()
+                0x00009f04                CGPIOPin::AssignPin(unsigned int)
+                0x00009f98                CGPIOPin::Write(unsigned int)
+                0x0000a058                CGPIOPin::Read() const
+                0x0000a0e0                CGPIOPin::Invert()
+                0x0000a120                CGPIOPin::ConnectInterrupt(void (*)(void*), void*)
+                0x0000a220                CGPIOPin::DisconnectInterrupt()
+                0x0000a2fc                CGPIOPin::EnableInterrupt(TGPIOInterrupt)
+                0x0000a420                CGPIOPin::DisableInterrupt()
+                0x0000a4dc                CGPIOPin::EnableInterrupt2(TGPIOInterrupt)
+                0x0000a614                CGPIOPin::DisableInterrupt2()
+                0x0000a6d4                CGPIOPin::ReadAll()
+                0x0000a6e4                CGPIOPin::SetPullUpMode(unsigned int)
+                0x0000a784                CGPIOPin::SetAlternateFunction(unsigned int)
+                0x0000a858                CGPIOPin::SetMode(TGPIOMode, bool)
+                0x0000aa20                CGPIOPin::CGPIOPin(unsigned int, TGPIOMode, CGPIOManager*)
+                0x0000aa20                CGPIOPin::CGPIOPin(unsigned int, TGPIOMode, CGPIOManager*)
+                0x0000aa78                CGPIOPin::InterruptHandler()
+                0x0000ab2c                CGPIOPin::DisableAllInterrupts(unsigned int)
+ .text.startup  0x0000abe4       0x14 ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+ .text          0x0000abf8      0x5dc ../../../PiCircle/circle/lib/libcircle.a(interrupt.o)
+                0x0000abf8                CInterruptSystem::CInterruptSystem()
+                0x0000abf8                CInterruptSystem::CInterruptSystem()
+                0x0000ac30                CInterruptSystem::~CInterruptSystem()
+                0x0000ac30                CInterruptSystem::~CInterruptSystem()
+                0x0000ac44                CInterruptSystem::Initialize()
+                0x0000acb0                CInterruptSystem::DisconnectFIQ()
+                0x0000ad34                CInterruptSystem::EnableIRQ(unsigned int)
+                0x0000adb0                CInterruptSystem::ConnectIRQ(unsigned int, void (*)(void*), void*)
+                0x0000ae20                CInterruptSystem::DisableIRQ(unsigned int)
+                0x0000ae9c                CInterruptSystem::DisconnectIRQ(unsigned int)
+                0x0000af18                CInterruptSystem::EnableFIQ(unsigned int)
+                0x0000af64                CInterruptSystem::ConnectFIQ(unsigned int, void (*)(void*), void*)
+                0x0000b038                CInterruptSystem::DisableFIQ()
+                0x0000b054                CInterruptSystem::Get()
+                0x0000b08c                CInterruptSystem::CallIRQHandler(unsigned int)
+                0x0000b0f8                CInterruptSystem::InterruptHandler()
+                0x0000b1bc                InterruptHandler
+ .text          0x0000b1d4      0x574 ../../../PiCircle/circle/lib/libcircle.a(koptions.o)
+                0x0000b238                CKernelOptions::~CKernelOptions()
+                0x0000b238                CKernelOptions::~CKernelOptions()
+                0x0000b24c                CKernelOptions::GetWidth() const
+                0x0000b254                CKernelOptions::GetHeight() const
+                0x0000b25c                CKernelOptions::GetLogDevice() const
+                0x0000b268                CKernelOptions::GetLogLevel() const
+                0x0000b270                CKernelOptions::GetKeyMap() const
+                0x0000b278                CKernelOptions::GetUSBPowerDelay() const
+                0x0000b280                CKernelOptions::GetSoundDevice() const
+                0x0000b28c                CKernelOptions::GetSoundOption() const
+                0x0000b294                CKernelOptions::GetCPUSpeed() const
+                0x0000b29c                CKernelOptions::GetSoCMaxTemp() const
+                0x0000b2a4                CKernelOptions::Get()
+                0x0000b2b4                CKernelOptions::GetToken()
+                0x0000b330                CKernelOptions::CKernelOptions()
+                0x0000b330                CKernelOptions::CKernelOptions()
+                0x0000b6f0                CKernelOptions::GetOptionValue(char*)
+                0x0000b728                CKernelOptions::GetDecimal(char*)
+ .text          0x0000b748      0x7e4 ../../../PiCircle/circle/lib/libcircle.a(logger.o)
+                0x0000b748                CLogger::CLogger(unsigned int, CTimer*)
+                0x0000b748                CLogger::CLogger(unsigned int, CTimer*)
+                0x0000b7a0                CLogger::~CLogger()
+                0x0000b7a0                CLogger::~CLogger()
+                0x0000b814                CLogger::Get()
+                0x0000b824                CLogger::Write(char const*)
+                0x0000b8d0                CLogger::WriteNoAlloc(char const*, TLogSeverity, char const*)
+                0x0000b9a8                CLogger::Read(void*, unsigned int)
+                0x0000ba6c                CLogger::WriteEvent(char const*, TLogSeverity, char const*)
+                0x0000bbd0                CLogger::ReadEvent(TLogSeverity*, char*, char*, long*, unsigned int*, int*)
+                0x0000bcb4                CLogger::RegisterEventNotificationHandler(void (*)())
+                0x0000bcbc                CLogger::RegisterPanicHandler(void (*)())
+                0x0000bcc4                CLogger::WriteV(char const*, TLogSeverity, char const*, std::__va_list)
+                0x0000beb8                CLogger::Write(char const*, TLogSeverity, char const*, ...)
+                0x0000bee8                CLogger::Initialize(CDevice*)
+ .text          0x0000bf2c      0x414 ../../../PiCircle/circle/lib/libcircle.a(machineinfo.o)
+                0x0000bf2c                CMachineInfo::CMachineInfo()
+                0x0000bf2c                CMachineInfo::CMachineInfo()
+                0x0000c104                CMachineInfo::~CMachineInfo()
+                0x0000c104                CMachineInfo::~CMachineInfo()
+                0x0000c128                CMachineInfo::GetMachineModel() const
+                0x0000c130                CMachineInfo::GetMachineName() const
+                0x0000c148                CMachineInfo::GetModelMajor() const
+                0x0000c150                CMachineInfo::GetModelRevision() const
+                0x0000c158                CMachineInfo::GetSoCType() const
+                0x0000c160                CMachineInfo::GetRAMSize() const
+                0x0000c168                CMachineInfo::GetSoCName() const
+                0x0000c180                CMachineInfo::GetRevisionRaw() const
+                0x0000c188                CMachineInfo::GetClockRate(unsigned int) const
+                0x0000c254                CMachineInfo::GetGPIOPin(TGPIOVirtualPin) const
+                0x0000c2c8                CMachineInfo::GetDevice(TDeviceId) const
+                0x0000c308                CMachineInfo::Get()
+ .text          0x0000c340     0x1238 ../../../PiCircle/circle/lib/libcircle.a(screen.o)
+                0x0000c340                CScreenDevice::~CScreenDevice()
+                0x0000c340                CScreenDevice::~CScreenDevice()
+                0x0000c3b8                CScreenDevice::~CScreenDevice()
+                0x0000c474                CScreenDevice::CScreenDevice(unsigned int, unsigned int, bool)
+                0x0000c474                CScreenDevice::CScreenDevice(unsigned int, unsigned int, bool)
+                0x0000c4ec                CScreenDevice::GetWidth() const
+                0x0000c4f4                CScreenDevice::GetHeight() const
+                0x0000c4fc                CScreenDevice::GetColumns() const
+                0x0000c51c                CScreenDevice::GetRows() const
+                0x0000c53c                CScreenDevice::GetStatus()
+                0x0000c5ac                CScreenDevice::SetStatus(TScreenStatus const&)
+                0x0000c6b8                CScreenDevice::CarriageReturn()
+                0x0000c6c4                CScreenDevice::CursorHome()
+                0x0000c6d8                CScreenDevice::CursorLeft()
+                0x0000c744                CScreenDevice::CursorMove(unsigned int, unsigned int)
+                0x0000c7a4                CScreenDevice::CursorUp()
+                0x0000c7d4                CScreenDevice::DeleteChars(unsigned int)
+                0x0000c7d8                CScreenDevice::DeleteLines(unsigned int)
+                0x0000c7dc                CScreenDevice::InsertLines(unsigned int)
+                0x0000c7e0                CScreenDevice::InsertMode(bool)
+                0x0000c7e8                CScreenDevice::ReverseScroll()
+                0x0000c7ec                CScreenDevice::SetCursorMode(bool)
+                0x0000c7f4                CScreenDevice::SetScrollRegion(unsigned int, unsigned int)
+                0x0000c870                CScreenDevice::SetStandoutMode(unsigned int)
+                0x0000c910                CScreenDevice::Scroll()
+                0x0000c9b4                CScreenDevice::CursorDown()
+                0x0000ca00                CScreenDevice::NewLine()
+                0x0000ca0c                CScreenDevice::CursorRight()
+                0x0000ca48                CScreenDevice::Tabulator()
+                0x0000ca94                CScreenDevice::DisplayChar(char, unsigned int, unsigned int, unsigned short)
+                0x0000cb68                CScreenDevice::DisplayChar(char)
+                0x0000cba4                CScreenDevice::EraseChar(unsigned int, unsigned int)
+                0x0000cc28                CScreenDevice::ClearLineEnd()
+                0x0000ccd0                CScreenDevice::EraseChars(unsigned int)
+                0x0000ccdc                CScreenDevice::ClearDisplayEnd()
+                0x0000cd60                CScreenDevice::Write(char)
+                0x0000d270                CScreenDevice::Write(void const*, unsigned int)
+                0x0000d338                CScreenDevice::Initialize()
+                0x0000d4a8                CScreenDevice::InvertCursor()
+                0x0000d4b8                CScreenDevice::SetPixel(unsigned int, unsigned int, unsigned short)
+                0x0000d4e4                CScreenDevice::GetPixel(unsigned int, unsigned int)
+                0x0000d51c                CScreenDevice::Rotor(unsigned int, unsigned int)
+ .text          0x0000d578     0x10b4 ../../../PiCircle/circle/lib/libcircle.a(string.o)
+                0x0000d578                CString::~CString()
+                0x0000d578                CString::~CString()
+                0x0000d5a4                CString::~CString()
+                0x0000d644                CString::CString()
+                0x0000d644                CString::CString()
+                0x0000d65c                CString::CString(char const*)
+                0x0000d65c                CString::CString(char const*)
+                0x0000d69c                CString::operator char const*() const
+                0x0000d6b4                CString::operator=(char const*)
+                0x0000d6f8                CString::operator=(CString const&)
+                0x0000d754                CString::GetLength() const
+                0x0000d764                CString::Append(char const*)
+                0x0000d7e8                CString::Compare(char const*) const
+                0x0000d7f0                CString::Find(char) const
+                0x0000d834                CString::PutChar(char, unsigned int)
+                0x0000d874                CString::PutString(char const*)
+                0x0000d8b8                CString::Replace(char const*, char const*)
+                0x0000da34                CString::ReserveSpace(unsigned int)
+                0x0000da40                CString::ntoa(char*, unsigned long, unsigned int, bool)
+                0x0000daf8                CString::ftoa(char*, double, unsigned int)
+                0x0000dd78                CString::FormatV(char const*, std::__va_list)
+                0x0000e5fc                CString::Format(char const*, ...)
+ .text          0x0000e62c       0xec ../../../PiCircle/circle/lib/libcircle.a(sysinit.o)
+                0x0000e62c                __aeabi_atexit
+                0x0000e630                halt
+                0x0000e63c                reboot
+                0x0000e668                sysinit
+ .text          0x0000e718      0xdc4 ../../../PiCircle/circle/lib/libcircle.a(timer.o)
+                0x0000e750                CTimer::CTimer(CInterruptSystem*)
+                0x0000e750                CTimer::CTimer(CInterruptSystem*)
+                0x0000e7d8                CTimer::~CTimer()
+                0x0000e7d8                CTimer::~CTimer()
+                0x0000e8c0                CTimer::SetTimeZone(int)
+                0x0000e8e4                CTimer::GetTimeZone() const
+                0x0000e8ec                CTimer::SetTime(unsigned int, bool)
+                0x0000e968                CTimer::GetClockTicks()
+                0x0000e984                CTimer::GetTicks() const
+                0x0000e98c                CTimer::GetUptime() const
+                0x0000e994                CTimer::GetTime() const
+                0x0000e99c                CTimer::GetLocalTime(unsigned int*, unsigned int*)
+                0x0000ea5c                CTimer::GetUniversalTime() const
+                0x0000ea7c                CTimer::GetUniversalTime(unsigned int*, unsigned int*)
+                0x0000eb60                CTimer::GetTimeString()
+                0x0000ed64                CTimer::StartKernelTimer(unsigned int, void (*)(unsigned int, void*, void*), void*, void*)
+                0x0000eecc                CTimer::CancelKernelTimer(unsigned int)
+                0x0000ef88                CTimer::PollKernelTimers()
+                0x0000f0f0                CTimer::InterruptHandler()
+                0x0000f1f4                CTimer::InterruptHandler(void*)
+                0x0000f234                CTimer::TuneMsDelay()
+                0x0000f2dc                CTimer::Initialize()
+                0x0000f364                CTimer::RegisterPeriodicHandler(void (*)())
+                0x0000f3bc                CTimer::SimpleMsDelay(unsigned int)
+                0x0000f3d8                CTimer::SimpleusDelay(unsigned int)
+                0x0000f3e4                CTimer::IsLeapYear(unsigned int)
+                0x0000f430                CTimer::GetDaysOfMonth(unsigned int, unsigned int)
+                0x0000f4a0                CTimer::Get()
+ .text          0x0000f4dc      0x5c8 ../../../PiCircle/circle/lib/libcircle.a(util.o)
+                0x0000f4dc                memset
+                0x0000f500                memcmp
+                0x0000f55c                strlen
+                0x0000f584                strcmp
+                0x0000f5f0                strcasecmp
+                0x0000f6c0                strncmp
+                0x0000f754                strcpy
+                0x0000f780                strncpy
+                0x0000f7cc                strcat
+                0x0000f810                strchr
+                0x0000f850                strtok_r
+                0x0000f91c                strtoul
+                0x0000faa0                char2int
+ .text          0x0000faa4       0x5c ../../../PiCircle/circle/lib/libcircle.a(util_fast.o)
+                0x0000faa4                memcpy
+ .text          0x0000fb00      0x24c ../../../PiCircle/circle/lib/libcircle.a(virtualgpiopin.o)
+                0x0000fb00                CVirtualGPIOPin::~CVirtualGPIOPin()
+                0x0000fb00                CVirtualGPIOPin::~CVirtualGPIOPin()
+                0x0000fb04                CVirtualGPIOPin::~CVirtualGPIOPin()
+                0x0000fbc0                CVirtualGPIOPin::CVirtualGPIOPin(unsigned int)
+                0x0000fbc0                CVirtualGPIOPin::CVirtualGPIOPin(unsigned int)
+                0x0000fd04                CVirtualGPIOPin::Write(unsigned int)
+                0x0000fd40                CVirtualGPIOPin::Invert()
+ .text.startup  0x0000fd4c       0x14 ../../../PiCircle/circle/lib/libcircle.a(virtualgpiopin.o)
+ .text          0x0000fd60      0x2c0 ../../../PiCircle/circle/lib/libcircle.a(exceptionhandler.o)
+                0x0000fd60                CExceptionHandler::CExceptionHandler()
+                0x0000fd60                CExceptionHandler::CExceptionHandler()
+                0x0000fdf0                CExceptionHandler::~CExceptionHandler()
+                0x0000fdf0                CExceptionHandler::~CExceptionHandler()
+                0x0000fe04                CExceptionHandler::Throw(unsigned int)
+                0x0000fe44                CExceptionHandler::Throw(unsigned int, TAbortFrame*)
+                0x0000ff34                CExceptionHandler::Get()
+                0x0000ff6c                ExceptionHandler
+                0x0000ffd8                raise
+ .text          0x00010020      0x170 ../../../PiCircle/circle/lib/libcircle.a(exceptionstub.o)
+                0x00010020                UndefinedInstructionInternal
+                0x0001006c                PrefetchAbortStub
+                0x000100b8                DataAbortStub
+                0x00010104                UndefinedInstructionStub
+                0x00010120                IRQStub
+                0x00010130                FIQStub
+ .text          0x00010190      0x2cc ../../../PiCircle/circle/lib/libcircle.a(memory.o)
+                0x00010190                CMemorySystem::~CMemorySystem()
+                0x00010190                CMemorySystem::~CMemorySystem()
+                0x00010208                CMemorySystem::GetMemSize() const
+                0x0001024c                CMemorySystem::Get()
+                0x00010284                CMemorySystem::EnableMMU()
+                0x00010360                CMemorySystem::CMemorySystem(bool)
+                0x00010360                CMemorySystem::CMemorySystem(bool)
+                0x00010450                CMemorySystem::GetCoherentPage(unsigned int)
+ .text          0x0001045c       0xb8 ../../../PiCircle/circle/lib/libcircle.a(pagetable.o)
+                0x0001045c                CPageTable::CPageTable(unsigned int)
+                0x0001045c                CPageTable::CPageTable(unsigned int)
+                0x00010504                CPageTable::~CPageTable()
+                0x00010504                CPageTable::~CPageTable()
+                0x00010508                CPageTable::GetBaseAddress() const
+ .text          0x00010514        0x0 ../../../PiCircle/circle/lib/libcircle.a(startup.o)
+ .text          0x00010514      0x180 ../../../PiCircle/circle/lib/libcircle.a(synchronize.o)
+                0x00010514                CurrentExecutionLevel
+                0x0001052c                EnterCritical
+                0x000105e0                LeaveCritical
+                0x00010638                CleanAndInvalidateDataCacheRange
+                0x00010674                SyncDataAndInstructionCache
+ .text          0x00010694       0x18 ../../../PiCircle/circle/lib/libcircle.a(new.o)
+                0x00010694                operator new(unsigned int)
+                0x00010698                operator new[](unsigned int)
+                0x0001069c                operator delete(void*)
+                0x000106a0                operator delete[](void*)
+                0x000106a4                operator delete(void*, unsigned int)
+                0x000106a8                operator delete[](void*, unsigned int)
+ .text          0x000106ac      0x608 ../../../PiCircle/circle/lib/libcircle.a(alloc.o)
+                0x000106ac                mem_init
+                0x000106e8                mem_get_size
+                0x00010710                malloc
+                0x00010908                free
+                0x00010a28                calloc
+                0x00010a80                realloc
+                0x00010b68                palloc
+                0x00010c54                pfree
+ .text.startup  0x00010cb4       0x18 ../../../PiCircle/circle/lib/libcircle.a(alloc.o)
+ .text          0x00010ccc      0x478 ../../../PiCircle/circle/lib/libcircle.a(bcmframebuffer.o)
+                0x00010d88                CBcmFrameBuffer::CBcmFrameBuffer(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int)
+                0x00010d88                CBcmFrameBuffer::CBcmFrameBuffer(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int)
+                0x00010ec0                CBcmFrameBuffer::~CBcmFrameBuffer()
+                0x00010ec0                CBcmFrameBuffer::~CBcmFrameBuffer()
+                0x00010edc                CBcmFrameBuffer::SetPalette(unsigned char, unsigned short)
+                0x00010f34                CBcmFrameBuffer::SetPalette32(unsigned char, unsigned int)
+                0x00010f6c                CBcmFrameBuffer::Initialize()
+                0x0001102c                CBcmFrameBuffer::GetWidth() const
+                0x00011034                CBcmFrameBuffer::GetHeight() const
+                0x0001103c                CBcmFrameBuffer::GetVirtWidth() const
+                0x00011044                CBcmFrameBuffer::GetVirtHeight() const
+                0x0001104c                CBcmFrameBuffer::GetPitch() const
+                0x00011054                CBcmFrameBuffer::GetDepth() const
+                0x0001105c                CBcmFrameBuffer::GetBuffer() const
+                0x00011064                CBcmFrameBuffer::GetSize() const
+                0x0001106c                CBcmFrameBuffer::UpdatePalette()
+                0x00011084                CBcmFrameBuffer::SetVirtualOffset(unsigned int, unsigned int)
+                0x000110fc                CBcmFrameBuffer::WaitForVerticalSync()
+ .text          0x00011144      0x17c ../../../PiCircle/circle/lib/libcircle.a(bcmmailbox.o)
+                0x00011144                CBcmMailBox::CBcmMailBox(unsigned int)
+                0x00011144                CBcmMailBox::CBcmMailBox(unsigned int)
+                0x0001114c                CBcmMailBox::~CBcmMailBox()
+                0x0001114c                CBcmMailBox::~CBcmMailBox()
+                0x00011150                CBcmMailBox::Flush()
+                0x00011188                CBcmMailBox::Read()
+                0x000111b8                CBcmMailBox::Write(unsigned int)
+                0x0001120c                CBcmMailBox::WriteRead(unsigned int)
+ .text.startup  0x000112c0       0x14 ../../../PiCircle/circle/lib/libcircle.a(bcmmailbox.o)
+ .text          0x000112d4       0xa8 ../../../PiCircle/circle/lib/libcircle.a(chargenerator.o)
+                0x000112d4                CCharGenerator::CCharGenerator()
+                0x000112d4                CCharGenerator::CCharGenerator()
+                0x000112e0                CCharGenerator::~CCharGenerator()
+                0x000112e0                CCharGenerator::~CCharGenerator()
+                0x000112e4                CCharGenerator::GetCharWidth() const
+                0x000112ec                CCharGenerator::GetCharHeight() const
+                0x000112f4                CCharGenerator::GetUnderline() const
+                0x000112fc                CCharGenerator::GetPixel(char, unsigned int, unsigned int) const
+ *fill*         0x0001137c        0x4 
+ .text          0x00011380        0xc ../../../PiCircle/circle/lib/libcircle.a(delayloop.o)
+                0x00011380                DelayLoop
+ .text          0x0001138c      0x384 ../../../PiCircle/circle/lib/libcircle.a(gpiomanager.o)
+                0x0001138c                CGPIOManager::CGPIOManager(CInterruptSystem*)
+                0x0001138c                CGPIOManager::CGPIOManager(CInterruptSystem*)
+                0x000113b8                CGPIOManager::~CGPIOManager()
+                0x000113b8                CGPIOManager::~CGPIOManager()
+                0x00011444                CGPIOManager::Initialize()
+                0x000114c4                CGPIOManager::ConnectInterrupt(CGPIOPin*)
+                0x00011568                CGPIOManager::DisconnectInterrupt(CGPIOPin*)
+                0x00011620                CGPIOManager::InterruptHandler()
+                0x000116d4                CGPIOManager::InterruptStub(void*)
+ .text          0x00011710      0x4bc ../../../PiCircle/circle/lib/libcircle.a(ptrlist.o)
+                0x00011710                CPtrList::CPtrList()
+                0x00011710                CPtrList::CPtrList()
+                0x0001171c                CPtrList::~CPtrList()
+                0x0001171c                CPtrList::~CPtrList()
+                0x00011750                CPtrList::GetFirst()
+                0x00011758                CPtrList::GetNext(TPtrListElement*)
+                0x000117b0                CPtrList::GetPtr(TPtrListElement*)
+                0x00011808                CPtrList::InsertBefore(TPtrListElement*, void*)
+                0x0001190c                CPtrList::InsertAfter(TPtrListElement*, void*)
+                0x00011a04                CPtrList::Remove(TPtrListElement*)
+                0x00011b50                CPtrList::Find(void*)
+                0x00011bcc                _etext = .
+
+.glue_7         0x00011bcc        0x0
+ .glue_7        0x00011bcc        0x0 linker stubs
+
+.glue_7t        0x00011bcc        0x0
+ .glue_7t       0x00011bcc        0x0 linker stubs
+
+.vfp11_veneer   0x00011bcc        0x0
+ .vfp11_veneer  0x00011bcc        0x0 linker stubs
+
+.v4_bx          0x00011bcc        0x0
+ .v4_bx         0x00011bcc        0x0 linker stubs
+
+.iplt           0x00011bcc        0x0
+ .iplt          0x00011bcc        0x0 main.o
+
+.rodata         0x00011bcc     0x1fa8
+ *(.rodata*)
+ .rodata.str1.4
+                0x00011bcc       0x50 kernel.o
+ .rodata        0x00011c1c       0x1c rdserial.o
+                0x00011c1c                vtable for CRdSerialDevice
+ .rodata.str1.4
+                0x00011c38       0xe7 rdserial.o
+                                 0xf7 (size before relaxing)
+ *fill*         0x00011d1f        0x1 
+ .rodata.str1.4
+                0x00011d20       0x1d ../../../PiCircle/circle/lib/libcircle.a(assert.o)
+ *fill*         0x00011d3d        0x3 
+ .rodata.str1.4
+                0x00011d40       0x98 ../../../PiCircle/circle/lib/libcircle.a(bcmpropertytags.o)
+ .rodata        0x00011dd8        0x6 ../../../PiCircle/circle/lib/libcircle.a(debug.o)
+ *fill*         0x00011dde        0x2 
+ .rodata.str1.4
+                0x00011de0       0x93 ../../../PiCircle/circle/lib/libcircle.a(debug.o)
+ *fill*         0x00011e73        0x1 
+ .rodata        0x00011e74       0x1c ../../../PiCircle/circle/lib/libcircle.a(device.o)
+                0x00011e74                vtable for CDevice
+ .rodata.str1.4
+                0x00011e90       0x96 ../../../PiCircle/circle/lib/libcircle.a(devicenameservice.o)
+ *fill*         0x00011f26        0x2 
+ .rodata        0x00011f28       0x28 ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+                0x00011f28                vtable for CGPIOPin
+ .rodata.str1.4
+                0x00011f50      0x2a1 ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+                                0x2b1 (size before relaxing)
+ *fill*         0x000121f1        0x3 
+ .rodata.str1.4
+                0x000121f4       0xad ../../../PiCircle/circle/lib/libcircle.a(interrupt.o)
+                                 0xbd (size before relaxing)
+ *fill*         0x000122a1        0x3 
+ .rodata.str1.4
+                0x000122a4       0x7a ../../../PiCircle/circle/lib/libcircle.a(koptions.o)
+ *fill*         0x0001231e        0x2 
+ .rodata.str1.4
+                0x00012320       0x37 ../../../PiCircle/circle/lib/libcircle.a(logger.o)
+                                 0x3b (size before relaxing)
+ *fill*         0x00012357        0x1 
+ .rodata        0x00012358      0x1ec ../../../PiCircle/circle/lib/libcircle.a(machineinfo.o)
+ .rodata.str1.4
+                0x00012544      0x149 ../../../PiCircle/circle/lib/libcircle.a(machineinfo.o)
+                                0x165 (size before relaxing)
+ *fill*         0x0001268d        0x3 
+ .rodata        0x00012690       0x21 ../../../PiCircle/circle/lib/libcircle.a(screen.o)
+                0x00012690                vtable for CScreenDevice
+ .rodata.str1.4
+                0x000126b1        0x5 ../../../PiCircle/circle/lib/libcircle.a(screen.o)
+ *fill*         0x000126b1        0x3 
+ .rodata        0x000126b4       0x10 ../../../PiCircle/circle/lib/libcircle.a(string.o)
+                0x000126b4                vtable for CString
+ .rodata.str1.4
+                0x000126c4        0x9 ../../../PiCircle/circle/lib/libcircle.a(string.o)
+                                  0xd (size before relaxing)
+ *fill*         0x000126cd        0x3 
+ .rodata        0x000126d0       0x36 ../../../PiCircle/circle/lib/libcircle.a(timer.o)
+                0x000126d0                CTimer::s_nDaysOfMonth
+ *fill*         0x00012706        0x2 
+ .rodata.str1.4
+                0x00012708      0x154 ../../../PiCircle/circle/lib/libcircle.a(timer.o)
+                                0x198 (size before relaxing)
+ .rodata        0x0001285c       0x10 ../../../PiCircle/circle/lib/libcircle.a(virtualgpiopin.o)
+                0x0001285c                vtable for CVirtualGPIOPin
+ .rodata        0x0001286c        0x7 ../../../PiCircle/circle/lib/libcircle.a(exceptionhandler.o)
+ *fill*         0x00012873        0x1 
+ .rodata.str1.4
+                0x00012874       0xbb ../../../PiCircle/circle/lib/libcircle.a(exceptionhandler.o)
+                                 0xe4 (size before relaxing)
+ *fill*         0x0001292f        0x1 
+ .rodata.str1.4
+                0x00012930       0x78 ../../../PiCircle/circle/lib/libcircle.a(memory.o)
+                                 0x88 (size before relaxing)
+ .rodata.str1.4
+                0x000129a8       0xb5 ../../../PiCircle/circle/lib/libcircle.a(synchronize.o)
+ *fill*         0x00012a5d        0x3 
+ .rodata.str1.4
+                0x00012a60       0xd4 ../../../PiCircle/circle/lib/libcircle.a(alloc.o)
+ .rodata.str1.4
+                0x00012b34       0x23 ../../../PiCircle/circle/lib/libcircle.a(bcmmailbox.o)
+ *fill*         0x00012b57        0x1 
+ .rodata        0x00012b58      0xdf0 ../../../PiCircle/circle/lib/libcircle.a(chargenerator.o)
+ .rodata.str1.4
+                0x00013948       0x29 ../../../PiCircle/circle/lib/libcircle.a(chargenerator.o)
+ *fill*         0x00013971        0x3 
+ .rodata.str1.4
+                0x00013974       0x88 ../../../PiCircle/circle/lib/libcircle.a(gpiomanager.o)
+                                 0x9c (size before relaxing)
+ .rodata.str1.4
+                0x000139fc      0x178 ../../../PiCircle/circle/lib/libcircle.a(ptrlist.o)
+                                0x176 (size before relaxing)
+
+.rel.dyn        0x00013b74        0x0
+ .rel.iplt      0x00013b74        0x0 main.o
+
+.init_array     0x00013b74       0x10
+                0x00013b74                __init_start = .
+ *(.init_array*)
+ .init_array    0x00013b74        0x4 ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+ .init_array    0x00013b78        0x4 ../../../PiCircle/circle/lib/libcircle.a(virtualgpiopin.o)
+ .init_array    0x00013b7c        0x4 ../../../PiCircle/circle/lib/libcircle.a(alloc.o)
+ .init_array    0x00013b80        0x4 ../../../PiCircle/circle/lib/libcircle.a(bcmmailbox.o)
+                0x00013b84                __init_end = .
+
+.ARM.exidx      0x00013b84        0x0
+                0x00013b84                __exidx_start = .
+ *(.ARM.exidx*)
+                0x00013b84                __exidx_end = .
+
+.data           0x00013b84      0x100
+ *(.data*)
+ .data          0x00013b84        0x0 main.o
+ .data          0x00013b84        0x0 kernel.o
+ .data          0x00013b84        0x0 rdserial.o
+ .data          0x00013b84        0x0 c:/program files (x86)/gnu tools arm embedded/7 2017-q4-major/bin/../lib/gcc/arm-none-eabi/7.2.1/hard/libgcc.a(_udivsi3.o)
+ .data          0x00013b84        0x0 c:/program files (x86)/gnu tools arm embedded/7 2017-q4-major/bin/../lib/gcc/arm-none-eabi/7.2.1/hard/libgcc.a(_dvmd_tls.o)
+ .data          0x00013b84        0x0 ../../../PiCircle/circle/lib/libcircle.a(actled.o)
+ .data          0x00013b84        0x0 ../../../PiCircle/circle/lib/libcircle.a(assert.o)
+ .data          0x00013b84        0x0 ../../../PiCircle/circle/lib/libcircle.a(bcmpropertytags.o)
+ .data          0x00013b84        0x0 ../../../PiCircle/circle/lib/libcircle.a(debug.o)
+ .data          0x00013b84        0x0 ../../../PiCircle/circle/lib/libcircle.a(device.o)
+ .data          0x00013b84        0x0 ../../../PiCircle/circle/lib/libcircle.a(devicenameservice.o)
+ .data          0x00013b84        0x0 ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+ .data          0x00013b84        0x0 ../../../PiCircle/circle/lib/libcircle.a(interrupt.o)
+ .data          0x00013b84        0x0 ../../../PiCircle/circle/lib/libcircle.a(koptions.o)
+ .data          0x00013b84        0x0 ../../../PiCircle/circle/lib/libcircle.a(logger.o)
+ .data          0x00013b84        0x0 ../../../PiCircle/circle/lib/libcircle.a(machineinfo.o)
+ .data          0x00013b84        0x0 ../../../PiCircle/circle/lib/libcircle.a(screen.o)
+ .data          0x00013b84        0x0 ../../../PiCircle/circle/lib/libcircle.a(string.o)
+ .data          0x00013b84        0x0 ../../../PiCircle/circle/lib/libcircle.a(sysinit.o)
+ .data          0x00013b84       0x30 ../../../PiCircle/circle/lib/libcircle.a(timer.o)
+                0x00013b84                CTimer::s_pMonthName
+ .data          0x00013bb4        0x0 ../../../PiCircle/circle/lib/libcircle.a(util.o)
+ .data          0x00013bb4        0x0 ../../../PiCircle/circle/lib/libcircle.a(util_fast.o)
+ .data          0x00013bb4        0x0 ../../../PiCircle/circle/lib/libcircle.a(virtualgpiopin.o)
+ .data          0x00013bb4       0x14 ../../../PiCircle/circle/lib/libcircle.a(exceptionhandler.o)
+                0x00013bb4                CExceptionHandler::s_pExceptionName
+ .data          0x00013bc8        0x8 ../../../PiCircle/circle/lib/libcircle.a(exceptionstub.o)
+                0x00013bc8                FIQData
+ .data          0x00013bd0        0x0 ../../../PiCircle/circle/lib/libcircle.a(memory.o)
+ .data          0x00013bd0        0x0 ../../../PiCircle/circle/lib/libcircle.a(pagetable.o)
+ .data          0x00013bd0        0x0 ../../../PiCircle/circle/lib/libcircle.a(startup.o)
+ .data          0x00013bd0        0x0 ../../../PiCircle/circle/lib/libcircle.a(synchronize.o)
+ .data          0x00013bd0        0x0 ../../../PiCircle/circle/lib/libcircle.a(new.o)
+ .data          0x00013bd0       0x44 ../../../PiCircle/circle/lib/libcircle.a(alloc.o)
+ .data          0x00013c14       0x70 ../../../PiCircle/circle/lib/libcircle.a(bcmframebuffer.o)
+                0x00013c14                CBcmFrameBuffer::s_InitTags
+ .data          0x00013c84        0x0 ../../../PiCircle/circle/lib/libcircle.a(bcmmailbox.o)
+ .data          0x00013c84        0x0 ../../../PiCircle/circle/lib/libcircle.a(chargenerator.o)
+ .data          0x00013c84        0x0 ../../../PiCircle/circle/lib/libcircle.a(delayloop.o)
+ .data          0x00013c84        0x0 ../../../PiCircle/circle/lib/libcircle.a(gpiomanager.o)
+ .data          0x00013c84        0x0 ../../../PiCircle/circle/lib/libcircle.a(ptrlist.o)
+
+.igot.plt       0x00013c84        0x0
+ .igot.plt      0x00013c84        0x0 main.o
+
+.bss            0x00013c84       0xa8
+                0x00013c84                __bss_start = .
+ *(.bss*)
+ .bss           0x00013c84        0x0 main.o
+ .bss           0x00013c84        0x0 kernel.o
+ .bss           0x00013c84        0x0 rdserial.o
+ .bss           0x00013c84        0x0 c:/program files (x86)/gnu tools arm embedded/7 2017-q4-major/bin/../lib/gcc/arm-none-eabi/7.2.1/hard/libgcc.a(_udivsi3.o)
+ .bss           0x00013c84        0x0 c:/program files (x86)/gnu tools arm embedded/7 2017-q4-major/bin/../lib/gcc/arm-none-eabi/7.2.1/hard/libgcc.a(_dvmd_tls.o)
+ .bss           0x00013c84        0x4 ../../../PiCircle/circle/lib/libcircle.a(actled.o)
+                0x00013c84                CActLED::s_pThis
+ .bss           0x00013c88        0x0 ../../../PiCircle/circle/lib/libcircle.a(assert.o)
+ .bss           0x00013c88        0x0 ../../../PiCircle/circle/lib/libcircle.a(bcmpropertytags.o)
+ .bss           0x00013c88        0x0 ../../../PiCircle/circle/lib/libcircle.a(debug.o)
+ .bss           0x00013c88        0x0 ../../../PiCircle/circle/lib/libcircle.a(device.o)
+ .bss           0x00013c88        0x4 ../../../PiCircle/circle/lib/libcircle.a(devicenameservice.o)
+                0x00013c88                CDeviceNameService::s_This
+ .bss           0x00013c8c        0x4 ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+                0x00013c8c                CGPIOPin::s_SpinLock
+ .bss           0x00013c90        0x4 ../../../PiCircle/circle/lib/libcircle.a(interrupt.o)
+                0x00013c90                CInterruptSystem::s_pThis
+ .bss           0x00013c94        0x4 ../../../PiCircle/circle/lib/libcircle.a(koptions.o)
+                0x00013c94                CKernelOptions::s_pThis
+ .bss           0x00013c98        0x4 ../../../PiCircle/circle/lib/libcircle.a(logger.o)
+                0x00013c98                CLogger::s_pThis
+ .bss           0x00013c9c        0x4 ../../../PiCircle/circle/lib/libcircle.a(machineinfo.o)
+                0x00013c9c                CMachineInfo::s_pThis
+ .bss           0x00013ca0        0x0 ../../../PiCircle/circle/lib/libcircle.a(screen.o)
+ .bss           0x00013ca0        0x0 ../../../PiCircle/circle/lib/libcircle.a(string.o)
+ .bss           0x00013ca0        0x4 ../../../PiCircle/circle/lib/libcircle.a(sysinit.o)
+                0x00013ca0                __dso_handle
+ .bss           0x00013ca4        0x4 ../../../PiCircle/circle/lib/libcircle.a(timer.o)
+                0x00013ca4                CTimer::s_pThis
+ .bss           0x00013ca8        0x0 ../../../PiCircle/circle/lib/libcircle.a(util.o)
+ .bss           0x00013ca8        0x0 ../../../PiCircle/circle/lib/libcircle.a(util_fast.o)
+ .bss           0x00013ca8        0x8 ../../../PiCircle/circle/lib/libcircle.a(virtualgpiopin.o)
+                0x00013ca8                CVirtualGPIOPin::s_SpinLock
+                0x00013cac                CVirtualGPIOPin::s_nGPIOBaseAddress
+ .bss           0x00013cb0        0x4 ../../../PiCircle/circle/lib/libcircle.a(exceptionhandler.o)
+                0x00013cb0                CExceptionHandler::s_pThis
+ .bss           0x00013cb4        0x0 ../../../PiCircle/circle/lib/libcircle.a(exceptionstub.o)
+ .bss           0x00013cb4        0x4 ../../../PiCircle/circle/lib/libcircle.a(memory.o)
+                0x00013cb4                CMemorySystem::s_pThis
+ .bss           0x00013cb8        0x0 ../../../PiCircle/circle/lib/libcircle.a(pagetable.o)
+ .bss           0x00013cb8        0x0 ../../../PiCircle/circle/lib/libcircle.a(startup.o)
+ .bss           0x00013cb8       0x54 ../../../PiCircle/circle/lib/libcircle.a(synchronize.o)
+ .bss           0x00013d0c        0x0 ../../../PiCircle/circle/lib/libcircle.a(new.o)
+ .bss           0x00013d0c       0x1c ../../../PiCircle/circle/lib/libcircle.a(alloc.o)
+ .bss           0x00013d28        0x0 ../../../PiCircle/circle/lib/libcircle.a(bcmframebuffer.o)
+ .bss           0x00013d28        0x4 ../../../PiCircle/circle/lib/libcircle.a(bcmmailbox.o)
+                0x00013d28                CBcmMailBox::s_SpinLock
+ .bss           0x00013d2c        0x0 ../../../PiCircle/circle/lib/libcircle.a(chargenerator.o)
+ .bss           0x00013d2c        0x0 ../../../PiCircle/circle/lib/libcircle.a(delayloop.o)
+ .bss           0x00013d2c        0x0 ../../../PiCircle/circle/lib/libcircle.a(gpiomanager.o)
+ .bss           0x00013d2c        0x0 ../../../PiCircle/circle/lib/libcircle.a(ptrlist.o)
+ *(COMMON)
+                0x00013d2c                _end = .
+LOAD main.o
+LOAD kernel.o
+LOAD rdserial.o
+LOAD c:/program files (x86)/gnu tools arm embedded/7 2017-q4-major/bin/../lib/gcc/arm-none-eabi/7.2.1/hard/libgcc.a
+LOAD ../../../PiCircle/circle/lib/libcircle.a
+LOAD c:/program files (x86)/gnu tools arm embedded/7 2017-q4-major/bin/../lib/gcc/arm-none-eabi/7.2.1/hard/libgcc.a
+OUTPUT(kernel.elf elf32-littlearm)
+
+.debug_info     0x00000000    0x1f1d3
+ .debug_info    0x00000000     0x1808 main.o
+ .debug_info    0x00001808     0x2542 kernel.o
+ .debug_info    0x00003d4a     0x1c96 rdserial.o
+ .debug_info    0x000059e0     0x110c ../../../PiCircle/circle/lib/libcircle.a(actled.o)
+ .debug_info    0x00006aec      0xdef ../../../PiCircle/circle/lib/libcircle.a(assert.o)
+ .debug_info    0x000078db      0x7da ../../../PiCircle/circle/lib/libcircle.a(bcmpropertytags.o)
+ .debug_info    0x000080b5      0xe45 ../../../PiCircle/circle/lib/libcircle.a(debug.o)
+ .debug_info    0x00008efa      0x363 ../../../PiCircle/circle/lib/libcircle.a(device.o)
+ .debug_info    0x0000925d      0xd6d ../../../PiCircle/circle/lib/libcircle.a(devicenameservice.o)
+ .debug_info    0x00009fca     0x254f ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+ .debug_info    0x0000c519      0xb40 ../../../PiCircle/circle/lib/libcircle.a(interrupt.o)
+ .debug_info    0x0000d059      0xf6a ../../../PiCircle/circle/lib/libcircle.a(koptions.o)
+ .debug_info    0x0000dfc3     0x1dda ../../../PiCircle/circle/lib/libcircle.a(logger.o)
+ .debug_info    0x0000fd9d      0xc0e ../../../PiCircle/circle/lib/libcircle.a(machineinfo.o)
+ .debug_info    0x000109ab     0x2947 ../../../PiCircle/circle/lib/libcircle.a(screen.o)
+ .debug_info    0x000132f2     0x1cc9 ../../../PiCircle/circle/lib/libcircle.a(string.o)
+ .debug_info    0x00014fbb      0x59f ../../../PiCircle/circle/lib/libcircle.a(sysinit.o)
+ .debug_info    0x0001555a     0x2284 ../../../PiCircle/circle/lib/libcircle.a(timer.o)
+ .debug_info    0x000177de      0x593 ../../../PiCircle/circle/lib/libcircle.a(util.o)
+ .debug_info    0x00017d71      0xafc ../../../PiCircle/circle/lib/libcircle.a(virtualgpiopin.o)
+ .debug_info    0x0001886d     0x12ff ../../../PiCircle/circle/lib/libcircle.a(exceptionhandler.o)
+ .debug_info    0x00019b6c      0x8a1 ../../../PiCircle/circle/lib/libcircle.a(memory.o)
+ .debug_info    0x0001a40d      0x275 ../../../PiCircle/circle/lib/libcircle.a(pagetable.o)
+ .debug_info    0x0001a682      0x231 ../../../PiCircle/circle/lib/libcircle.a(synchronize.o)
+ .debug_info    0x0001a8b3      0x20c ../../../PiCircle/circle/lib/libcircle.a(new.o)
+ .debug_info    0x0001aabf     0x14ed ../../../PiCircle/circle/lib/libcircle.a(alloc.o)
+ .debug_info    0x0001bfac      0xe2b ../../../PiCircle/circle/lib/libcircle.a(bcmframebuffer.o)
+ .debug_info    0x0001cdd7      0xf60 ../../../PiCircle/circle/lib/libcircle.a(bcmmailbox.o)
+ .debug_info    0x0001dd37      0x3ab ../../../PiCircle/circle/lib/libcircle.a(chargenerator.o)
+ .debug_info    0x0001e0e2      0x980 ../../../PiCircle/circle/lib/libcircle.a(gpiomanager.o)
+ .debug_info    0x0001ea62      0x771 ../../../PiCircle/circle/lib/libcircle.a(ptrlist.o)
+
+.debug_abbrev   0x00000000     0x6c9c
+ .debug_abbrev  0x00000000      0x396 main.o
+ .debug_abbrev  0x00000396      0x4fe kernel.o
+ .debug_abbrev  0x00000894      0x53a rdserial.o
+ .debug_abbrev  0x00000dce      0x464 ../../../PiCircle/circle/lib/libcircle.a(actled.o)
+ .debug_abbrev  0x00001232      0x2f1 ../../../PiCircle/circle/lib/libcircle.a(assert.o)
+ .debug_abbrev  0x00001523      0x2b9 ../../../PiCircle/circle/lib/libcircle.a(bcmpropertytags.o)
+ .debug_abbrev  0x000017dc      0x2ff ../../../PiCircle/circle/lib/libcircle.a(debug.o)
+ .debug_abbrev  0x00001adb      0x210 ../../../PiCircle/circle/lib/libcircle.a(device.o)
+ .debug_abbrev  0x00001ceb      0x346 ../../../PiCircle/circle/lib/libcircle.a(devicenameservice.o)
+ .debug_abbrev  0x00002031      0x5c4 ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+ .debug_abbrev  0x000025f5      0x384 ../../../PiCircle/circle/lib/libcircle.a(interrupt.o)
+ .debug_abbrev  0x00002979      0x418 ../../../PiCircle/circle/lib/libcircle.a(koptions.o)
+ .debug_abbrev  0x00002d91      0x514 ../../../PiCircle/circle/lib/libcircle.a(logger.o)
+ .debug_abbrev  0x000032a5      0x387 ../../../PiCircle/circle/lib/libcircle.a(machineinfo.o)
+ .debug_abbrev  0x0000362c      0x530 ../../../PiCircle/circle/lib/libcircle.a(screen.o)
+ .debug_abbrev  0x00003b5c      0x45c ../../../PiCircle/circle/lib/libcircle.a(string.o)
+ .debug_abbrev  0x00003fb8      0x27f ../../../PiCircle/circle/lib/libcircle.a(sysinit.o)
+ .debug_abbrev  0x00004237      0x612 ../../../PiCircle/circle/lib/libcircle.a(timer.o)
+ .debug_abbrev  0x00004849      0x1fb ../../../PiCircle/circle/lib/libcircle.a(util.o)
+ .debug_abbrev  0x00004a44      0x465 ../../../PiCircle/circle/lib/libcircle.a(virtualgpiopin.o)
+ .debug_abbrev  0x00004ea9      0x427 ../../../PiCircle/circle/lib/libcircle.a(exceptionhandler.o)
+ .debug_abbrev  0x000052d0      0x354 ../../../PiCircle/circle/lib/libcircle.a(memory.o)
+ .debug_abbrev  0x00005624      0x18f ../../../PiCircle/circle/lib/libcircle.a(pagetable.o)
+ .debug_abbrev  0x000057b3      0x10b ../../../PiCircle/circle/lib/libcircle.a(synchronize.o)
+ .debug_abbrev  0x000058be      0x102 ../../../PiCircle/circle/lib/libcircle.a(new.o)
+ .debug_abbrev  0x000059c0      0x49e ../../../PiCircle/circle/lib/libcircle.a(alloc.o)
+ .debug_abbrev  0x00005e5e      0x3ab ../../../PiCircle/circle/lib/libcircle.a(bcmframebuffer.o)
+ .debug_abbrev  0x00006209      0x40a ../../../PiCircle/circle/lib/libcircle.a(bcmmailbox.o)
+ .debug_abbrev  0x00006613      0x1a4 ../../../PiCircle/circle/lib/libcircle.a(chargenerator.o)
+ .debug_abbrev  0x000067b7      0x338 ../../../PiCircle/circle/lib/libcircle.a(gpiomanager.o)
+ .debug_abbrev  0x00006aef      0x1ad ../../../PiCircle/circle/lib/libcircle.a(ptrlist.o)
+
+.debug_loc      0x00000000     0xb78c
+ .debug_loc     0x00000000       0x13 main.o
+ .debug_loc     0x00000013      0x1d0 kernel.o
+ .debug_loc     0x000001e3     0x10f9 rdserial.o
+ .debug_loc     0x000012dc      0x360 ../../../PiCircle/circle/lib/libcircle.a(actled.o)
+ .debug_loc     0x0000163c       0x84 ../../../PiCircle/circle/lib/libcircle.a(assert.o)
+ .debug_loc     0x000016c0      0x248 ../../../PiCircle/circle/lib/libcircle.a(bcmpropertytags.o)
+ .debug_loc     0x00001908      0x164 ../../../PiCircle/circle/lib/libcircle.a(debug.o)
+ .debug_loc     0x00001a6c       0x60 ../../../PiCircle/circle/lib/libcircle.a(device.o)
+ .debug_loc     0x00001acc      0x82c ../../../PiCircle/circle/lib/libcircle.a(devicenameservice.o)
+ .debug_loc     0x000022f8      0xdf6 ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+ .debug_loc     0x000030ee      0x667 ../../../PiCircle/circle/lib/libcircle.a(interrupt.o)
+ .debug_loc     0x00003755      0x3b6 ../../../PiCircle/circle/lib/libcircle.a(koptions.o)
+ .debug_loc     0x00003b0b      0x80f ../../../PiCircle/circle/lib/libcircle.a(logger.o)
+ .debug_loc     0x0000431a      0x300 ../../../PiCircle/circle/lib/libcircle.a(machineinfo.o)
+ .debug_loc     0x0000461a     0x169b ../../../PiCircle/circle/lib/libcircle.a(screen.o)
+ .debug_loc     0x00005cb5     0x1cfc ../../../PiCircle/circle/lib/libcircle.a(string.o)
+ .debug_loc     0x000079b1       0x92 ../../../PiCircle/circle/lib/libcircle.a(sysinit.o)
+ .debug_loc     0x00007a43     0x12b2 ../../../PiCircle/circle/lib/libcircle.a(timer.o)
+ .debug_loc     0x00008cf5      0xad0 ../../../PiCircle/circle/lib/libcircle.a(util.o)
+ .debug_loc     0x000097c5      0x32f ../../../PiCircle/circle/lib/libcircle.a(virtualgpiopin.o)
+ .debug_loc     0x00009af4      0x2ff ../../../PiCircle/circle/lib/libcircle.a(exceptionhandler.o)
+ .debug_loc     0x00009df3      0x221 ../../../PiCircle/circle/lib/libcircle.a(memory.o)
+ .debug_loc     0x0000a014       0x79 ../../../PiCircle/circle/lib/libcircle.a(pagetable.o)
+ .debug_loc     0x0000a08d       0x88 ../../../PiCircle/circle/lib/libcircle.a(synchronize.o)
+ .debug_loc     0x0000a115       0x84 ../../../PiCircle/circle/lib/libcircle.a(new.o)
+ .debug_loc     0x0000a199      0x6c1 ../../../PiCircle/circle/lib/libcircle.a(alloc.o)
+ .debug_loc     0x0000a85a      0x3cf ../../../PiCircle/circle/lib/libcircle.a(bcmframebuffer.o)
+ .debug_loc     0x0000ac29      0x256 ../../../PiCircle/circle/lib/libcircle.a(bcmmailbox.o)
+ .debug_loc     0x0000ae7f      0x1cf ../../../PiCircle/circle/lib/libcircle.a(chargenerator.o)
+ .debug_loc     0x0000b04e      0x3ec ../../../PiCircle/circle/lib/libcircle.a(gpiomanager.o)
+ .debug_loc     0x0000b43a      0x352 ../../../PiCircle/circle/lib/libcircle.a(ptrlist.o)
+
+.debug_aranges  0x00000000      0x400
+ .debug_aranges
+                0x00000000       0x20 main.o
+ .debug_aranges
+                0x00000020       0x20 kernel.o
+ .debug_aranges
+                0x00000040       0x20 rdserial.o
+ .debug_aranges
+                0x00000060       0x20 ../../../PiCircle/circle/lib/libcircle.a(actled.o)
+ .debug_aranges
+                0x00000080       0x20 ../../../PiCircle/circle/lib/libcircle.a(assert.o)
+ .debug_aranges
+                0x000000a0       0x20 ../../../PiCircle/circle/lib/libcircle.a(bcmpropertytags.o)
+ .debug_aranges
+                0x000000c0       0x20 ../../../PiCircle/circle/lib/libcircle.a(debug.o)
+ .debug_aranges
+                0x000000e0       0x20 ../../../PiCircle/circle/lib/libcircle.a(device.o)
+ .debug_aranges
+                0x00000100       0x20 ../../../PiCircle/circle/lib/libcircle.a(devicenameservice.o)
+ .debug_aranges
+                0x00000120       0x28 ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+ .debug_aranges
+                0x00000148       0x20 ../../../PiCircle/circle/lib/libcircle.a(interrupt.o)
+ .debug_aranges
+                0x00000168       0x20 ../../../PiCircle/circle/lib/libcircle.a(koptions.o)
+ .debug_aranges
+                0x00000188       0x20 ../../../PiCircle/circle/lib/libcircle.a(logger.o)
+ .debug_aranges
+                0x000001a8       0x20 ../../../PiCircle/circle/lib/libcircle.a(machineinfo.o)
+ .debug_aranges
+                0x000001c8       0x20 ../../../PiCircle/circle/lib/libcircle.a(screen.o)
+ .debug_aranges
+                0x000001e8       0x20 ../../../PiCircle/circle/lib/libcircle.a(string.o)
+ .debug_aranges
+                0x00000208       0x20 ../../../PiCircle/circle/lib/libcircle.a(sysinit.o)
+ .debug_aranges
+                0x00000228       0x20 ../../../PiCircle/circle/lib/libcircle.a(timer.o)
+ .debug_aranges
+                0x00000248       0x20 ../../../PiCircle/circle/lib/libcircle.a(util.o)
+ .debug_aranges
+                0x00000268       0x28 ../../../PiCircle/circle/lib/libcircle.a(virtualgpiopin.o)
+ .debug_aranges
+                0x00000290       0x20 ../../../PiCircle/circle/lib/libcircle.a(exceptionhandler.o)
+ .debug_aranges
+                0x000002b0       0x20 ../../../PiCircle/circle/lib/libcircle.a(memory.o)
+ .debug_aranges
+                0x000002d0       0x20 ../../../PiCircle/circle/lib/libcircle.a(pagetable.o)
+ .debug_aranges
+                0x000002f0       0x20 ../../../PiCircle/circle/lib/libcircle.a(synchronize.o)
+ .debug_aranges
+                0x00000310       0x20 ../../../PiCircle/circle/lib/libcircle.a(new.o)
+ .debug_aranges
+                0x00000330       0x28 ../../../PiCircle/circle/lib/libcircle.a(alloc.o)
+ .debug_aranges
+                0x00000358       0x20 ../../../PiCircle/circle/lib/libcircle.a(bcmframebuffer.o)
+ .debug_aranges
+                0x00000378       0x28 ../../../PiCircle/circle/lib/libcircle.a(bcmmailbox.o)
+ .debug_aranges
+                0x000003a0       0x20 ../../../PiCircle/circle/lib/libcircle.a(chargenerator.o)
+ .debug_aranges
+                0x000003c0       0x20 ../../../PiCircle/circle/lib/libcircle.a(gpiomanager.o)
+ .debug_aranges
+                0x000003e0       0x20 ../../../PiCircle/circle/lib/libcircle.a(ptrlist.o)
+
+.debug_ranges   0x00000000     0x1758
+ .debug_ranges  0x00000000       0x10 main.o
+ .debug_ranges  0x00000010       0x38 kernel.o
+ .debug_ranges  0x00000048      0x2c8 rdserial.o
+ .debug_ranges  0x00000310       0x40 ../../../PiCircle/circle/lib/libcircle.a(actled.o)
+ .debug_ranges  0x00000350       0x20 ../../../PiCircle/circle/lib/libcircle.a(debug.o)
+ .debug_ranges  0x00000370      0x100 ../../../PiCircle/circle/lib/libcircle.a(devicenameservice.o)
+ .debug_ranges  0x00000470      0x240 ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+ .debug_ranges  0x000006b0       0x48 ../../../PiCircle/circle/lib/libcircle.a(interrupt.o)
+ .debug_ranges  0x000006f8       0xa0 ../../../PiCircle/circle/lib/libcircle.a(koptions.o)
+ .debug_ranges  0x00000798      0x140 ../../../PiCircle/circle/lib/libcircle.a(logger.o)
+ .debug_ranges  0x000008d8       0x68 ../../../PiCircle/circle/lib/libcircle.a(machineinfo.o)
+ .debug_ranges  0x00000940      0x340 ../../../PiCircle/circle/lib/libcircle.a(screen.o)
+ .debug_ranges  0x00000c80      0x2b0 ../../../PiCircle/circle/lib/libcircle.a(string.o)
+ .debug_ranges  0x00000f30       0x30 ../../../PiCircle/circle/lib/libcircle.a(sysinit.o)
+ .debug_ranges  0x00000f60      0x368 ../../../PiCircle/circle/lib/libcircle.a(timer.o)
+ .debug_ranges  0x000012c8       0x70 ../../../PiCircle/circle/lib/libcircle.a(util.o)
+ .debug_ranges  0x00001338       0xb8 ../../../PiCircle/circle/lib/libcircle.a(virtualgpiopin.o)
+ .debug_ranges  0x000013f0       0x48 ../../../PiCircle/circle/lib/libcircle.a(exceptionhandler.o)
+ .debug_ranges  0x00001438       0x40 ../../../PiCircle/circle/lib/libcircle.a(memory.o)
+ .debug_ranges  0x00001478       0x40 ../../../PiCircle/circle/lib/libcircle.a(pagetable.o)
+ .debug_ranges  0x000014b8      0x150 ../../../PiCircle/circle/lib/libcircle.a(alloc.o)
+ .debug_ranges  0x00001608       0x60 ../../../PiCircle/circle/lib/libcircle.a(bcmframebuffer.o)
+ .debug_ranges  0x00001668       0xa8 ../../../PiCircle/circle/lib/libcircle.a(bcmmailbox.o)
+ .debug_ranges  0x00001710       0x48 ../../../PiCircle/circle/lib/libcircle.a(gpiomanager.o)
+
+.debug_line     0x00000000     0x43a7
+ .debug_line    0x00000000      0x18a main.o
+ .debug_line    0x0000018a      0x2cc kernel.o
+ .debug_line    0x00000456      0x589 rdserial.o
+ .debug_line    0x000009df      0x162 ../../../PiCircle/circle/lib/libcircle.a(actled.o)
+ .debug_line    0x00000b41       0xf5 ../../../PiCircle/circle/lib/libcircle.a(assert.o)
+ .debug_line    0x00000c36      0x131 ../../../PiCircle/circle/lib/libcircle.a(bcmpropertytags.o)
+ .debug_line    0x00000d67      0x111 ../../../PiCircle/circle/lib/libcircle.a(debug.o)
+ .debug_line    0x00000e78       0x72 ../../../PiCircle/circle/lib/libcircle.a(device.o)
+ .debug_line    0x00000eea      0x298 ../../../PiCircle/circle/lib/libcircle.a(devicenameservice.o)
+ .debug_line    0x00001182      0x661 ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+ .debug_line    0x000017e3      0x279 ../../../PiCircle/circle/lib/libcircle.a(interrupt.o)
+ .debug_line    0x00001a5c      0x1ea ../../../PiCircle/circle/lib/libcircle.a(koptions.o)
+ .debug_line    0x00001c46      0x368 ../../../PiCircle/circle/lib/libcircle.a(logger.o)
+ .debug_line    0x00001fae      0x1ba ../../../PiCircle/circle/lib/libcircle.a(machineinfo.o)
+ .debug_line    0x00002168      0x52d ../../../PiCircle/circle/lib/libcircle.a(screen.o)
+ .debug_line    0x00002695      0x455 ../../../PiCircle/circle/lib/libcircle.a(string.o)
+ .debug_line    0x00002aea       0xc1 ../../../PiCircle/circle/lib/libcircle.a(sysinit.o)
+ .debug_line    0x00002bab      0x5c8 ../../../PiCircle/circle/lib/libcircle.a(timer.o)
+ .debug_line    0x00003173      0x1c1 ../../../PiCircle/circle/lib/libcircle.a(util.o)
+ .debug_line    0x00003334      0x1a6 ../../../PiCircle/circle/lib/libcircle.a(virtualgpiopin.o)
+ .debug_line    0x000034da      0x1ac ../../../PiCircle/circle/lib/libcircle.a(exceptionhandler.o)
+ .debug_line    0x00003686      0x165 ../../../PiCircle/circle/lib/libcircle.a(memory.o)
+ .debug_line    0x000037eb       0xa0 ../../../PiCircle/circle/lib/libcircle.a(pagetable.o)
+ .debug_line    0x0000388b       0xc7 ../../../PiCircle/circle/lib/libcircle.a(synchronize.o)
+ .debug_line    0x00003952       0x68 ../../../PiCircle/circle/lib/libcircle.a(new.o)
+ .debug_line    0x000039ba      0x2ec ../../../PiCircle/circle/lib/libcircle.a(alloc.o)
+ .debug_line    0x00003ca6      0x173 ../../../PiCircle/circle/lib/libcircle.a(bcmframebuffer.o)
+ .debug_line    0x00003e19      0x1b9 ../../../PiCircle/circle/lib/libcircle.a(bcmmailbox.o)
+ .debug_line    0x00003fd2       0xb8 ../../../PiCircle/circle/lib/libcircle.a(chargenerator.o)
+ .debug_line    0x0000408a      0x1a0 ../../../PiCircle/circle/lib/libcircle.a(gpiomanager.o)
+ .debug_line    0x0000422a      0x17d ../../../PiCircle/circle/lib/libcircle.a(ptrlist.o)
+
+.debug_str      0x00000000     0x52e5
+ .debug_str     0x00000000     0x18ca main.o
+                               0x1a45 (size before relaxing)
+ .debug_str     0x000018ca      0x53b kernel.o
+                               0x1fbf (size before relaxing)
+ .debug_str     0x00001e05      0x9f1 rdserial.o
+                               0x1281 (size before relaxing)
+ .debug_str     0x000027f6      0x342 ../../../PiCircle/circle/lib/libcircle.a(actled.o)
+                                0xf4f (size before relaxing)
+ .debug_str     0x00002b38       0x54 ../../../PiCircle/circle/lib/libcircle.a(assert.o)
+                               0x1011 (size before relaxing)
+ .debug_str     0x00002b8c       0xb3 ../../../PiCircle/circle/lib/libcircle.a(bcmpropertytags.o)
+                                0x634 (size before relaxing)
+ .debug_str     0x00002c3f       0x6a ../../../PiCircle/circle/lib/libcircle.a(debug.o)
+                                0xff3 (size before relaxing)
+ .debug_str     0x00002ca9       0xe3 ../../../PiCircle/circle/lib/libcircle.a(device.o)
+                                0x2a3 (size before relaxing)
+ .debug_str     0x00002d8c       0xd6 ../../../PiCircle/circle/lib/libcircle.a(devicenameservice.o)
+                                0x5fa (size before relaxing)
+ .debug_str     0x00002e62      0x6a3 ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+                               0x197b (size before relaxing)
+ .debug_str     0x00003505       0xe3 ../../../PiCircle/circle/lib/libcircle.a(interrupt.o)
+                                0x5b3 (size before relaxing)
+ .debug_str     0x000035e8       0x8c ../../../PiCircle/circle/lib/libcircle.a(koptions.o)
+                                0x875 (size before relaxing)
+ .debug_str     0x00003674      0x145 ../../../PiCircle/circle/lib/libcircle.a(logger.o)
+                               0x16bc (size before relaxing)
+ .debug_str     0x000037b9       0xaf ../../../PiCircle/circle/lib/libcircle.a(machineinfo.o)
+                                0x9a9 (size before relaxing)
+ .debug_str     0x00003868      0xde9 ../../../PiCircle/circle/lib/libcircle.a(screen.o)
+                               0x1498 (size before relaxing)
+ .debug_str     0x00004651      0x2bf ../../../PiCircle/circle/lib/libcircle.a(string.o)
+                                0x63d (size before relaxing)
+ .debug_str     0x00004910       0x75 ../../../PiCircle/circle/lib/libcircle.a(sysinit.o)
+                                0x6ee (size before relaxing)
+ .debug_str     0x00004985      0x195 ../../../PiCircle/circle/lib/libcircle.a(timer.o)
+                               0x1238 (size before relaxing)
+ .debug_str     0x00004b1a       0xc3 ../../../PiCircle/circle/lib/libcircle.a(util.o)
+                                0x2d3 (size before relaxing)
+ .debug_str     0x00004bdd      0x17e ../../../PiCircle/circle/lib/libcircle.a(virtualgpiopin.o)
+                                0x829 (size before relaxing)
+ .debug_str     0x00004d5b       0xc0 ../../../PiCircle/circle/lib/libcircle.a(exceptionhandler.o)
+                               0x11f8 (size before relaxing)
+ .debug_str     0x00004e1b       0xa6 ../../../PiCircle/circle/lib/libcircle.a(memory.o)
+                                0x662 (size before relaxing)
+ .debug_str     0x00004ec1       0x49 ../../../PiCircle/circle/lib/libcircle.a(pagetable.o)
+                                0x25f (size before relaxing)
+ .debug_str     0x00004f0a       0x60 ../../../PiCircle/circle/lib/libcircle.a(synchronize.o)
+                                0x23d (size before relaxing)
+ .debug_str     0x00004f6a       0x1e ../../../PiCircle/circle/lib/libcircle.a(new.o)
+                                0x202 (size before relaxing)
+ .debug_str     0x00004f88      0x168 ../../../PiCircle/circle/lib/libcircle.a(alloc.o)
+                               0x11c8 (size before relaxing)
+ .debug_str     0x000050f0       0x7f ../../../PiCircle/circle/lib/libcircle.a(bcmframebuffer.o)
+                                0x98c (size before relaxing)
+ .debug_str     0x0000516f       0x6c ../../../PiCircle/circle/lib/libcircle.a(bcmmailbox.o)
+                                0xdf8 (size before relaxing)
+ .debug_str     0x000051db       0x6d ../../../PiCircle/circle/lib/libcircle.a(chargenerator.o)
+                                0x343 (size before relaxing)
+ .debug_str     0x00005248       0x5b ../../../PiCircle/circle/lib/libcircle.a(gpiomanager.o)
+                                0x718 (size before relaxing)
+ .debug_str     0x000052a3       0x42 ../../../PiCircle/circle/lib/libcircle.a(ptrlist.o)
+                                0x32e (size before relaxing)
+
+.comment        0x00000000       0xaf
+ .comment       0x00000000       0x7e main.o
+                                 0x7f (size before relaxing)
+ .comment       0x0000007e       0x7f kernel.o
+ .comment       0x0000007e       0x7f rdserial.o
+ .comment       0x0000007e       0x31 ../../../PiCircle/circle/lib/libcircle.a(actled.o)
+                                 0x32 (size before relaxing)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(assert.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(bcmpropertytags.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(debug.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(device.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(devicenameservice.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(interrupt.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(koptions.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(logger.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(machineinfo.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(screen.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(string.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(sysinit.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(timer.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(util.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(virtualgpiopin.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(exceptionhandler.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(memory.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(pagetable.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(synchronize.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(new.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(alloc.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(bcmframebuffer.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(bcmmailbox.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(chargenerator.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(gpiomanager.o)
+ .comment       0x000000af       0x32 ../../../PiCircle/circle/lib/libcircle.a(ptrlist.o)
+
+.ARM.attributes
+                0x00000000       0x2e
+ .ARM.attributes
+                0x00000000       0x30 main.o
+ .ARM.attributes
+                0x00000030       0x30 kernel.o
+ .ARM.attributes
+                0x00000060       0x30 rdserial.o
+ .ARM.attributes
+                0x00000090       0x18 c:/program files (x86)/gnu tools arm embedded/7 2017-q4-major/bin/../lib/gcc/arm-none-eabi/7.2.1/hard/libgcc.a(_udivsi3.o)
+ .ARM.attributes
+                0x000000a8       0x18 c:/program files (x86)/gnu tools arm embedded/7 2017-q4-major/bin/../lib/gcc/arm-none-eabi/7.2.1/hard/libgcc.a(_dvmd_tls.o)
+ .ARM.attributes
+                0x000000c0       0x30 ../../../PiCircle/circle/lib/libcircle.a(actled.o)
+ .ARM.attributes
+                0x000000f0       0x30 ../../../PiCircle/circle/lib/libcircle.a(assert.o)
+ .ARM.attributes
+                0x00000120       0x30 ../../../PiCircle/circle/lib/libcircle.a(bcmpropertytags.o)
+ .ARM.attributes
+                0x00000150       0x30 ../../../PiCircle/circle/lib/libcircle.a(debug.o)
+ .ARM.attributes
+                0x00000180       0x30 ../../../PiCircle/circle/lib/libcircle.a(device.o)
+ .ARM.attributes
+                0x000001b0       0x30 ../../../PiCircle/circle/lib/libcircle.a(devicenameservice.o)
+ .ARM.attributes
+                0x000001e0       0x30 ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+ .ARM.attributes
+                0x00000210       0x30 ../../../PiCircle/circle/lib/libcircle.a(interrupt.o)
+ .ARM.attributes
+                0x00000240       0x30 ../../../PiCircle/circle/lib/libcircle.a(koptions.o)
+ .ARM.attributes
+                0x00000270       0x30 ../../../PiCircle/circle/lib/libcircle.a(logger.o)
+ .ARM.attributes
+                0x000002a0       0x30 ../../../PiCircle/circle/lib/libcircle.a(machineinfo.o)
+ .ARM.attributes
+                0x000002d0       0x30 ../../../PiCircle/circle/lib/libcircle.a(screen.o)
+ .ARM.attributes
+                0x00000300       0x30 ../../../PiCircle/circle/lib/libcircle.a(string.o)
+ .ARM.attributes
+                0x00000330       0x30 ../../../PiCircle/circle/lib/libcircle.a(sysinit.o)
+ .ARM.attributes
+                0x00000360       0x30 ../../../PiCircle/circle/lib/libcircle.a(timer.o)
+ .ARM.attributes
+                0x00000390       0x30 ../../../PiCircle/circle/lib/libcircle.a(util.o)
+ .ARM.attributes
+                0x000003c0       0x1c ../../../PiCircle/circle/lib/libcircle.a(util_fast.o)
+ .ARM.attributes
+                0x000003dc       0x30 ../../../PiCircle/circle/lib/libcircle.a(virtualgpiopin.o)
+ .ARM.attributes
+                0x0000040c       0x30 ../../../PiCircle/circle/lib/libcircle.a(exceptionhandler.o)
+ .ARM.attributes
+                0x0000043c       0x1c ../../../PiCircle/circle/lib/libcircle.a(exceptionstub.o)
+ .ARM.attributes
+                0x00000458       0x30 ../../../PiCircle/circle/lib/libcircle.a(memory.o)
+ .ARM.attributes
+                0x00000488       0x30 ../../../PiCircle/circle/lib/libcircle.a(pagetable.o)
+ .ARM.attributes
+                0x000004b8       0x1c ../../../PiCircle/circle/lib/libcircle.a(startup.o)
+ .ARM.attributes
+                0x000004d4       0x30 ../../../PiCircle/circle/lib/libcircle.a(synchronize.o)
+ .ARM.attributes
+                0x00000504       0x30 ../../../PiCircle/circle/lib/libcircle.a(new.o)
+ .ARM.attributes
+                0x00000534       0x30 ../../../PiCircle/circle/lib/libcircle.a(alloc.o)
+ .ARM.attributes
+                0x00000564       0x30 ../../../PiCircle/circle/lib/libcircle.a(bcmframebuffer.o)
+ .ARM.attributes
+                0x00000594       0x30 ../../../PiCircle/circle/lib/libcircle.a(bcmmailbox.o)
+ .ARM.attributes
+                0x000005c4       0x30 ../../../PiCircle/circle/lib/libcircle.a(chargenerator.o)
+ .ARM.attributes
+                0x000005f4       0x1c ../../../PiCircle/circle/lib/libcircle.a(delayloop.o)
+ .ARM.attributes
+                0x00000610       0x30 ../../../PiCircle/circle/lib/libcircle.a(gpiomanager.o)
+ .ARM.attributes
+                0x00000640       0x30 ../../../PiCircle/circle/lib/libcircle.a(ptrlist.o)
+
+.debug_frame    0x00000000     0x2374
+ .debug_frame   0x00000000       0x30 main.o
+ .debug_frame   0x00000030       0x9c kernel.o
+ .debug_frame   0x000000cc      0x1d0 rdserial.o
+ .debug_frame   0x0000029c       0x20 c:/program files (x86)/gnu tools arm embedded/7 2017-q4-major/bin/../lib/gcc/arm-none-eabi/7.2.1/hard/libgcc.a(_udivsi3.o)
+ .debug_frame   0x000002bc       0x98 ../../../PiCircle/circle/lib/libcircle.a(actled.o)
+ .debug_frame   0x00000354       0x34 ../../../PiCircle/circle/lib/libcircle.a(assert.o)
+ .debug_frame   0x00000388       0x84 ../../../PiCircle/circle/lib/libcircle.a(bcmpropertytags.o)
+ .debug_frame   0x0000040c       0x70 ../../../PiCircle/circle/lib/libcircle.a(debug.o)
+ .debug_frame   0x0000047c       0x68 ../../../PiCircle/circle/lib/libcircle.a(device.o)
+ .debug_frame   0x000004e4      0x19c ../../../PiCircle/circle/lib/libcircle.a(devicenameservice.o)
+ .debug_frame   0x00000680      0x2b8 ../../../PiCircle/circle/lib/libcircle.a(gpiopin.o)
+ .debug_frame   0x00000938      0x1a8 ../../../PiCircle/circle/lib/libcircle.a(interrupt.o)
+ .debug_frame   0x00000ae0      0x140 ../../../PiCircle/circle/lib/libcircle.a(koptions.o)
+ .debug_frame   0x00000c20      0x19c ../../../PiCircle/circle/lib/libcircle.a(logger.o)
+ .debug_frame   0x00000dbc      0x134 ../../../PiCircle/circle/lib/libcircle.a(machineinfo.o)
+ .debug_frame   0x00000ef0      0x488 ../../../PiCircle/circle/lib/libcircle.a(screen.o)
+ .debug_frame   0x00001378      0x280 ../../../PiCircle/circle/lib/libcircle.a(string.o)
+ .debug_frame   0x000015f8       0x58 ../../../PiCircle/circle/lib/libcircle.a(sysinit.o)
+ .debug_frame   0x00001650      0x304 ../../../PiCircle/circle/lib/libcircle.a(timer.o)
+ .debug_frame   0x00001954      0x114 ../../../PiCircle/circle/lib/libcircle.a(util.o)
+ .debug_frame   0x00001a68       0xb4 ../../../PiCircle/circle/lib/libcircle.a(virtualgpiopin.o)
+ .debug_frame   0x00001b1c       0xe4 ../../../PiCircle/circle/lib/libcircle.a(exceptionhandler.o)
+ .debug_frame   0x00001c00       0xa8 ../../../PiCircle/circle/lib/libcircle.a(memory.o)
+ .debug_frame   0x00001ca8       0x54 ../../../PiCircle/circle/lib/libcircle.a(pagetable.o)
+ .debug_frame   0x00001cfc       0x74 ../../../PiCircle/circle/lib/libcircle.a(synchronize.o)
+ .debug_frame   0x00001d70       0x70 ../../../PiCircle/circle/lib/libcircle.a(new.o)
+ .debug_frame   0x00001de0      0x108 ../../../PiCircle/circle/lib/libcircle.a(alloc.o)
+ .debug_frame   0x00001ee8      0x188 ../../../PiCircle/circle/lib/libcircle.a(bcmframebuffer.o)
+ .debug_frame   0x00002070       0xa8 ../../../PiCircle/circle/lib/libcircle.a(bcmmailbox.o)
+ .debug_frame   0x00002118       0x7c ../../../PiCircle/circle/lib/libcircle.a(chargenerator.o)
+ .debug_frame   0x00002194       0xdc ../../../PiCircle/circle/lib/libcircle.a(gpiomanager.o)
+ .debug_frame   0x00002270      0x104 ../../../PiCircle/circle/lib/libcircle.a(ptrlist.o)
