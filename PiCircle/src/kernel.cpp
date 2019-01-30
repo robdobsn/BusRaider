@@ -21,9 +21,11 @@
 #include "kernel.h"
 #include <circle/usb/usbkeyboard.h>
 #include <circle/string.h>
-#include <circle/util.h>
 #include <assert.h>
+#include <string.h>
 
+#ifdef NEWCODE
+#include <circle/util.h>
 #include "testTiming.h"
 #include "Target/TargetScreen.h"
 #include "Target/TargetFonts.h"
@@ -34,22 +36,36 @@ void DoChangeMachine(const char* mcName)
 {
 
 }
+else
+#include <circle/debug.h>
+#include <circle/timer.h>
+
+#endif
 
 static const char FromKernel[] = "kernel";
 
 CKernel *CKernel::s_pThis = 0;
 
+#ifndef NEWCODE
+int CKernel::_frameCount = 0;
+#endif
+
 CKernel::CKernel (void)
 :	m_Screen (m_Options.GetWidth (), m_Options.GetHeight ()),
-	m_Serial(CInterruptSystem::Get(), false),
+	m_Serial (&m_Interrupt),
 	m_Timer (&m_Interrupt),
 	m_Logger (m_Options.GetLogLevel (), &m_Timer),
 	m_DWHCI (&m_Interrupt, &m_Timer),
 	m_ShutdownMode (ShutdownNone),
+#ifdef NEWCODE
 	_commandHandler(m_Serial, DoChangeMachine)
+#else
+	_miniHDLC(miniHDLCPutCh, miniHDLCFrameRx)
+#endif
 {
 	s_pThis = this;
-	m_ActLED.Blink (5);	// show we are alive
+
+	// m_ActLED.Blink (5);	// show we are alive
 }
 
 CKernel::~CKernel (void)
@@ -78,10 +94,10 @@ boolean CKernel::Initialize (void)
 	
 	if (bOK)
 	{
-		CDevice *pTarget = m_DeviceNameService.GetDevice (m_Options.GetLogDevice (), FALSE);
+		CDevice *pTarget = 0;  m_DeviceNameService.GetDevice (m_Options.GetLogDevice (), FALSE);
 		if (pTarget == 0)
 		{
-			pTarget = &m_Screen;
+			pTarget = &m_Serial;
 		}
 
 		bOK = m_Logger.Initialize (pTarget);
@@ -96,21 +112,22 @@ boolean CKernel::Initialize (void)
 	{
 		bOK = m_DWHCI.Initialize ();
 	}
+
 	return bOK;
 }
 
 TShutdownMode CKernel::Run (void)
 {
+#ifdef NEWCODE
 	m_Screen.Write("\E[17;40r",8);
 
 	m_Logger.Write (FromKernel, LogNotice, "Compile time: " __DATE__ " " __TIME__);
+#endif
 
 	CUSBKeyboardDevice *pKeyboard = (CUSBKeyboardDevice *) m_DeviceNameService.GetDevice ("ukbd1", FALSE);
 	if (pKeyboard == 0)
 	{
 		m_Logger.Write (FromKernel, LogError, "Keyboard not found");
-
-		return ShutdownHalt;
 	}
 
 #if 1	// set to 0 to test raw mode
@@ -120,6 +137,7 @@ TShutdownMode CKernel::Run (void)
 	pKeyboard->RegisterKeyStatusHandlerRaw (KeyStatusHandlerRaw);
 #endif
 
+#ifdef NEWCODE
 	m_Logger.Write (FromKernel, LogNotice, "Just type something!");
 
 	TargetFonts targetFonts;
@@ -194,17 +212,105 @@ TShutdownMode CKernel::Run (void)
 
 	// }
 	return ShutdownReboot;
+#else
+	int rxTotal = 0;
+	int rxLoop = 0;
+	int maxLoops = 3;
+	for (int i = 0; i < maxLoops; i++)
+	{
+		// m_Serial.Write("Listening\n", 10);
+		// int curTicks = m_Timer.GetTicks();
+		rxLoop = 0;
+		// while (m_Timer.GetTicks() < curTicks + 5000)
+		// {
+		unsigned int curTicks = m_Timer.GetTicks();
+		while(1)
+		{
+			unsigned char buf[1000];
+			int numRead = m_Serial.Read(buf, sizeof buf);
+			if (numRead > 0)
+			{
+				rxTotal += numRead;
+				rxLoop += numRead;
+				_miniHDLC.handleBuffer(buf, numRead);
+			}
+			if (m_Timer.GetTicks() > curTicks + 1000)
+				break;
+		// }
+		}
+			// const char* sss = "Compile time: " __DATE__ " " __TIME__ "\n";
+			// m_Serial.Write(sss, strlen(sss));
+			
+			// Receive chars
+
+		CString sss;
+		m_Logger.Write(FromKernel, LogNotice, "Hello there");
+		sss.Format("Loop %d (of %d) Received bytes %d (total %d) Time in ticks %d ~~~\n", i+1, maxLoops, rxLoop, rxTotal, m_Timer.GetTicks());
+		// const char* sss = "Compile time: " __DATE__ " " __TIME__ "\n";
+		m_Serial.Write((const char*)sss, sss.GetLength());
+		// m_Logger.Write (FromKernel, LogNotice, "Compile time: " __DATE__ " " __TIME__);
+	}
+
+	m_Serial.Write("Restarting\n", 11);
+	m_Serial.Flush();
+
+// 	// show the character set on screen
+// 	for (char chChar = ' '; chChar <= '~'; chChar++)
+// 	{
+// 		if (chChar % 8 == 0)
+// 		{
+// 			m_Screen.Write ("\n", 1);
+// 		}
+
+// 		CString Message;
+// 		Message.Format ("%02X: \'%c\' ", (unsigned) chChar, chChar);
+		
+// 		m_Screen.Write ((const char *) Message, Message.GetLength ());
+// 	}
+// 	m_Screen.Write ("\n", 1);
+
+// #ifndef NDEBUG
+// 	// some debugging features
+// 	m_Logger.Write (FromKernel, LogDebug, "Dumping the start of the ATAGS");
+// 	debug_hexdump ((void *) 0x100, 128, FromKernel);
+
+// 	m_Logger.Write (FromKernel, LogNotice, "The following assertion will fail");
+// 	// assert (1 == 2);
+// #endif
+	// CTimer::SimpleMsDelay(1000);
+	// }
+	return ShutdownReboot;
+#endif
 }
 
+#ifdef NEWCODE
 int curPos = 0;
+#else
+void CKernel::miniHDLCPutCh(uint8_t ch)
+{
+
+}
+
+void CKernel::miniHDLCFrameRx(const uint8_t *framebuffer, int framelength)
+{
+	assert (s_pThis != 0);
+	_frameCount++;
+	s_pThis->m_Logger.Write(FromKernel, LogNotice, "Got frame %d", _frameCount);
+}
+#endif
 
 void CKernel::KeyPressedHandler (const char *pString)
 {
 	assert (s_pThis != 0);
+#ifdef NEWCODE
 	// s_pThis->m_Screen.Write (pString, strlen (pString));
 	uint8_t pD[] = "A";
 	pD[0] = pString[0];
 	s_pThis->_busRaider.blockWrite(curPos++, pD, 1, true, false);
+#else
+	s_pThis->m_Serial.Write (pString, strlen (pString));
+#endif
+
 }
 
 void CKernel::ShutdownHandler (void)

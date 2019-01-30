@@ -20,12 +20,17 @@
 #ifndef _kernel_h
 #define _kernel_h
 
+#ifdef NEWCODE
+#include <circle/serial.h>
+#else
+#include "rdserial.h"
+#include "MiniHDLC.h"
+#endif
 #include <circle/memory.h>
 #include <circle/actled.h>
 #include <circle/koptions.h>
 #include <circle/devicenameservice.h>
 #include <circle/screen.h>
-#include <circle/serial.h>
 #include <circle/exceptionhandler.h>
 #include <circle/interrupt.h>
 #include <circle/timer.h>
@@ -33,8 +38,10 @@
 #include <circle/usb/dwhcidevice.h>
 #include <circle/types.h>
 
+#ifdef NEWCODE
 #include "CommandInterface/CommandHandler.h"
 #include "Target/BusRaider.h"
+#endif
 
 enum TShutdownMode
 {
@@ -53,24 +60,44 @@ public:
 
 	TShutdownMode Run (void);
 
+#ifndef NEWCODE
+private:
+	static void KeyPressedHandler (const char *pString);
+	static void ShutdownHandler (void);
+	static void KeyStatusHandlerRaw (unsigned char ucModifiers, const unsigned char RawKeys[6]);
+
+	static void miniHDLCPutCh(uint8_t ch);
+	static void miniHDLCFrameRx(const uint8_t *framebuffer, int framelength);
+#endif
+
 private:
 	// do not change this order
+#ifdef NEWCODE
 	CInterruptSystem	m_Interrupt;
+#endif
 	CMemorySystem		m_Memory;
-	CActLED				m_ActLED;
+	CActLED			m_ActLED;
 	CKernelOptions		m_Options;
 	CDeviceNameService	m_DeviceNameService;
 	CScreenDevice		m_Screen;
+#ifdef NEWCODE
 	CSerialDevice		m_Serial;
+#else
+	CRdSerialDevice		m_Serial;
+#endif
 	CExceptionHandler	m_ExceptionHandler;
-	CTimer				m_Timer;
-	CLogger				m_Logger;
+#ifndef NEWCODE
+	CInterruptSystem	m_Interrupt;
+#endif
+	CTimer			m_Timer;
+	CLogger			m_Logger;
 	CDWHCIDevice		m_DWHCI;
 
 	volatile TShutdownMode m_ShutdownMode;
 
 	static CKernel *s_pThis;
 
+#ifdef NEWCODE
 private:
 	static void KeyPressedHandler (const char *pString);
 	static void ShutdownHandler (void);
@@ -86,6 +113,11 @@ private:
 
 private:
 	void testTiming(int secs);
+
+#else
+	MiniHDLC _miniHDLC;
+	static int _frameCount;
+#endif
 
 };
 
