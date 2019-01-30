@@ -70,8 +70,8 @@ if testname == "test1":
         ser.close()
         exit()
 else:
-    galaxyFrame = bytearray(b"{\"cmdName\":\"filetarget\",\"fileType\":\"trs80cmd\"}\0")
-    galaxyFrame += bytearray(b"TESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTEST")
+    galaxyFrame = bytearray(b"{\"cmdName\":\"ufStart\",\"fileType\":\"trs80cmd\"}\0")
+    galaxyFrame += bytearray(b"{TESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTEST}")
     h = HDLC(ser)
     # def onFrame(fr):
     #     print(fr)

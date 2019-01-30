@@ -33,6 +33,7 @@ private:
     static void static_hdlcFrameRx(const uint8_t *frameBuffer, int frameLength);
     void hdlcPutCh(uint8_t ch);
     void hdlcFrameRx(const uint8_t *frameBuffer, int frameLength);
+    void processCommand(const char* pCmdJson, const uint8_t* pParams, int paramsLen);
 
 private:
     static CmdHandlerChangeMachineFnType* _pChangeMcFunction;

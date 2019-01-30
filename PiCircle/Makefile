@@ -14,7 +14,7 @@ CFLAGS  = -D$(INCLUDE_USB)
 endif
 
 OBJS	= src/main.o src/kernel.o src/rdserial.o src/BusRaider.o \
-			src/System/LogHandler.o \
+			src/System/LogHandler.o src/System/StringUtils.o src/System/JsonUtils.o src/System/jsmnR.o \
 			src/CommandHandler/CommandHandler.o src/CommandHandler/MiniHDLC.o 
 
 #OBJS	= src/main.o src/kernel.o src/System/lowlev.o \

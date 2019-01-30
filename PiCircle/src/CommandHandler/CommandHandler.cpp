@@ -3,9 +3,13 @@
 
 #include "CommandHandler.h"
 #include "../System/LogHandler.h"
+#include "../System/JsonUtils.h"
+#include "../System/StringUtils.h"
 #include <stdlib.h>
 
 static const char FromCommandHandler[] = "CommandHandler";
+
+static const int CMD_HANDLER_MAX_CMD_STR_LEN = 200;
 
 // Callback for change machine type
 CmdHandlerChangeMachineFnType* CommandHandler::_pChangeMcFunction = NULL;
@@ -57,11 +61,42 @@ void CommandHandler::hdlcPutCh(uint8_t ch)
     }
 }
 
-void CommandHandler::hdlcFrameRx(const uint8_t *frameBuffer, int frameLength)
+// Handle frame received from HDLC
+// This is a ascii character string (null terminated) followed by a byte buffer containing parameters
+void CommandHandler::hdlcFrameRx(const uint8_t *pFrame, int frameLength)
 {
     bytesRx += frameLength;
     totalFrames++;
     LogWrite(FromCommandHandler, LogNotice, "Rx %d bytes, frames %d", bytesRx, totalFrames);
+
+    // Handle the frame - extract command string
+    char commandString[CMD_HANDLER_MAX_CMD_STR_LEN+1];
+    strlcpy(commandString, (const char*)pFrame, CMD_HANDLER_MAX_CMD_STR_LEN);
+    int commandStringLen = strlen(commandString);
+    const uint8_t* pParams = pFrame + commandStringLen + 1;
+    int paramsLen = frameLength - commandStringLen - 1;
+    if (paramsLen < 0)
+        paramsLen = 0;
+
+    // Process the command with parameters
+    processCommand(commandString, pParams, paramsLen);
+}
+
+// Process split-up command string and parameters
+void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams, int paramsLen)
+{
+    // Get the command string from JSON
+    #define MAX_CMD_NAME_STR 30
+    char cmdName[MAX_CMD_NAME_STR+1];
+    if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
+        return;
+
+    // Handle commands
+    if (strcasecmp(cmdName, "ufStart") == 0)
+    {
+        LogWrite(FromCommandHandler, LOG_NOTICE, "ufStart");
+    }
+
 }
 
 void CommandHandler::service()
