@@ -1,7 +1,7 @@
 // Bus Raider
 // Rob Dobson 2018
 
-#include "busraider.h"
+#include "BusAccess.h"
 #include <circle/interrupt.h>
 #include <circle/timer.h>
 #include <circle/bcm2835.h>
@@ -15,10 +15,10 @@
 #define BR_ENABLE_WAIT_AND_FIQ 1
 
 // Instrument FIQ
-// #define INSTRUMENT_BUSRAIDER_FIQ 1
+// #define INSTRUMENT_BUSACCESS_FIQ 1
 
 // Callback on bus access
-BusRaiderCBFnType* BusRaider::_pBusAccessCallback = NULL;
+BusAccessCBFnType* BusAccess::_pBusAccessCallback = NULL;
 
 // Time to wait for control lines to be valid
 static const int MAX_WAIT_FOR_CTRL_LINES_US = 10000;
@@ -35,7 +35,7 @@ static const int MAX_WAIT_FOR_CTRL_LINES_US = 10000;
 #define CYCLES_DELAY_FOR_HIGH_ADDR_SET 500
 #define CYCLES_DELAY_FOR_WAIT_CLEAR 500
 
-BusRaider::BusRaider()
+BusAccess::BusAccess()
 {
     // Clear
     _waitStateEnMask = 0;
@@ -45,7 +45,7 @@ BusRaider::BusRaider()
     _pauseCurControlBus = 0;
 }
 
-BusRaider::~BusRaider()
+BusAccess::~BusAccess()
 {
 
 }
@@ -55,7 +55,7 @@ BusRaider::~BusRaider()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Initialise the bus raider
-void BusRaider::init()
+void BusAccess::init()
 {
     // Disable FIQ - used for wait state handling
     waitIntDisable();
@@ -116,7 +116,7 @@ void BusRaider::init()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Reset the host
-void BusRaider::hostReset()
+void BusAccess::hostReset()
 {
     // Disable wait interrupts
     waitIntDisable();
@@ -143,7 +143,7 @@ void BusRaider::hostReset()
 }
 
 // Hold host in reset state - call br_reset_host() to clear reset
-void BusRaider::hostResetHold()
+void BusAccess::hostResetHold()
 {
     // Disable wait interrupts
     waitIntDisable();
@@ -153,7 +153,7 @@ void BusRaider::hostResetHold()
 }
 
 // Non-maskable interrupt the host
-void BusRaider::hostNMI()
+void BusAccess::hostNMI()
 {
     // NMI by taking nmi_bar line low and high
     muxSet(BR_MUX_NMI_BAR_LOW);
@@ -162,7 +162,7 @@ void BusRaider::hostNMI()
 }
 
 // Maskable interrupt the host
-void BusRaider::hostIRQ()
+void BusAccess::hostIRQ()
 {
     // IRQ by taking irq_bar line low and high
     muxSet(BR_MUX_IRQ_BAR_LOW);
@@ -175,7 +175,7 @@ void BusRaider::hostIRQ()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Request access to the bus
-void BusRaider::controlRequestBus()
+void BusAccess::controlRequestBus()
 {
     // Set the PIB to input
     pibSetIn();
@@ -186,13 +186,13 @@ void BusRaider::controlRequestBus()
 }
 
 // Check if bus request has been acknowledged
-int BusRaider::controlBusAcknowledged()
+int BusAccess::controlBusAcknowledged()
 {
     return pinRawRead(BR_BUSACK_BAR) == 0;
 }
 
 // Take control of bus
-void BusRaider::controlTake()
+void BusAccess::controlTake()
 {
     // Disable interrupts
     waitIntDisable();
@@ -208,7 +208,7 @@ void BusRaider::controlTake()
 }
 
 // Release control of bus
-void BusRaider::controlRelease(bool resetTargetOnRelease)
+void BusAccess::controlRelease(bool resetTargetOnRelease)
 {
     // Control bus
     pinRawMode(BR_MREQ_BAR, true, 0);
@@ -242,7 +242,7 @@ void BusRaider::controlRelease(bool resetTargetOnRelease)
 }
 
 // Request bus, wait until available and take control
-BR_RETURN_TYPE BusRaider::controlReqAndTake()
+BR_RETURN_TYPE BusAccess::controlReqAndTake()
 {
     // Request
     controlRequestBus();
@@ -272,7 +272,7 @@ BR_RETURN_TYPE BusRaider::controlReqAndTake()
 // Set low address value by clearing and counting
 // Assumptions:
 // - some other code will set push-addr to enable onto the address bus
-void BusRaider::addrLowSet(uint32_t lowAddrByte)
+void BusAccess::addrLowSet(uint32_t lowAddrByte)
 {
     // Clear initially
     lowlevCycleDelay(CYCLES_DELAY_FOR_CLEAR_LOW_ADDR);
@@ -293,7 +293,7 @@ void BusRaider::addrLowSet(uint32_t lowAddrByte)
 // Increment low address value by clocking the counter
 // Assumptions:
 // - some other code will set push-addr to enable onto the address bus
-void BusRaider::addrLowInc()
+void BusAccess::addrLowInc()
 {
     write32(ARM_GPIO_GPSET0, 1 << BR_LADDR_CK);
     lowlevCycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
@@ -304,7 +304,7 @@ void BusRaider::addrLowInc()
 // Set the high address value
 // Assumptions:
 // - some other code will set push-addr to enable onto the address bus
-void BusRaider::addrHighSet(uint32_t highAddrByte)
+void BusAccess::addrHighSet(uint32_t highAddrByte)
 {
     // Shift the value into the register
     // Takes one more shift than expected as output reg is one pulse behind shift
@@ -331,7 +331,7 @@ void BusRaider::addrHighSet(uint32_t highAddrByte)
 // Set the full address
 // Assumptions:
 // - some other code will set push-addr to enable onto the address bus
-void BusRaider::addrSet(unsigned int addr)
+void BusAccess::addrSet(unsigned int addr)
 {
     addrHighSet(addr >> 8);
     addrLowSet(addr & 0xff);
@@ -347,7 +347,7 @@ void BusRaider::addrSet(unsigned int addr)
 // - control of host bus has been requested and acknowledged
 // - address bus is already set and output enabled to host bus
 // - PIB is already set to output
-void BusRaider::byteWrite(uint32_t byte, int iorq)
+void BusAccess::byteWrite(uint32_t byte, int iorq)
 {
     // Set the data onto the PIB
     pibSetValue(byte);
@@ -372,7 +372,7 @@ void BusRaider::byteWrite(uint32_t byte, int iorq)
 // - address bus is already set and output enabled to host bus
 // - PIB is already set to input
 // - data direction on data bus driver is set to input (default)
-uint8_t BusRaider::byteRead(int iorq)
+uint8_t BusAccess::byteRead(int iorq)
 {
     // Enable data output onto PIB (data-dir must be inwards already), MREQ_BAR and RD_BAR both active
     write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
@@ -389,7 +389,7 @@ uint8_t BusRaider::byteRead(int iorq)
 }
 
 // Write a consecutive block of memory to host
-BR_RETURN_TYPE BusRaider::blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq)
+BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq)
 {
 	// for (int i = 0; i < 10; i++)
 	// {
@@ -464,7 +464,7 @@ BR_RETURN_TYPE BusRaider::blockWrite(uint32_t addr, const uint8_t* pData, uint32
 // Assumes:
 // - control of host bus has been requested and acknowledged
 // - data direction on data bus driver is set to input (default)
-BR_RETURN_TYPE BusRaider::blockRead(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq)
+BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq)
 {
     // Check if we need to request bus
     if (busRqAndRelease) {
@@ -535,7 +535,7 @@ BR_RETURN_TYPE BusRaider::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
 // Utility Functions
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void BusRaider::setPinOut(CGPIOPin& gpioPin, int pinNumber, bool val)
+void BusAccess::setPinOut(CGPIOPin& gpioPin, int pinNumber, bool val)
 {
     pinRawMode(pinNumber, false, val);
     // gpioPin.AssignPin(pinNumber);
@@ -543,7 +543,7 @@ void BusRaider::setPinOut(CGPIOPin& gpioPin, int pinNumber, bool val)
     // gpioPin.Write(val);
 }
 
-void BusRaider::setPinIn(CGPIOPin& gpioPin, int pinNumber)
+void BusAccess::setPinIn(CGPIOPin& gpioPin, int pinNumber)
 {
     pinRawMode(pinNumber, true, 0);
     // gpioPin.AssignPin(pinNumber);
@@ -551,7 +551,7 @@ void BusRaider::setPinIn(CGPIOPin& gpioPin, int pinNumber)
 }
 
 // Set the MUX
-void BusRaider::muxSet(int muxVal)
+void BusAccess::muxSet(int muxVal)
 {
     // Clear first as this is a safe setting - sets HADDR_SER low
     write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
@@ -560,45 +560,45 @@ void BusRaider::muxSet(int muxVal)
 }
 
 // Clear the MUX
-void BusRaider::muxClear()
+void BusAccess::muxClear()
 {
     // Clear to a safe setting - sets HADDR_SER low
     write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
 }
 
 // Clear wait interrupt
-void BusRaider::waitIntClear()
+void BusAccess::waitIntClear()
 {
     // Clear detected edge on any pin
     write32(ARM_GPIO_GPEDS0, 0xffffffff);
 }
 
 // Interrupt disable
-void BusRaider::waitIntDisable()
+void BusAccess::waitIntDisable()
 {
     CInterruptSystem::DisableFIQ();
 }
 
 // Interrupt enable
-void BusRaider::waitIntEnable()
+void BusAccess::waitIntEnable()
 {
     CInterruptSystem::EnableFIQ(0);
 }
 
 // Set the PIB (pins used for data bus access) to outputs (from Pi)
-void BusRaider::pibSetOut()
+void BusAccess::pibSetOut()
 {
     write32(BR_PIB_GPF_REG, (read32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_OUTPUT);
 }
 
 // Set the PIB (pins used for data bus access) to inputs (to Pi)
-void BusRaider::pibSetIn()
+void BusAccess::pibSetIn()
 {
     write32(BR_PIB_GPF_REG, (read32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_INPUT);
 }
 
 // Set a value onto the PIB (pins used for data bus access)
-void BusRaider::pibSetValue(uint8_t val)
+void BusAccess::pibSetValue(uint8_t val)
 {
     uint32_t setBits = ((uint32_t)val) << BR_DATA_BUS;
     uint32_t clrBits = (~(((uint32_t)val) << BR_DATA_BUS)) & (~BR_PIB_MASK);
@@ -607,12 +607,12 @@ void BusRaider::pibSetValue(uint8_t val)
 }
 
 // Get a value from the PIB (pins used for data bus access)
-uint8_t BusRaider::pibGetValue()
+uint8_t BusAccess::pibGetValue()
 {
     return (read32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
 }
 
-void BusRaider::pinRawMode(int pinNumber, bool inputMode, bool val)
+void BusAccess::pinRawMode(int pinNumber, bool inputMode, bool val)
 {
     if (!inputMode)
         pinRawWrite(pinNumber, val);
@@ -627,7 +627,7 @@ void BusRaider::pinRawMode(int pinNumber, bool inputMode, bool val)
         pinRawWrite(pinNumber, val);
 }
 
-void BusRaider::pinRawWrite(int pinNumber, bool val)
+void BusAccess::pinRawWrite(int pinNumber, bool val)
 {
     if (val) {
         if (pinNumber < 32)
@@ -642,7 +642,7 @@ void BusRaider::pinRawWrite(int pinNumber, bool val)
     }
 }
 
-bool BusRaider::pinRawRead(int pinNumber)
+bool BusAccess::pinRawRead(int pinNumber)
 {
     if (pinNumber < 32)
         return ((read32(ARM_GPIO_GPLEV0) >> pinNumber) & 0x01) != 0;
@@ -680,7 +680,7 @@ void br_remove_bus_access_callback()
     __br_pBusAccessCallback = NULL;
 }
 
-#ifdef INSTRUMENT_BUSRAIDER_FIQ
+#ifdef INSTRUMENT_BUSACCESS_FIQ
 
 #define MAX_IO_PORT_VALS 1000
 volatile uint32_t iorqPortAccess[MAX_IO_PORT_VALS];
@@ -696,7 +696,7 @@ void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ)
     // Disable interrupts
     br_disable_wait_interrupt();
 
-#ifdef INSTRUMENT_BUSRAIDER_FIQ
+#ifdef INSTRUMENT_BUSACCESS_FIQ
     for (int i = 0; i < MAX_IO_PORT_VALS; i++)
     {
         iorqPortAccess[i] = 0;
@@ -975,7 +975,7 @@ bool br_pause_release()
 
 void br_service()
 {
-#ifdef INSTRUMENT_BUSRAIDER_FIQ
+#ifdef INSTRUMENT_BUSACCESS_FIQ
     loopCtr++;
     if (loopCtr > 500000)
     {

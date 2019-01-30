@@ -35,7 +35,7 @@ public:
 
     // Called by external function that has byte-wise data to process
     void handleChar(uint8_t ch);
-    void handleBuffer(uint8_t* pBuf, int numBytes);
+    void handleBuffer(const uint8_t* pBuf, int numBytes);
 
     // Called by external function that has bit-wise data to process
     void handleBit(uint8_t bit);

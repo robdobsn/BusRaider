@@ -8,7 +8,7 @@
 #include <stddef.h>
 #include <circle/gpiopin.h>
 
-typedef uint32_t BusRaiderCBFnType(uint32_t addr, uint32_t data, uint32_t flags);
+typedef uint32_t BusAccessCBFnType(uint32_t addr, uint32_t data, uint32_t flags);
 
 // Return codes
 typedef enum {
@@ -99,11 +99,11 @@ typedef enum {
 #define BR_PIB_GPF_INPUT 0x00000000
 #define BR_PIB_GPF_OUTPUT 0x00249249
 
-class BusRaider
+class BusAccess
 {
 public:
-    BusRaider();
-    ~BusRaider();
+    BusAccess();
+    ~BusAccess();
 
     // Initialise the bus raider
     void init();    
@@ -143,7 +143,7 @@ public:
     void service();
 
     // Set and remove callbacks on bus access
-    void accessCallbackSet(BusRaiderCBFnType* pBusAccessCallback);
+    void accessCallbackSet(BusAccessCBFnType* pBusAccessCallback);
     void accessCallbackRemove();
 
     // Single step
@@ -189,7 +189,7 @@ private:
 
 private:
     // Callback on bus access
-    static BusRaiderCBFnType* _pBusAccessCallback;
+    static BusAccessCBFnType* _pBusAccessCallback;
 
     // Current wait state mask for restoring wait enablement after change
     uint32_t _waitStateEnMask;

@@ -25,11 +25,11 @@ const uint16_t MiniHDLC::_CRCTable[256] = {
 };
 
 #ifndef USE_STD_FUNCTION_AND_BIND
-    MiniHDLCPutChFnType* MiniHDLC::_putChFn = NULL;
-    MiniHDLCFrameRxFnType* MiniHDLC::_frameRxFn = NULL;
+    MiniHDLCPutChFnType MiniHDLC::_putChFn = NULL;
+    MiniHDLCFrameRxFnType MiniHDLC::_frameRxFn = NULL;
 #endif
 
-MiniHDLC::MiniHDLC(MiniHDLCPutChFnType* putChFn, MiniHDLCFrameRxFnType* frameRxFn,
+MiniHDLC::MiniHDLC(MiniHDLCPutChFnType putChFn, MiniHDLCFrameRxFnType frameRxFn,
 				bool bigEndianCRC, bool bitwiseHDLC)
 {
     _putChFn = putChFn;
@@ -160,7 +160,7 @@ void MiniHDLC::handleChar(uint8_t ch)
     }
 }
 
-void MiniHDLC::handleBuffer(uint8_t* pBuf, int numBytes)
+void MiniHDLC::handleBuffer(const uint8_t* pBuf, int numBytes)
 {
     // Iterate bytes
     for (int i = 0; i < numBytes; i++)

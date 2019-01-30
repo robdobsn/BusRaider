@@ -1,35 +1,38 @@
+// Bus Raider
+// Rob Dobson 2018-2019
 
 #include "CommandHandler.h"
+#include "../System/LogHandler.h"
 #include <stdlib.h>
-#include <circle/logger.h>
 
 static const char FromCommandHandler[] = "CommandHandler";
 
 // Callback for change machine type
-CmdHandlerChangeMachineFnType CommandHandler::_pChangeMcFunction = NULL;
-CmdHandlerRxCharFnType CommandHandler::_pRxCharFunction = NULL;
+CmdHandlerChangeMachineFnType* CommandHandler::_pChangeMcFunction = NULL;
+CmdHandlerPutBytesFnType* CommandHandler::_pPutBytesFunction = NULL;
 
 // Singleton command handler
 CommandHandler* CommandHandler::_pSingletonCommandHandler = NULL;
 
 // Constructor
-CommandHandler::CommandHandler(CSerialDevice& serialConn, CmdHandlerChangeMachineFnType pChangeMcFunction) :
-    _serialConn(serialConn),
+CommandHandler::CommandHandler() :
     _miniHDLC(static_hdlcPutCh, static_hdlcFrameRx)
 {   
-    _pChangeMcFunction = pChangeMcFunction;
+    _pPutBytesFunction = NULL;
+    _pChangeMcFunction = NULL;
     _pSingletonCommandHandler = this;
 
-
-
-
-    totalRead = 0;
-    numRead = 0;
+    totalFrames = 0;
     bytesRx = 0;
 }
 
 CommandHandler::~CommandHandler()
 {
+}
+
+void CommandHandler::handleBuffer(const uint8_t* pBytes, int numBytes)
+{
+    _miniHDLC.handleBuffer(pBytes, numBytes);
 }
 
 void CommandHandler::static_hdlcPutCh(uint8_t ch)
@@ -46,25 +49,29 @@ void CommandHandler::static_hdlcFrameRx(const uint8_t *frameBuffer, int frameLen
 
 void CommandHandler::hdlcPutCh(uint8_t ch)
 {
-    uint8_t buf[1];
-    buf[0] = ch;
-    _serialConn.Write(buf, 1);
+    if (_pPutBytesFunction)
+    {
+        uint8_t buf[1];
+        buf[0] = ch;
+        _pPutBytesFunction(buf, 1);
+    }
 }
 
 void CommandHandler::hdlcFrameRx(const uint8_t *frameBuffer, int frameLength)
 {
     bytesRx += frameLength;
-    // CLogger::Get()->Write(FromCommandHandler, LogNotice, "HDLC frame received, len %d total %d", frameLength, bytesRx);
+    totalFrames++;
+    LogWrite(FromCommandHandler, LogNotice, "Rx %d bytes, frames %d", bytesRx, totalFrames);
 }
 
 void CommandHandler::service()
 {
-    static const int MAX_CHARS_TO_READ = 10000;
-    unsigned char buf[MAX_CHARS_TO_READ];
-    int bytesRead = _serialConn.Read(buf, MAX_CHARS_TO_READ);
-    numRead += bytesRead;
-    totalRead += bytesRead;
-    _miniHDLC.handleBuffer(buf, bytesRead);
+    // static const int MAX_CHARS_TO_READ = 10000;
+    // unsigned char buf[MAX_CHARS_TO_READ];
+    // int bytesRead = _serialConn.Read(buf, MAX_CHARS_TO_READ);
+    // numRead += bytesRead;
+    // totalRead += bytesRead;
+    // _miniHDLC.handleBuffer(buf, bytesRead);
 
     // uint8_t buf[MAX_CHARS_TO_READ];
     // int charsRead = _serialConn.Read(buf, MAX_CHARS_TO_READ);

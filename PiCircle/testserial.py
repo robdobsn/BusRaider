@@ -45,7 +45,7 @@ try:
         bytesToRead = ser.inWaiting()
         if bytesToRead > 0:
             dataRead = ser.read(bytesToRead)
-            ascii = dataRead.decode("utf-8")
+            ascii = dataRead.decode('ascii',errors='ignore')
             print(ascii)
             lastFewChars = lastFewChars[-3:] + ascii
         if time.time() - prevTime > 30:
@@ -88,7 +88,7 @@ try:
         bytesToRead = ser.inWaiting()
         if bytesToRead > 0:
             dataRead = ser.read(bytesToRead)
-            ascii = dataRead.decode("utf-8")
+            ascii = dataRead.decode("ascii", errors="ignore")
             print(ascii)
         if time.time() - prevTime > 10:
             break

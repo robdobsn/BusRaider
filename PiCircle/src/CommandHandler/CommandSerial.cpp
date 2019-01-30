@@ -1,5 +1,6 @@
+// Bus Raider
+// Rob Dobson 2018-2019
 // CommandSerial
-// Rob Dobson 2018
 
 #include "CommandSerial.h"
 

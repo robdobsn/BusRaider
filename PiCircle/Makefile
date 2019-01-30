@@ -6,7 +6,16 @@ SERIALPORT  ?= COM39
 
 CIRCLEHOME = ./circle
 
-OBJS	= src/main.o src/kernel.o src/rdserial.o src/MiniHDLC.o
+EXTRACLEAN = src/*.o src/CommandHandler/*.o src/Machines/*.o src/Target/*.o src/System/*.o *.d src/*.d src/CommandHandler/*.d src/Machines/*.d src/Target/*.d src/System/*.d
+
+# INCLUDE_USB = _INCLUDE_USB_
+ifdef INCLUDE_USB
+CFLAGS  = -D$(INCLUDE_USB)
+endif
+
+OBJS	= src/main.o src/kernel.o src/rdserial.o src/BusRaider.o \
+			src/System/LogHandler.o \
+			src/CommandHandler/CommandHandler.o src/CommandHandler/MiniHDLC.o 
 
 #OBJS	= src/main.o src/kernel.o src/System/lowlev.o \
 #			src/Target/BusRaider.o src/Target/TargetMemory.o src/Target/TargetScreen.o \
@@ -14,10 +23,14 @@ OBJS	= src/main.o src/kernel.o src/rdserial.o src/MiniHDLC.o
 #			src/Fonts/FontTRS80Level1.o \
 #			src/CommandInterface/MiniHDLC.o src/CommandInterface/CommandHandler.o
 
+ifdef INCLUDE_USB
 LIBS	= $(CIRCLEHOME)/lib/usb/libusb.a \
 	  $(CIRCLEHOME)/lib/input/libinput.a \
 	  $(CIRCLEHOME)/lib/fs/libfs.a \
 	  $(CIRCLEHOME)/lib/libcircle.a
+else
+LIBS	= $(CIRCLEHOME)/lib/libcircle.a
+endif
 
 include $(CIRCLEHOME)/Rules.mk
 
