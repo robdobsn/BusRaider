@@ -11,4 +11,5 @@ src/CommandHandler/CommandHandler.o: \
  circle/include/circle/memorymap.h circle/include/circle/spinlock.h \
  circle/include/circle/synchronize.h circle/include/circle/time.h \
  src/CommandHandler/../System/JsonUtils.h \
- src/CommandHandler/../System/StringUtils.h circle/include/circle/util.h
+ src/CommandHandler/../System/StringUtils.h circle/include/circle/util.h \
+ src/CommandHandler/../System/OTAUpdate.h

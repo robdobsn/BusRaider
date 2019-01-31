@@ -64,7 +64,7 @@ private:
 	CDeviceNameService	m_DeviceNameService;
 	CScreenDevice		m_Screen;
 	CSerialDevice		m_Serial;
-	CExceptionHandler	m_ExceptionHandler;
+	// CExceptionHandler	m_ExceptionHandler;
 	CInterruptSystem	m_Interrupt;
 	CTimer				m_Timer;
 	CLogger				m_Logger;

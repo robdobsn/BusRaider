@@ -48,7 +48,7 @@ try:
             ascii = dataRead.decode('ascii',errors='ignore')
             print(ascii)
             lastFewChars = lastFewChars[-3:] + ascii
-        if time.time() - prevTime > 30:
+        if time.time() - prevTime > 10:
             break
         if "~~~" in lastFewChars:
             print("Received ~~~ going to send now")
@@ -70,17 +70,31 @@ if testname == "test1":
         ser.close()
         exit()
 else:
-    galaxyFrame = bytearray(b"{\"cmdName\":\"ufStart\",\"fileType\":\"trs80cmd\"}\0")
-    galaxyFrame += bytearray(b"{TESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTEST}")
-    h = HDLC(ser)
-    # def onFrame(fr):
-    #     print(fr)
-    # h.startReader(onFrame)
-    numFrames = 1000
-    for i in range(numFrames):
-        h.sendFrame(galaxyFrame)
-    print("Sent hdlc len", len(galaxyFrame))
-    # h.stopReader()
+    with open("kernel.img", "rb") as f:
+        dataBlock = f.read()
+        fileLen = len(dataBlock)
+        print("File is ", fileLen, " bytes long")
+        startFrame = bytearray(b"{\"cmdName\":\"ufStart\",\"fileName\":\"kernel.img\",\"fileType\":\"firmware\",\"fileLen\":\"" + bytes(str(fileLen),"ascii") + b"\"}\0")
+        # galaxyFrame += bytearray(b"{TESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTESTTEST}")
+        h = HDLC(ser)
+        # def onFrame(fr):
+        #     print(fr)
+        # h.startReader(onFrame)
+        # numFrames = 1000
+        # for i in range(numFrames):
+        #     h.sendFrame(galaxyFrame)
+        # print("Sent hdlc len", len(galaxyFrame))
+        # h.stopReader()
+        h.sendFrame(startFrame)
+        blockMaxSize = 1000
+        numBlocks = fileLen//blockMaxSize + (0 if (fileLen % blockMaxSize == 0) else 1)
+        for i in range(numBlocks):
+            blockStart = i*blockMaxSize
+            blockToSend = dataBlock[blockStart:blockStart+blockMaxSize]
+            dataFrame = bytearray(b"{\"cmdName\":\"ufBlock\",\"index\":\"" + bytes(str(blockStart),"ascii") + b"\"}\0") + blockToSend
+            h.sendFrame(dataFrame)
+        endFrame = bytearray(b"{\"cmdName\":\"ufEnd\",\"blockCount\":\"" + bytes(str(numBlocks),"ascii") + b"\"}\0")
+        h.sendFrame(endFrame)
 
 try:
     prevTime = time.time()
@@ -90,7 +104,7 @@ try:
             dataRead = ser.read(bytesToRead)
             ascii = dataRead.decode("ascii", errors="ignore")
             print(ascii)
-        if time.time() - prevTime > 10:
+        if time.time() - prevTime > 15:
             break
 except Exception as excp:
     print("ERROR: Serial port?", excp)

@@ -33,7 +33,7 @@ CKernel::CKernel (void)
 :	m_Screen (m_Options.GetWidth (), m_Options.GetHeight ()),
 	m_Serial (&m_Interrupt),
 	m_Timer (&m_Interrupt),
-	m_Logger (m_Options.GetLogLevel (), &m_Timer),
+	m_Logger (LogDebug, &m_Timer),
 #ifdef _INCLUDE_USB_
 	m_DWHCI (&m_Interrupt, &m_Timer),
 #endif
@@ -43,6 +43,7 @@ CKernel::CKernel (void)
     m_pKeyboard = NULL;
 #endif
 	s_pThis = this;
+	m_ActLED.Blink (5);	// show we are alive
 }
 
 CKernel::~CKernel (void)
@@ -136,7 +137,7 @@ TShutdownMode CKernel::Run (void)
                 _busRaider.handleSerialRxBuffer(buf, numRead);
 				// _miniHDLC.handleBuffer(buf, numRead);
 			}
-			if (m_Timer.GetTicks() > curTicks + 1000)
+			if (m_Timer.GetTicks() > curTicks + 500)
 				break;
 		// }
 		}

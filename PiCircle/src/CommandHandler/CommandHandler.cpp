@@ -5,11 +5,10 @@
 #include "../System/LogHandler.h"
 #include "../System/JsonUtils.h"
 #include "../System/StringUtils.h"
+#include "../System/OTAUpdate.h"
 #include <stdlib.h>
 
-static const char FromCommandHandler[] = "CommandHandler";
-
-static const int CMD_HANDLER_MAX_CMD_STR_LEN = 200;
+static const char FromCmdHandler[] = "CommandHandler";
 
 // Callback for change machine type
 CmdHandlerChangeMachineFnType* CommandHandler::_pChangeMcFunction = NULL;
@@ -25,6 +24,12 @@ CommandHandler::CommandHandler() :
     _pPutBytesFunction = NULL;
     _pChangeMcFunction = NULL;
     _pSingletonCommandHandler = this;
+
+    // File reception
+    _pReceivedFileDataPtr = 0;
+    _receivedFileBufSize = 0;
+    _receivedFileBytesRx = 0;
+    _receivedBlockCount = 0;
 
     totalFrames = 0;
     bytesRx = 0;
@@ -67,7 +72,7 @@ void CommandHandler::hdlcFrameRx(const uint8_t *pFrame, int frameLength)
 {
     bytesRx += frameLength;
     totalFrames++;
-    LogWrite(FromCommandHandler, LogNotice, "Rx %d bytes, frames %d", bytesRx, totalFrames);
+    LogWrite(FromCmdHandler, LogNotice, "Rx %d bytes, frames %d", bytesRx, totalFrames);
 
     // Handle the frame - extract command string
     char commandString[CMD_HANDLER_MAX_CMD_STR_LEN+1];
@@ -91,12 +96,145 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
         return;
 
+    LogWrite(FromCmdHandler, LOG_NOTICE, "processCommand JSON %s cmdName %s", pCmdJson, cmdName); 
+
     // Handle commands
     if (strcasecmp(cmdName, "ufStart") == 0)
     {
-        LogWrite(FromCommandHandler, LOG_NOTICE, "ufStart");
+        LogWrite(FromCmdHandler, LOG_NOTICE, "processCommand fileStart"); 
+        handleFileStart(pCmdJson, pParams, paramsLen);
+    }
+    else if (strcasecmp(cmdName, "ufBlock") == 0)
+    {
+        handleFileBlock(pCmdJson, pParams, paramsLen);
+    }
+    else if (strcasecmp(cmdName, "ufEnd") == 0)
+    {
+        handleFileEnd(pCmdJson, pParams, paramsLen);
     }
 
+}
+
+// Handle reception of file start block
+void CommandHandler::handleFileStart(const char* pCmdJson, const uint8_t* pParams, int paramsLen)
+{
+    // Start a file upload - get file name
+    if (!jsonGetValueForKey("fileName", pCmdJson, _receivedFileName, MAX_FILE_NAME_STR))
+        return;
+
+    LogWrite(FromCmdHandler, LOG_NOTICE, "ufStart File %s, toPtr %08x", 
+                _receivedFileName, _pReceivedFileDataPtr);
+
+    // Get file type
+    if (!jsonGetValueForKey("fileType", pCmdJson, _pReceivedFileType, MAX_FILE_TYPE_STR))
+        return;
+
+    LogWrite(FromCmdHandler, LOG_NOTICE, "ufStart FileType %s", 
+                _receivedFileName);
+
+    // Get file length
+    char fileLenStr[MAX_INT_ARG_STR_LEN+1];
+    if (!jsonGetValueForKey("fileLen", pCmdJson, fileLenStr, MAX_INT_ARG_STR_LEN))
+        return;
+
+    LogWrite(FromCmdHandler, LOG_NOTICE, "ufStart FileLenStr %s", 
+                fileLenStr);
+
+    int fileLen = strtoul(fileLenStr, NULL, 10);
+    if (fileLen <= 0)
+        return;
+    LogWrite(FromCmdHandler, LOG_NOTICE, "ufStart FileLen %d", 
+                fileLen);
+
+    // Copy start info
+    strlcpy(_receivedFileStartInfo, pCmdJson, CMD_HANDLER_MAX_CMD_STR_LEN);
+
+    // Allocate space for file
+    if (_pReceivedFileDataPtr != NULL)
+        delete [] _pReceivedFileDataPtr;
+    _pReceivedFileDataPtr = new uint8_t[fileLen];
+    _receivedFileBytesRx = 0;
+    _receivedBlockCount = 0;
+    if (_pReceivedFileDataPtr)
+    {
+        _receivedFileBufSize = fileLen;
+
+        // Debug
+        LogWrite(FromCmdHandler, LOG_NOTICE, "efStart File %s, toPtr %08x, bufSize %d", 
+                    _receivedFileName, _pReceivedFileDataPtr, _receivedFileBufSize);
+    }
+    else
+    {
+        _receivedFileBufSize = 0;
+        LogWrite(FromCmdHandler, LOG_WARNING, "efStart unable to allocate memory for file %s, bufSize %d", 
+                    _receivedFileName, _receivedFileBufSize);
+
+    }
+}
+
+void CommandHandler::handleFileBlock(const char* pCmdJson, const uint8_t* pData, int dataLen)
+{
+    // Check file reception in progress
+    if (!_pReceivedFileDataPtr)
+        return;
+
+    // Get block location
+    char blockStartStr[MAX_INT_ARG_STR_LEN+1];
+    if (!jsonGetValueForKey("index", pCmdJson, blockStartStr, MAX_INT_ARG_STR_LEN))
+        return;
+    int blockStart = strtoul(blockStartStr, NULL, 10);
+    if (blockStart < 0)
+        return;
+
+    // Check if outside bounds of file length buffer
+    if (blockStart + dataLen > _receivedFileBufSize)
+        return;
+
+    // Store the data
+    memcpy(_pReceivedFileDataPtr+blockStart, pData, dataLen);
+    _receivedFileBytesRx += dataLen;
+
+    // Add to count of blocks
+    _receivedBlockCount++;
+    LogWrite(FromCmdHandler, LOG_DEBUG, "efBlock, len %d, blocks %d", 
+                _receivedFileBytesRx, _receivedBlockCount);
+}
+
+void CommandHandler::handleFileEnd(const char* pCmdJson, const uint8_t* pData, int dataLen)
+{
+    // Check file reception in progress
+    if (!_pReceivedFileDataPtr)
+        return;
+
+    // Check block count
+    char blockCountStr[MAX_INT_ARG_STR_LEN+1];
+    if (!jsonGetValueForKey("blockCount", pCmdJson, blockCountStr, MAX_INT_ARG_STR_LEN))
+        return;
+    int blockCount = strtoul(blockCountStr, NULL, 10);
+    if (blockCount != _receivedBlockCount)
+    {
+        LogWrite(FromCmdHandler, LOG_WARNING, "efEnd File %s, blockCount rx %d != sent %d", 
+                _receivedFileName, _receivedBlockCount, blockCount);
+        return;
+    }
+
+    // Check file type
+    if (strcasecmp(_pReceivedFileType, "firmware") == 0)
+    {
+        LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd IMG firmware update File %s, len %d", _receivedFileName, _receivedFileBytesRx);
+
+        OTAUpdate::performUpdate(_pReceivedFileDataPtr, _receivedFileBytesRx);
+    }
+    else
+    {
+        // Offer to the machine specific handler
+        // appendJson(_receivedFileStartInfo, pCmdJson);
+        LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
+        // McBase* pMc = McManager::getMachine();
+        // if (pMc)
+        //     pMc->fileHandler(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx);
+
+    }
 }
 
 void CommandHandler::service()
@@ -113,7 +251,7 @@ void CommandHandler::service()
     // // for (int i = 0; i < charsRead; i++)
     // //     _miniHDLC.handleChar(buf[i]);
     // // if (charsRead > 0)
-    // //     CLogger::Get()->Write(FromCommandHandler, LogNotice, "%d", charsRead);
+    // //     CLogger::Get()->Write(FromCmdHandler, LogNotice, "%d", charsRead);
     // numRead += charsRead;
     // totalRead += charsRead;
 }
