@@ -17,6 +17,7 @@
 #include "Machines/McTerminal.h"
 #include "System/timer.h"
 #include "System/lowlib.h"
+#include "System/lowlev.h"
 #include <stdlib.h>
 
 typedef unsigned char		u8;
@@ -32,7 +33,7 @@ typedef int                 s32;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "             RC2014 Bus Raider V1.6.048";
+static const char* PROG_VERSION = "             RC2014 Bus Raider V1.7.001";
 static const char* PROG_CREDITS = "    Rob Dobson 2018 (inspired by PiGFX)";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
@@ -229,6 +230,42 @@ extern "C" void entry_point()
     unsigned long lastStatusUpdateMs = 0;
     const unsigned long STATUS_UPDATE_RATE_MS = 3000;
 
+// #define TEST_VFP
+#ifdef TEST_VFP
+
+    volatile uint32_t lastMicros = micros();
+        // Loop forever
+    while (1) 
+    {
+
+        volatile uint32_t newMicros = micros();
+        // volatile uint32_t lastModMicros = newMicros;
+        if (newMicros > lastMicros)
+        {
+            if (newMicros - lastMicros > 5)
+            // if (newMicros % 1000 < lastModMicros)
+            {
+                // while (1)
+                // {
+                // for (int i = 0; i < 100; i++)
+                    digitalWrite(BR_DEBUG_PI_SPI0_CE0,1);
+                    lowlev_cycleDelay(1000);
+                // for (int i = 0; i < 100; i++)
+                    digitalWrite(BR_DEBUG_PI_SPI0_CE0,0);
+                    lowlev_cycleDelay(1000);
+                // }
+            }
+            // lastModMicros = newMicros % 1000;
+        }
+        digitalWrite(BR_HADDR_CK, 1);
+        lowlev_cycleDelay(10);
+        digitalWrite(BR_HADDR_CK, 0);
+        lowlev_cycleDelay(10);
+        lastMicros = micros();
+
+     }
+#else
+
     // Loop forever
     while (1) 
     {
@@ -323,6 +360,6 @@ extern "C" void entry_point()
         // Service bus raider
         br_service();
     }
+#endif
 }
 
-// #endif

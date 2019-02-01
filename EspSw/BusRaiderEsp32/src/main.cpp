@@ -36,7 +36,7 @@
 const char* systemType = "BusRaiderESP32";
 
 // System version
-const char* systemVersion = "1.003.034";
+const char* systemVersion = "1.003.035";
 
 // Build date
 const char* buildDate = __DATE__;
@@ -184,7 +184,7 @@ void setup()
 {
     // Logging
     Serial.begin(115200);
-    Log.begin(LOG_LEVEL_VERBOSE, &netLog);
+    Log.begin(LOG_LEVEL_TRACE, &netLog);
 
     // Message
     Log.notice("%s %s (built %s %s)\n", systemType, systemVersion, buildDate, buildTime);
