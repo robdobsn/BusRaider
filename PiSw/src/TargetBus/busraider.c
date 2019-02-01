@@ -38,16 +38,16 @@ uint32_t __br_pause_flags = 0;
 static const int MAX_WAIT_FOR_CTRL_LINES_US = 10000;
 
 // Period target write control bus line is asserted during a write
-// #define CYCLES_DELAY_FOR_WRITE_TO_TARGET 2
+#define CYCLES_DELAY_FOR_WRITE_TO_TARGET 25
 
 // Period target read control bus line is asserted during a read from the PIB (any bus element)
-#define CYCLES_DELAY_FOR_READ_FROM_PIB 2
+#define CYCLES_DELAY_FOR_READ_FROM_PIB 25
 
 // Delay in machine cycles for setting the pulse width when clearing/incrementing the address counter/shift-reg
-#define CYCLES_DELAY_FOR_CLEAR_LOW_ADDR 5
-#define CYCLES_DELAY_FOR_LOW_ADDR_SET 2
-#define CYCLES_DELAY_FOR_HIGH_ADDR_SET 5
-#define CYCLES_DELAY_FOR_WAIT_CLEAR 5
+#define CYCLES_DELAY_FOR_CLEAR_LOW_ADDR 20
+#define CYCLES_DELAY_FOR_LOW_ADDR_SET 20
+#define CYCLES_DELAY_FOR_HIGH_ADDR_SET 20
+#define CYCLES_DELAY_FOR_WAIT_CLEAR 20
 
 // Set a pin to be an output and set initial value for that pin
 void br_set_pin_out(int pin, int val)

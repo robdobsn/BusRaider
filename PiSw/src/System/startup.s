@@ -75,11 +75,10 @@ _reset_:
 // Bit 12 enables the L1 instruction Cache, and is available in the StrongARM and all later ARM CPUs.
 // Bit 11 enables branch prediction, and is only available in ARMv6 and all later CPUs.
 // If you wish you can also enable Bit 2 to enable the Data Cache, though be careful with this one.
-//   MRC CP15,0,R0,C1,C0
-//   MOV R1,#3
-//   ORR R0,R0,R1,LSL#11      ;Set bits 11 and 12.
-//   MCR CP15,0,R0,C1,C0      ;Update the CP15 Control registor (C1) from R0.
-
+    MRC P15,0,R0,C1,C0
+    MOV R1,#3
+    ORR R0,R0,R1,LSL#11      // Set bits 11 and 12.
+    MCR P15,0,R0,C1,C0       // Update the CP15 Control registor (C1) from R0.
 
     // Fill BSS with zeros
     ldr   r3, bss_start 
