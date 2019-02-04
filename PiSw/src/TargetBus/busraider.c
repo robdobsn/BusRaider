@@ -609,6 +609,12 @@ void br_wait_state_isr(void* pData)
     // pData unused
     pData = pData;
 
+    // Set PIB to input
+    br_set_pib_input();
+    // Clear the mux to deactivate output enables
+    br_mux_clear();
+    lowlev_cycleDelay(1000);
+
     // Loop until control lines are valid
     // In a write cycle WR is asserted after MREQ so we need to wait until WR changes before
     // we can determine what kind of operation is in progress 
@@ -656,7 +662,6 @@ void br_wait_state_isr(void* pData)
     }
 
     // Enable the low address onto the PIB
-    br_set_pib_input();
     WR32(GPSET0, 1 << BR_DATA_DIR_IN);
     br_mux_set(BR_MUX_LADDR_OE_BAR);
 
@@ -688,7 +693,7 @@ void br_wait_state_isr(void* pData)
         (((busVals & (1 << BR_MREQ_BAR)) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
         (((busVals & (1 << BR_IORQ_BAR)) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
         (((busVals & (1 << BR_WAIT_BAR)) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
-        (((RD32(GPLEV0) & (1 << BR_M1_PIB_BAR)) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
+        (((busVals & (1 << BR_M1_PIB_BAR)) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
 
     // Read the data bus if the target machine is writing
     uint32_t dataBusVals = 0;

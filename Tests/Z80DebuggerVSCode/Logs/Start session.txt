@@ -1,0 +1,368 @@
+<- Welcome to ZEsarUX remote command protocol (ZRCP)
+Write help for available commands
+
+command> 
+-> about
+<- ZEsarUX remote command protocol
+command> 
+-> get-version
+<- 7.2-SN
+command> 
+-> get-current-machine
+<- Spectrum 48k
+command> 
+-> check-extensions
+<- Unknown command
+command> 
+-> set-debug-settings 32
+<- 
+command> 
+-> hard-reset-cpu
+<- 
+command> 
+-> enter-cpu-step
+<- 
+command@cpu-step> 
+-> smartload C:\Users\rob\Documents\1-github\z80-sample-program\z80-sample-program.sna
+<- 
+command@cpu-step> 
+-> clear-membreakpoints
+<- 
+command@cpu-step> 
+-> enable-breakpoints
+<- 
+command@cpu-step> 
+-> disable-breakpoint 1
+<- 
+command@cpu-step> 
+-> disable-breakpoint 2
+<- 
+command@cpu-step> 
+-> disable-breakpoint 3
+<- 
+command@cpu-step> 
+-> disable-breakpoint 4
+<- 
+command@cpu-step> 
+-> disable-breakpoint 5
+<- 
+command@cpu-step> 
+-> disable-breakpoint 6
+<- 
+command@cpu-step> 
+-> disable-breakpoint 7
+<- 
+command@cpu-step> 
+-> disable-breakpoint 8
+<- 
+command@cpu-step> 
+-> disable-breakpoint 9
+<- 
+command@cpu-step> 
+-> disable-breakpoint 10
+<- 
+command@cpu-step> 
+-> disable-breakpoint 11
+<- 
+command@cpu-step> 
+-> disable-breakpoint 12
+<- 
+command@cpu-step> 
+-> disable-breakpoint 13
+<- 
+command@cpu-step> 
+-> disable-breakpoint 14
+<- 
+command@cpu-step> 
+-> disable-breakpoint 15
+<- 
+command@cpu-step> 
+-> disable-breakpoint 16
+<- 
+command@cpu-step> 
+-> disable-breakpoint 17
+<- 
+command@cpu-step> 
+-> disable-breakpoint 18
+<- 
+command@cpu-step> 
+-> disable-breakpoint 19
+<- 
+command@cpu-step> 
+-> disable-breakpoint 20
+<- 
+command@cpu-step> 
+-> disable-breakpoint 21
+<- 
+command@cpu-step> 
+-> disable-breakpoint 22
+<- 
+command@cpu-step> 
+-> disable-breakpoint 23
+<- 
+command@cpu-step> 
+-> disable-breakpoint 24
+<- 
+command@cpu-step> 
+-> disable-breakpoint 25
+<- 
+command@cpu-step> 
+-> disable-breakpoint 26
+<- 
+command@cpu-step> 
+-> disable-breakpoint 27
+<- 
+command@cpu-step> 
+-> disable-breakpoint 28
+<- 
+command@cpu-step> 
+-> disable-breakpoint 29
+<- 
+command@cpu-step> 
+-> disable-breakpoint 30
+<- 
+command@cpu-step> 
+-> disable-breakpoint 31
+<- 
+command@cpu-step> 
+-> disable-breakpoint 32
+<- 
+command@cpu-step> 
+-> disable-breakpoint 33
+<- 
+command@cpu-step> 
+-> disable-breakpoint 34
+<- 
+command@cpu-step> 
+-> disable-breakpoint 35
+<- 
+command@cpu-step> 
+-> disable-breakpoint 36
+<- 
+command@cpu-step> 
+-> disable-breakpoint 37
+<- 
+command@cpu-step> 
+-> disable-breakpoint 38
+<- 
+command@cpu-step> 
+-> disable-breakpoint 39
+<- 
+command@cpu-step> 
+-> disable-breakpoint 40
+<- 
+command@cpu-step> 
+-> disable-breakpoint 41
+<- 
+command@cpu-step> 
+-> disable-breakpoint 42
+<- 
+command@cpu-step> 
+-> disable-breakpoint 43
+<- 
+command@cpu-step> 
+-> disable-breakpoint 44
+<- 
+command@cpu-step> 
+-> disable-breakpoint 45
+<- 
+command@cpu-step> 
+-> disable-breakpoint 46
+<- 
+command@cpu-step> 
+-> disable-breakpoint 47
+<- 
+command@cpu-step> 
+-> disable-breakpoint 48
+<- 
+command@cpu-step> 
+-> disable-breakpoint 49
+<- 
+command@cpu-step> 
+-> disable-breakpoint 50
+<- 
+command@cpu-step> 
+-> disable-breakpoint 51
+<- 
+command@cpu-step> 
+-> disable-breakpoint 52
+<- 
+command@cpu-step> 
+-> disable-breakpoint 53
+<- 
+command@cpu-step> 
+-> disable-breakpoint 54
+<- 
+command@cpu-step> 
+-> disable-breakpoint 55
+<- 
+command@cpu-step> 
+-> disable-breakpoint 56
+<- 
+command@cpu-step> 
+-> disable-breakpoint 57
+<- 
+command@cpu-step> 
+-> disable-breakpoint 58
+<- 
+command@cpu-step> 
+-> disable-breakpoint 59
+<- 
+command@cpu-step> 
+-> disable-breakpoint 60
+<- 
+command@cpu-step> 
+-> disable-breakpoint 61
+<- 
+command@cpu-step> 
+-> disable-breakpoint 62
+<- 
+command@cpu-step> 
+-> disable-breakpoint 63
+<- 
+command@cpu-step> 
+-> disable-breakpoint 64
+<- 
+command@cpu-step> 
+-> disable-breakpoint 65
+<- 
+command@cpu-step> 
+-> disable-breakpoint 66
+<- 
+command@cpu-step> 
+-> disable-breakpoint 67
+<- 
+command@cpu-step> 
+-> disable-breakpoint 68
+<- 
+command@cpu-step> 
+-> disable-breakpoint 69
+<- 
+command@cpu-step> 
+-> disable-breakpoint 70
+<- 
+command@cpu-step> 
+-> disable-breakpoint 71
+<- 
+command@cpu-step> 
+-> disable-breakpoint 72
+<- 
+command@cpu-step> 
+-> disable-breakpoint 73
+<- 
+command@cpu-step> 
+-> disable-breakpoint 74
+<- 
+command@cpu-step> 
+-> disable-breakpoint 75
+<- 
+command@cpu-step> 
+-> disable-breakpoint 76
+<- 
+command@cpu-step> 
+-> disable-breakpoint 77
+<- 
+command@cpu-step> 
+-> disable-breakpoint 78
+<- 
+command@cpu-step> 
+-> disable-breakpoint 79
+<- 
+command@cpu-step> 
+-> disable-breakpoint 80
+<- 
+command@cpu-step> 
+-> disable-breakpoint 81
+<- 
+command@cpu-step> 
+-> disable-breakpoint 82
+<- 
+command@cpu-step> 
+-> disable-breakpoint 83
+<- 
+command@cpu-step> 
+-> disable-breakpoint 84
+<- 
+command@cpu-step> 
+-> disable-breakpoint 85
+<- 
+command@cpu-step> 
+-> disable-breakpoint 86
+<- 
+command@cpu-step> 
+-> disable-breakpoint 87
+<- 
+command@cpu-step> 
+-> disable-breakpoint 88
+<- 
+command@cpu-step> 
+-> disable-breakpoint 89
+<- 
+command@cpu-step> 
+-> disable-breakpoint 90
+<- 
+command@cpu-step> 
+-> disable-breakpoint 91
+<- 
+command@cpu-step> 
+-> disable-breakpoint 92
+<- 
+command@cpu-step> 
+-> disable-breakpoint 93
+<- 
+command@cpu-step> 
+-> disable-breakpoint 94
+<- 
+command@cpu-step> 
+-> disable-breakpoint 95
+<- 
+command@cpu-step> 
+-> disable-breakpoint 96
+<- 
+command@cpu-step> 
+-> disable-breakpoint 97
+<- 
+command@cpu-step> 
+-> disable-breakpoint 98
+<- 
+command@cpu-step> 
+-> disable-breakpoint 99
+<- 
+command@cpu-step> 
+-> disable-breakpoint 100
+<- 
+command@cpu-step> 
+-> get-registers
+<- PC=6062 SP=fdfc BC=2302 AF=f482 HL=6319 DE=4208 IX=663c IY=5c3a AF'=0044 BC'=050e HL'=2758 DE'=0047 I=3f R=33  F=S-----N- F'=-Z---P-- MEMPTR=15e6 IM1 IFF12 VPS: 0 
+command@cpu-step> 
+-> read-memory 25344 48
+<- 000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+command@cpu-step> 
+-> read-memory 16880 48
+<- 000000000000000000000000000000000000000000000000000000000000
+<- 000000000000000000000000000000000000
+command@cpu-step> 
+-> read-memory 8944 48
+<- 0F10FD477EFD4E57CB412001A0CB512002A82F77C3DB0B
+<- CD142347C5CD142359C1514FC9CDD52DDAF9240E01C80EFFC9
+command@cpu-step> 
+-> read-memory 26144 48
+<- 000000000000000000000000000000000000000000000000000000
+<- 000000000000000000000000000000000000000000
+command@cpu-step> 
+-> read-memory 23584 48
+<- 000000000000000000000000000000000000000000000000
+<- 000000000000000000000000000000000000000000000000
+command@cpu-step> 
+HL: 6319
+DE: 4208
+BC: 2302
+IX: 663c
+IY: 5c3a
+-> reset-tstates-partial
+<- Unknown command
+command@cpu-step> 
+-> run
+<- Running until a breakpoint, key press or data sent, menu opening or other event
+
+
