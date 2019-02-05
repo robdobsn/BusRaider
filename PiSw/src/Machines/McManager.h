@@ -6,18 +6,25 @@
 #include "McBase.h"
 #include "../TargetBus/TargetClockGenerator.h"
 #include "../System/ee_printf.h"
-#include "../CommandInterface/cmd_handler.h"
+#include "../CommandInterface/CommandHandler.h"
 #include <string.h> 
 
 class McManager
 {
-  private:
+private:
     static McDescriptorTable defaultDescriptorTable;
+
+private:
+   
+    // Characters received from the host
     static const int MAX_RX_HOST_CHARS = 2000;
     static uint8_t _rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];
     static int _rxHostCharsBufferLen;
 
-  public:
+    // Command handler
+    static CommandHandler* _pCommandHandler;
+
+public:
 
     static const int MAX_MACHINES = 10;
     static const int MAX_MACHINE_NAME_LEN = 100;
@@ -116,11 +123,17 @@ class McManager
         return retVal;
     }
 
-    static void init()
+    static void sendKeyCodeToTarget(int asciiCode)
     {
-        // Add a callback for received characters from host
-        cmd_handler_set_rxchar_callback(handleRxCharFromHost);
+        if (_pCommandHandler)
+            _pCommandHandler->sendKeyCodeToTarget(asciiCode);
+    }
+
+    static void init(CommandHandler* pCommandHandler)
+    {
+        // Add a callback for received characters from target
+        pCommandHandler->setRxFromTargetCallback(handleRxCharFromHost);
+        _pCommandHandler = pCommandHandler;
     }
 
 };
-

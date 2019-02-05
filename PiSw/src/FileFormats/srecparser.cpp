@@ -41,7 +41,7 @@ struct Srec_State {
 	uint8_t data[MAX_SREC_DATA_LEN];
 	int lastCharInvalid;
 	int debugChCount;
-	int errCode;	
+	Srec_Ret errCode;	
 };
 struct Srec_State _srec;
 

@@ -15,12 +15,6 @@ extern int rditoa(int num, unsigned char* str, int len, int base);
 
 extern bool jsonGetValueForKey(const char* srchKey, const char* jsonStr, char* pOutStr, int outStrMaxLen);
 
-// extern void __aeabi_unwind_cpp_pr0(void);
-// extern void __cxa_end_cleanup(void);
-
-// Error handler for pure virtual functions
-extern void __cxa_pure_virtual();
-
 #ifdef __cplusplus
 }
 #endif

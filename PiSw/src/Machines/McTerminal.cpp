@@ -202,7 +202,7 @@ void McTerminal::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_
         return;
 
     // Send to host
-    cmdHandler_sendKeyCode(asciiCode);
+    McManager::sendKeyCodeToTarget(asciiCode);
 }
 
 // Handle a file

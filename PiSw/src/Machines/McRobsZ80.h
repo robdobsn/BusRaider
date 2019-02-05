@@ -2,8 +2,6 @@
 // Rob Dobson 2018
 
 #include "McBase.h"
-#include "McManager.h"
-#include "../System/ee_printf.h"
 
 class McRobsZ80 : public McBase
 {

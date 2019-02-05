@@ -7,7 +7,7 @@
 #include "TargetBus/piwiring.h"
 #include "TargetBus/busraider.h"
 #include "TargetBus/target_memory_map.h"
-#include "CommandInterface/cmd_handler.h"
+#include "CommandInterface/CommandHandler.h"
 #include "Utils/rdutils.h"
 #include "Machines/McManager.h"
 #include "Machines/McTRS80.h"
@@ -47,58 +47,32 @@ bool _immediateMode = false;
 char _immediateModeLine[IMM_MODE_LINE_MAXLEN+1];
 int _immediateModeLineLen = 0;
 
-static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char rawKeys[6])
-{
-    // Check for immediate mode
-    if (rawKeys[0] == KEY_F2)
-    {
-        if (!_immediateMode)
-        {
-            ee_printf("Entering immediate mode, e.g. w/ssid/password/hostname<enter> to setup WiFi ...\n");
-        }
-        _immediateMode = true;
-        return;
-    }
-    if (_immediateMode)
-    {
-        if (_immediateModeLineLen < IMM_MODE_LINE_MAXLEN)
-        {
-            int asciiCode = McTerminal::convertRawToAscii(ucModifiers, rawKeys);
-            if (asciiCode == 0)
-                return;
-            if (asciiCode == 0x08)
-            {
-                if (_immediateModeLineLen > 0)
-                    _immediateModeLineLen--;
-                wgfx_term_putchar(asciiCode);
-                wgfx_term_putchar(' ');
-            }
-            else if (asciiCode == 0x0d)
-            {
-                _immediateMode = false;
-                _immediateModeLine[_immediateModeLineLen] = 0;
-                if (_immediateModeLineLen > 0)
-                {
-                    cmdHandler_sendAPIReq(_immediateModeLine);
-                    ee_printf("Sent request to ESP32: %s\n", _immediateModeLine);
-                }
-                _immediateModeLineLen = 0;
-            }
-            else if ((asciiCode >= 32) && (asciiCode < 127))
-            {
-                _immediateModeLine[_immediateModeLineLen++] = asciiCode;
-            }
-            wgfx_term_putchar(asciiCode);
-            // ee_printf("%x ", asciiCode);
-        }
-        return;
-    }
+// Command Handler
+CommandHandler commandHandler;
 
-    // Send to the target machine to process
-    // ee_printf("KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
-    McBase* pMc = McManager::getMachine();
-    if (pMc)
-        pMc->keyHandler(ucModifiers, rawKeys);
+// Function to send to uart from command handler
+void putToSerial(const uint8_t* pBuf, int len)
+{
+    for (int i = 0; i < len; i++)
+        uart_send(pBuf[i]);
+}
+
+void serviceGetFromSerial()
+{
+    // Handle serial communication
+    for (int rxCtr = 0; rxCtr < 100; rxCtr++) {
+        if (!uart_poll())
+            break;
+
+        // Show char received
+        int ch = uart_read_byte();
+        uint8_t buf[2];
+        buf[0] = ch;
+        // ee_printf("%02x ptr %d", ch, commandHandler.getIn());
+
+        // Handle char
+        commandHandler.handleSerialReceivedChars(buf, 1);
+    }    
 }
 
 void layout_display()
@@ -133,7 +107,61 @@ extern "C" void set_machine_by_name(const char* mcName)
 
 }
 
-extern "C" void entry_point()
+static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char rawKeys[6])
+{
+    // Check for immediate mode
+    if (rawKeys[0] == KEY_F2)
+    {
+        if (!_immediateMode)
+        {
+            ee_printf("Entering immediate mode, e.g. w/ssid/password/hostname<enter> to setup WiFi ...\n");
+        }
+        _immediateMode = true;
+        return;
+    }
+    if (_immediateMode)
+    {
+        if (_immediateModeLineLen < IMM_MODE_LINE_MAXLEN)
+        {
+            int asciiCode = McTerminal::convertRawToAscii(ucModifiers, rawKeys);
+            if (asciiCode == 0)
+                return;
+            if (asciiCode == 0x08)
+            {
+                if (_immediateModeLineLen > 0)
+                    _immediateModeLineLen--;
+                wgfx_term_putchar(asciiCode);
+                wgfx_term_putchar(' ');
+            }
+            else if (asciiCode == 0x0d)
+            {
+                _immediateMode = false;
+                _immediateModeLine[_immediateModeLineLen] = 0;
+                if (_immediateModeLineLen > 0)
+                {
+                    commandHandler.sendAPIReq(_immediateModeLine);
+                    ee_printf("Sent request to ESP32: %s\n", _immediateModeLine);
+                }
+                _immediateModeLineLen = 0;
+            }
+            else if ((asciiCode >= 32) && (asciiCode < 127))
+            {
+                _immediateModeLine[_immediateModeLineLen++] = asciiCode;
+            }
+            wgfx_term_putchar(asciiCode);
+            // ee_printf("%x ", asciiCode);
+        }
+        return;
+    }
+
+    // Send to the target machine to process
+    // ee_printf("KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
+    McBase* pMc = McManager::getMachine();
+    if (pMc)
+        pMc->keyHandler(ucModifiers, rawKeys);
+}
+
+extern "C" int main()
 {
 
     // Logging
@@ -146,15 +174,17 @@ extern "C" void entry_point()
     timers_init();
 
     // UART
-
     uart_init(MAIN_UART_BAUD_RATE, 1);
+
+    // Command handler
+    commandHandler.setMachineChangeCallback(set_machine_by_name);
+    commandHandler.setPutToSerialCallback(putToSerial);
 
     // Target machine memory and command handler
     targetClear();
-    cmdHandler_init(set_machine_by_name);
 
     // Init machine manager
-    McManager::init();
+    McManager::init(&commandHandler);
 
     // Add machines
     new McTerminal();
@@ -299,7 +329,7 @@ extern "C" void entry_point()
             char* ipAddr = NULL;
             char* wifiStatusChar = NULL;
             char* wifiSSID = NULL;
-            cmdHandler_getESPHealth(&ipAddrValid, &ipAddr, &wifiStatusChar, &wifiSSID);
+            commandHandler.getStatusResponse(&ipAddrValid, &ipAddr, &wifiStatusChar, &wifiSSID);
             const int MAX_STATUS_STR_LEN = 50;
             char statusStr[MAX_STATUS_STR_LEN+1];
             statusStr[0] = 0;
@@ -347,12 +377,15 @@ extern "C" void entry_point()
         if (isTimeout(micros(), lastStatusUpdateMs, STATUS_UPDATE_RATE_MS * 1000)) 
         {
             // Send and request status update
-            cmdHandler_sendReqStatusUpdate();
+            commandHandler.requestStatusUpdate();
             lastStatusUpdateMs = micros();
         }
 
+        // Pump the characters from the UART to Command Handler
+        serviceGetFromSerial();
+
         // Service command handler
-        cmdHandler_service();
+        commandHandler.service();
 
         // Timer polling
         timer_poll();

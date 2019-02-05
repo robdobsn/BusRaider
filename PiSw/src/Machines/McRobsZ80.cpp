@@ -7,7 +7,9 @@
 #include "../TargetBus/busraider.h"
 #include "../TargetBus/target_memory_map.h"
 #include "../Utils/rdutils.h"
+#include "../System/ee_printf.h"
 #include <stdlib.h>
+#include <string.h>
 
 const char* McRobsZ80::_logPrefix = "RobsZ80";
 

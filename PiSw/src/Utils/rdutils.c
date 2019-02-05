@@ -120,21 +120,3 @@ int rditoa(int num, unsigned char* str, int len, int base)
     return 0;
 }
 
-void __cxa_pure_virtual()
-{
-}
-
-// // Stubbed out exception routine to avoid unwind errors in ARM code
-// // https://stackoverflow.com/questions/14028076/memory-utilization-for-unwind-support-on-arm-architecture
-// void __aeabi_unwind_cpp_pr0(void) 
-// {
-
-// }
-
-// // Stubbed out - probably should restore registers but might only be necessary on unwinding after exceptions
-// // which are not used
-// void __cxa_end_cleanup(void)
-// {
-
-// }
-

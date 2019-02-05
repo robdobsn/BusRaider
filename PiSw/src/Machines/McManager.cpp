@@ -8,6 +8,8 @@
 McBase* McManager::_pMachines[McManager::MAX_MACHINES];
 int McManager::_numMachines = 0;
 int McManager::_curMachineIdx = -1;
+CommandHandler* McManager::_pCommandHandler = NULL;
+
 McDescriptorTable McManager::defaultDescriptorTable = {
     // Machine name
     "Default",
