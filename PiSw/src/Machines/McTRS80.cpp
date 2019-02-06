@@ -4,7 +4,7 @@
 #include "McTRS80.h"
 #include "usb_hid_keys.h"
 #include "../System/wgfx.h"
-#include "../TargetBus/busraider.h"
+#include "../TargetBus/BusAccess.h"
 #include "../TargetBus/target_memory_map.h"
 #include "../Utils/rdutils.h"
 #include <stdlib.h>
@@ -67,7 +67,7 @@ void McTRS80::displayRefresh()
 {
     // Read memory of RC2014 at the location of the TRS80 memory mapped screen
     unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
-    br_read_block(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, 1, 0);
+    blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, 1, 0);
 
     // Write to the display on the Pi Zero
     int cols = _descriptorTable.displayPixelsX / _descriptorTable.displayCellX;
@@ -89,7 +89,7 @@ void McTRS80::displayRefresh()
     // Check for key presses and send to the TRS80 if necessary
     if (_keyBufferDirty)
     {
-        br_write_block(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, 1, 0);
+        blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, 1, 0);
         _keyBufferDirty = false;
     }
 }

@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-typedef uint32_t br_bus_access_callback_fntype(uint32_t addr, uint32_t data, uint32_t flags);
+typedef uint32_t BusAccessCBFnType(uint32_t addr, uint32_t data, uint32_t flags);
 
 // Return codes
 typedef enum {
@@ -105,39 +105,39 @@ typedef enum {
 // Initialise the bus raider
 extern void br_init();
 // Reset host
-extern void br_reset_host();
-// Hold host in reset state - call br_reset_host() to clear reset
-extern void br_reset_hold_host();
+extern void targetReset();
+// Hold host in reset state - call targetReset() to clear reset
+extern void targetResetHold();
 // NMI host
-extern void br_nmi_host();
+extern void targetNMI();
 // IRQ host
-extern void br_irq_host();
+extern void targetIRQ();
 // Request access to the bus
-extern void br_request_bus();
+extern void controlRequest();
 // Check if bus request has been acknowledged
-extern int br_bus_acknowledged();
+extern int controlBusAcknowledged();
 // Take control of bus
-extern void br_take_control();
+extern void controlTake();
 // Release control of bus
-extern void br_release_control(bool resetTargetOnRelease);
+extern void controlRelease(bool resetTargetOnRelease);
 // Request and take bus
-extern BR_RETURN_TYPE br_req_and_take_bus();
+extern BR_RETURN_TYPE controlRequestAndTake();
 // Set address
 extern void br_set_low_addr(uint32_t lowAddrByte);
 extern void br_inc_low_addr();
-extern void br_set_high_addr(uint32_t highAddrByte);
+extern void addrHighSet(uint32_t highAddrByte);
 extern void br_set_full_addr(unsigned int addr);
 // Control the PIB (bus used to transfer data to/from Pi)
-extern void br_set_pib_output();
-extern void br_set_pib_input();
-extern void br_set_pib_value(uint8_t val);
+extern void pibSetOut();
+extern void pibSetIn();
+extern void pibSetValue(uint8_t val);
 extern uint8_t br_get_pib_value();
 // Read and write bytes
 extern void br_write_byte(uint32_t byte, int iorq);
 extern uint8_t br_read_byte(int iorq);
 // Read and write blocks
-extern BR_RETURN_TYPE br_write_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
-extern BR_RETURN_TYPE br_read_block(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
+extern BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
+extern BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
 // Enable WAIT
 extern void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ);
 extern void br_wait_state_isr(void* pData);
@@ -149,18 +149,32 @@ extern void br_clear_all_io();
 extern void br_service();
 
 // Wait interrupts
-extern void br_clear_wait_interrupt();
-extern void br_disable_wait_interrupt();
-extern void br_enable_wait_interrupt();
+extern void waitIntClear();
+extern void waitIntDisable();
+extern void waitIntEnable();
 
 // Set and remove callbacks on bus access
-extern void br_set_bus_access_callback(br_bus_access_callback_fntype* pBusAccessCallback);
+extern void br_set_bus_access_callback(BusAccessCBFnType* pBusAccessCallback);
 extern void br_remove_bus_access_callback();
 
 // Single step
 extern void br_pause_get_current(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags);
 extern bool br_pause_is_paused();
 extern bool br_pause_release();
+
+// private:
+// Pin IO
+extern void setPinOut(int pinNumber, bool val);
+extern void setPinIn(int pinNumber);
+// Set the MUX
+extern void muxSet(int muxVal);
+// Clear the MUX
+extern void muxClear();
+
+
+// private:
+    // Timeouts
+    static const int MAX_WAIT_FOR_ACK_US = 100;
 
 #ifdef __cplusplus
 }

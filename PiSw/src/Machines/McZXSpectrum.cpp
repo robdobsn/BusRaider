@@ -4,7 +4,7 @@
 #include "McZXSpectrum.h"
 #include "usb_hid_keys.h"
 #include "../System/wgfx.h"
-#include "../TargetBus/busraider.h"
+#include "../TargetBus/BusAccess.h"
 #include "../TargetBus/target_memory_map.h"
 #include "../Utils/rdutils.h"
 #include <stdlib.h>
@@ -62,7 +62,7 @@ void McZXSpectrum::displayRefresh()
 {
     // Read memory at the location of the memory mapped screen
     unsigned char pScrnBuffer[ZXSPECTRUM_DISP_RAM_SIZE];
-    br_read_block(ZXSPECTRUM_DISP_RAM_ADDR, pScrnBuffer, ZXSPECTRUM_DISP_RAM_SIZE, 1, 0);
+    blockRead(ZXSPECTRUM_DISP_RAM_ADDR, pScrnBuffer, ZXSPECTRUM_DISP_RAM_SIZE, 1, 0);
 
     // Check for colour data change - refresh everything if changed
     for (uint32_t colrIdx = ZXSPECTRUM_PIXEL_RAM_SIZE; colrIdx < ZXSPECTRUM_DISP_RAM_SIZE; colrIdx++)
@@ -119,7 +119,7 @@ void McZXSpectrum::displayRefresh()
     _screenBufferValid = true;
 
     // Generate a maskable interrupt to trigger Spectrum's keyboard ISR
-    br_irq_host();
+    targetIRQ();
 }
 
 // Handle a key press

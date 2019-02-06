@@ -4,7 +4,7 @@
 #include "McRobsZ80.h"
 #include "usb_hid_keys.h"
 #include "../System/wgfx.h"
-#include "../TargetBus/busraider.h"
+#include "../TargetBus/BusAccess.h"
 #include "../TargetBus/target_memory_map.h"
 #include "../Utils/rdutils.h"
 #include "../System/ee_printf.h"
@@ -59,7 +59,7 @@ void McRobsZ80::displayRefresh()
 {
     // Read memory at the location of the memory mapped screen
     unsigned char pScrnBuffer[ROBSZ80_DISP_RAM_SIZE];
-    br_read_block(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, 1, 0);
+    blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, 1, 0);
 
     // Write to the display on the Pi Zero
     int bytesPerRow = _descriptorTable.displayPixelsX/8;

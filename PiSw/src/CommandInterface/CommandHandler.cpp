@@ -5,7 +5,7 @@
 #include "../System/nmalloc.h"
 #include "../System/ee_printf.h"
 #include "../TargetBus/target_memory_map.h"
-#include "../TargetBus/busraider.h"
+#include "../TargetBus/BusAccess.h"
 #include "minihdlc.h"
 #include "../FileFormats/srecparser.h"
 #include "../Machines/McManager.h"
@@ -165,7 +165,7 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
         if (pMc)
             resetDone = pMc->reset();
         if (!resetDone)
-            br_reset_host();
+            targetReset();
     }
     else if (strcasecmp(cmdName, "Step") == 0)
     {
@@ -383,7 +383,7 @@ void CommandHandler::handleTargetProgram(const char* cmdName)
     else 
     {
         // Handle programming in one BUSRQ/BUSACK pass
-        if (br_req_and_take_bus() != BR_OK)
+        if (controlRequestAndTake() != BR_OK)
         {
             LogWrite(FromCmdHandler, LOG_DEBUG, "ProgramTarget - failed to capture bus");   
             return;
@@ -392,7 +392,7 @@ void CommandHandler::handleTargetProgram(const char* cmdName)
         for (int i = 0; i < targetGetNumBlocks(); i++) {
             TargetMemoryBlock* pBlock = targetGetMemoryBlock(i);
             LogWrite(FromCmdHandler, LOG_DEBUG,"ProgramTarget start %08x len %d", pBlock->start, pBlock->len);
-            br_write_block(pBlock->start, targetMemoryPtr() + pBlock->start, pBlock->len, false, false);
+            blockWrite(pBlock->start, targetMemoryPtr() + pBlock->start, pBlock->len, false, false);
         }
         // Written
         LogWrite(FromCmdHandler, LOG_DEBUG, "ProgramTarget - written %d blocks", targetGetNumBlocks());
@@ -401,11 +401,11 @@ void CommandHandler::handleTargetProgram(const char* cmdName)
         if (strcasecmp(cmdName, "ProgramAndReset") == 0)
         {
             LogWrite(FromCmdHandler, LOG_DEBUG, "Resetting target");
-            br_release_control(true);
+            controlRelease(true);
         }
         else
         {
-            br_release_control(false);
+            controlRelease(false);
         }
     }
     // Clear buffer

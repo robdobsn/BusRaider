@@ -4,7 +4,7 @@
 #include "McDebugZ80.h"
 #include "usb_hid_keys.h"
 #include "../System/wgfx.h"
-#include "../TargetBus/busraider.h"
+#include "../TargetBus/BusAccess.h"
 #include "../TargetBus/target_memory_map.h"
 #include "../Utils/rdutils.h"
 #include <stdlib.h>
@@ -182,7 +182,7 @@ bool McDebugZ80::reset()
     memcpy(&_systemRAM[DEBUGZ80_DISP_RAM_ADDR], testChars, sizeof(testChars));
     _scrnBufDirtyFlag = true;
     // Debug
-    br_disable_wait_interrupt();
+    waitIntDisable();
     pinMode(BR_DEBUG_PI_SPI0_CE0, OUTPUT);
     debugAccessCount = 0;
     debugAccessLastCount = 0;
@@ -192,7 +192,7 @@ bool McDebugZ80::reset()
     debugStepCount = 0;
     // Actual reset
     LogWrite(_logPrefix, LOG_WARNING, "RESET");
-    br_reset_host();
+    targetReset();
 
     return true;
 }
