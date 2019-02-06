@@ -17,6 +17,8 @@ extern WgfxFont __TRS80Level3Font;
 McDescriptorTable McTRS80::_descriptorTable = {
     // Machine name
     "TRS80",
+    // Processor
+    McDescriptorTable::PROCESSOR_Z80,
     // Required display refresh rate
     .displayRefreshRatePerSec = 30,
     .displayPixelsX = 8 * 64,

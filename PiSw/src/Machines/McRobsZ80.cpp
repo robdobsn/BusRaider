@@ -16,6 +16,8 @@ const char* McRobsZ80::_logPrefix = "RobsZ80";
 McDescriptorTable McRobsZ80::_descriptorTable = {
     // Machine name
     "Rob's Z80",
+    // Processor
+    McDescriptorTable::PROCESSOR_Z80,
     // Required display refresh rate
     .displayRefreshRatePerSec = 30,
     .displayPixelsX = 512,

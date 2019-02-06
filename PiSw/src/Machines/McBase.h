@@ -10,9 +10,14 @@ struct WgfxFont;
 
 class McDescriptorTable
 {
-  public:
+public:
+    enum PROCESSOR_TYPE { PROCESSOR_Z80 };
+
+public:
     // Name
     const char* machineName;
+    // Processor type
+    PROCESSOR_TYPE processorType;
     // Display
     int displayRefreshRatePerSec;
     int displayPixelsX;
@@ -52,16 +57,15 @@ class McBase
         return false;
     }
 
-    // Handle single-step for the machine - if false returned then the bus raider will issue a bus step
-    virtual bool step()
-    {
-        return false;
-    }
-
     // Handle a key press
     virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]) = 0;
 
     // Handle a file
     virtual void fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen) = 0;
 
+    // Handle debugger command
+    virtual bool debuggerCommand([[maybe_unused]] const char* pCommand, [[maybe_unused]] char* pResponse, [[maybe_unused]] int maxResponseLen)
+    {
+        return false;
+    }
 };

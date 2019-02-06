@@ -13,6 +13,8 @@ CommandHandler* McManager::_pCommandHandler = NULL;
 McDescriptorTable McManager::defaultDescriptorTable = {
     // Machine name
     "Default",
+    // Processor
+    McDescriptorTable::PROCESSOR_Z80,
     // Required display refresh rate
     .displayRefreshRatePerSec = 30,
     .displayPixelsX = 8 * 80,

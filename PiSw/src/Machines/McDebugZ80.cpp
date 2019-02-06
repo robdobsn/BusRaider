@@ -46,6 +46,8 @@ McDebugZ80::McDebugZ80() : McBase()
 McDescriptorTable McDebugZ80::_descriptorTable = {
     // Machine name
     "Debug Z80",
+    // Processor
+    McDescriptorTable::PROCESSOR_Z80,
     // Required display refresh rate
     .displayRefreshRatePerSec = 30,
     .displayPixelsX = 8 * 64,
@@ -194,6 +196,13 @@ bool McDebugZ80::reset()
     LogWrite(_logPrefix, LOG_WARNING, "RESET");
     BusAccess::targetReset();
 
+    return true;
+}
+
+bool McDebugZ80::debuggerCommand([[maybe_unused]] const char* pCommand, [[maybe_unused]] char* pResponse, [[maybe_unused]] int maxResponseLen)
+{
+    // strlcpy(pResponse, "????????", maxResponseLen);
+    // strlcat(pResponse, isSingleStepMode() ? "\ncommand@cpu-step> \"" : "\ncommand> \"", maxResponseLen);
     return true;
 }
 

@@ -18,6 +18,7 @@ unsigned char McZXSpectrum::_curKeys[MAX_KEYS];
 McDescriptorTable McZXSpectrum::_descriptorTable = {
     // Machine name
     "ZX Spectrum",
+    McDescriptorTable::PROCESSOR_Z80,
     // Required display refresh rate
     .displayRefreshRatePerSec = 30,
     .displayPixelsX = 256,

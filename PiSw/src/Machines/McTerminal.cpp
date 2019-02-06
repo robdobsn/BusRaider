@@ -15,6 +15,8 @@ const char* McTerminal::_logPrefix = "McTerm";
 McDescriptorTable McTerminal::_descriptorTable = {
     // Machine name
     "Serial Terminal",
+    // Processor
+    McDescriptorTable::PROCESSOR_Z80,
     // Required display refresh rate
     .displayRefreshRatePerSec = 30,
     .displayPixelsX = 80*8,

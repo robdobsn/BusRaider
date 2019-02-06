@@ -49,6 +49,8 @@ public:
     // Handle a file
     virtual void fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen);
 
+    // Debugger command
+    virtual bool debuggerCommand([[maybe_unused]] const char* pCommand, [[maybe_unused]] char* pResponse, [[maybe_unused]] int maxResponseLen);
 private:
 
     // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80

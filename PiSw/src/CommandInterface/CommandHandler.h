@@ -4,7 +4,6 @@
 
 #pragma once
 #include "MiniHDLC.h"
-#include "../RemoteDebug/RemoteDebugHandler.h"
 #include <stdint.h>
 
 // Callback types
@@ -35,12 +34,6 @@ public:
     void setPutToSerialCallback(CmdHandlerPutToSerialFnType* pPutToSerialFunction)
     {
         _pPutToSerialFunction = pPutToSerialFunction;
-    }
-
-    // Set remote debug handler
-    void setRemoteDebugHandler(RemoteDebugHandler* pRemoteDebugHandler)
-    {
-        _pRemoteDebugHandler = pRemoteDebugHandler;
     }
 
     // Handle data received from ESP32 via serial connection
@@ -84,9 +77,6 @@ private:
 
     // HDLC protocol support
     MiniHDLC _miniHDLC;
-
-    // Remote debug
-    RemoteDebugHandler* _pRemoteDebugHandler;
 
 private:
     // String lengths

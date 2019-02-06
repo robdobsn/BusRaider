@@ -136,4 +136,11 @@ public:
         _pCommandHandler = pCommandHandler;
     }
 
+    static bool debuggerCommand(const char* pCommand, char* pResponse, int maxResponseLen)
+    {
+        McBase* pMc = getMachine();
+        if (pMc)
+            return pMc->debuggerCommand(pCommand, pResponse, maxResponseLen);
+        return false;
+    }
 };

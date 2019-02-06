@@ -50,9 +50,6 @@ int _immediateModeLineLen = 0;
 // Command Handler
 CommandHandler commandHandler;
 
-// Remote debug handler
-RemoteDebugHandler remoteDebugHandler;
-
 // Function to send to uart from command handler
 void putToSerial(const uint8_t* pBuf, int len)
 {
@@ -178,7 +175,6 @@ extern "C" int main()
     // Command handler
     commandHandler.setMachineChangeCallback(set_machine_by_name);
     commandHandler.setPutToSerialCallback(putToSerial);
-    commandHandler.setRemoteDebugHandler(&remoteDebugHandler);
 
     // Target machine memory and command handler
     targetClear();

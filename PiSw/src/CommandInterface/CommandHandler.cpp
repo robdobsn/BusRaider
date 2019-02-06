@@ -40,9 +40,6 @@ CommandHandler::CommandHandler() :
     _pChangeMcFunction = NULL;
     _pSingletonCommandHandler = this;
 
-    // Remote debug handler
-    _pRemoteDebugHandler = NULL;
-
     // File reception
     _receivedFileName[0] = 0;
     _pReceivedFileType[0] = 0;
@@ -167,16 +164,6 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
         if (!resetDone)
             BusAccess::targetReset();
     }
-    else if (strcasecmp(cmdName, "Step") == 0)
-    {
-        LogWrite(FromCmdHandler, LOG_DEBUG, "Step");
-        bool stepDone = false;
-        McBase* pMc = McManager::getMachine();
-        if (pMc)
-            stepDone = pMc->step();
-        if (!stepDone)
-            BusAccess::pauseRelease();
-    }
     else if (strcasecmp(cmdName, "IOClrTarget") == 0)
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "IO Clear Target");
@@ -220,14 +207,31 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     }
     else if (strcasecmp(cmdName, "rdp") == 0)
     {
+        // Get message index value
+        #define MAX_CMD_PARAM_STR 30
+        char indexValStr[MAX_CMD_PARAM_STR+1];
+        strcpy(indexValStr, "0");
+        if (!jsonGetValueForKey("index", pCmdJson, indexValStr, MAX_CMD_PARAM_STR))
+            LogWrite(FromCmdHandler, LOG_DEBUG, "NO INDEX VAL");
         // Send to remote debug handler
+        static const int MAX_CMD_STR_LEN = 200;
+        static char commandStr[MAX_CMD_STR_LEN+1];
+        if (paramsLen > MAX_CMD_STR_LEN)
+            paramsLen = MAX_CMD_STR_LEN;
+        memcpy(commandStr, pParams, paramsLen);
+        commandStr[paramsLen] = 0;
         static const int MAX_RESPONSE_MSG_LEN = 2000;
         static char responseMessage[MAX_RESPONSE_MSG_LEN+1];
         responseMessage[0] = 0;
-        if (_pRemoteDebugHandler)
-            _pRemoteDebugHandler->handleCommand(pCmdJson, pParams, paramsLen, responseMessage, MAX_RESPONSE_MSG_LEN);
+        McManager::debuggerCommand(commandStr, responseMessage, MAX_RESPONSE_MSG_LEN);
         LogWrite(FromCmdHandler, LOG_DEBUG, "replying to rdp with %s", responseMessage);
-        sendWithJSON("rdp", responseMessage);
+        static char responseJson[MAX_RESPONSE_MSG_LEN+1];
+        strlcpy(responseJson, "\"index\":\"", MAX_RESPONSE_MSG_LEN);
+        strlcat(responseJson, indexValStr, MAX_RESPONSE_MSG_LEN);
+        strlcat(responseJson, "\",\"content\":\"", MAX_RESPONSE_MSG_LEN);
+        strlcat(responseJson, responseMessage, MAX_RESPONSE_MSG_LEN);
+        strlcat(responseJson, "\"", MAX_RESPONSE_MSG_LEN);
+        sendWithJSON("rdp", responseJson);
     }
     else
     {
