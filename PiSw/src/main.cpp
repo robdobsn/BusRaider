@@ -203,7 +203,7 @@ extern "C" int main()
     ee_printf("%d machines supported\n", McManager::getNumMachines());
 
     // Bus raider setup
-    br_init();
+    BusAccess::init();
 
     // Enable first machine
     McManager::setMachineIdx(0);
@@ -391,7 +391,7 @@ extern "C" int main()
         timer_poll();
 
         // Service bus raider
-        br_service();
+        BusAccess::service();
     }
 #endif
 }

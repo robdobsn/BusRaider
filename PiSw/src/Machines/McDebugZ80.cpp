@@ -65,9 +65,9 @@ McDescriptorTable McDebugZ80::_descriptorTable = {
 void McDebugZ80::enable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
-    br_set_bus_access_callback(memoryRequestCallback);
+    BusAccess::accessCallbackAdd(memoryRequestCallback);
     // Bus raider enable wait states on MREQ and IORQ
-    br_enable_mem_and_io_access(true, true);
+    BusAccess::waitEnable(true, true);
 }
 
 // Disable machine
@@ -75,8 +75,8 @@ void McDebugZ80::disable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
     // Bus raider disable wait states
-    br_enable_mem_and_io_access(false, false);
-    br_remove_bus_access_callback();
+    BusAccess::waitEnable(false, false);
+    BusAccess::accessCallbackRemove();
 }
 
 void McDebugZ80::handleExecAddr(uint32_t execAddr)
@@ -182,7 +182,7 @@ bool McDebugZ80::reset()
     memcpy(&_systemRAM[DEBUGZ80_DISP_RAM_ADDR], testChars, sizeof(testChars));
     _scrnBufDirtyFlag = true;
     // Debug
-    waitIntDisable();
+    BusAccess::waitIntDisable();
     pinMode(BR_DEBUG_PI_SPI0_CE0, OUTPUT);
     debugAccessCount = 0;
     debugAccessLastCount = 0;
@@ -192,7 +192,7 @@ bool McDebugZ80::reset()
     debugStepCount = 0;
     // Actual reset
     LogWrite(_logPrefix, LOG_WARNING, "RESET");
-    targetReset();
+    BusAccess::targetReset();
 
     return true;
 }

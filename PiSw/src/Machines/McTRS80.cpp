@@ -40,9 +40,9 @@ void McTRS80::enable()
     _keyBufferDirty = false;
 
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling TRS80");
-    br_set_bus_access_callback(memoryRequestCallback);
+    BusAccess::accessCallbackAdd(memoryRequestCallback);
     // Bus raider enable wait states on IORQ
-    br_enable_mem_and_io_access(true, false);
+    BusAccess::waitEnable(true, false);
 }
 
 // Disable machine
@@ -50,8 +50,8 @@ void McTRS80::disable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling TRS80");
     // Bus raider disable wait states
-    br_enable_mem_and_io_access(false, false);
-    br_remove_bus_access_callback();
+    BusAccess::waitEnable(false, false);
+    BusAccess::accessCallbackRemove();
 }
 
 void McTRS80::handleExecAddr(uint32_t execAddr)
@@ -67,7 +67,7 @@ void McTRS80::displayRefresh()
 {
     // Read memory of RC2014 at the location of the TRS80 memory mapped screen
     unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
-    blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, 1, 0);
+    BusAccess::blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, 1, 0);
 
     // Write to the display on the Pi Zero
     int cols = _descriptorTable.displayPixelsX / _descriptorTable.displayCellX;
@@ -89,7 +89,7 @@ void McTRS80::displayRefresh()
     // Check for key presses and send to the TRS80 if necessary
     if (_keyBufferDirty)
     {
-        blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, 1, 0);
+        BusAccess::blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, 1, 0);
         _keyBufferDirty = false;
     }
 }

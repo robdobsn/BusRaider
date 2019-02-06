@@ -38,17 +38,17 @@ void McZXSpectrum::enable()
 {
     _screenBufferValid = false;
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
-    br_set_bus_access_callback(memoryRequestCallback);
+    BusAccess::accessCallbackAdd(memoryRequestCallback);
     // Bus raider enable wait states on IORQ
-    br_enable_mem_and_io_access(true, false);
+    BusAccess::waitEnable(true, false);
 }
 
 // Disable machine
 void McZXSpectrum::disable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
-    br_enable_mem_and_io_access(false, false);
-    br_remove_bus_access_callback();
+    BusAccess::waitEnable(false, false);
+    BusAccess::accessCallbackRemove();
 }
 
 void McZXSpectrum::handleExecAddr(uint32_t execAddr)
@@ -62,7 +62,7 @@ void McZXSpectrum::displayRefresh()
 {
     // Read memory at the location of the memory mapped screen
     unsigned char pScrnBuffer[ZXSPECTRUM_DISP_RAM_SIZE];
-    blockRead(ZXSPECTRUM_DISP_RAM_ADDR, pScrnBuffer, ZXSPECTRUM_DISP_RAM_SIZE, 1, 0);
+    BusAccess::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, pScrnBuffer, ZXSPECTRUM_DISP_RAM_SIZE, 1, 0);
 
     // Check for colour data change - refresh everything if changed
     for (uint32_t colrIdx = ZXSPECTRUM_PIXEL_RAM_SIZE; colrIdx < ZXSPECTRUM_DISP_RAM_SIZE; colrIdx++)
@@ -119,7 +119,7 @@ void McZXSpectrum::displayRefresh()
     _screenBufferValid = true;
 
     // Generate a maskable interrupt to trigger Spectrum's keyboard ISR
-    targetIRQ();
+    BusAccess::targetIRQ();
 }
 
 // Handle a key press

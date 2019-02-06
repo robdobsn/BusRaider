@@ -165,7 +165,7 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
         if (pMc)
             resetDone = pMc->reset();
         if (!resetDone)
-            targetReset();
+            BusAccess::targetReset();
     }
     else if (strcasecmp(cmdName, "Step") == 0)
     {
@@ -175,12 +175,12 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
         if (pMc)
             stepDone = pMc->step();
         if (!stepDone)
-            br_pause_release();
+            BusAccess::pauseRelease();
     }
     else if (strcasecmp(cmdName, "IOClrTarget") == 0)
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "IO Clear Target");
-        br_clear_all_io();       
+        BusAccess::clearAllIO();       
     }
     else if (strcasecmp(cmdName, "FileTarget") == 0)
     {
@@ -383,7 +383,7 @@ void CommandHandler::handleTargetProgram(const char* cmdName)
     else 
     {
         // Handle programming in one BUSRQ/BUSACK pass
-        if (controlRequestAndTake() != BR_OK)
+        if (BusAccess::controlRequestAndTake() != BR_OK)
         {
             LogWrite(FromCmdHandler, LOG_DEBUG, "ProgramTarget - failed to capture bus");   
             return;
@@ -392,7 +392,7 @@ void CommandHandler::handleTargetProgram(const char* cmdName)
         for (int i = 0; i < targetGetNumBlocks(); i++) {
             TargetMemoryBlock* pBlock = targetGetMemoryBlock(i);
             LogWrite(FromCmdHandler, LOG_DEBUG,"ProgramTarget start %08x len %d", pBlock->start, pBlock->len);
-            blockWrite(pBlock->start, targetMemoryPtr() + pBlock->start, pBlock->len, false, false);
+            BusAccess::blockWrite(pBlock->start, targetMemoryPtr() + pBlock->start, pBlock->len, false, false);
         }
         // Written
         LogWrite(FromCmdHandler, LOG_DEBUG, "ProgramTarget - written %d blocks", targetGetNumBlocks());
@@ -401,11 +401,11 @@ void CommandHandler::handleTargetProgram(const char* cmdName)
         if (strcasecmp(cmdName, "ProgramAndReset") == 0)
         {
             LogWrite(FromCmdHandler, LOG_DEBUG, "Resetting target");
-            controlRelease(true);
+            BusAccess::controlRelease(true);
         }
         else
         {
-            controlRelease(false);
+            BusAccess::controlRelease(false);
         }
     }
     // Clear buffer

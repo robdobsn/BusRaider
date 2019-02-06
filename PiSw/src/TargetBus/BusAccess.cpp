@@ -15,46 +15,29 @@
 // Comment out this line to disable WAIT state generation altogether
 #define BR_ENABLE_WAIT_AND_FIQ 1
 
-// Instrument FIQ
-// #define INSTRUMENT_BUSACCESS_FIQ 1
-
 // Callback on bus access
-static BusAccessCBFnType* _pBusAccessCallback = NULL;
+BusAccessCBFnType* BusAccess::_pBusAccessCallback = NULL;
 
 // Current wait state mask for restoring wait enablement after change
-static uint32_t _waitStateEnMask = 0;
+uint32_t BusAccess::_waitStateEnMask = 0;
 
 // Wait interrupt enablement cache (so it can be restored after disable)
-static bool _waitIntEnabled = false;
+bool BusAccess::_waitIntEnabled = false;
 
 // Currently paused - i.e. wait is active
-volatile bool __br_pause_is_paused = false;
+volatile bool BusAccess::_pauseIsPaused = false;
 
 // // Bus values while single stepping
-uint32_t __br_pause_addr = 0;
-uint32_t __br_pause_data = 0;
-uint32_t __br_pause_flags = 0;
-
-static const int MAX_WAIT_FOR_CTRL_LINES_US = 10000;
-
-// Period target write control bus line is asserted during a write
-#define CYCLES_DELAY_FOR_WRITE_TO_TARGET 25
-
-// Period target read control bus line is asserted during a read from the PIB (any bus element)
-#define CYCLES_DELAY_FOR_READ_FROM_PIB 25
-
-// Delay in machine cycles for setting the pulse width when clearing/incrementing the address counter/shift-reg
-#define CYCLES_DELAY_FOR_CLEAR_LOW_ADDR 20
-#define CYCLES_DELAY_FOR_LOW_ADDR_SET 20
-#define CYCLES_DELAY_FOR_HIGH_ADDR_SET 20
-#define CYCLES_DELAY_FOR_WAIT_CLEAR 20
+uint32_t BusAccess::_pauseCurAddr = 0;
+uint32_t BusAccess::_pauseCurData = 0;
+uint32_t BusAccess::_pauseCurControlBus = 0;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Initialisation
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Initialise the bus raider
-void br_init()
+void BusAccess::init()
 {
     // Disable FIQ - used for wait state handling
     waitIntDisable();
@@ -101,7 +84,7 @@ void br_init()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Reset the host
-void targetReset()
+void BusAccess::targetReset()
 {
     // Disable wait interrupts
     waitIntDisable();
@@ -131,7 +114,7 @@ void targetReset()
 }
 
 // Hold host in reset state - call targetReset() to clear reset
-void targetResetHold()
+void BusAccess::targetResetHold()
 {
     // Disable wait interrupts
     waitIntDisable();
@@ -141,7 +124,7 @@ void targetResetHold()
 }
 
 // Non-maskable interrupt the host
-void targetNMI()
+void BusAccess::targetNMI()
 {
     // NMI by taking nmi_bar line low and high
     muxSet(BR_MUX_NMI_BAR_LOW);
@@ -150,7 +133,7 @@ void targetNMI()
 }
 
 // Maskable interrupt the host
-void targetIRQ()
+void BusAccess::targetIRQ()
 {
     // IRQ by taking irq_bar line low and high
     muxSet(BR_MUX_IRQ_BAR_LOW);
@@ -163,7 +146,7 @@ void targetIRQ()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Request access to the bus
-void controlRequest()
+void BusAccess::controlRequest()
 {
     // Set the PIB to input
     pibSetIn();
@@ -174,13 +157,13 @@ void controlRequest()
 }
 
 // Check if bus request has been acknowledged
-int controlBusAcknowledged()
+int BusAccess::controlBusAcknowledged()
 {
     return (RD32(GPLEV0) & (1 << BR_BUSACK_BAR)) == 0;
 }
 
 // Take control of bus
-void controlTake()
+void BusAccess::controlTake()
 {
     // Disable interrupts
     waitIntDisable();
@@ -196,7 +179,7 @@ void controlTake()
 }
 
 // Release control of bus
-void controlRelease(bool resetTargetOnRelease)
+void BusAccess::controlRelease(bool resetTargetOnRelease)
 {
     // Control bus
     pinMode(BR_WR_BAR, INPUT);
@@ -230,7 +213,7 @@ void controlRelease(bool resetTargetOnRelease)
 }
 
 // Request bus, wait until available and take control
-BR_RETURN_TYPE controlRequestAndTake()
+BR_RETURN_TYPE BusAccess::controlRequestAndTake()
 {
     // Request
     controlRequest();
@@ -260,7 +243,7 @@ BR_RETURN_TYPE controlRequestAndTake()
 // Set low address value by clearing and counting
 // Assumptions:
 // - some other code will set push-addr to enable onto the address bus
-void addrLowSet(uint32_t lowAddrByte)
+void BusAccess::addrLowSet(uint32_t lowAddrByte)
 {
     // Clear initially
     lowlev_cycleDelay(CYCLES_DELAY_FOR_CLEAR_LOW_ADDR);
@@ -281,7 +264,7 @@ void addrLowSet(uint32_t lowAddrByte)
 // Increment low address value by clocking the counter
 // Assumptions:
 // - some other code will set push-addr to enable onto the address bus
-void addrLowInc()
+void BusAccess::addrLowInc()
 {
     WR32(GPSET0, 1 << BR_LADDR_CK);
     lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
@@ -292,7 +275,7 @@ void addrLowInc()
 // Set the high address value
 // Assumptions:
 // - some other code will set push-addr to enable onto the address bus
-void addrHighSet(uint32_t highAddrByte)
+void BusAccess::addrHighSet(uint32_t highAddrByte)
 {
     // Shift the value into the register
     // Takes one more shift than expected as output reg is one pulse behind shift
@@ -319,7 +302,7 @@ void addrHighSet(uint32_t highAddrByte)
 // Set the full address
 // Assumptions:
 // - some other code will set push-addr to enable onto the address bus
-void addrSet(unsigned int addr)
+void BusAccess::addrSet(unsigned int addr)
 {
     addrHighSet(addr >> 8);
     addrLowSet(addr & 0xff);
@@ -334,7 +317,7 @@ void addrSet(unsigned int addr)
 // - control of host bus has been requested and acknowledged
 // - address bus is already set and output enabled to host bus
 // - PIB is already set to output
-void byteWrite(uint32_t byte, int iorq)
+void BusAccess::byteWrite(uint32_t byte, int iorq)
 {
     // Set the data onto the PIB
     pibSetValue(byte);
@@ -359,7 +342,7 @@ void byteWrite(uint32_t byte, int iorq)
 // - address bus is already set and output enabled to host bus
 // - PIB is already set to input
 // - data direction on data bus driver is set to input (default)
-uint8_t byteRead(int iorq)
+uint8_t BusAccess::byteRead(int iorq)
 {
     // Enable data output onto PIB (data-dir must be inwards already), MREQ_BAR and RD_BAR both active
     WR32(GPCLR0, BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
@@ -376,7 +359,7 @@ uint8_t byteRead(int iorq)
 }
 
 // Write a consecutive block of memory to host
-BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq)
+BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq)
 {
     // Check if we need to request bus
     if (busRqAndRelease) {
@@ -429,7 +412,7 @@ BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, int
 // Assumes:
 // - control of host bus has been requested and acknowledged
 // - data direction on data bus driver is set to input (default)
-BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq)
+BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq)
 {
     // Check if we need to request bus
     if (busRqAndRelease) {
@@ -492,16 +475,11 @@ BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pData, uint32_t len, int busRqA
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Enable interrupts
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Utility Functions
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Clear all IO space
-void br_clear_all_io()
+void BusAccess::clearAllIO()
 {
     // Fill IO "memory" with 0xff
     uint8_t tmpBuf[0x100];
@@ -510,39 +488,30 @@ void br_clear_all_io()
     blockWrite(0, tmpBuf, 0x100, 1, 1);  
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Callbacks on Bus Access
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Set the bus access interrupt callback
-void br_set_bus_access_callback(BusAccessCBFnType* pBusAccessCallback)
+void BusAccess::accessCallbackAdd(BusAccessCBFnType* pBusAccessCallback)
 {
     _pBusAccessCallback = pBusAccessCallback;
 }
 
-void br_remove_bus_access_callback()
+void BusAccess::accessCallbackRemove()
 {
     _pBusAccessCallback = NULL;
 }
 
-#ifdef INSTRUMENT_BUSACCESS_FIQ
-
-#define MAX_IO_PORT_VALS 1000
-volatile uint32_t iorqPortAccess[MAX_IO_PORT_VALS];
-volatile int iorqIsNotActive = 0;
-volatile int iorqCount = 0;
-int loopCtr = 0;
-
-#endif
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Wait State Enable
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Enable wait-states and FIQ
-void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ)
+void BusAccess::waitEnable(bool enWaitOnIORQ, bool enWaitOnMREQ)
 {
     // Disable interrupts
     waitIntDisable();
-
-#ifdef INSTRUMENT_BUSACCESS_FIQ
-    for (int i = 0; i < MAX_IO_PORT_VALS; i++)
-    {
-        iorqPortAccess[i] = 0;
-    }
-#endif
 
     // Enable wait state generation
     _waitStateEnMask = 0;
@@ -565,7 +534,7 @@ void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ)
     WR32(GPSET0, _waitStateEnMask);
 
     // Set vector for WAIT state interrupt
-    irq_set_wait_state_handler(br_wait_state_isr);
+    irq_set_wait_state_handler(waitStateISR);
 
     // Setup edge triggering on falling edge of IORQ
     // Clear any current detected edges
@@ -590,10 +559,14 @@ void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ)
 #endif  
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Wait State Interrupt Service Routine
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Main Interrupt Service Routing for MREQ/IORQ based interrupts
 // The Bus Raider hardware creates WAIT states while this IRQ is running
 // These have to be cleared on exit and the interrupt source register also cleared
-void br_wait_state_isr(void* pData)
+void BusAccess::waitStateISR(void* pData)
 {
     // pData unused
     pData = pData;
@@ -610,7 +583,7 @@ void br_wait_state_isr(void* pData)
     bool ctrlValid = false;
     int avoidLockupCtr = 0;
     uint32_t busVals = 0;
-    while(avoidLockupCtr < MAX_WAIT_FOR_CTRL_LINES_US)
+    while(avoidLockupCtr < MAX_WAIT_FOR_CTRL_LINES_COUNT)
     {
         // Read the control lines
         busVals = RD32(GPLEV0);
@@ -658,7 +631,7 @@ void br_wait_state_isr(void* pData)
     lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
 
     // Get low address value
-    uint32_t addr = br_get_pib_value() & 0xff;
+    uint32_t addr = pibGetValue() & 0xff;
 
     // Read the high address
     muxSet(BR_MUX_HADDR_OE_BAR);
@@ -667,7 +640,7 @@ void br_wait_state_isr(void* pData)
     lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
 
     // Or in the high address
-    addr |= (br_get_pib_value() & 0xff) << 8;
+    addr |= (pibGetValue() & 0xff) << 8;
  
     // Clear the mux to deactivate output enables
     muxClear();
@@ -697,7 +670,7 @@ void br_wait_state_isr(void* pData)
         lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
 
         // Read the data bus values
-        dataBusVals = br_get_pib_value() & 0xff;
+        dataBusVals = pibGetValue() & 0xff;
 
         // Clear Mux
         muxClear();
@@ -724,8 +697,8 @@ void br_wait_state_isr(void* pData)
     // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
 
     // Check if pause requested
-    __br_pause_is_paused = ((retVal & BR_MEM_ACCESS_RSLT_REQ_PAUSE) != 0);
-    if (!__br_pause_is_paused)
+    _pauseIsPaused = ((retVal & BR_MEM_ACCESS_RSLT_REQ_PAUSE) != 0);
+    if (!_pauseIsPaused)
     {
         // TODO - DEBUG - MUST BE REMOVED
         // WR32(GPSET0, 1 << BR_HADDR_CK);
@@ -753,25 +726,29 @@ void br_wait_state_isr(void* pData)
     else
     {
         // Store the current address, data and ctrl line state
-        __br_pause_addr = addr;
-        __br_pause_data = isWriting ? dataBusVals : retVal;
-        __br_pause_flags = ctrlBusVals;
+        _pauseCurAddr = addr;
+        _pauseCurData = isWriting ? dataBusVals : retVal;
+        _pauseCurControlBus = ctrlBusVals;
     }
 }
 
-void waitIntClear()
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Clear/Enable/Disable Wait Interrupts
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusAccess::waitIntClear()
 {
     // Clear detected edge on any pin
     WR32(GPEDS0, 0xffffffff);
 }
 
-void waitIntDisable()
+void BusAccess::waitIntDisable()
 {
     // Disable Fast Interrupts
     lowlev_disable_fiq();
 }
 
-void waitIntEnable()
+void BusAccess::waitIntEnable()
 {
     // Clear interrupts first
     waitIntClear();
@@ -780,26 +757,30 @@ void waitIntEnable()
     lowlev_enable_fiq();
 }
 
-void br_pause_get_current(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Pause & Single Step Handling
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusAccess::pauseGetCurrent(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags)
 {
-    *pAddr = __br_pause_addr;
-    *pData = __br_pause_data;
-    *pFlags = __br_pause_flags;
+    *pAddr = _pauseCurAddr;
+    *pData = _pauseCurData;
+    *pFlags = _pauseCurControlBus;
 }
 
-bool br_pause_is_paused()
+bool BusAccess::pauseIsPaused()
 {
-    return __br_pause_is_paused;
+    return _pauseIsPaused;
 }
 
-bool br_pause_release()
+bool BusAccess::pauseRelease()
 {
     // Check if paused
-    if (!__br_pause_is_paused)
+    if (!_pauseIsPaused)
         return false;
 
     // Release pause
-    __br_pause_is_paused = false;
+    _pauseIsPaused = false;
 
     // Clear the WAIT state flip-flop
     WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
@@ -819,36 +800,12 @@ bool br_pause_release()
     return true;
 }
 
-void br_service()
-{
-#ifdef INSTRUMENT_BUSACCESS_FIQ
-    loopCtr++;
-    if (loopCtr > 500000)
-    {
-        bool anyOut = false;
-        for (int i = 0; i < MAX_IO_PORT_VALS; i++)
-        {
-            if (iorqPortAccess[i] == 0)
-                break;
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Service
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-            int accVal = (iorqPortAccess[i] >> 16) & 0x03;
-            anyOut = true;
-            ee_printf("port %x %c %c count %d; ",
-                    iorqPortAccess[i] & 0xffff,
-                    ((accVal & 0x01) != 0) ? 'R' : ' ',
-                    ((accVal & 0x02) != 0) ? 'W' : ' ',
-                    iorqPortAccess[i] >> 18);
-        }
-        if (iorqIsNotActive > 0)
-        {
-            if (anyOut)
-                ee_printf("\n");
-            ee_printf("Not actv %d, ", iorqIsNotActive);
-        }
-        ee_printf("IORQ_WAIT_EN %d count %d\n",digitalRead(BR_IORQ_WAIT_EN), iorqCount);
-        loopCtr = 0;
-    }
-#endif
+void BusAccess::service()
+{
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -856,20 +813,20 @@ void br_service()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Set a pin to be an output and set initial value for that pin
-void setPinOut(int pinNumber, bool val)
+void BusAccess::setPinOut(int pinNumber, bool val)
 {
     digitalWrite(pinNumber, val);
     pinMode(pinNumber, OUTPUT);
     digitalWrite(pinNumber, val);
 }
 
-void muxClear()
+void BusAccess::muxClear()
 {
     // Clear to a safe setting - sets HADDR_SER low
     WR32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
 }
 
-void muxSet(int muxVal)
+void BusAccess::muxSet(int muxVal)
 {
     // Clear first as this is a safe setting - sets HADDR_SER low
     WR32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
@@ -878,19 +835,19 @@ void muxSet(int muxVal)
 }
 
 // Set the PIB (pins used for data bus access) to outputs (from Pi)
-void pibSetOut()
+void BusAccess::pibSetOut()
 {
     WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_OUTPUT);
 }
 
 // Set the PIB (pins used for data bus access) to inputs (to Pi)
-void pibSetIn()
+void BusAccess::pibSetIn()
 {
     WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_INPUT);
 }
 
 // Set a value onto the PIB (pins used for data bus access)
-void pibSetValue(uint8_t val)
+void BusAccess::pibSetValue(uint8_t val)
 {
     uint32_t setBits = ((uint32_t)val) << BR_DATA_BUS;
     uint32_t clrBits = (~(((uint32_t)val) << BR_DATA_BUS)) & (~BR_PIB_MASK);
@@ -899,7 +856,7 @@ void pibSetValue(uint8_t val)
 }
 
 // Get a value from the PIB (pins used for data bus access)
-uint8_t br_get_pib_value()
+uint8_t BusAccess::pibGetValue()
 {
     return (RD32(GPLEV0) >> BR_DATA_BUS) & 0xff;
 }

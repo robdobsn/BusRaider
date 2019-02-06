@@ -36,14 +36,14 @@ void McRobsZ80::enable()
 {
     _screenBufferValid = false;
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
-    br_set_bus_access_callback(memoryRequestCallback);
+    BusAccess::accessCallbackAdd(memoryRequestCallback);
 }
 
 // Disable machine
 void McRobsZ80::disable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
-    br_remove_bus_access_callback();
+    BusAccess::accessCallbackRemove();
 }
 
 void McRobsZ80::handleExecAddr(uint32_t execAddr)
@@ -59,7 +59,7 @@ void McRobsZ80::displayRefresh()
 {
     // Read memory at the location of the memory mapped screen
     unsigned char pScrnBuffer[ROBSZ80_DISP_RAM_SIZE];
-    blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, 1, 0);
+    BusAccess::blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, 1, 0);
 
     // Write to the display on the Pi Zero
     int bytesPerRow = _descriptorTable.displayPixelsX/8;

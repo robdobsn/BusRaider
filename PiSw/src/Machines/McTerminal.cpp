@@ -53,14 +53,14 @@ void McTerminal::enable()
     // Invalidate screen buffer
     _screenBufferValid = false;
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
-    br_set_bus_access_callback(memoryRequestCallback);
+    BusAccess::accessCallbackAdd(memoryRequestCallback);
 }
 
 // Disable machine
 void McTerminal::disable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
-    br_remove_bus_access_callback();
+    BusAccess::accessCallbackRemove();
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)

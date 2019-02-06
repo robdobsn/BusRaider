@@ -7,10 +7,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef uint32_t BusAccessCBFnType(uint32_t addr, uint32_t data, uint32_t flags);
 
 // Return codes
@@ -102,80 +98,122 @@ typedef enum {
 #define BR_PIB_GPF_INPUT 0x00000000
 #define BR_PIB_GPF_OUTPUT 0x00249249
 
-// Initialise the bus raider
-extern void br_init();
-// Reset host
-extern void targetReset();
-// Hold host in reset state - call targetReset() to clear reset
-extern void targetResetHold();
-// NMI host
-extern void targetNMI();
-// IRQ host
-extern void targetIRQ();
-// Request access to the bus
-extern void controlRequest();
-// Check if bus request has been acknowledged
-extern int controlBusAcknowledged();
-// Take control of bus
-extern void controlTake();
-// Release control of bus
-extern void controlRelease(bool resetTargetOnRelease);
-// Request and take bus
-extern BR_RETURN_TYPE controlRequestAndTake();
-// Set address
-extern void br_set_low_addr(uint32_t lowAddrByte);
-extern void br_inc_low_addr();
-extern void addrHighSet(uint32_t highAddrByte);
-extern void br_set_full_addr(unsigned int addr);
-// Control the PIB (bus used to transfer data to/from Pi)
-extern void pibSetOut();
-extern void pibSetIn();
-extern void pibSetValue(uint8_t val);
-extern uint8_t br_get_pib_value();
-// Read and write bytes
-extern void br_write_byte(uint32_t byte, int iorq);
-extern uint8_t br_read_byte(int iorq);
-// Read and write blocks
-extern BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
-extern BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
-// Enable WAIT
-extern void br_enable_mem_and_io_access(bool enWaitOnIORQ, bool enWaitOnMREQ);
-extern void br_wait_state_isr(void* pData);
+class BusAccess
+{
+public:
+    // Initialise the bus raider
+    static void init();
 
-// Clear IO
-extern void br_clear_all_io();
+    // Reset host
+    static void targetReset();
+    
+    // Hold host in reset state - call targetReset() to clear reset
+    static void targetResetHold();
+    
+    // NMI host
+    static void targetNMI();
+    
+    // IRQ host
+    static void targetIRQ();
+    
+    // Request and take bus
+    static BR_RETURN_TYPE controlRequestAndTake();
+    
+    // Release control of bus
+    static void controlRelease(bool resetTargetOnRelease);
+    
+    // Read and write bytes
+    static void byteWrite(uint32_t byte, int iorq);
+    static uint8_t byteRead(int iorq);
 
-// Service
-extern void br_service();
+    // Read and write blocks
+    static BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
+    static BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
+    
+    // Enable WAIT
+    static void waitEnable(bool enWaitOnIORQ, bool enWaitOnMREQ);
 
-// Wait interrupts
-extern void waitIntClear();
-extern void waitIntDisable();
-extern void waitIntEnable();
+    // Wait interrupt control
+    static void waitIntClear();
+    static void waitIntDisable();
+    static void waitIntEnable();
 
-// Set and remove callbacks on bus access
-extern void br_set_bus_access_callback(BusAccessCBFnType* pBusAccessCallback);
-extern void br_remove_bus_access_callback();
+    // Clear IO
+    static void clearAllIO();
 
-// Single step
-extern void br_pause_get_current(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags);
-extern bool br_pause_is_paused();
-extern bool br_pause_release();
+    // Service
+    static void service();
 
-// private:
-// Pin IO
-extern void setPinOut(int pinNumber, bool val);
-extern void setPinIn(int pinNumber);
-// Set the MUX
-extern void muxSet(int muxVal);
-// Clear the MUX
-extern void muxClear();
+    // Set and remove callbacks on bus access
+    static void accessCallbackAdd(BusAccessCBFnType* pBusAccessCallback);
+    static void accessCallbackRemove();
 
+    // Single step
+    static void pauseGetCurrent(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags);
+    static bool pauseIsPaused();
+    static bool pauseRelease();
 
-// private:
+private:
+    // Callback on bus access
+    static BusAccessCBFnType* _pBusAccessCallback;
+
+    // Current wait state mask for restoring wait enablement after change
+    static uint32_t _waitStateEnMask;
+
+    // Wait interrupt enablement cache (so it can be restored after disable)
+    static bool _waitIntEnabled;
+
+    // Currently paused - i.e. wait is active
+    static volatile bool _pauseIsPaused;
+
+    // Bus values while single stepping
+    static uint32_t _pauseCurAddr;
+    static uint32_t _pauseCurData;
+    static uint32_t _pauseCurControlBus;
+
+private:
+    // Set address
+    static void addrLowSet(uint32_t lowAddrByte);
+    static void addrLowInc();
+    static void addrHighSet(uint32_t highAddrByte);
+    static void addrSet(unsigned int addr);
+
+    // Control the PIB (bus used to transfer data to/from Pi)
+    static void pibSetOut();
+    static void pibSetIn();
+    static void pibSetValue(uint8_t val);
+    static uint8_t pibGetValue();
+
+    // Bus request/ack
+    static void controlRequest();
+    static int controlBusAcknowledged();
+    static void controlTake();
+
+    // Interrupt service routine for wait states
+    static void waitStateISR(void* pData);
+
+    // Pin IO
+    static void setPinOut(int pinNumber, bool val);
+    static void setPinIn(int pinNumber);
+    // Set the MUX
+    static void muxSet(int muxVal);
+    // Clear the MUX
+    static void muxClear();
+
+private:
     // Timeouts
     static const int MAX_WAIT_FOR_ACK_US = 100;
+    static const int MAX_WAIT_FOR_CTRL_LINES_COUNT = 10000;
 
-#ifdef __cplusplus
-}
-#endif
+    // Period target write control bus line is asserted during a write
+    static const int CYCLES_DELAY_FOR_WRITE_TO_TARGET = 25;
+
+    // Period target read control bus line is asserted during a read from the PIB (any bus element)
+    static const int  CYCLES_DELAY_FOR_READ_FROM_PIB = 25;
+
+    // Delay in machine cycles for setting the pulse width when clearing/incrementing the address counter/shift-reg
+    static const int  CYCLES_DELAY_FOR_CLEAR_LOW_ADDR = 20;
+    static const int  CYCLES_DELAY_FOR_LOW_ADDR_SET = 20;
+    static const int  CYCLES_DELAY_FOR_HIGH_ADDR_SET = 20;
+    static const int  CYCLES_DELAY_FOR_WAIT_CLEAR = 20;
+};
