@@ -44,23 +44,7 @@ private:
     FileManager& _fileManager;
 
 public:
-    CommandSerial(FileManager& fileManager) : 
-            _miniHDLC(std::bind(&CommandSerial::sendCharToCmdPort, this, std::placeholders::_1), 
-                std::bind(&CommandSerial::frameHandler, this, std::placeholders::_1, std::placeholders::_2),
-                true, false),
-            _fileManager(fileManager)
-    {
-        _pSerial = NULL;
-        _serialPortNum = -1;
-        _uploadFromFSInProgress = false;
-        _uploadFromAPIInProgress = false;
-        _uploadStartMs = 0;
-        _uploadLastBlockMs = 0;
-        _blockCount = 0;
-        _baudRate = 115200;
-        _frameRxCallback = nullptr;
-    }
-
+    CommandSerial(FileManager& fileManager);
     void setup(ConfigBase& config);
 
     // Set callback on frame received

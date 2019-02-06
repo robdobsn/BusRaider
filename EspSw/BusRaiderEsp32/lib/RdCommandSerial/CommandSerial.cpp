@@ -5,6 +5,23 @@
 
 static const char* MODULE_PREFIX = "CommandSerial: ";
 
+CommandSerial::CommandSerial(FileManager& fileManager) : 
+        _miniHDLC(std::bind(&CommandSerial::sendCharToCmdPort, this, std::placeholders::_1), 
+            std::bind(&CommandSerial::frameHandler, this, std::placeholders::_1, std::placeholders::_2),
+            true, false),
+        _fileManager(fileManager)
+{
+    _pSerial = NULL;
+    _serialPortNum = -1;
+    _uploadFromFSInProgress = false;
+    _uploadFromAPIInProgress = false;
+    _uploadStartMs = 0;
+    _uploadLastBlockMs = 0;
+    _blockCount = 0;
+    _baudRate = 115200;
+    _frameRxCallback = nullptr;
+}
+
 void CommandSerial::setup(ConfigBase& config)
 {
     // Get config
@@ -149,13 +166,15 @@ void CommandSerial::service()
     if (uploadInProgress())
     {
         // Check for timeouts
-        if (Utils::isTimeout(millis(), _uploadLastBlockMs, MAX_BETWEEN_BLOCKS_MS))
+        uint32_t curMs = millis();
+        if (Utils::isTimeout(curMs+1, _uploadLastBlockMs, MAX_BETWEEN_BLOCKS_MS))
         {
             _uploadFromFSInProgress = false;
             _uploadFromAPIInProgress = false;
-            Log.notice("%sUpload block timed out\n", MODULE_PREFIX);
+            Log.notice("%sUpload block timed out millis %d lastBlockMs %d\n", MODULE_PREFIX, 
+                        curMs, _uploadLastBlockMs);
         }
-        if (Utils::isTimeout(millis(), _uploadStartMs, MAX_UPLOAD_MS))
+        if (Utils::isTimeout(curMs+1, _uploadStartMs, MAX_UPLOAD_MS))
         {
             _uploadFromFSInProgress = false;
             _uploadFromAPIInProgress = false;
@@ -220,21 +239,21 @@ void CommandSerial::uploadCommonBlockHandler(const char* fileType, const String&
                 fileType, filename.c_str(), fileLength, index, len, finalBlock, 
                 (_uploadFromFSInProgress ? "yes" : "no"), (_uploadFromAPIInProgress ? "yes" : "no"));
 
+    // For timeouts        
+    _uploadLastBlockMs = millis();
+
     // Check if first block in an upload
     if (_blockCount == 0)
     {
         _uploadFileType = fileType;
         sendFileStartRecord(fileType, req, filename, fileLength);
-        Log.verbose("%snew upload started\n", MODULE_PREFIX);
+        Log.trace("%snew upload started millis %d\n", MODULE_PREFIX, _uploadLastBlockMs);
     }
 
     // Send the block
     sendFileBlock(index, data, len);
     Log.verbose("%sblock sent\n", MODULE_PREFIX);
     _blockCount++;
-
-    // For timeouts        
-    _uploadLastBlockMs = millis();
 
     // Check if that was the final block
     if (finalBlock)
@@ -270,6 +289,7 @@ void CommandSerial::uploadAPIBlockHandler(const char* fileType, const String& re
         _uploadFromAPIInProgress = true;
         _blockCount = 0;
         _uploadStartMs = millis();
+        Log.notice("%suploadAPIBlockHandler starting new - nothing in progress\n", MODULE_PREFIX);
     }
     
     // Commmon handler
@@ -297,6 +317,7 @@ bool CommandSerial::startUploadFromFileSystem(const String& fileSystemName,
     }
 
     // Upload now in progress
+    Log.trace("%sstartUploadFromFileSystem %s\n", MODULE_PREFIX, filename);
     _uploadFromFSInProgress = true;
     _uploadFileType = "target";
     _uploadFromFSRequest = uploadRequest;

@@ -24,7 +24,6 @@ CmdHandlerChangeMachineFnType* CommandHandler::_pChangeMcFunction = NULL;
 CmdHandlerRxFromTargetFnType* CommandHandler::_pRxFromTargetFunction = NULL;
 CmdHandlerPutToSerialFnType* CommandHandler::_pPutToSerialFunction = NULL;
 
-
 // Singleton command handler
 CommandHandler* CommandHandler::_pSingletonCommandHandler = NULL;
 
@@ -36,9 +35,13 @@ CommandHandler* CommandHandler::_pSingletonCommandHandler = NULL;
 CommandHandler::CommandHandler() :
     _miniHDLC(static_hdlcPutCh, static_hdlcFrameRx)
 {   
+    // Callbacks
     _pRxFromTargetFunction = NULL;
     _pChangeMcFunction = NULL;
     _pSingletonCommandHandler = this;
+
+    // Remote debug handler
+    _pRemoteDebugHandler = NULL;
 
     // File reception
     _receivedFileName[0] = 0;
@@ -215,6 +218,17 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
         // Handle status response message
         handleStatusResponse(pCmdJson);
     }
+    else if (strcasecmp(cmdName, "rdp") == 0)
+    {
+        // Send to remote debug handler
+        static const int MAX_RESPONSE_MSG_LEN = 2000;
+        static char responseMessage[MAX_RESPONSE_MSG_LEN+1];
+        responseMessage[0] = 0;
+        if (_pRemoteDebugHandler)
+            _pRemoteDebugHandler->handleCommand(pCmdJson, pParams, paramsLen, responseMessage, MAX_RESPONSE_MSG_LEN);
+        LogWrite(FromCmdHandler, LOG_DEBUG, "replying to rdp with %s", responseMessage);
+        sendWithJSON("rdp", responseMessage);
+    }
     else
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "Unknown command %s", cmdName);
@@ -361,10 +375,13 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
 // Handle programming of target machine
 void CommandHandler::handleTargetProgram(const char* cmdName)
 {
-    if (targetGetNumBlocks() == 0) {
+    if (targetGetNumBlocks() == 0) 
+    {
         // Nothing new to write
         LogWrite(FromCmdHandler, LOG_DEBUG, "ProgramTarget - nothing to write");
-    } else {
+    } 
+    else 
+    {
         // Handle programming in one BUSRQ/BUSACK pass
         if (br_req_and_take_bus() != BR_OK)
         {
@@ -478,6 +495,10 @@ void CommandHandler::sendAPIReq(const char* reqLine)
 
 void CommandHandler::requestStatusUpdate()
 {
+    // Check if file transfer in progress
+    if (_pReceivedFileDataPtr)
+        return;
+
     // Send update
     const char* mcJSON = McManager::getMachineJSON();
     sendWithJSON("statusUpdate", mcJSON);

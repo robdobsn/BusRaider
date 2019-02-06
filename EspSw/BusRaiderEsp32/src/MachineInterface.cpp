@@ -17,12 +17,32 @@
 static const char* MODULE_PREFIX = "MachineInterface: ";
 
 static const char* demoModeControlFileName = "demo.json";
-static const int demoModeControlFileMaxlen = 1000;
+static const int demoModeControlFileMaxlen = 2000;
+
+MachineInterface::MachineInterface()
+{
+    _cachedStatusJSON = "{}";
+    _pTargetSerial = NULL;
+    _targetSerialPortNum = -1;
+    _targetSerialBaudRate = 115200;
+    _pWebServer = NULL;
+    _pFileManager = NULL;
+#ifdef USE_WEBSOCKET_TERMINAL
+    _pWebSocket = NULL;
+#endif
+    _pTelnetServer = NULL;
+    _pRemoteDebugServer = NULL;
+    _pRestAPIEndpoints = NULL;
+    _demoState = DEMO_STATE_IDLE;
+    _demoPreloadFileIdx = 0;
+    _demoProgramIdx = 0;
+    _rdpCommandIndex = 0;
+}
 
 // Setup
 void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandSerial* pCommandSerial,
-            AsyncTelnetServer* pTelnetServer, RestAPIEndpoints* pRestAPIEndpoints,
-            FileManager* pFileManager)
+            AsyncTelnetServer* pTelnetServer, RemoteDebugProtocolServer* pRemoteDebugProtocolServer, 
+            RestAPIEndpoints* pRestAPIEndpoints, FileManager* pFileManager)
 {
     // Get config
     ConfigBase csConfig(config.getString("machineIF", "").c_str());
@@ -32,6 +52,7 @@ void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandS
     _pWebServer = pWebServer;
     _pCommandSerial = pCommandSerial;
     _pTelnetServer = pTelnetServer;
+    _pRemoteDebugServer = pRemoteDebugProtocolServer;
     _pRestAPIEndpoints = pRestAPIEndpoints;
     _pFileManager = pFileManager;
 
@@ -51,7 +72,35 @@ void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandS
             }
         }, this);
     }
-    
+
+    // Set the remote data callback
+    if (_pRemoteDebugServer)
+    {
+        _pRemoteDebugServer->onData([this](void* cbArg, const char* pData, int numChars) 
+        {
+            (void)cbArg;
+
+            // Ensure terminated
+            if ((numChars < 0) || (numChars > MAX_COMMAND_LEN))
+                return;
+
+            // Ensure string is terminated
+            char* pStr = new char[numChars+1];
+            memcpy(pStr, pData, numChars);
+            pStr[numChars] = 0;
+            String str = pStr;
+            str.trim();
+            // Clean up
+            delete [] pStr;
+
+            // Send target command to Pi
+            if (_pCommandSerial)
+                _pCommandSerial->sendTargetData("rdp", (const uint8_t*)str.c_str(), 
+                        str.length(), _rdpCommandIndex++);
+
+        }, this);
+    }
+
     // Set callback on frame received from Pi
     if (_pCommandSerial)
     {
@@ -247,32 +296,37 @@ void MachineInterface::service()
 void MachineInterface::handleFrameRxFromPi(const uint8_t *framebuffer, int framelength)
 {
     // Extract frame type
-    if ((framelength < 0) || (framelength > 1500))
+    if ((framelength < 0) || (framelength > MAX_COMMAND_LEN))
         return;
 
     // Ensure string is terminated
     char* pStr = new char[framelength+1];
     memcpy(pStr, framebuffer, framelength);
     pStr[framelength] = 0;
+    String str = pStr;
+    // Tidy up
+    delete [] pStr;
+
+    // Log.trace("%sreceivedFromPi %s\n", MODULE_PREFIX, str.c_str());
 
     // Get command
-    String cmdName = RdJson::getString("cmdName", "", pStr);
+    String cmdName = RdJson::getString("cmdName", "", str.c_str());
     if (cmdName.equalsIgnoreCase("statusUpdate"))
     {
         // Cache the status frame
-        _cachedStatusJSON = (const char *)pStr;
+        _cachedStatusJSON = str;
     }
     else if (cmdName.equalsIgnoreCase("keyCode"))
     {
         // Send key to target
-        int asciiCode = RdJson::getLong("key", 0, pStr);
+        int asciiCode = RdJson::getLong("key", 0, str.c_str());
         if (_pTargetSerial && (asciiCode != 0))
             _pTargetSerial->write((char)asciiCode);
         Log.trace("%ssent target char %x\n", MODULE_PREFIX, (char)asciiCode);
     }
     else if (cmdName.equalsIgnoreCase("apiReq"))
     {
-        String requestStr = RdJson::getString("req", "", pStr);
+        String requestStr = RdJson::getString("req", "", str.c_str());
         if (_pRestAPIEndpoints && requestStr.length() != 0)
         {
             String respStr;
@@ -281,9 +335,14 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *framebuffer, int frame
                 _pCommandSerial->responseMessage(respStr);
         }
     }
+    else if (cmdName.equalsIgnoreCase("rdp"))
+    {
+        Log.trace("%srdp response message %s\n", MODULE_PREFIX, str.c_str());
+        String contentStr = RdJson::getString("content", "", str.c_str());
+        if (_pRemoteDebugServer)
+            _pRemoteDebugServer->sendChars(contentStr.c_str(), contentStr.length());
+    }
 
-    // Tidy up
-    delete [] pStr;
 }
 
 const char *MachineInterface::getStatus()
@@ -302,7 +361,7 @@ void MachineInterface::handleDemoModeButtonPress(int buttonValue)
         return;
 
     // Handle demo mode
-    Log.notice("%sdemo mode\n", MODULE_PREFIX);
+    Log.notice("%sEntering demo mode\n", MODULE_PREFIX);
 
     // Select the next program to download
     if (!_pFileManager)
@@ -311,6 +370,8 @@ void MachineInterface::handleDemoModeButtonPress(int buttonValue)
     // Get the demo mode control file contents
     String demoJson = _pFileManager->getFileContents("SPIFFS",
                         String("/") + demoModeControlFileName, demoModeControlFileMaxlen);
+    if (demoJson.length() <= 0)
+        return;
     Log.notice("Demo JSON %s\n", demoJson.c_str());
 
     // Get the number of entries in the demo table

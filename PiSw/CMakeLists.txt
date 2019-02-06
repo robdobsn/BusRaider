@@ -18,7 +18,7 @@ add_executable(${PROJECT_ELF} "${ASM_SOURCE_FILES}" "${C_SOURCE_FILES}" "${CXX_S
 target_link_libraries(${PROJECT_ELF} ${PROJECT_SOURCE_DIR}/uspi/lib/libuspi.a)
 
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3" )
-# set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostartfiles" )
+set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostartfiles" )
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall" )
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra" )
 
@@ -31,6 +31,6 @@ set( CMAKE_EXE_LINKER_FLAGS "-Wl,-T,${PROJECT_SOURCE_DIR}/memmap" )
 
 add_custom_command(TARGET ${PROJECT_ELF} POST_BUILD 
   COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${PROJECT_ELF}> ${PROJECT_SOURCE_DIR}/bin/kernel.img
-  COMMAND ${CMAKE_OBJDUMP} -d $<TARGET_FILE:${PROJECT_ELF}> | $(PREFIX)c++filt > ${PROJECT_SOURCE_DIR}/${PROJ_NAME}.lst
+#  COMMAND ${CMAKE_OBJDUMP} -d $<TARGET_FILE:${PROJECT_ELF}> | $(PREFIX)c++filt > ${PROJECT_SOURCE_DIR}/${PROJ_NAME}.lst
   COMMAND curl -F "file=@${PROJECT_SOURCE_DIR}/bin/kernel.img" http://192.168.86.192/uploadpisw
-  COMMENT "Copying to output directory")
+  COMMENT "Copying to output directory and uploading ...")

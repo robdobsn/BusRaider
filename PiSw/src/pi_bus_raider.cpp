@@ -33,7 +33,7 @@ typedef int                 s32;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "             RC2014 Bus Raider V1.7.003";
+static const char* PROG_VERSION = "             RC2014 Bus Raider V1.7.005";
 static const char* PROG_CREDITS = "    Rob Dobson 2018 (inspired by PiGFX)";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
@@ -50,6 +50,9 @@ int _immediateModeLineLen = 0;
 // Command Handler
 CommandHandler commandHandler;
 
+// Remote debug handler
+RemoteDebugHandler remoteDebugHandler;
+
 // Function to send to uart from command handler
 void putToSerial(const uint8_t* pBuf, int len)
 {
@@ -63,14 +66,10 @@ void serviceGetFromSerial()
     for (int rxCtr = 0; rxCtr < 100; rxCtr++) {
         if (!uart_poll())
             break;
-
-        // Show char received
+        // Handle char
         int ch = uart_read_byte();
         uint8_t buf[2];
         buf[0] = ch;
-        // ee_printf("%02x ptr %d", ch, commandHandler.getIn());
-
-        // Handle char
         commandHandler.handleSerialReceivedChars(buf, 1);
     }    
 }
@@ -179,6 +178,7 @@ extern "C" int main()
     // Command handler
     commandHandler.setMachineChangeCallback(set_machine_by_name);
     commandHandler.setPutToSerialCallback(putToSerial);
+    commandHandler.setRemoteDebugHandler(&remoteDebugHandler);
 
     // Target machine memory and command handler
     targetClear();

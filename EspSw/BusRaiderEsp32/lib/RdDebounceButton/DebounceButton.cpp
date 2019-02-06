@@ -7,6 +7,17 @@
 #include "utils.h"
 #include "ArduinoLog.h"
 
+// Constructor
+DebounceButton::DebounceButton()
+{
+    _buttonPin = -1;
+    _buttonActiveLevel = 0;
+    _debounceLastMs = 0;
+    _debounceVal = 0;
+    _callback = nullptr;
+    _firstPass = true;
+}
+
 // Setup
 void DebounceButton::setup(int pin, int activeLevel, DebounceButtonCallback cb)
 {
@@ -15,6 +26,7 @@ void DebounceButton::setup(int pin, int activeLevel, DebounceButtonCallback cb)
     _buttonPin = pin;
     _buttonActiveLevel = activeLevel;
     _callback = cb;
+    _firstPass = true;
     if (_buttonPin >= 0)
     {
         pinMode(_buttonPin, INPUT);
@@ -31,9 +43,17 @@ void DebounceButton::service()
     {
         if (Utils::isTimeout(millis(), _debounceLastMs, PIN_DEBOUNCE_MS))
         {
-            _debounceVal = !_debounceVal;
-            if (_callback)
-                _callback(_debounceVal == _buttonActiveLevel);
+            if (_firstPass)
+            {
+                _debounceVal = digitalRead(_buttonPin);
+                _firstPass = false;
+            }
+            else
+            {
+                _debounceVal = !_debounceVal;
+                if (_callback)
+                    _callback(_debounceVal == _buttonActiveLevel);
+            }
             _debounceLastMs = millis();
         }
     }

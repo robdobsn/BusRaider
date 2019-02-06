@@ -16,6 +16,7 @@
 #include "WebServer.h"
 #include "CommandSerial.h"
 #include "AsyncTelnetServer.h"
+#include "RemoteDebugProtocol.h"
 #include "RestAPIEndpoints.h"
 #include "DebounceButton.h"
 
@@ -49,11 +50,18 @@ private:
     // Telnet server
     AsyncTelnetServer* _pTelnetServer;
 
+    // Remote debug server
+    RemoteDebugProtocolServer* _pRemoteDebugServer;
+    int _rdpCommandIndex;
+
     // REST API
     RestAPIEndpoints* _pRestAPIEndpoints;
 
     // File manager
     FileManager* _pFileManager;
+
+    // Max buffer sizes
+    static const int MAX_COMMAND_LEN = 1500;
 
     // Demo handling
     DebounceButton _debounceButton;
@@ -68,28 +76,12 @@ private:
     int _demoProgramIdx;
 
 public:
-    MachineInterface()
-    {
-        _cachedStatusJSON = "{}";
-        _pTargetSerial = NULL;
-        _targetSerialPortNum = -1;
-        _targetSerialBaudRate = 115200;
-        _pWebServer = NULL;
-        _pFileManager = NULL;
-#ifdef USE_WEBSOCKET_TERMINAL
-        _pWebSocket = NULL;
-#endif
-        _pTelnetServer = NULL;
-        _pRestAPIEndpoints = NULL;
-        _demoState = DEMO_STATE_IDLE;
-        _demoPreloadFileIdx = 0;
-        _demoProgramIdx = 0;
-    }
+    MachineInterface();
 
     // Setup
     void setup(ConfigBase &config, WebServer *pWebServer, CommandSerial* pCommandSerial,
-                AsyncTelnetServer* pTelnetServer, RestAPIEndpoints* pRestAPIEndpoints,
-                FileManager* pFileManager);
+                AsyncTelnetServer* pTelnetServer, RemoteDebugProtocolServer* pRemoteDebugProtocolServer,
+                RestAPIEndpoints* pRestAPIEndpoints, FileManager* pFileManager);
                 
     void service();
 

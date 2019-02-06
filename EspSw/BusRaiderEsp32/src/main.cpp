@@ -36,7 +36,7 @@
 const char* systemType = "BusRaiderESP32";
 
 // System version
-const char* systemVersion = "1.003.035";
+const char* systemVersion = "1.7.005";
 
 // Build date
 const char* buildDate = __DATE__;
@@ -96,6 +96,11 @@ RdOTAUpdate otaUpdate;
 #include "AsyncTelnetServer.h"
 const int TELNET_PORT = 23;
 AsyncTelnetServer telnetServer(TELNET_PORT);
+
+// Remote debug
+#include "RemoteDebugProtocol.h"
+const int REMOTE_DEBUG_PORT = 10000;
+RemoteDebugProtocolServer remoteDebugProtocolServer(REMOTE_DEBUG_PORT);
 
 // Hardware config
 static const char *hwConfigJSON = {
@@ -237,9 +242,12 @@ void setup()
     // Telnet server
     telnetServer.begin();
 
+    // Remote debug server
+    remoteDebugProtocolServer.begin();
+
     // Machine interface
     machineInterface.setup(hwConfig, &webServer, &commandSerial, 
-                &telnetServer, &restAPIEndpoints, &fileManager);
+                &telnetServer, &remoteDebugProtocolServer, &restAPIEndpoints, &fileManager);
 
     // Add debug blocks
     debugLoopTimer.blockAdd(0, "LoopTimer");
