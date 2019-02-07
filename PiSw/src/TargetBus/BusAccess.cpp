@@ -577,9 +577,12 @@ void BusAccess::waitStateISR(void* pData)
 
     // Set PIB to input
     pibSetIn();
+
     // Clear the mux to deactivate output enables
     muxClear();
-    lowlev_cycleDelay(1000);
+
+    // Delay to allow M1 to settle
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
 
     // Loop until control lines are valid
     // In a write cycle WR is asserted after MREQ so we need to wait until WR changes before
@@ -661,24 +664,22 @@ void BusAccess::waitStateISR(void* pData)
         (((busVals & (1 << BR_WAIT_BAR)) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
         (((busVals & (1 << BR_M1_PIB_BAR)) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
 
-    // Read the data bus if the target machine is writing
-    uint32_t dataBusVals = 0;
-    bool isWriting = (busVals & (1 << BR_WR_BAR)) == 0;
-    if (isWriting)
-    {
-        // Enable data bus onto PIB
-        digitalWrite(BR_DATA_DIR_IN, 1);
-        muxSet(BR_MUX_DATA_OE_BAR_LOW);
+    // Read the data bus
+    // If the target machine is writing then this will be the data it wants to write
+    // If reading then the memory/IO system may have placed its data onto the data bus 
 
-        // Delay to allow data to settle
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
+    // Enable data bus onto PIB
+    digitalWrite(BR_DATA_DIR_IN, 1);
+    muxSet(BR_MUX_DATA_OE_BAR_LOW);
 
-        // Read the data bus values
-        dataBusVals = pibGetValue() & 0xff;
+    // Delay to allow data to settle
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
 
-        // Clear Mux
-        muxClear();
-    }
+    // Read the data bus values
+    uint32_t dataBusVals = pibGetValue() & 0xff;
+
+    // Clear Mux
+    muxClear();
 
     // Send this to anything listening
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
@@ -686,6 +687,7 @@ void BusAccess::waitStateISR(void* pData)
         retVal = _pBusAccessCallback(addr, dataBusVals, ctrlBusVals);
 
     // If not writing and result is valid then put the returned data onto the bus
+    bool isWriting = (busVals & (1 << BR_WR_BAR)) == 0;
     if (!isWriting && ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0))
     {
         // Now driving data onto the target data bus
@@ -698,17 +700,10 @@ void BusAccess::waitStateISR(void* pData)
         muxClear();
     }
 
-    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-
     // Check if pause requested
     _pauseIsPaused = ((retVal & BR_MEM_ACCESS_RSLT_REQ_PAUSE) != 0);
     if (!_pauseIsPaused)
     {
-        // TODO - DEBUG - MUST BE REMOVED
-        // WR32(GPSET0, 1 << BR_HADDR_CK);
-        // WR32(GPSET0, 1 << BR_HADDR_CK);
-        // WR32(GPCLR0, 1 << BR_HADDR_CK);
-
         // No pause requested - clear the WAIT state so execution can continue
         // Clear the WAIT state flip-flop
         WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
@@ -721,11 +716,6 @@ void BusAccess::waitStateISR(void* pData)
 
         // // Clear detected edge on any pin
         WR32(GPEDS0, 0xffffffff);
-        
-        // TODO - DEBUG - MUST BE REMOVED
-        // WR32(GPSET0, 1 << BR_HADDR_CK);
-        // WR32(GPSET0, 1 << BR_HADDR_CK);
-        // WR32(GPCLR0, 1 << BR_HADDR_CK);
     }
     else
     {

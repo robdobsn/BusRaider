@@ -209,11 +209,14 @@ private:
     static const int CYCLES_DELAY_FOR_WRITE_TO_TARGET = 25;
 
     // Period target read control bus line is asserted during a read from the PIB (any bus element)
-    static const int  CYCLES_DELAY_FOR_READ_FROM_PIB = 25;
+    static const int CYCLES_DELAY_FOR_READ_FROM_PIB = 25;
 
     // Delay in machine cycles for setting the pulse width when clearing/incrementing the address counter/shift-reg
-    static const int  CYCLES_DELAY_FOR_CLEAR_LOW_ADDR = 20;
-    static const int  CYCLES_DELAY_FOR_LOW_ADDR_SET = 20;
-    static const int  CYCLES_DELAY_FOR_HIGH_ADDR_SET = 20;
-    static const int  CYCLES_DELAY_FOR_WAIT_CLEAR = 20;
+    static const int CYCLES_DELAY_FOR_CLEAR_LOW_ADDR = 20;
+    static const int CYCLES_DELAY_FOR_LOW_ADDR_SET = 20;
+    static const int CYCLES_DELAY_FOR_HIGH_ADDR_SET = 20;
+    static const int CYCLES_DELAY_FOR_WAIT_CLEAR = 20;
+
+    // Delay in machine cycles for M1 to settle
+    static const int CYCLES_DELAY_FOR_M1_SETTLING = 1000;
 };
