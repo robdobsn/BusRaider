@@ -89,7 +89,6 @@ void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandS
             memcpy(pStr, pData, numChars);
             pStr[numChars] = 0;
             String str = pStr;
-            str.trim();
             // Clean up
             delete [] pStr;
 

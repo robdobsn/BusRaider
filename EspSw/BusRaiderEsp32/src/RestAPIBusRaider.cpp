@@ -147,6 +147,15 @@ void RestAPIBusRaider::apiQueryESPHealth(const String &reqStr, String &respStr)
     respStr = "\"espHealth\":{" + healthStr + "}";
 }
 
+void RestAPIBusRaider::apiDebugger(const String &reqStr, String &respStr)
+{
+    Log.verbose("%sdebugger %s\n", MODULE_PREFIX, reqStr.c_str());
+    // Send target command to Pi
+    _commandSerial.sendTargetData("rdp", (const uint8_t*)reqStr.c_str(), 
+                reqStr.length(), 0);
+    Utils::setJsonBoolResult(respStr, true);
+}
+
 void RestAPIBusRaider::apiESPFirmwarePart(String& req, String& filename, size_t contentLen, size_t index, 
                 uint8_t *data, size_t len, bool finalBlock)
 {
