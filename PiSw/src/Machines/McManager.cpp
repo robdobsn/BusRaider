@@ -27,7 +27,10 @@ McDescriptorTable McManager::defaultDescriptorTable = {
     .displayForeground = WGFX_WHITE,
     .displayBackground = WGFX_BLACK,
     // Clock
-    .clockFrequencyHz = 1000000
+    .clockFrequencyHz = 1000000,
+    // Bus monitor
+    .monitorIORQ = false,
+    .monitorMREQ = false
 };
 
 uint8_t McManager::_rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];

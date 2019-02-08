@@ -11,6 +11,7 @@ extern "C" {
 #endif
 
 extern void ee_printf(const char* fmt, ...);
+extern int ee_sprintf(char* outBuf, const char* fmt, ...);
 extern void uart_printf(const char* fmt, ...);
 
 extern void LogSetLevel(int severity);

@@ -8,6 +8,7 @@
 #include "../TargetBus/target_memory_map.h"
 #include "../Utils/rdutils.h"
 #include "../System/ee_printf.h"
+#include "../Debugger/TargetDebug.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -30,7 +31,10 @@ McDescriptorTable McRobsZ80::_descriptorTable = {
     .displayForeground = WGFX_WHITE,
     .displayBackground = WGFX_BLACK,
     // Clock
-    .clockFrequencyHz = 7000000
+    .clockFrequencyHz = 7000000,
+    // Bus monitor
+    .monitorIORQ = true,
+    .monitorMREQ = false
 };
 
 // Enable machine
@@ -117,13 +121,14 @@ void McRobsZ80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
 uint32_t McRobsZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
 {
-    // Check for read
-    if (flags & BR_CTRL_BUS_RD_MASK)
-    {
-        return BR_MEM_ACCESS_RSLT_NOT_DECODED;
-    }
+    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
+
+    // Callback to debugger
+    TargetDebug* pDebug = TargetDebug::get();
+    if (pDebug)
+        retVal = pDebug->handleInterrupt(addr, data, flags, retVal);
 
     // Not decoded
-    return BR_MEM_ACCESS_RSLT_NOT_DECODED;
+    return retVal;
 }
 

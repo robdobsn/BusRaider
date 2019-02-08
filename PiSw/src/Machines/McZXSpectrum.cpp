@@ -9,6 +9,7 @@
 #include "../Utils/rdutils.h"
 #include <stdlib.h>
 #include "../FileFormats/McZXSpectrumTZXFormat.h"
+#include "../Debugger/TargetDebug.h"
 
 const char* McZXSpectrum::_logPrefix = "ZXSpectrum";
 
@@ -31,7 +32,10 @@ McDescriptorTable McZXSpectrum::_descriptorTable = {
     .displayForeground = WGFX_WHITE,
     .displayBackground = WGFX_BLACK,
     // Clock
-    .clockFrequencyHz = 3500000
+    .clockFrequencyHz = 3500000,
+    // Bus monitor
+    .monitorIORQ = true,
+    .monitorMREQ = false
 };
 
 // Enable machine
@@ -41,7 +45,7 @@ void McZXSpectrum::enable()
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
     BusAccess::accessCallbackAdd(memoryRequestCallback);
     // Bus raider enable wait states on IORQ
-    BusAccess::waitEnable(true, false);
+    BusAccess::waitEnable(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ);
 }
 
 // Disable machine
@@ -186,8 +190,10 @@ uint32_t McZXSpectrum::getKeyPressed(const int* keyCodes, int keyCodesLen)
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
 uint32_t McZXSpectrum::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
 {
-    // Check for read
-    if (flags & BR_CTRL_BUS_RD_MASK)
+    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
+    
+    // Check for read from IO
+    if ((flags & BR_CTRL_BUS_RD_MASK) && (flags & BR_CTRL_BUS_IORQ_MASK))
     {
 
         // Note that in the following I've used the KEY_HANJA as a placeholder
@@ -208,22 +214,22 @@ uint32_t McZXSpectrum::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[m
             if (specialKeyBackspace || ((_curKeyModifiers & KEY_MOD_LSHIFT) != 0) ||
                              (_curKeyModifiers & KEY_MOD_RSHIFT) != 0)
                 keysPressed &= 0xfe;
-            return keysPressed;
+            retVal = keysPressed;
         }
         else if (addr == 0xfdfe)
         {
             static const int keys[] = {KEY_A, KEY_S, KEY_D, KEY_F, KEY_G};
-            return getKeyPressed(keys, sizeof(keys)/sizeof(int));
+            retVal = getKeyPressed(keys, sizeof(keys)/sizeof(int));
         }
         else if (addr == 0xfbfe)
         {
             static const int keys[] = {KEY_Q, KEY_W, KEY_E, KEY_R, KEY_T};
-            return getKeyPressed(keys, sizeof(keys)/sizeof(int));
+            retVal = getKeyPressed(keys, sizeof(keys)/sizeof(int));
         }
         else if (addr == 0xf7fe)
         {
             static const int keys[] = {KEY_1, KEY_2, KEY_3, KEY_4, KEY_5};
-            return getKeyPressed(keys, sizeof(keys)/sizeof(int));
+            retVal = getKeyPressed(keys, sizeof(keys)/sizeof(int));
         }
         else if (addr == 0xeffe)
         {
@@ -231,17 +237,17 @@ uint32_t McZXSpectrum::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[m
             uint32_t keysPressed = getKeyPressed(keys, sizeof(keys)/sizeof(int));
             if (specialKeyBackspace)
                 keysPressed &= 0xfe;
-            return keysPressed;
+            retVal = keysPressed;
         }
         else if (addr == 0xdffe)
         {
             static const int keys[] = {KEY_P, KEY_O, KEY_I, KEY_U, KEY_Y};
-            return getKeyPressed(keys, sizeof(keys)/sizeof(int));
+            retVal = getKeyPressed(keys, sizeof(keys)/sizeof(int));
         }
         else if (addr == 0xbffe)
         {
             static const int keys[] = {KEY_ENTER, KEY_L, KEY_K, KEY_J, KEY_H};
-            return getKeyPressed(keys, sizeof(keys)/sizeof(int));
+            retVal = getKeyPressed(keys, sizeof(keys)/sizeof(int));
         }
         else if (addr == 0x7ffe)
         {
@@ -249,14 +255,15 @@ uint32_t McZXSpectrum::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[m
             uint32_t keysPressed = getKeyPressed(keys, sizeof(keys)/sizeof(int));
             if (((_curKeyModifiers & KEY_MOD_LCTRL) != 0) || (_curKeyModifiers & KEY_MOD_RCTRL) != 0)
                 keysPressed &= 0xfd;
-            return keysPressed;
+            retVal = keysPressed;
         }
-
-        // Other IO ports not decoded
-        return BR_MEM_ACCESS_RSLT_NOT_DECODED;
     }
 
-    // Not decoded
-    return BR_MEM_ACCESS_RSLT_NOT_DECODED;
+    // Callback to debugger
+    TargetDebug* pDebug = TargetDebug::get();
+    if (pDebug)
+        retVal = pDebug->handleInterrupt(addr, data, flags, retVal);
+
+    return retVal;
 }
 

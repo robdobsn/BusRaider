@@ -31,6 +31,9 @@ public:
     int displayBackground;
     // Clock
     uint32_t clockFrequencyHz;
+    // Bus monitor modes
+    bool monitorIORQ;
+    bool monitorMREQ;
 };
 
 class McBase
@@ -64,8 +67,5 @@ class McBase
     virtual void fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen) = 0;
 
     // Handle debugger command
-    virtual bool debuggerCommand([[maybe_unused]] const char* pCommand, [[maybe_unused]] char* pResponse, [[maybe_unused]] int maxResponseLen)
-    {
-        return false;
-    }
+    virtual bool debuggerCommand([[maybe_unused]] const char* pCommand, [[maybe_unused]] char* pResponse, [[maybe_unused]] int maxResponseLen);
 };

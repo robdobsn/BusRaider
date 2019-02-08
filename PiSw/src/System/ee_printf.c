@@ -43,6 +43,7 @@ This code is based on a file that contains the following:
 #include "wgfx.h"
 #include <stdarg.h>
 #include <stddef.h>
+#include <string.h>
 #include "../System/ee_printf.h"
 
 // #define size_t unsigned int
@@ -63,9 +64,9 @@ This code is based on a file that contains the following:
 
 static char* lower_digits = "0123456789abcdefghijklmnopqrstuvwxyz";
 static char* upper_digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-static size_t strnlen(const char* s, size_t count);
+static size_t ee_strnlen(const char* s, size_t count);
 
-static size_t strnlen(const char* s, size_t count)
+static size_t ee_strnlen(const char* s, size_t count)
 {
     const char* sc;
     for (sc = s; *sc != '\0' && count--; ++sc)
@@ -339,7 +340,7 @@ static void decimal_point(char* buffer)
     }
 
     if (*buffer) {
-        int n = strnlen(buffer, 256);
+        int n = ee_strnlen(buffer, 256);
         while (n > 0) {
             buffer[n + 1] = buffer[n];
             n--;
@@ -410,7 +411,7 @@ static char* flt(char* str, double num, int size, int precision, char fmt, int f
     if (fmt == 'g' && !(flags & HEX_PREP))
         cropzeros(tmp);
 
-    n = strnlen(tmp, 256);
+    n = ee_strnlen(tmp, 256);
 
     // Output number with alignment and padding
     size -= n;
@@ -528,7 +529,7 @@ static int ee_vsprintf(char* buf, const char* fmt, va_list args)
             s = va_arg(args, char*);
             if (!s)
                 s = "<NULL>";
-            len = strnlen(s, precision);
+            len = ee_strnlen(s, precision);
             if (!(flags & LEFT))
                 while (len < field_width--)
                     *str++ = ' ';
@@ -660,6 +661,16 @@ void LogWrite(const char* pSource,
 void LogSetLevel(int severity)
 {
     __logSeverity = severity;
+}
+
+int ee_sprintf(char* outBuf, const char* fmt, ...)
+{
+    va_list args;
+
+    va_start(args, fmt);
+    ee_vsprintf(outBuf, fmt, args);
+    va_end(args);
+    return (strlen(outBuf));
 }
 
 void ee_printf(const char* fmt, ...)

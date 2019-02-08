@@ -9,6 +9,7 @@
 #include "../Utils/rdutils.h"
 #include <stdlib.h>
 #include "../FileFormats/McTRS80CmdFormat.h"
+#include "../Debugger/TargetDebug.h"
 
 const char* McTRS80::_logPrefix = "TRS80";
 
@@ -31,7 +32,10 @@ McDescriptorTable McTRS80::_descriptorTable = {
     .displayForeground = WGFX_GREEN,
     .displayBackground = WGFX_BLACK,
     // Clock
-    .clockFrequencyHz = 1770000
+    .clockFrequencyHz = 1770000,
+    // Bus monitor
+    .monitorIORQ = true,
+    .monitorMREQ = false
 };
 
 // Enable machine
@@ -44,7 +48,7 @@ void McTRS80::enable()
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling TRS80");
     BusAccess::accessCallbackAdd(memoryRequestCallback);
     // Bus raider enable wait states on IORQ
-    BusAccess::waitEnable(true, false);
+    BusAccess::waitEnable(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ);
 }
 
 // Disable machine
@@ -304,21 +308,23 @@ void McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
 uint32_t McTRS80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
 {
-    // Check for read
-    if (flags & BR_CTRL_BUS_RD_MASK)
+    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
+
+    // Check for read from IO
+    if ((flags & BR_CTRL_BUS_RD_MASK) && (flags & BR_CTRL_BUS_IORQ_MASK))
     {
         // Decode port
         if (addr == 0x13)  // Joystick
         {
             // Indicate no buttons are pressed
-            return 0xff;
+            retVal = 0xff;
         }
-
-        // Other IO ports are not decoded
-        return BR_MEM_ACCESS_RSLT_NOT_DECODED;
     }
 
-    // Not decoded
-    return BR_MEM_ACCESS_RSLT_NOT_DECODED;
-}
+    // Callback to debugger
+    TargetDebug* pDebug = TargetDebug::get();
+    if (pDebug)
+        retVal = pDebug->handleInterrupt(addr, data, flags, retVal);
 
+    return retVal;
+}

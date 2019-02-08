@@ -1,0 +1,934 @@
+C:\Users\rob\AppData\Local\Programs\Microsoft VS Code\Code.exe --debugBrkPluginHost=27833 --debugId=be7cec8b-4eea-4f69-9c84-4e8fc5c7f10c --extensionDevelopmentPath=C:\Users\rob\Documents\1-github\z80-debug 
+activating extension
+starting language server
+runCommand platformio
+undefined
+Array[1]
+undefined
+Object
+Starting express server on port: 50410
+using C:/Users/rob/.vscode/extensions/vsciot-vscode.vscode-arduino-0.2.25/vendor/node-usb-native/lib/native/usb-native_win32_2.0.2_x64.node
+Found PIO Core 3.6.4
+onDidOpenTextDocument
+undefined
+Array[0]
+runCommand platformio
+undefined
+Array[7]
+undefined
+Object
+<- Welcome to BusRaider
+command> 
+-> about
+<- BusRaider RCP
+command> 
+-> get-version
+<- 7.2-SN
+command> 
+-> get-current-machine
+<- Debug Z80
+command> 
+-> check-extensions
+<- 
+command> 
+-> set-debug-settings 32
+<- 
+command> 
+-> hard-reset-cpu
+<- 
+command> 
+-> enter-cpu-step
+<- 
+command@cpu-step> 
+-> smartload C:\Users\rob\Documents\1-github\z80-sample-program\z80-sample-program.sna
+<- 
+command> 
+-> clear-membreakpoints
+<- 
+command> 
+-> enable-breakpoints
+<- 
+command> 
+-> disable-breakpoint 1
+<- 
+command> 
+-> disable-breakpoint 2
+<- 
+command> 
+-> disable-breakpoint 3
+<- 
+command> 
+-> disable-breakpoint 4
+<- 
+command> 
+-> disable-breakpoint 5
+<- 
+command> 
+-> disable-breakpoint 6
+<- 
+command> 
+-> disable-breakpoint 7
+<- 
+command> 
+-> disable-breakpoint 8
+<- 
+command> 
+-> disable-breakpoint 9
+<- 
+command> 
+-> disable-breakpoint 10
+<- 
+command> 
+-> disable-breakpoint 11
+<- 
+command> 
+-> disable-breakpoint 12
+<- 
+command> 
+-> disable-breakpoint 13
+<- 
+command> 
+-> disable-breakpoint 14
+<- 
+command> 
+-> disable-breakpoint 15
+<- 
+command> 
+-> disable-breakpoint 16
+<- 
+command> 
+-> disable-breakpoint 17
+<- 
+command> 
+-> disable-breakpoint 18
+<- 
+command> 
+-> disable-breakpoint 19
+<- 
+command> 
+-> disable-breakpoint 20
+<- 
+command> 
+-> disable-breakpoint 21
+<- 
+command> 
+-> disable-breakpoint 22
+<- 
+command> 
+-> disable-breakpoint 23
+<- 
+command> 
+-> disable-breakpoint 24
+<- 
+command> 
+-> disable-breakpoint 25
+<- 
+command> 
+-> disable-breakpoint 26
+<- 
+command> 
+-> disable-breakpoint 27
+<- 
+command> 
+-> disable-breakpoint 28
+<- 
+command> 
+-> disable-breakpoint 29
+<- 
+command> 
+-> disable-breakpoint 30
+<- 
+command> 
+-> disable-breakpoint 31
+<- 
+command> 
+-> disable-breakpoint 32
+<- 
+command> 
+-> disable-breakpoint 33
+<- 
+command> 
+-> disable-breakpoint 34
+<- 
+command> 
+-> disable-breakpoint 35
+<- 
+command> 
+-> disable-breakpoint 36
+<- 
+command> 
+-> disable-breakpoint 37
+<- 
+command> 
+-> disable-breakpoint 38
+<- 
+command> 
+-> disable-breakpoint 39
+<- 
+command> 
+-> disable-breakpoint 40
+<- 
+command> 
+-> disable-breakpoint 41
+<- 
+command> 
+-> disable-breakpoint 42
+<- 
+command> 
+-> disable-breakpoint 43
+<- 
+command> 
+-> disable-breakpoint 44
+<- 
+command> 
+-> disable-breakpoint 45
+<- 
+command> 
+-> disable-breakpoint 46
+<- 
+command> 
+-> disable-breakpoint 47
+<- 
+command> 
+-> disable-breakpoint 48
+<- 
+command> 
+-> disable-breakpoint 49
+<- 
+command> 
+-> disable-breakpoint 50
+<- 
+command> 
+-> disable-breakpoint 51
+<- 
+command> 
+-> disable-breakpoint 52
+<- 
+command> 
+-> disable-breakpoint 53
+<- 
+command> 
+-> disable-breakpoint 54
+<- 
+command> 
+-> disable-breakpoint 55
+<- 
+command> 
+-> disable-breakpoint 56
+<- 
+command> 
+-> disable-breakpoint 57
+<- 
+command> 
+-> disable-breakpoint 58
+<- 
+command> 
+-> disable-breakpoint 59
+<- 
+command> 
+-> disable-breakpoint 60
+<- 
+command> 
+-> disable-breakpoint 61
+<- 
+command> 
+-> disable-breakpoint 62
+<- 
+command> 
+-> disable-breakpoint 63
+<- 
+command> 
+-> disable-breakpoint 64
+<- 
+command> 
+-> disable-breakpoint 65
+<- 
+command> 
+-> disable-breakpoint 66
+<- 
+command> 
+-> disable-breakpoint 67
+<- 
+command> 
+-> disable-breakpoint 68
+<- 
+command> 
+-> disable-breakpoint 69
+<- 
+command> 
+-> disable-breakpoint 70
+<- 
+command> 
+-> disable-breakpoint 71
+<- 
+command> 
+-> disable-breakpoint 72
+<- 
+command> 
+-> disable-breakpoint 73
+<- 
+command> 
+-> disable-breakpoint 74
+<- 
+command> 
+-> disable-breakpoint 75
+<- 
+command> 
+-> disable-breakpoint 76
+<- 
+command> 
+-> disable-breakpoint 77
+<- 
+command> 
+-> disable-breakpoint 78
+<- 
+command> 
+-> disable-breakpoint 79
+<- 
+command> 
+-> disable-breakpoint 80
+<- 
+command> 
+-> disable-breakpoint 81
+<- 
+command> 
+-> disable-breakpoint 82
+<- 
+command> 
+-> disable-breakpoint 83
+<- 
+command> 
+-> disable-breakpoint 84
+<- 
+command> 
+-> disable-breakpoint 85
+<- 
+command> 
+-> disable-breakpoint 86
+<- 
+command> 
+-> disable-breakpoint 87
+<- 
+command> 
+-> disable-breakpoint 88
+<- 
+command> 
+-> disable-breakpoint 89
+<- 
+command> 
+-> disable-breakpoint 90
+<- 
+command> 
+-> disable-breakpoint 91
+<- 
+command> 
+-> disable-breakpoint 92
+<- 
+command> 
+-> disable-breakpoint 93
+<- 
+command> 
+-> disable-breakpoint 94
+<- 
+command> 
+-> disable-breakpoint 95
+<- 
+command> 
+-> disable-breakpoint 96
+<- 
+command> 
+-> disable-breakpoint 97
+<- 
+command> 
+-> disable-breakpoint 98
+<- 
+command> 
+-> disable-breakpoint 99
+<- 
+command> 
+-> disable-breakpoint 100
+<- 
+command> 
+-> get-registers
+<- PC=0000 SP=0000 BC=0000 AF=0000 HL=0000 DE=0000 IX=0000 IY=0000 AF'=0000 BC'=0000 HL'=0000 DE'=0000 I=00 R=00  F=-------- F'=-------- MEMPTR=0000 IM0 IFF00 VPS: 0
+command> 
+-> read-memory 0 32
+<- 988201838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+-> read-memory 0 32
+<- 988201838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+-> read-memory 0 32
+<- 988201838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+-> read-memory 0 32
+<- 1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e
+command> 
+-> read-memory 0 32
+<- 1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e
+command> 
+HL: 0
+DE: 0
+BC: 0
+IX: 0
+IY: 0
+-> reset-tstates-partial
+<- Unknown command
+command> 
+-> run
+<- Running until a breakpoint, key press or data sent, menu opening or other event
+
+
+<- 
+command@cpu-step> 
+-> get-tstates-partial
+<- 
+command> 
+-> get-cpu-frequency
+<- 
+command@cpu-step> 
+Running until a breakpoint, key press or data sent, menu opening or other event
+
+
+-> get-registers
+<- PC=0000 SP=0000 BC=0000 AF=0000 HL=0000 DE=0000 IX=0000 IY=0000 AF'=0000 BC'=0000 HL'=0000 DE'=0000 I=00 R=00  F=-------- F'=-------- MEMPTR=0000 IM0 IFF00 VPS: 0
+command> 
+-> get-registers
+<- PC=0000 SP=0000 BC=0000 AF=0000 HL=0000 DE=0000 IX=0000 IY=0000 AF'=0000 BC'=0000 HL'=0000 DE'=0000 I=00 R=00  F=-------- F'=-------- MEMPTR=0000 IM0 IFF00 VPS: 0
+command> 
+-> read-memory 0 32
+<- 988201838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+-> get-stack-backtrace 20
+<- 0182H 8283H b090H 9090H 8f86H 8487H a0a0H a0b0H 8b88H 898fH b3a6H 84b3H 8080H 8080H b388H b0b3H 8080H 8080H 8c98H 908cH 
+command> 
+-> read-memory 383 3
+<- 803e00
+command> 
+-> read-memory 33408 3
+<- 000000
+command> 
+-> read-memory 45197 3
+<- 000000
+command> 
+-> read-memory 37005 3
+<- 000000
+command> 
+-> read-memory 36739 3
+<- 474747
+command> 
+-> read-memory 33924 3
+<- 000000
+command> 
+-> read-memory 41117 3
+<- 000000
+command> 
+-> read-memory 41133 3
+<- 000000
+command> 
+-> read-memory 35717 3
+<- 000000
+command> 
+-> read-memory 35212 3
+<- 444444
+command> 
+-> read-memory 45987 3
+<- 595959
+command> 
+-> read-memory 33968 3
+<- d0d0d0
+command> 
+-> read-memory 32893 3
+<- 000000
+command> 
+-> read-memory 32893 3
+<- 000000
+command> 
+-> read-memory 45957 3
+<- 000000
+command> 
+-> read-memory 45232 3
+<- 000000
+command> 
+-> read-memory 32893 3
+<- 000000
+command> 
+-> read-memory 32893 3
+<- 000000
+command> 
+-> read-memory 35989 3
+<- 111111
+command> 
+-> read-memory 37001 3
+<- c4c4c4
+command> 
+-> read-memory 0 100
+<- 78787878787878787878787878787878787878787878787878787878787878787878787878787878787878787c7c7c7c7c7c7c7c7cfcfcfefefefefefefefffffffefefefefeffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+command> 
+-> read-memory 37001 100
+<- 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+command> 
+-> read-memory 0 32
+<- 988201838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+-> read-memory 0 32
+onDidChangeTextDocument
+undefined
+Array[0]
+User did updated text document but not saved yet
+onDidChangeTextDocument
+undefined
+Array[0]
+User did updated text document but not saved yet
+onDidChangeTextDocument
+undefined
+Array[0]
+User did updated text document but not saved yet
+onDidChangeTextDocument
+undefined
+Array[0]
+User did updated text document but not saved yet
+<- 988201838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+-> read-memory 0 32
+onDidChangeTextDocument
+undefined
+Array[0]
+User did updated text document but not saved yet
+onDidSaveTextDocument
+undefined
+Array[0]
+<- 988201838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+-> read-memory 0 32
+<- 988201838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+HL: 0
+DE: 0
+BC: 0
+IX: 0
+IY: 0
+-> read-memory 0 2
+<- 9882
+command> 
+webView command 'getAddressInfoText':
+undefined
+Object
+webView command 'getAddressInfoText':
+undefined
+Object
+-> disassemble 0
+<- 
+command@cpu-step> 
+-> reset-tstates-partial
+<- Unknown command
+command> 
+-> cpu-step
+<- 
+command@cpu-step> 
+-> get-tstates-partial
+<- 
+command@cpu-step> 
+-> get-cpu-frequency
+<- 
+command@cpu-step> 
+-> get-registers
+<- PC=0000 SP=0000 BC=0000 AF=0000 HL=0000 DE=0000 IX=0000 IY=0000 AF'=0000 BC'=0000 HL'=0000 DE'=0000 I=00 R=00  F=-------- F'=-------- MEMPTR=0000 IM0 IFF00 VPS: 0
+command> 
+-> get-registers
+<- PC=0000 SP=0000 BC=0000 AF=0000 HL=0000 DE=0000 IX=0000 IY=0000 AF'=0000 BC'=0000 HL'=0000 DE'=0000 I=00 R=00  F=-------- F'=-------- MEMPTR=0000 IM0 IFF00 VPS: 0
+command> 
+-> read-memory 0 32
+<- 988282838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+-> get-stack-backtrace 20
+<- 8282H 8283H b090H 9090H 8f86H 8487H a0a0H a0b0H 8b88H 898fH b3a6H 84b3H 8080H 8080H b388H b0b3H 8080H 8080H 8c98H 908cH 
+command> 
+-> read-memory 33407 3
+<- 202020
+command> 
+-> read-memory 33408 3
+<- 000000
+command> 
+-> read-memory 45197 3
+<- 000000
+command> 
+-> read-memory 37005 3
+<- 000000
+command> 
+-> read-memory 36739 3
+<- 474747
+command> 
+-> read-memory 33924 3
+<- 000000
+command> 
+-> read-memory 41117 3
+<- 000000
+command> 
+-> read-memory 41133 3
+<- 000000
+command> 
+-> read-memory 35717 3
+<- 000000
+command> 
+-> read-memory 35212 3
+<- 444444
+command> 
+-> read-memory 45987 3
+<- 000000
+command> 
+-> read-memory 33968 3
+<- 000000
+command> 
+-> read-memory 32893 3
+<- 000000
+command> 
+-> read-memory 32893 3
+<- 000000
+command> 
+-> read-memory 45957 3
+<- 000000
+command> 
+-> read-memory 45232 3
+<- 353535
+command> 
+-> read-memory 32893 3
+<- 000000
+command> 
+-> read-memory 32893 3
+<- 000000
+command> 
+-> read-memory 35989 3
+<- 000000
+command> 
+-> read-memory 37001 3
+<- c4c4c4
+command> 
+-> read-memory 0 100
+<- 988282838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3b080808080988c8c9090838380a08c8ca480838381a0b0b080898c8c8180b0b090828c8c8621003c11013c013f003680adb021803f11813f013f003680adb021403c117f
+command> 
+-> read-memory 37001 100
+<- 04040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404040404
+command> 
+-> read-memory 0 32
+<- 988282838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+-> read-memory 0 32
+onDidChangeTextDocument
+undefined
+Array[0]
+User did updated text document but not saved yet
+onDidChangeTextDocument
+undefined
+Array[0]
+User did updated text document but not saved yet
+<- 988282838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+-> read-memory 0 32
+onDidChangeTextDocument
+undefined
+Array[0]
+User did updated text document but not saved yet
+onDidSaveTextDocument
+undefined
+Array[0]
+<- 988282838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+-> read-memory 0 32
+<- 988282838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+HL: 0
+DE: 0
+BC: 0
+IX: 0
+IY: 0
+-> read-memory 0 2
+<- 0000
+command> 
+-> disassemble 0
+<- 
+command@cpu-step> 
+-> reset-tstates-partial
+<- Unknown command
+command> 
+-> cpu-step
+<- 
+command@cpu-step> 
+-> get-tstates-partial
+<- 
+command@cpu-step> 
+-> get-cpu-frequency
+<- 
+command> 
+-> get-registers
+<- PC=0000 SP=0000 BC=0000 AF=0000 HL=0000 DE=0000 IX=0000 IY=0000 AF'=0000 BC'=0000 HL'=0000 DE'=0000 I=00 R=00  F=-------- F'=-------- MEMPTR=0000 IM0 IFF00 VPS: 0
+command> 
+-> get-registers
+<- PC=0000 SP=0000 BC=0000 AF=0000 HL=0000 DE=0000 IX=0000 IY=0000 AF'=0000 BC'=0000 HL'=0000 DE'=0000 I=00 R=00  F=-------- F'=-------- MEMPTR=0000 IM0 IFF00 VPS: 0
+command> 
+-> read-memory 0 32
+<- 988282838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+-> get-stack-backtrace 20
+<- 1e1eH 1e1eH 1e1eH 1e1eH 1e1eH 1e1eH 1e1eH 1e1eH 1e1eH 1e1eH 1e1eH 1e1eH 1e1eH 1e1eH 1e1eH 1e1eH 1e1eH 1e1eH 1e1eH 1e1eH 
+command> 
+-> read-memory 7707 3
+<- cd7895
+command> 
+-> read-memory 7707 3
+<- cd7895
+command> 
+-> read-memory 7707 3
+<- 070707
+command> 
+-> read-memory 7707 3
+<- 070707
+command> 
+-> read-memory 7707 3
+<- cd7895
+command> 
+-> read-memory 7707 3
+<- cd7895
+command> 
+-> read-memory 7707 3
+<- 070707
+command> 
+-> read-memory 7707 3
+<- 070707
+command> 
+-> read-memory 7707 3
+<- cd7895
+command> 
+-> read-memory 7707 3
+<- cd7895
+command> 
+-> read-memory 7707 3
+<- cd7895
+command> 
+-> read-memory 7707 3
+<- cd7895
+command> 
+-> read-memory 7707 3
+<- 070707
+command> 
+-> read-memory 7707 3
+<- 070707
+command> 
+-> read-memory 7707 3
+<- cd7895
+command> 
+-> read-memory 7707 3
+<- 070707
+command> 
+-> read-memory 7707 3
+<- cd7895
+command> 
+-> read-memory 7707 3
+<- cd7895
+command> 
+-> read-memory 7707 3
+<- cd7895
+command> 
+-> read-memory 7707 3
+<- 070707
+command> 
+-> read-memory 0 100
+<- 988282838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3b080808080988c8c901f838380a08c8ca480838381a0b0b080898c8c8180b0b090828c8c8621003c11013c013f003680adb021803f11813f013f003680adb021403c117f
+command> 
+-> read-memory 7707 100
+<- 07070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707
+command> 
+-> read-memory 7707 100
+<- cd7895dffe2c28c9cdee1bc9cd3025200bcdfb24fe2cc4ee1be718f53ee447edb9110002c38b19cd991e6069cd6e192b22575cc9cd991e78b12004ed4b785ced437695c92a6e5cfd5636180ccd991e606916007cfef0302c22425cfd720ac9cd851eed79
+command> 
+-> read-memory 7707 100
+<- cd7895dffe2c28c9cdee1bc9cd3025200bcdfb24fe2cc4ee1be718f53ee447edb9110002c38b19cd991e6069cd6e192b22575cc9cd991e78b12004ed4b785ced437695c92a6e5cfd5636180ccd991e606916007cfef0302c22425cfd720ac9cd851eed79
+command> 
+-> read-memory 7707 100
+<- 07070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707
+command> 
+-> read-memory 7707 100
+<- cd7895dffe2c28c9cdee1bc9cd3025200bcdfb24fe2cc4ee1be718f53ee447edb9110002c38b19cd991e6069cd6e192b22575cc9cd991e78b12004ed4b785ced437695c92a6e5cfd5636180ccd991e606916007cfef0302c22425cfd720ac9cd851eed79
+command> 
+-> read-memory 7707 100
+<- 07070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707
+command> 
+-> read-memory 7707 100
+<- cd7895dffe2c28c9cdee1bc9cd3025200bcdfb24fe2cc4ee1be718f53ee447edb9110002c38b19cd991e6069cd6e192b22575cc9cd991e78b12004ed4b785ced437695c92a6e5cfd5636180ccd991e606916007cfef0302c22425cfd720ac9cd851eed79
+command> 
+-> read-memory 7707 100
+<- cd7895dffe2c28c9cdee1bc9cd3025200bcdfb24fe2cc4ee1be718f53ee447edb9110002c38b19cd991e6069cd6e192b22575cc9cd991e78b12004ed4b785ced437695c92a6e5cfd5636180ccd991e606916007cfef0302c22425cfd720ac9cd851eed79
+command> 
+-> read-memory 7707 100
+<- cd7895dffe2c28c9cdee1bc9cd3025200bcdfb24fe2cc4ee1be718f53ee447edb9110002c38b19cd991e6069cd6e192b22575cc9cd991e78b12004ed4b785ced437695c92a6e5cfd5636180ccd991e606916007cfef0302c22425cfd720ac9cd851eed79
+command> 
+-> read-memory 7707 100
+<- cd7895dffe2c28c9cdee1bc9cd3025200bcdfb24fe2cc4ee1be718f53ee447edb9110002c38b19cd991e6069cd6e192b22575cc9cd991e78b12004ed4b785ced437695c92a6e5cfd5636180ccd991e606916007cfef0302c22425cfd720ac9cd851eed79
+command> 
+-> read-memory 7707 100
+<- 07070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707070707
+command> 
+-> read-memory 7707 100
+<- cd7895dffe2c28c9cdee1bc9cd3025200bcdfb24fe2cc4ee1be718f53ee447edb9110002c38b19cd991e6069cd6e192b22575cc9cd991e78b12004ed4b785ced437695c92a6e5cfd5636180ccd991e606916007cfef0302c22425cfd720ac9cd851eed79
+command> 
+-> read-memory 0 32
+<- 1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e
+command> 
+-> read-memory 0 32
+onDidChangeTextDocument
+undefined
+Array[0]
+User did updated text document but not saved yet
+onDidChangeTextDocument
+undefined
+Array[0]
+User did updated text document but not saved yet
+<- 988282838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+-> read-memory 0 32
+onDidChangeTextDocument
+undefined
+Array[0]
+User did updated text document but not saved yet
+onDidSaveTextDocument
+undefined
+Array[0]
+<- 988282838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+-> read-memory 0 32
+<- 1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e
+command> 
+HL: 0
+DE: 0
+BC: 0
+IX: 0
+IY: 0
+-> read-memory 0 2
+<- 9882
+command> 
+webView command 'getAddressInfoText':
+undefined
+Object
+webView command 'getAddressInfoText':
+undefined
+Object
+webView command 'getAddressInfoText':
+undefined
+Object
+webView command 'getAddressInfoText':
+undefined
+Object
+-> disassemble 0
+<- 
+command@cpu-step> 
+-> reset-tstates-partial
+<- Unknown command
+command> 
+-> cpu-step
+<- 
+command@cpu-step> 
+-> get-tstates-partial
+<- 
+command@cpu-step> 
+-> get-cpu-frequency
+<- 
+command> 
+-> get-registers
+<- PC=0000 SP=0000 BC=0000 AF=0000 HL=0000 DE=0000 IX=0000 IY=0000 AF'=0000 BC'=0000 HL'=0000 DE'=0000 I=00 R=00  F=-------- F'=-------- MEMPTR=0000 IM0 IFF00 VPS: 0
+command> 
+-> get-registers
+<- PC=0000 SP=0000 BC=0000 AF=0000 HL=0000 DE=0000 IX=0000 IY=0000 AF'=0000 BC'=0000 HL'=0000 DE'=0000 I=00 R=00  F=-------- F'=-------- MEMPTR=0000 IM0 IFF00 VPS: 0
+command> 
+-> read-memory 0 32
+<- 988282838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+-> get-stack-backtrace 20
+<- 7878H 7878H 7878H 7878H 7878H 7878H 7878H 7878H 7878H 7878H 7878H 7878H 7878H 7878H 7878H 7878H 7878H 7878H 7878H 7878H 
+command> 
+-> read-memory 30837 3
+<- 808080
+command> 
+-> read-memory 30837 3
+<- 808080
+command> 
+-> read-memory 30837 3
+<- 808080
+command> 
+-> read-memory 30837 3
+<- 070707
+command> 
+-> read-memory 30837 3
+webView command 'getAddressInfoText':
+undefined
+Object
+<- 070707
+command> 
+-> read-memory 30837 3
+<- 808080
+command> 
+-> read-memory 30837 3
+<- 808080
+command> 
+-> read-memory 30837 3
+<- 808080
+command> 
+-> read-memory 30837 3
+<- 808080
+command> 
+-> read-memory 30837 3
+<- 070707
+command> 
+-> read-memory 30837 3
+<- 808080
+command> 
+-> read-memory 30837 3
+<- 808080
+command> 
+-> read-memory 30837 3
+<- 808080
+command> 
+-> read-memory 30837 3
+<- 808080
+command> 
+-> read-memory 30837 3
+<- 070707
+command> 
+-> read-memory 30837 3
+<- 808080
+command> 
+-> read-memory 30837 3
+<- 808080
+command> 
+-> read-memory 30837 3
+<- 808080
+command> 
+-> read-memory 30837 3
+<- 808080
+command> 
+-> read-memory 30837 3
+<- 070707
+command> 
+-> read-memory 0 100
+<- 988282838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3b080808080988c8c901f838380a08c8ca480838381a0b0b080898c8c8180b0b090828c8c8621003c11013c013f003680adb021803f11813f013f003680adb021403c117f
+command> 
+-> read-memory 0 32
+<- 1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e1e
+command> 
+-> read-memory 0 32
+<- 0000000000000000000000000000000000000000000000000000000000000000
+command> 
+-> read-memory 0 32
+<- 988282838290b09090868f8784a0a0b0a0888b8f89a6b3b3848080808088b3b3
+command> 
+-> read-memory 0 32
+<- c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0
+command> 
+HL: 0
+DE: 0
+BC: 0
+IX: 0
+IY: 0
+-> read-memory 0 2
+<- 9882
+command> 
+

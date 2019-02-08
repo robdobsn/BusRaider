@@ -212,7 +212,7 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
         char indexValStr[MAX_CMD_PARAM_STR+1];
         strcpy(indexValStr, "0");
         if (!jsonGetValueForKey("index", pCmdJson, indexValStr, MAX_CMD_PARAM_STR))
-            LogWrite(FromCmdHandler, LOG_DEBUG, "NO INDEX VAL");
+            LogWrite(FromCmdHandler, LOG_DEBUG, "RDP NO INDEX VAL");
         // Send to remote debug handler
         static const int MAX_CMD_STR_LEN = 200;
         static char commandStr[MAX_CMD_STR_LEN+1];
@@ -224,7 +224,7 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
         static char responseMessage[MAX_RESPONSE_MSG_LEN+1];
         responseMessage[0] = 0;
         McManager::debuggerCommand(commandStr, responseMessage, MAX_RESPONSE_MSG_LEN);
-        LogWrite(FromCmdHandler, LOG_DEBUG, "replying to rdp with %s", responseMessage);
+        LogWrite(FromCmdHandler, LOG_DEBUG, "RDP replying with %s", responseMessage);
         static char responseJson[MAX_RESPONSE_MSG_LEN+1];
         strlcpy(responseJson, "\"index\":\"", MAX_RESPONSE_MSG_LEN);
         strlcat(responseJson, indexValStr, MAX_RESPONSE_MSG_LEN);

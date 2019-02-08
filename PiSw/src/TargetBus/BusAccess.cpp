@@ -540,9 +540,10 @@ void BusAccess::waitEnable(bool enWaitOnIORQ, bool enWaitOnMREQ)
     // Set vector for WAIT state interrupt
     irq_set_wait_state_handler(waitStateISR);
 
-    // Setup edge triggering on falling edge of IORQ
+    // Setup edge triggering on falling edge of IORQ and/or MREQ
     // Clear any current detected edges
-    WR32(GPEDS0, (1 << BR_IORQ_BAR) | (1 << BR_MREQ_BAR));  
+    WR32(GPEDS0, (1 << BR_IORQ_BAR) | (1 << BR_MREQ_BAR));
+    
     // Set falling edge detect
     if (enWaitOnIORQ)
         WR32(GPFEN0, RD32(GPFEN0) | (1 << BR_IORQ_BAR));
@@ -754,6 +755,11 @@ void BusAccess::waitIntEnable()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Pause & Single Step Handling
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusAccess::pause()
+{
+    _pauseIsPaused = true;
+}
 
 void BusAccess::pauseGetCurrent(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags)
 {

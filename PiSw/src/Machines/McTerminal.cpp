@@ -29,7 +29,10 @@ McDescriptorTable McTerminal::_descriptorTable = {
     .displayForeground = WGFX_WHITE,
     .displayBackground = WGFX_BLACK,
     // Clock
-    .clockFrequencyHz = 7000000
+    .clockFrequencyHz = 7000000,
+    // Bus monitor
+    .monitorIORQ = false,
+    .monitorMREQ = false
 };
 
 int McTerminal::_shiftDigitKeyMap[SHIFT_DIGIT_KEY_MAP_LEN] =

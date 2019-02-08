@@ -33,7 +33,7 @@ typedef int                 s32;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "             RC2014 Bus Raider V1.7.006";
+static const char* PROG_VERSION = "             RC2014 Bus Raider V1.7.008";
 static const char* PROG_CREDITS = "    Rob Dobson 2018 (inspired by PiGFX)";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
@@ -202,7 +202,7 @@ extern "C" int main()
     BusAccess::init();
 
     // Enable first machine
-    McManager::setMachineIdx(0);
+    McManager::setMachineIdx(1);
 
     // Get current machine to check things are working
     if (!McManager::getMachine())

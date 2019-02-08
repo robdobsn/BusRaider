@@ -1,0 +1,19 @@
+# Compiled Object files
+x64/
+Debug/
+Release/
+*.lib
+*.obj
+*.aps
+
+# Work files
+*.ini
+*.ncb
+*.suo
+*.user
+*.dmp
+*.*~
+
+# Binary files
+*.exe
+

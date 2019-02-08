@@ -5,6 +5,7 @@
 
 #include "McBase.h"
 #include "../TargetBus/TargetClockGenerator.h"
+#include "../Debugger/TargetDebug.h"
 #include "../System/ee_printf.h"
 #include "../CommandInterface/CommandHandler.h"
 #include <string.h> 
@@ -139,6 +140,8 @@ public:
     static bool debuggerCommand(const char* pCommand, char* pResponse, int maxResponseLen)
     {
         McBase* pMc = getMachine();
+        // LogWrite("McManager", LOG_DEBUG, "debuggerCommand %s %d %d\n", pCommand, 
+        //         maxResponseLen, pMc);
         if (pMc)
             return pMc->debuggerCommand(pCommand, pResponse, maxResponseLen);
         return false;

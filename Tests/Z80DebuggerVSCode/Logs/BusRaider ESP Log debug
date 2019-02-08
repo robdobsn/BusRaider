@@ -1,0 +1,548 @@
+
+
+T: StatusIndicator: setup name wifiLed configStr {"hwPin":"13","onMs":200,"shortOffMs":200,"longOffMs":750}
+N: StatusIndicator: wifiLed pin 13(13) onLevel 1 onMs 200 shortMs 200 longMs 750
+N: FileManager: setup {"spiffsEnabled":1,"spiffsFormatIfCorrupt":1,"sdEnabled":1,"sdMOSI":"23","sdMISO":"19","sdCLK":"18","sdCS":"4"}
+N: FileManager: setup SPIFFS partition size total 1374476, used 34387
+E (1261) sdmmc_common: sdmmc_init_ocr: send_op_cond (1) returned 0x107
+W: FileManager: setup failed to init SD (error ESP_ERR_TIMEOUT)
+T: ConfigNVS: Config wifi ...
+T: ConfigNVS: Config wifi read: len(79) {"WiFiSSID":"rdint01","WiFiPW":"golgofrinsham","WiFiHostname":"BusRaiderESP32"} maxlen 100
+T: ConfigNVS: Config mqtt ...
+[E][Preferences.cpp:38] begin(): nvs_open failed: NOT_FOUND
+figNVS: Config mqtt read: len(2) {} maxlen 200
+T: ConfigNVS: Config netLog ...
+[E][Preferences.cpp:38] begin(): nvs_open failed: NOT_FOUND
+NVS: Config netLog read: len(2) {} maxlen 200
+T: WiFiManager: Event SYSTEM_EVENT_WIFI_READY
+T: WiFiManager: Event SYSTEM_EVENT_STA_START
+T: WebServer: Adding static resource /favicon.ico mime image/ico encoding  len 15405
+T: WebServer: Adding static resource /index.html mime text/html encoding  len 36703
+T: WebServer: Adding static resource / mime text/html encoding  len 36703
+T: WebServer: Adding static resource /TerminalEmulator.js mime text/javascript encoding  len 5699
+T: WebServer: Adding API w type Callback
+T: WebServer: Adding API wc type Callback
+T: WebServer: Adding API wax type Callback
+T: WebServer: Adding API wai type Callback
+T: WebServer: Adding API mq type Callback
+T: WebServer: Adding API reset type Callback
+T: WebServer: Adding API checkupdate type Callback
+T: WebServer: Adding API v type Callback
+T: WebServer: Adding API loglevel type Callback
+T: WebServer: Adding API logmqtt type Callback
+T: WebServer: Adding API loghttp type Callback
+T: WebServer: Adding API logserial type Callback
+T: WebServer: Adding API logcmd type Callback
+T: WebServer: Adding API ntp type Callback
+T: WebServer: Adding API ntpget type Callback
+T: WebServer: Adding API reformatfs type Callback
+T: WebServer: Adding API filelist type Callback
+T: WebServer: Adding API fileread type Callback
+T: WebServer: Adding API deleteFile type Callback
+T: WebServer: Adding API uploadtofileman type Callback
+T: WebServer: Adding API espFirmwareUpdate type Callback
+T: WebServer: Adding API cmdScheduleGet type Callback
+T: WebServer: Adding API cmdScheduleSet type Callback
+T: WebServer: Adding API targetcmd type Callback
+T: WebServer: Adding API sendfiletotargetbuffer type Callback
+T: WebServer: Adding API appendfiletotargetbuffer type Callback
+T: WebServer: Adding API runfileontarget type Callback
+T: WebServer: Adding API uploadpisw type Callback
+T: WebServer: Adding API uploadappend type Callback
+T: WebServer: Adding API uploadtofileman type Callback
+T: WebServer: Adding API uploadandrun type Callback
+T: WebServer: Adding API querystatus type Callback
+T: WebServer: Adding API queryESPHealth type Callback
+T: WebServer: Adding API espFirmwareUpdate type Callback
+T: WebServer: serveStaticFiles url /files/spiffs folder /spiffs/
+T: WebServer: serveStaticFiles url /files/sd folder /sd/
+N: CommandSerial: config {"portNum":1,"baudRate":115200}
+N: CommandSerial: portNum 1, baudRate 115200, rxPin 16, txPin 17
+NetLog: Setup from {}
+NetLog: logLevel 0, mqttFlag 0 topic , httpFlag 0, ip , port 5076, url , serialFlag 1, serialPort 0, cmdSerial 0
+T: MachineInterface: config {"portNum":2,"baudRate":115200,"wsPath":"/ws","demoPin":0}
+T: MachineInterface: portNum 2, baudRate 115200
+T: MachineInterface: portNum 2, baudRate 115200, rxPin, txPin
+N: WiFiManager: notConn WiFi.begin SSID rdint01
+T: WiFiManager: Event SYSTEM_EVENT_STA_CONNECTED
+T: WiFiManager: Event SYSTEM_EVENT_STA_GOT_IP
+N: WiFiManager: GotIP 192.168.86.192
+N: WiFiManager: mDNS responder started with hostname BusRaiderESP32
+N: WebServer: begun
+N: 10002 BusRaiderESP32 V1.7.008 SSID rdint01 IP 192.168.86.192 Heap 226136 Avg 76.53uS Max 332505uS Min 59uS Slowest Command 332420, WiFi 17569
+N: CommandSerial: uploadAPIBlockHandler starting new - nothing in progress
+T: CommandSerial: new upload started millis 16070
+N: 20075 BusRaiderESP32 V1.7.008 SSID rdint01 IP 192.168.86.192 Heap 214796 Avg 119.36uS Max 1433227uS Min 62uS Slowest Command 1306880, MachineIF 128558
+N: 30330 BusRaiderESP32 V1.7.008 SSID rdint01 IP 192.168.86.192 Heap 214804 Avg 5639.43uS Max 1042984uS Min 63uS Slowest Command 916988, LoopTimer 129452
+T: RestAPIBusRaider: apiUploadPiSwComplete /uploadpisw?file=kernel.img
+N: 40460 BusRaiderESP32 V1.7.008 SSID rdint01 IP 192.168.86.192 Heap 225964 Avg 139.07uS Max 1304371uS Min 62uS Slowest Command 1304169, LoopTimer 129411
+T: RestAPIBusRaider: Command setmachine=TRS80
+T: RestAPIBusRaider: Command setmachine=Serial Terminal
+T: RestAPIBusRaider: Command setmachine=Serial Terminal
+T: RestAPIBusRaider: Command setmachine=TRS80
+N: 50464 BusRaiderESP32 V1.7.008 SSID rdint01 IP 192.168.86.192 Heap 225964 Avg 78.78uS Max 10003uS Min 62uS Slowest Console 9702, MachineIF 9634
+T: FileManager: chunkedFileStart filename /spiffs/testZ80ASMCharIncTRS80.bin size 25 byLine N
+T: CommandSerial: startUploadFromFileSystem èRý?
+T: CommandSerial: new upload started millis 53768
+T: RemoteDebugProtocolSession: Constructed
+T: RemoteDebugProtocolServer: Session created heap 222068 pClient 1073564656 pSess 1073452972
+T: RemoteDebugProtocolSession: onData about
+T: onData 6T: MachineInterface: rdp response message {"cmdName":"rdp","index":"0","content":"BusRaider RCP
+command> "}
+T: RemoteDebugProtocolSession: onData get-version
+T: onData 12T: MachineInterface: rdp response message {"cmdName":"rdp","index":"1","content":"7.2-SN
+command> "}
+T: RemoteDebugProtocolSession: onData get-current-machine
+T: onData 20T: MachineInterface: rdp response message {"cmdName":"rdp","index":"2","content":"TRS80
+command> "}
+T: RemoteDebugProtocolSession: onData check-extensions
+T: onData 17T: MachineInterface: rdp response message {"cmdName":"rdp","index":"3","content":"Unknown command
+command> "}
+T: RemoteDebugProtocolSession: onData set-debug-settings 32
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"4","content":"
+command> "}
+T: RemoteDebugProtocolSession: onData hard-reset-cpu
+T: onData 15T: MachineInterface: rdp response message {"cmdName":"rdp","index":"5","content":"
+command> "}
+T: RemoteDebugProtocolSession: onData enter-cpu-step
+T: onData 15T: MachineInterface: rdp response message {"cmdName":"rdp","index":"6","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData smartload C:\Users\rob\Documents\1-github\z80-sample-program\z80-sample-program.sna
+T: onData 84T: MachineInterface: rdp response message {"cmdName":"rdp","index":"7","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData clear-membreakpoints
+T: onData 21T: MachineInterface: rdp response message {"cmdName":"rdp","index":"8","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData enable-breakpoints
+T: onData 19T: MachineInterface: rdp response message {"cmdName":"rdp","index":"9","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 1
+T: onData 21T: MachineInterface: rdp response message {"cmdName":"rdp","index":"10","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 2
+T: onData 21T: MachineInterface: rdp response message {"cmdName":"rdp","index":"11","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 3
+T: onData 21N: 60468 BusRaiderESP32 V1.7.008 SSID rdint01 IP 192.168.86.192 Heap 225168 Avg 78.76uS Max 17060uS Min 62uS Slowest NTP 16777, Command 13273
+T: MachineInterface: rdp response message {"cmdName":"rdp","index":"12","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 4
+T: onData 21T: MachineInterface: rdp response message {"cmdName":"rdp","index":"13","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 5
+T: onData 21T: MachineInterface: rdp response message {"cmdName":"rdp","index":"14","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 6
+T: onData 21T: MachineInterface: rdp response message {"cmdName":"rdp","index":"15","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 7
+T: onData 21T: MachineInterface: rdp response message {"cmdName":"rdp","index":"16","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 8
+T: onData 21T: MachineInterface: rdp response message {"cmdName":"rdp","index":"17","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 9
+T: onData 21T: MachineInterface: rdp response message {"cmdName":"rdp","index":"18","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 10
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"19","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 11
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"20","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 12
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"21","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 13
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"22","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 14
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"23","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 15
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"24","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 16
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"25","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 17
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"26","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 18
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"27","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 19
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"28","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 20
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"29","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 21
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"30","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 22
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"31","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 23
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"32","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 24
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"33","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 25
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"34","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 26
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"35","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 27
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"36","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 28
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"37","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 29
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"38","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 30
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"39","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 31
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"40","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 32
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"41","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 33
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"42","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 34
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"43","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 35
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"44","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 36
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"45","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 37
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"46","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 38
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"47","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 39
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"48","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 40
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"49","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 41
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"50","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 42
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"51","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 43
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"52","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 44
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"53","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 45
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"54","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 46
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"55","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 47
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"56","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 48
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"57","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 49
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"58","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 50
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"59","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 51
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"60","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 52
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"61","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 53
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"62","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 54
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"63","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 55
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"64","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 56
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"65","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 57
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"66","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 58
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"67","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 59
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"68","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 60
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"69","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 61
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"70","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 62
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"71","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 63
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"72","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 64
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"73","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 65
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"74","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 66
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"75","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 67
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"76","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 68
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"77","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 69
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"78","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 70
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"79","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 71
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"80","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 72
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"81","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 73
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"82","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 74
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"83","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 75
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"84","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 76
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"85","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 77
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"86","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 78
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"87","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 79
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"88","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 80
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"89","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 81
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"90","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 82
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"91","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 83
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"92","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 84
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"93","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 85
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"94","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 86
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"95","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 87
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"96","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 88
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"97","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 89
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"98","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 90
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"99","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 91
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"100","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 92
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"101","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 93
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"102","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 94
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"103","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 95
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"104","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 96
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"105","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 97
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"106","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 98
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"107","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 99
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"108","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData disable-breakpoint 100
+T: onData 23T: MachineInterface: rdp response message {"cmdName":"rdp","index":"109","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData get-registers
+T: onData 14T: MachineInterface: rdp response message {"cmdName":"rdp","index":"110","content":"PC=0000 SP=0000 BC=0000 AF=0000 HL=0000 DE=0000 IX=0000 IY=0000 AF'=0000 BC'=0000 HL'=0000 DE'=0000 I=00 R=00  F=-------- F'=-------- MEMPTR=0000 IM0 IFF00 VPS: 0
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 0 32
+T: onData 17T: MachineInterface: rdp response message {"cmdName":"rdp","index":"111","content":"1e3021003c7301ffff0b78b1c209001c7bfe3ac20200c300005d5c7ecd7d00d0
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 0 32
+T: onData 17T: MachineInterface: rdp response message {"cmdName":"rdp","index":"112","content":"1e3021003c7301ffff0b78b1c209001c7bfe3ac20200c300005d5c7ecd7d00d0
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 0 32
+T: onData 17T: MachineInterface: rdp response message {"cmdName":"rdp","index":"113","content":"1e3021003c7301ffff0b78b1c209001c7bfe3ac20200c300005d5c7ecd7d00d0
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 0 32
+T: onData 17T: MachineInterface: rdp response message {"cmdName":"rdp","index":"114","content":"1e3021003c7301ffff0b78b1c209001c7bfe3ac20200c300005d5c7ecd7d00d0
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 0 32
+T: onData 17T: MachineInterface: rdp response message {"cmdName":"rdp","index":"115","content":"1e3021003c7301ffff0b78b1c209001c7bfe3ac20200c300005d5c7ecd7d00d0
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData reset-tstates-partial
+T: onData 22T: MachineInterface: rdp response message {"cmdName":"rdp","index":"116","content":"Unknown command
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData run
+T: onData 4T: MachineInterface: rdp response message {"cmdName":"rdp","index":"117","content":"Running until a breakpoint, key press or data sent, menu opening or other event
+
+"}
+N: 70472 BusRaiderESP32 V1.7.008 SSID rdint01 IP 192.168.86.192 Heap 225168 Avg 82.34uS Max 16897uS Min 62uS Slowest Command 16488, MachineIF 3435
+N: 80475 BusRaiderESP32 V1.7.008 SSID rdint01 IP 192.168.86.192 Heap 225256 Avg 72.03uS Max 3297uS Min 62uS Slowest LoopTimer 3158
+T: RemoteDebugProtocolSession: onData
+T: onData 1T: MachineInterface: rdp response message {"cmdName":"rdp","index":"118","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData get-tstates-partial
+T: onData 20T: MachineInterface: rdp response message {"cmdName":"rdp","index":"119","content":"Unknown command
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData get-cpu-frequency
+T: onData 18T: MachineInterface: rdp response message {"cmdName":"rdp","index":"120","content":"Unknown command
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData get-registers
+T: onData 14T: MachineInterface: rdp response message {"cmdName":"rdp","index":"121","content":"PC=0000 SP=0000 BC=0000 AF=0000 HL=0000 DE=0000 IX=0000 IY=0000 AF'=0000 BC'=0000 HL'=0000 DE'=0000 I=00 R=00  F=-------- F'=-------- MEMPTR=0000 IM0 IFF00 VPS: 0
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData get-registers
+T: onData 14T: MachineInterface: rdp response message {"cmdName":"rdp","index":"122","content":"PC=0000 SP=0000 BC=0000 AF=0000 HL=0000 DE=0000 IX=0000 IY=0000 AF'=0000 BC'=0000 HL'=0000 DE'=0000 I=00 R=00  F=-------- F'=-------- MEMPTR=0000 IM0 IFF00 VPS: 0
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 0 32
+T: onData 17T: MachineInterface: rdp response message {"cmdName":"rdp","index":"123","content":"1e3021003c7301ffff0b78b1c209001c7bfe3ac20200c300005d5c7ecd7d00d0
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData get-stack-backtrace 20
+T: onData 23T: MachineInterface: rdp response message {"cmdName":"rdp","index":"124","content":"301eH 0021H 733cH ff01H 0bffH b178H 09c2H 1c00H fe7bH c23aH 0002H 00c3H 5d00H 7e5cH 7dcdH d000H 74cdH 1800H fff7H ffffH
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 12315 3
+T: onData 20T: MachineInterface: rdp response message {"cmdName":"rdp","index":"125","content":"235e23
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 30 3
+T: onData 17T: MachineInterface: rdp response message {"cmdName":"rdp","index":"126","content":"00d0cd
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 29497 3
+T: onData 20T: MachineInterface: rdp response message {"cmdName":"rdp","index":"127","content":"000000
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 65278 3
+T: onData 20T: MachineInterface: rdp response message {"cmdName":"rdp","index":"128","content":"000000
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 3068 3
+T: onData 19T: MachineInterface: rdp response message {"cmdName":"rdp","index":"129","content":"576628
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 45429 3
+T: onData 20T: MachineInterface: rdp response message {"cmdName":"rdp","index":"130","content":"000000
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 2495 3
+T: onData 19T: MachineInterface: rdp response message {"cmdName":"rdp","index":"131","content":"79ae0d
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 7165 3
+T: onData 19T: MachineInterface: rdp response message {"cmdName":"rdp","index":"132","content":"1bc38a
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 65144 3
+T: onData 20T: MachineInterface: rdp response message {"cmdName":"rdp","index":"133","content":"000000
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 49719 3
+T: onData 20T: MachineInterface: rdp response message {"cmdName":"rdp","index":"134","content":"000000
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory -1 3
+T: onData 17T: MachineInterface: rdp response message {"cmdName":"rdp","index":"135","content":"
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 192 3
+T: onData 18T: MachineInterface: rdp response message {"cmdName":"rdp","index":"136","content":"5641cc
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 23805 3
+T: onData 20T: MachineInterface: rdp response message {"cmdName":"rdp","index":"137","content":"fa045d
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 32345 3
+T: onData 20T: MachineInterface: rdp response message {"cmdName":"rdp","index":"138","content":"000000
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 32202 3
+T: onData 20T: MachineInterface: rdp response message {"cmdName":"rdp","index":"139","content":"3012cd
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 53245 3
+T: onData 20T: MachineInterface: rdp response message {"cmdName":"rdp","index":"140","content":"000000
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 29898 3
+T: onData 20T: MachineInterface: rdp response message {"cmdName":"rdp","index":"141","content":"000000
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 6141 3
+T: onData 19T: MachineInterface: rdp response message {"cmdName":"rdp","index":"142","content":"0200cd
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 65524 3
+T: onData 20T: MachineInterface: rdp response message {"cmdName":"rdp","index":"143","content":"101010
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 65532 3
+T: onData 20T: MachineInterface: rdp response message {"cmdName":"rdp","index":"144","content":"42423c
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 0 100
+T: onData 18T: MachineInterface: rdp response message {"cmdName":"rdp","index":"145","content":"1e3021003c7301ffff0b78b1c209001c7bfe3ac20200c300005d5c7ecd7d00d0cd740018f7ffffffc35b33ffffffffffc52a615ce5c39e16f5e52a785c2322785c7cb52003fd3440c5d5cdbf02d1c1e1f1fbc9e16efd7500ed7b3d5cc3c516ffffffffff
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 0 32
+T: onData 17T: MachineInterface: rdp response message {"cmdName":"rdp","index":"146","content":"1e3021003c7301ffff0b78b1c209001c7bfe3ac20200c300005d5c7ecd7d00d0
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 0 32
+T: onData 17T: MachineInterface: rdp response message {"cmdName":"rdp","index":"147","content":"1e3021003c7301ffff0b78b1c209001c7bfe3ac20200c300005d5c7ecd7d00d0
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 0 32
+T: onData 17T: MachineInterface: rdp response message {"cmdName":"rdp","index":"148","content":"1e3021003c7301ffff0b78b1c209001c7bfe3ac20200c300005d5c7ecd7d00d0
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 0 32
+T: onData 17T: MachineInterface: rdp response message {"cmdName":"rdp","index":"149","content":"1e3021003c7301ffff0b78b1c209001c7bfe3ac20200c300005d5c7ecd7d00d0
+command@cpu-step> "}
+T: RemoteDebugProtocolSession: onData read-memory 0 2
+T: onData 16T: MachineInterface: rdp response message {"cmdName":"rdp","index":"150","content":"1e30
+command@cpu-step> "}
+N: 90479 BusRaiderESP32 V1.7.008 SSID rdint01 IP 192.168.86.192 Heap 225256 Avg 78.03uS Max 19453uS Min 62uS Slowest Command 19248, MachineIF 3712
+N: 100482 BusRaiderESP32 V1.7.008 SSID rdint01 IP 192.168.86.192 Heap 225256 Avg 77.57uS Max 3269uS Min 62uS Slowest LoopTimer 3155
+N: 110485 BusRaiderESP32 V1.7.008 SSID rdint01 IP 192.168.86.192 Heap 225256 Avg 76.46uS Max 2174uS Min 61uS Slowest LoopTimer 2069

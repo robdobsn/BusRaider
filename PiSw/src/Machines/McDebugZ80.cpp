@@ -7,6 +7,7 @@
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/target_memory_map.h"
 #include "../Utils/rdutils.h"
+#include "../Debugger/TargetDebug.h"
 #include <stdlib.h>
 
 const char* McDebugZ80::_logPrefix = "DebugZ80";
@@ -60,7 +61,10 @@ McDescriptorTable McDebugZ80::_descriptorTable = {
     .displayForeground = WGFX_GREEN,
     .displayBackground = WGFX_BLACK,
     // Clock
-    .clockFrequencyHz = 200000
+    .clockFrequencyHz = 200000,
+    // Bus monitor
+    .monitorIORQ = true,
+    .monitorMREQ = true
 };
 
 // Enable machine
@@ -69,7 +73,7 @@ void McDebugZ80::enable()
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
     BusAccess::accessCallbackAdd(memoryRequestCallback);
     // Bus raider enable wait states on MREQ and IORQ
-    BusAccess::waitEnable(true, true);
+    BusAccess::waitEnable(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ);
 }
 
 // Disable machine
@@ -199,15 +203,9 @@ bool McDebugZ80::reset()
     return true;
 }
 
-bool McDebugZ80::debuggerCommand([[maybe_unused]] const char* pCommand, [[maybe_unused]] char* pResponse, [[maybe_unused]] int maxResponseLen)
-{
-    // strlcpy(pResponse, "????????", maxResponseLen);
-    // strlcat(pResponse, isSingleStepMode() ? "\ncommand@cpu-step> \"" : "\ncommand> \"", maxResponseLen);
-    return true;
-}
-
 // Handle a request for memory or IO - or possibly something like an interrupt vector in Z80
-uint32_t McDebugZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
+uint32_t McDebugZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, 
+        [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
 {
     // Check for read
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
@@ -290,6 +288,11 @@ uint32_t McDebugZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[may
     }
     debugCurAddr = nextAddr;
     debugStepCount++;
+
+    // Callback to debugger
+    TargetDebug* pDebug = TargetDebug::get();
+    if (pDebug)
+        retVal = pDebug->handleInterrupt(addr, data, flags, retVal);
 
     return retVal;
 }
