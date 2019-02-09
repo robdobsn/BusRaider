@@ -19,6 +19,17 @@ TargetDebug __targetDebug;
 // Memory buffer
 uint8_t TargetDebug::_targetMemBuffer[MAX_TARGET_MEMORY_LEN];
 
+// Breakpoints
+bool TargetDebug::_breakpointsEnabled = true;
+int TargetDebug::_breakpointNumEnabled = 0;
+Breakpoint TargetDebug::_breakpoints[MAX_BREAKPOINTS];
+int TargetDebug::_breakpointIdxsToCheck[MAX_BREAKPOINTS];
+bool TargetDebug::_breakpointHitFlag = false;
+int TargetDebug::_breakpointHitIndex = 0;
+
+// Callback to send debug frame
+SendDebugMessageType* TargetDebug::_pSendDebugMessageCallback = NULL;
+
 // Get target
 TargetDebug* TargetDebug::get()
 {
@@ -31,6 +42,40 @@ TargetDebug::TargetDebug()
     _registerQueryGotM1 = false;
     _registerQueryWriteIndex = 0;
     _registerQueryStep = 0;
+    for (int i = 0; i < MAX_BREAKPOINTS; i++)
+        _breakpoints[i].enabled = false;
+    _breakpointNumEnabled = 0;
+    _breakpointsEnabled = true;
+    _breakpointHitFlag = false;
+    _breakpointHitIndex = 0;
+}
+
+void TargetDebug::enableBreakpoint(int idx, bool enabled)
+{
+    if ((idx < 0) || (idx >= MAX_BREAKPOINTS))
+        return;
+    _breakpoints[idx].enabled = enabled;
+    _breakpointNumEnabled = 0;
+    int numBreakpointsEnabled = 0;
+    for (int i = 0; i < MAX_BREAKPOINTS; i++)
+        if (_breakpoints[i].enabled)
+            _breakpointIdxsToCheck[numBreakpointsEnabled++] = i;
+    _breakpointNumEnabled = numBreakpointsEnabled;
+}
+
+void TargetDebug::setBreakpointMessage(int idx, const char* hitMessage)
+{
+    if ((idx < 0) || (idx >= MAX_BREAKPOINTS))
+        return;
+    if (hitMessage != NULL)
+        strlcpy(_breakpoints[idx].hitMessage, hitMessage, Breakpoint::MAX_HIT_MSG_LEN);
+}
+
+void TargetDebug::setBreakpointPCAddr(int idx, uint32_t pcVal)
+{
+    if ((idx < 0) || (idx >= MAX_BREAKPOINTS))
+        return;
+    _breakpoints[idx].pcValue = pcVal;
 }
 
 uint8_t TargetDebug::getMemoryByte(uint32_t addr)
@@ -62,13 +107,19 @@ void TargetDebug::blockWrite(uint32_t addr, uint8_t* pBuf, uint32_t len)
     memcpy(_targetMemBuffer + addr, pBuf, copyLen);
 }
 
-void TargetDebug::grabMemoryAndReleaseBusRq(McBase* pMachine, [[maybe_unused]] bool singleStep)
+void TargetDebug::startGetRegisterSequence()
 {
     // Start sequence of getting registers
     _registerQueryMode = true;
     _registerQueryGotM1 = false;
     _registerQueryWriteIndex = 0;
     _registerQueryStep = 0;
+}
+
+void TargetDebug::grabMemoryAndReleaseBusRq(McBase* pMachine, [[maybe_unused]] bool singleStep)
+{
+    // Start sequence of getting registers
+    startGetRegisterSequence();
 
     // Check if the bus in under BusRaider control
     if (BusAccess::isUnderControl())
@@ -124,6 +175,17 @@ bool TargetDebug::matches(const char* s1, const char* s2, int maxLen)
     return false;
 }
 
+void TargetDebug::service()
+{
+    if (_breakpointHitFlag)
+    {
+        LogWrite(FromTargetDebug, LOG_DEBUG, "breakpoint hit %d debug cb %d", _breakpointHitIndex, _pSendDebugMessageCallback);
+        if (_pSendDebugMessageCallback)
+            (*_pSendDebugMessageCallback)("\ncommand@cpu-step> ");
+        _breakpointHitFlag = false;
+    }
+}
+
 bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char* pCommand, 
         [[maybe_unused]] char* pResponse, [[maybe_unused]] int maxResponseLen)
 {
@@ -146,6 +208,7 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
     // cmdStr[j] = 0;
     char* argStr = strtok(NULL, " ");
     char* argStr2 = strtok(NULL, " ");
+    char* argRest = strtok(NULL, "");
 
     if (matches(cmdStr, "about", MAX_CMD_STR_LEN))
     {
@@ -197,20 +260,53 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
     else if (matches(cmdStr, "enable-breakpoint", MAX_CMD_STR_LEN))
     {
         // LogWrite(FromTargetDebug, LOG_DEBUG, "enable breakpoint %s", argStr);
+        int breakpointIdx = strtol(argStr, NULL, 10) - 1;
+        enableBreakpoint(breakpointIdx, true);
         strlcat(pResponse, "", maxResponseLen);
     }
     else if (matches(cmdStr, "enable-breakpoints", MAX_CMD_STR_LEN))
     {
+        _breakpointsEnabled = true;
         strlcat(pResponse, "", maxResponseLen);
     }
     else if (matches(cmdStr, "disable-breakpoint", MAX_CMD_STR_LEN))
     {
         // LogWrite(FromTargetDebug, LOG_DEBUG, "disable breakpoint %s", argStr);
+        int breakpointIdx = strtol(argStr, NULL, 10) - 1;
+        enableBreakpoint(breakpointIdx, false);
         strlcat(pResponse, "", maxResponseLen);
     }
     else if (matches(cmdStr, "disable-breakpoints", MAX_CMD_STR_LEN))
     {
+        _breakpointsEnabled = false;
         strlcat(pResponse, "", maxResponseLen);
+    }
+    else if (matches(cmdStr, "set-breakpoint", MAX_CMD_STR_LEN))
+    {
+        LogWrite(FromTargetDebug, LOG_DEBUG, "set breakpoint %s %s", argStr, argStr2);
+        int breakpointIdx = strtol(argStr, NULL, 10) - 1;
+        if ((argStr2[0] != 'P') || (argStr2[1] != 'C') || (argStr2[2] != '='))
+        {
+            LogWrite(FromTargetDebug, LOG_DEBUG, "breakpoint doesn't start PC= argstr2 %02x %02x %02x", argStr2[0], argStr2[1], argStr2[2]);
+        }
+        else
+        {
+            int addr = strtol(argStr2+3, NULL, 16);
+            setBreakpointPCAddr(breakpointIdx, addr);
+        }        
+    }
+    else if (matches(cmdStr, "set-breakpointaction", MAX_CMD_STR_LEN))
+    {
+        LogWrite(FromTargetDebug, LOG_DEBUG, "set breakpoint action %s %s %s", argStr, argStr2, argRest);
+        int breakpointIdx = strtol(argStr, NULL, 10) - 1;
+        if (!matches(argStr2, "prints", MAX_CMD_STR_LEN))
+        {
+            LogWrite(FromTargetDebug, LOG_DEBUG, "breakpoint doesn't have message");
+        }
+        else
+        {        
+            setBreakpointMessage(breakpointIdx, argRest);
+        }
     }
     else if (matches(cmdStr, "get-registers", MAX_CMD_STR_LEN))
     {
@@ -318,6 +414,24 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
     // Only handle MREQs
     if ((flags & BR_CTRL_BUS_MREQ_MASK) == 0)
         return retVal;
+
+    // See if breakpoints enabled and M1 cycle
+    if (!_registerQueryMode && _breakpointsEnabled && (_breakpointNumEnabled > 0) && (flags & BR_CTRL_BUS_M1_MASK))
+    {
+        // Check breakpoints
+        for (int i = 0; i < _breakpointNumEnabled; i++)
+        {
+            int bpIdx = _breakpointIdxsToCheck[i];
+            if (_breakpoints[bpIdx].pcValue == addr)
+            {
+                if (BusAccess::pause())
+                    startGetRegisterSequence();
+                _breakpointHitFlag = true;
+                _breakpointHitIndex = bpIdx;
+                break;
+            }
+        }
+    }
 
     // Instructions to get register values
     static uint8_t regQueryInstructions[] = 
@@ -491,7 +605,8 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
             {
                 _targetMemBuffer[addr] = data;
             }
-        } 
+        }
+        
     }
 
     return retVal;

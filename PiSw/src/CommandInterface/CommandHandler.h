@@ -49,6 +49,7 @@ public:
     void sendAPIReq(const char* reqLine);
     void getStatusResponse(bool* pIPAddressValid, char** pIPAddress, char** pWifiConnStr, char** pWifiSSID);
     void requestStatusUpdate();
+    void sendDebugMessage(const char* pStr);
 
 private:
     static void static_hdlcPutCh(uint8_t ch);
@@ -105,5 +106,9 @@ private:
     char _statusWifiConnStr[MAX_WIFI_CONN_STR];
     char _statusWifiSSID[MAX_WIFI_SSID_STR];
     bool _statusIPAddressValid;
+
+    // Last RDP message index value string
+    static const int MAX_RDP_INDEX_VAL_LEN = 20;
+    char _lastRDPIndexValStr[MAX_RDP_INDEX_VAL_LEN];
     
 };

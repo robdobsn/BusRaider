@@ -388,6 +388,11 @@ extern "C" int main()
 
         // Service bus raider
         BusAccess::service();
+
+        // Service target debugger
+        TargetDebug* pDebug = TargetDebug::get();
+        if (pDebug)
+            pDebug->service();
     }
 #endif
 }

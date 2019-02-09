@@ -54,6 +54,9 @@ CommandHandler::CommandHandler() :
     _statusWifiConnStr[0] = 0;
     _statusWifiSSID[0] = 0;
     _statusIPAddressValid = false;
+
+    // RDP index value str
+    _lastRDPIndexValStr[0] = 0;
 }
 
 CommandHandler::~CommandHandler()
@@ -208,10 +211,8 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     else if (strcasecmp(cmdName, "rdp") == 0)
     {
         // Get message index value
-        #define MAX_CMD_PARAM_STR 30
-        char indexValStr[MAX_CMD_PARAM_STR+1];
-        strcpy(indexValStr, "0");
-        if (!jsonGetValueForKey("index", pCmdJson, indexValStr, MAX_CMD_PARAM_STR))
+        strcpy(_lastRDPIndexValStr, "0");
+        if (!jsonGetValueForKey("index", pCmdJson, _lastRDPIndexValStr, MAX_RDP_INDEX_VAL_LEN))
             LogWrite(FromCmdHandler, LOG_DEBUG, "RDP NO INDEX VAL");
         // Send to remote debug handler
         static const int MAX_CMD_STR_LEN = 200;
@@ -224,14 +225,8 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
         static char responseMessage[MAX_RESPONSE_MSG_LEN+1];
         responseMessage[0] = 0;
         McManager::debuggerCommand(commandStr, responseMessage, MAX_RESPONSE_MSG_LEN);
-        // LogWrite(FromCmdHandler, LOG_DEBUG, "RDP replying with %s", responseMessage);
-        static char responseJson[MAX_RESPONSE_MSG_LEN+1];
-        strlcpy(responseJson, "\"index\":\"", MAX_RESPONSE_MSG_LEN);
-        strlcat(responseJson, indexValStr, MAX_RESPONSE_MSG_LEN);
-        strlcat(responseJson, "\",\"content\":\"", MAX_RESPONSE_MSG_LEN);
-        strlcat(responseJson, responseMessage, MAX_RESPONSE_MSG_LEN);
-        strlcat(responseJson, "\"", MAX_RESPONSE_MSG_LEN);
-        sendWithJSON("rdp", responseJson);
+        // Send response back
+        sendDebugMessage(responseMessage);
     }
     else
     {
@@ -520,6 +515,23 @@ void CommandHandler::getStatusResponse(bool* pIPAddressValid, char** pIPAddress,
     *pIPAddress = _statusIPAddress;
     *pWifiConnStr = _statusWifiConnStr;
     *pWifiSSID = _statusWifiSSID;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Send debug message
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void CommandHandler::sendDebugMessage(const char* pStr)
+{
+    // LogWrite(FromCmdHandler, LOG_DEBUG, "RDP replying with %s", responseMessage);
+    static const int MAX_RESPONSE_MSG_LEN = 2000;
+    static char responseJson[MAX_RESPONSE_MSG_LEN+1];
+    strlcpy(responseJson, "\"index\":\"", MAX_RESPONSE_MSG_LEN);
+    strlcat(responseJson, _lastRDPIndexValStr, MAX_RESPONSE_MSG_LEN);
+    strlcat(responseJson, "\",\"content\":\"", MAX_RESPONSE_MSG_LEN);
+    strlcat(responseJson, pStr, MAX_RESPONSE_MSG_LEN);
+    strlcat(responseJson, "\"", MAX_RESPONSE_MSG_LEN);
+    sendWithJSON("rdp", responseJson);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

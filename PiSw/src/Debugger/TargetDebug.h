@@ -10,6 +10,24 @@
 #include "../System/ee_printf.h"
 #include "../TargetBus/BusAccess.h"
 
+typedef void SendDebugMessageType(const char* pStr);
+
+class Breakpoint
+{
+public:
+    static const int MAX_HIT_MSG_LEN = 100;
+    bool enabled;
+    char hitMessage[MAX_HIT_MSG_LEN];
+    uint32_t pcValue;
+
+    Breakpoint()
+    {
+        enabled = false;
+        hitMessage[0] = 0;
+        pcValue = 0;
+    }
+};
+
 class Z80Registers
 {
 public:
@@ -65,6 +83,7 @@ public:
     TargetDebug();
 
     static TargetDebug* get();
+    void service();
 
     bool debuggerCommand(McBase* pMachine, [[maybe_unused]] const char* pCommand, 
             [[maybe_unused]] char* pResponse, [[maybe_unused]] int maxResponseLen);
@@ -72,6 +91,12 @@ public:
     uint32_t handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
             [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal,
             [[maybe_unused]] McDescriptorTable& descriptorTable);
+
+    // Comms callback
+    void setSendDebugMessageCallback(SendDebugMessageType* pSendDebugMessageCallback)
+    {
+        _pSendDebugMessageCallback = pSendDebugMessageCallback;
+    }
 
     uint8_t getMemoryByte(uint32_t addr);
     uint16_t getMemoryWord(uint32_t addr);
@@ -82,6 +107,13 @@ private:
 
     bool matches(const char* s1, const char* s2, int maxLen);
     void grabMemoryAndReleaseBusRq(McBase* pMachine, bool singleStep);
+    void enableBreakpoint(int idx, bool enabled);
+    void setBreakpointMessage(int idx, const char* hitMessage);
+    void setBreakpointPCAddr(int idx, uint32_t pcVal);
+    void startGetRegisterSequence();
+
+    // Callback to send debug frames
+    static SendDebugMessageType* _pSendDebugMessageCallback;
 
     // Registers
     Z80Registers _z80Registers;
@@ -98,6 +130,15 @@ private:
 
     // Limit on data sent back
     static const int MAX_MEM_DUMP_LEN = 1024;
+
+    // Breakpoints
+    static const int MAX_BREAKPOINTS = 100;
+    static bool _breakpointsEnabled;
+    static int _breakpointNumEnabled;
+    static int _breakpointIdxsToCheck[MAX_BREAKPOINTS];
+    static Breakpoint _breakpoints[MAX_BREAKPOINTS];
+    static bool _breakpointHitFlag;
+    static int _breakpointHitIndex;
 };
 
 extern TargetDebug __targetDebug;

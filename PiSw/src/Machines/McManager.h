@@ -130,11 +130,21 @@ public:
             _pCommandHandler->sendKeyCodeToTarget(asciiCode);
     }
 
+    static void sendDebugMessage(const char* pStr)
+    {
+        LogWrite("McManager", LOG_DEBUG, "debugMsg %s cmdH %d\n", pStr, _pCommandHandler); 
+        if (_pCommandHandler)
+            _pCommandHandler->sendDebugMessage(pStr);
+    }
+
     static void init(CommandHandler* pCommandHandler)
     {
         // Add a callback for received characters from target
         pCommandHandler->setRxFromTargetCallback(handleRxCharFromHost);
         _pCommandHandler = pCommandHandler;
+        
+        // Let the target debugger know how to communicate
+        TargetDebug::get()->setSendDebugMessageCallback(sendDebugMessage);
     }
 
     static bool debuggerCommand(const char* pCommand, char* pResponse, int maxResponseLen)
