@@ -312,12 +312,12 @@ bool CommandSerial::startUploadFromFileSystem(const String& fileSystemName,
     // Start a chunked file session
     if (!_fileManager.chunkedFileStart(fileSystemName, filename, false))
     {
-        Log.trace("%sstartUploadFromFileSystem failed to start %s\n", MODULE_PREFIX, filename);
+        Log.trace("%sstartUploadFromFileSystem failed to start %s\n", MODULE_PREFIX, filename.c_str());
         return false;
     }
 
     // Upload now in progress
-    Log.trace("%sstartUploadFromFileSystem %s\n", MODULE_PREFIX, filename);
+    Log.trace("%sstartUploadFromFileSystem %s\n", MODULE_PREFIX, filename.c_str());
     _uploadFromFSInProgress = true;
     _uploadFileType = "target";
     _uploadFromFSRequest = uploadRequest;
