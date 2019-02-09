@@ -100,10 +100,7 @@ void BusAccess::targetReset()
     microsDelay(100);
 
     // Clear WAIT flip-flop
-    WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
-
-    // // Re-enable the wait state generation
-    WR32(GPSET0, _waitStateEnMask);
+    clearWaitFF();
 
     // Clear wait interrupt conditions and enable
     waitIntClear();
@@ -113,8 +110,8 @@ void BusAccess::targetReset()
     // Remove the reset condition
     muxClear();
 
-    // Clear detected edge on any pin
-    WR32(GPEDS0, 0xffffffff);
+    // Clear wait detected
+    clearWaitDetected();
 }
 
 // Hold host in reset state - call targetReset() to clear reset
@@ -185,6 +182,18 @@ void BusAccess::controlTake()
 // Release control of bus
 void BusAccess::controlRelease(bool resetTargetOnRelease)
 {
+    // Prime flip-flop that skips refresh cycles
+    // So that the very first MREQ cycle after a BUSRQ/BUSACK causes a WAIT to be generated
+    // (if enabled)
+    pibSetOut();
+    pibSetValue(1 << BR_M1_PIB_DATA_LINE);
+    microsDelay(2);
+    digitalWrite(BR_MREQ_BAR, 0);
+    microsDelay(2);
+    digitalWrite(BR_MREQ_BAR, 1);
+    pibSetIn();
+    microsDelay(2);
+
     // Control bus
     pinMode(BR_WR_BAR, INPUT);
     pinMode(BR_RD_BAR, INPUT);
@@ -194,6 +203,10 @@ void BusAccess::controlRelease(bool resetTargetOnRelease)
     // Address bus not enabled
     digitalWrite(BR_PUSH_ADDR_BAR, 1);
     
+    // Clear wait detected
+    clearWaitFF();
+    clearWaitDetected();
+
     // Re-enable interrupts if required
     if (_waitIntEnabled)
         waitIntEnable();
@@ -579,10 +592,14 @@ void BusAccess::waitStateISR(void* pData)
     // Set PIB to input
     pibSetIn();
 
+    // Set data direction out so we can read the M1 value
+    WR32(GPCLR0, 1 << BR_DATA_DIR_IN);
+
     // Clear the mux to deactivate output enables
     muxClear();
 
     // Delay to allow M1 to settle
+    //TODO
     lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
 
     // Loop until control lines are valid
@@ -605,34 +622,28 @@ void BusAccess::waitStateISR(void* pData)
         avoidLockupCtr++;
     }
 
-    // Check if we have valid control lines
-    if ((!ctrlValid) || ((busVals & (1 << BR_WAIT_BAR)) != 0))
-    {
+//     // Check if we have valid control lines
+//     if ((!ctrlValid) || ((busVals & (1 << BR_WAIT_BAR)) != 0))
+//     {
 
-#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-#endif
+// #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+//         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+// #endif
 
-        // Spurious ISR?
-        WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
+//         // Spurious ISR?
+//         // Clear WAIT flip-flop
+//         clearWaitFF();
 
-        // Pulse needs to be wide enough to clear flip-flop reliably
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_WAIT_CLEAR);
+//         // Clear detected edge on any pin
+//         WR32(GPEDS0, 0xffffffff);
 
-        // Re-enable the wait state generation
-        WR32(GPSET0, _waitStateEnMask);
-
-        // Clear detected edge on any pin
-        WR32(GPEDS0, 0xffffffff);
-
-#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-#endif
-        return;
-    }
+// #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+//         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+// #endif
+//         return;
+//     }
 
     // Enable the low address onto the PIB
-    WR32(GPSET0, 1 << BR_DATA_DIR_IN);
     muxSet(BR_MUX_LADDR_OE_BAR);
 
     // Delay to allow data to settle
@@ -698,33 +709,44 @@ void BusAccess::waitStateISR(void* pData)
         muxSet(BR_MUX_DATA_OE_BAR_LOW);
         pibSetOut();
         pibSetValue(retVal & 0xff);
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_WAIT_CLEAR);
         muxClear();
     }
 
     // Check if pause requested
-    _pauseIsPaused = ((retVal & BR_MEM_ACCESS_RSLT_REQ_PAUSE) != 0);
-    if (!_pauseIsPaused)
-    {
-        // No pause requested - clear the WAIT state so execution can continue
-        // Clear the WAIT state flip-flop
-        WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
+    int m1Asserted = (busVals & (1 << BR_M1_PIB_BAR)) == 0;
 
-        // Pulse needs to be wide enough to clear flip-flop reliably
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_WAIT_CLEAR);
+#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+    // //TODO
+    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+    // microsDelay(1);
+    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+    // microsDelay(1);
+    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+    // microsDelay(1);
+    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+    // microsDelay(1);
+    digitalWrite(BR_DEBUG_PI_SPI0_CE0, m1Asserted);
+    // microsDelay(1);
+#endif
 
-        // Re-enable the wait state generation as defined by the global mask
-        WR32(GPSET0, _waitStateEnMask);
-
-        // // Clear detected edge on any pin
-        WR32(GPEDS0, 0xffffffff);
-    }
-    else
+    if (_pauseIsPaused && m1Asserted)
     {
         // Store the current address, data and ctrl line state
         _pauseCurAddr = addr;
         _pauseCurData = isWriting ? dataBusVals : retVal;
         _pauseCurControlBus = ctrlBusVals;
     }
+    else
+    {
+        // No pause requested - clear the WAIT state so execution can continue
+        // Clear the WAIT state flip-flop
+        clearWaitFF();
+    }
+
+    // Clear wait detected
+    clearWaitDetected();
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -756,9 +778,18 @@ void BusAccess::waitIntEnable()
 // Pause & Single Step Handling
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void BusAccess::pause()
+bool BusAccess::pause()
 {
+    if (_pauseIsPaused)
+        return false;
+
+    // Request bus so we can grab memory data before entering a wait state
+    if (controlRequestAndTake() != BR_OK)
+        return false;
+
     _pauseIsPaused = true;
+
+    return true;
 }
 
 void BusAccess::pauseGetCurrent(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags)
@@ -773,29 +804,58 @@ bool BusAccess::pauseIsPaused()
     return _pauseIsPaused;
 }
 
+bool BusAccess::pauseStep()
+{
+    // Check if paused
+    if (!_pauseIsPaused)
+        return false;
+
+    // Disable interrupts
+    lowlev_disable_irq();
+    lowlev_disable_fiq();
+
+    // Request
+    controlRequest();
+
+    // Clear the WAIT state flip-flop
+    clearWaitFF();
+
+    // Clear wait detected
+    clearWaitDetected();
+
+    // Enable interrupts
+    lowlev_enable_irq();
+    lowlev_enable_fiq();
+
+    // Request bus so we can grab memory data before entering a wait state
+    if (controlRequestAndTake() != BR_OK)
+        return false;
+
+    return true;
+}
+
 bool BusAccess::pauseRelease()
 {
     // Check if paused
     if (!_pauseIsPaused)
         return false;
 
+    // Disable interrupts
+    lowlev_disable_irq();
+    lowlev_disable_fiq();
+
     // Release pause
     _pauseIsPaused = false;
 
     // Clear the WAIT state flip-flop
-    WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
+    clearWaitFF();
 
-    // Delay for a short time
-    microsDelay(2);
+    // Clear wait detected
+    clearWaitDetected();
 
-        // TODO - delay??
-
-
-    // Re-enable the wait state generation
-    WR32(GPSET0, _waitStateEnMask);
-
-    // Clear detected edge on any pin
-    WR32(GPEDS0, 0xffffffff);
+    // Enable interrupts
+    lowlev_enable_irq();
+    lowlev_enable_fiq();
 
     return true;
 }
@@ -859,4 +919,22 @@ void BusAccess::pibSetValue(uint8_t val)
 uint8_t BusAccess::pibGetValue()
 {
     return (RD32(GPLEV0) >> BR_DATA_BUS) & 0xff;
+}
+
+void BusAccess::clearWaitFF()
+{
+    // Clear the WAIT state flip-flop
+    WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
+
+    // Pulse needs to be wide enough to clear flip-flop reliably
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_WAIT_CLEAR);
+
+    // Re-enable the wait state generation as defined by the global mask
+    WR32(GPSET0, _waitStateEnMask);
+}
+
+void BusAccess::clearWaitDetected()
+{
+    // Clear detected edge on any pin
+    WR32(GPEDS0, 0xffffffff);
 }

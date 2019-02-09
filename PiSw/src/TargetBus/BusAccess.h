@@ -17,7 +17,6 @@ typedef enum {
 } BR_RETURN_TYPE;
 
 #define BR_MEM_ACCESS_RSLT_NOT_DECODED 0x8000
-#define BR_MEM_ACCESS_RSLT_REQ_PAUSE 0x4000
 
 // Control bus bits used to pass to machines, etc
 #define BR_CTRL_BUS_RD 0
@@ -76,7 +75,7 @@ typedef enum {
 #define BR_MREQ_BAR 0 // ID_SD
 #define BR_IORQ_BAR 1 // ID_SC
 #define BR_DATA_BUS 20 // GPIO20..27
-#define BR_M1_PIB_BAR 20 // Piggy backing on the PIB (with 10K resistor to avoid conflict)
+#define BR_M1_PIB_BAR 20 // Piggy backing on the PIB (with resistor to avoid conflict)
 #define BR_PUSH_ADDR_BAR 3 // SCL
 #define BR_HADDR_CK 7 // SPI0 CE1
 #define BR_LADDR_CK 16 // SPI1 CE2
@@ -87,6 +86,9 @@ typedef enum {
 // Masks for above
 #define BR_IORQ_WAIT_EN_MASK (1 << BR_IORQ_WAIT_EN)
 #define BR_MREQ_WAIT_EN_MASK (1 << BR_MREQ_WAIT_EN)
+
+// M1 piggy back onto PIB line
+#define BR_M1_PIB_DATA_LINE 0
 
 // Pi debug pin
 #define BR_DEBUG_PI_SPI0_CE0 8 // SPI0 CE0
@@ -149,7 +151,8 @@ public:
     static void accessCallbackRemove();
 
     // Single step
-    static void pause();
+    static bool pause();
+    static bool pauseStep();
     static void pauseGetCurrent(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags);
     static bool pauseIsPaused();
     static bool pauseRelease();
@@ -200,6 +203,10 @@ private:
     static void muxSet(int muxVal);
     // Clear the MUX
     static void muxClear();
+
+    // Wait control
+    static void clearWaitFF();
+    static void clearWaitDetected();
 
 private:
     // Timeouts

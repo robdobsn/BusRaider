@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include "../Machines/McBase.h"
 #include "../System/ee_printf.h"
+#include "../TargetBus/BusAccess.h"
 
 class Z80Registers
 {
@@ -40,9 +41,13 @@ public:
     }
     void format1(char* pResponse, int maxLen)
     {
+        uint32_t curAddr = 0;
+        uint32_t curData = 0;
+        uint32_t curFlags = 0;
+        BusAccess::pauseGetCurrent(&curAddr, &curData, &curFlags);
         char tmpStr[100];
         ee_sprintf(tmpStr, "PC=%04x SP=%04x BC=%04x AF=%04x HL=%04x DE=%04x IX=%04x IY=%04x",
-                PC, SP, BC, AF, HL, DE, IX, IY);
+                curAddr, SP, BC, AF, HL, DE, IX, IY);
         strlcpy(pResponse, tmpStr, maxLen);
         ee_sprintf(tmpStr, " AF'=%04x BC'=%04x HL'=%04x DE'=%04x I=%02x R=%02x  F=-------- F'=-------- MEMPTR=%04x IM%d IFF%02x VPS: %d",
                 AFDASH, BCDASH, HLDASH, DEDASH, I, R, MEMPTR, IMODE, IFF, VPS );
@@ -66,6 +71,10 @@ public:
             [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal);
 
 private:
+
+    bool matches(const char* s1, const char* s2, int maxLen);
+    void grabMemoryAndReleaseBusRq();
+
     Z80Registers _z80Registers;
 
     static const int MAX_MEM_DUMP_LEN = 1024;

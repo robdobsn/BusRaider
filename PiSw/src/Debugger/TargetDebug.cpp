@@ -23,6 +23,41 @@ TargetDebug* TargetDebug::get()
     return &__targetDebug;
 }
 
+uint8_t __memoryBuffer[0x10000];
+
+void TargetDebug::grabMemoryAndReleaseBusRq()
+{
+    // Read all of memory
+    BusAccess::blockRead(0, __memoryBuffer, 0x10000, false, false);
+
+    // Release bus request
+    BusAccess::controlRelease(false);
+}
+
+bool TargetDebug::matches(const char* s1, const char* s2, int maxLen)
+{
+    const char* p1 = s1;
+    const char* p2 = s2;
+    // Skip whitespace at start of received string
+    while (*p1 == ' ')
+        p1++;
+    // Check match from start of received string
+    for (int i = 0; i < maxLen; i++)
+    {
+        if (*p2 == 0)
+        {
+            while (rdisspace(*p1))
+                p1++;
+            return *p1 == 0;
+        }
+        if (*p1 == 0)
+            return false;
+        if (rdtolower(*p1++) != rdtolower(*p2++))
+            return false;
+    }
+    return false;
+}
+
 bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char* pCommand, 
         [[maybe_unused]] char* pResponse, [[maybe_unused]] int maxResponseLen)
 {
@@ -33,73 +68,89 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
 
     // Split
     char* cmdStr = strtok(command, " ");
-    // Trim command string
-    int j = 0;
-    for (size_t i = 0; i < strlen(cmdStr); i++)
-    {
-        if (!rdisspace(cmdStr[i]))
-        {
-            cmdStr[j++] = cmdStr[i];
-        }
-    }
-    cmdStr[j] = 0;
+    // // Trim command string
+    // int j = 0;
+    // for (size_t i = 0; i < strlen(cmdStr); i++)
+    // {
+    //     if (!rdisspace(cmdStr[i]))
+    //     {
+    //         cmdStr[j++] = cmdStr[i];
+    //     }
+    // }
+    // cmdStr[j] = 0;
     char* argStr = strtok(NULL, " ");
     char* argStr2 = strtok(NULL, " ");
 
-    if ((strcasecmp(cmdStr, "about") == 0))
+    if (matches(cmdStr, "about", MAX_CMD_STR_LEN))
     {
         strlcat(pResponse, "BusRaider RCP", maxResponseLen);
     }
-    else if (strcasecmp(cmdStr, "get-version") == 0)
+    else if (matches(cmdStr, "get-version", MAX_CMD_STR_LEN))
     {
         strlcat(pResponse, "7.2-SN", maxResponseLen);
     }
-    else if (strcasecmp(cmdStr, "get-current-machine") == 0)
+    else if (matches(cmdStr, "get-current-machine", MAX_CMD_STR_LEN))
     {
         strlcat(pResponse, pMachine->getDescriptorTable(0)->machineName, maxResponseLen);
     }
-    else if (strcasecmp(cmdStr, "set-debug-settings") == 0)
+    else if (matches(cmdStr, "set-debug-settings", MAX_CMD_STR_LEN))
     {
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (strcasecmp(cmdStr, "hard-reset-cpu") == 0)
+    else if (matches(cmdStr, "hard-reset-cpu", MAX_CMD_STR_LEN))
     {
         pMachine->reset();
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (strcasecmp(cmdStr, "enter-cpu-step") == 0)
+    else if (matches(cmdStr, "enter-cpu-step", MAX_CMD_STR_LEN))
     {
         BusAccess::waitEnable(pMachine->getDescriptorTable(0)->monitorIORQ, true);
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (strcasecmp(cmdStr, "exit-cpu-step") == 0)
+    else if (matches(cmdStr, "exit-cpu-step", MAX_CMD_STR_LEN))
     {
         BusAccess::waitEnable(pMachine->getDescriptorTable(0)->monitorIORQ, pMachine->getDescriptorTable(0)->monitorMREQ);
+        BusAccess::pauseRelease();
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (strcasecmp(cmdStr, "smartload") == 0)
+    else if (matches(cmdStr, "quit", MAX_CMD_STR_LEN))
+    {
+        BusAccess::waitEnable(pMachine->getDescriptorTable(0)->monitorIORQ, pMachine->getDescriptorTable(0)->monitorMREQ);
+        BusAccess::pauseRelease();
+        strlcat(pResponse, "", maxResponseLen);
+    }
+    else if (matches(cmdStr, "smartload", MAX_CMD_STR_LEN))
     {
         LogWrite(FromTargetDebug, LOG_DEBUG, "smartload %s", argStr);
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (strcasecmp(cmdStr, "clear-membreakpoints") == 0)
+    else if (matches(cmdStr, "clear-membreakpoints", MAX_CMD_STR_LEN))
     {
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (strcasecmp(cmdStr, "enable-breakpoints") == 0)
+    else if (matches(cmdStr, "enable-breakpoint", MAX_CMD_STR_LEN))
+    {
+        LogWrite(FromTargetDebug, LOG_DEBUG, "enable breakpoint %s", argStr);
+        strlcat(pResponse, "", maxResponseLen);
+    }
+    else if (matches(cmdStr, "enable-breakpoints", MAX_CMD_STR_LEN))
     {
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (strcasecmp(cmdStr, "disable-breakpoint") == 0)
+    else if (matches(cmdStr, "disable-breakpoint", MAX_CMD_STR_LEN))
     {
         LogWrite(FromTargetDebug, LOG_DEBUG, "disable breakpoint %s", argStr);
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (strcasecmp(cmdStr, "get-registers") == 0)
+    else if (matches(cmdStr, "disable-breakpoints", MAX_CMD_STR_LEN))
+    {
+        strlcat(pResponse, "", maxResponseLen);
+    }
+    else if (matches(cmdStr, "get-registers", MAX_CMD_STR_LEN))
     {
         _z80Registers.format1(pResponse, maxResponseLen);
     }
-    else if (strcasecmp(cmdStr, "read-memory") == 0)
+    else if (matches(cmdStr, "read-memory", MAX_CMD_STR_LEN))
     {
         // LogWrite(FromTargetDebug, LOG_DEBUG, "read mem %s %s", argStr, argStr2);
         int startAddr = strtol(argStr, NULL, 10);
@@ -107,53 +158,69 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
         if ((startAddr >= 0 && startAddr <= MAX_TARGET_MEM_ADDR) && 
                 (leng > 0 && leng <= MAX_MEM_DUMP_LEN))
         {
-            BusAccess::blockRead(startAddr, _targetMemBuffer, leng, true, false);
             for (int i = 0; i < leng; i++)
             {
                 char chBuf[10];
-                ee_sprintf(chBuf, "%02x", _targetMemBuffer[i]);
+                ee_sprintf(chBuf, "%02x", __memoryBuffer[startAddr+i]);
                 strlcat(pResponse, chBuf, maxResponseLen);
             }
         }
     }
-    else if (strcasecmp(cmdStr, "reset-tstates-partial") == 0)
+    else if (matches(cmdStr, "get-tstates-partial", MAX_CMD_STR_LEN))
+    {
+        strlcat(pResponse, "Unknown command", maxResponseLen);
+    }    
+    else if (matches(cmdStr, "reset-tstates-partial", MAX_CMD_STR_LEN))
     {
         strlcat(pResponse, "Unknown command", maxResponseLen);
     }
-    else if (strcasecmp(cmdStr, "get-cpu-frequency") == 0)
+    else if (matches(cmdStr, "get-cpu-frequency", MAX_CMD_STR_LEN))
     {
         strlcat(pResponse, "Unknown command", maxResponseLen);
     }
-    else if (strcasecmp(cmdStr, "get-stack-backtrace") == 0)
+    else if (matches(cmdStr, "get-stack-backtrace", MAX_CMD_STR_LEN))
     {
         int startAddr = _z80Registers.SP;
         int numFrames = strtol(argStr, NULL, 10);
         if ((numFrames > 0) && (numFrames < MAX_MEM_DUMP_LEN / 2))
         {
-            BusAccess::blockRead(startAddr, _targetMemBuffer, numFrames*2, true, false);
             for (int i = 0; i < numFrames; i++)
             {
                 char chBuf[20];
-                ee_sprintf(chBuf, "%04xH ", _targetMemBuffer[i*2+1] * 256 + _targetMemBuffer[i*2]);
+                ee_sprintf(chBuf, "%04xH ", __memoryBuffer[startAddr + i*2+1] * 256 + __memoryBuffer[startAddr + i*2]);
                 strlcat(pResponse, chBuf, maxResponseLen);
             }
         }
     }
-    else if (strcasecmp(cmdStr, "run") == 0)
+    else if (matches(cmdStr, "run", MAX_CMD_STR_LEN))
     {
         BusAccess::pauseRelease();
-        strlcat(pResponse, "Running until a breakpoint, key press or data sent, menu opening or other event\n\n", maxResponseLen);
+        strlcat(pResponse, "Running until a breakpoint, key press or data sent, menu opening or other event\n", maxResponseLen);
         return true;
     }
-    else if (strlen(cmdStr) == 0)
+    else if (matches(cmdStr, "cpu-step", MAX_CMD_STR_LEN))
+    {
+        if (BusAccess::pauseStep())
+            grabMemoryAndReleaseBusRq();
+        strlcat(pResponse, "", maxResponseLen);
+    }
+    else if (matches(cmdStr, "\n", MAX_CMD_STR_LEN))
     {
         // Blank is used for pause
         LogWrite(FromTargetDebug, LOG_DEBUG, "now paused %s", cmdStr);
-        BusAccess::pause();
+        if (BusAccess::pause())
+            grabMemoryAndReleaseBusRq();
+
         strlcat(pResponse, "", maxResponseLen);
     }
     else
     {
+        for (unsigned int i = 0; i < strlen(pCommand); i++)
+        {
+            char chBuf[10];
+            ee_sprintf(chBuf, "%02x ", pCommand[i]);
+            strlcat(pResponse, chBuf, maxResponseLen);
+        }
         strlcat(pResponse, "Unknown command", maxResponseLen);
     }
     

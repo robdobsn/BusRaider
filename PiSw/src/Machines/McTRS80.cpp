@@ -71,6 +71,10 @@ void McTRS80::handleExecAddr(uint32_t execAddr)
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
 void McTRS80::displayRefresh()
 {
+    //TODO
+    if (BusAccess::pauseIsPaused())
+        return;
+
     // Read memory of RC2014 at the location of the TRS80 memory mapped screen
     unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
     BusAccess::blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, 1, 0);

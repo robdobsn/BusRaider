@@ -224,7 +224,7 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
         static char responseMessage[MAX_RESPONSE_MSG_LEN+1];
         responseMessage[0] = 0;
         McManager::debuggerCommand(commandStr, responseMessage, MAX_RESPONSE_MSG_LEN);
-        LogWrite(FromCmdHandler, LOG_DEBUG, "RDP replying with %s", responseMessage);
+        // LogWrite(FromCmdHandler, LOG_DEBUG, "RDP replying with %s", responseMessage);
         static char responseJson[MAX_RESPONSE_MSG_LEN+1];
         strlcpy(responseJson, "\"index\":\"", MAX_RESPONSE_MSG_LEN);
         strlcat(responseJson, indexValStr, MAX_RESPONSE_MSG_LEN);
