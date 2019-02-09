@@ -30,7 +30,9 @@ McDescriptorTable McManager::defaultDescriptorTable = {
     .clockFrequencyHz = 1000000,
     // Bus monitor
     .monitorIORQ = false,
-    .monitorMREQ = false
+    .monitorMREQ = false,
+    .emulatedRAMStart = 0,
+    .emulatedRAMLen = 0
 };
 
 uint8_t McManager::_rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];

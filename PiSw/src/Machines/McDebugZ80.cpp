@@ -12,10 +12,6 @@
 
 const char* McDebugZ80::_logPrefix = "DebugZ80";
 
-uint8_t McDebugZ80::_systemRAM[DEBUGZ80_RAM_SIZE];
-
-volatile bool McDebugZ80::_scrnBufDirtyFlag = true;
-
 extern WgfxFont __TRS80Level3Font;
 
 static const int NUM_DEBUG_VALS = 200;
@@ -64,7 +60,9 @@ McDescriptorTable McDebugZ80::_descriptorTable = {
     .clockFrequencyHz = 200000,
     // Bus monitor
     .monitorIORQ = true,
-    .monitorMREQ = true
+    .monitorMREQ = true,
+    .emulatedRAMStart = 0,
+    .emulatedRAMLen = TargetDebug::MAX_TARGET_MEMORY_LEN
 };
 
 // Enable machine
@@ -97,10 +95,9 @@ void McDebugZ80::handleExecAddr(uint32_t execAddr)
 void McDebugZ80::displayRefresh()
 {
     // Write to the display on the Pi Zero
-    if (_scrnBufDirtyFlag)
+    TargetDebug* pDebug = TargetDebug::get();
+    if (pDebug)
     {
-        _scrnBufDirtyFlag = false;
-        // Write to the display on the Pi Zero
         int cols = _descriptorTable.displayPixelsX / _descriptorTable.displayCellX;
         int rows = _descriptorTable.displayPixelsY / _descriptorTable.displayCellY;
         for (int k = 0; k < rows; k++) 
@@ -108,15 +105,16 @@ void McDebugZ80::displayRefresh()
             for (int i = 0; i < cols; i++)
             {
                 int cellIdx = k * cols + i;
-                if (_pScrnBufCopy[cellIdx] != _systemRAM[cellIdx + DEBUGZ80_DISP_RAM_ADDR])
+                uint8_t scrnByte = pDebug->getMemoryByte(cellIdx + DEBUGZ80_DISP_RAM_ADDR);
+                if (_pScrnBufCopy[cellIdx] != scrnByte)
                 {
-                    _pScrnBufCopy[cellIdx] = _systemRAM[cellIdx + DEBUGZ80_DISP_RAM_ADDR];
-                    wgfx_putc(MC_WINDOW_NUMBER, i, k, _pScrnBufCopy[cellIdx]);
+                    _pScrnBufCopy[cellIdx] = scrnByte;
+                    wgfx_putc(MC_WINDOW_NUMBER, i, k, scrnByte);
                 }
             }
         }
     }
-    
+
     // Debug values
     if (debugAccessLastCount != debugAccessCount)
     {
@@ -180,13 +178,17 @@ bool McDebugZ80::reset()
     // static uint8_t program[] = { 0xc3, 0x00, 0x00 };
     static uint8_t program[] = { 0x1e, 0x30, 0x21, 0x00, 0xc0, 0x73, 0x01, 0xff, 0x1f, 0x0b, 0x78, 0xb1, 0xc2, 0x09, 0x00, 
                     0x1c, 0x7b, 0xfe, 0x3a, 0xc2, 0x02, 0x00, 0xc3, 0x00, 0x00 };
-    memset(_systemRAM, 0, DEBUGZ80_RAM_SIZE);
-    memcpy(_systemRAM, program, sizeof(program));
+    
+    TargetDebug* pDebug = TargetDebug::get();
+    if (pDebug)
+    {
+        pDebug->clearMemory();
+        pDebug->blockWrite(0, program, sizeof(program));
+        static uint8_t testChars[] = "Hello world";
+        pDebug->blockWrite(DEBUGZ80_DISP_RAM_ADDR, testChars, sizeof(testChars));
+    }
     memset(_pScrnBufCopy, 0xff, DEBUGZ80_DISP_RAM_SIZE);
 
-    static uint8_t testChars[] = "Hello world";
-    memcpy(&_systemRAM[DEBUGZ80_DISP_RAM_ADDR], testChars, sizeof(testChars));
-    _scrnBufDirtyFlag = true;
     // Debug
     BusAccess::waitIntDisable();
     pinMode(BR_DEBUG_PI_SPI0_CE0, OUTPUT);
@@ -207,27 +209,14 @@ bool McDebugZ80::reset()
 uint32_t McDebugZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, 
         [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
 {
-    // Check for read
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
-    if (flags & BR_CTRL_BUS_RD_MASK)
-    {
-        if (flags & BR_CTRL_BUS_MREQ_MASK)
-        {
-            retVal = _systemRAM[addr];
-        }
-    }
-    else if (flags & BR_CTRL_BUS_WR_MASK)
-    {
-        if (flags & BR_CTRL_BUS_MREQ_MASK)
-        {
-            if ((addr >= DEBUGZ80_DISP_RAM_ADDR) && (addr < DEBUGZ80_DISP_RAM_ADDR+DEBUGZ80_DISP_RAM_SIZE))
-            {
-                _scrnBufDirtyFlag = true;
-                _systemRAM[addr] = data;
-                retVal = 0;
-            }
-        }
-    }
+
+    // Callback to debugger
+    TargetDebug* pDebug = TargetDebug::get();
+    if (pDebug)
+        retVal = pDebug->handleInterrupt(addr, data, flags, retVal, _descriptorTable);
+    if ((retVal & BR_MEM_ACCESS_INSTR_INJECT) != 0)
+        return retVal;
 
     // Mirror Z80 expected behaviour
     uint32_t expCtrl = BR_CTRL_BUS_RD_MASK | BR_CTRL_BUS_MREQ_MASK | BR_CTRL_BUS_WAIT_MASK;
@@ -266,7 +255,7 @@ uint32_t McDebugZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr,
     if ((addr != debugCurAddr) || (expCtrl != flags) || ((expData != 0xffff) && (expData != data)))
     {
         // Debug signal
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
         // Only first N errors
         if (debugAccessCount < 20)
         {
@@ -284,15 +273,10 @@ uint32_t McDebugZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr,
         // So guess that it is the next address
         nextAddr = addr + 1;
         // Debug signal
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+        // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
     }
     debugCurAddr = nextAddr;
     debugStepCount++;
-
-    // Callback to debugger
-    TargetDebug* pDebug = TargetDebug::get();
-    if (pDebug)
-        retVal = pDebug->handleInterrupt(addr, data, flags, retVal);
 
     return retVal;
 }

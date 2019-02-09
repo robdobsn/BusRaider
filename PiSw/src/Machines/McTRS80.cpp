@@ -35,7 +35,9 @@ McDescriptorTable McTRS80::_descriptorTable = {
     .clockFrequencyHz = 1770000,
     // Bus monitor
     .monitorIORQ = true,
-    .monitorMREQ = false
+    .monitorMREQ = false,
+    .emulatedRAMStart = 0,
+    .emulatedRAMLen = 0
 };
 
 // Enable machine
@@ -328,7 +330,7 @@ uint32_t McTRS80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_
     // Callback to debugger
     TargetDebug* pDebug = TargetDebug::get();
     if (pDebug)
-        retVal = pDebug->handleInterrupt(addr, data, flags, retVal);
+        retVal = pDebug->handleInterrupt(addr, data, flags, retVal, _descriptorTable);
 
     return retVal;
 }

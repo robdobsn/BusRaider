@@ -17,6 +17,7 @@ typedef enum {
 } BR_RETURN_TYPE;
 
 #define BR_MEM_ACCESS_RSLT_NOT_DECODED 0x8000
+#define BR_MEM_ACCESS_INSTR_INJECT 0x4000
 
 // Control bus bits used to pass to machines, etc
 #define BR_CTRL_BUS_RD 0
@@ -118,11 +119,10 @@ public:
     // IRQ host
     static void targetIRQ();
     
-    // Request and take bus
+    // Bus control
     static BR_RETURN_TYPE controlRequestAndTake();
-    
-    // Release control of bus
     static void controlRelease(bool resetTargetOnRelease);
+    static bool isUnderControl();
     
     // Read and write bytes
     static void byteWrite(uint32_t byte, int iorq);
@@ -169,6 +169,12 @@ private:
 
     // Currently paused - i.e. wait is active
     static volatile bool _pauseIsPaused;
+
+    // Bus currently under BusRaider control
+    static volatile bool _busIsUnderControl;
+
+    // Request bus when single stepping
+    static bool _requestBusWhenSingleStepping;
 
     // Bus values while single stepping
     static uint32_t _pauseCurAddr;

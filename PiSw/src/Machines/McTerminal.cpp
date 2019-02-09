@@ -32,7 +32,9 @@ McDescriptorTable McTerminal::_descriptorTable = {
     .clockFrequencyHz = 7000000,
     // Bus monitor
     .monitorIORQ = false,
-    .monitorMREQ = false
+    .monitorMREQ = false,
+    .emulatedRAMStart = 0,
+    .emulatedRAMLen = 0
 };
 
 int McTerminal::_shiftDigitKeyMap[SHIFT_DIGIT_KEY_MAP_LEN] =

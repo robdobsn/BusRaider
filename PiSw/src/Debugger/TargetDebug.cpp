@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include "../System/ee_printf.h"
 #include "../TargetBus/BusAccess.h"
+#include "../TargetBus/piwiring.h"
+#include "../System/lowlib.h"
 
 // Module name
 static const char FromTargetDebug[] = "TargetDebug";
@@ -15,7 +17,7 @@ static const char FromTargetDebug[] = "TargetDebug";
 TargetDebug __targetDebug;
 
 // Memory buffer
-uint8_t TargetDebug::_targetMemBuffer[MAX_MEM_DUMP_LEN];
+uint8_t TargetDebug::_targetMemBuffer[MAX_TARGET_MEMORY_LEN];
 
 // Get target
 TargetDebug* TargetDebug::get()
@@ -23,15 +25,79 @@ TargetDebug* TargetDebug::get()
     return &__targetDebug;
 }
 
-uint8_t __memoryBuffer[0x10000];
-
-void TargetDebug::grabMemoryAndReleaseBusRq()
+TargetDebug::TargetDebug()
 {
-    // Read all of memory
-    BusAccess::blockRead(0, __memoryBuffer, 0x10000, false, false);
+    _registerQueryMode = false;
+    _registerQueryStep = 0;
+}
 
-    // Release bus request
-    BusAccess::controlRelease(false);
+uint8_t TargetDebug::getMemoryByte(uint32_t addr)
+{
+    if (addr >= MAX_TARGET_MEM_ADDR)
+        return 0;
+    return _targetMemBuffer[addr];
+}
+
+uint16_t TargetDebug::getMemoryWord(uint32_t addr)
+{
+    if (addr >= MAX_TARGET_MEM_ADDR)
+        return 0;
+    return _targetMemBuffer[(addr+1) % MAX_TARGET_MEMORY_LEN] * 256 + _targetMemBuffer[addr];
+}
+
+void TargetDebug::clearMemory()
+{
+    memset(_targetMemBuffer, 0, MAX_TARGET_MEMORY_LEN);
+}
+
+void TargetDebug::blockWrite(uint32_t addr, uint8_t* pBuf, uint32_t len)
+{
+    int copyLen = len;
+    if (addr >= MAX_TARGET_MEMORY_LEN)
+        return;
+    if (addr + copyLen > MAX_TARGET_MEMORY_LEN)
+        copyLen = MAX_TARGET_MEMORY_LEN - addr;
+    memcpy(_targetMemBuffer + addr, pBuf, copyLen);
+}
+
+void TargetDebug::grabMemoryAndReleaseBusRq(McBase* pMachine, bool singleStep)
+{
+    // Start sequence of getting registers
+    if (singleStep)
+    {
+        //TODO
+        // _registerQueryMode = true;
+        _registerQueryStep = 0;
+    }
+
+    // Check if the bus in under BusRaider control
+    if (BusAccess::isUnderControl())
+    {
+        uint32_t emuRAMStart = pMachine->getDescriptorTable(0)->emulatedRAMStart;
+        uint32_t emuRAMLen = pMachine->getDescriptorTable(0)->emulatedRAMLen;
+        // Check if emulating memory
+        if (emuRAMLen > 0)
+        {
+            if (emuRAMStart > 0)
+            {
+                // Read memory before emulated section
+                BusAccess::blockRead(0, _targetMemBuffer, emuRAMLen, false, false);
+            }
+            if (emuRAMStart+emuRAMLen < MAX_TARGET_MEMORY_LEN)
+            {
+                // Read memory after emulated section
+                BusAccess::blockRead(0, _targetMemBuffer+emuRAMStart+emuRAMLen, MAX_TARGET_MEMORY_LEN-(emuRAMStart+emuRAMLen), false, false);
+            }
+        }
+        else
+        {
+            // Read all of memory
+            BusAccess::blockRead(0, _targetMemBuffer, 0x10000, false, false);
+        }
+
+        // Release control of bus
+        BusAccess::controlRelease(false);
+    }
 }
 
 bool TargetDebug::matches(const char* s1, const char* s2, int maxLen)
@@ -155,13 +221,12 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
         // LogWrite(FromTargetDebug, LOG_DEBUG, "read mem %s %s", argStr, argStr2);
         int startAddr = strtol(argStr, NULL, 10);
         int leng = strtol(argStr2, NULL, 10);
-        if ((startAddr >= 0 && startAddr <= MAX_TARGET_MEM_ADDR) && 
-                (leng > 0 && leng <= MAX_MEM_DUMP_LEN))
+        if (startAddr >= 0 && startAddr <= MAX_TARGET_MEM_ADDR)
         {
             for (int i = 0; i < leng; i++)
             {
                 char chBuf[10];
-                ee_sprintf(chBuf, "%02x", __memoryBuffer[startAddr+i]);
+                ee_sprintf(chBuf, "%02x", getMemoryByte(startAddr+i));
                 strlcat(pResponse, chBuf, maxResponseLen);
             }
         }
@@ -187,7 +252,7 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
             for (int i = 0; i < numFrames; i++)
             {
                 char chBuf[20];
-                ee_sprintf(chBuf, "%04xH ", __memoryBuffer[startAddr + i*2+1] * 256 + __memoryBuffer[startAddr + i*2]);
+                ee_sprintf(chBuf, "%04xH ", getMemoryWord(startAddr + i*2));;
                 strlcat(pResponse, chBuf, maxResponseLen);
             }
         }
@@ -201,15 +266,28 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
     else if (matches(cmdStr, "cpu-step", MAX_CMD_STR_LEN))
     {
         if (BusAccess::pauseStep())
-            grabMemoryAndReleaseBusRq();
+        {
+            grabMemoryAndReleaseBusRq(pMachine, true);
+            LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step done");
+        }
+        else
+        {
+            LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step failed");
+        }
         strlcat(pResponse, "", maxResponseLen);
     }
     else if (matches(cmdStr, "\n", MAX_CMD_STR_LEN))
     {
         // Blank is used for pause
-        LogWrite(FromTargetDebug, LOG_DEBUG, "now paused %s", cmdStr);
         if (BusAccess::pause())
-            grabMemoryAndReleaseBusRq();
+        {
+            grabMemoryAndReleaseBusRq(pMachine, false);
+            LogWrite(FromTargetDebug, LOG_DEBUG, "now paused SEND-BLANK");
+        }
+        else
+        {
+            LogWrite(FromTargetDebug, LOG_DEBUG, "pause failed SEND-BLANK");
+        }        
 
         strlcat(pResponse, "", maxResponseLen);
     }
@@ -234,8 +312,49 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
 }
 
 uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
-        [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal,
+            [[maybe_unused]] McDescriptorTable& descriptorTable)
 {
+    // Only handle MREQs
+    if ((flags & BR_CTRL_BUS_MREQ_MASK) == 0)
+        return retVal;
+
+    // Instructions to get register values
+    static uint8_t regQueryInstructions[] = 
+    {
+        0x18, 0xfe
+    };
+
+    // Check if we're in register query mode
+    if (_registerQueryMode)
+    {
+        // Send instructions to query registers
+        retVal = regQueryInstructions[_registerQueryStep++] | BR_MEM_ACCESS_INSTR_INJECT;
+
+        // Check if complete
+        if (_registerQueryStep >= sizeof(regQueryInstructions))
+            _registerQueryMode = false;
+    }
+    else if ((addr >= descriptorTable.emulatedRAMStart) && 
+            (addr < descriptorTable.emulatedRAMStart + descriptorTable.emulatedRAMLen))
+    {
+        // Check for read
+        if (flags & BR_CTRL_BUS_RD_MASK)
+        {
+            if (flags & BR_CTRL_BUS_MREQ_MASK)
+            {
+                retVal = _targetMemBuffer[addr];
+            }
+        }
+        else if (flags & BR_CTRL_BUS_WR_MASK)
+        {
+            if (flags & BR_CTRL_BUS_MREQ_MASK)
+            {
+                _targetMemBuffer[addr] = data;
+            }
+        } 
+    }
+
     return retVal;
 }
 

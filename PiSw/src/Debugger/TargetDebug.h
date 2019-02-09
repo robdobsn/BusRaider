@@ -58,9 +58,11 @@ public:
 class TargetDebug
 {
 public:
-    TargetDebug()
-    {
-    }
+    // Max size of emulated target memory
+    static const uint32_t MAX_TARGET_MEMORY_LEN = 0x10000;
+
+public:
+    TargetDebug();
 
     static TargetDebug* get();
 
@@ -68,18 +70,32 @@ public:
             [[maybe_unused]] char* pResponse, [[maybe_unused]] int maxResponseLen);
 
     uint32_t handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
-            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal);
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal,
+            [[maybe_unused]] McDescriptorTable& descriptorTable);
+
+    uint8_t getMemoryByte(uint32_t addr);
+    uint16_t getMemoryWord(uint32_t addr);
+    void clearMemory();
+    void blockWrite(uint32_t addr, uint8_t* pBuf, uint32_t len);
 
 private:
 
     bool matches(const char* s1, const char* s2, int maxLen);
-    void grabMemoryAndReleaseBusRq();
+    void grabMemoryAndReleaseBusRq(McBase* pMachine, bool singleStep);
 
+    // Registers
     Z80Registers _z80Registers;
 
-    static const int MAX_MEM_DUMP_LEN = 1024;
+    // Register query mode
+    bool _registerQueryMode;
+    unsigned int _registerQueryStep;
+
+    // Target memory buffer  
     static const int MAX_TARGET_MEM_ADDR = 0xffff;
-    static uint8_t _targetMemBuffer[MAX_MEM_DUMP_LEN];
+    static uint8_t _targetMemBuffer[MAX_TARGET_MEMORY_LEN];
+
+    // Limit on data sent back
+    static const int MAX_MEM_DUMP_LEN = 1024;
 };
 
 extern TargetDebug __targetDebug;

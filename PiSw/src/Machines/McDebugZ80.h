@@ -9,13 +9,9 @@ class McDebugZ80 : public McBase
 {
 private:
     static const char* _logPrefix;
-    static constexpr uint32_t DEBUGZ80_RAM_ADDR = 0x0000;
-    static constexpr uint32_t DEBUGZ80_RAM_SIZE = 0x10000;
-    static uint8_t _systemRAM[DEBUGZ80_RAM_SIZE];
     static constexpr uint32_t DEBUGZ80_DISP_RAM_ADDR = 0xc000;
     static constexpr uint32_t DEBUGZ80_DISP_RAM_SIZE = 0x400;
     uint8_t _pScrnBufCopy[DEBUGZ80_DISP_RAM_SIZE];
-    static volatile bool _scrnBufDirtyFlag;
 
     static McDescriptorTable _descriptorTable;
 

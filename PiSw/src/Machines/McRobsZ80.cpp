@@ -34,7 +34,9 @@ McDescriptorTable McRobsZ80::_descriptorTable = {
     .clockFrequencyHz = 7000000,
     // Bus monitor
     .monitorIORQ = true,
-    .monitorMREQ = false
+    .monitorMREQ = false,
+    .emulatedRAMStart = 0,
+    .emulatedRAMLen = 0
 };
 
 // Enable machine
@@ -126,7 +128,7 @@ uint32_t McRobsZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[mayb
     // Callback to debugger
     TargetDebug* pDebug = TargetDebug::get();
     if (pDebug)
-        retVal = pDebug->handleInterrupt(addr, data, flags, retVal);
+        retVal = pDebug->handleInterrupt(addr, data, flags, retVal, _descriptorTable);
 
     // Not decoded
     return retVal;

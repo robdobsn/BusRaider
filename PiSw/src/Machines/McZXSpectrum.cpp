@@ -35,7 +35,9 @@ McDescriptorTable McZXSpectrum::_descriptorTable = {
     .clockFrequencyHz = 3500000,
     // Bus monitor
     .monitorIORQ = true,
-    .monitorMREQ = false
+    .monitorMREQ = false,
+    .emulatedRAMStart = 0,
+    .emulatedRAMLen = 0
 };
 
 // Enable machine
@@ -262,7 +264,7 @@ uint32_t McZXSpectrum::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[m
     // Callback to debugger
     TargetDebug* pDebug = TargetDebug::get();
     if (pDebug)
-        retVal = pDebug->handleInterrupt(addr, data, flags, retVal);
+        retVal = pDebug->handleInterrupt(addr, data, flags, retVal, _descriptorTable);
 
     return retVal;
 }

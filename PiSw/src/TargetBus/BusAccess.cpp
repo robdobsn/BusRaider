@@ -31,6 +31,12 @@ bool BusAccess::_waitIntEnabled = false;
 // Currently paused - i.e. wait is active
 volatile bool BusAccess::_pauseIsPaused = false;
 
+// Bus under BusRaider control
+volatile bool BusAccess::_busIsUnderControl = false;
+
+// Request bus when single stepping
+bool BusAccess::_requestBusWhenSingleStepping = false;
+
 // // Bus values while single stepping
 uint32_t BusAccess::_pauseCurAddr = 0;
 uint32_t BusAccess::_pauseCurData = 0;
@@ -146,6 +152,12 @@ void BusAccess::targetIRQ()
 // Bus Request / Acknowledge
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// Is under control
+bool BusAccess::isUnderControl()
+{
+    return _busIsUnderControl;
+}
+
 // Request access to the bus
 void BusAccess::controlRequest()
 {
@@ -177,6 +189,9 @@ void BusAccess::controlTake()
 
     // Address bus enabled
     digitalWrite(BR_PUSH_ADDR_BAR, 0);
+
+    // Bus is under BusRaider control
+    _busIsUnderControl = true;
 }
 
 // Release control of bus
@@ -187,12 +202,27 @@ void BusAccess::controlRelease(bool resetTargetOnRelease)
     // (if enabled)
     pibSetOut();
     pibSetValue(1 << BR_M1_PIB_DATA_LINE);
+
+    // Set data direction out so we can set the M1 value
+    WR32(GPCLR0, 1 << BR_DATA_DIR_IN);
+
+    // Pulse MREQ to prime the FF
     microsDelay(2);
     digitalWrite(BR_MREQ_BAR, 0);
     microsDelay(2);
     digitalWrite(BR_MREQ_BAR, 1);
+
+    // Clear down
+    WR32(GPSET0, 1 << BR_DATA_DIR_IN);
     pibSetIn();
     microsDelay(2);
+
+    // Clear the mux to deactivate output enables
+    muxClear();
+
+    // Clear wait detected
+    clearWaitFF();
+    clearWaitDetected();
 
     // Control bus
     pinMode(BR_WR_BAR, INPUT);
@@ -203,10 +233,6 @@ void BusAccess::controlRelease(bool resetTargetOnRelease)
     // Address bus not enabled
     digitalWrite(BR_PUSH_ADDR_BAR, 1);
     
-    // Clear wait detected
-    clearWaitFF();
-    clearWaitDetected();
-
     // Re-enable interrupts if required
     if (_waitIntEnabled)
         waitIntEnable();
@@ -227,6 +253,9 @@ void BusAccess::controlRelease(bool resetTargetOnRelease)
         // No longer request bus
         digitalWrite(BR_BUSRQ_BAR, 1);
     }
+
+    // Bus no longer under BusRaider control
+    _busIsUnderControl = false;
 }
 
 // Request bus, wait until available and take control
@@ -713,24 +742,18 @@ void BusAccess::waitStateISR(void* pData)
         muxClear();
     }
 
-    // Check if pause requested
-    int m1Asserted = (busVals & (1 << BR_M1_PIB_BAR)) == 0;
+    // Check if M1 active (an instruction fetch cycle)
+    bool m1Asserted = (busVals & (1 << BR_M1_PIB_BAR)) == 0;
+
+    // Check for instruction injection
+    bool instructionInjection = ((retVal & BR_MEM_ACCESS_INSTR_INJECT) != 0);
 
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-    // //TODO
-    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-    // microsDelay(1);
-    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-    // microsDelay(1);
-    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-    // microsDelay(1);
-    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-    // microsDelay(1);
-    digitalWrite(BR_DEBUG_PI_SPI0_CE0, m1Asserted);
-    // microsDelay(1);
+    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, m1Asserted);
 #endif
 
-    if (_pauseIsPaused && m1Asserted)
+    // Check if we should hold the target processor at this point
+    if (_pauseIsPaused && m1Asserted && !instructionInjection)
     {
         // Store the current address, data and ctrl line state
         _pauseCurAddr = addr;
@@ -739,6 +762,39 @@ void BusAccess::waitStateISR(void* pData)
     }
     else
     {
+        //TODO
+        if (_pauseIsPaused)
+        {
+            digitalWrite(8, 1);
+            microsDelay(1);
+            digitalWrite(8, 0);
+            microsDelay(1);
+            digitalWrite(8, 1);
+            microsDelay(1);
+            digitalWrite(8, 0);
+        }
+        if (m1Asserted)
+        {
+            microsDelay(1);
+            digitalWrite(8, 1);
+            microsDelay(2);
+            digitalWrite(8, 0);
+            microsDelay(1);
+            digitalWrite(8, 1);
+            microsDelay(2);
+            digitalWrite(8, 0);
+        }
+        if (instructionInjection)
+        {
+            microsDelay(1);
+            digitalWrite(8, 1);
+            microsDelay(0.5);
+            digitalWrite(8, 0);
+            microsDelay(1);
+            digitalWrite(8, 1);
+            microsDelay(0.5);
+            digitalWrite(8, 0);
+        }
         // No pause requested - clear the WAIT state so execution can continue
         // Clear the WAIT state flip-flop
         clearWaitFF();
@@ -784,8 +840,9 @@ bool BusAccess::pause()
         return false;
 
     // Request bus so we can grab memory data before entering a wait state
-    if (controlRequestAndTake() != BR_OK)
-        return false;
+    if (_requestBusWhenSingleStepping)
+        if (controlRequestAndTake() != BR_OK)
+            return false;
 
     _pauseIsPaused = true;
 
@@ -814,8 +871,9 @@ bool BusAccess::pauseStep()
     lowlev_disable_irq();
     lowlev_disable_fiq();
 
-    // Request
-    controlRequest();
+    // Request if required
+    if (_requestBusWhenSingleStepping)
+        controlRequest();
 
     // Clear the WAIT state flip-flop
     clearWaitFF();
@@ -828,8 +886,9 @@ bool BusAccess::pauseStep()
     lowlev_enable_fiq();
 
     // Request bus so we can grab memory data before entering a wait state
-    if (controlRequestAndTake() != BR_OK)
-        return false;
+    if (_requestBusWhenSingleStepping)
+        if (controlRequestAndTake() != BR_OK)
+            return false;
 
     return true;
 }
