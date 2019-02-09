@@ -764,39 +764,39 @@ void BusAccess::waitStateISR(void* pData)
     }
     else
     {
-        //TODO
-        if (_pauseIsPaused)
-        {
-            digitalWrite(8, 1);
-            microsDelay(1);
-            digitalWrite(8, 0);
-            microsDelay(1);
-            digitalWrite(8, 1);
-            microsDelay(1);
-            digitalWrite(8, 0);
-        }
-        if (m1Asserted)
-        {
-            microsDelay(1);
-            digitalWrite(8, 1);
-            microsDelay(2);
-            digitalWrite(8, 0);
-            microsDelay(1);
-            digitalWrite(8, 1);
-            microsDelay(2);
-            digitalWrite(8, 0);
-        }
-        if (instructionInjection)
-        {
-            microsDelay(1);
-            digitalWrite(8, 1);
-            microsDelay(0.5);
-            digitalWrite(8, 0);
-            microsDelay(1);
-            digitalWrite(8, 1);
-            microsDelay(0.5);
-            digitalWrite(8, 0);
-        }
+        // //TODO
+        // if (_pauseIsPaused)
+        // {
+        //     digitalWrite(8, 1);
+        //     microsDelay(1);
+        //     digitalWrite(8, 0);
+        //     microsDelay(1);
+        //     digitalWrite(8, 1);
+        //     microsDelay(1);
+        //     digitalWrite(8, 0);
+        // }
+        // if (m1Asserted)
+        // {
+        //     microsDelay(1);
+        //     digitalWrite(8, 1);
+        //     microsDelay(2);
+        //     digitalWrite(8, 0);
+        //     microsDelay(1);
+        //     digitalWrite(8, 1);
+        //     microsDelay(2);
+        //     digitalWrite(8, 0);
+        // }
+        // if (instructionInjection)
+        // {
+        //     microsDelay(1);
+        //     digitalWrite(8, 1);
+        //     microsDelay(0.5);
+        //     digitalWrite(8, 0);
+        //     microsDelay(1);
+        //     digitalWrite(8, 1);
+        //     microsDelay(0.5);
+        //     digitalWrite(8, 0);
+        // }
         // No pause requested - clear the WAIT state so execution can continue
         // Clear the WAIT state flip-flop
         clearWaitFF();

@@ -80,7 +80,7 @@ void RemoteDebugProtocolSession::_onData(void *buf, size_t len)
 {
     char debugStr[100+1];
     strlcpy(debugStr, (char*)buf, len);
-    Log.trace("%sonData %s\n", SESSION_PREFIX, debugStr);
+    Log.verbose("%sonData %s\n", SESSION_PREFIX, debugStr);
     if (_pServer)
         _pServer->_handleData((const char*)buf, len);
 }

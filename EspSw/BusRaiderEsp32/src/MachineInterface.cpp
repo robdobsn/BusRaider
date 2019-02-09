@@ -336,7 +336,7 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *framebuffer, int frame
     }
     else if (cmdName.equalsIgnoreCase("rdp"))
     {
-        Log.trace("%srdp response message %s\n", MODULE_PREFIX, str.c_str());
+        Log.verbose("%srdp response message %s\n", MODULE_PREFIX, str.c_str());
         String contentStr = RdJson::getString("content", "", str.c_str());
         if (_pRemoteDebugServer)
             _pRemoteDebugServer->sendChars(contentStr.c_str(), contentStr.length());

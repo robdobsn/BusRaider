@@ -199,7 +199,7 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
     }
     else if (matches(cmdStr, "enable-breakpoint", MAX_CMD_STR_LEN))
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "enable breakpoint %s", argStr);
+        // LogWrite(FromTargetDebug, LOG_DEBUG, "enable breakpoint %s", argStr);
         strlcat(pResponse, "", maxResponseLen);
     }
     else if (matches(cmdStr, "enable-breakpoints", MAX_CMD_STR_LEN))
@@ -208,7 +208,7 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
     }
     else if (matches(cmdStr, "disable-breakpoint", MAX_CMD_STR_LEN))
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "disable breakpoint %s", argStr);
+        // LogWrite(FromTargetDebug, LOG_DEBUG, "disable breakpoint %s", argStr);
         strlcat(pResponse, "", maxResponseLen);
     }
     else if (matches(cmdStr, "disable-breakpoints", MAX_CMD_STR_LEN))
@@ -271,7 +271,7 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
         if (BusAccess::pauseStep())
         {
             grabMemoryAndReleaseBusRq(pMachine, true);
-            LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step done");
+            // LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step done");
         }
         else
         {
@@ -285,7 +285,7 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
         if (BusAccess::pause())
         {
             grabMemoryAndReleaseBusRq(pMachine, false);
-            LogWrite(FromTargetDebug, LOG_DEBUG, "now paused SEND-BLANK");
+            // LogWrite(FromTargetDebug, LOG_DEBUG, "now paused SEND-BLANK");
         }
         else
         {
