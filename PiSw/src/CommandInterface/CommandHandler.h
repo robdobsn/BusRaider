@@ -63,7 +63,6 @@ private:
     void handleFileStart(const char* pCmdJson);
     void handleFileBlock(const char* pCmdJson, const uint8_t* pData, int dataLen);
     void handleFileEnd(const char* pCmdJson);
-    void handleTargetProgram(const char* cmdName);
     void handleStatusResponse(const char* pCmdJson);
     static void addressRxCallback(uint32_t addr);
 

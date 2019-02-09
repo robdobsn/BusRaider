@@ -5,7 +5,6 @@
 #include "../System/nmalloc.h"
 #include "../System/ee_printf.h"
 #include "../TargetBus/target_memory_map.h"
-#include "../TargetBus/BusAccess.h"
 #include "minihdlc.h"
 #include "../FileFormats/srecparser.h"
 #include "../Machines/McManager.h"
@@ -155,22 +154,17 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     }
     else if ((strcasecmp(cmdName, "ProgramAndReset") == 0) || (strcasecmp(cmdName, "ProgramTarget") == 0))
     {
-        handleTargetProgram(cmdName);
+        McManager::handleTargetProgram(cmdName);
     }
     else if (strcasecmp(cmdName, "ResetTarget") == 0)
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "ResetTarget");
-        bool resetDone = false;
-        McBase* pMc = McManager::getMachine();
-        if (pMc)
-            resetDone = pMc->reset();
-        if (!resetDone)
-            BusAccess::targetReset();
+        McManager::targetReset();
     }
     else if (strcasecmp(cmdName, "IOClrTarget") == 0)
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "IO Clear Target");
-        BusAccess::clearAllIO();       
+        McManager::targetClearAllIO();
     }
     else if (strcasecmp(cmdName, "FileTarget") == 0)
     {
@@ -365,50 +359,6 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
             pMc->fileHandler(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx);
 
     }
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Target programming
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Handle programming of target machine
-void CommandHandler::handleTargetProgram(const char* cmdName)
-{
-    if (targetGetNumBlocks() == 0) 
-    {
-        // Nothing new to write
-        LogWrite(FromCmdHandler, LOG_DEBUG, "ProgramTarget - nothing to write");
-    } 
-    else 
-    {
-        // Handle programming in one BUSRQ/BUSACK pass
-        if (BusAccess::controlRequestAndTake() != BR_OK)
-        {
-            LogWrite(FromCmdHandler, LOG_DEBUG, "ProgramTarget - failed to capture bus");   
-            return;
-        }
-        // Write the blocks
-        for (int i = 0; i < targetGetNumBlocks(); i++) {
-            TargetMemoryBlock* pBlock = targetGetMemoryBlock(i);
-            LogWrite(FromCmdHandler, LOG_DEBUG,"ProgramTarget start %08x len %d", pBlock->start, pBlock->len);
-            BusAccess::blockWrite(pBlock->start, targetMemoryPtr() + pBlock->start, pBlock->len, false, false);
-        }
-        // Written
-        LogWrite(FromCmdHandler, LOG_DEBUG, "ProgramTarget - written %d blocks", targetGetNumBlocks());
-
-        // Check for reset too
-        if (strcasecmp(cmdName, "ProgramAndReset") == 0)
-        {
-            LogWrite(FromCmdHandler, LOG_DEBUG, "Resetting target");
-            BusAccess::controlRelease(true);
-        }
-        else
-        {
-            BusAccess::controlRelease(false);
-        }
-    }
-    // Clear buffer
-    targetClear();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

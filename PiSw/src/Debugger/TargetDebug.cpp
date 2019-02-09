@@ -97,14 +97,26 @@ void TargetDebug::clearMemory()
     memset(_targetMemBuffer, 0, MAX_TARGET_MEMORY_LEN);
 }
 
-void TargetDebug::blockWrite(uint32_t addr, uint8_t* pBuf, uint32_t len)
+bool TargetDebug::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len)
 {
     int copyLen = len;
     if (addr >= MAX_TARGET_MEMORY_LEN)
-        return;
+        return false;
     if (addr + copyLen > MAX_TARGET_MEMORY_LEN)
         copyLen = MAX_TARGET_MEMORY_LEN - addr;
     memcpy(_targetMemBuffer + addr, pBuf, copyLen);
+    return true;
+}
+
+bool TargetDebug::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len)
+{
+    int copyLen = len;
+    if (addr >= MAX_TARGET_MEMORY_LEN)
+        return false;
+    if (addr + copyLen > MAX_TARGET_MEMORY_LEN)
+        copyLen = MAX_TARGET_MEMORY_LEN - addr;
+    memcpy(pBuf, _targetMemBuffer + addr, copyLen);
+    return true;
 }
 
 void TargetDebug::startGetRegisterSequence()

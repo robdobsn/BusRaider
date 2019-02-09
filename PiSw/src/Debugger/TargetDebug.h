@@ -101,7 +101,8 @@ public:
     uint8_t getMemoryByte(uint32_t addr);
     uint16_t getMemoryWord(uint32_t addr);
     void clearMemory();
-    void blockWrite(uint32_t addr, uint8_t* pBuf, uint32_t len);
+    bool blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len);
+    bool blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len);
 
 private:
 

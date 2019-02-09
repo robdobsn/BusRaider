@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include "../FileFormats/McZXSpectrumTZXFormat.h"
 #include "../Debugger/TargetDebug.h"
+#include "../Machines/McManager.h"
 
 const char* McZXSpectrum::_logPrefix = "ZXSpectrum";
 
@@ -69,7 +70,7 @@ void McZXSpectrum::displayRefresh()
 {
     // Read memory at the location of the memory mapped screen
     unsigned char pScrnBuffer[ZXSPECTRUM_DISP_RAM_SIZE];
-    BusAccess::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, pScrnBuffer, ZXSPECTRUM_DISP_RAM_SIZE, 1, 0);
+    McManager::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, pScrnBuffer, ZXSPECTRUM_DISP_RAM_SIZE, 1, 0);
 
     // Check for colour data change - refresh everything if changed
     for (uint32_t colrIdx = ZXSPECTRUM_PIXEL_RAM_SIZE; colrIdx < ZXSPECTRUM_DISP_RAM_SIZE; colrIdx++)
@@ -194,6 +195,13 @@ uint32_t McZXSpectrum::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[m
 {
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
     
+    // Callback to debugger
+    TargetDebug* pDebug = TargetDebug::get();
+    if (pDebug)
+        retVal = pDebug->handleInterrupt(addr, data, flags, retVal, _descriptorTable);
+    if ((retVal & BR_MEM_ACCESS_INSTR_INJECT) != 0)
+        return retVal;
+
     // Check for read from IO
     if ((flags & BR_CTRL_BUS_RD_MASK) && (flags & BR_CTRL_BUS_IORQ_MASK))
     {
@@ -260,11 +268,6 @@ uint32_t McZXSpectrum::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[m
             retVal = keysPressed;
         }
     }
-
-    // Callback to debugger
-    TargetDebug* pDebug = TargetDebug::get();
-    if (pDebug)
-        retVal = pDebug->handleInterrupt(addr, data, flags, retVal, _descriptorTable);
 
     return retVal;
 }
