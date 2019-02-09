@@ -62,16 +62,13 @@ void TargetDebug::blockWrite(uint32_t addr, uint8_t* pBuf, uint32_t len)
     memcpy(_targetMemBuffer + addr, pBuf, copyLen);
 }
 
-void TargetDebug::grabMemoryAndReleaseBusRq(McBase* pMachine, bool singleStep)
+void TargetDebug::grabMemoryAndReleaseBusRq(McBase* pMachine, [[maybe_unused]] bool singleStep)
 {
     // Start sequence of getting registers
-    if (singleStep)
-    {
-        _registerQueryMode = true;
-        _registerQueryGotM1 = false;
-        _registerQueryWriteIndex = 0;
-        _registerQueryStep = 0;
-    }
+    _registerQueryMode = true;
+    _registerQueryGotM1 = false;
+    _registerQueryWriteIndex = 0;
+    _registerQueryStep = 0;
 
     // Check if the bus in under BusRaider control
     if (BusAccess::isUnderControl())
