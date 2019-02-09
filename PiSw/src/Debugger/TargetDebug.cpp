@@ -28,6 +28,8 @@ TargetDebug* TargetDebug::get()
 TargetDebug::TargetDebug()
 {
     _registerQueryMode = false;
+    _registerQueryGotM1 = false;
+    _registerQueryWriteIndex = 0;
     _registerQueryStep = 0;
 }
 
@@ -65,8 +67,9 @@ void TargetDebug::grabMemoryAndReleaseBusRq(McBase* pMachine, bool singleStep)
     // Start sequence of getting registers
     if (singleStep)
     {
-        //TODO
-        // _registerQueryMode = true;
+        _registerQueryMode = true;
+        _registerQueryGotM1 = false;
+        _registerQueryWriteIndex = 0;
         _registerQueryStep = 0;
     }
 
@@ -322,14 +325,153 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
     // Instructions to get register values
     static uint8_t regQueryInstructions[] = 
     {
-        0x18, 0xfe
+                        // loop:
+        0xF5,           //     push af
+        0xED, 0x5F,     //     ld a,r
+        0x77,           //     ld (hl),a
+        0xED, 0x57,     //     ld a,i   
+        0x77,           //     ld (hl),a
+        0x33,           //     inc sp
+        0x33,           //     inc sp
+        0x12,           //     ld (de),a
+        0x02,           //     ld (bc),a
+        0xD9,           //     exx
+        0x77,           //     ld (hl),a
+        0x12,           //     ld (de),a
+        0x02,           //     ld (bc),a
+        0xD9,           //     exx
+        0x08,           //     ex af,af'
+        0xF5,           //     push af
+        0x33,           //     inc sp
+        0x33,           //     inc sp
+        0x08,           //     ex af,af'
+        0xDD, 0xE5,     //     push ix        
+        0x33,           //     inc sp
+        0x33,           //     inc sp    
+        0xFD, 0xE5,     //     push iy    
+        0x3E, 0x00,     //     ld a, 0 - note that the value 0 gets changed in the code below  
+        0xED, 0x4F,     //     ld r, a
+        0xF1, 0x00, 0x00,    //     pop af + two bytes that are read is if from stack - note that the values 0, 0 get changed in the code below  
+        0x18, 0xDE      //     jr loop
     };
+    const int RegisterRUpdatePos = 28;
+    const int RegisterAFUpdatePos = 32;
 
     // Check if we're in register query mode
-    if (_registerQueryMode)
+    if (_registerQueryMode && (_registerQueryGotM1 || (flags & BR_CTRL_BUS_M1_MASK)))
     {
-        // Send instructions to query registers
-        retVal = regQueryInstructions[_registerQueryStep++] | BR_MEM_ACCESS_INSTR_INJECT;
+        // We're now inserting instructions or getting results back
+        _registerQueryGotM1 = true;
+
+        // Check if writing
+        if (flags & BR_CTRL_BUS_WR_MASK)
+        {
+            retVal = BR_MEM_ACCESS_INSTR_INJECT;
+            // Store the result in registers
+            switch(_registerQueryStep)
+            {
+                case 1:  // push af
+                {
+                    if (_registerQueryWriteIndex == 0)
+                    {
+                        _z80Registers.SP = addr+1;
+                        _z80Registers.AF = (_z80Registers.AF & 0xff) | (data << 8);
+                        regQueryInstructions[RegisterAFUpdatePos+1] = data;                     
+                        _registerQueryWriteIndex++;
+                    }
+                    else
+                    {
+                        _z80Registers.AF = (_z80Registers.AF & 0xff00) | (data & 0xff);
+                        regQueryInstructions[RegisterAFUpdatePos] = data;                     
+                    }
+                    break;
+                }
+                case 4: // ld (hl), a (where a has the contents of r)
+                {
+                    _z80Registers.HL = addr;
+                    // R value compensates for the push af and ld r,a instructions
+                    _z80Registers.R = data - 3;
+                    // Value stored back to R compensates for ld a,NN and jr loop instructions
+                    regQueryInstructions[RegisterRUpdatePos] = _z80Registers.R - 2;                 
+                    break;
+                }
+                case 7: // ld (hl), a (where a has the contents of i)
+                {
+                    _z80Registers.I = data;                        
+                    break;
+                }
+                case 10: // ld (de), a
+                {
+                    _z80Registers.DE = addr;                        
+                    break;
+                }
+                case 11: // ld (bc), a
+                {
+                    _z80Registers.BC = addr;                        
+                    break;
+                }
+                case 13: // ld (hl), a (after EXX so hl')
+                {
+                    _z80Registers.HLDASH = addr;                        
+                    break;
+                }
+                case 14: // ld (de), a (after EXX so de')
+                {
+                    _z80Registers.DEDASH = addr;                        
+                    break;
+                }
+                case 15: // ld (bc), a (after EXX so bc')
+                {
+                    _z80Registers.BCDASH = addr;                        
+                    break;
+                }
+                case 18:  // push af (actually af')
+                {
+                    if (_registerQueryWriteIndex == 0)
+                    {
+                        _z80Registers.AFDASH = (_z80Registers.AFDASH & 0xff) | (data << 8);
+                        _registerQueryWriteIndex++;
+                    }
+                    else
+                    {
+                        _z80Registers.AFDASH = (_z80Registers.AFDASH & 0xff00) | (data & 0xff);
+                    }
+                    break;
+                }
+                case 22:  // push ix
+                {
+                    if (_registerQueryWriteIndex == 0)
+                    {
+                        _z80Registers.IX = (_z80Registers.IX & 0xff) | (data << 8);
+                        _registerQueryWriteIndex++;
+                    }
+                    else
+                    {
+                        _z80Registers.IX = (_z80Registers.IX & 0xff00) | (data & 0xff);
+                    }
+                    break;
+                }
+                case 26:  // push ix
+                {
+                    if (_registerQueryWriteIndex == 0)
+                    {
+                        _z80Registers.IY = (_z80Registers.IY & 0xff) | (data << 8);
+                        _registerQueryWriteIndex++;
+                    }
+                    else
+                    {
+                        _z80Registers.IY = (_z80Registers.IY & 0xff00) | (data & 0xff);
+                    }
+                    break;
+                }
+            }
+        }
+        else
+        {
+            // Send instructions to query registers
+            retVal = regQueryInstructions[_registerQueryStep++] | BR_MEM_ACCESS_INSTR_INJECT;
+            _registerQueryWriteIndex = 0;
+        }
 
         // Check if complete
         if (_registerQueryStep >= sizeof(regQueryInstructions))

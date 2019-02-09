@@ -88,6 +88,8 @@ private:
 
     // Register query mode
     bool _registerQueryMode;
+    bool _registerQueryGotM1;
+    int _registerQueryWriteIndex;
     unsigned int _registerQueryStep;
 
     // Target memory buffer  

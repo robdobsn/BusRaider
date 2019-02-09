@@ -206,6 +206,8 @@ void BusAccess::controlRelease(bool resetTargetOnRelease)
     // Set data direction out so we can set the M1 value
     WR32(GPCLR0, 1 << BR_DATA_DIR_IN);
 
+//TODO optimize
+
     // Pulse MREQ to prime the FF
     microsDelay(2);
     digitalWrite(BR_MREQ_BAR, 0);
