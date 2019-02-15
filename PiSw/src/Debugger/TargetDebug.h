@@ -112,6 +112,8 @@ private:
     void setBreakpointMessage(int idx, const char* hitMessage);
     void setBreakpointPCAddr(int idx, uint32_t pcVal);
     void startGetRegisterSequence();
+    void startSetRegisterSequence();
+    void handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
 
     // Callback to send debug frames
     static SendDebugMessageType* _pSendDebugMessageCallback;
@@ -119,8 +121,13 @@ private:
     // Registers
     Z80Registers _z80Registers;
 
-    // Register query mode
-    bool _registerQueryMode;
+    // Register mode
+    enum REGISTER_MODE {
+        REGISTER_MODE_NONE,
+        REGISTER_MODE_GET,
+        REGISTER_MODE_SET,
+    };
+    REGISTER_MODE _registerMode;
     bool _registerQueryGotM1;
     int _registerQueryWriteIndex;
     unsigned int _registerQueryStep;

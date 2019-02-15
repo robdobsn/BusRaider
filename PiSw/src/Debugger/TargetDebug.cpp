@@ -38,7 +38,7 @@ TargetDebug* TargetDebug::get()
 
 TargetDebug::TargetDebug()
 {
-    _registerQueryMode = false;
+    _registerMode = REGISTER_MODE_NONE;
     _registerQueryGotM1 = false;
     _registerQueryWriteIndex = 0;
     _registerQueryStep = 0;
@@ -122,10 +122,16 @@ bool TargetDebug::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len)
 void TargetDebug::startGetRegisterSequence()
 {
     // Start sequence of getting registers
-    _registerQueryMode = true;
+    _registerMode = REGISTER_MODE_GET;
     _registerQueryGotM1 = false;
     _registerQueryWriteIndex = 0;
     _registerQueryStep = 0;
+}
+
+void TargetDebug::startSetRegisterSequence()
+{
+    // Start sequence of setting registers
+    _registerMode = REGISTER_MODE_SET;
 }
 
 void TargetDebug::grabMemoryAndReleaseBusRq(McBase* pMachine, [[maybe_unused]] bool singleStep)
@@ -419,32 +425,12 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
     return true;
 }
 
-uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
-            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal,
-            [[maybe_unused]] McDescriptorTable& descriptorTable)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Interrupt extension for debugger - handle register GET
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TargetDebug::handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal)
 {
-    // Only handle MREQs
-    if ((flags & BR_CTRL_BUS_MREQ_MASK) == 0)
-        return retVal;
-
-    // See if breakpoints enabled and M1 cycle
-    if (!_registerQueryMode && _breakpointsEnabled && (_breakpointNumEnabled > 0) && (flags & BR_CTRL_BUS_M1_MASK))
-    {
-        // Check breakpoints
-        for (int i = 0; i < _breakpointNumEnabled; i++)
-        {
-            int bpIdx = _breakpointIdxsToCheck[i];
-            if (_breakpoints[bpIdx].pcValue == addr)
-            {
-                if (BusAccess::pause())
-                    startGetRegisterSequence();
-                _breakpointHitFlag = true;
-                _breakpointHitIndex = bpIdx;
-                break;
-            }
-        }
-    }
-
     // Instructions to get register values
     static uint8_t regQueryInstructions[] = 
     {
@@ -480,125 +466,158 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
     const int RegisterRUpdatePos = 28;
     const int RegisterAFUpdatePos = 32;
 
-    // Check if we're in register query mode
-    if (_registerQueryMode && (_registerQueryGotM1 || (flags & BR_CTRL_BUS_M1_MASK)))
-    {
-        // We're now inserting instructions or getting results back
-        _registerQueryGotM1 = true;
+    // We're now inserting instructions or getting results back
+    _registerQueryGotM1 = true;
 
-        // Check if writing
-        if (flags & BR_CTRL_BUS_WR_MASK)
+    // Check if writing
+    if (flags & BR_CTRL_BUS_WR_MASK)
+    {
+        retVal = BR_MEM_ACCESS_INSTR_INJECT;
+        // Store the result in registers
+        switch(_registerQueryStep)
         {
-            retVal = BR_MEM_ACCESS_INSTR_INJECT;
-            // Store the result in registers
-            switch(_registerQueryStep)
+            case 1:  // push af
             {
-                case 1:  // push af
+                if (_registerQueryWriteIndex == 0)
                 {
-                    if (_registerQueryWriteIndex == 0)
-                    {
-                        _z80Registers.SP = addr+1;
-                        _z80Registers.AF = (_z80Registers.AF & 0xff) | (data << 8);
-                        regQueryInstructions[RegisterAFUpdatePos+1] = data;                     
-                        _registerQueryWriteIndex++;
-                    }
-                    else
-                    {
-                        _z80Registers.AF = (_z80Registers.AF & 0xff00) | (data & 0xff);
-                        regQueryInstructions[RegisterAFUpdatePos] = data;                     
-                    }
-                    break;
+                    _z80Registers.SP = addr+1;
+                    _z80Registers.AF = (_z80Registers.AF & 0xff) | (data << 8);
+                    regQueryInstructions[RegisterAFUpdatePos+1] = data;                     
+                    _registerQueryWriteIndex++;
                 }
-                case 4: // ld (hl), a (where a has the contents of r)
+                else
                 {
-                    _z80Registers.HL = addr;
-                    // R value compensates for the push af and ld r,a instructions
-                    _z80Registers.R = data - 3;
-                    // Value stored back to R compensates for ld a,NN and jr loop instructions
-                    regQueryInstructions[RegisterRUpdatePos] = _z80Registers.R - 2;                 
-                    break;
+                    _z80Registers.AF = (_z80Registers.AF & 0xff00) | (data & 0xff);
+                    regQueryInstructions[RegisterAFUpdatePos] = data;                     
                 }
-                case 7: // ld (hl), a (where a has the contents of i)
+                break;
+            }
+            case 4: // ld (hl), a (where a has the contents of r)
+            {
+                _z80Registers.HL = addr;
+                // R value compensates for the push af and ld r,a instructions
+                _z80Registers.R = data - 3;
+                // Value stored back to R compensates for ld a,NN and jr loop instructions
+                regQueryInstructions[RegisterRUpdatePos] = _z80Registers.R - 2;                 
+                break;
+            }
+            case 7: // ld (hl), a (where a has the contents of i)
+            {
+                _z80Registers.I = data;                        
+                break;
+            }
+            case 10: // ld (de), a
+            {
+                _z80Registers.DE = addr;                        
+                break;
+            }
+            case 11: // ld (bc), a
+            {
+                _z80Registers.BC = addr;                        
+                break;
+            }
+            case 13: // ld (hl), a (after EXX so hl')
+            {
+                _z80Registers.HLDASH = addr;                        
+                break;
+            }
+            case 14: // ld (de), a (after EXX so de')
+            {
+                _z80Registers.DEDASH = addr;                        
+                break;
+            }
+            case 15: // ld (bc), a (after EXX so bc')
+            {
+                _z80Registers.BCDASH = addr;                        
+                break;
+            }
+            case 18:  // push af (actually af')
+            {
+                if (_registerQueryWriteIndex == 0)
                 {
-                    _z80Registers.I = data;                        
-                    break;
+                    _z80Registers.AFDASH = (_z80Registers.AFDASH & 0xff) | (data << 8);
+                    _registerQueryWriteIndex++;
                 }
-                case 10: // ld (de), a
+                else
                 {
-                    _z80Registers.DE = addr;                        
-                    break;
+                    _z80Registers.AFDASH = (_z80Registers.AFDASH & 0xff00) | (data & 0xff);
                 }
-                case 11: // ld (bc), a
+                break;
+            }
+            case 22:  // push ix
+            {
+                if (_registerQueryWriteIndex == 0)
                 {
-                    _z80Registers.BC = addr;                        
-                    break;
+                    _z80Registers.IX = (_z80Registers.IX & 0xff) | (data << 8);
+                    _registerQueryWriteIndex++;
                 }
-                case 13: // ld (hl), a (after EXX so hl')
+                else
                 {
-                    _z80Registers.HLDASH = addr;                        
-                    break;
+                    _z80Registers.IX = (_z80Registers.IX & 0xff00) | (data & 0xff);
                 }
-                case 14: // ld (de), a (after EXX so de')
+                break;
+            }
+            case 26:  // push ix
+            {
+                if (_registerQueryWriteIndex == 0)
                 {
-                    _z80Registers.DEDASH = addr;                        
-                    break;
+                    _z80Registers.IY = (_z80Registers.IY & 0xff) | (data << 8);
+                    _registerQueryWriteIndex++;
                 }
-                case 15: // ld (bc), a (after EXX so bc')
+                else
                 {
-                    _z80Registers.BCDASH = addr;                        
-                    break;
+                    _z80Registers.IY = (_z80Registers.IY & 0xff00) | (data & 0xff);
                 }
-                case 18:  // push af (actually af')
-                {
-                    if (_registerQueryWriteIndex == 0)
-                    {
-                        _z80Registers.AFDASH = (_z80Registers.AFDASH & 0xff) | (data << 8);
-                        _registerQueryWriteIndex++;
-                    }
-                    else
-                    {
-                        _z80Registers.AFDASH = (_z80Registers.AFDASH & 0xff00) | (data & 0xff);
-                    }
-                    break;
-                }
-                case 22:  // push ix
-                {
-                    if (_registerQueryWriteIndex == 0)
-                    {
-                        _z80Registers.IX = (_z80Registers.IX & 0xff) | (data << 8);
-                        _registerQueryWriteIndex++;
-                    }
-                    else
-                    {
-                        _z80Registers.IX = (_z80Registers.IX & 0xff00) | (data & 0xff);
-                    }
-                    break;
-                }
-                case 26:  // push ix
-                {
-                    if (_registerQueryWriteIndex == 0)
-                    {
-                        _z80Registers.IY = (_z80Registers.IY & 0xff) | (data << 8);
-                        _registerQueryWriteIndex++;
-                    }
-                    else
-                    {
-                        _z80Registers.IY = (_z80Registers.IY & 0xff00) | (data & 0xff);
-                    }
-                    break;
-                }
+                break;
             }
         }
-        else
-        {
-            // Send instructions to query registers
-            retVal = regQueryInstructions[_registerQueryStep++] | BR_MEM_ACCESS_INSTR_INJECT;
-            _registerQueryWriteIndex = 0;
-        }
+    }
+    else
+    {
+        // Send instructions to query registers
+        retVal = regQueryInstructions[_registerQueryStep++] | BR_MEM_ACCESS_INSTR_INJECT;
+        _registerQueryWriteIndex = 0;
+    }
 
-        // Check if complete
-        if (_registerQueryStep >= sizeof(regQueryInstructions))
-            _registerQueryMode = false;
+    // Check if complete
+    if (_registerQueryStep >= sizeof(regQueryInstructions))
+        _registerMode = REGISTER_MODE_NONE;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Interrupt extension for debugger
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal,
+            [[maybe_unused]] McDescriptorTable& descriptorTable)
+{
+    // Only handle MREQs
+    if ((flags & BR_CTRL_BUS_MREQ_MASK) == 0)
+        return retVal;
+
+    // See if breakpoints enabled and M1 cycle
+    if ((_registerMode == REGISTER_MODE_NONE) && _breakpointsEnabled && (_breakpointNumEnabled > 0) && (flags & BR_CTRL_BUS_M1_MASK))
+    {
+        // Check breakpoints
+        for (int i = 0; i < _breakpointNumEnabled; i++)
+        {
+            int bpIdx = _breakpointIdxsToCheck[i];
+            if (_breakpoints[bpIdx].pcValue == addr)
+            {
+                if (BusAccess::pause())
+                    startGetRegisterSequence();
+                _breakpointHitFlag = true;
+                _breakpointHitIndex = bpIdx;
+                break;
+            }
+        }
+    }
+
+    // Check if we're in register query mode
+    if ((_registerMode == REGISTER_MODE_GET) && (_registerQueryGotM1 || (flags & BR_CTRL_BUS_M1_MASK)))
+    {
+        handleRegisterGet(addr, data, flags, retVal);
     }
     else if ((addr >= descriptorTable.emulatedRAMStart) && 
             (addr < descriptorTable.emulatedRAMStart + descriptorTable.emulatedRAMLen))

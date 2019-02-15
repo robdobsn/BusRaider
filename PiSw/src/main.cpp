@@ -14,6 +14,7 @@
 #include "Machines/McRobsZ80.h"
 #include "Machines/McDebugZ80.h"
 #include "Machines/McZXSpectrum.h"
+#include "Machines/McZXSpectrumDebug.h"
 #include "Machines/McTerminal.h"
 #include "System/timer.h"
 #include "System/lowlib.h"
@@ -33,7 +34,7 @@ typedef int                 s32;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.011";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.013";
 static const char* PROG_CREDITS = "                        Rob Dobson 2018";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
@@ -188,6 +189,7 @@ extern "C" int main()
     new McRobsZ80();
     new McDebugZ80();
     new McZXSpectrum();
+    new McZXSpectrumDebug();
 
     // Initialise graphics system
     wgfx_init(1366, 768);
