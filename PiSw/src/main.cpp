@@ -1,10 +1,10 @@
 // Bus Raider
 // Rob Dobson 2018
 
-#include "System/uart.h"
+#include "System/uartMini.h"
 #include "System/wgfx.h"
 #include "System/ee_printf.h"
-#include "TargetBus/piwiring.h"
+#include "System/piwiring.h"
 #include "TargetBus/BusAccess.h"
 #include "TargetBus/TargetState.h"
 #include "CommandInterface/CommandHandler.h"
@@ -34,7 +34,7 @@ typedef int                 s32;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.014";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.015";
 static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";

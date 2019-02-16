@@ -60,6 +60,8 @@ extern "C" {
 #define GPPUDCLK0       (PBASE+0x00200098)
 #define GPPUDCLK1 0x2020009C
 
+// MiniUART
+
 #define AUX_MU_CLOCK 250000000
 
 #define AUX_ENABLES     (PBASE+0x00215004)
@@ -75,6 +77,79 @@ extern "C" {
 #define AUX_MU_STAT_REG (PBASE+0x00215064)
 #define AUX_MU_BAUD_REG (PBASE+0x00215068)
 
+// UART0 = PL011
+#define ARM_UART0_BASE		(ARM_IO_BASE + 0x201000)
+
+#define ARM_UART0_DR		(ARM_UART0_BASE + 0x00)
+#define ARM_UART0_FR     	(ARM_UART0_BASE + 0x18)
+#define ARM_UART0_IBRD   	(ARM_UART0_BASE + 0x24)
+#define ARM_UART0_FBRD   	(ARM_UART0_BASE + 0x28)
+#define ARM_UART0_LCRH   	(ARM_UART0_BASE + 0x2C)
+#define ARM_UART0_CR     	(ARM_UART0_BASE + 0x30)
+#define ARM_UART0_IFLS   	(ARM_UART0_BASE + 0x34)
+#define ARM_UART0_IMSC   	(ARM_UART0_BASE + 0x38)
+#define ARM_UART0_RIS    	(ARM_UART0_BASE + 0x3C)
+#define ARM_UART0_MIS    	(ARM_UART0_BASE + 0x40)
+#define ARM_UART0_ICR    	(ARM_UART0_BASE + 0x44)
+
+// Definitions from Raspberry PI Remote Serial Protocol.
+//     Copyright 2012 Jamie Iles, jamie@jamieiles.com.
+//     Licensed under GPLv2
+#define UART0_DR_OE_MASK		(1 << 11)
+#define UART0_DR_BE_MASK		(1 << 10)
+#define UART0_DR_PE_MASK		(1 << 9)
+#define UART0_DR_FE_MASK		(1 << 8)
+
+#define UART0_FR_TXFE_MASK		(1 << 7)
+#define UART0_FR_RXFF_MASK		(1 << 6)
+#define UART0_FR_TXFF_MASK		(1 << 5)
+#define UART0_FR_RXFE_MASK		(1 << 4)
+#define UART0_FR_BUSY_MASK		(1 << 3)
+
+#define UART0_LCRH_SPS_MASK		(1 << 7)
+#define UART0_LCRH_WLEN8_MASK		(3 << 5)
+#define UART0_LCRH_WLEN7_MASK		(2 << 5)
+#define UART0_LCRH_WLEN6_MASK		(1 << 5)
+#define UART0_LCRH_WLEN5_MASK		(0 << 5)
+#define UART0_LCRH_FEN_MASK		(1 << 4)
+#define UART0_LCRH_STP2_MASK		(1 << 3)
+#define UART0_LCRH_EPS_MASK		(1 << 2)
+#define UART0_LCRH_PEN_MASK		(1 << 1)
+#define UART0_LCRH_BRK_MASK		(1 << 0)
+
+#define UART0_CR_CTSEN_MASK		(1 << 15)
+#define UART0_CR_RTSEN_MASK		(1 << 14)
+#define UART0_CR_OUT2_MASK		(1 << 13)
+#define UART0_CR_OUT1_MASK		(1 << 12)
+#define UART0_CR_RTS_MASK		(1 << 11)
+#define UART0_CR_DTR_MASK		(1 << 10)
+#define UART0_CR_RXE_MASK		(1 << 9)
+#define UART0_CR_TXE_MASK		(1 << 8)
+#define UART0_CR_LBE_MASK		(1 << 7)
+#define UART0_CR_UART_EN_MASK		(1 << 0)
+
+#define UART0_IFLS_RXIFSEL_SHIFT	3
+#define UART0_IFLS_RXIFSEL_MASK	(7 << IFLS_RXIFSEL_SHIFT)
+#define UART0_IFLS_TXIFSEL_SHIFT	0
+#define UART0_IFLS_TXIFSEL_MASK	(7 << IFLS_TXIFSEL_SHIFT)
+#define UART0_IFLS_IFSEL_1_8		0
+#define UART0_IFLS_IFSEL_1_4		1
+#define UART0_IFLS_IFSEL_1_2		2
+#define UART0_IFLS_IFSEL_3_4		3
+#define UART0_IFLS_IFSEL_7_8		4
+
+#define UART0_INT_OE			(1 << 10)
+#define UART0_INT_BE			(1 << 9)
+#define UART0_INT_PE			(1 << 8)
+#define UART0_INT_FE			(1 << 7)
+#define UART0_INT_RT			(1 << 6)
+#define UART0_INT_TX			(1 << 5)
+#define UART0_INT_RX			(1 << 4)
+#define UART0_INT_DSRM		(1 << 3)
+#define UART0_INT_DCDM		(1 << 2)
+#define UART0_INT_CTSM		(1 << 1)
+
+// Interrupts
 #define IRQ_BASIC 0x2000B200
 #define IRQ_PEND1 0x2000B204
 #define IRQ_PEND2 0x2000B208

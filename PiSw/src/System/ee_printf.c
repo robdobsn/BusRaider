@@ -39,7 +39,6 @@ This code is based on a file that contains the following:
 
 */
 
-#include "uart.h"
 #include "wgfx.h"
 #include <stdarg.h>
 #include <stddef.h>
@@ -59,7 +58,7 @@ This code is based on a file that contains the following:
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
 
 #define DISP_WRITE_STRING(x) wgfx_term_putstring((const char*)x)
-#define UART_WRITE_STRING(x) uart_write_str((const char*)x)
+// #define UART_WRITE_STRING(x) uart_write_str((const char*)x)
 #define LOG_WRITE_STRING(x) wgfx_term_putstring((const char*)x)
 
 static char* lower_digits = "0123456789abcdefghijklmnopqrstuvwxyz";
@@ -609,13 +608,13 @@ static int ee_vsprintf(char* buf, const char* fmt, va_list args)
 }
 #pragma GCC pop_options
 
-void uart_send_char(char c)
-{
-    char str[2];
-    str[0] = c;
-    str[1] = '\0';
-    UART_WRITE_STRING(str);
-}
+// void uart_send_char(char c)
+// {
+//     char str[2];
+//     str[0] = c;
+//     str[1] = '\0';
+//     UART_WRITE_STRING(str);
+// }
 
 unsigned int __logSeverity = LOG_DEBUG;
 
@@ -685,14 +684,82 @@ void ee_printf(const char* fmt, ...)
     DISP_WRITE_STRING(buf);
 }
 
-void uart_printf(const char* fmt, ...)
+// void uart_printf(const char* fmt, ...)
+// {
+//     char buf[15 * 80];
+//     va_list args;
+
+//     va_start(args, fmt);
+//     ee_vsprintf(buf, fmt, args);
+//     va_end(args);
+
+//     UART_WRITE_STRING(buf);
+// }
+
+// //------------------------------------------------------------------------
+// void uart_write_hex_u8(unsigned int d)
+// {
+//     //unsigned int ra;
+//     unsigned int rb;
+//     unsigned int rc;
+
+//     rb = 8;
+//     while (1) {
+//         rb -= 4;
+//         rc = (d >> rb) & 0xF;
+//         if (rc > 9)
+//             rc += 0x37;
+//         else
+//             rc += 0x30;
+//         uart_send(rc);
+//         if (rb == 0)
+//             break;
+//     }
+//     // uart_send(0x20);
+// }
+// //------------------------------------------------------------------------
+// void uart_write_hex_u32(unsigned int d)
+// {
+//     //unsigned int ra;
+//     unsigned int rb;
+//     unsigned int rc;
+
+//     rb = 32;
+//     while (1) {
+//         rb -= 4;
+//         rc = (d >> rb) & 0xF;
+//         if (rc > 9)
+//             rc += 0x37;
+//         else
+//             rc += 0x30;
+//         uart_send(rc);
+//         if (rb == 0)
+//             break;
+//     }
+//     // uart_send(0x20);
+// }
+//------------------------------------------------------------------------
+void ee_dump_mem(unsigned char* start_addr, unsigned char* end_addr)
 {
-    char buf[15 * 80];
-    va_list args;
-
-    va_start(args, fmt);
-    ee_vsprintf(buf, fmt, args);
-    va_end(args);
-
-    UART_WRITE_STRING(buf);
+    unsigned char* pAddr = start_addr;
+    int linPos = 0;
+    for (long i = 0; i < end_addr - start_addr; i++) {
+        ee_printf("%02x", *pAddr++);
+        linPos++;
+        if (linPos == 8)
+            ee_printf("\r\n");
+        else
+            ee_printf(" ");
+    }
+    ee_printf("\r\n");
 }
+// //------------------------------------------------------------------------
+// void uart_load_ihex(void)
+// {
+// }
+// //------------------------------------------------------------------------
+// unsigned int uart_read_hex()
+// {
+//     return 0;
+// }
+

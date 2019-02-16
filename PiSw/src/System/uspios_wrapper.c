@@ -4,7 +4,6 @@
 #include "nmalloc.h"
 #include "raspihwconfig.h"
 #include "timer.h"
-#include "uart.h"
 #include "lowlib.h"
 
 void* malloc(unsigned nSize) // result must be 4-byte aligned
@@ -77,5 +76,5 @@ void uspi_assertion_failed(const char* pExpr, const char* pFile, unsigned nLine)
 void DebugHexdump(const void* pBuffer, unsigned nBufLen, const char* pSource /* = 0 */)
 {
     ee_printf("Memory dump of %s:\n", pSource);
-    uart_dump_mem((unsigned char*)pBuffer, (unsigned char*)(pBuffer) + nBufLen);
+    ee_dump_mem((unsigned char*)pBuffer, (unsigned char*)(pBuffer) + nBufLen);
 }

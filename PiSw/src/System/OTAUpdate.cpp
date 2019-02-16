@@ -30,6 +30,11 @@ void OTAUpdate::performUpdate(uint8_t* pData, int dataLen)
     lowlev_disable_irq();
     lowlev_disable_fiq();
 
+    // Data memory and instruction barriers (to force all memory operations to complete
+    lowlev_dmb();
+    lowlev_dsb();
+    lowlev_flushcache();
+
     // Call the copyBlock function in its new location using it to move the program
     // to 0x8000 the base address for Pi programs
     (*pCopyBlockFn) ((uint8_t*)0x8000, pRxDataNewLocation, dataLen, (uint8_t*)0x8000);

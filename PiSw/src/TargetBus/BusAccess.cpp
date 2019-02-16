@@ -2,7 +2,7 @@
 // Rob Dobson 2018
 
 #include "BusAccess.h"
-#include "piwiring.h"
+#include "../System/piwiring.h"
 #include "../System/irq.h"
 #include "../System/ee_printf.h"
 #include "../System/lowlev.h"

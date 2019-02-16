@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include "../System/ee_printf.h"
 #include "../TargetBus/BusAccess.h"
-#include "../TargetBus/piwiring.h"
+#include "../System/piwiring.h"
 #include "../System/lowlib.h"
 
 // Module name

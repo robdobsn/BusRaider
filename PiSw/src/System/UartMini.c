@@ -1,7 +1,7 @@
 // Bus Raider
 // Rob Dobson 2018
 
-#include "uart.h"
+#include "uartMini.h"
 #include "bare_metal_pi_zero.h"
 #include "../System/ee_printf.h"
 #include "irq.h"
@@ -64,72 +64,6 @@ void uart_purge(void)
         if (RD32(AUX_MU_LSR_REG) & 0x40)
             break;
     }
-}
-//------------------------------------------------------------------------
-void uart_write_hex_u8(unsigned int d)
-{
-    //unsigned int ra;
-    unsigned int rb;
-    unsigned int rc;
-
-    rb = 8;
-    while (1) {
-        rb -= 4;
-        rc = (d >> rb) & 0xF;
-        if (rc > 9)
-            rc += 0x37;
-        else
-            rc += 0x30;
-        uart_send(rc);
-        if (rb == 0)
-            break;
-    }
-    // uart_send(0x20);
-}
-//------------------------------------------------------------------------
-void uart_write_hex_u32(unsigned int d)
-{
-    //unsigned int ra;
-    unsigned int rb;
-    unsigned int rc;
-
-    rb = 32;
-    while (1) {
-        rb -= 4;
-        rc = (d >> rb) & 0xF;
-        if (rc > 9)
-            rc += 0x37;
-        else
-            rc += 0x30;
-        uart_send(rc);
-        if (rb == 0)
-            break;
-    }
-    // uart_send(0x20);
-}
-//------------------------------------------------------------------------
-void uart_dump_mem(unsigned char* start_addr, unsigned char* end_addr)
-{
-    unsigned char* pAddr = start_addr;
-    int linPos = 0;
-    for (long i = 0; i < end_addr - start_addr; i++) {
-        uart_write_hex_u8(*pAddr++);
-        linPos++;
-        if (linPos == 8)
-            uart_write_str("\r\n");
-        else
-            uart_send(' ');
-    }
-    uart_write_str("\r\n");
-}
-//------------------------------------------------------------------------
-void uart_load_ihex(void)
-{
-}
-//------------------------------------------------------------------------
-unsigned int uart_read_hex()
-{
-    return 0;
 }
 
 volatile int globalUartCount = 0;
