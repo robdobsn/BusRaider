@@ -17,6 +17,7 @@ Z80Registers TargetState::_targetRegisters;
 // Clear target
 void TargetState::clear()
 {
+    _targetRegsValid = false;
     _targetMemoryBlockLastIdx = 0;
 
     for (int i = 0; i < MAX_TARGET_MEMORY_BLOCKS; i++)

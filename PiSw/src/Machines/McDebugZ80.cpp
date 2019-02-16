@@ -62,7 +62,9 @@ McDescriptorTable McDebugZ80::_descriptorTable = {
     .monitorIORQ = true,
     .monitorMREQ = true,
     .emulatedRAMStart = 0,
-    .emulatedRAMLen = TargetDebug::MAX_TARGET_MEMORY_LEN
+    .emulatedRAMLen = TargetDebug::MAX_TARGET_MEMORY_LEN,
+    .setRegistersByInjection = false,
+    .setRegistersCodeAddr = 0
 };
 
 // Enable machine

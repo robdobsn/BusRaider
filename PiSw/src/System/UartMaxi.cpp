@@ -57,14 +57,24 @@ bool UartMaxi::setup(unsigned int baudRate, int rxBufSize, int txBufSize)
     _txBufferPosn.init(txBufSize);
 
     // Rx/Tx pins
-    pinMode(14, PINMODE_ALT0);
-    pinMode(15, PINMODE_ALT0);
+    // pinMode(15, PINMODE_ALT0);
+    // pinMode(14, PINMODE_ALT0);
 
+    uint32_t ra = RD32(GPFSEL1);
+    ra &= ~(7 << 12); //gpio14
+    ra |= 4 << 12; //alt0
+    ra &= ~(7 << 15); //gpio15
+    ra |= 4 << 15; //alt0
+    WR32(GPFSEL1, ra);
+
+    return false;
+    
     // Baud rate calculation
     uint32_t FUARTCLK = AUX_MU_CLOCK;
 	uint32_t baudRateX16 = baudRate * 16;
     uint32_t intBaudDivisor = FUARTCLK / baudRateX16;
     uint32_t fracBaudDivisor = uint32_t((FUARTCLK % baudRateX16) * 64 + 0.5);
+    LogWrite(FromUartMaxi, LOG_DEBUG, "Baud settings %d:%d\n", intBaudDivisor, fracBaudDivisor);
 
     // Connect interrupt
     irq_set_PL011MaxiUart_handler(isrStatic, 0);
@@ -93,8 +103,9 @@ void UartMaxi::clear()
 
 int UartMaxi::writeBase(unsigned int c)
 {
-    if (!_txBufferPosn.canPut())
+    if ((!_pTxBuffer) || (!_txBufferPosn.canPut()))
         return 0;
+
     _pTxBuffer[_txBufferPosn._putPos] = c;
     _txBufferPosn.hasPut();
     return 1;
@@ -103,7 +114,7 @@ int UartMaxi::writeBase(unsigned int c)
 void UartMaxi::txPumpPrime()
 {
     // Handle situation where tx has been idle / FIFO not full
-    while(_txBufferPosn.canGet())
+    while(_txBufferPosn.canGet() && _pTxBuffer)
     {
         if (!(RD32(ARM_UART0_FR) & UART0_FR_TXFF_MASK))
         {
@@ -143,10 +154,9 @@ void UartMaxi::writeStr(const char* data)
     write(data, strlen(data));
 }
 
-
 int UartMaxi::read()
 {
-    if (!_rxBufferPosn.canGet())
+    if ((!_pRxBuffer) || (!_rxBufferPosn.canGet()))
         return -1;
     int ch = _pRxBuffer[_rxBufferPosn._getPos];
     _rxBufferPosn.hasGot();
@@ -160,7 +170,7 @@ bool UartMaxi::poll()
 
 int UartMaxi::peek()
 {
-    if (!_rxBufferPosn.canGet())
+    if ((!_pRxBuffer) || (!_rxBufferPosn.canGet()))
         return -1;
     return _pRxBuffer[_rxBufferPosn._getPos];
 }
@@ -200,7 +210,7 @@ void UartMaxi::isr()
 				_nRxStatus = UART_ERROR_FRAMING;
 		}
 
-    	if (_rxBufferPosn.canPut())
+    	if (_rxBufferPosn.canPut() && _pRxBuffer)
 		{
 			_pRxBuffer[_rxBufferPosn.posToPut()] = nDR & 0xFF;
             _rxBufferPosn.hasPut();
@@ -214,7 +224,7 @@ void UartMaxi::isr()
 
 	while (!(RD32(ARM_UART0_FR) & UART0_FR_TXFF_MASK))
 	{
-		if (_txBufferPosn.canGet())
+		if (_txBufferPosn.canGet() && _pTxBuffer)
 		{
 			WR32(ARM_UART0_DR, _pTxBuffer[_txBufferPosn.posToGet()]);
 			_txBufferPosn.hasGot();

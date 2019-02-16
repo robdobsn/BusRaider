@@ -48,6 +48,7 @@ TargetDebug::TargetDebug()
     _breakpointsEnabled = true;
     _breakpointHitFlag = false;
     _breakpointHitIndex = 0;
+    _registerSetCodeLen = 0;
 }
 
 void TargetDebug::enableBreakpoint(int idx, bool enabled)
@@ -459,6 +460,82 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Handle register setting
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+int TargetDebug::getInstructionsToSetRegs(uint8_t* pCodeBuffer, uint32_t codeMaxlen)
+{
+    // Instructions to set register values
+    static uint8_t regSetInstructions[] = 
+    {
+        0xdd, 0x21, 0x00, 0x00,     // ld ix, xxxx
+        0xfd, 0x21, 0x00, 0x00,     // ld iy, xxxx
+        0x21, 0x00, 0x00,           // ld hl, xxxx
+        0x11, 0x00, 0x00,           // ld de, xxxx
+        0x01, 0x00, 0x00,           // ld bc, xxxx
+        0xd9,                       // exx
+        0x31, 0x00, 0x00,           // ld sp, xxxx
+        0x21, 0x00, 0x00,           // ld hl, xxxx
+        0x11, 0x00, 0x00,           // ld de, xxxx
+        0x01, 0x00, 0x00,           // ld bc, xxxx
+        0xf1, 0x00, 0x00,           // pop af + two bytes that are read as if from stack
+        0x08,                       // ex af,af'
+        0xf1, 0x00, 0x00,           // pop af + two bytes that are read as if from stack
+        0x3e, 0x00,                 // ld a, xx
+        0xed, 0x47,                 // ld i, a
+        0x3e, 0x00,                 // ld a, xx
+        0xed, 0x4f,                 // ld r, a
+        0x3e, 0x00,                 // ld a, xx
+        0xed, 0x46,                 // im 0
+        0xfb,                       // ei
+        0xc3, 0x00, 0x00            // jp xxxx
+    };
+    const int RegisterIXUpdatePos = 2;
+    const int RegisterIYUpdatePos = 6;
+    const int RegisterHLDASHUpdatePos = 9;
+    const int RegisterDEDASHUpdatePos = 12;
+    const int RegisterBCDASHUpdatePos = 15;
+    const int RegisterSPUpdatePos = 19;
+    const int RegisterHLUpdatePos = 22;
+    const int RegisterDEUpdatePos = 25;
+    const int RegisterBCUpdatePos = 28;
+    const int RegisterAFDASHUpdatePos = 31;
+    const int RegisterAFUpdatePos = 35;
+    const int RegisterIUpdatePos = 38;
+    const int RegisterRUpdatePos = 42;
+    const int RegisterAUpdatePos = 46;
+    const int RegisterIMUpdatePos = 48;
+    const int RegisterINTENUpdatePos = 49;
+    const int RegisterPCUpdatePos = 51;
+
+    // Fill in the register values
+    *((uint16_t*)(regSetInstructions+RegisterIXUpdatePos)) = _z80Registers.IX;
+    *((uint16_t*)(regSetInstructions+RegisterIYUpdatePos)) = _z80Registers.IY;
+    *((uint16_t*)(regSetInstructions+RegisterHLDASHUpdatePos)) = _z80Registers.HLDASH;
+    *((uint16_t*)(regSetInstructions+RegisterDEDASHUpdatePos)) = _z80Registers.DEDASH;
+    *((uint16_t*)(regSetInstructions+RegisterBCDASHUpdatePos)) = _z80Registers.BCDASH;
+    *((uint16_t*)(regSetInstructions+RegisterSPUpdatePos)) = _z80Registers.SP;
+    *((uint16_t*)(regSetInstructions+RegisterHLUpdatePos)) = _z80Registers.HL;
+    *((uint16_t*)(regSetInstructions+RegisterDEUpdatePos)) = _z80Registers.DE;
+    *((uint16_t*)(regSetInstructions+RegisterBCUpdatePos)) = _z80Registers.BC;
+    *((uint16_t*)(regSetInstructions+RegisterAFDASHUpdatePos)) = _z80Registers.AFDASH;
+    *((uint16_t*)(regSetInstructions+RegisterAFUpdatePos)) = _z80Registers.AF;
+    regSetInstructions[RegisterIUpdatePos] = _z80Registers.I;
+    regSetInstructions[RegisterRUpdatePos] = (_z80Registers.R + 256 - 7) % 256;
+    regSetInstructions[RegisterAUpdatePos] = _z80Registers.AF >> 8;
+    regSetInstructions[RegisterIMUpdatePos] = (_z80Registers.INTMODE == 0) ? 0x46 : ((_z80Registers.INTMODE == 1) ? 0x56 : 0x5e);
+    regSetInstructions[RegisterINTENUpdatePos] = (_z80Registers.INTENABLED == 0) ? 0xf3 : 0xfb;
+    *((uint16_t*)(regSetInstructions+RegisterPCUpdatePos)) = _z80Registers.PC;
+
+    if (codeMaxlen >= sizeof(regSetInstructions))
+    {
+        memcpy(pCodeBuffer, regSetInstructions, codeMaxlen);
+        return sizeof(regSetInstructions);
+    }
+    return 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Interrupt extension for debugger - handle register GET
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -620,76 +697,22 @@ void TargetDebug::handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags
 
 void TargetDebug::handleRegisterSet(uint32_t& retVal)
 {
-    // Instructions to set register values
-    static uint8_t regSetInstructions[] = 
-    {
-        0xdd, 0x21, 0x00, 0x00,     // ld ix, xxxx
-        0xfd, 0x21, 0x00, 0x00,     // ld iy, xxxx
-        0x21, 0x00, 0x00,           // ld hl, xxxx
-        0x11, 0x00, 0x00,           // ld de, xxxx
-        0x01, 0x00, 0x00,           // ld bc, xxxx
-        0xd9,                       // exx
-        0x31, 0x00, 0x00,           // ld sp, xxxx
-        0x21, 0x00, 0x00,           // ld hl, xxxx
-        0x11, 0x00, 0x00,           // ld de, xxxx
-        0x01, 0x00, 0x00,           // ld bc, xxxx
-        0xf1, 0x00, 0x00,           // pop af + two bytes that are read as if from stack
-        0x08,                       // ex af,af'
-        0xf1, 0x00, 0x00,           // pop af + two bytes that are read as if from stack
-        0x3e, 0x00,                 // ld a, xx
-        0xed, 0x47,                 // ld i, a
-        0x3e, 0x00,                 // ld a, xx
-        0xed, 0x4f,                 // ld r, a
-        0x3e, 0x00,                 // ld a, xx
-        0xed, 0x46,                 // im 0
-        0xfb,                       // ei
-        0xc3, 0x00, 0x00            // jp xxxx
-    };
-    const int RegisterIXUpdatePos = 2;
-    const int RegisterIYUpdatePos = 6;
-    const int RegisterHLDASHUpdatePos = 9;
-    const int RegisterDEDASHUpdatePos = 12;
-    const int RegisterBCDASHUpdatePos = 15;
-    const int RegisterSPUpdatePos = 19;
-    const int RegisterHLUpdatePos = 22;
-    const int RegisterDEUpdatePos = 25;
-    const int RegisterBCUpdatePos = 28;
-    const int RegisterAFDASHUpdatePos = 31;
-    const int RegisterAFUpdatePos = 35;
-    const int RegisterIUpdatePos = 38;
-    const int RegisterRUpdatePos = 42;
-    const int RegisterAUpdatePos = 46;
-    const int RegisterIMUpdatePos = 48;
-    const int RegisterINTENUpdatePos = 49;
-    const int RegisterPCUpdatePos = 51;
-
     // Fill in the register values
     if (_registerModeStep == 0)
     {
-        *((uint16_t*)(regSetInstructions+RegisterIXUpdatePos)) = _z80Registers.IX;
-        *((uint16_t*)(regSetInstructions+RegisterIYUpdatePos)) = _z80Registers.IY;
-        *((uint16_t*)(regSetInstructions+RegisterHLDASHUpdatePos)) = _z80Registers.HLDASH;
-        *((uint16_t*)(regSetInstructions+RegisterDEDASHUpdatePos)) = _z80Registers.DEDASH;
-        *((uint16_t*)(regSetInstructions+RegisterBCDASHUpdatePos)) = _z80Registers.BCDASH;
-        *((uint16_t*)(regSetInstructions+RegisterSPUpdatePos)) = _z80Registers.SP;
-        *((uint16_t*)(regSetInstructions+RegisterHLUpdatePos)) = _z80Registers.HL;
-        *((uint16_t*)(regSetInstructions+RegisterDEUpdatePos)) = _z80Registers.DE;
-        *((uint16_t*)(regSetInstructions+RegisterBCUpdatePos)) = _z80Registers.BC;
-        *((uint16_t*)(regSetInstructions+RegisterAFDASHUpdatePos)) = _z80Registers.AFDASH;
-        *((uint16_t*)(regSetInstructions+RegisterAFUpdatePos)) = _z80Registers.AF;
-        regSetInstructions[RegisterIUpdatePos] = _z80Registers.I;
-        regSetInstructions[RegisterRUpdatePos] = _z80Registers.R;
-        regSetInstructions[RegisterAUpdatePos] = _z80Registers.AF >> 8;
-        regSetInstructions[RegisterIMUpdatePos] = (_z80Registers.INTMODE == 0) ? 0x46 : ((_z80Registers.INTMODE == 1) ? 0x56 : 0x5e);
-        regSetInstructions[RegisterINTENUpdatePos] = (_z80Registers.INTENABLED == 0) ? 0xf3 : 0xfb;
-        *((uint16_t*)(regSetInstructions+RegisterPCUpdatePos)) = _z80Registers.PC;
+        _registerSetCodeLen = getInstructionsToSetRegs(_registerSetBuffer, MAX_REGISTER_SET_CODE_LEN);
+        if (_registerSetCodeLen == 0)
+        {
+            _registerMode = REGISTER_MODE_NONE;
+            return;
+        }
     }
 
     // Return the instruction / data in inject
-    retVal = regSetInstructions[_registerModeStep++] | BR_MEM_ACCESS_INSTR_INJECT;
+    retVal = _registerSetBuffer[_registerModeStep++] | BR_MEM_ACCESS_INSTR_INJECT;
 
     // Check if complete
-    if (_registerModeStep >= sizeof(regSetInstructions))
+    if (_registerModeStep >= _registerSetCodeLen)
         _registerMode = REGISTER_MODE_NONE;
 }
 

@@ -61,8 +61,10 @@ public:
     bool blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len);
     bool blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len);
 
-    // Register injection
+    // Register injection and code snippet generation
     void startSetRegisterSequence(Z80Registers* pRegs = NULL);
+    static const int MAX_REGISTER_SET_CODE_LEN = 100;
+    int getInstructionsToSetRegs(uint8_t* pCodeBuffer, uint32_t codeMaxlen);
 
 private:
 
@@ -91,6 +93,8 @@ private:
     bool _registerModeGotM1;
     int _registerQueryWriteIndex;
     unsigned int _registerModeStep;
+    uint8_t _registerSetBuffer[MAX_REGISTER_SET_CODE_LEN];
+    uint32_t _registerSetCodeLen;
 
     // Target memory buffer  
     static const int MAX_TARGET_MEM_ADDR = 0xffff;

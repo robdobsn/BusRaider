@@ -46,7 +46,9 @@ McDescriptorTable McManager::defaultDescriptorTable = {
     .monitorIORQ = false,
     .monitorMREQ = false,
     .emulatedRAMStart = 0,
-    .emulatedRAMLen = 0
+    .emulatedRAMLen = 0,
+    .setRegistersByInjection = false,
+    .setRegistersCodeAddr = 0
 };
 
 uint8_t McManager::_rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];
@@ -365,13 +367,35 @@ void McManager::handleTargetProgram(const char* cmdName)
         if (strcasecmp(cmdName, "ProgramAndReset") == 0)
         {
             LogWrite(FromMcManager, LOG_DEBUG, "Resetting target");
-            if (TargetState::areRegistersValid())
+            McBase* pMc = getMachine();
+            TargetDebug* pDebug = TargetDebug::get();
+            if (TargetState::areRegistersValid() && pMc && pDebug)
             {
-                Z80Registers regs;
-                TargetState::getTargetRegsAndInvalidate(regs);
-                TargetDebug* pDebug = TargetDebug::get();
-                if (pDebug)
-                    pDebug->startSetRegisterSequence(&regs);
+                // Check how to set registers
+                if (pMc->getDescriptorTable(0)->setRegistersByInjection)
+                {
+                    // Use the BusAccess module to inject instructions to set registers
+                    Z80Registers regs;
+                    TargetState::getTargetRegsAndInvalidate(regs);
+                        pDebug->startSetRegisterSequence(&regs);
+                }
+                else
+                {
+                    // Generate a code snippet to set registers and run
+                    uint8_t regSetCode[TargetDebug::MAX_REGISTER_SET_CODE_LEN];
+                    int codeLen = pDebug->getInstructionsToSetRegs(regSetCode, TargetDebug::MAX_REGISTER_SET_CODE_LEN);
+                    if (codeLen != 0)
+                    {
+                        // Reg setting code
+                        uint32_t codeDestAddr = pMc->getDescriptorTable(0)->setRegistersCodeAddr;
+                        LogWrite(FromMcManager, LOG_DEBUG,"Set regs snippet at %04x len %d", codeDestAddr, codeLen);
+                        McManager::blockWrite(codeDestAddr, regSetCode, codeLen, false, false);
+                        
+                        // Reset vector
+                        uint8_t jumpCmd[3] = { 0xc3, uint8_t(codeDestAddr & 0xff), uint8_t((codeDestAddr >> 8) & 0xff) };
+                        McManager::blockWrite(0, jumpCmd, 3, false, false);
+                    }
+                }
             }
             BusAccess::controlRelease(true);
         }

@@ -34,7 +34,9 @@ McDescriptorTable McTerminal::_descriptorTable = {
     .monitorIORQ = false,
     .monitorMREQ = false,
     .emulatedRAMStart = 0,
-    .emulatedRAMLen = 0
+    .emulatedRAMLen = 0,
+    .setRegistersByInjection = false,
+    .setRegistersCodeAddr = 0
 };
 
 int McTerminal::_shiftDigitKeyMap[SHIFT_DIGIT_KEY_MAP_LEN] =

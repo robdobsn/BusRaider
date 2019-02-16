@@ -9,6 +9,7 @@
 #include "../Utils/rdutils.h"
 #include <stdlib.h>
 #include "../FileFormats/McZXSpectrumTZXFormat.h"
+#include "../FileFormats/McZXSpectrumZ80Format.h"
 #include "../Debugger/TargetDebug.h"
 #include "../Machines/McManager.h"
 
@@ -38,7 +39,9 @@ McDescriptorTable McZXSpectrum::_descriptorTable = {
     .monitorIORQ = true,
     .monitorMREQ = false,
     .emulatedRAMStart = 0,
-    .emulatedRAMLen = 0
+    .emulatedRAMLen = 0,
+    .setRegistersByInjection = false,
+    .setRegistersCodeAddr = ZXSPECTRUM_DISP_RAM_ADDR
 };
 
 // Enable machine
@@ -61,8 +64,14 @@ void McZXSpectrum::disable()
 
 void McZXSpectrum::handleRegisters(Z80Registers& regs)
 {
+    // Handle the registers
+    TargetState::setTargetRegisters(regs);
+
+    // 
+
     // Handle the execution address
-    LogWrite(_logPrefix, LOG_DEBUG, "Doing nothing with registers %04x\n", regs.PC);
+    // LogWrite(_logPrefix, LOG_DEBUG, "Doing nothing with registers %04x\n", regs.PC);
+
 
     // TODO - maybe store register set program in screen memory ??
     // uint32_t execAddr = regs.PC;
@@ -165,9 +174,17 @@ void McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
     if (strcasecmp(pFileType, ".tzx") == 0)
     {
         // TZX
-        McZXSpectrumTZXFormat tzxFormatHandler;
+        McZXSpectrumTZXFormat formatHandler;
         LogWrite(_logPrefix, LOG_DEBUG, "Processing TZX file len %d", fileLen);
-        tzxFormatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
+        formatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
+    }
+    else if (strcasecmp(pFileType, ".z80") == 0)
+    {
+        // .Z80
+        McZXSpectrumZ80Format formatHandler;
+        LogWrite(_logPrefix, LOG_DEBUG, "Processing Z80 file len %d", fileLen);
+        // Handle registers and injecting RET
+        formatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
     }
     else
     {

@@ -40,7 +40,9 @@ McDescriptorTable McZXSpectrumDebug::_descriptorTable = {
     .monitorIORQ = true,
     .monitorMREQ = true,
     .emulatedRAMStart = 0,
-    .emulatedRAMLen = TargetDebug::MAX_TARGET_MEMORY_LEN
+    .emulatedRAMLen = TargetDebug::MAX_TARGET_MEMORY_LEN,
+    .setRegistersByInjection = true,
+    .setRegistersCodeAddr = 0
 };
 
 // Enable machine
@@ -161,25 +163,25 @@ void McZXSpectrumDebug::fileHandler(const char* pFileInfo, const uint8_t* pFileD
     if (strcasecmp(pFileType, ".tzx") == 0)
     {
         // TZX
-        McZXSpectrumTZXFormat tzxFormatHandler;
+        McZXSpectrumTZXFormat formatHandler;
         LogWrite(_logPrefix, LOG_DEBUG, "Processing TZX file len %d", fileLen);
-        tzxFormatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
+        formatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
     }
     else if (strcasecmp(pFileType, ".sna") == 0)
     {
-        // TZX
-        McZXSpectrumSNAFormat snaFormatHandler;
+        // SNA
+        McZXSpectrumSNAFormat formatHandler;
         LogWrite(_logPrefix, LOG_DEBUG, "Processing SNA file len %d", fileLen);
         // TODO handle registers and injecting RET
-        snaFormatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
+        formatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
     }
     else if (strcasecmp(pFileType, ".z80") == 0)
     {
-        // TZX
-        McZXSpectrumZ80Format snaFormatHandler;
+        // .Z80
+        McZXSpectrumZ80Format formatHandler;
         LogWrite(_logPrefix, LOG_DEBUG, "Processing Z80 file len %d", fileLen);
-        // TODO handle registers and injecting RET
-        snaFormatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
+        // Handle registers and injecting RET
+        formatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
     }
     else
     {

@@ -36,7 +36,9 @@ McDescriptorTable McRobsZ80::_descriptorTable = {
     .monitorIORQ = true,
     .monitorMREQ = false,
     .emulatedRAMStart = 0,
-    .emulatedRAMLen = 0
+    .emulatedRAMLen = 0,
+    .setRegistersByInjection = false,
+    .setRegistersCodeAddr = 0
 };
 
 // Enable machine

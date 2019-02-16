@@ -36,6 +36,8 @@ public:
     bool monitorMREQ;
     uint32_t emulatedRAMStart;
     uint32_t emulatedRAMLen;
+    bool setRegistersByInjection;
+    uint32_t setRegistersCodeAddr;
 };
 
 class McBase
