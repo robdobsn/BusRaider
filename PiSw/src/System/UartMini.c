@@ -95,7 +95,7 @@ void uart_init_irq()
 {
     WR32(IRQ_ENABLE1, 1 << 29);
    //  enable_irq();
-   irq_set_uart_handler(uart_irq_handler, NULL);
+   irq_set_auxMiniUart_handler(uart_irq_handler, NULL);
     // irq_attach_handler(57, uart_irq_handler, NULL);
 }
 

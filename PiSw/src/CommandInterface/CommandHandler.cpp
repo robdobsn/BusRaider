@@ -490,32 +490,4 @@ void CommandHandler::sendDebugMessage(const char* pStr)
 
 void CommandHandler::service()
 {
-    // static const int MAX_CHARS_TO_READ = 10000;
-    // unsigned char buf[MAX_CHARS_TO_READ];
-    // int bytesRead = _serialConn.Read(buf, MAX_CHARS_TO_READ);
-    // numRead += bytesRead;
-    // totalRead += bytesRead;
-    // _miniHDLC.handleBuffer(buf, bytesRead);
-
-    // uint8_t buf[MAX_CHARS_TO_READ];
-    // int charsRead = _serialConn.Read(buf, MAX_CHARS_TO_READ);
-    // // for (int i = 0; i < charsRead; i++)
-    // //     _miniHDLC.handleChar(buf[i]);
-    // // if (charsRead > 0)
-    // //     CLogger::Get()->Write(FromCmdHandler, LogNotice, "%d", charsRead);
-    // numRead += charsRead;
-    // totalRead += charsRead;
-
-    // // Handle serial communication
-    // for (int rxCtr = 0; rxCtr < 100; rxCtr++) {
-    //     if (!uart_poll())
-    //         break;
-
-    //     // Show char received
-    //     int ch = uart_read_byte();
-    //     // ee_printf("%02x ", ch);
-
-    //     // Handle char
-    //     _miniHDLC.handleChar(ch);
-    // }    
 }

@@ -44,7 +44,8 @@ typedef struct {
 typedef void IntHandler(void* data);
 
 extern void irq_set_usb_handler(IntHandler* pHandler, void* pData);
-extern void irq_set_uart_handler(IntHandler* pHandler, void* pData);
+extern void irq_set_auxMiniUart_handler(IntHandler* pHandler, void* pData);
+extern void irq_set_PL011MaxiUart_handler(IntHandler* pHandler, void* pData);
 extern void irq_set_wait_state_handler(IntHandler* pHandler);
 
 #ifdef __cplusplus

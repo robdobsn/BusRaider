@@ -23,19 +23,29 @@ void irq_set_usb_handler(IntHandler* pHandler, void* pData)
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////
-// UART interrupt handling
+// AUX (MiniUART) and PL011 MaxiUART interrupt handling
 ////////////////////////////////////////////////////////////////////////////////////////////
 
 // IntHandler*(_irq_handlers[63]) = { 0 };
 // void*(_irq_handlers_data[63]) = { 0 };
 
-static IntHandler* __irqHandlerUARTFn = 0;
-static void* __irqHandlerUARTData = 0;
+static IntHandler* __irqHandler_AUXMiniUART_Fn = 0;
+static void* __irqHandler_AUXMiniUART_Data = 0;
 
-void irq_set_uart_handler(IntHandler* pHandler, void* pData)
+void irq_set_auxMiniUart_handler(IntHandler* pHandler, void* pData)
 {
-    __irqHandlerUARTFn = pHandler;
-    __irqHandlerUARTData = pData;
+    __irqHandler_AUXMiniUART_Fn = pHandler;
+    __irqHandler_AUXMiniUART_Data = pData;
+    lowlev_enable_irq();
+}
+
+static IntHandler* __irqHandler_PL011MaxiUART_Fn = 0;
+static void* __irqHandler_PL011MaxiUART_Data = 0;
+
+void irq_set_PL011MaxiUart_handler(IntHandler* pHandler, void* pData)
+{
+    __irqHandler_PL011MaxiUART_Fn = pHandler;
+    __irqHandler_PL011MaxiUART_Data = pData;
     lowlev_enable_irq();
 }
 
@@ -51,12 +61,18 @@ void __attribute__((interrupt("IRQ"))) irq_handler_(void)
         __irqHandlerUSBFn(__irqHandlerUSBData);
     }
 
-    // The value here for UART interrupt ... 1 << 29 in IRQ_pending_1 found by looking
+    // The value here for AUX (MiniUART) interrupt ... 1 << 29 in IRQ_pending_1 found by looking
     // at which bits set in interrupt register
-    // and does not correspond to any documentation I can find
-    if ((pIRQController->IRQ_pending_1 & (1 << 29)) && __irqHandlerUARTFn)
+    if ((pIRQController->IRQ_pending_1 & (1 << 29)) && __irqHandler_AUXMiniUART_Fn)
     {
-        __irqHandlerUARTFn(__irqHandlerUARTData);
+        __irqHandler_AUXMiniUART_Fn(__irqHandler_AUXMiniUART_Data);
+    }
+
+   // The value here for PL011 MaxiUART interrupt ... 1 << 25 in IRQ_pending_2 found by looking
+    // at which bits set in interrupt register
+    if ((pIRQController->IRQ_pending_2 & (1 << 25)) && __irqHandler_PL011MaxiUART_Fn)
+    {
+        __irqHandler_PL011MaxiUART_Fn(__irqHandler_PL011MaxiUART_Data);
     }
 }
 

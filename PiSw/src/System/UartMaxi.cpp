@@ -19,6 +19,7 @@ UartMaxi::UartMaxi() :
 {
     _pRxBuffer = NULL;
     _pTxBuffer = NULL;
+    _nRxStatus = UART_ERROR_NONE;
 }
 
 UartMaxi::~UartMaxi()
@@ -28,7 +29,7 @@ UartMaxi::~UartMaxi()
     WR32(ARM_UART0_CR, 0);
 
     // Remove IRQ
-    irq_set_uart_handler(NULL, 0);
+    irq_set_PL011MaxiUart_handler(NULL, 0);
 
     // Remove memory use
     if (_pRxBuffer)
@@ -66,7 +67,7 @@ bool UartMaxi::setup(unsigned int baudRate, int rxBufSize, int txBufSize)
     uint32_t fracBaudDivisor = uint32_t((FUARTCLK % baudRateX16) * 64 + 0.5);
 
     // Connect interrupt
-    irq_set_uart_handler(isrStatic, 0);
+    irq_set_PL011MaxiUart_handler(isrStatic, 0);
 
     // Set uart registers
 	WR32(ARM_UART0_IMSC, 0);
@@ -90,7 +91,7 @@ void UartMaxi::clear()
     _rxBufferPosn.clear();
 }
 
-int UartMaxi::write(unsigned int c)
+int UartMaxi::writeBase(unsigned int c)
 {
     if (!_txBufferPosn.canPut())
         return 0;
@@ -99,14 +100,46 @@ int UartMaxi::write(unsigned int c)
     return 1;
 }
 
+void UartMaxi::txPumpPrime()
+{
+    // Handle situation where tx has been idle / FIFO not full
+    while(_txBufferPosn.canGet())
+    {
+        if (!(RD32(ARM_UART0_FR) & UART0_FR_TXFF_MASK))
+        {
+            WR32(ARM_UART0_DR, _pTxBuffer[_txBufferPosn.posToGet()]);
+            _txBufferPosn.hasGot();
+        }
+        else
+        {
+            WR32(ARM_UART0_IMSC, RD32(ARM_UART0_IMSC) | UART0_INT_TX);
+            break;
+        }        
+    }
+}
+
+int UartMaxi::write(unsigned int c)
+{
+    // Add char to buffer
+    int retc = writeBase(c);
+
+    // Ensure ISR picks up
+    txPumpPrime();
+    return retc;
+}
+
 void UartMaxi::write(const char* data, unsigned int size)
 {
+    // Send
     for (size_t i = 0; i < size; i++)
-        write(data[i]);
+        writeBase(data[i]);
+    // Ensure ISR picks up
+    txPumpPrime();
 }
 
 void UartMaxi::writeStr(const char* data)
 {
+    // Send
     write(data, strlen(data));
 }
 
@@ -140,5 +173,51 @@ void UartMaxi::isrStatic(void* pParam)
 
 void UartMaxi::isr()
 {
+	// acknowledge pending interrupts
+	WR32(ARM_UART0_ICR, RD32(ARM_UART0_MIS));
 
+	while (!(RD32(ARM_UART0_FR) & UART0_FR_RXFE_MASK))
+	{
+		uint32_t nDR = RD32(ARM_UART0_DR);
+		if (nDR & UART0_DR_BE_MASK)
+		{
+			if (_nRxStatus == UART_ERROR_NONE)
+				_nRxStatus = UART_ERROR_BREAK;
+		}
+		else if (nDR & UART0_DR_OE_MASK)
+		{
+			if (_nRxStatus == UART_ERROR_NONE)
+				_nRxStatus = UART_ERROR_OVERRUN;
+		}
+		else if (nDR & UART0_DR_FE_MASK)
+		{
+			if (_nRxStatus == UART_ERROR_NONE)
+				_nRxStatus = UART_ERROR_FRAMING;
+		}
+
+    	if (_rxBufferPosn.canPut())
+		{
+			_pRxBuffer[_rxBufferPosn.posToPut()] = nDR & 0xFF;
+            _rxBufferPosn.hasPut();
+		}
+		else
+		{
+			if (_nRxStatus == UART_ERROR_NONE)
+				_nRxStatus = UART_ERROR_FULL;
+		}
+	}
+
+	while (!(RD32(ARM_UART0_FR) & UART0_FR_TXFF_MASK))
+	{
+		if (_txBufferPosn.canGet())
+		{
+			WR32(ARM_UART0_DR, _pTxBuffer[_txBufferPosn.posToGet()]);
+			_txBufferPosn.hasGot();
+		}
+		else
+		{
+			WR32(ARM_UART0_IMSC, RD32(ARM_UART0_IMSC) & ~UART0_INT_TX);
+			break;
+		}
+	}
 }
