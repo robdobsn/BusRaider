@@ -1,5 +1,5 @@
 // Bus Raider
-// UART
+// UartMaxi
 // Rob Dobson 2018-2019
 
 #pragma once
@@ -37,7 +37,7 @@ public:
     // Input
     int read();
     int available();
-    unsigned int poll();
+    bool poll();
     int peek();
     UART_ERROR_CODES getStatus()
     {
@@ -47,8 +47,6 @@ public:
     }
 
 private:
-    static const int RX_BUF_LEN = 100000;
-
     // Rx Buffer & status
     uint8_t *_pRxBuffer;
     RingBufferPosn _rxBufferPosn;

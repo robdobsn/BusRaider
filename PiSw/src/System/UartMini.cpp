@@ -9,55 +9,71 @@
 #include "lowlib.h"
 #include <stddef.h>
 
-volatile unsigned int rxhead;
-volatile unsigned int rxtail;
-#define RXBUFMASK 0x7FFF
-volatile unsigned char rxbuffer[RXBUFMASK + 1];
+volatile unsigned int UartMini::rxhead;
+volatile unsigned int UartMini::rxtail;
+volatile unsigned char UartMini::rxbuffer[RXBUFMASK + 1];
+
+UartMini::UartMini()
+{
+
+}
+
+UartMini::~UartMini()
+{
+
+}
 
 //------------------------------------------------------------------------
-unsigned int uart_get_line_status(void)
-{
-    return (RD32(AUX_MU_LSR_REG));
-}
-//------------------------------------------------------------------------
-unsigned int uart_read_byte(void)
+// unsigned int UartMini::uart_get_line_status(void)
+// {
+//     return (RD32(AUX_MU_LSR_REG));
+// }
+// //------------------------------------------------------------------------
+
+int UartMini::read()
 {
     if (rxtail != rxhead) {
-        unsigned int ch = rxbuffer[rxtail];
+        int ch = rxbuffer[rxtail];
         rxtail = (rxtail + 1) & RXBUFMASK;
         return ch;
     }
     return 0;
 }
+
 //------------------------------------------------------------------------
-unsigned int uart_poll(void)
+bool UartMini::poll(void)
 {
     return rxtail != rxhead;
 }
+
 //------------------------------------------------------------------------
-void uart_send(unsigned int c)
+int UartMini::write(unsigned int c)
 {
     while (1) {
         if (RD32(AUX_MU_LSR_REG) & 0x20)
             break;
     }
     WR32(AUX_MU_IO_REG, c);
+    return 1;
 }
+
 //------------------------------------------------------------------------
-void uart_write(const char* data, unsigned int size)
+void UartMini::write(const char* data, unsigned int size)
 {
     for (unsigned int i = 0; i < size; i++)
-        uart_send(data[i]);
+        write(data[i]);
 }
+
 //------------------------------------------------------------------------
-void uart_write_str(const char* data)
+void UartMini::writeStr(const char* data)
 {
     const char* pD = data;
     while (*pD)
-        uart_send(*pD++);
+        write(*pD++);
+
 }
 //------------------------------------------------------------------------
-void uart_purge(void)
+void UartMini::clear(void)
 {
     // Ensure we don't wait here forever
     for (int i=0; i < 100000; i++) {
@@ -66,14 +82,15 @@ void uart_purge(void)
     }
 }
 
-volatile int globalUartCount = 0;
-volatile int globalUartDebug = 0;
+void UartMini::isrStatic(void* pParam)
+{
+	UartMini *pStatic = (UartMini*) pParam;
+	pStatic->isr();
+}
 
-void uart_irq_handler(__attribute__((unused)) void* data)
+void UartMini::isr()
 {
     unsigned int rb, rc;
-
-    globalUartDebug++;
 
     // An interrupt has occurred, find out why
     while (1)
@@ -86,21 +103,12 @@ void uart_irq_handler(__attribute__((unused)) void* data)
             rc = RD32(AUX_MU_IO_REG); // Read byte from rx fifo
             rxbuffer[rxhead] = rc & 0xFF;
             rxhead = (rxhead + 1) & RXBUFMASK;
-            globalUartCount++;
         }
     }
 }
 
-void uart_init_irq()
-{
-    WR32(IRQ_ENABLE1, 1 << 29);
-   //  enable_irq();
-   irq_set_auxMiniUart_handler(uart_irq_handler, NULL);
-    // irq_attach_handler(57, uart_irq_handler, NULL);
-}
-
 //------------------------------------------------------------------------
-void uart_init(unsigned int baudRate, bool use_interrupts)
+bool UartMini::setup(unsigned int baudRate, [[maybe_unused]]int rxBufSize, [[maybe_unused]]int txBufSize)
 {
     unsigned int ra;
 
@@ -125,9 +133,10 @@ void uart_init(unsigned int baudRate, bool use_interrupts)
 
     WR32(AUX_MU_CNTL_REG, 3);
 
-    if (use_interrupts)
-    {
-        // Initialise the interrupt handler
-        uart_init_irq();
-    }
+    // Initialise the interrupt handler
+    WR32(IRQ_ENABLE1, 1 << 29);
+    //  enable_irq();
+    irq_set_auxMiniUart_handler(isrStatic, NULL);
+    // irq_attach_handler(57, uart_irq_handler, NULL);
+    return true;
 }

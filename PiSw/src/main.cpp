@@ -1,7 +1,8 @@
 // Bus Raider
 // Rob Dobson 2018
 
-#include "System/uartMini.h"
+#include "System/UartMini.h"
+#include "System/UartMaxi.h"
 #include "System/wgfx.h"
 #include "System/ee_printf.h"
 #include "System/piwiring.h"
@@ -41,6 +42,12 @@ static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
 
 // Baud rate
 #define MAIN_UART_BAUD_RATE 115200
+// #define USE_FULL_UART 1
+#ifdef USE_FULL_UART
+UartMaxi mainUart;
+#else
+UartMini mainUart;
+#endif
 
 // Immediate mode
 #define IMM_MODE_LINE_MAXLEN 100
@@ -55,17 +62,17 @@ CommandHandler commandHandler;
 void putToSerial(const uint8_t* pBuf, int len)
 {
     for (int i = 0; i < len; i++)
-        uart_send(pBuf[i]);
+        mainUart.write(pBuf[i]);
 }
 
 void serviceGetFromSerial()
 {
     // Handle serial communication
     for (int rxCtr = 0; rxCtr < 100; rxCtr++) {
-        if (!uart_poll())
+        if (!mainUart.poll())
             break;
         // Handle char
-        int ch = uart_read_byte();
+        int ch = mainUart.read();
         uint8_t buf[2];
         buf[0] = ch;
         commandHandler.handleSerialReceivedChars(buf, 1);
@@ -171,7 +178,7 @@ extern "C" int main()
     timers_init();
 
     // UART
-    uart_init(MAIN_UART_BAUD_RATE, 1);
+    mainUart.setup(MAIN_UART_BAUD_RATE, 100000, 1000);
 
     // Command handler
     commandHandler.setMachineChangeCallback(set_machine_by_name);

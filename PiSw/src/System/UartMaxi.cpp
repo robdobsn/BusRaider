@@ -153,6 +153,11 @@ int UartMaxi::read()
     return ch;
 }
 
+bool UartMaxi::poll()
+{
+    return _rxBufferPosn.canGet();
+}
+
 int UartMaxi::peek()
 {
     if (!_rxBufferPosn.canGet())
