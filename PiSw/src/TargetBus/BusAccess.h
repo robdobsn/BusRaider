@@ -216,7 +216,7 @@ private:
 
 private:
     // Timeouts
-    static const int MAX_WAIT_FOR_ACK_US = 100;
+    static const int MAX_WAIT_FOR_ACK_US = 250;
     static const int MAX_WAIT_FOR_CTRL_LINES_COUNT = 10000;
 
     // Period target write control bus line is asserted during a write

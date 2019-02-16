@@ -112,7 +112,7 @@ static const char *hwConfigJSON = {
     "\"webServerPort\":80,"
     "\"OTAUpdate\":{\"enabled\":1,\"server\":\"192.168.86.235\",\"port\":5076,\"directOk\":1},"
     "\"serialConsole\":{\"portNum\":0},"
-    "\"commandSerial\":{\"portNum\":1,\"baudRate\":115200},"
+    "\"commandSerial\":{\"portNum\":1,\"baudRate\":400000},"
     "\"ntpConfig\":{\"ntpServer\":\"pool.ntp.org\", \"gmtOffsetSecs\":0, \"dstOffsetSecs\":0},"
     "\"fileManager\":{\"spiffsEnabled\":1,\"spiffsFormatIfCorrupt\":1,"
         "\"sdEnabled\": 1,\"sdMOSI\": \"23\",\"sdMISO\": \"19\",\"sdCLK\": \"18\",\"sdCS\": \"4\""

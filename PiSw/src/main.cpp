@@ -35,13 +35,13 @@ typedef int                 s32;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.015";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.016";
 static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
 
 // Baud rate
-#define MAIN_UART_BAUD_RATE 115200
+#define MAIN_UART_BAUD_RATE 400000
 // #define USE_FULL_UART 1
 #ifdef USE_FULL_UART
 UartMaxi mainUart;
