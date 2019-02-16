@@ -4,7 +4,7 @@
 #include "CommandHandler.h"
 #include "../System/nmalloc.h"
 #include "../System/ee_printf.h"
-#include "../TargetBus/target_memory_map.h"
+#include "../TargetBus/TargetState.h"
 #include "minihdlc.h"
 #include "../FileFormats/srecparser.h"
 #include "../Machines/McManager.h"
@@ -150,7 +150,7 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     else if (strcasecmp(cmdName, "ClearTarget") == 0)
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "ClearTarget");
-        targetClear();
+        TargetState::clear();
     }
     else if ((strcasecmp(cmdName, "ProgramAndReset") == 0) || (strcasecmp(cmdName, "ProgramTarget") == 0))
     {
@@ -176,7 +176,7 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     else if (strcasecmp(cmdName, "SRECTarget") == 0)
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "SREC to Target, len %d", paramsLen);
-        srec_decode(targetDataBlockStore, addressRxCallback, pParams, paramsLen);
+        srec_decode(TargetState::addMemoryBlock, addressRxCallback, pParams, paramsLen);
     }
     else if (strncasecmp(cmdName, "SetMachine", strlen("SetMachine")) == 0)
     {

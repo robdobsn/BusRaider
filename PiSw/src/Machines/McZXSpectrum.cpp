@@ -5,7 +5,7 @@
 #include "usb_hid_keys.h"
 #include "../System/wgfx.h"
 #include "../TargetBus/BusAccess.h"
-#include "../TargetBus/target_memory_map.h"
+#include "../TargetBus/TargetState.h"
 #include "../Utils/rdutils.h"
 #include <stdlib.h>
 #include "../FileFormats/McZXSpectrumTZXFormat.h"
@@ -59,10 +59,17 @@ void McZXSpectrum::disable()
     BusAccess::accessCallbackRemove();
 }
 
-void McZXSpectrum::handleExecAddr(uint32_t execAddr)
+void McZXSpectrum::handleRegisters(Z80Registers& regs)
 {
     // Handle the execution address
-    LogWrite(_logPrefix, LOG_DEBUG, "Doing nothing with exec addr %04x\n", execAddr);
+    LogWrite(_logPrefix, LOG_DEBUG, "Doing nothing with registers %04x\n", regs.PC);
+
+    // TODO - maybe store register set program in screen memory ??
+    // uint32_t execAddr = regs.PC;
+    // uint8_t jumpCmd[3] = { 0xc3, uint8_t(execAddr & 0xff), uint8_t((execAddr >> 8) & 0xff) };
+    // TargetState::addMemoryBlock(0, jumpCmd, 3);
+    // LogWrite(_logPrefix, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
+
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
@@ -160,7 +167,7 @@ void McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         // TZX
         McZXSpectrumTZXFormat tzxFormatHandler;
         LogWrite(_logPrefix, LOG_DEBUG, "Processing TZX file len %d", fileLen);
-        tzxFormatHandler.proc(targetDataBlockStore, handleExecAddr, pFileData, fileLen);
+        tzxFormatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
     }
     else
     {
@@ -170,7 +177,7 @@ void McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
             baseAddr = strtol(baseAddrStr, NULL, 16);
         LogWrite(_logPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
-        targetDataBlockStore(baseAddr, pFileData, fileLen);
+        TargetState::addMemoryBlock(baseAddr, pFileData, fileLen);
     }
 }
 

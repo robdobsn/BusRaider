@@ -6,7 +6,7 @@
 #include "System/ee_printf.h"
 #include "TargetBus/piwiring.h"
 #include "TargetBus/BusAccess.h"
-#include "TargetBus/target_memory_map.h"
+#include "TargetBus/TargetState.h"
 #include "CommandInterface/CommandHandler.h"
 #include "Utils/rdutils.h"
 #include "Machines/McManager.h"
@@ -34,8 +34,8 @@ typedef int                 s32;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.013";
-static const char* PROG_CREDITS = "                        Rob Dobson 2018";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.014";
+static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
 
@@ -177,8 +177,8 @@ extern "C" int main()
     commandHandler.setMachineChangeCallback(set_machine_by_name);
     commandHandler.setPutToSerialCallback(putToSerial);
 
-    // Target machine memory and command handler
-    targetClear();
+    // Target machine memory
+    TargetState::clear();
 
     // Init machine manager
     McManager::init(&commandHandler);

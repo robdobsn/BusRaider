@@ -13,7 +13,7 @@ McTRS80CmdFormat::McTRS80CmdFormat()
 }
 
 void McTRS80CmdFormat::proc(FileParserDataCallback* pDataCallback, 
-            FileParserAddrCallback* pAddrCallback, 
+            FileParserRegsCallback* pRegsCallback, 
             const uint8_t* pData, int dataLen)
 {
     int pos = 0;
@@ -48,15 +48,17 @@ void McTRS80CmdFormat::proc(FileParserDataCallback* pDataCallback,
                 uint32_t execAddr = 0;
                 if (length == 1)
                 {
-                    execAddr = pData[pos];
-                    pAddrCallback(execAddr);
+                    Z80Registers regs;
+                    regs.PC = pData[pos];
+                    pRegsCallback(regs);
                     LogWrite(_logPrefix, LOG_DEBUG, "CmdFile: ExecAddr8 %04x", execAddr);
                 }
                 else if (length == 2)
                 {
-                    execAddr = pData[pos] + (((uint32_t)pData[pos+1]) << 8);
+                    Z80Registers regs;
+                    regs.PC = pData[pos] + (((uint32_t)pData[pos+1]) << 8);
                     pos+=2;
-                    pAddrCallback(execAddr);
+                    pRegsCallback(regs);
                     LogWrite(_logPrefix, LOG_DEBUG, "CmdFile: ExecAddr16 %04x", execAddr);
                 }
                 else

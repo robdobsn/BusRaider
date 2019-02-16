@@ -33,7 +33,7 @@ class McZXSpectrumSNAFormat
 
 		// Info from https://www.worldofspectrum.org/faq/reference/formats.htm
   	bool proc([[maybe_unused]]FileParserDataCallback* pDataCallback, 
-  				[[maybe_unused]] FileParserAddrCallback* pAddrCallback, 
+  				[[maybe_unused]] FileParserRegsCallback* pRegsCallback, 
   				[[maybe_unused]] const uint8_t* pData, [[maybe_unused]] int dataLen)
 	{
 		if (dataLen < (int) sizeof(sna_t))

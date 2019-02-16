@@ -5,7 +5,7 @@
 #include "usb_hid_keys.h"
 #include "../System/wgfx.h"
 #include "../TargetBus/BusAccess.h"
-#include "../TargetBus/target_memory_map.h"
+#include "../TargetBus/TargetState.h"
 #include "../Utils/rdutils.h"
 #include <stdlib.h>
 #include "../System/nmalloc.h" //TODO
@@ -234,7 +234,7 @@ void McTerminal::fileHandler(const char* pFileInfo, const uint8_t* pFileData, in
     if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
         baseAddr = strtol(baseAddrStr, NULL, 16);
     LogWrite(_logPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
-    targetDataBlockStore(baseAddr, pFileData, fileLen);
+    TargetState::addMemoryBlock(baseAddr, pFileData, fileLen);
 }
 
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80

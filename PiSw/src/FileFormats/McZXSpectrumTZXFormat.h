@@ -56,7 +56,7 @@ class McZXSpectrumTZXFormat
   public:
 	// Info from http://www.zx-modules.de/fileformats/tapformat.html
 	bool decodeTapBlock(FileParserDataCallback* pDataCallback,
-		[[maybe_unused]] FileParserAddrCallback* pAddrCallback,
+		[[maybe_unused]] FileParserRegsCallback* pRegsCallback,
 		const uint8_t* pData, int curOffset, int totalLen, int dataLen)
 	{
 		// Handle headers
@@ -130,7 +130,7 @@ class McZXSpectrumTZXFormat
 	}
 
   	bool proc(FileParserDataCallback* pDataCallback, 
-  				[[maybe_unused]] FileParserAddrCallback* pAddrCallback, 
+  				[[maybe_unused]] FileParserRegsCallback* pRegsCallback, 
   				const uint8_t* pData, int dataLen)
 	{
 		// Check format is valid
@@ -154,7 +154,7 @@ class McZXSpectrumTZXFormat
 					recLen = getWord16(pData, dataLen, recPos+2);
 					//LogWrite(_logPrefix, LOG_DEBUG, "Std speed data, delay %dms len %d\n", nDelay, recLen);
 					LogWrite(_logPrefix, LOG_DEBUG, "Std speed data, delay %dms len %d => ", nDelay, recLen);
-					decodeTapBlock(pDataCallback, pAddrCallback, pData, recPos + 4, dataLen, recLen);
+					decodeTapBlock(pDataCallback, pRegsCallback, pData, recPos + 4, dataLen, recLen);
 					recPos += recLen + 4;
 					break;
 				}

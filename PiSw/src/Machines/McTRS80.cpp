@@ -5,7 +5,7 @@
 #include "usb_hid_keys.h"
 #include "../System/wgfx.h"
 #include "../TargetBus/BusAccess.h"
-#include "../TargetBus/target_memory_map.h"
+#include "../TargetBus/TargetState.h"
 #include "../Utils/rdutils.h"
 #include <stdlib.h>
 #include "../FileFormats/McTRS80CmdFormat.h"
@@ -62,11 +62,12 @@ void McTRS80::disable()
     BusAccess::accessCallbackRemove();
 }
 
-void McTRS80::handleExecAddr(uint32_t execAddr)
+void McTRS80::handleRegisters(Z80Registers& regs)
 {
     // Handle the execution address
+    uint32_t execAddr = regs.PC;
     uint8_t jumpCmd[3] = { 0xc3, uint8_t(execAddr & 0xff), uint8_t((execAddr >> 8) & 0xff) };
-    targetDataBlockStore(0, jumpCmd, 3);
+    TargetState::addMemoryBlock(0, jumpCmd, 3);
     LogWrite(_logPrefix, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
 }
 
@@ -297,7 +298,7 @@ void McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
         // TRS80 command file
         McTRS80CmdFormat cmdFormat;
         LogWrite(_logPrefix, LOG_DEBUG, "Processing TRS80 CMD file len %d", fileLen);
-        cmdFormat.proc(targetDataBlockStore, handleExecAddr, pFileData, fileLen);
+        cmdFormat.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
     }
     else
     {
@@ -307,7 +308,7 @@ void McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
         if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
             baseAddr = strtol(baseAddrStr, NULL, 16);
         LogWrite(_logPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
-        targetDataBlockStore(baseAddr, pFileData, fileLen);
+        TargetState::addMemoryBlock(baseAddr, pFileData, fileLen);
     }
 }
 

@@ -63,7 +63,7 @@ class McZXSpectrumZ80Format
 
 	// Info from https://www.worldofspectrum.org/faq/reference/z80format.htm
   	bool proc([[maybe_unused]] FileParserDataCallback* pDataCallback, 
-  				[[maybe_unused]] FileParserAddrCallback* pAddrCallback, 
+  				[[maybe_unused]] FileParserRegsCallback* pRegsCallback, 
   				[[maybe_unused]] const uint8_t* pData, [[maybe_unused]] int dataLen)
 	{
 		// Has to be at least as long as the header plus some
@@ -88,7 +88,7 @@ class McZXSpectrumZ80Format
 		if ((versionNum == 1) && ((sna->borderEtc & 0x20)) == 0)
 			isCompressed = false;
 
-		// Check for start of ram 
+		// Calculate start of ram 
 		int ramDumpOffset = 0;
 		if (versionNum > 1)
 		{
@@ -102,8 +102,30 @@ class McZXSpectrumZ80Format
 		uint8_t ram[49152];
 		int lenDecoded = decompress(sna->extraData + ramDumpOffset, ram, 49152, isCompressed); 
 		pDataCallback(16384, ram, 49152); 
-		LogWrite(_logPrefix, LOG_DEBUG, "OK format (v%d, compression %s) input len %d -> len %d\n",
-					versionNum, isCompressed ? "Y" : "N", dataLen, lenDecoded);
+
+		// Registers
+		Z80Registers regs;
+		regs.AF = (sna->a << 8) + (sna->f & 0xff);
+		regs.AFDASH = (sna->a2 << 8) + (sna->f2 & 0xff);
+		regs.BC = sna->bc;
+		regs.BCDASH = sna->bc2;
+		regs.DE = sna->de;
+		regs.DEDASH = sna->de2;
+		regs.HL = sna->hl;
+		regs.HLDASH = sna->hl2;
+		regs.IX = sna->ix;
+		regs.IY = sna->iy;
+		regs.SP = sna->sp;
+		regs.PC = sna->pc;
+		regs.I = sna->interrupt;
+		regs.R = (sna->r & 0x7f) + ((sna->borderEtc & 0x01) >> 7);
+		regs.INTMODE = sna->interruptMode & 0x03;
+		regs.INTENABLED = sna->interruptFlipFlop;
+		pRegsCallback(regs);
+
+		// Done
+		LogWrite(_logPrefix, LOG_DEBUG, "OK format (v%d, compression %s) input len %d -> len %d run from %04x\n",
+					versionNum, isCompressed ? "Y" : "N", dataLen, lenDecoded, regs.PC);
 		return true;
 	}
 };

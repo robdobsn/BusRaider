@@ -13,6 +13,6 @@ class McTRS80CmdFormat
   public:
   	McTRS80CmdFormat();
   	void proc(FileParserDataCallback* pDataCallback,
-  			FileParserAddrCallback* pAddrCallback,
+  			FileParserRegsCallback* pRegsCallback,
   			const uint8_t* pData, int dataLen);
 };

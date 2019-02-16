@@ -5,7 +5,7 @@
 #include "usb_hid_keys.h"
 #include "../System/wgfx.h"
 #include "../TargetBus/BusAccess.h"
-#include "../TargetBus/target_memory_map.h"
+#include "../TargetBus/TargetState.h"
 #include "../Utils/rdutils.h"
 #include "../System/ee_printf.h"
 #include "../Debugger/TargetDebug.h"
@@ -58,7 +58,7 @@ void McRobsZ80::handleExecAddr(uint32_t execAddr)
 {
     // Handle the execution address
     uint8_t jumpCmd[3] = { 0xc3, uint8_t(execAddr & 0xff), uint8_t((execAddr >> 8) & 0xff) };
-    targetDataBlockStore(0, jumpCmd, 3);
+    TargetState::addMemoryBlock(0, jumpCmd, 3);
     LogWrite(_logPrefix, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
 }
 
@@ -117,7 +117,7 @@ void McRobsZ80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int
     if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
         baseAddr = strtol(baseAddrStr, NULL, 16);
     LogWrite(_logPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
-    targetDataBlockStore(baseAddr, pFileData, fileLen);
+    TargetState::addMemoryBlock(baseAddr, pFileData, fileLen);
 }
 
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80

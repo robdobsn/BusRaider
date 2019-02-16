@@ -4,7 +4,7 @@
 #include "McManager.h"
 #include "../System/wgfx.h"
 #include <string.h>
-#include "../TargetBus/target_memory_map.h"
+#include "../TargetBus/TargetState.h"
 #include "../TargetBus/BusAccess.h"
 
 // Module name
@@ -339,7 +339,7 @@ void McManager::targetClearAllIO()
 // Handle programming of target machine
 void McManager::handleTargetProgram(const char* cmdName)
 {
-    if (targetGetNumBlocks() == 0) 
+    if (TargetState::numMemoryBlocks() == 0) 
     {
         // Nothing new to write
         LogWrite(FromMcManager, LOG_DEBUG, "ProgramTarget - nothing to write");
@@ -353,18 +353,26 @@ void McManager::handleTargetProgram(const char* cmdName)
             return;
         }
         // Write the blocks
-        for (int i = 0; i < targetGetNumBlocks(); i++) {
-            TargetMemoryBlock* pBlock = targetGetMemoryBlock(i);
+        for (int i = 0; i < TargetState::numMemoryBlocks(); i++) {
+            TargetState::TargetMemoryBlock* pBlock = TargetState::getMemoryBlock(i);
             LogWrite(FromMcManager, LOG_DEBUG,"ProgramTarget start %08x len %d", pBlock->start, pBlock->len);
-            McManager::blockWrite(pBlock->start, targetMemoryPtr() + pBlock->start, pBlock->len, false, false);
+            McManager::blockWrite(pBlock->start, TargetState::getMemoryImagePtr() + pBlock->start, pBlock->len, false, false);
         }
         // Written
-        LogWrite(FromMcManager, LOG_DEBUG, "ProgramTarget - written %d blocks", targetGetNumBlocks());
+        LogWrite(FromMcManager, LOG_DEBUG, "ProgramTarget - written %d blocks", TargetState::numMemoryBlocks());
 
         // Check for reset too
         if (strcasecmp(cmdName, "ProgramAndReset") == 0)
         {
             LogWrite(FromMcManager, LOG_DEBUG, "Resetting target");
+            if (TargetState::areRegistersValid())
+            {
+                Z80Registers regs;
+                TargetState::getTargetRegsAndInvalidate(regs);
+                TargetDebug* pDebug = TargetDebug::get();
+                if (pDebug)
+                    pDebug->startSetRegisterSequence(&regs);
+            }
             BusAccess::controlRelease(true);
         }
         else
@@ -372,7 +380,7 @@ void McManager::handleTargetProgram(const char* cmdName)
             BusAccess::controlRelease(false);
         }
     }
-    // Clear buffer
-    targetClear();
+    // Clear target state
+    TargetState::clear();
 }
 

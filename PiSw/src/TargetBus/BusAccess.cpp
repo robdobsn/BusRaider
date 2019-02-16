@@ -247,6 +247,8 @@ void BusAccess::controlRelease(bool resetTargetOnRelease)
 
         // No longer request bus
         digitalWrite(BR_BUSRQ_BAR, 1);
+        // Bus no longer under BusRaider control
+        _busIsUnderControl = false;        
         microsDelay(10);
         muxClear();
     }
@@ -254,10 +256,9 @@ void BusAccess::controlRelease(bool resetTargetOnRelease)
     {
         // No longer request bus
         digitalWrite(BR_BUSRQ_BAR, 1);
+        // Bus no longer under BusRaider control
+        _busIsUnderControl = false;
     }
-
-    // Bus no longer under BusRaider control
-    _busIsUnderControl = false;
 }
 
 // Request bus, wait until available and take control

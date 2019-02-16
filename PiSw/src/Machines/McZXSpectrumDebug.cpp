@@ -5,7 +5,7 @@
 #include "usb_hid_keys.h"
 #include "../System/wgfx.h"
 #include "../TargetBus/BusAccess.h"
-#include "../TargetBus/target_memory_map.h"
+#include "../TargetBus/TargetState.h"
 #include "../Utils/rdutils.h"
 #include <stdlib.h>
 #include "../FileFormats/McZXSpectrumTZXFormat.h"
@@ -62,12 +62,10 @@ void McZXSpectrumDebug::disable()
     BusAccess::accessCallbackRemove();
 }
 
-void McZXSpectrumDebug::handleExecAddr(uint32_t execAddr)
+void McZXSpectrumDebug::handleRegisters(Z80Registers& regs)
 {
-    // Handle the execution address
-    uint8_t jumpCmd[3] = { 0xc3, uint8_t(execAddr & 0xff), uint8_t((execAddr >> 8) & 0xff) };
-    targetDataBlockStore(0, jumpCmd, 3);
-    LogWrite(_logPrefix, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
+    // Handle the registers
+    TargetState::setTargetRegisters(regs);
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
@@ -165,7 +163,7 @@ void McZXSpectrumDebug::fileHandler(const char* pFileInfo, const uint8_t* pFileD
         // TZX
         McZXSpectrumTZXFormat tzxFormatHandler;
         LogWrite(_logPrefix, LOG_DEBUG, "Processing TZX file len %d", fileLen);
-        tzxFormatHandler.proc(targetDataBlockStore, handleExecAddr, pFileData, fileLen);
+        tzxFormatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
     }
     else if (strcasecmp(pFileType, ".sna") == 0)
     {
@@ -173,7 +171,7 @@ void McZXSpectrumDebug::fileHandler(const char* pFileInfo, const uint8_t* pFileD
         McZXSpectrumSNAFormat snaFormatHandler;
         LogWrite(_logPrefix, LOG_DEBUG, "Processing SNA file len %d", fileLen);
         // TODO handle registers and injecting RET
-        snaFormatHandler.proc(targetDataBlockStore, handleExecAddr, pFileData, fileLen);
+        snaFormatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
     }
     else if (strcasecmp(pFileType, ".z80") == 0)
     {
@@ -181,7 +179,7 @@ void McZXSpectrumDebug::fileHandler(const char* pFileInfo, const uint8_t* pFileD
         McZXSpectrumZ80Format snaFormatHandler;
         LogWrite(_logPrefix, LOG_DEBUG, "Processing Z80 file len %d", fileLen);
         // TODO handle registers and injecting RET
-        snaFormatHandler.proc(targetDataBlockStore, handleExecAddr, pFileData, fileLen);
+        snaFormatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
     }
     else
     {
@@ -191,7 +189,7 @@ void McZXSpectrumDebug::fileHandler(const char* pFileInfo, const uint8_t* pFileD
         if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
             baseAddr = strtol(baseAddrStr, NULL, 16);
         LogWrite(_logPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
-        targetDataBlockStore(baseAddr, pFileData, fileLen);
+        TargetState::addMemoryBlock(baseAddr, pFileData, fileLen);
     }
     _screenBufferValid = false;
 }

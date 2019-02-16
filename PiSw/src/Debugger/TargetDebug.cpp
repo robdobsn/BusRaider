@@ -39,9 +39,9 @@ TargetDebug* TargetDebug::get()
 TargetDebug::TargetDebug()
 {
     _registerMode = REGISTER_MODE_NONE;
-    _registerQueryGotM1 = false;
+    _registerModeGotM1 = false;
     _registerQueryWriteIndex = 0;
-    _registerQueryStep = 0;
+    _registerModeStep = 0;
     for (int i = 0; i < MAX_BREAKPOINTS; i++)
         _breakpoints[i].enabled = false;
     _breakpointNumEnabled = 0;
@@ -119,20 +119,36 @@ bool TargetDebug::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len)
     return true;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Injected instruction sequence handling for register set/get
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void TargetDebug::startGetRegisterSequence()
 {
     // Start sequence of getting registers
     _registerMode = REGISTER_MODE_GET;
-    _registerQueryGotM1 = false;
+    _registerModeGotM1 = false;
     _registerQueryWriteIndex = 0;
-    _registerQueryStep = 0;
+    _registerModeStep = 0;
 }
 
-void TargetDebug::startSetRegisterSequence()
+void TargetDebug::startSetRegisterSequence(Z80Registers* pRegs)
 {
+    // Set regs
+    if (pRegs)
+        _z80Registers = *pRegs;
+
+    LogWrite(FromTargetDebug, LOG_DEBUG, "startSetRegisterSequence regs %d", pRegs);
+
     // Start sequence of setting registers
     _registerMode = REGISTER_MODE_SET;
+    _registerModeGotM1 = false;
+    _registerModeStep = 0;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Grab all physical memory and release bus
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void TargetDebug::grabMemoryAndReleaseBusRq(McBase* pMachine, [[maybe_unused]] bool singleStep)
 {
@@ -169,6 +185,10 @@ void TargetDebug::grabMemoryAndReleaseBusRq(McBase* pMachine, [[maybe_unused]] b
     }
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Utility functions
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 bool TargetDebug::matches(const char* s1, const char* s2, int maxLen)
 {
     const char* p1 = s1;
@@ -193,6 +213,10 @@ bool TargetDebug::matches(const char* s1, const char* s2, int maxLen)
     return false;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Service - to handle breakpoint hits
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void TargetDebug::service()
 {
     if (_breakpointHitFlag)
@@ -203,6 +227,10 @@ void TargetDebug::service()
         _breakpointHitFlag = false;
     }
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Debugger command handler - based on ZEsarUX / Z80 Debugger for VS Code
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char* pCommand, 
         [[maybe_unused]] char* pResponse, [[maybe_unused]] int maxResponseLen)
@@ -328,6 +356,11 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
     }
     else if (matches(cmdStr, "get-registers", MAX_CMD_STR_LEN))
     {
+        uint32_t curAddr = 0;
+        uint32_t curData = 0;
+        uint32_t curFlags = 0;
+        BusAccess::pauseGetCurrent(&curAddr, &curData, &curFlags);
+        _z80Registers.PC = curAddr;
         _z80Registers.format1(pResponse, maxResponseLen);
     }
     else if (matches(cmdStr, "read-memory", MAX_CMD_STR_LEN))
@@ -436,9 +469,9 @@ void TargetDebug::handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags
     {
                         // loop:
         0xF5,           //     push af
-        0xED, 0x5F,     //     ld a,r
+        0xED, 0x5F,     //     ld a,r - note that this instruction puts IFF2 into PF flag
         0x77,           //     ld (hl),a
-        0xED, 0x57,     //     ld a,i   
+        0xED, 0x57,     //     ld a,i
         0x77,           //     ld (hl),a
         0x33,           //     inc sp
         0x33,           //     inc sp
@@ -457,7 +490,7 @@ void TargetDebug::handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags
         0xDD, 0xE5,     //     push ix        
         0x33,           //     inc sp
         0x33,           //     inc sp    
-        0xFD, 0xE5,     //     push iy    
+        0xFD, 0xE5,     //     push iy - no inc sp as we pop af lower down which restores sp to where it was    
         0x3E, 0x00,     //     ld a, 0 - note that the value 0 gets changed in the code below  
         0xED, 0x4F,     //     ld r, a
         0xF1, 0x00, 0x00,    //     pop af + two bytes that are read is if from stack - note that the values 0, 0 get changed in the code below  
@@ -466,15 +499,12 @@ void TargetDebug::handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags
     const int RegisterRUpdatePos = 28;
     const int RegisterAFUpdatePos = 32;
 
-    // We're now inserting instructions or getting results back
-    _registerQueryGotM1 = true;
-
     // Check if writing
     if (flags & BR_CTRL_BUS_WR_MASK)
     {
         retVal = BR_MEM_ACCESS_INSTR_INJECT;
         // Store the result in registers
-        switch(_registerQueryStep)
+        switch(_registerModeStep)
         {
             case 1:  // push af
             {
@@ -575,12 +605,91 @@ void TargetDebug::handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags
     else
     {
         // Send instructions to query registers
-        retVal = regQueryInstructions[_registerQueryStep++] | BR_MEM_ACCESS_INSTR_INJECT;
+        retVal = regQueryInstructions[_registerModeStep++] | BR_MEM_ACCESS_INSTR_INJECT;
         _registerQueryWriteIndex = 0;
     }
 
     // Check if complete
-    if (_registerQueryStep >= sizeof(regQueryInstructions))
+    if (_registerModeStep >= sizeof(regQueryInstructions))
+        _registerMode = REGISTER_MODE_NONE;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Interrupt extension for debugger - handle register SET
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TargetDebug::handleRegisterSet(uint32_t& retVal)
+{
+    // Instructions to set register values
+    static uint8_t regSetInstructions[] = 
+    {
+        0xdd, 0x21, 0x00, 0x00,     // ld ix, xxxx
+        0xfd, 0x21, 0x00, 0x00,     // ld iy, xxxx
+        0x21, 0x00, 0x00,           // ld hl, xxxx
+        0x11, 0x00, 0x00,           // ld de, xxxx
+        0x01, 0x00, 0x00,           // ld bc, xxxx
+        0xd9,                       // exx
+        0x31, 0x00, 0x00,           // ld sp, xxxx
+        0x21, 0x00, 0x00,           // ld hl, xxxx
+        0x11, 0x00, 0x00,           // ld de, xxxx
+        0x01, 0x00, 0x00,           // ld bc, xxxx
+        0xf1, 0x00, 0x00,           // pop af + two bytes that are read as if from stack
+        0x08,                       // ex af,af'
+        0xf1, 0x00, 0x00,           // pop af + two bytes that are read as if from stack
+        0x3e, 0x00,                 // ld a, xx
+        0xed, 0x47,                 // ld i, a
+        0x3e, 0x00,                 // ld a, xx
+        0xed, 0x4f,                 // ld r, a
+        0x3e, 0x00,                 // ld a, xx
+        0xed, 0x46,                 // im 0
+        0xfb,                       // ei
+        0xc3, 0x00, 0x00            // jp xxxx
+    };
+    const int RegisterIXUpdatePos = 2;
+    const int RegisterIYUpdatePos = 6;
+    const int RegisterHLDASHUpdatePos = 9;
+    const int RegisterDEDASHUpdatePos = 12;
+    const int RegisterBCDASHUpdatePos = 15;
+    const int RegisterSPUpdatePos = 19;
+    const int RegisterHLUpdatePos = 22;
+    const int RegisterDEUpdatePos = 25;
+    const int RegisterBCUpdatePos = 28;
+    const int RegisterAFDASHUpdatePos = 31;
+    const int RegisterAFUpdatePos = 35;
+    const int RegisterIUpdatePos = 38;
+    const int RegisterRUpdatePos = 42;
+    const int RegisterAUpdatePos = 46;
+    const int RegisterIMUpdatePos = 48;
+    const int RegisterINTENUpdatePos = 49;
+    const int RegisterPCUpdatePos = 51;
+
+    // Fill in the register values
+    if (_registerModeStep == 0)
+    {
+        *((uint16_t*)(regSetInstructions+RegisterIXUpdatePos)) = _z80Registers.IX;
+        *((uint16_t*)(regSetInstructions+RegisterIYUpdatePos)) = _z80Registers.IY;
+        *((uint16_t*)(regSetInstructions+RegisterHLDASHUpdatePos)) = _z80Registers.HLDASH;
+        *((uint16_t*)(regSetInstructions+RegisterDEDASHUpdatePos)) = _z80Registers.DEDASH;
+        *((uint16_t*)(regSetInstructions+RegisterBCDASHUpdatePos)) = _z80Registers.BCDASH;
+        *((uint16_t*)(regSetInstructions+RegisterSPUpdatePos)) = _z80Registers.SP;
+        *((uint16_t*)(regSetInstructions+RegisterHLUpdatePos)) = _z80Registers.HL;
+        *((uint16_t*)(regSetInstructions+RegisterDEUpdatePos)) = _z80Registers.DE;
+        *((uint16_t*)(regSetInstructions+RegisterBCUpdatePos)) = _z80Registers.BC;
+        *((uint16_t*)(regSetInstructions+RegisterAFDASHUpdatePos)) = _z80Registers.AFDASH;
+        *((uint16_t*)(regSetInstructions+RegisterAFUpdatePos)) = _z80Registers.AF;
+        regSetInstructions[RegisterIUpdatePos] = _z80Registers.I;
+        regSetInstructions[RegisterRUpdatePos] = _z80Registers.R;
+        regSetInstructions[RegisterAUpdatePos] = _z80Registers.AF >> 8;
+        regSetInstructions[RegisterIMUpdatePos] = (_z80Registers.INTMODE == 0) ? 0x46 : ((_z80Registers.INTMODE == 1) ? 0x56 : 0x5e);
+        regSetInstructions[RegisterINTENUpdatePos] = (_z80Registers.INTENABLED == 0) ? 0xf3 : 0xfb;
+        *((uint16_t*)(regSetInstructions+RegisterPCUpdatePos)) = _z80Registers.PC;
+    }
+
+    // Return the instruction / data in inject
+    retVal = regSetInstructions[_registerModeStep++] | BR_MEM_ACCESS_INSTR_INJECT;
+
+    // Check if complete
+    if (_registerModeStep >= sizeof(regSetInstructions))
         _registerMode = REGISTER_MODE_NONE;
 }
 
@@ -615,9 +724,17 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
     }
 
     // Check if we're in register query mode
-    if ((_registerMode == REGISTER_MODE_GET) && (_registerQueryGotM1 || (flags & BR_CTRL_BUS_M1_MASK)))
+    if ((_registerMode == REGISTER_MODE_GET) && (_registerModeGotM1 || (flags & BR_CTRL_BUS_M1_MASK)))
     {
+        // We're now inserting instructions or getting results back
+        _registerModeGotM1 = true;
         handleRegisterGet(addr, data, flags, retVal);
+    }
+    else if ((_registerMode == REGISTER_MODE_SET) && (_registerModeGotM1 || (flags & BR_CTRL_BUS_M1_MASK)))
+    {
+        // We're now inserting instructions to set registers
+        _registerModeGotM1 = true;
+        handleRegisterSet(retVal);
     }
     else if ((addr >= descriptorTable.emulatedRAMStart) && 
             (addr < descriptorTable.emulatedRAMStart + descriptorTable.emulatedRAMLen))

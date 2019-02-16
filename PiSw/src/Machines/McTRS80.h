@@ -3,7 +3,7 @@
 
 #include "McBase.h"
 #include "McManager.h"
-#include "../System/ee_printf.h"
+#include "../TargetBus/TargetRegisters.h"
 
 class McTRS80 : public McBase
 {
@@ -20,7 +20,7 @@ private:
 
     static McDescriptorTable _descriptorTable;
 
-    static void handleExecAddr(uint32_t execAddr);
+    static void handleRegisters(Z80Registers& regs);
 
 public:
 

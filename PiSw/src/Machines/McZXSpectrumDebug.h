@@ -3,6 +3,7 @@
 
 #include "McBase.h"
 #include "usb_hid_keys.h"
+#include "../TargetBus/TargetRegisters.h"
 
 class McZXSpectrumDebug : public McBase
 {
@@ -17,7 +18,7 @@ private:
 
     static McDescriptorTable _descriptorTable;
 
-    static void handleExecAddr(uint32_t execAddr);
+    static void handleRegisters(Z80Registers& regs);
 
     static const int MAX_KEYS = 6;
     static unsigned char _curKeyModifiers;
