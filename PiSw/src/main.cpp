@@ -24,15 +24,6 @@
 #include <stdlib.h>
 
 typedef unsigned char		u8;
-typedef unsigned short		u16;
-typedef unsigned int		u32;
-typedef unsigned long long	u64;
-
-typedef char                s8;
-typedef short               s16;
-typedef int                 s32;
-
-// #include "../uspi\include\uspi\types.h"
 #include "../uspi/include/uspi.h"
 
 // Program details

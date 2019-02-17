@@ -145,7 +145,7 @@ void McZXSpectrum::displayRefresh()
     }
 
     // Generate a maskable interrupt to trigger Spectrum's keyboard ISR
-    BusAccess::targetIRQ();
+    BusAccess::targetIRQ(5);
 }
 
 // Handle a key press
