@@ -15,6 +15,11 @@ extern uint8_t* __otaUpdateBuffer;
 
 void OTAUpdate::performUpdate(uint8_t* pData, int dataLen)
 {
+            // Disable ints
+            lowlev_disable_irq();
+            lowlev_disable_fiq();
+            disable_mmu_and_cache();
+
     // Copy the blockCopyExecRelocatable() code to otaUpdateBuffer
     uint8_t* pCopyBlockNewLocation = __otaUpdateBuffer;
     memcpy((void*)pCopyBlockNewLocation, (void*)lowlev_blockCopyExecRelocatable, lowlev_blockCopyExecRelocatableLen);
@@ -60,15 +65,20 @@ void OTAUpdate::performUpdate(uint8_t* pData, int dataLen)
 
     // if (!cpyit)
     //     lowlev_goto(0x8000);
-
+    
     // Disable interrupts
-    lowlev_disable_irq();
-    lowlev_disable_fiq();
+    //lowlev_disable_irq();
+    //lowlev_disable_fiq();
+    //lowlev_dmb();
+    //lowlev_dsb();
+    //lowlev_flushcache();
+    // lowlev_disable_caches_mmu();
 
-    // Data memory and instruction barriers (to force all memory operations to complete
-    lowlev_dmb();
-    lowlev_dsb();
-    lowlev_flushcache();
+    // unsigned mode;
+    // asm volatile ("mrc p15,0,%0,c1,c0,0" : "=r" (mode));
+    // // Disable MMU, L1 data cache, Prefetch branch, L1 instruction
+    // mode &= 0xffffe7fa;
+    // asm volatile ("mcr p15,0,%0,c1,c0,0" :: "r" (mode) : "memory");
 
     // Call the copyBlock function in its new location using it to move the program
     // to 0x8000 the base address for Pi programs

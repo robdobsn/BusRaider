@@ -317,8 +317,8 @@ void CommandHandler::handleFileBlock(const char* pCmdJson, const uint8_t* pData,
 
     // Add to count of blocks
     _receivedBlockCount++;
-    LogWrite(FromCmdHandler, LOG_DEBUG, "efBlock, len %d, blocks %d", 
-                _receivedFileBytesRx, _receivedBlockCount);
+    // LogWrite(FromCmdHandler, LOG_DEBUG, "efBlock, len %d, blocks %d", 
+    //             _receivedFileBytesRx, _receivedBlockCount);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

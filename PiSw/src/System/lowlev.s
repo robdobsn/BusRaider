@@ -55,22 +55,66 @@ bloop:  ;@ eor r1, r0, r1
 ;     mcr p15, 0, r3, c7, c10, 5      ;@ Data Memory Barrier
 ;     bx lr
 
-// blockCopyExecRelocatable - copied to heap and used for firmware update
-// params: dest, source, len, execAddr
-.align
-.global lowlev_blockCopyExecRelocatable
-lowlev_blockCopyExecRelocatable:
-    push {r3}
-    cpsid f
-    cpsid i
+.global disable_mmu_and_cache
+disable_mmu_and_cache:
 
-    ;@ Memory barrier
+    push {r0,r1,r2,r3,r10}
     mov r3, #0                      ;@ The read register Should Be Zero before the call
     mcr p15, 0, r3, C7, C6, 0       ;@ Invalidate Entire Data Cache
     mcr p15, 0, r3, c7, c10, 0      ;@ Clean Entire Data Cache
     mcr p15, 0, r3, c7, c14, 0      ;@ Clean and Invalidate Entire Data Cache
     mcr p15, 0, r3, c7, c10, 4      ;@ Data Synchronization Barrier
     mcr p15, 0, r3, c7, c10, 5      ;@ Data Memory Barrier
+    
+    mrc p15, 0, r3, c1, c0, 0
+    mov r0, #5
+    bic r3, r3, r0, LSL #0             ;@ Disable MMU, L1 data cache
+    mov r0, #3
+    bic r3, r3, r0, LSL #11            ;@ Disable Prefetch branch, L1 instruction
+    mcr p15, 0, r3, c1, c0, 0
+    pop {r0,r1,r2,r3,r10}
+    bx lr
+
+.equ ABASE,  0x20200000 @Base address
+.equ GPFSEL0, 0x00			@FSEL register offset 
+.equ AGPSET0,  0x1c			@GPSET0 register offset
+.equ AGPCLR0,  0x28			@GPCLR0 register offset
+.equ ACOUNTER, 0x100
+.equ SET_BIT24,  0x1000000 	@sets bit 24
+.equ AOUTPIN,  0x100 	@sets bit 8
+
+.global blinkCE0
+blinkCE0:
+
+
+push {r0,r1,r2,r3,r10}
+
+ldr r0,=ABASE
+ldr r1,=SET_BIT24
+str r1,[r0,#GPFSEL0]
+ldr r1,=AOUTPIN
+ldr r2,=ACOUNTER
+    str r1,[r0,#AGPSET0]
+	mov r10,#0
+	delay:@loop to large number
+		add r10,r10,#1
+		cmp r10,r2	
+		bne delay
+	str r1,[r0,#AGPCLR0]
+	mov r10,#0
+	delay2:
+		add r10,r10,#1
+		cmp r10,r2	
+		bne delay2
+pop {r0,r1,r2,r3,r10}
+        bx lr   ;@ Return 
+
+// blockCopyExecRelocatable - copied to heap and used for firmware update
+// params: dest, source, len, execAddr
+.global lowlev_blockCopyExecRelocatable
+lowlev_blockCopyExecRelocatable:
+
+    push {r3}
 
 blockCopyExecRelocatableLoop:
     LDRB r3, [r1], #1

@@ -9,6 +9,7 @@
 #include "../Utils/rdutils.h"
 #include "../System/ee_printf.h"
 #include "../Debugger/TargetDebug.h"
+#include "../Machines/McManager.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -69,7 +70,9 @@ void McRobsZ80::displayRefresh()
 {
     // Read memory at the location of the memory mapped screen
     unsigned char pScrnBuffer[ROBSZ80_DISP_RAM_SIZE];
-    BusAccess::blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, 1, 0);
+    bool dataValid = McManager::blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, 1, 0);
+    if (!dataValid)
+        return;
 
     // Write to the display on the Pi Zero
     int bytesPerRow = _descriptorTable.displayPixelsX/8;

@@ -30,6 +30,10 @@ extern void* lowlev_blockCopyExecRelocatable(void* pDest, void* pSrc, int len, v
 typedef void* lowlev_blockCopyExecRelocatableFnT(uint8_t* pDest, uint8_t* pSrc, int len, void* execAddr);
 extern unsigned int lowlev_blockCopyExecRelocatableLen;
 
+extern void blinkCE0();
+
+extern void disable_mmu_and_cache();
+
 // Data memory barrier - no memory access after this can complete until all
 // prior memory accesses are complete
 #define lowlev_dmb() asm volatile("mcr p15, #0, %[zero], c7, c10, #5" \

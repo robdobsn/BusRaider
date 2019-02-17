@@ -131,20 +131,20 @@ void BusAccess::targetResetHold()
 }
 
 // Non-maskable interrupt the host
-void BusAccess::targetNMI()
+void BusAccess::targetNMI(int durationUs)
 {
     // NMI by taking nmi_bar line low and high
     muxSet(BR_MUX_NMI_BAR_LOW);
-    microsDelay(10);
+    microsDelay((durationUs <= 0) ? 5 : durationUs);
     muxClear();
 }
 
 // Maskable interrupt the host
-void BusAccess::targetIRQ()
+void BusAccess::targetIRQ(int durationUs)
 {
     // IRQ by taking irq_bar line low and high
     muxSet(BR_MUX_IRQ_BAR_LOW);
-    microsDelay(10);
+    microsDelay((durationUs <= 0) ? 5 : durationUs);
     muxClear();
 }
 
@@ -197,6 +197,11 @@ void BusAccess::controlTake()
 // Release control of bus
 void BusAccess::controlRelease(bool resetTargetOnRelease)
 {
+
+    #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+    #endif
+
     // Prime flip-flop that skips refresh cycles
     // So that the very first MREQ cycle after a BUSRQ/BUSACK causes a WAIT to be generated
     // (if enabled)
@@ -209,15 +214,15 @@ void BusAccess::controlRelease(bool resetTargetOnRelease)
 //TODO optimize
 
     // Pulse MREQ to prime the FF
-    microsDelay(2);
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_MREQ_FF_RESET);
     digitalWrite(BR_MREQ_BAR, 0);
-    microsDelay(2);
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_MREQ_FF_RESET);
     digitalWrite(BR_MREQ_BAR, 1);
 
-    // Clear down
+    // Go back to data inwards
     WR32(GPSET0, 1 << BR_DATA_DIR_IN);
     pibSetIn();
-    microsDelay(2);
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_DATA_DIRN);
 
     // Clear the mux to deactivate output enables
     muxClear();
@@ -259,6 +264,10 @@ void BusAccess::controlRelease(bool resetTargetOnRelease)
         // Bus no longer under BusRaider control
         _busIsUnderControl = false;
     }
+
+    #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+    #endif
 }
 
 // Request bus, wait until available and take control
@@ -765,39 +774,6 @@ void BusAccess::waitStateISR(void* pData)
     }
     else
     {
-        // //TODO
-        // if (_pauseIsPaused)
-        // {
-        //     digitalWrite(8, 1);
-        //     microsDelay(1);
-        //     digitalWrite(8, 0);
-        //     microsDelay(1);
-        //     digitalWrite(8, 1);
-        //     microsDelay(1);
-        //     digitalWrite(8, 0);
-        // }
-        // if (m1Asserted)
-        // {
-        //     microsDelay(1);
-        //     digitalWrite(8, 1);
-        //     microsDelay(2);
-        //     digitalWrite(8, 0);
-        //     microsDelay(1);
-        //     digitalWrite(8, 1);
-        //     microsDelay(2);
-        //     digitalWrite(8, 0);
-        // }
-        // if (instructionInjection)
-        // {
-        //     microsDelay(1);
-        //     digitalWrite(8, 1);
-        //     microsDelay(0.5);
-        //     digitalWrite(8, 0);
-        //     microsDelay(1);
-        //     digitalWrite(8, 1);
-        //     microsDelay(0.5);
-        //     digitalWrite(8, 0);
-        // }
         // No pause requested - clear the WAIT state so execution can continue
         // Clear the WAIT state flip-flop
         clearWaitFF();

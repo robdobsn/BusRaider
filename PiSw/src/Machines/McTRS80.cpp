@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include "../FileFormats/McTRS80CmdFormat.h"
 #include "../Debugger/TargetDebug.h"
+#include "../Machines/McManager.h"
 
 const char* McTRS80::_logPrefix = "TRS80";
 
@@ -76,13 +77,11 @@ void McTRS80::handleRegisters(Z80Registers& regs)
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
 void McTRS80::displayRefresh()
 {
-    //TODO
-    if (BusAccess::pauseIsPaused())
-        return;
-
     // Read memory of RC2014 at the location of the TRS80 memory mapped screen
     unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
-    BusAccess::blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, 1, 0);
+    bool dataValid = McManager::blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, 1, 0);
+    if (!dataValid)
+        return;
 
     // Write to the display on the Pi Zero
     int cols = _descriptorTable.displayPixelsX / _descriptorTable.displayCellX;

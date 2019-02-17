@@ -75,64 +75,66 @@ void McZXSpectrumDebug::displayRefresh()
 {
     // Read memory at the location of the memory mapped screen
     unsigned char pScrnBuffer[ZXSPECTRUM_DISP_RAM_SIZE];
-    McManager::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, pScrnBuffer, ZXSPECTRUM_DISP_RAM_SIZE, 1, 0);
-
-    // Check for colour data change - refresh everything if changed
-    for (uint32_t colrIdx = ZXSPECTRUM_PIXEL_RAM_SIZE; colrIdx < ZXSPECTRUM_DISP_RAM_SIZE; colrIdx++)
+    bool dataValid = McManager::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, pScrnBuffer, ZXSPECTRUM_DISP_RAM_SIZE, 1, 0);
+    if (dataValid)
     {
-        if (pScrnBuffer[colrIdx] != _screenBuffer[colrIdx])
+        // Check for colour data change - refresh everything if changed
+        for (uint32_t colrIdx = ZXSPECTRUM_PIXEL_RAM_SIZE; colrIdx < ZXSPECTRUM_DISP_RAM_SIZE; colrIdx++)
         {
-            _screenBufferValid = false;
-           break;
-        }
-    }
-
-    // Write to the display on the Pi Zero
-    int bytesPerRow = _descriptorTable.displayPixelsX/8;
-    int colrCellsPerRow = _descriptorTable.displayPixelsX/_descriptorTable.displayCellX;
-    for (uint32_t bufIdx = 0; bufIdx < ZXSPECTRUM_PIXEL_RAM_SIZE; bufIdx++)
-    {
-        if (!_screenBufferValid || (_screenBuffer[bufIdx] != pScrnBuffer[bufIdx]))
-        {
-            // Save new version of screen buffer
-            _screenBuffer[bufIdx] = pScrnBuffer[bufIdx];
-
-            // Get colour info for this location
-            int col = bufIdx % colrCellsPerRow;
-            int row = (bufIdx / colrCellsPerRow);
-            row = (row & 0x07) | ((row & 0xc0) >> 3);
-            int colrAddr = ZXSPECTRUM_PIXEL_RAM_SIZE + (row*colrCellsPerRow) + col;
-
-            // Bits 0..2 are INK colour, 3..5 are PAPER colour, 6 = brightness, 7 = flash
-            int cellColourData = pScrnBuffer[colrAddr];
-
-            // Set the pixels in this byte
-            int pixMask = 0x80;
-            for (int i = 0; i < 8; i++)
+            if (pScrnBuffer[colrIdx] != _screenBuffer[colrIdx])
             {
-                int x = ((bufIdx % bytesPerRow) * 8) + i;
-                int y = bufIdx / bytesPerRow;
-                // Munge y value for weird spectrum addressing
-                y = ((y & 0x38) >> 3) | ((y & 0x07) << 3) | (y & 0xc0);
-                // Get pixel colour
-                bool pixVal = pScrnBuffer[bufIdx] & pixMask;
-                int pixColour = ((cellColourData & 0x38) >> 3) | ((cellColourData & 0x80) >> 4);
-                if (pixVal)
-                    pixColour = (cellColourData & 0x07) | ((cellColourData & 0x80) >> 4); 
-                wgfxSetColourPixel(MC_WINDOW_NUMBER, x, y, pixColour);
-                // Bump the pixel mask
-                pixMask = pixMask >> 1;
+                _screenBufferValid = false;
+            break;
             }
         }
+
+        // Write to the display on the Pi Zero
+        int bytesPerRow = _descriptorTable.displayPixelsX/8;
+        int colrCellsPerRow = _descriptorTable.displayPixelsX/_descriptorTable.displayCellX;
+        for (uint32_t bufIdx = 0; bufIdx < ZXSPECTRUM_PIXEL_RAM_SIZE; bufIdx++)
+        {
+            if (!_screenBufferValid || (_screenBuffer[bufIdx] != pScrnBuffer[bufIdx]))
+            {
+                // Save new version of screen buffer
+                _screenBuffer[bufIdx] = pScrnBuffer[bufIdx];
+
+                // Get colour info for this location
+                int col = bufIdx % colrCellsPerRow;
+                int row = (bufIdx / colrCellsPerRow);
+                row = (row & 0x07) | ((row & 0xc0) >> 3);
+                int colrAddr = ZXSPECTRUM_PIXEL_RAM_SIZE + (row*colrCellsPerRow) + col;
+
+                // Bits 0..2 are INK colour, 3..5 are PAPER colour, 6 = brightness, 7 = flash
+                int cellColourData = pScrnBuffer[colrAddr];
+
+                // Set the pixels in this byte
+                int pixMask = 0x80;
+                for (int i = 0; i < 8; i++)
+                {
+                    int x = ((bufIdx % bytesPerRow) * 8) + i;
+                    int y = bufIdx / bytesPerRow;
+                    // Munge y value for weird spectrum addressing
+                    y = ((y & 0x38) >> 3) | ((y & 0x07) << 3) | (y & 0xc0);
+                    // Get pixel colour
+                    bool pixVal = pScrnBuffer[bufIdx] & pixMask;
+                    int pixColour = ((cellColourData & 0x38) >> 3) | ((cellColourData & 0x80) >> 4);
+                    if (pixVal)
+                        pixColour = (cellColourData & 0x07) | ((cellColourData & 0x80) >> 4); 
+                    wgfxSetColourPixel(MC_WINDOW_NUMBER, x, y, pixColour);
+                    // Bump the pixel mask
+                    pixMask = pixMask >> 1;
+                }
+            }
+        }
+
+        // Save colour data for later checks
+        for (uint32_t colrIdx = ZXSPECTRUM_PIXEL_RAM_SIZE; colrIdx < ZXSPECTRUM_DISP_RAM_SIZE; colrIdx++)
+            _screenBuffer[colrIdx] = pScrnBuffer[colrIdx];
+        _screenBufferValid = true;
     }
-
-    // Save colour data for later checks
-    for (uint32_t colrIdx = ZXSPECTRUM_PIXEL_RAM_SIZE; colrIdx < ZXSPECTRUM_DISP_RAM_SIZE; colrIdx++)
-        _screenBuffer[colrIdx] = pScrnBuffer[colrIdx];
-    _screenBufferValid = true;
-
+    
     // Generate a maskable interrupt to trigger Spectrum's keyboard ISR
-    BusAccess::targetIRQ();
+    BusAccess::targetIRQ(20);
 }
 
 // Handle a key press

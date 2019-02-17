@@ -114,11 +114,11 @@ public:
     static void targetResetHold();
     
     // NMI host
-    static void targetNMI();
-    
+    static void targetNMI(int durationUs = -1);
+
     // IRQ host
-    static void targetIRQ();
-    
+    static void targetIRQ(int durationUs = -1);
+        
     // Bus control
     static BR_RETURN_TYPE controlRequestAndTake();
     static void controlRelease(bool resetTargetOnRelease);
@@ -230,6 +230,8 @@ private:
     static const int CYCLES_DELAY_FOR_LOW_ADDR_SET = 20;
     static const int CYCLES_DELAY_FOR_HIGH_ADDR_SET = 20;
     static const int CYCLES_DELAY_FOR_WAIT_CLEAR = 20;
+    static const int CYCLES_DELAY_FOR_MREQ_FF_RESET = 20;
+    static const int CYCLES_DELAY_FOR_DATA_DIRN = 20;
 
     // Delay in machine cycles for M1 to settle
     static const int CYCLES_DELAY_FOR_M1_SETTLING = 1000;

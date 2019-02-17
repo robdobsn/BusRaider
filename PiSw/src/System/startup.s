@@ -15,14 +15,14 @@ _startup:
     ldr pc, _interrupt_h
     ldr pc, _fast_interrupt_h
 
-_reset_h:                        .word   _reset_
-    _undefined_instruction_h:    .word   /*undefined_instruction_*/ hang 
-    _software_interrupt_h:       .word   /*software_interrupt_*/    hang
-    _prefetch_abort_h:           .word   /*prefetch_abort_*/        hang
-    _data_abort_h:               .word   /*data_abort_*/            hang
-    _unused_handler_h:           .word   hang
-    _interrupt_h:                .word   irq_handler_ 
-    _fast_interrupt_h:           .word   fiq_handler_
+_reset_h:                    .word   _reset_
+_undefined_instruction_h:    .word   /*undefined_instruction_*/ hang 
+_software_interrupt_h:       .word   /*software_interrupt_*/    hang
+_prefetch_abort_h:           .word   /*prefetch_abort_*/        hang
+_data_abort_h:               .word   /*data_abort_*/            hang
+_unused_handler_h:           .word   hang
+_interrupt_h:                .word   irq_handler_ 
+_fast_interrupt_h:           .word   fiq_handler_
 
 // Linker script file used to set these definitions
 .global bss_start
@@ -37,12 +37,20 @@ pheap_space: .word _heap_start
 .global heap_sz
 heap_sz: .word heap_size
 
-.align
 .global __otaUpdateBuffer
 __otaUpdateBuffer: .word _otaUpdateBufferStart
 
 // Program entry point
 _reset_:
+
+    // Processor is in supervisor mode at startup
+    // Copy vectors to 0x0000
+    mov     r0, #0x8000
+    mov     r1, #0x0000
+    ldmia   r0!,{r2, r3, r4, r5, r6, r7, r8, r9}
+    stmia   r1!,{r2, r3, r4, r5, r6, r7, r8, r9}
+    ldmia   r0!,{r2, r3, r4, r5, r6, r7, r8, r9}
+    stmia   r1!,{r2, r3, r4, r5, r6, r7, r8, r9}
 
     // (PSR_IRQ_MODE|PSR_FIQ_DIS|PSR_IRQ_DIS)
     // Set interrupt mode stack pointer

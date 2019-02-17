@@ -1,3 +1,6 @@
 [submodule "PiCircle/circle"]
 	path = PiCircle/circle
 	url = https://github.com/rsta2/circle
+[submodule "PiSw/uspi"]
+	path = PiSw/uspi
+	url = https://github.com/rsta2/uspi
