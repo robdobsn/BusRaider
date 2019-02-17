@@ -68,7 +68,8 @@ CommandHandler::~CommandHandler()
 
 void CommandHandler::handleSerialReceivedChars(const uint8_t* pBytes, int numBytes)
 {
-    _miniHDLC.handleBuffer(pBytes, numBytes);
+    if (_pSingletonCommandHandler)
+        _pSingletonCommandHandler->_miniHDLC.handleBuffer(pBytes, numBytes);
 }
 
 void CommandHandler::static_hdlcFrameRx(const uint8_t *frameBuffer, int frameLength)
@@ -435,7 +436,8 @@ void CommandHandler::sendAPIReq(const char* reqLine)
     strlcpy(reqStr, "\"req\":\"", MAX_REQ_STR_LEN);
     strlcpy(reqStr+strlen(reqStr), reqLine, MAX_REQ_STR_LEN);
     strlcpy(reqStr+strlen(reqStr), "\",", MAX_REQ_STR_LEN);
-    sendWithJSON("apiReq", reqStr);
+    if (_pSingletonCommandHandler)
+        _pSingletonCommandHandler->sendWithJSON("apiReq", reqStr);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -37,7 +37,7 @@ public:
     }
 
     // Handle data received from ESP32 via serial connection
-    void handleSerialReceivedChars(const uint8_t* pBytes, int numBytes);
+    static void handleSerialReceivedChars(const uint8_t* pBytes, int numBytes);
 
     // Service the command handler
     void service();
@@ -46,7 +46,7 @@ public:
     // Send key code to target
     void sendKeyCodeToTarget(int keyCode);
     void sendWithJSON(const char* cmdName, const char* cmdJson);
-    void sendAPIReq(const char* reqLine);
+    static void sendAPIReq(const char* reqLine);
     void getStatusResponse(bool* pIPAddressValid, char** pIPAddress, char** pWifiConnStr, char** pWifiSSID);
     void requestStatusUpdate();
     void sendDebugMessage(const char* pStr);

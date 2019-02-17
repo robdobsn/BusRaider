@@ -20,6 +20,7 @@
 #include "System/timer.h"
 #include "System/lowlib.h"
 #include "System/lowlev.h"
+#include "Machines/usb_hid_keys.h"
 #include <stdlib.h>
 
 typedef unsigned char		u8;
@@ -35,19 +36,14 @@ typedef int                 s32;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.016";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.020";
 static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
 
 // Baud rate
-#define MAIN_UART_BAUD_RATE 400000
-// #define USE_FULL_UART 1
-#ifdef USE_FULL_UART
-UartMaxi mainUart;
-#else
-UartMini mainUart;
-#endif
+#define MAIN_UART_BAUD_RATE 115200
+UartMini* pMainUart = NULL;
 
 // Immediate mode
 #define IMM_MODE_LINE_MAXLEN 100
@@ -55,27 +51,26 @@ bool _immediateMode = false;
 char _immediateModeLine[IMM_MODE_LINE_MAXLEN+1];
 int _immediateModeLineLen = 0;
 
-// Command Handler
-CommandHandler commandHandler;
-
 // Function to send to uart from command handler
 void putToSerial(const uint8_t* pBuf, int len)
 {
+    if (!pMainUart)
+        return;
     for (int i = 0; i < len; i++)
-        mainUart.write(pBuf[i]);
+        pMainUart->write(pBuf[i]);
 }
 
 void serviceGetFromSerial()
 {
     // Handle serial communication
     for (int rxCtr = 0; rxCtr < 100; rxCtr++) {
-        if (!mainUart.poll())
+        if ((!pMainUart) || (!pMainUart->poll()))
             break;
         // Handle char
-        int ch = mainUart.read();
+        int ch = pMainUart->read();
         uint8_t buf[2];
         buf[0] = ch;
-        commandHandler.handleSerialReceivedChars(buf, 1);
+        CommandHandler::handleSerialReceivedChars(buf, 1);
     }    
 }
 
@@ -143,7 +138,7 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
                 _immediateModeLine[_immediateModeLineLen] = 0;
                 if (_immediateModeLineLen > 0)
                 {
-                    commandHandler.sendAPIReq(_immediateModeLine);
+                    CommandHandler::sendAPIReq(_immediateModeLine);
                     ee_printf("Sent request to ESP32: %s\n", _immediateModeLine);
                 }
                 _immediateModeLineLen = 0;
@@ -178,7 +173,12 @@ extern "C" int main()
     timers_init();
 
     // UART
-    mainUart.setup(MAIN_UART_BAUD_RATE, 100000, 1000);
+    pMainUart = new UartMini();
+    if (pMainUart)
+        pMainUart->setup(MAIN_UART_BAUD_RATE, 100000, 1000);
+
+    // Command Handler
+    CommandHandler commandHandler;
 
     // Command handler
     commandHandler.setMachineChangeCallback(set_machine_by_name);

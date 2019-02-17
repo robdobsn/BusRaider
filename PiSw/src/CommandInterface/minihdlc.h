@@ -62,7 +62,7 @@ private:
     static constexpr uint16_t CRC16_CCITT_INIT_VAL = 0xFFFF;
 
     // Max FRAME length
-    static constexpr int MINIHDLC_MAX_FRAME_LENGTH = 20000;
+    static constexpr int MINIHDLC_MAX_FRAME_LENGTH = 5000;
 
     // CRC table
     static const uint16_t _CRCTable[256];

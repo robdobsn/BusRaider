@@ -12,13 +12,15 @@ SECTIONS
     .init : { *(.init) } > ram
     .text : { *(.text*) } > ram
     .rodata ALIGN(4096) : { *(.rodata*) } > ram
-    .data ALIGN(4096): { *(.data*) } > ram
 
-	.init_array : { 
-        __init_start = .; 
-        *(.init_array*) 
-        __init_end = .; 
+	.init_array ALIGN(4) : { 
+        __init_array_start = .; 
+        *(.init_array*)
+        *(.ctors)
+        __init_array_end = .; 
     } > ram
+
+    .data ALIGN(4096): { *(.data*) } > ram
 
     /* Uninitialized data section */
     .bss ALIGN(4): {
