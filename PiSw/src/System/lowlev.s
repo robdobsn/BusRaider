@@ -57,9 +57,21 @@ bloop:  ;@ eor r1, r0, r1
 
 // blockCopyExecRelocatable - copied to heap and used for firmware update
 // params: dest, source, len, execAddr
+.align
 .global lowlev_blockCopyExecRelocatable
 lowlev_blockCopyExecRelocatable:
     push {r3}
+    cpsid f
+    cpsid i
+
+    ;@ Memory barrier
+    mov r3, #0                      ;@ The read register Should Be Zero before the call
+    mcr p15, 0, r3, C7, C6, 0       ;@ Invalidate Entire Data Cache
+    mcr p15, 0, r3, c7, c10, 0      ;@ Clean Entire Data Cache
+    mcr p15, 0, r3, c7, c14, 0      ;@ Clean and Invalidate Entire Data Cache
+    mcr p15, 0, r3, c7, c10, 4      ;@ Data Synchronization Barrier
+    mcr p15, 0, r3, c7, c10, 5      ;@ Data Memory Barrier
+
 blockCopyExecRelocatableLoop:
     LDRB r3, [r1], #1
     STRB r3, [r0], #1
@@ -72,11 +84,11 @@ blockCopyExecRelocatableEnd:
 .global lowlev_blockCopyExecRelocatableLen
 lowlev_blockCopyExecRelocatableLen: .word blockCopyExecRelocatableEnd-lowlev_blockCopyExecRelocatable
 
-.global utils_goto
-utils_goto:
+.global lowlev_goto
+lowlev_goto:
     bx r0
 
-.globl utils_store_abs8
-utils_store_abs8:
+.globl lowlev_store_abs8
+lowlev_store_abs8:
     strb r1,[r0]
     bx lr

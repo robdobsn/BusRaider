@@ -37,20 +37,12 @@ pheap_space: .word _heap_start
 .global heap_sz
 heap_sz: .word heap_size
 
+.align
 .global __otaUpdateBuffer
 __otaUpdateBuffer: .word _otaUpdateBufferStart
 
 // Program entry point
 _reset_:
-
-    // Processor is in supervisor mode at startup
-    mov     r0, #0x8000
-    mov     r1, #0x0000
-    ldmia   r0!,{r2, r3, r4, r5, r6, r7, r8, r9}
-    stmia   r1!,{r2, r3, r4, r5, r6, r7, r8, r9}
-    ldmia   r0!,{r2, r3, r4, r5, r6, r7, r8, r9}
-    stmia   r1!,{r2, r3, r4, r5, r6, r7, r8, r9}
-    mov sp, #0x8000
 
     // (PSR_IRQ_MODE|PSR_FIQ_DIS|PSR_IRQ_DIS)
     // Set interrupt mode stack pointer
