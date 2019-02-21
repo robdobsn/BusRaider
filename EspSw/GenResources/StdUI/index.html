@@ -198,8 +198,27 @@
 
         function setMachine()
         {
-            var mcName = document.getElementById("machine-select").value;
-            sendCmdToTarget("setmachine=" + mcName);
+            let mcEmuRam = document.getElementById("machine-emu-ram").value;
+            let mcPaging = document.getElementById("machine-paging").value;
+            let mcName = document.getElementById("machine-select").value;
+            sendCmdToTarget("setmachine=" + mcName + "/emuram=" + mcEmuRam + "/usepaging=" + mcPaging);
+        }
+
+        function machineEmuRamChange()
+        {
+            let mcEmuRam = document.getElementById("machine-emu-ram").value;
+            if (mcEmuRam)
+            {
+                document.getElementById("machine-paging").enabled = false;
+                document.getElementById("machine-paging").value = false;
+            }
+            setMachine();
+        }
+
+        function machinePagingChange()
+        {
+            if (document.getElementById("machine-paging").enabled)
+                setMachine();
         }
 
         function callAjax(url, okCallback, failCallback)
@@ -304,7 +323,7 @@
 
         function fileListUpdate()
         {
-            callAjax("/filelist/SPIFFS", fileListUpdateOk, fileListUpdateFail)
+            callAjax("/filelist/SPIFFS", fileListUpdateOk, fileListUpdateFail);
             // fileListUpdateOk('{"rslt":"ok","diskSize":1374476,"diskUsed":4518,"folder":"/","files":[{"name":"/level1.rom","size":4096}]}');
         }
 
@@ -671,6 +690,70 @@
             visibility: visible;
             opacity: 1;
         }
+        .rdcheckoptions {
+            display: inline-block;
+            margin-right: 20px;
+        }
+        .rdcheckcontainer {
+            display: inline-block;
+            position: relative;
+            padding-left: 25px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+        .rdcheckcontainer input {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
+        /* custom checkbox */
+        .rdcheckmark {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 20px;
+            width: 20px;
+            background-color: #555;
+        }
+        /* Mouse-over add background */
+        .rdcheckcontainer:hover input ~ .rdcheckmark {
+            background-color: #999;
+        }
+
+        /* When checked add background */
+        .rdcheckcontainer input:checked ~ .rdcheckmark {
+            background-color: #555;
+        }        
+        /* Create the checkmark/indicator (hidden when not checked) */
+        .rdcheckmark:after {
+            content: "";
+            position: absolute;
+            display: none;
+        }
+
+        /* Show the checkmark when checked */
+        .rdcheckcontainer input:checked ~ .rdcheckmark:after {
+            display: block;
+        }
+
+        /* Style the checkmark/indicator */
+        .rdcheckcontainer .rdcheckmark:after {
+            left: 7px;
+            top: 1px;
+            width: 4px;
+            height: 12px;
+            border: solid white;
+            border-width: 0 3px 3px 0;
+            -webkit-transform: rotate(45deg);
+            -ms-transform: rotate(45deg);
+            transform: rotate(45deg);
+        }
     </style>
 </head>
 
@@ -689,6 +772,20 @@
                         </select>
                     </div>
                 </form>
+            </div>
+            <div>
+                <div class="rdcheckoptions">
+                    <label class="rdcheckcontainer" id="machine-emu-ram" onchange="machineEmuRamChange()">Emulate RAM
+                        <input type="checkbox">
+                        <span class="rdcheckmark"></span>
+                    </label>
+                </div>
+                <div class="rdcheckoptions">
+                    <label type="checkbox" class="rdcheckcontainer" id="machine-paging" onchange="machinePagingChange">Use RAM/ROM Paging
+                        <input type="checkbox" checked>
+                        <span class="rdcheckmark"></span>
+                    </label>
+                </div>
             </div>
             <div class="uiPanelSub">
                 <span class="button" onclick="sendCmdToTarget('resettarget')">Reset target</span>
@@ -748,7 +845,7 @@
 <!--         <div id="terminal-area" class="layout-region">
         </div>
  -->        <div id="footer-area" class="layout-region">
-            <p>Developed by Rob Dobson 2018, inspired by RC2014 and PiGFX</p>
+            <p>Developed by Rob Dobson 2019, inspired by RC2014 and PiGFX</p>
         </div>
     </div>
 

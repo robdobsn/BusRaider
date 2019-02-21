@@ -38,6 +38,7 @@ public:
     uint32_t emulatedRAMLen;
     bool setRegistersByInjection;
     uint32_t setRegistersCodeAddr;
+    bool reqBusOnSingleStep;
 };
 
 class McBase

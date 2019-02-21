@@ -48,7 +48,8 @@ McDescriptorTable McManager::defaultDescriptorTable = {
     .emulatedRAMStart = 0,
     .emulatedRAMLen = 0,
     .setRegistersByInjection = false,
-    .setRegistersCodeAddr = 0
+    .setRegistersCodeAddr = 0,
+    .reqBusOnSingleStep = false
 };
 
 uint8_t McManager::_rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];
@@ -173,6 +174,9 @@ bool McManager::setMachineIdx(int mcIdx)
             _clockGen.enable(false);
         }
 
+        // Set single-step bus request
+        BusAccess::pauseRequestBusOnStep(pMachine->getDescriptorTable(0)->reqBusOnSingleStep);
+        
         // Start
         pMachine->enable();
 

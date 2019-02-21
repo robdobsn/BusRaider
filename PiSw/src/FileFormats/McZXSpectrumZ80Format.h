@@ -88,18 +88,19 @@ class McZXSpectrumZ80Format
 		if ((versionNum == 1) && ((sna->borderEtc & 0x20)) == 0)
 			isCompressed = false;
 
-		// Calculate start of ram 
+		// Calculate start of ram dump in extraData field
 		int ramDumpOffset = 0;
+		int extraHeaderLen = 0;
 		if (versionNum > 1)
 		{
-			int headerLen = (sna->extraData[30] + ((int)sna->extraData[31]) * 256);
-			if (headerLen > 23)
+			extraHeaderLen = (sna->extraData[0] + ((int)sna->extraData[1]) * 256);
+			if (extraHeaderLen > 23)
 				versionNum = 3;
-			ramDumpOffset += headerLen;
+			ramDumpOffset += extraHeaderLen + 5;
 		}
 
 		// Convert
-		uint8_t ram[49152];
+		static uint8_t ram[49152];
 		int lenDecoded = decompress(sna->extraData + ramDumpOffset, ram, 49152, isCompressed); 
 		pDataCallback(16384, ram, 49152); 
 
@@ -123,9 +124,13 @@ class McZXSpectrumZ80Format
 		regs.INTENABLED = sna->interruptFlipFlop;
 		pRegsCallback(regs);
 
+		// Check for V2/3 PC
+		if (versionNum > 1)
+			regs.PC = (sna->extraData[2] + ((int)sna->extraData[3]) * 256);
+
 		// Done
-		LogWrite(_logPrefix, LOG_DEBUG, "OK format (v%d, compression %s) input len %d -> len %d run from %04x\n",
-					versionNum, isCompressed ? "Y" : "N", dataLen, lenDecoded, regs.PC);
+		LogWrite(_logPrefix, LOG_DEBUG, "OK format (v%d hdrLen %d compr %s) input len %d -> len %d run from %04x\n",
+					versionNum, extraHeaderLen, isCompressed ? "Y" : "N", dataLen, lenDecoded, regs.PC);
 		return true;
 	}
 };

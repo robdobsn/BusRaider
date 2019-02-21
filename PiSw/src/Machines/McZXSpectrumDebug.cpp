@@ -42,7 +42,8 @@ McDescriptorTable McZXSpectrumDebug::_descriptorTable = {
     .emulatedRAMStart = 0,
     .emulatedRAMLen = TargetDebug::MAX_TARGET_MEMORY_LEN,
     .setRegistersByInjection = true,
-    .setRegistersCodeAddr = 0
+    .setRegistersCodeAddr = 0,
+    .reqBusOnSingleStep = false
 };
 
 // Enable machine

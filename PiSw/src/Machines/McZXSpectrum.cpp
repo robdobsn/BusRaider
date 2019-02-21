@@ -13,17 +13,19 @@
 #include "../Debugger/TargetDebug.h"
 #include "../Machines/McManager.h"
 
+// Uncomment the following line to use SPI0 CE0 of the Pi as a debug pin
+// #define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
+
 const char* McZXSpectrum::_logPrefix = "ZXSpectrum";
 
-unsigned char McZXSpectrum::_curKeyModifiers = 0;
-unsigned char McZXSpectrum::_curKeys[MAX_KEYS];
+uint8_t McZXSpectrum::_spectrumKeyboardIOBitMap[ZXSPECTRUM_KEYBOARD_NUM_ROWS];
 
 McDescriptorTable McZXSpectrum::_descriptorTable = {
     // Machine name
     "ZX Spectrum",
     McDescriptorTable::PROCESSOR_Z80,
     // Required display refresh rate
-    .displayRefreshRatePerSec = 30,
+    .displayRefreshRatePerSec = 50,
     .displayPixelsX = 256,
     .displayPixelsY = 192,
     .displayCellX = 8,
@@ -41,8 +43,20 @@ McDescriptorTable McZXSpectrum::_descriptorTable = {
     .emulatedRAMStart = 0,
     .emulatedRAMLen = 0,
     .setRegistersByInjection = false,
-    .setRegistersCodeAddr = ZXSPECTRUM_DISP_RAM_ADDR
+    .setRegistersCodeAddr = ZXSPECTRUM_DISP_RAM_ADDR,
+    .reqBusOnSingleStep = true
 };
+
+McZXSpectrum::McZXSpectrum() : McBase()
+{
+    // Screen needs redrawing
+    _screenBufferValid = false;
+
+    // Clear key bitmap
+    for (int i = 0; i < ZXSPECTRUM_KEYBOARD_NUM_ROWS; i++)
+        _spectrumKeyboardIOBitMap[i] = 0xff;
+}
+
 
 // Enable machine
 void McZXSpectrum::enable()
@@ -66,24 +80,15 @@ void McZXSpectrum::handleRegisters(Z80Registers& regs)
 {
     // Handle the registers
     TargetState::setTargetRegisters(regs);
-
-    // 
-
-    // Handle the execution address
-    // LogWrite(_logPrefix, LOG_DEBUG, "Doing nothing with registers %04x\n", regs.PC);
-
-
-    // TODO - maybe store register set program in screen memory ??
-    // uint32_t execAddr = regs.PC;
-    // uint8_t jumpCmd[3] = { 0xc3, uint8_t(execAddr & 0xff), uint8_t((execAddr >> 8) & 0xff) };
-    // TargetState::addMemoryBlock(0, jumpCmd, 3);
-    // LogWrite(_logPrefix, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
-
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
 void McZXSpectrum::displayRefresh()
 {
+    // Check if paused
+    if (BusAccess::pauseIsPaused())
+        return;
+
     // Read memory at the location of the memory mapped screen
     unsigned char pScrnBuffer[ZXSPECTRUM_DISP_RAM_SIZE];
     bool dataValid = McManager::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, pScrnBuffer, ZXSPECTRUM_DISP_RAM_SIZE, 1, 0);
@@ -95,7 +100,7 @@ void McZXSpectrum::displayRefresh()
             if (pScrnBuffer[colrIdx] != _screenBuffer[colrIdx])
             {
                 _screenBufferValid = false;
-            break;
+                break;
             }
         }
 
@@ -142,18 +147,89 @@ void McZXSpectrum::displayRefresh()
         for (uint32_t colrIdx = ZXSPECTRUM_PIXEL_RAM_SIZE; colrIdx < ZXSPECTRUM_DISP_RAM_SIZE; colrIdx++)
             _screenBuffer[colrIdx] = pScrnBuffer[colrIdx];
         _screenBufferValid = true;
+
     }
 
     // Generate a maskable interrupt to trigger Spectrum's keyboard ISR
-    BusAccess::targetIRQ(5);
+    BusAccess::targetIRQ();
+}
+
+uint32_t McZXSpectrum::getKeyBitmap(const int* keyCodes, int keyCodesLen, const uint8_t currentKeyPresses[MAX_KEYS])
+{
+    uint32_t retVal = 0xff;
+    for (int i = 0; i < MAX_KEYS; i++)
+    {
+        int bitMask = 0x01;
+        for (int j = 0; j < keyCodesLen; j++)
+        {
+            if (currentKeyPresses[i] == keyCodes[j])
+                retVal &= ~bitMask;
+            bitMask = bitMask << 1;
+        }
+    }
+    return retVal;
 }
 
 // Handle a key press
-void McZXSpectrum::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_unused]] const unsigned char rawKeys[6])
+void McZXSpectrum::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_unused]] const unsigned char rawKeys[MAX_KEYS])
 {
-    _curKeyModifiers = ucModifiers;
-    for (int i = 0; (i < MAX_KEYS) && (i < 6); i++)
-        _curKeys[i] = rawKeys[i];
+    // Clear key bitmap
+    for (int i = 0; i < ZXSPECTRUM_KEYBOARD_NUM_ROWS; i++)
+        _spectrumKeyboardIOBitMap[i] = 0xff;
+
+    // Note that in the following I've used the KEY_HANJA as a placeholder
+    // as I think it is a key that won't normally occur
+
+    // Check for special codes in the key buffer
+    bool specialKeyBackspace = false;
+    for (int i = 0; i < MAX_KEYS; i++)
+    {
+        if (rawKeys[i] == KEY_BACKSPACE)
+            specialKeyBackspace = true;
+    }
+
+    // Key table
+    static const int keyTable[ZXSPECTRUM_KEYBOARD_NUM_ROWS][ZXSPECTRUM_KEYS_IN_ROW] = {
+            {KEY_HANJA, KEY_Z, KEY_X, KEY_C, KEY_V},
+            {KEY_A, KEY_S, KEY_D, KEY_F, KEY_G},
+            {KEY_Q, KEY_W, KEY_E, KEY_R, KEY_T},
+            {KEY_1, KEY_2, KEY_3, KEY_4, KEY_5},
+            {KEY_0, KEY_9, KEY_8, KEY_7, KEY_6},
+            {KEY_P, KEY_O, KEY_I, KEY_U, KEY_Y},
+            {KEY_ENTER, KEY_L, KEY_K, KEY_J, KEY_H},
+            {KEY_SPACE, KEY_HANJA, KEY_M, KEY_N, KEY_B}
+        };
+
+    // Handle encoding of keys
+    for (int keyRow = 0; keyRow < ZXSPECTRUM_KEYBOARD_NUM_ROWS; keyRow++)
+    {
+        uint32_t keyBits = getKeyBitmap(keyTable[keyRow], ZXSPECTRUM_KEYS_IN_ROW, rawKeys);
+        _spectrumKeyboardIOBitMap[keyRow] = keyBits;
+    }
+
+    // Handle shift key modifier (inject a shift for backspace)
+    if (specialKeyBackspace || ((ucModifiers & KEY_MOD_LSHIFT) != 0) || ((ucModifiers & KEY_MOD_RSHIFT) != 0))
+        _spectrumKeyboardIOBitMap[0] &= 0xfe;
+
+    // Handle modifier for delete (on the zero key)
+    if (specialKeyBackspace)
+        _spectrumKeyboardIOBitMap[4] &= 0xfe;
+
+    // Handle Sym key (CTRL)
+    if (((ucModifiers & KEY_MOD_LCTRL) != 0) || ((ucModifiers & KEY_MOD_RCTRL) != 0))
+        _spectrumKeyboardIOBitMap[7] &= 0xfd;
+
+    LogWrite(_logPrefix, LOG_DEBUG, "KeyBits %02x %02x %02x %02x %02x %02x %02x %02x", 
+                    _spectrumKeyboardIOBitMap[0],
+                    _spectrumKeyboardIOBitMap[1],
+                    _spectrumKeyboardIOBitMap[2],
+                    _spectrumKeyboardIOBitMap[3],
+                    _spectrumKeyboardIOBitMap[4],
+                    _spectrumKeyboardIOBitMap[5],
+                    _spectrumKeyboardIOBitMap[6],
+                    _spectrumKeyboardIOBitMap[7]
+                    );
+
 }
 
 // Handle a file
@@ -200,100 +276,45 @@ void McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
     }
 }
 
-uint32_t McZXSpectrum::getKeyPressed(const int* keyCodes, int keyCodesLen)
-{
-    uint32_t retVal = 0xff;
-    for (int i = 0; i < MAX_KEYS; i++)
-    {
-        int bitMask = 0x01;
-        for (int j = 0; j < keyCodesLen; j++)
-        {
-            if (_curKeys[i] == keyCodes[j])
-                retVal &= ~bitMask;
-            bitMask = bitMask << 1;
-        }
-    }
-    return retVal;
-}
-
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
 uint32_t McZXSpectrum::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
 {
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
     
-    // Callback to debugger
-    TargetDebug* pDebug = TargetDebug::get();
-    if (pDebug)
-        retVal = pDebug->handleInterrupt(addr, data, flags, retVal, _descriptorTable);
-    if ((retVal & BR_MEM_ACCESS_INSTR_INJECT) != 0)
-        return retVal;
+    #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+    #endif
 
-    // Check for read from IO
-    if ((flags & BR_CTRL_BUS_RD_MASK) && (flags & BR_CTRL_BUS_IORQ_MASK))
+    // Callback to debugger if not IORQ
+    if ((flags & BR_CTRL_BUS_MREQ_MASK) != 0)
     {
-
-        // Note that in the following I've used the KEY_HANJA as a placeholder
-        // as I think it is a key that won't normally occur
-
-        // Check for special codes in the key buffer
-        bool specialKeyBackspace = false;
-        for (int i = 0; i < MAX_KEYS; i++)
+        TargetDebug* pDebug = TargetDebug::get();
+        if (pDebug)
+            retVal = pDebug->handleInterrupt(addr, data, flags, retVal, _descriptorTable);
+        if ((retVal & BR_MEM_ACCESS_INSTR_INJECT) != 0)
+            return retVal;
+    }
+    else if (flags & BR_CTRL_BUS_RD_MASK)
+    {
+        // Check for a keyboard address range - any even port number
+        if ((addr & 0x01) == 0)
         {
-            if (_curKeys[i] == KEY_BACKSPACE)
-                specialKeyBackspace = true;
-        }
-        // Check if address is keyboard
-        if (addr == 0xfefe)
-        {
-            static const int keys[] = {KEY_HANJA, KEY_Z, KEY_X, KEY_C, KEY_V};
-            uint32_t keysPressed = getKeyPressed(keys, sizeof(keys)/sizeof(int));
-            if (specialKeyBackspace || ((_curKeyModifiers & KEY_MOD_LSHIFT) != 0) ||
-                             (_curKeyModifiers & KEY_MOD_RSHIFT) != 0)
-                keysPressed &= 0xfe;
-            retVal = keysPressed;
-        }
-        else if (addr == 0xfdfe)
-        {
-            static const int keys[] = {KEY_A, KEY_S, KEY_D, KEY_F, KEY_G};
-            retVal = getKeyPressed(keys, sizeof(keys)/sizeof(int));
-        }
-        else if (addr == 0xfbfe)
-        {
-            static const int keys[] = {KEY_Q, KEY_W, KEY_E, KEY_R, KEY_T};
-            retVal = getKeyPressed(keys, sizeof(keys)/sizeof(int));
-        }
-        else if (addr == 0xf7fe)
-        {
-            static const int keys[] = {KEY_1, KEY_2, KEY_3, KEY_4, KEY_5};
-            retVal = getKeyPressed(keys, sizeof(keys)/sizeof(int));
-        }
-        else if (addr == 0xeffe)
-        {
-            static const int keys[] = {KEY_0, KEY_9, KEY_8, KEY_7, KEY_6};
-            uint32_t keysPressed = getKeyPressed(keys, sizeof(keys)/sizeof(int));
-            if (specialKeyBackspace)
-                keysPressed &= 0xfe;
-            retVal = keysPressed;
-        }
-        else if (addr == 0xdffe)
-        {
-            static const int keys[] = {KEY_P, KEY_O, KEY_I, KEY_U, KEY_Y};
-            retVal = getKeyPressed(keys, sizeof(keys)/sizeof(int));
-        }
-        else if (addr == 0xbffe)
-        {
-            static const int keys[] = {KEY_ENTER, KEY_L, KEY_K, KEY_J, KEY_H};
-            retVal = getKeyPressed(keys, sizeof(keys)/sizeof(int));
-        }
-        else if (addr == 0x7ffe)
-        {
-            static const int keys[] = {KEY_SPACE, KEY_HANJA, KEY_M, KEY_N, KEY_B};
-            uint32_t keysPressed = getKeyPressed(keys, sizeof(keys)/sizeof(int));
-            if (((_curKeyModifiers & KEY_MOD_LCTRL) != 0) || (_curKeyModifiers & KEY_MOD_RCTRL) != 0)
-                keysPressed &= 0xfd;
-            retVal = keysPressed;
+            // Iterate bits in upper address to get the code by and-ing the key bits
+            // this emulates the operation of a bitmapped keyboard matrix
+            retVal = 0xff;
+            uint32_t addrBitMask = 0x0100;
+            for (int keyRow = 0; keyRow < ZXSPECTRUM_KEYBOARD_NUM_ROWS; keyRow++)
+            {
+                if ((addr & addrBitMask) == 0)
+                    retVal &= _spectrumKeyboardIOBitMap[keyRow];
+                addrBitMask = addrBitMask << 1;
+            }
         }
     }
+
+    #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+    #endif
 
     return retVal;
 }

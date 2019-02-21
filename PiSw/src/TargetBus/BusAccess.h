@@ -156,6 +156,7 @@ public:
     static void pauseGetCurrent(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags);
     static bool pauseIsPaused();
     static bool pauseRelease();
+    static void pauseRequestBusOnStep(bool requestBus);
 
 private:
     // Callback on bus access
@@ -230,9 +231,9 @@ private:
     static const int CYCLES_DELAY_FOR_LOW_ADDR_SET = 20;
     static const int CYCLES_DELAY_FOR_HIGH_ADDR_SET = 20;
     static const int CYCLES_DELAY_FOR_WAIT_CLEAR = 20;
-    static const int CYCLES_DELAY_FOR_MREQ_FF_RESET = 200;
-    static const int CYCLES_DELAY_FOR_DATA_DIRN = 200;
+    static const int CYCLES_DELAY_FOR_MREQ_FF_RESET = 20;
+    static const int CYCLES_DELAY_FOR_DATA_DIRN = 20;
 
     // Delay in machine cycles for M1 to settle
-    static const int CYCLES_DELAY_FOR_M1_SETTLING = 1000;
+    static const int CYCLES_DELAY_FOR_M1_SETTLING = 100;
 };

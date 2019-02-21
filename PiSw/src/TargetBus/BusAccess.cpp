@@ -10,7 +10,7 @@
 #include "../System/bare_metal_pi_zero.h"
 
 // Uncomment the following line to use SPI0 CE0 of the Pi as a debug pin
-#define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
+// #define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
 
 // Comment out this line to disable WAIT state generation altogether
 #define BR_ENABLE_WAIT_AND_FIQ 1
@@ -135,7 +135,7 @@ void BusAccess::targetNMI(int durationUs)
 {
     // NMI by taking nmi_bar line low and high
     muxSet(BR_MUX_NMI_BAR_LOW);
-    microsDelay((durationUs <= 0) ? 5 : durationUs);
+    microsDelay((durationUs <= 0) ? 10 : durationUs);
     muxClear();
 }
 
@@ -144,7 +144,7 @@ void BusAccess::targetIRQ(int durationUs)
 {
     // IRQ by taking irq_bar line low and high
     muxSet(BR_MUX_IRQ_BAR_LOW);
-    microsDelay((durationUs <= 0) ? 5 : durationUs);
+    microsDelay((durationUs <= 0) ? 10 : durationUs);
     muxClear();
 }
 
@@ -198,9 +198,9 @@ void BusAccess::controlTake()
 void BusAccess::controlRelease(bool resetTargetOnRelease)
 {
 
-    #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-    #endif
+    // #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+    //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+    // #endif
 
     // Prime flip-flop that skips refresh cycles
     // So that the very first MREQ cycle after a BUSRQ/BUSACK causes a WAIT to be generated
@@ -214,15 +214,18 @@ void BusAccess::controlRelease(bool resetTargetOnRelease)
 //TODO optimize
 
     // Pulse MREQ to prime the FF
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_MREQ_FF_RESET);
+    microsDelay(2);
+    // lowlev_cycleDelay(CYCLES_DELAY_FOR_MREQ_FF_RESET);
     digitalWrite(BR_MREQ_BAR, 0);
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_MREQ_FF_RESET);
+    microsDelay(2);
+    // lowlev_cycleDelay(CYCLES_DELAY_FOR_MREQ_FF_RESET);
     digitalWrite(BR_MREQ_BAR, 1);
 
     // Go back to data inwards
     WR32(GPSET0, 1 << BR_DATA_DIR_IN);
     pibSetIn();
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_DATA_DIRN);
+    microsDelay(2);
+    // lowlev_cycleDelay(CYCLES_DELAY_FOR_DATA_DIRN);
 
     // Clear the mux to deactivate output enables
     muxClear();
@@ -265,9 +268,9 @@ void BusAccess::controlRelease(bool resetTargetOnRelease)
         _busIsUnderControl = false;
     }
 
-    #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-    #endif
+    // #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+    //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+    // #endif
 }
 
 // Request bus, wait until available and take control
@@ -627,6 +630,10 @@ void BusAccess::waitEnable(bool enWaitOnIORQ, bool enWaitOnMREQ)
 // These have to be cleared on exit and the interrupt source register also cleared
 void BusAccess::waitStateISR(void* pData)
 {
+#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+#endif
+
     // pData unused
     pData = pData;
 
@@ -782,6 +789,10 @@ void BusAccess::waitStateISR(void* pData)
     // Clear wait detected
     clearWaitDetected();
 
+#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+#endif
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -896,6 +907,11 @@ bool BusAccess::pauseRelease()
     lowlev_enable_fiq();
 
     return true;
+}
+
+void BusAccess::pauseRequestBusOnStep(bool requestBus)
+{
+    _requestBusWhenSingleStepping = requestBus;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

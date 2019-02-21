@@ -16,24 +16,22 @@ private:
     static constexpr uint32_t ZXSPECTRUM_COLOUR_OFFSET = 0x1800;
     static constexpr uint32_t ZXSPECTRUM_COLOUR_DATA_SIZE = 0x300;
 
+    static constexpr int ZXSPECTRUM_KEYBOARD_NUM_ROWS = 8;
+    static constexpr int ZXSPECTRUM_KEYS_IN_ROW = 5;
+
     static McDescriptorTable _descriptorTable;
 
     static void handleRegisters(Z80Registers& regs);
 
     static const int MAX_KEYS = 6;
-    static unsigned char _curKeyModifiers;
-    static unsigned char _curKeys[MAX_KEYS];
+
+    static uint8_t _spectrumKeyboardIOBitMap[ZXSPECTRUM_KEYBOARD_NUM_ROWS];
 
     static const char* _logPrefix;
 
 public:
 
-    McZXSpectrum() : McBase()
-    {
-        _screenBufferValid = false;
-        for (int i = 0; i < MAX_KEYS; i++)
-            _curKeys[i] = KEY_NONE;
-    }
+    McZXSpectrum();
 
     // Enable machine
     virtual void enable();
@@ -61,5 +59,5 @@ private:
     // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
     static uint32_t memoryRequestCallback(uint32_t addr, uint32_t data, uint32_t flags);
 
-    static uint32_t getKeyPressed(const int* keyCodes, int keyCodesLen);
+    static uint32_t getKeyBitmap(const int* keyCodes, int keyCodesLen, const uint8_t currentKeyPresses[MAX_KEYS]);
 };
