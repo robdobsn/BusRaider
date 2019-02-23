@@ -19,4 +19,4 @@ src/kernel.o: src/kernel.cpp src/kernel.h circle/include/circle/memory.h \
  circle/include/circle/ptrlist.h circle/include/circle/logger.h \
  circle/include/circle/time.h src/BusRaider.h \
  src/CommandHandler/CommandHandler.h src/CommandHandler/MiniHDLC.h \
- circle/include/circle/debug.h
+ circle/include/circle/debug.h circle/include/circle/machineinfo.h

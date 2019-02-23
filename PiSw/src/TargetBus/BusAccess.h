@@ -83,6 +83,7 @@ typedef enum {
 #define BR_DATA_DIR_IN 6
 #define BR_WAIT_BAR 5 // GPIO5
 #define BR_CLOCK_PIN 4 // GPIO4
+#define BR_PAGING_RAM_PIN 8 // CPI CE0
 
 // Masks for above
 #define BR_IORQ_WAIT_EN_MASK (1 << BR_IORQ_WAIT_EN)

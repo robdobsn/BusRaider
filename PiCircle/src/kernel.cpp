@@ -24,6 +24,7 @@
 #include <string.h>
 #include <circle/debug.h>
 #include <circle/timer.h>
+#include <circle/machineinfo.h>
 
 static const char FromKernel[] = "kernel";
 
@@ -115,6 +116,7 @@ TShutdownMode CKernel::Run (void)
     }
 #endif
 
+
 	int rxTotal = 0;
 	int rxLoop = 0;
 	int maxLoops = 3;
@@ -147,6 +149,9 @@ TShutdownMode CKernel::Run (void)
 			// Receive chars
 
 		CString sss;
+		unsigned nClockRate = CMachineInfo::Get ()->GetClockRate (CLOCK_ID_UART);
+		m_Logger.Write(FromKernel, LogNotice, "Clockrate %d\n", nClockRate);
+
 		m_Logger.Write(FromKernel, LogNotice, "Hello there");
 		sss.Format("Loop %d (of %d) Received bytes %d (total %d) Time in ticks %d ~~~\n", i+1, maxLoops, rxLoop, rxTotal, m_Timer.GetTicks());
 		// const char* sss = "Compile time: " __DATE__ " " __TIME__ "\n";

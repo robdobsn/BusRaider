@@ -42,7 +42,7 @@ public:
     // Get descriptor table for the machine
     virtual McDescriptorTable* getDescriptorTable([[maybe_unused]] int subType)
     {
-        return &_descriptorTable;
+        return &McZXSpectrum::_descriptorTable;
     }
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)

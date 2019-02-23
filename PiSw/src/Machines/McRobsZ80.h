@@ -32,7 +32,7 @@ class McRobsZ80 : public McBase
     // Get descriptor table for the machine
     virtual McDescriptorTable* getDescriptorTable([[maybe_unused]] int subType)
     {
-        return &_descriptorTable;
+        return &McRobsZ80::_descriptorTable;
     }
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)

@@ -45,6 +45,8 @@ McDescriptorTable McManager::defaultDescriptorTable = {
     // Bus monitor
     .monitorIORQ = false,
     .monitorMREQ = false,
+    .emulatedRAM = false,
+    .ramPaging = false,
     .emulatedRAMStart = 0,
     .emulatedRAMLen = 0,
     .setRegistersByInjection = false,
@@ -138,14 +140,14 @@ void McManager::add(McBase* pMachine)
     _pMachines[_numMachines++] = pMachine;
 }
 
-bool McManager::setMachineIdx(int mcIdx)
+bool McManager::setMachineIdx(int mcIdx, bool forceUpdate)
 {
     // Check valid
     if (mcIdx < 0 || mcIdx >= _numMachines)
         return false;
 
     // Check if no change
-    if (_curMachineIdx == mcIdx)
+    if ((_curMachineIdx == mcIdx) && !forceUpdate)
         return false;
     
     // Disable current machine
@@ -181,13 +183,13 @@ bool McManager::setMachineIdx(int mcIdx)
         pMachine->enable();
 
         // Started machine
-        LogWrite(FromMcManager, LOG_DEBUG, "Started machine %s\n", 
+        LogWrite(FromMcManager, LOG_DEBUG, "Started machine %s", 
                     pMachine->getDescriptorTable(0)->machineName);
 
     }
     else
     {
-        LogWrite(FromMcManager, LOG_DEBUG, "Failed to start machine idx %d\n", mcIdx);
+        LogWrite(FromMcManager, LOG_DEBUG, "Failed to start machine idx %d", mcIdx);
     }
     return true;
 }
@@ -199,10 +201,39 @@ bool McManager::setMachineByName(const char* mcName)
     {
         if (strncasecmp(mcName, _pMachines[i]->getDescriptorTable(0)->machineName, MAX_MACHINE_NAME_LEN) == 0)
         {
-            return setMachineIdx(i);
+            return setMachineIdx(i, false);
         }
     }
     return false;
+}
+
+bool McManager::setMachineOpts(const char* mcOpts)
+{
+    // Machine
+    McBase* pMachine = getMachine();
+    if (!pMachine)
+        return false;
+    pMachine->disable();
+    if (strcasecmp(mcOpts, "emuram") == 0)
+    {
+        pMachine->getDescriptorTable(0)->emulatedRAM = true;
+        pMachine->getDescriptorTable(0)->ramPaging = false;
+    }
+    else if (strcasecmp(mcOpts, "paging") == 0)
+    {
+        pMachine->getDescriptorTable(0)->emulatedRAM = false;
+        pMachine->getDescriptorTable(0)->ramPaging = true;
+    }
+    else
+    {
+        pMachine->getDescriptorTable(0)->emulatedRAM = false;
+        pMachine->getDescriptorTable(0)->ramPaging = false;
+    }
+    // LogWrite(FromMcManager, LOG_DEBUG, "setMachineOpts %s emuRAM %d ramPaging %d", mcOpts,
+    //             pMachine->getDescriptorTable(0)->emulatedRAM,
+    //             pMachine->getDescriptorTable(0)->ramPaging);
+    pMachine->enable();
+    return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -255,7 +286,7 @@ void McManager::sendKeyCodeToTarget(int asciiCode)
 
 void McManager::sendDebugMessage(const char* pStr)
 {
-    LogWrite(FromMcManager, LOG_DEBUG, "debugMsg %s cmdH %d\n", pStr, _pCommandHandler); 
+    LogWrite(FromMcManager, LOG_DEBUG, "debugMsg %s cmdH %d", pStr, _pCommandHandler); 
     if (_pCommandHandler)
         _pCommandHandler->sendDebugMessage(pStr);
 }

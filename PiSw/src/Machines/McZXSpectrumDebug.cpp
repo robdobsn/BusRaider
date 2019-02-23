@@ -39,6 +39,8 @@ McDescriptorTable McZXSpectrumDebug::_descriptorTable = {
     // Bus monitor
     .monitorIORQ = true,
     .monitorMREQ = true,
+    .emulatedRAM = true,
+    .ramPaging = false,
     .emulatedRAMStart = 0,
     .emulatedRAMLen = TargetDebug::MAX_TARGET_MEMORY_LEN,
     .setRegistersByInjection = true,

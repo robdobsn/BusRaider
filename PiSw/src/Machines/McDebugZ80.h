@@ -30,7 +30,7 @@ public:
     // Get descriptor table for the machine
     virtual McDescriptorTable* getDescriptorTable([[maybe_unused]] int subType)
     {
-        return &_descriptorTable;
+        return &McDebugZ80::_descriptorTable;
     }
 
     // Handle reset for the machine - if false returned then the bus raider will issue a hardware reset

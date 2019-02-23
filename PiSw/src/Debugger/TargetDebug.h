@@ -88,6 +88,7 @@ private:
         REGISTER_MODE_NONE,
         REGISTER_MODE_GET,
         REGISTER_MODE_SET,
+        REGISTER_MODE_UNPAGE,
     };
     REGISTER_MODE _registerMode;
     bool _registerModeGotM1;

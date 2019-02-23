@@ -86,7 +86,7 @@ void layout_display()
     wgfx_set_console_window(1);
 }
 
-extern "C" void set_machine_by_name(const char* mcName)
+extern "C" void setMachineByName(const char* mcName)
 {
     // Set the machine
     if (McManager::setMachineByName(mcName))
@@ -95,6 +95,12 @@ extern "C" void set_machine_by_name(const char* mcName)
         layout_display();
     }
 
+}
+
+extern "C" void setMachineOptions(const char* mcOpts)
+{
+    // Set the machine
+    McManager::setMachineOpts(mcOpts);
 }
 
 static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char rawKeys[6])
@@ -172,7 +178,7 @@ extern "C" int main()
     CommandHandler commandHandler;
 
     // Command handler
-    commandHandler.setMachineChangeCallback(set_machine_by_name);
+    commandHandler.setMachineChangeCallback(setMachineByName, setMachineOptions);
     commandHandler.setPutToSerialCallback(putToSerial);
 
     // Target machine memory
@@ -202,7 +208,7 @@ extern "C" int main()
     BusAccess::init();
 
     // Enable first machine
-    McManager::setMachineIdx(1);
+    McManager::setMachineIdx(1, true);
 
     // Get current machine to check things are working
     if (!McManager::getMachine())

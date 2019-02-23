@@ -33,6 +33,8 @@ McDescriptorTable McTerminal::_descriptorTable = {
     // Bus monitor
     .monitorIORQ = false,
     .monitorMREQ = false,
+    .emulatedRAM = true,
+    .ramPaging = false,
     .emulatedRAMStart = 0,
     .emulatedRAMLen = 0,
     .setRegistersByInjection = false,

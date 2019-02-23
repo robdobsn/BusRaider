@@ -79,6 +79,9 @@ void BusAccess::init()
     
     // Data bus direction
     setPinOut(BR_DATA_DIR_IN, 1);
+
+    // Paging
+    setPinOut(BR_PAGING_RAM_PIN, 0);
     
     // Remember wait interrupts currently disabled
     _waitIntEnabled = false;
@@ -197,7 +200,6 @@ void BusAccess::controlTake()
 // Release control of bus
 void BusAccess::controlRelease(bool resetTargetOnRelease)
 {
-
     // #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
     //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
     // #endif

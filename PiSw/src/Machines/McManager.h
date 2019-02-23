@@ -40,8 +40,9 @@ public:
 
     // Manage machines
     static void add(McBase* pMachine);
-    static bool setMachineIdx(int mcIdx);
+    static bool setMachineIdx(int mcIdx, bool forceUpdate);
     static bool setMachineByName(const char* mcName);
+    static bool setMachineOpts(const char* mcOpts);
 
     // Machine access
     static int getNumMachines();

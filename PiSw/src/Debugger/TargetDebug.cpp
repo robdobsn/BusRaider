@@ -159,10 +159,11 @@ void TargetDebug::grabMemoryAndReleaseBusRq(McBase* pMachine, [[maybe_unused]] b
     // Check if the bus in under BusRaider control
     if (BusAccess::isUnderControl())
     {
+        uint32_t emuRAM = pMachine->getDescriptorTable(0)->emulatedRAM;
         uint32_t emuRAMStart = pMachine->getDescriptorTable(0)->emulatedRAMStart;
         uint32_t emuRAMLen = pMachine->getDescriptorTable(0)->emulatedRAMLen;
         // Check if emulating memory
-        if (emuRAMLen > 0)
+        if (emuRAM && (emuRAMLen > 0))
         {
             if (emuRAMStart > 0)
             {
@@ -172,7 +173,8 @@ void TargetDebug::grabMemoryAndReleaseBusRq(McBase* pMachine, [[maybe_unused]] b
             if (emuRAMStart+emuRAMLen < MAX_TARGET_MEMORY_LEN)
             {
                 // Read memory after emulated section
-                BusAccess::blockRead(0, _targetMemBuffer+emuRAMStart+emuRAMLen, MAX_TARGET_MEMORY_LEN-(emuRAMStart+emuRAMLen), false, false);
+                BusAccess::blockRead(0, _targetMemBuffer+emuRAMStart+emuRAMLen, 
+                            MAX_TARGET_MEMORY_LEN-(emuRAMStart+emuRAMLen), false, false);
             }
         }
         else
@@ -222,7 +224,8 @@ void TargetDebug::service()
 {
     if (_breakpointHitFlag)
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "breakpoint hit %d debug cb %d", _breakpointHitIndex, _pSendDebugMessageCallback);
+        LogWrite(FromTargetDebug, LOG_DEBUG, "breakpoint hit %d debug cb %d", 
+                    _breakpointHitIndex, _pSendDebugMessageCallback);
         if (_pSendDebugMessageCallback)
             (*_pSendDebugMessageCallback)("\ncommand@cpu-step> ");
         _breakpointHitFlag = false;
@@ -334,7 +337,8 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
         if ((argStr2[0] != 'P') || (argStr2[1] != 'C') || (argStr2[2] != '='))
         {
-            LogWrite(FromTargetDebug, LOG_DEBUG, "breakpoint doesn't start PC= argstr2 %02x %02x %02x", argStr2[0], argStr2[1], argStr2[2]);
+            LogWrite(FromTargetDebug, LOG_DEBUG, "breakpoint doesn't start PC= argstr2 %02x %02x %02x", 
+                        argStr2[0], argStr2[1], argStr2[2]);
         }
         else
         {
@@ -570,7 +574,8 @@ void TargetDebug::handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags
         0xFD, 0xE5,     //     push iy - no inc sp as we pop af lower down which restores sp to where it was    
         0x3E, 0x00,     //     ld a, 0 - note that the value 0 gets changed in the code below  
         0xED, 0x4F,     //     ld r, a
-        0xF1, 0x00, 0x00,    //     pop af + two bytes that are read is if from stack - note that the values 0, 0 get changed in the code below  
+        0xF1, 0x00, 0x00,    //     pop af + two bytes that are read is if from stack 
+                        //     - note that the values 0, 0 get changed in the code below  
         0x18, 0xDE      //     jr loop
     };
     const int RegisterRUpdatePos = 28;
@@ -688,7 +693,7 @@ void TargetDebug::handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags
 
     // Check if complete
     if (_registerModeStep >= sizeof(regQueryInstructions))
-        _registerMode = REGISTER_MODE_NONE;
+        _registerMode = REGISTER_MODE_UNPAGE;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -708,12 +713,12 @@ void TargetDebug::handleRegisterSet(uint32_t& retVal)
         }
     }
 
-    // Return the instruction / data in inject
+    // Return the instruction / data to inject
     retVal = _registerSetBuffer[_registerModeStep++] | BR_MEM_ACCESS_INSTR_INJECT;
 
     // Check if complete
     if (_registerModeStep >= _registerSetCodeLen)
-        _registerMode = REGISTER_MODE_NONE;
+        _registerMode = REGISTER_MODE_UNPAGE;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -727,6 +732,13 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
     // Only handle MREQs
     if ((flags & BR_CTRL_BUS_MREQ_MASK) == 0)
         return retVal;
+
+    // Check for the end of paging mode - un-page RAM
+    if ((_registerMode == REGISTER_MODE_UNPAGE) && descriptorTable.ramPaging)
+    {
+        _registerMode = REGISTER_MODE_NONE;
+        digitalWrite(BR_PAGING_RAM_PIN, 0);
+    }
 
     // See if breakpoints enabled and M1 cycle
     if ((_registerMode == REGISTER_MODE_NONE) && _breakpointsEnabled && (_breakpointNumEnabled > 0) && (flags & BR_CTRL_BUS_M1_MASK))
@@ -752,17 +764,23 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
         // We're now inserting instructions or getting results back
         _registerModeGotM1 = true;
         handleRegisterGet(addr, data, flags, retVal);
+        // Page-out paged RAM/ROM if required
+        if (descriptorTable.ramPaging)
+            digitalWrite(BR_PAGING_RAM_PIN, 1);
     }
     else if ((_registerMode == REGISTER_MODE_SET) && (_registerModeGotM1 || (flags & BR_CTRL_BUS_M1_MASK)))
     {
         // We're now inserting instructions to set registers
         _registerModeGotM1 = true;
         handleRegisterSet(retVal);
+        // Page-out RAM/ROM if required
+        if (descriptorTable.ramPaging)
+            digitalWrite(BR_PAGING_RAM_PIN, 1);
     }
-    else if ((addr >= descriptorTable.emulatedRAMStart) && 
+    else if (descriptorTable.emulatedRAM && (addr >= descriptorTable.emulatedRAMStart) && 
             (addr < descriptorTable.emulatedRAMStart + descriptorTable.emulatedRAMLen))
     {
-        // Check for read
+        // Check for read or write to emulated RAM / ROM
         if (flags & BR_CTRL_BUS_RD_MASK)
         {
             if (flags & BR_CTRL_BUS_MREQ_MASK)

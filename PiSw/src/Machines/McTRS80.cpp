@@ -37,11 +37,13 @@ McDescriptorTable McTRS80::_descriptorTable = {
     // Bus monitor
     .monitorIORQ = true,
     .monitorMREQ = false,
+    .emulatedRAM = false,
+    .ramPaging = false,
     .emulatedRAMStart = 0,
     .emulatedRAMLen = 0,
     .setRegistersByInjection = false,
     .setRegistersCodeAddr = 0,
-    .reqBusOnSingleStep = false
+    .reqBusOnSingleStep = true
 };
 
 // Enable machine
@@ -51,7 +53,15 @@ void McTRS80::enable()
     _screenBufferValid = false;
     _keyBufferDirty = false;
 
-    LogWrite(_logPrefix, LOG_DEBUG, "Enabling TRS80");
+    LogWrite(_logPrefix, LOG_DEBUG, "Enabling TRS80 EmuRAM %s (%04x-%04x) RAMPaging %s MonIORQ %s MonMREQ %s BusRqOnSS %s RegByInject %s (%04x)",
+                _descriptorTable.emulatedRAM ? "Y" : "N",
+                _descriptorTable.emulatedRAMStart, _descriptorTable.emulatedRAMStart + _descriptorTable.emulatedRAMLen,
+                _descriptorTable.ramPaging ?  "Y" : "N",
+                _descriptorTable.monitorIORQ ?  "Y" : "N",
+                _descriptorTable.monitorMREQ ?  "Y" : "N",
+                _descriptorTable.reqBusOnSingleStep ?  "Y" : "N",
+                _descriptorTable.setRegistersByInjection ?  "Y" : "N",
+                _descriptorTable.setRegistersCodeAddr);
     BusAccess::accessCallbackAdd(memoryRequestCallback);
     // Bus raider enable wait states on IORQ
     BusAccess::waitEnable(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ);
@@ -78,6 +88,10 @@ void McTRS80::handleRegisters(Z80Registers& regs)
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
 void McTRS80::displayRefresh()
 {
+    // Check if paused
+    if (BusAccess::pauseIsPaused())
+        return;
+
     // Read memory of RC2014 at the location of the TRS80 memory mapped screen
     unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
     bool dataValid = McManager::blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, 1, 0);
@@ -104,7 +118,7 @@ void McTRS80::displayRefresh()
     // Check for key presses and send to the TRS80 if necessary
     if (_keyBufferDirty)
     {
-        BusAccess::blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, 1, 0);
+        McManager::blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, 1, 0);
         _keyBufferDirty = false;
     }
 }

@@ -20,6 +20,7 @@ static const char FromCmdHandler[] = "CommandHandler";
 
 // Callback for change machine type
 CmdHandlerChangeMachineFnType* CommandHandler::_pChangeMcFunction = NULL;
+CmdHandlerChangeOptionsFnType* CommandHandler::_pChangeMcOptions = NULL;
 CmdHandlerRxFromTargetFnType* CommandHandler::_pRxFromTargetFunction = NULL;
 CmdHandlerPutToSerialFnType* CommandHandler::_pPutToSerialFunction = NULL;
 
@@ -37,6 +38,7 @@ CommandHandler::CommandHandler() :
     // Callbacks
     _pRxFromTargetFunction = NULL;
     _pChangeMcFunction = NULL;
+    _pChangeMcOptions = NULL;
     _pSingletonCommandHandler = this;
 
     // File reception
@@ -190,6 +192,19 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
             if (_pChangeMcFunction != NULL)
                 _pChangeMcFunction(pMcName);
             LogWrite(FromCmdHandler, LOG_DEBUG, "Set Machine to %s", pMcName);
+        }
+    }
+    else if (strncasecmp(cmdName, "mcoptions", strlen("mcoptions")) == 0)
+    {
+        // Get options
+        const char* pOptions = strstr(cmdName,"=");
+        if (pOptions)
+        {
+            // Move to first char of actual parameter
+            pOptions++;
+            LogWrite(FromCmdHandler, LOG_DEBUG, "Set Machine options to %s", pOptions);
+            if (_pChangeMcOptions != NULL)
+                _pChangeMcOptions(pOptions);
         }
     }
     else if (strcasecmp(cmdName, "RxHost") == 0)

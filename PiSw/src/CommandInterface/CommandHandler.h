@@ -8,6 +8,7 @@
 
 // Callback types
 typedef void CmdHandlerChangeMachineFnType(const char* machineName);
+typedef void CmdHandlerChangeOptionsFnType(const char* machineOptions);
 typedef void CmdHandlerRxFromTargetFnType(const uint8_t* pBytes, int numBytes);
 typedef void CmdHandlerPutToSerialFnType(const uint8_t* pBytes, int numBytes);
 
@@ -19,9 +20,11 @@ public:
     ~CommandHandler();
 
     // Callback when machine change command is received
-    void setMachineChangeCallback(CmdHandlerChangeMachineFnType* pChangeMcFunction)
+    void setMachineChangeCallback(CmdHandlerChangeMachineFnType* pChangeMcFunction,
+                    CmdHandlerChangeOptionsFnType* pChangeMcOptions)
     {
         _pChangeMcFunction = pChangeMcFunction;
+        _pChangeMcOptions = pChangeMcOptions;
     }
 
     // Callback when characters received from target machine (which goes via ESP32)
@@ -69,6 +72,7 @@ private:
 private:
     // Callbacks
     static CmdHandlerChangeMachineFnType* _pChangeMcFunction;
+    static CmdHandlerChangeOptionsFnType* _pChangeMcOptions;
     static CmdHandlerRxFromTargetFnType* _pRxFromTargetFunction;
     static CmdHandlerPutToSerialFnType* _pPutToSerialFunction;
 

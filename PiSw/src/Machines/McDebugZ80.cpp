@@ -61,10 +61,13 @@ McDescriptorTable McDebugZ80::_descriptorTable = {
     // Bus monitor
     .monitorIORQ = true,
     .monitorMREQ = true,
+    .emulatedRAM = true,
+    .ramPaging = false,
     .emulatedRAMStart = 0,
     .emulatedRAMLen = TargetDebug::MAX_TARGET_MEMORY_LEN,
     .setRegistersByInjection = false,
-    .setRegistersCodeAddr = 0
+    .setRegistersCodeAddr = 0,
+    .reqBusOnSingleStep = false
 };
 
 // Enable machine

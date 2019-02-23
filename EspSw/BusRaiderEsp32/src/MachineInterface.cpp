@@ -306,7 +306,7 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *framebuffer, int frame
     // Tidy up
     delete [] pStr;
 
-    // Log.trace("%sreceivedFromPi %s\n", MODULE_PREFIX, str.c_str());
+    Log.trace("%sreceivedFromPi %s\n", MODULE_PREFIX, str.c_str());
 
     // Get command
     String cmdName = RdJson::getString("cmdName", "", str.c_str());

@@ -45,7 +45,7 @@ class McTerminal : public McBase
     // Get descriptor table for the machine
     virtual McDescriptorTable* getDescriptorTable([[maybe_unused]] int subType)
     {
-        return &_descriptorTable;
+        return &McTerminal::_descriptorTable;
     }
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
