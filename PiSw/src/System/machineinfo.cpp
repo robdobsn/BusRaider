@@ -239,6 +239,18 @@ uint32_t CMachineInfo::GetRevisionRaw (void) const
 	return m_nRevisionRaw;
 }
 
+unsigned CMachineInfo::GetMaxClockRate(uint32_t nClockId) const
+{
+	CBcmPropertyTags Tags;
+	TPropertyTagClockRate TagClockRate;
+	TagClockRate.nClockId = nClockId;
+	if (Tags.GetTag (PROPTAG_GET_MAX_CLOCK_RATE, &TagClockRate, sizeof TagClockRate, 4))
+	{
+		return TagClockRate.nRate;
+	}
+	return 0;
+}
+
 unsigned CMachineInfo::GetClockRate (uint32_t nClockId) const
 {
 	CBcmPropertyTags Tags;
@@ -279,6 +291,16 @@ unsigned CMachineInfo::GetClockRate (uint32_t nClockId) const
 	}
 
 	return nResult;
+}
+
+bool CMachineInfo::SetClockRate (uint32_t nClockId, unsigned nRate, bool bSkipTurbo)
+{
+	CBcmPropertyTags Tags;
+	TPropertyTagSetClockRate TagSetClockRate;
+	TagSetClockRate.nClockId = nClockId;
+	TagSetClockRate.nRate = nRate;
+	TagSetClockRate.nSkipSettingTurbo = bSkipTurbo ? SKIP_SETTING_TURBO : 0;
+	return Tags.GetTag (PROPTAG_SET_CLOCK_RATE, &TagSetClockRate, sizeof TagSetClockRate, 12);
 }
 
 // unsigned CMachineInfo::GetGPIOPin (TGPIOVirtualPin Pin) const

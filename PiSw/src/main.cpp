@@ -28,13 +28,13 @@ typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.023";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.024";
 static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
 
 // Baud rate
-#define MAIN_UART_BAUD_RATE 115200
+#define MAIN_UART_BAUD_RATE 500000
 UartMaxi mainUart;
 
 // CommandHandler
@@ -200,18 +200,12 @@ extern "C" int main()
     // Init timers
     timers_init();
 
-    // UART
-    pinMode(47, OUTPUT);
-    if (!mainUart.setup(MAIN_UART_BAUD_RATE, 100000, 1000))
-    {
-        while (1) 
-        {
-            digitalWrite(47, 1);
-            microsDelay(100000);
-            digitalWrite(47, 0);
-            microsDelay(100000);
-        }
-    }
+    // Initialise graphics system
+    wgfx_init(1366, 768);
+
+    // Logging
+    LogSetLevel(LOG_DEBUG);
+    LogSetOutFn(termWriteString);
 
     // Command Handler
     commandHandler.setMachineCommandCallback(McManager::handleCommand);
@@ -233,15 +227,8 @@ extern "C" int main()
     new McZXSpectrum();
     new McZXSpectrumDebug();
 
-    // Initialise graphics system
-    wgfx_init(1366, 768);
-
     // Layout display for the selected machine
     layout_display();
-
-    // Logging
-    LogSetLevel(LOG_DEBUG);
-    LogSetOutFn(termWriteString);
 
     // Number of machines
     ee_printf("%d machines supported\n", McManager::getNumMachines());
@@ -278,6 +265,21 @@ extern "C" int main()
         ee_printf("USB initialization failed\n");
     }
     ee_printf("\nPress F2 for immediate mode\n");
+
+    // UART
+    // pinMode(47, OUTPUT);
+    if (!mainUart.setup(MAIN_UART_BAUD_RATE, 100000, 1000))
+    {
+        LogWrite("MAIN", LOG_DEBUG, "Unable to start UART");
+        microsDelay(5000000);
+        // while (1) 
+        // {
+        //     digitalWrite(47, 1);
+        //     microsDelay(100000);
+        //     digitalWrite(47, 0);
+        //     microsDelay(100000);
+        // }
+    }
 
     // Debug show colour palette
     // for (int i = 0; i < 255; i++)

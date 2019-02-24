@@ -2,6 +2,7 @@
 // Rob Dobson 2018
 
 #include "UartMaxi.h"
+#include "../System/ee_printf.h"
 #include "BCM2835.h"
 #include "CInterrupts.h"
 #include "MachineInfo.h"
@@ -44,16 +45,26 @@ bool UartMaxi::setup(unsigned int baudRate, int rxBufSize, int txBufSize)
 {
         // Baud rate calculation
     // uint32_t FUARTCLK = ARM_UART_CLOCK;
+    uint32_t FUARTCLK_MAX = CMachineInfo::Get ()->GetMaxClockRate (CLOCK_ID_UART);
+    CMachineInfo::Get ()->SetClockRate (CLOCK_ID_UART, 16000000, true);
     uint32_t FUARTCLK = CMachineInfo::Get ()->GetClockRate (CLOCK_ID_UART);
 	uint32_t baudRateX16 = baudRate * 16;
     uint32_t intBaudDivisor = FUARTCLK / baudRateX16;
     if ((intBaudDivisor < 1) || (intBaudDivisor > 0xffff))
+    {
+        LogWrite(FromUartMaxi, LOG_DEBUG, "Divisor issue %d, FUARTCLK %d, FUARTCLK_MAX %d, baudRate*16 %d",
+                     intBaudDivisor, FUARTCLK, FUARTCLK_MAX, baudRateX16);
         return false;
+    }
     unsigned fracBaudDivisor2 = (FUARTCLK % baudRateX16) * 8 / baudRate;
 	unsigned fracBaudDivisor = fracBaudDivisor2 / 2 + fracBaudDivisor2 % 2;
     if (fracBaudDivisor > 0x3f)
+    {
+        LogWrite(FromUartMaxi, LOG_DEBUG, "Frac issue %d", fracBaudDivisor);
         return false;
-    // LogWrite(FromUartMaxi, LOG_DEBUG, "Baud settings %d:%d\n", intBaudDivisor, fracBaudDivisor);
+    }
+    LogWrite(FromUartMaxi, LOG_DEBUG, "Baud rate %d (%d:%d)\n",
+                        baudRate, intBaudDivisor, fracBaudDivisor);
 
     // Deallocate buffers if required
     if (_pRxBuffer)

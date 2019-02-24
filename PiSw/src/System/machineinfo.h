@@ -80,6 +80,9 @@ public:
 
 	// Clock and peripheral info
 	unsigned GetClockRate (uint32_t nClockId) const;	// see circle/bcmpropertytags.h for nClockId
+	unsigned GetMaxClockRate (uint32_t nClockId) const;
+	bool SetClockRate (uint32_t nClockId, unsigned nRate, bool bSkipTurbo);
+
 	// unsigned GetGPIOPin (TGPIOVirtualPin Pin) const;// see circle/gpiopin.h for Pin
 	unsigned GetDevice (TDeviceId DeviceId) const;
 

@@ -462,7 +462,7 @@ void McManager::handleCommand(const char* pCmdJson,
                     [[maybe_unused]] const uint8_t* pParams, [[maybe_unused]] int paramsLen,
                     char* pRespJson, int maxRespLen)
 {
-    LogWrite(FromMcManager, LOG_DEBUG, "req %s", pCmdJson);
+    // LogWrite(FromMcManager, LOG_DEBUG, "req %s", pCmdJson);
     #define MAX_CMD_NAME_STR 30
     char cmdName[MAX_CMD_NAME_STR+1];
     if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
