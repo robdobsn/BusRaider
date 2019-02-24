@@ -9,11 +9,11 @@
 #include "../FileFormats/srecparser.h"
 #include "../Machines/McManager.h"
 #include "../System/lowlev.h"
-#include "../Utils/rdutils.h"
+#include "../System/rdutils.h"
 #include "../System/OTAUpdate.h"
 #include <string.h>
 #include <stdlib.h>
-#include "../Utils/rdstdcpp.h"
+#include "../System/RdStdCpp.h"
 
 // Module name
 static const char FromCmdHandler[] = "CommandHandler";
@@ -106,7 +106,7 @@ void CommandHandler::hdlcPutCh(uint8_t ch)
 // This is a ascii character string (null terminated) followed by a byte buffer containing parameters
 void CommandHandler::hdlcFrameRx(const uint8_t *pFrame, int frameLength)
 {
-    // LogWrite(FromCmdHandler, LOG_DEBUG, "Rx %d bytes", frameLength);
+    LogWrite(FromCmdHandler, LOG_DEBUG, "Rx %d bytes", frameLength);
 
     // Handle the frame - extract command string
     char commandString[CMD_HANDLER_MAX_CMD_STR_LEN+1];
@@ -134,7 +134,7 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
         return;
 
-    // LogWrite(FromCmdHandler, LOG_NOTICE, "processCommand JSON %s cmdName %s", pCmdJson, cmdName); 
+    LogWrite(FromCmdHandler, LOG_NOTICE, "processCommand JSON %s cmdName %s", pCmdJson, cmdName); 
 
     // Handle commands
     if (strcasecmp(cmdName, "ufStart") == 0)
@@ -352,11 +352,18 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
     if (!jsonGetValueForKey("blockCount", pCmdJson, blockCountStr, MAX_INT_ARG_STR_LEN))
         return;
     int blockCount = strtoul(blockCountStr, NULL, 10);
+    char ackMsgJson[100];
+    ee_sprintf(ackMsgJson, "\"rxCount\":%d, \"expCount\":%d", _receivedBlockCount, blockCount);
     if (blockCount != _receivedBlockCount)
     {
         LogWrite(FromCmdHandler, LOG_WARNING, "efEnd File %s, blockCount rx %d != sent %d", 
                 _receivedFileName, _receivedBlockCount, blockCount);
+        sendWithJSON("ufEndNotAck", ackMsgJson);
         return;
+    }
+    else
+    {
+        sendWithJSON("ufEndAck", ackMsgJson);
     }
 
     // Check file type

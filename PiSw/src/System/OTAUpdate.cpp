@@ -13,7 +13,7 @@ static const char FromOTAUpdate[] = "OTAUpdate";
 // OTA update space
 extern uint8_t* __otaUpdateBuffer;
 
-void OTAUpdate::performUpdate(uint8_t* pData, int dataLen)
+void OTAUpdate::performUpdate(const uint8_t* pData, int dataLen)
 {
     // Calculations
     uint8_t* pCopyBlockNewLocation = __otaUpdateBuffer;

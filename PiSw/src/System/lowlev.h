@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#include "bare_metal_pi_zero.h"
+#include "BCM2835.h"
 
 // Goto and store byte
 extern void lowlev_goto(uint32_t gotoAddr);

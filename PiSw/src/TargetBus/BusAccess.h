@@ -97,7 +97,7 @@ typedef enum {
 
 // Direct access to Pi PIB (used for data transfer to/from host data bus)
 #define BR_PIB_MASK (~((uint32_t)0xff << BR_DATA_BUS))
-#define BR_PIB_GPF_REG GPFSEL2
+#define BR_PIB_GPF_REG ARM_GPIO_GPFSEL2
 #define BR_PIB_GPF_MASK 0xff000000
 #define BR_PIB_GPF_INPUT 0x00000000
 #define BR_PIB_GPF_OUTPUT 0x00249249

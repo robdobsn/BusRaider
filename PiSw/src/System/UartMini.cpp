@@ -2,10 +2,10 @@
 // Rob Dobson 2018
 
 #include "uartMini.h"
-#include "bare_metal_pi_zero.h"
-#include "../System/ee_printf.h"
+#include "BCM2835.h"
 #include "irq.h"
 #include "nmalloc.h"
+#include "lowlev.h"
 #include "lowlib.h"
 #include <stddef.h>
 
@@ -50,10 +50,10 @@ bool UartMini::poll(void)
 int UartMini::write(unsigned int c)
 {
     while (1) {
-        if (RD32(AUX_MU_LSR_REG) & 0x20)
+        if (RD32(ARM_AUX_MU_LSR_REG) & 0x20)
             break;
     }
-    WR32(AUX_MU_IO_REG, c);
+    WR32(ARM_AUX_MU_IO_REG, c);
     return 1;
 }
 
@@ -77,7 +77,7 @@ void UartMini::clear(void)
 {
     // Ensure we don't wait here forever
     for (int i=0; i < 100000; i++) {
-        if (RD32(AUX_MU_LSR_REG) & 0x40)
+        if (RD32(ARM_AUX_MU_LSR_REG) & 0x40)
             break;
     }
 }
@@ -95,12 +95,12 @@ void UartMini::isr()
     // An interrupt has occurred, find out why
     while (1)
     {
-        rb = RD32(AUX_MU_IIR_REG);
+        rb = RD32(ARM_AUX_MU_IIR_REG);
         if ((rb & 1) == 1)
             break; // No more interrupts
         if ((rb & 6) == 4) {
             // Receiver holds a valid byte
-            rc = RD32(AUX_MU_IO_REG); // Read byte from rx fifo
+            rc = RD32(ARM_AUX_MU_IO_REG); // Read byte from rx fifo
             rxbuffer[rxhead] = rc & 0xFF;
             rxhead = (rxhead + 1) & RXBUFMASK;
         }
@@ -112,30 +112,30 @@ bool UartMini::setup(unsigned int baudRate, [[maybe_unused]]int rxBufSize, [[may
 {
     unsigned int ra;
 
-    WR32(AUX_ENABLES, 1);
-    WR32(AUX_MU_IER_REG, 0);
-    WR32(AUX_MU_CNTL_REG, 0);
-    WR32(AUX_MU_LCR_REG, 3);
-    WR32(AUX_MU_MCR_REG, 0);
+    WR32(ARM_AUX_ENABLE, 1);
+    WR32(ARM_AUX_MU_IER_REG, 0);
+    WR32(ARM_AUX_MU_CNTL_REG, 0);
+    WR32(ARM_AUX_MU_LCR_REG, 3);
+    WR32(ARM_AUX_MU_MCR_REG, 0);
     // Enable RX interrupt
-    WR32(AUX_MU_IER_REG, 0x05);
-    WR32(AUX_MU_IIR_REG, 0xC6);
+    WR32(ARM_AUX_MU_IER_REG, 0x05);
+    WR32(ARM_AUX_MU_IIR_REG, 0xC6);
     // WR32(AUX_MU_BAUD_REG,270);
     //WR32(AUX_MU_BAUD_REG, 33); // 921,600 baud
-    WR32(AUX_MU_BAUD_REG, ((AUX_MU_CLOCK/(baudRate*8))-1));
+    WR32(ARM_AUX_MU_BAUD_REG, ((ARM_AUX_MU_CLOCK/(baudRate*8))-1));
 
-    ra = RD32(GPFSEL1);
+    ra = RD32(ARM_GPIO_GPFSEL1);
     ra &= ~(7 << 12); //gpio14
     ra |= 2 << 12; //alt5
     ra &= ~(7 << 15); //gpio15
     ra |= 2 << 15; //alt5
-    WR32(GPFSEL1, ra);
+    WR32(ARM_GPIO_GPFSEL1, ra);
 
-    WR32(AUX_MU_CNTL_REG, 3);
+    WR32(ARM_AUX_MU_CNTL_REG, 3);
 
-    // Initialise the interrupt handler
-    WR32(IRQ_ENABLE1, 1 << 29);
-    //  enable_irq();
+    // // Initialise the interrupt handler
+    WR32(ARM_IC_ENABLE_IRQS_1, 1 << ARM_IRQ_AUX);
+    lowlev_enable_irq();
     irq_set_auxMiniUart_handler(isrStatic, NULL);
     // irq_attach_handler(57, uart_irq_handler, NULL);
     return true;

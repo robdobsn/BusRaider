@@ -5,7 +5,7 @@
 #include "BusAccess.h"
 #include "../System/piwiring.h"
 #include "../System/lowlib.h"
-#include "../System/bare_metal_pi_zero.h"
+#include "../System/BCM2835.h"
 
 class TargetClockGenerator
 {

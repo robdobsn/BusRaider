@@ -7,7 +7,7 @@
 #include "../System/ee_printf.h"
 #include "../System/lowlev.h"
 #include "../System/lowlib.h"
-#include "../System/bare_metal_pi_zero.h"
+#include "../System/BCM2835.h"
 
 // Uncomment the following line to use SPI0 CE0 of the Pi as a debug pin
 // #define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
@@ -167,7 +167,7 @@ void BusAccess::controlRequest()
     // Set the PIB to input
     pibSetIn();
     // Set data bus to input
-    WR32(GPSET0, 1 << BR_DATA_DIR_IN);
+    WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
     // Request the bus
     digitalWrite(BR_BUSRQ_BAR, 0);
 }
@@ -175,7 +175,7 @@ void BusAccess::controlRequest()
 // Check if bus request has been acknowledged
 int BusAccess::controlBusAcknowledged()
 {
-    return (RD32(GPLEV0) & (1 << BR_BUSACK_BAR)) == 0;
+    return (RD32(ARM_GPIO_GPLEV0) & (1 << BR_BUSACK_BAR)) == 0;
 }
 
 // Take control of bus
@@ -211,7 +211,7 @@ void BusAccess::controlRelease(bool resetTargetOnRelease)
     pibSetValue(1 << BR_M1_PIB_DATA_LINE);
 
     // Set data direction out so we can set the M1 value
-    WR32(GPCLR0, 1 << BR_DATA_DIR_IN);
+    WR32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
 
 //TODO optimize
 
@@ -224,7 +224,7 @@ void BusAccess::controlRelease(bool resetTargetOnRelease)
     digitalWrite(BR_MREQ_BAR, 1);
 
     // Go back to data inwards
-    WR32(GPSET0, 1 << BR_DATA_DIR_IN);
+    WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
     pibSetIn();
     microsDelay(2);
     // lowlev_cycleDelay(CYCLES_DELAY_FOR_DATA_DIRN);
@@ -317,9 +317,9 @@ void BusAccess::addrLowSet(uint32_t lowAddrByte)
     // Clock the required value in - requires one more count than
     // expected as the output register is one clock pulse behind the counter
     for (uint32_t i = 0; i < (lowAddrByte & 0xff) + 1; i++) {
-        WR32(GPSET0, 1 << BR_LADDR_CK);
+        WR32(ARM_GPIO_GPSET0, 1 << BR_LADDR_CK);
         lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-        WR32(GPCLR0, 1 << BR_LADDR_CK);
+        WR32(ARM_GPIO_GPCLR0, 1 << BR_LADDR_CK);
         lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
     }
 }
@@ -329,9 +329,9 @@ void BusAccess::addrLowSet(uint32_t lowAddrByte)
 // - some other code will set push-addr to enable onto the address bus
 void BusAccess::addrLowInc()
 {
-    WR32(GPSET0, 1 << BR_LADDR_CK);
+    WR32(ARM_GPIO_GPSET0, 1 << BR_LADDR_CK);
     lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-    WR32(GPCLR0, 1 << BR_LADDR_CK);
+    WR32(ARM_GPIO_GPCLR0, 1 << BR_LADDR_CK);
     lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
 }
 
@@ -353,9 +353,9 @@ void BusAccess::addrHighSet(uint32_t highAddrByte)
         // Shift the address value for next bit
         highAddrByte = highAddrByte << 1;
         // Clock the bit
-        WR32(GPSET0, 1 << BR_HADDR_CK);
+        WR32(ARM_GPIO_GPSET0, 1 << BR_HADDR_CK);
         lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
-        WR32(GPCLR0, 1 << BR_HADDR_CK);
+        WR32(ARM_GPIO_GPCLR0, 1 << BR_HADDR_CK);
     }
     // Clear multiplexer
     lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
@@ -386,16 +386,16 @@ void BusAccess::byteWrite(uint32_t byte, int iorq)
     pibSetValue(byte);
     // Perform the write
     // Clear DIR_IN (so make direction out), enable data output onto data bus and MREQ_BAR active
-    WR32(GPCLR0, (1 << BR_DATA_DIR_IN) | BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)));
-    WR32(GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
+    WR32(ARM_GPIO_GPCLR0, (1 << BR_DATA_DIR_IN) | BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)));
+    WR32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
     // Write the data by setting WR_BAR active
-    WR32(GPCLR0, (1 << BR_WR_BAR));
+    WR32(ARM_GPIO_GPCLR0, (1 << BR_WR_BAR));
 #ifdef CYCLES_DELAY_FOR_WRITE_TO_TARGET
     // Target write delay
     lowlev_cycleDelay(CYCLES_DELAY_FOR_WRITE_TO_TARGET);
 #endif
     // Deactivate and leave data direction set to inwards
-    WR32(GPSET0, (1 << BR_DATA_DIR_IN) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_WR_BAR));
+    WR32(ARM_GPIO_GPSET0, (1 << BR_DATA_DIR_IN) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_WR_BAR));
     muxClear();
 }
 
@@ -408,16 +408,16 @@ void BusAccess::byteWrite(uint32_t byte, int iorq)
 uint8_t BusAccess::byteRead(int iorq)
 {
     // Enable data output onto PIB (data-dir must be inwards already), MREQ_BAR and RD_BAR both active
-    WR32(GPCLR0, BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
-    WR32(GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
+    WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
+    WR32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
     // Delay to allow data to settle
     lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
     // Get the data
-    uint8_t val = (RD32(GPLEV0) >> BR_DATA_BUS) & 0xff;
+    uint8_t val = (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
     // Deactivate leaving data-dir inwards
-    WR32(GPSET0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
+    WR32(ARM_GPIO_GPSET0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
     // Clear the MUX to a safe setting - sets HADDR_SER low
-    WR32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
+    WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
     return val;
 }
 
@@ -492,28 +492,28 @@ BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
     addrSet(addr);
 
     // Enable data onto to PIB
-    WR32(GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
+    WR32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
 
     // Iterate data
     for (uint32_t i = 0; i < len; i++) {
 
         // IORQ_BAR / MREQ_BAR and RD_BAR both active
-        WR32(GPCLR0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
+        WR32(ARM_GPIO_GPCLR0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
         
         // Delay to allow data bus to settle
         lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
         
         // Get the data
-        *pData = (RD32(GPLEV0) >> BR_DATA_BUS) & 0xff;
+        *pData = (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
 
         // Deactivate IORQ/MREQ and RD and clock the low address
-        WR32(GPSET0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR) | (1 << BR_LADDR_CK));
+        WR32(ARM_GPIO_GPSET0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR) | (1 << BR_LADDR_CK));
 
         // Low address clock pulse period
         lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
 
         // Clock pulse high again
-        WR32(GPCLR0, 1 << BR_LADDR_CK);
+        WR32(ARM_GPIO_GPCLR0, 1 << BR_LADDR_CK);
 
         // Increment addresses
         pData++;
@@ -582,7 +582,7 @@ void BusAccess::waitEnable(bool enWaitOnIORQ, bool enWaitOnMREQ)
         _waitStateEnMask = _waitStateEnMask | BR_IORQ_WAIT_EN_MASK;
     if (enWaitOnMREQ)
         _waitStateEnMask = _waitStateEnMask | BR_MREQ_WAIT_EN_MASK;
-    WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
+    WR32(ARM_GPIO_GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
 
     // Check if any wait-states to be generated
     if (_waitStateEnMask == 0)
@@ -594,27 +594,27 @@ void BusAccess::waitEnable(bool enWaitOnIORQ, bool enWaitOnMREQ)
 #ifdef BR_ENABLE_WAIT_AND_FIQ
 
     // Set wait-state generation
-    WR32(GPSET0, _waitStateEnMask);
+    WR32(ARM_GPIO_GPSET0, _waitStateEnMask);
 
     // Set vector for WAIT state interrupt
     irq_set_wait_state_handler(waitStateISR);
 
     // Setup edge triggering on falling edge of IORQ and/or MREQ
     // Clear any current detected edges
-    WR32(GPEDS0, (1 << BR_IORQ_BAR) | (1 << BR_MREQ_BAR));
+    WR32(ARM_GPIO_GPEDS0, (1 << BR_IORQ_BAR) | (1 << BR_MREQ_BAR));
     
     // Set falling edge detect
     if (enWaitOnIORQ)
-        WR32(GPFEN0, RD32(GPFEN0) | (1 << BR_IORQ_BAR));
+        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) | (1 << BR_IORQ_BAR));
     else
-        WR32(GPFEN0, RD32(GPFEN0) & (~(1 << BR_IORQ_BAR)));
+        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) & (~(1 << BR_IORQ_BAR)));
     if (enWaitOnMREQ)
-        WR32(GPFEN0, RD32(GPFEN0) | (1 << BR_WAIT_BAR));
+        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) | (1 << BR_WAIT_BAR));
     else
-        WR32(GPFEN0, RD32(GPFEN0) & (~(1 << BR_WAIT_BAR)));
+        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) & (~(1 << BR_WAIT_BAR)));
 
     // Enable FIQ interrupts on GPIO[3] which is any GPIO pin
-    WR32(IRQ_FIQ_CONTROL, (1 << 7) | 52);
+    WR32(ARM_IC_FIQ_CONTROL, (1 << 7) | 52);
 
     // Enable Fast Interrupts
     _waitIntEnabled = true;
@@ -643,7 +643,7 @@ void BusAccess::waitStateISR(void* pData)
     pibSetIn();
 
     // Set data direction out so we can read the M1 value
-    WR32(GPCLR0, 1 << BR_DATA_DIR_IN);
+    WR32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
 
     // Clear the mux to deactivate output enables
     muxClear();
@@ -661,7 +661,7 @@ void BusAccess::waitStateISR(void* pData)
     while(avoidLockupCtr < MAX_WAIT_FOR_CTRL_LINES_COUNT)
     {
         // Read the control lines
-        busVals = RD32(GPLEV0);
+        busVals = RD32(ARM_GPIO_GPLEV0);
 
         // Specifically need to wait if MREQ is low but both RD and WR are high (wait for WR to go low in this case)
         ctrlValid = !(((busVals & (1 << BR_MREQ_BAR)) == 0) && (((busVals & (1 << BR_RD_BAR)) != 0) && ((busVals & (1 << BR_WR_BAR)) != 0)));
@@ -685,7 +685,7 @@ void BusAccess::waitStateISR(void* pData)
 //         clearWaitFF();
 
 //         // Clear detected edge on any pin
-//         WR32(GPEDS0, 0xffffffff);
+//         WR32(ARM_GPIO_GPEDS0, 0xffffffff);
 
 // #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
 //         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
@@ -804,7 +804,7 @@ void BusAccess::waitStateISR(void* pData)
 void BusAccess::waitIntClear()
 {
     // Clear detected edge on any pin
-    WR32(GPEDS0, 0xffffffff);
+    WR32(ARM_GPIO_GPEDS0, 0xffffffff);
 }
 
 void BusAccess::waitIntDisable()
@@ -939,15 +939,15 @@ void BusAccess::setPinOut(int pinNumber, bool val)
 void BusAccess::muxClear()
 {
     // Clear to a safe setting - sets HADDR_SER low
-    WR32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
+    WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
 }
 
 void BusAccess::muxSet(int muxVal)
 {
     // Clear first as this is a safe setting - sets HADDR_SER low
-    WR32(GPCLR0, BR_MUX_CTRL_BIT_MASK);
+    WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
     // Now set bits required
-    WR32(GPSET0, muxVal << BR_MUX_LOW_BIT_POS);
+    WR32(ARM_GPIO_GPSET0, muxVal << BR_MUX_LOW_BIT_POS);
 }
 
 // Set the PIB (pins used for data bus access) to outputs (from Pi)
@@ -967,30 +967,30 @@ void BusAccess::pibSetValue(uint8_t val)
 {
     uint32_t setBits = ((uint32_t)val) << BR_DATA_BUS;
     uint32_t clrBits = (~(((uint32_t)val) << BR_DATA_BUS)) & (~BR_PIB_MASK);
-    WR32(GPSET0, setBits);
-    WR32(GPCLR0, clrBits);
+    WR32(ARM_GPIO_GPSET0, setBits);
+    WR32(ARM_GPIO_GPCLR0, clrBits);
 }
 
 // Get a value from the PIB (pins used for data bus access)
 uint8_t BusAccess::pibGetValue()
 {
-    return (RD32(GPLEV0) >> BR_DATA_BUS) & 0xff;
+    return (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
 }
 
 void BusAccess::clearWaitFF()
 {
     // Clear the WAIT state flip-flop
-    WR32(GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
+    WR32(ARM_GPIO_GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
 
     // Pulse needs to be wide enough to clear flip-flop reliably
     lowlev_cycleDelay(CYCLES_DELAY_FOR_WAIT_CLEAR);
 
     // Re-enable the wait state generation as defined by the global mask
-    WR32(GPSET0, _waitStateEnMask);
+    WR32(ARM_GPIO_GPSET0, _waitStateEnMask);
 }
 
 void BusAccess::clearWaitDetected()
 {
     // Clear detected edge on any pin
-    WR32(GPEDS0, 0xffffffff);
+    WR32(ARM_GPIO_GPEDS0, 0xffffffff);
 }

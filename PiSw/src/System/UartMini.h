@@ -34,7 +34,6 @@ public:
 
     // Input
     int read();
-    int available();
     bool poll();
     int peek();
     UART_ERROR_CODES getStatus()

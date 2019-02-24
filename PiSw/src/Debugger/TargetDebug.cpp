@@ -2,13 +2,13 @@
 // Rob Dobson 2019
 
 #include "TargetDebug.h"
-#include "../Utils/rdutils.h"
 #include <string.h>
 #include <stdlib.h>
 #include "../System/ee_printf.h"
 #include "../TargetBus/BusAccess.h"
 #include "../System/piwiring.h"
 #include "../System/lowlib.h"
+#include "../System/rdutils.h"
 
 // Module name
 static const char FromTargetDebug[] = "TargetDebug";
