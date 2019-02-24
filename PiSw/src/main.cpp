@@ -3,7 +3,7 @@
 
 #include "System/UartMini.h"
 #include "System/UartMaxi.h"
-#include "System/wgfx.h"
+#include "System/Display.h"
 #include "System/ee_printf.h"
 #include "System/piwiring.h"
 #include "TargetBus/BusAccess.h"
@@ -28,10 +28,13 @@ typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.024";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.030";
 static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
+
+// Display
+Display display;
 
 // Baud rate
 #define MAIN_UART_BAUD_RATE 500000
@@ -56,7 +59,7 @@ void uartWriteString(const char* pStr)
 
 void termWriteString(const char* pStr)
 {
-    wgfx_term_putstring(pStr);
+    display.termWrite(pStr);
 }
 
 // Function to send to uart from command handler
@@ -102,37 +105,16 @@ void serviceGetFromSerial()
 //     McManager::handleCommand(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
 // }
 
-void layout_display()
-{
-    // Clear display
-    wgfx_clear();
-    
-    // Layout display
-    McDescriptorTable* pMcDescr = McManager::getDescriptorTable(0);
-    int windowBorderWidth = 5;
-    wgfx_set_window(0, -1, 0, 
-        pMcDescr->displayPixelsX, pMcDescr->displayPixelsY,
-        pMcDescr->displayCellX, pMcDescr->displayCellY,
-        pMcDescr->pixelScaleX, pMcDescr->pixelScaleY,
-        pMcDescr->pFont, pMcDescr->displayForeground, pMcDescr->displayBackground,
-        windowBorderWidth, 8);
-    wgfx_set_window(1, 0, (pMcDescr->displayPixelsY*pMcDescr->pixelScaleY) + windowBorderWidth*2 + 10, 
-        -1, -1, -1, -1, 1, 1, 
-        NULL, -1, -1,
-        0, 8);
-    wgfx_set_console_window(1);
-}
+// extern "C" void setMachineByName(const char* mcName)
+// {
+//     // Set the machine
+//     if (McManager::setMachineByName(mcName))
+//     {
+//         // Set the display
+//         layout_display();
+//     }
 
-extern "C" void setMachineByName(const char* mcName)
-{
-    // Set the machine
-    if (McManager::setMachineByName(mcName))
-    {
-        // Set the display
-        layout_display();
-    }
-
-}
+// }
 
 extern "C" void setMachineOptions(const char* mcOpts)
 {
@@ -163,8 +145,8 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
             {
                 if (_immediateModeLineLen > 0)
                     _immediateModeLineLen--;
-                wgfx_term_putchar(asciiCode);
-                wgfx_term_putchar(' ');
+                display.termWrite(asciiCode);
+                display.termWrite(' ');
             }
             else if (asciiCode == 0x0d)
             {
@@ -181,7 +163,7 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
             {
                 _immediateModeLine[_immediateModeLineLen++] = asciiCode;
             }
-            wgfx_term_putchar(asciiCode);
+            display.termWrite(asciiCode);
             // ee_printf("%x ", asciiCode);
         }
         return;
@@ -201,7 +183,7 @@ extern "C" int main()
     timers_init();
 
     // Initialise graphics system
-    wgfx_init(1366, 768);
+    display.init(1680, 1050);
 
     // Logging
     LogSetLevel(LOG_DEBUG);
@@ -217,7 +199,7 @@ extern "C" int main()
     TargetState::clear();
 
     // Init machine manager
-    McManager::init(&commandHandler);
+    McManager::init(&commandHandler, &display);
 
     // Add machines
     new McTerminal();
@@ -226,9 +208,6 @@ extern "C" int main()
     new McDebugZ80();
     new McZXSpectrum();
     new McZXSpectrumDebug();
-
-    // Layout display for the selected machine
-    layout_display();
 
     // Number of machines
     ee_printf("%d machines supported\n", McManager::getNumMachines());
@@ -256,9 +235,9 @@ extern "C" int main()
             ee_printf("keyboard found\n");
         } else 
         {
-            wgfx_set_fg(9);
+            display.termColour(9);
             ee_printf("keyboard not found\n");
-            wgfx_set_fg(15);
+            display.termColour(15);
         }
     } else 
     {
@@ -284,10 +263,10 @@ extern "C" int main()
     // Debug show colour palette
     // for (int i = 0; i < 255; i++)
     // {
-    //     wgfx_set_fg(i);
+    //     display.termColour(i);
     //     ee_printf("%02d ", i);
     // }
-    // wgfx_set_fg(15);
+    // display.termColour(15);
 
     // Waiting...
     // ee_printf("Waiting for UART data (%d,8,N,1)\n", MAIN_UART_BAUD_RATE);
@@ -363,12 +342,12 @@ extern "C" int main()
         if (isTimeout(micros(), curRateSampleWindowStart, REFRESH_RATE_WINDOW_SIZE_MS * 1000)) 
         {
             // Initial message
-            wgfx_set_fg(11); // 11 = yellow
+            display.termColour(11); // 11 = yellow
             int lineIdx = 0;
-            wgfx_puts(1, wgfx_get_term_width()-strlen(PROG_VERSION)-1, lineIdx++, (uint8_t*)PROG_VERSION);
-            wgfx_puts(1, wgfx_get_term_width()-strlen(PROG_CREDITS)-1, lineIdx++, (uint8_t*)PROG_CREDITS);
-            wgfx_puts(1, wgfx_get_term_width()-strlen(PROG_LINKS_1)-1, lineIdx++, (uint8_t*)PROG_LINKS_1);
-            wgfx_puts(1, wgfx_get_term_width()-strlen(PROG_LINKS_2)-1, lineIdx++, (uint8_t*)PROG_LINKS_2);
+            display.windowWrite(1, display.termGetWidth()-strlen(PROG_VERSION)-1, lineIdx++, (uint8_t*)PROG_VERSION);
+            display.windowWrite(1, display.termGetWidth()-strlen(PROG_CREDITS)-1, lineIdx++, (uint8_t*)PROG_CREDITS);
+            display.windowWrite(1, display.termGetWidth()-strlen(PROG_LINKS_1)-1, lineIdx++, (uint8_t*)PROG_LINKS_1);
+            display.windowWrite(1, display.termGetWidth()-strlen(PROG_LINKS_2)-1, lineIdx++, (uint8_t*)PROG_LINKS_2);
 
             // Show ESP health info
             bool ipAddrValid = false;
@@ -392,7 +371,7 @@ extern "C" int main()
                     strlcpy(statusStr, "WiFi not connected", MAX_STATUS_STR_LEN);
                     break;
             }
-            wgfx_puts(1, wgfx_get_term_width()-strlen(statusStr)-1, lineIdx++, (uint8_t*)statusStr);
+            display.windowWrite(1, display.termGetWidth()-strlen(statusStr)-1, lineIdx++, (uint8_t*)statusStr);
 
             // Refresh rate
             int refreshRate = refreshCount * 1000 / REFRESH_RATE_WINDOW_SIZE_MS;
@@ -406,7 +385,7 @@ extern "C" int main()
             rditoa(refreshRate, rateStr, MAX_REFRESH_STR_LEN, 10);
             strlcat(refreshStr, (char*)rateStr, MAX_REFRESH_STR_LEN);
             strlcat(refreshStr, "fps", MAX_REFRESH_STR_LEN);
-            wgfx_puts(1, wgfx_get_term_width()-strlen(refreshStr)-1, lineIdx++, (uint8_t*)refreshStr);
+            display.windowWrite(1, display.termGetWidth()-strlen(refreshStr)-1, lineIdx++, (uint8_t*)refreshStr);
             // // uart_printf("Rate %d per sec, requs %ld dispTime %ld\n", refreshCount / 2, reqUpdateUs, dispTime);
             // wgfx_putc(1, 150, 0, '0' + (refreshRate % 10));
             // wgfx_putc(1, 149, 0, '0' + ((refreshRate / 10) % 10));
@@ -416,7 +395,7 @@ extern "C" int main()
             // Ready for next time
             refreshCount = 0;
             curRateSampleWindowStart = micros();
-            wgfx_set_fg(15);
+            display.termColour(15);
         }
 
         // Handle status update to ESP32

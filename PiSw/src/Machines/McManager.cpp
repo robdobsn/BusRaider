@@ -20,6 +20,7 @@ McBase* McManager::_pMachines[McManager::MAX_MACHINES];
 int McManager::_numMachines = 0;
 int McManager::_curMachineIdx = -1;
 CommandHandler* McManager::_pCommandHandler = NULL;
+Display* McManager::_pDisplay = NULL;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Default descriptor
@@ -64,10 +65,11 @@ TargetClockGenerator McManager::_clockGen;
 // Init
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void McManager::init(CommandHandler* pCommandHandler)
+void McManager::init(CommandHandler* pCommandHandler, Display* pDisplay)
 {
-    // Command handler
+    // Command handler & display
     _pCommandHandler = pCommandHandler;
+    _pDisplay = pDisplay;
     
     // Let the target debugger know how to communicate
     TargetDebug::get()->setSendDebugMessageCallback(sendDebugMessage);
@@ -156,6 +158,17 @@ bool McManager::setMachineIdx(int mcIdx, bool forceUpdate)
 
     // Set the new machine
     _curMachineIdx = mcIdx;
+
+    // Layout display for machine
+    McDescriptorTable* pMcDescr = McManager::getDescriptorTable(0);
+    int windowBorderWidth = 5;
+    if (_pDisplay)
+        _pDisplay->targetLayout(-1, 0, 
+            pMcDescr->displayPixelsX, pMcDescr->displayPixelsY,
+            pMcDescr->displayCellX, pMcDescr->displayCellY,
+            pMcDescr->pixelScaleX, pMcDescr->pixelScaleY,
+            pMcDescr->pFont, pMcDescr->displayForeground, pMcDescr->displayBackground,
+            windowBorderWidth, 8);
 
     // Enable machine
     if (getMachine())

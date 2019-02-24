@@ -289,7 +289,7 @@ int wgfx_get_term_width()
     return ctx.term.numCols;
 }
 
-void wgfx_puts(int winIdx, unsigned int col, unsigned int row, uint8_t* pStr)
+void wgfx_puts(int winIdx, unsigned int col, unsigned int row, const uint8_t* pStr)
 {
     if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS)
         return;

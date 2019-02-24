@@ -1,5 +1,5 @@
-// Pi Bus Raider
-// Rob Dobson 2018
+// BusRaider
+// Rob Dobson 2018-2019
 
 #pragma once
 

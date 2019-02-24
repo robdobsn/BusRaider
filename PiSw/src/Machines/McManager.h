@@ -8,6 +8,7 @@
 #include "../Debugger/TargetDebug.h"
 #include "../System/ee_printf.h"
 #include "../CommandInterface/CommandHandler.h"
+#include "../System/Display.h"
 #include <string.h> 
 
 class McManager
@@ -25,6 +26,9 @@ private:
     // Command handler
     static CommandHandler* _pCommandHandler;
 
+    // Display
+    static Display* _pDisplay;
+
 private:
 
     static const int MAX_MACHINES = 10;
@@ -36,7 +40,7 @@ private:
 
 public:
     // Init
-    static void init(CommandHandler* pCommandHandler);
+    static void init(CommandHandler* pCommandHandler, Display* pDisplay);
 
     // Manage machines
     static void add(McBase* pMachine);

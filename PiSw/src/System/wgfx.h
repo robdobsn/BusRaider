@@ -43,7 +43,7 @@ extern void wgfx_term_putchar(char ch);
 extern void wgfx_term_putstring(const char* str);
 extern int wgfx_get_term_width();
 
-extern void wgfx_puts(int winIdx, unsigned int col, unsigned int row, uint8_t* pStr);
+extern void wgfx_puts(int winIdx, unsigned int col, unsigned int row, const uint8_t* pStr);
 extern void wgfx_putc(int windowIdx, unsigned int col, unsigned int row, unsigned char ch);
 
 extern void wgfxSetMonoPixel(int windowIdx, int x, int y, int value);
