@@ -2,6 +2,7 @@
 // Rob Dobson 2018
 
 #include "System/UartMini.h"
+#include "System/UartMaxi.h"
 #include "System/wgfx.h"
 #include "System/ee_printf.h"
 #include "System/piwiring.h"
@@ -34,7 +35,7 @@ static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
 
 // Baud rate
 #define MAIN_UART_BAUD_RATE 115200
-UartMini* pMainUart = NULL;
+UartMaxi mainUart;
 
 // Immediate mode
 #define IMM_MODE_LINE_MAXLEN 100
@@ -42,28 +43,49 @@ bool _immediateMode = false;
 char _immediateModeLine[IMM_MODE_LINE_MAXLEN+1];
 int _immediateModeLineLen = 0;
 
+void uartWriteString(const char* pStr)
+{
+    while (*pStr)
+    {
+        mainUart.write(*pStr++);
+    }
+}
+
 void termWriteString(const char* pStr)
 {
     wgfx_term_putstring(pStr);
 }
 
 // Function to send to uart from command handler
-void putToSerial(const uint8_t* pBuf, int len)
+void handlePutToSerialForCmdHandler(const uint8_t* pBuf, int len)
 {
-    if (!pMainUart)
-        return;
     for (int i = 0; i < len; i++)
-        pMainUart->write(pBuf[i]);
+        mainUart.write(pBuf[i]);
 }
+
+// Function to handle OTA update
+void handleOtaUpdate(const uint8_t* pData, int dataLen)
+{
+    OTAUpdate::performUpdate(pData, dataLen);
+}
+
+int errorCounts[UartMaxi::UART_ERROR_FULL+1];
 
 void serviceGetFromSerial()
 {
+    UartMaxi::UART_ERROR_CODES errCode = mainUart.getStatus();
+    if (errCode != UartMaxi::UART_ERROR_NONE)
+    {
+        if (errCode <= UartMaxi::UART_ERROR_FULL)
+            errorCounts[errCode]++;
+    }
+    
     // Handle serial communication
-    for (int rxCtr = 0; rxCtr < 100; rxCtr++) {
-        if ((!pMainUart) || (!pMainUart->poll()))
+    for (int rxCtr = 0; rxCtr < 10000; rxCtr++) {
+        if (!mainUart.poll())
             break;
         // Handle char
-        int ch = pMainUart->read();
+        int ch = mainUart.read();
         uint8_t buf[2];
         buf[0] = ch;
         CommandHandler::handleSerialReceivedChars(buf, 1);
@@ -169,16 +191,24 @@ extern "C" int main()
     timers_init();
 
     // UART
-    pMainUart = new UartMini();
-    if (pMainUart)
-        pMainUart->setup(MAIN_UART_BAUD_RATE, 100000, 1000);
+    pinMode(47, OUTPUT);
+    if (!mainUart.setup(MAIN_UART_BAUD_RATE, 100000, 1000))
+    {
+        while (1) 
+        {
+            digitalWrite(47, 1);
+            microsDelay(100000);
+            digitalWrite(47, 0);
+            microsDelay(100000);
+        }
+    }
 
     // Command Handler
     CommandHandler commandHandler;
 
     // Command handler
     commandHandler.setMachineChangeCallback(setMachineByName, setMachineOptions);
-    commandHandler.setPutToSerialCallback(putToSerial);
+    commandHandler.setPutToSerialCallback(handlePutToSerialForCmdHandler);
 
     // Target machine memory
     TargetState::clear();
