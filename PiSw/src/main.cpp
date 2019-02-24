@@ -8,6 +8,7 @@
 #include "TargetBus/BusAccess.h"
 #include "TargetBus/TargetState.h"
 #include "CommandInterface/CommandHandler.h"
+#include "System/OTAUpdate.h"
 #include "System/rdutils.h"
 #include "Machines/McManager.h"
 #include "Machines/McTRS80.h"
@@ -40,6 +41,11 @@ UartMini* pMainUart = NULL;
 bool _immediateMode = false;
 char _immediateModeLine[IMM_MODE_LINE_MAXLEN+1];
 int _immediateModeLineLen = 0;
+
+void termWriteString(const char* pStr)
+{
+    wgfx_term_putstring(pStr);
+}
 
 // Function to send to uart from command handler
 void putToSerial(const uint8_t* pBuf, int len)
@@ -159,12 +165,6 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
 extern "C" int main()
 {
 
-    // Logging
-    LogSetLevel(LOG_DEBUG);
-    
-    // Heap init
-    heapInit();
-
     // Init timers
     timers_init();
 
@@ -199,6 +199,10 @@ extern "C" int main()
 
     // Layout display for the selected machine
     layout_display();
+
+    // Logging
+    LogSetLevel(LOG_DEBUG);
+    LogSetOutFn(termWriteString);
 
     // Number of machines
     ee_printf("%d machines supported\n", McManager::getNumMachines());

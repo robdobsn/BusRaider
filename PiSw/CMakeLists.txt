@@ -45,5 +45,5 @@ add_custom_command(TARGET ${PROJECT_ELF} POST_BUILD
   COMMAND ${CMAKE_OBJDUMP} -d $<TARGET_FILE:${PROJECT_ELF}> | $(PREFIX)c++filt > ${PROJECT_SOURCE_DIR}/${PROJ_NAME}.lst
   COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${PROJECT_ELF}> ${PROJECT_HEX}
   # COMMAND "C:/Program Files (x86)/teraterm/ttermpro.exe" /R ${PROJECT_HEX} /speed=115200 /c=39
-  COMMAND python ${PROJECT_SOURCE_DIR}/test/SendAndTest.py test1 ihex 10 COM39 115200 ${PROJECT_SOURCE_DIR}
+  COMMAND python ${PROJECT_SOURCE_DIR}/test/SendAndTest.py test1 ihex 1 COM39 115200 ${PROJECT_SOURCE_DIR}
   COMMENT "Sending IHEX ...")

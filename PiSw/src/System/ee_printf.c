@@ -45,7 +45,12 @@ This code is based on a file that contains the following:
 #include <string.h>
 #include "../System/ee_printf.h"
 
-// #define size_t unsigned int
+outChFnType* __ee_pOutFunction = NULL;
+
+void LogSetOutFn(outChFnType* pOutFn)
+{
+    __ee_pOutFunction = pOutFn;
+}
 
 #define ZEROPAD (1 << 0) /* Pad with zero */
 #define SIGN (1 << 1) /* Unsigned/signed long */
@@ -57,9 +62,11 @@ This code is based on a file that contains the following:
 
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
 
-#define DISP_WRITE_STRING(x) wgfx_term_putstring((const char*)x)
+// #define DISP_WRITE_STRING(x) wgfx_term_putstring((const char*)x)
+#define DISP_WRITE_STRING(x) if(__ee_pOutFunction) (*__ee_pOutFunction)((const char*)x)
 // #define UART_WRITE_STRING(x) uart_write_str((const char*)x)
-#define LOG_WRITE_STRING(x) wgfx_term_putstring((const char*)x)
+// #define LOG_WRITE_STRING(x) wgfx_term_putstring((const char*)x)
+#define LOG_WRITE_STRING(x) if(__ee_pOutFunction) (*__ee_pOutFunction)((const char*)x)
 
 static char* lower_digits = "0123456789abcdefghijklmnopqrstuvwxyz";
 static char* upper_digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";

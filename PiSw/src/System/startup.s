@@ -31,15 +31,6 @@ bss_start: .word __bss_start__
 .global bss_end
 bss_end: .word __bss_end__
 
-.global pheap_space
-pheap_space: .word _heap_start
-
-.global heap_sz
-heap_sz: .word heap_size
-
-.global __otaUpdateBuffer
-__otaUpdateBuffer: .word _otaUpdateBufferStart
-
 // Program entry point
 _reset_:
 
@@ -56,19 +47,19 @@ _reset_:
     // Set interrupt mode stack pointer
     mov r0,#0xD2
     msr cpsr_c,r0
-    mov sp,#0x8000
+    ldr sp, =0xBF00000
 
     // (PSR_FIQ_MODE|PSR_FIQ_DIS|PSR_IRQ_DIS)
     // Set FIQ mode stack pointer
     mov r0,#0xD1
     msr cpsr_c,r0
-    mov sp,#0x4000
+    ldr sp, =0xBE00000
 
     // Back in supervisor mode set the stack pointer
     // (PSR_SVC_MODE|PSR_FIQ_DIS|PSR_IRQ_DIS)
     mov r0,#0xD3
     msr cpsr_c,r0
-    mov sp,#0x8000000
+    ldr sp, =0xBD00000
 
 // https://www.raspberrypi.org/forums/viewtopic.php?t=16851
 // To enable L1 Cache on the ARMv6 CPU and enable branch prediction we set bits 11 and 12 in the Control Registor of CP15.

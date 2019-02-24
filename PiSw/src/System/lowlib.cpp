@@ -6,6 +6,7 @@
 #include "lowlib.h"
 #include "nmalloc.h"
 #include <limits.h>
+#include "memorymap.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -33,16 +34,6 @@ int isTimeout(unsigned long curTime, unsigned long lastTime, unsigned long maxDu
     return ((ULONG_MAX - lastTime) + curTime) > maxDuration;
 }
 
-// Heap space
-extern unsigned int pheap_space;
-extern unsigned int heap_sz;
-
-void heapInit()
-{
-    // Heap init
-    nmalloc_set_memory_area((unsigned char*)(pheap_space), heap_sz);
-}
-
 // Startup code
 extern "C" void entry_point()
 {
@@ -57,6 +48,9 @@ extern "C" void entry_point()
     for (void (**p)() = &__init_array_start; p < &__init_array_end; ++p) {
         (*p)();
     }
+
+    // Heap init
+    nmalloc_set_memory_area((unsigned char*)(MEM_HEAP_START), MEM_HEAP_SIZE);
 
     // Main function
     extern int main (void);

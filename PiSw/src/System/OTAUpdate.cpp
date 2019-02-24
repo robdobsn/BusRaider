@@ -6,18 +6,16 @@
 #include "lowlev.h"
 #include "lowlib.h"
 #include "ee_printf.h"
+#include "memorymap.h"
 #include <string.h>
 
 static const char FromOTAUpdate[] = "OTAUpdate";
 
-// OTA update space
-extern uint8_t* __otaUpdateBuffer;
-
 void OTAUpdate::performUpdate(const uint8_t* pData, int dataLen)
 {
     // Calculations
-    uint8_t* pCopyBlockNewLocation = __otaUpdateBuffer;
-    uint8_t* pRxDataNewLocation = __otaUpdateBuffer + lowlev_blockCopyExecRelocatableLen;
+    uint8_t* pCopyBlockNewLocation = (unsigned char*)OTA_UPDATE_START;
+    uint8_t* pRxDataNewLocation = pCopyBlockNewLocation + lowlev_blockCopyExecRelocatableLen;
     LogWrite(FromOTAUpdate, LOG_DEBUG, "Address of copyBlockFn %08x, len %d", pCopyBlockNewLocation, lowlev_blockCopyExecRelocatableLen);
 
     // Disable ints
@@ -37,4 +35,16 @@ void OTAUpdate::performUpdate(const uint8_t* pData, int dataLen)
     // Call the copyBlock function in its new location using it to move the program
     // to 0x8000 the base address for Pi programs
     (*pCopyBlockFn) ((uint8_t*)0x8000, pRxDataNewLocation, dataLen, (uint8_t*)0x8000);
+
+    // int diffs = 0;
+    // uint8_t* pOrig = (uint8_t*)0x8000;
+    // for (int i = 0; i < dataLen; i++)
+    // {
+    //     if (i >= 998 && i < 1004)
+    //         LogWrite(FromOTAUpdate, LOG_DEBUG, "%d %02x %02x", i, pData[i], *(pOrig+i));
+
+    //     if (pRxDataNewLocation[i] != *(pOrig+i))
+    //         diffs++;
+    // }
+    // LogWrite(FromOTAUpdate, LOG_DEBUG, "Num diffs %d", diffs);
 }

@@ -115,7 +115,7 @@ if testname == "test1":
             loopCount += 1
 
 # Results
-print(f"Test results ack {ackCount} not-ack {notAckCount} of {loopCount} tests")
+print(f"\n--------------------------\nTest results ack {ackCount} not-ack {notAckCount} of {loopCount} tests\n---------------------\n")
 
 # Remain running for a little while to hoover up diagnostics, etc
 try:
