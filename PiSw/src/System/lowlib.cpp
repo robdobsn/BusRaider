@@ -5,6 +5,7 @@
 
 #include "lowlib.h"
 #include "nmalloc.h"
+#include "CInterrupts.h"
 #include <limits.h>
 #include "memorymap.h"
 
@@ -51,6 +52,9 @@ extern "C" void entry_point()
 
     // Heap init
     nmalloc_set_memory_area((unsigned char*)(MEM_HEAP_START), MEM_HEAP_SIZE);
+
+    // Interrupts
+    CInterrupts::setup();
 
     // Main function
     extern int main (void);

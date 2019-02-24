@@ -1,10 +1,14 @@
 #include "../../uspi/include/uspios.h"
 #include "../System/ee_printf.h"
-#include "irq.h"
+#include "CInterrupts.h"
 #include "nmalloc.h"
 #include "raspihwconfig.h"
 #include "timer.h"
 #include "lowlib.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void* malloc(unsigned nSize) // result must be 4-byte aligned
 {
@@ -43,7 +47,8 @@ void CancelKernelTimer(__attribute__((unused)) unsigned hTimer)
 void ConnectInterrupt(unsigned nIRQ, TInterruptHandler* pHandler, void* pParam)
 {
     nIRQ = nIRQ;
-    irq_set_usb_handler(pHandler, pParam);
+    // irq_set_usb_handler(pHandler, pParam);
+    CInterrupts::connectIRQ(ARM_IRQ_USB, pHandler, pParam);
 }
 
 int SetPowerStateOn(unsigned nDeviceId) // "set power state" to "on", wait until completed
@@ -78,3 +83,7 @@ void DebugHexdump(const void* pBuffer, unsigned nBufLen, const char* pSource /* 
     ee_printf("Memory dump of %s:\n", pSource);
     ee_dump_mem((unsigned char*)pBuffer, (unsigned char*)(pBuffer) + nBufLen);
 }
+
+#ifdef __cplusplus
+}
+#endif

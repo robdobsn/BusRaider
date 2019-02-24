@@ -3,7 +3,7 @@
 
 #include "BusAccess.h"
 #include "../System/piwiring.h"
-#include "../System/irq.h"
+#include "../System/CInterrupts.h"
 #include "../System/ee_printf.h"
 #include "../System/lowlev.h"
 #include "../System/lowlib.h"
@@ -597,7 +597,7 @@ void BusAccess::waitEnable(bool enWaitOnIORQ, bool enWaitOnMREQ)
     WR32(ARM_GPIO_GPSET0, _waitStateEnMask);
 
     // Set vector for WAIT state interrupt
-    irq_set_wait_state_handler(waitStateISR);
+    CInterrupts::connectFIQ(0, waitStateISR, 0);
 
     // Setup edge triggering on falling edge of IORQ and/or MREQ
     // Clear any current detected edges

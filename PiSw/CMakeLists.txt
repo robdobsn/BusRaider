@@ -33,17 +33,17 @@ set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-sized-deallocation" )
 
 set( CMAKE_EXE_LINKER_FLAGS "-Wl,-T,${PROJECT_SOURCE_DIR}/memmap" )
 
-# add_custom_command(TARGET ${PROJECT_ELF} POST_BUILD 
-#   COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${PROJECT_ELF}> ${PROJECT_SOURCE_DIR}/bin/kernel.img
-#  COMMAND ${CMAKE_OBJDUMP} -d $<TARGET_FILE:${PROJECT_ELF}> | $(PREFIX)c++filt > ${PROJECT_SOURCE_DIR}/${PROJ_NAME}.lst
-# #  COMMAND curl -F "file=@${PROJECT_SOURCE_DIR}/bin/kernel.img" http://192.168.86.192/uploadpisw
-#   # COMMAND "C:/Program Files (x86)/teraterm/ttermpro.exe" /R ${PROJECT_SOURCE_DIR}/bin/kernel.img /speed=115200 /c=39
-#   COMMENT "Copying to output directory and uploading ...")
-
-add_custom_command(TARGET ${PROJECT_ELF} POST_BUILD
+add_custom_command(TARGET ${PROJECT_ELF} POST_BUILD 
   COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${PROJECT_ELF}> ${PROJECT_SOURCE_DIR}/bin/kernel.img
-  COMMAND ${CMAKE_OBJDUMP} -d $<TARGET_FILE:${PROJECT_ELF}> | $(PREFIX)c++filt > ${PROJECT_SOURCE_DIR}/${PROJ_NAME}.lst
-  COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${PROJECT_ELF}> ${PROJECT_HEX}
-  # COMMAND "C:/Program Files (x86)/teraterm/ttermpro.exe" /R ${PROJECT_HEX} /speed=115200 /c=39
-  COMMAND python ${PROJECT_SOURCE_DIR}/test/SendAndTest.py test1 ihex 1 COM39 115200 ${PROJECT_SOURCE_DIR}
-  COMMENT "Sending IHEX ...")
+#  COMMAND ${CMAKE_OBJDUMP} -d $<TARGET_FILE:${PROJECT_ELF}> | $(PREFIX)c++filt > ${PROJECT_SOURCE_DIR}/${PROJ_NAME}.lst
+  COMMAND curl -F "file=@${PROJECT_SOURCE_DIR}/bin/kernel.img" http://192.168.86.192/uploadpisw
+  # COMMAND "C:/Program Files (x86)/teraterm/ttermpro.exe" /R ${PROJECT_SOURCE_DIR}/bin/kernel.img /speed=115200 /c=39
+  COMMENT "Copying to output directory and uploading ...")
+
+# add_custom_command(TARGET ${PROJECT_ELF} POST_BUILD
+#   COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:${PROJECT_ELF}> ${PROJECT_SOURCE_DIR}/bin/kernel.img
+#   COMMAND ${CMAKE_OBJDUMP} -d $<TARGET_FILE:${PROJECT_ELF}> | $(PREFIX)c++filt > ${PROJECT_SOURCE_DIR}/${PROJ_NAME}.lst
+#   COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${PROJECT_ELF}> ${PROJECT_HEX}
+#   # COMMAND "C:/Program Files (x86)/teraterm/ttermpro.exe" /R ${PROJECT_HEX} /speed=115200 /c=39
+#   COMMAND python ${PROJECT_SOURCE_DIR}/test/SendAndTest.py test1 ihex 1 COM39 115200 ${PROJECT_SOURCE_DIR}
+#   COMMENT "Sending IHEX ...")

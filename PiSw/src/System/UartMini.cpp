@@ -3,9 +3,8 @@
 
 #include "uartMini.h"
 #include "BCM2835.h"
-#include "irq.h"
+#include "CInterrupts.h"
 #include "nmalloc.h"
-#include "lowlev.h"
 #include "lowlib.h"
 #include <stddef.h>
 
@@ -134,9 +133,6 @@ bool UartMini::setup(unsigned int baudRate, [[maybe_unused]]int rxBufSize, [[may
     WR32(ARM_AUX_MU_CNTL_REG, 3);
 
     // // Initialise the interrupt handler
-    WR32(ARM_IC_ENABLE_IRQS_1, 1 << ARM_IRQ_AUX);
-    lowlev_enable_irq();
-    irq_set_auxMiniUart_handler(isrStatic, NULL);
-    // irq_attach_handler(57, uart_irq_handler, NULL);
+    CInterrupts::connectIRQ(ARM_IRQ_AUX, isrStatic, NULL);
     return true;
 }
