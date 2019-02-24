@@ -96,3 +96,8 @@ void TargetState::getTargetRegsAndInvalidate(Z80Registers& regs)
     LogWrite(FromTargetState, LOG_DEBUG, "getTargetRegsAndInvalidate PC=%04x\n", regs.PC);
 }
 
+void TargetState::handleExecAddr(uint32_t addr)
+{
+    LogWrite(FromTargetState, LOG_DEBUG, "got exec addr %04x", addr);
+}
+

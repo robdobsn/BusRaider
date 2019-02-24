@@ -28,7 +28,7 @@ typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.020";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.023";
 static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
@@ -36,6 +36,9 @@ static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
 // Baud rate
 #define MAIN_UART_BAUD_RATE 115200
 UartMaxi mainUart;
+
+// CommandHandler
+CommandHandler commandHandler;
 
 // Immediate mode
 #define IMM_MODE_LINE_MAXLEN 100
@@ -64,10 +67,10 @@ void handlePutToSerialForCmdHandler(const uint8_t* pBuf, int len)
 }
 
 // Function to handle OTA update
-void handleOtaUpdate(const uint8_t* pData, int dataLen)
-{
-    OTAUpdate::performUpdate(pData, dataLen);
-}
+// void handleOtaUpdate(const uint8_t* pData, int dataLen)
+// {
+//     OTAUpdate::performUpdate(pData, dataLen);
+// }
 
 int errorCounts[UartMaxi::UART_ERROR_FULL+1];
 
@@ -91,6 +94,13 @@ void serviceGetFromSerial()
         CommandHandler::handleSerialReceivedChars(buf, 1);
     }    
 }
+
+// void handleMachineCommand(const char* pCmdJson, 
+//                     [[maybe_unused]] const uint8_t* pParams, [[maybe_unused]] int paramsLen,
+//                     char* pRespJson, int maxRespLen)
+// {
+//     McManager::handleCommand(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+// }
 
 void layout_display()
 {
@@ -204,11 +214,10 @@ extern "C" int main()
     }
 
     // Command Handler
-    CommandHandler commandHandler;
-
-    // Command handler
-    commandHandler.setMachineChangeCallback(setMachineByName, setMachineOptions);
+    commandHandler.setMachineCommandCallback(McManager::handleCommand);
     commandHandler.setPutToSerialCallback(handlePutToSerialForCmdHandler);
+    commandHandler.setOTAUpdateCallback(OTAUpdate::performUpdate);
+    commandHandler.setTargetFileCallback(McManager::handleTargetFile);
 
     // Target machine memory
     TargetState::clear();
@@ -412,7 +421,7 @@ extern "C" int main()
         if (isTimeout(micros(), lastStatusUpdateMs, STATUS_UPDATE_RATE_MS * 1000)) 
         {
             // Send and request status update
-            commandHandler.requestStatusUpdate();
+            commandHandler.sendRegularStatusUpdate();
             lastStatusUpdateMs = micros();
         }
 

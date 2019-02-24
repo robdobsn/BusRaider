@@ -57,7 +57,7 @@ public:
     static void sendKeyCodeToTarget(int asciiCode);
 
     // Debug message handling
-    static void sendDebugMessage(const char* pStr);
+    static void sendDebugMessage(const char* pStr, const char* rdpMessageIdStr);
     static bool debuggerCommand(const char* pCommand, char* pResponse, int maxResponseLen);
 
     // Target programming
@@ -71,4 +71,11 @@ public:
     static bool blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq);
     static bool blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq);
 
+    // Handle target files
+    static void handleTargetFile(const char* rxFileInfo, const uint8_t* pData, int dataLen);
+
+    // Handle commands
+    static void handleCommand(const char* pCmdJson, 
+                    const uint8_t* pParams, int paramsLen,
+                    char* pRespJson, int maxRespLen);
 };

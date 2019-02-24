@@ -7,10 +7,11 @@
 #include <stdint.h>
 
 // Callback types
-typedef void CmdHandlerChangeMachineFnType(const char* machineName);
-typedef void CmdHandlerChangeOptionsFnType(const char* machineOptions);
-typedef void CmdHandlerRxFromTargetFnType(const uint8_t* pBytes, int numBytes);
 typedef void CmdHandlerPutToSerialFnType(const uint8_t* pBytes, int numBytes);
+typedef void CmdHandlerMachineCommandFnType(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
+                    char* pRespJson, int maxRespLen);
+typedef void CmdHandlerOTAUpdateFnType(const uint8_t* pData, int dataLen);
+typedef void CmdHandlerTargetFileFnType(const char* rxFileInfo, const uint8_t* pData, int dataLen);
 
 // Handles commands from ESP32
 class CommandHandler
@@ -20,17 +21,20 @@ public:
     ~CommandHandler();
 
     // Callback when machine change command is received
-    void setMachineChangeCallback(CmdHandlerChangeMachineFnType* pChangeMcFunction,
-                    CmdHandlerChangeOptionsFnType* pChangeMcOptions)
+    void setMachineCommandCallback(CmdHandlerMachineCommandFnType* pMachineCommandFunction)
     {
-        _pChangeMcFunction = pChangeMcFunction;
-        _pChangeMcOptions = pChangeMcOptions;
+        _pMachineCommandFunction = pMachineCommandFunction;
     }
 
-    // Callback when characters received from target machine (which goes via ESP32)
-    void setRxFromTargetCallback(CmdHandlerRxFromTargetFnType* pRxFromTargetFunction)
+    void setTargetFileCallback(CmdHandlerTargetFileFnType* pTargetFileFunction)
     {
-        _pRxFromTargetFunction = pRxFromTargetFunction;
+        _pTargetFileFunction = pTargetFileFunction;
+    }
+
+    // Callback for OTA update
+    void setOTAUpdateCallback(CmdHandlerOTAUpdateFnType* pOTAUpdateFunction)
+    {
+        _pOTAUpdateFunction = pOTAUpdateFunction;
     }
 
     // Callback when command handler wants to send on serial channel to ESP32
@@ -51,8 +55,8 @@ public:
     void sendWithJSON(const char* cmdName, const char* cmdJson);
     static void sendAPIReq(const char* reqLine);
     void getStatusResponse(bool* pIPAddressValid, char** pIPAddress, char** pWifiConnStr, char** pWifiSSID);
-    void requestStatusUpdate();
-    void sendDebugMessage(const char* pStr);
+    void sendRegularStatusUpdate();
+    void sendDebugMessage(const char* pStr, const char* rdpMessageIdStr);
 
 private:
     static void static_hdlcPutCh(uint8_t ch);
@@ -71,10 +75,10 @@ private:
 
 private:
     // Callbacks
-    static CmdHandlerChangeMachineFnType* _pChangeMcFunction;
-    static CmdHandlerChangeOptionsFnType* _pChangeMcOptions;
-    static CmdHandlerRxFromTargetFnType* _pRxFromTargetFunction;
     static CmdHandlerPutToSerialFnType* _pPutToSerialFunction;
+    static CmdHandlerMachineCommandFnType* _pMachineCommandFunction;
+    static CmdHandlerOTAUpdateFnType* _pOTAUpdateFunction;
+    static CmdHandlerTargetFileFnType* _pTargetFileFunction;
 
     // Singleton pointer - to allow access to the singleton bus-commander from static functions
     static CommandHandler* _pSingletonCommandHandler;
@@ -84,6 +88,7 @@ private:
 
 private:
     // String lengths
+    static const int MAX_MC_STATUS_MSG_LEN = 1000;
     static const int CMD_HANDLER_MAX_CMD_STR_LEN = 200;
     static const int MAX_INT_ARG_STR_LEN = 10;
     static const int MAX_FILE_NAME_STR = 100;

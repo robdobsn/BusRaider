@@ -8,6 +8,7 @@
 #include "../TargetBus/TargetState.h"
 #include "../System/rdutils.h"
 #include "../Debugger/TargetDebug.h"
+#include "../FileFormats/srecparser.h"
 #include <stdlib.h>
 
 const char* McDebugZ80::_logPrefix = "DebugZ80";
@@ -153,6 +154,17 @@ void McDebugZ80::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_
 // Handle a file
 void McDebugZ80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
 {
+    // File type
+    #define MAX_CMD_NAME_STR 30
+    char cmdName[MAX_CMD_NAME_STR+1];
+    if (!jsonGetValueForKey("cmdName", pFileInfo, cmdName, MAX_CMD_NAME_STR))
+        return;
+    if (strcasecmp(cmdName, "SRECTarget") == 0)
+    {
+        srec_decode(TargetState::addMemoryBlock, TargetState::handleExecAddr, pFileData, fileLen);
+        return;
+    }
+
     // Get the file type (extension of file name)
     #define MAX_VALUE_STR 30
     #define MAX_FILE_NAME_STR 100

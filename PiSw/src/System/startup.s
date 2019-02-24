@@ -66,6 +66,9 @@ _reset_:
 // Bit 12 enables the L1 instruction Cache, and is available in the StrongARM and all later ARM CPUs.
 // Bit 11 enables branch prediction, and is only available in ARMv6 and all later CPUs.
 // If you wish you can also enable Bit 2 to enable the Data Cache, though be careful with this one.
+    mov r0, #0
+    mcr p15, 0, r0, c7, c7, 0 // invalidate caches
+    mcr p15, 0, r0, c8, c7, 0 // invalidate tlb
     MRC P15,0,R0,C1,C0
     MOV R1,#3
     ORR R0,R0,R1,LSL#11      // Set bits 11 and 12.
@@ -75,14 +78,14 @@ _reset_:
     ldr   r3, bss_start 
     ldr   r2, bss_end
     mov   r0, #0
-1:
+bssZeroLoop:
     cmp   r2, r3
-    beq   2f
+    beq   bssZeroDone
     str   r0, [r3]
     add   r3, r3, #1
-    b     1b
+    b     bssZeroLoop
 
-2:
+bssZeroDone:
     // Jump to the entry point of the c/cpp code
     bl  entry_point
 

@@ -6,6 +6,7 @@
 #include <string.h>
 #include "../TargetBus/TargetState.h"
 #include "../TargetBus/BusAccess.h"
+#include "../System/rdutils.h"
 
 // Module name
 static const char FromMcManager[] = "McManager";
@@ -65,8 +66,7 @@ TargetClockGenerator McManager::_clockGen;
 
 void McManager::init(CommandHandler* pCommandHandler)
 {
-    // Add a callback for received characters from target
-    pCommandHandler->setRxFromTargetCallback(handleRxCharFromTarget);
+    // Command handler
     _pCommandHandler = pCommandHandler;
     
     // Let the target debugger know how to communicate
@@ -284,11 +284,11 @@ void McManager::sendKeyCodeToTarget(int asciiCode)
 // Debug messaging
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void McManager::sendDebugMessage(const char* pStr)
+void McManager::sendDebugMessage(const char* pStr, const char* rdpMessageIdStr)
 {
-    LogWrite(FromMcManager, LOG_DEBUG, "debugMsg %s cmdH %d", pStr, _pCommandHandler); 
+    LogWrite(FromMcManager, LOG_DEBUG, "debugMsg %s cmdH %d msgId %s", pStr, _pCommandHandler, rdpMessageIdStr); 
     if (_pCommandHandler)
-        _pCommandHandler->sendDebugMessage(pStr);
+        _pCommandHandler->sendDebugMessage(pStr, rdpMessageIdStr);
 }
 
 bool McManager::debuggerCommand(const char* pCommand, char* pResponse, int maxResponseLen)
@@ -443,3 +443,125 @@ void McManager::handleTargetProgram(const char* cmdName)
     TargetState::clear();
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Target file handling
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void McManager::handleTargetFile(const char* rxFileInfo, const uint8_t* pData, int dataLen)
+{
+    McBase* pMc = McManager::getMachine();
+    if (pMc)
+        pMc->fileHandler(rxFileInfo, pData, dataLen);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Command handling
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void McManager::handleCommand(const char* pCmdJson, 
+                    [[maybe_unused]] const uint8_t* pParams, [[maybe_unused]] int paramsLen,
+                    char* pRespJson, int maxRespLen)
+{
+    LogWrite(FromMcManager, LOG_DEBUG, "req %s", pCmdJson);
+    #define MAX_CMD_NAME_STR 30
+    char cmdName[MAX_CMD_NAME_STR+1];
+    if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
+        return;
+    pRespJson[0] = 0;
+
+    if (strcasecmp(cmdName, "getStatus") == 0)
+    {
+        const char* mcJSON = getMachineJSON();
+        if (pRespJson)
+            strlcat(pRespJson, mcJSON, maxRespLen);
+    }
+    else if (strcasecmp(cmdName, "ClearTarget") == 0)
+    {
+        LogWrite(FromMcManager, LOG_DEBUG, "ClearTarget");
+        TargetState::clear();
+    }
+    else if ((strcasecmp(cmdName, "ProgramAndReset") == 0) || (strcasecmp(cmdName, "ProgramTarget") == 0))
+    {
+        McManager::handleTargetProgram(cmdName);
+    }
+    else if (strcasecmp(cmdName, "ResetTarget") == 0)
+    {
+        LogWrite(FromMcManager, LOG_DEBUG, "ResetTarget");
+        McManager::targetReset();
+    }
+    else if (strcasecmp(cmdName, "IOClrTarget") == 0)
+    {
+        LogWrite(FromMcManager, LOG_DEBUG, "IO Clear Target");
+        McManager::targetClearAllIO();
+    }
+    else if ((strcasecmp(cmdName, "FileTarget") == 0) || ((strcasecmp(cmdName, "SRECTarget") == 0)))
+    {
+        LogWrite(FromMcManager, LOG_DEBUG, "File to Target, len %d", paramsLen);
+        McBase* pMc = McManager::getMachine();
+        if (pMc)
+            pMc->fileHandler(pCmdJson, pParams, paramsLen);
+    }
+    else if (strcasecmp(cmdName, "SRECTarget") == 0)
+    {
+        LogWrite(FromMcManager, LOG_DEBUG, "SREC to Target, len %d", paramsLen);
+        McBase* pMc = McManager::getMachine();
+        if (pMc)
+            pMc->fileHandler(pCmdJson, pParams, paramsLen);
+
+    }
+    else if (strncasecmp(cmdName, "SetMachine", strlen("SetMachine")) == 0)
+    {
+        // Get machine name
+        const char* pMcName = strstr(cmdName,"=");
+        if (pMcName)
+        {
+            // Move to first char of actual name
+            pMcName++;
+            setMachineByName(pMcName);
+            LogWrite(FromMcManager, LOG_DEBUG, "Set Machine to %s", pMcName);
+        }
+    }
+    else if (strncasecmp(cmdName, "mcoptions", strlen("mcoptions")) == 0)
+    {
+        // Get options
+        const char* pOptions = strstr(cmdName,"=");
+        if (pOptions)
+        {
+            // Move to first char of actual parameter
+            pOptions++;
+            LogWrite(FromMcManager, LOG_DEBUG, "Set Machine options to %s", pOptions);
+            setMachineOpts(pOptions);
+        }
+    }
+    else if (strcasecmp(cmdName, "RxHost") == 0)
+    {
+        // LogWrite(FromMcManager, LOG_DEBUG, "RxFromHost, len %d", dataLen);
+        handleRxCharFromTarget(pParams, paramsLen);
+    }
+    else if (strcasecmp(cmdName, "rdp") == 0)
+    {
+        // Get message index value
+        static const int MAX_RDP_MSG_ID_LEN = 20;
+        char rdpMessageIdStr[MAX_RDP_MSG_ID_LEN+1];
+        strcpy(rdpMessageIdStr, "0");
+        if (!jsonGetValueForKey("index", pCmdJson, rdpMessageIdStr, MAX_RDP_MSG_ID_LEN))
+            LogWrite(FromMcManager, LOG_DEBUG, "RDP message no index value found");
+        // Send to remote debug handler
+        static const int MAX_CMD_STR_LEN = 200;
+        static char commandStr[MAX_CMD_STR_LEN+1];
+        if (paramsLen > MAX_CMD_STR_LEN)
+            paramsLen = MAX_CMD_STR_LEN;
+        memcpy(commandStr, pParams, paramsLen);
+        commandStr[paramsLen] = 0;
+        static const int MAX_RESPONSE_MSG_LEN = 2000;
+        static char responseMessage[MAX_RESPONSE_MSG_LEN+1];
+        responseMessage[0] = 0;
+        McManager::debuggerCommand(commandStr, responseMessage, MAX_RESPONSE_MSG_LEN);
+        // Send response back
+        sendDebugMessage(responseMessage, rdpMessageIdStr);
+    }
+    else
+    {
+        LogWrite(FromMcManager, LOG_DEBUG, "Unknown command %s", cmdName);
+    }
+}

@@ -37,5 +37,5 @@ public:
     static void setTargetRegisters(Z80Registers& regs);
     static bool areRegistersValid();
     static void getTargetRegsAndInvalidate(Z80Registers& regs);
-
+    static void handleExecAddr(uint32_t addr);
 };

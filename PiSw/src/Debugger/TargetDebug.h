@@ -11,7 +11,7 @@
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetRegisters.h"
 
-typedef void SendDebugMessageType(const char* pStr);
+typedef void SendDebugMessageType(const char* pStr, const char* rdpMessageIdStr);
 
 class Breakpoint
 {

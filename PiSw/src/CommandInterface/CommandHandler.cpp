@@ -4,25 +4,20 @@
 #include "CommandHandler.h"
 #include "../System/nmalloc.h"
 #include "../System/ee_printf.h"
-#include "../TargetBus/TargetState.h"
 #include "minihdlc.h"
-#include "../FileFormats/srecparser.h"
-#include "../Machines/McManager.h"
-#include "../System/lowlev.h"
 #include "../System/rdutils.h"
-#include "../System/OTAUpdate.h"
+#include "../System/RdStdCpp.h"
 #include <string.h>
 #include <stdlib.h>
-#include "../System/RdStdCpp.h"
 
 // Module name
 static const char FromCmdHandler[] = "CommandHandler";
 
-// Callback for change machine type
-CmdHandlerChangeMachineFnType* CommandHandler::_pChangeMcFunction = NULL;
-CmdHandlerChangeOptionsFnType* CommandHandler::_pChangeMcOptions = NULL;
-CmdHandlerRxFromTargetFnType* CommandHandler::_pRxFromTargetFunction = NULL;
+// Callbacks
 CmdHandlerPutToSerialFnType* CommandHandler::_pPutToSerialFunction = NULL;
+CmdHandlerMachineCommandFnType* CommandHandler::_pMachineCommandFunction = NULL;
+CmdHandlerOTAUpdateFnType* CommandHandler::_pOTAUpdateFunction = NULL;
+CmdHandlerTargetFileFnType* CommandHandler::_pTargetFileFunction = NULL;
 
 // Singleton command handler
 CommandHandler* CommandHandler::_pSingletonCommandHandler = NULL;
@@ -35,10 +30,7 @@ CommandHandler* CommandHandler::_pSingletonCommandHandler = NULL;
 CommandHandler::CommandHandler() :
     _miniHDLC(static_hdlcPutCh, static_hdlcFrameRx)
 {   
-    // Callbacks
-    _pRxFromTargetFunction = NULL;
-    _pChangeMcFunction = NULL;
-    _pChangeMcOptions = NULL;
+    // Singleton
     _pSingletonCommandHandler = this;
 
     // File reception
@@ -55,9 +47,6 @@ CommandHandler::CommandHandler() :
     _statusWifiConnStr[0] = 0;
     _statusWifiSSID[0] = 0;
     _statusIPAddressValid = false;
-
-    // RDP index value str
-    _lastRDPIndexValStr[0] = 0;
 }
 
 CommandHandler::~CommandHandler()
@@ -106,7 +95,7 @@ void CommandHandler::hdlcPutCh(uint8_t ch)
 // This is a ascii character string (null terminated) followed by a byte buffer containing parameters
 void CommandHandler::hdlcFrameRx(const uint8_t *pFrame, int frameLength)
 {
-    LogWrite(FromCmdHandler, LOG_DEBUG, "Rx %d bytes", frameLength);
+    // LogWrite(FromCmdHandler, LOG_DEBUG, "Rx %d bytes", frameLength);
 
     // Handle the frame - extract command string
     char commandString[CMD_HANDLER_MAX_CMD_STR_LEN+1];
@@ -134,7 +123,10 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
         return;
 
-    LogWrite(FromCmdHandler, LOG_NOTICE, "processCommand JSON %s cmdName %s", pCmdJson, cmdName); 
+    // LogWrite(FromCmdHandler, LOG_NOTICE, "processCommand JSON %s cmdName %s", pCmdJson, cmdName); 
+    // char logStr[1000];
+    // ee_sprintf(logStr, "processCommand JSON %s cmdName %s", pCmdJson, cmdName);
+    // sendLogMessage(logStr);
 
     // Handle commands
     if (strcasecmp(cmdName, "ufStart") == 0)
@@ -150,97 +142,15 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     {
         handleFileEnd(pCmdJson);
     }
-    else if (strcasecmp(cmdName, "ClearTarget") == 0)
-    {
-        LogWrite(FromCmdHandler, LOG_DEBUG, "ClearTarget");
-        TargetState::clear();
-    }
-    else if ((strcasecmp(cmdName, "ProgramAndReset") == 0) || (strcasecmp(cmdName, "ProgramTarget") == 0))
-    {
-        McManager::handleTargetProgram(cmdName);
-    }
-    else if (strcasecmp(cmdName, "ResetTarget") == 0)
-    {
-        LogWrite(FromCmdHandler, LOG_DEBUG, "ResetTarget");
-        McManager::targetReset();
-    }
-    else if (strcasecmp(cmdName, "IOClrTarget") == 0)
-    {
-        LogWrite(FromCmdHandler, LOG_DEBUG, "IO Clear Target");
-        McManager::targetClearAllIO();
-    }
-    else if (strcasecmp(cmdName, "FileTarget") == 0)
-    {
-        LogWrite(FromCmdHandler, LOG_DEBUG, "File to Target, len %d", paramsLen);
-        McBase* pMc = McManager::getMachine();
-        if (pMc)
-            pMc->fileHandler(pCmdJson, pParams, paramsLen);
-    }
-    else if (strcasecmp(cmdName, "SRECTarget") == 0)
-    {
-        LogWrite(FromCmdHandler, LOG_DEBUG, "SREC to Target, len %d", paramsLen);
-        srec_decode(TargetState::addMemoryBlock, addressRxCallback, pParams, paramsLen);
-    }
-    else if (strncasecmp(cmdName, "SetMachine", strlen("SetMachine")) == 0)
-    {
-        // Get machine name
-        const char* pMcName = strstr(cmdName,"=");
-        if (pMcName)
-        {
-            // Move to first char of actual name
-            pMcName++;
-            if (_pChangeMcFunction != NULL)
-                _pChangeMcFunction(pMcName);
-            LogWrite(FromCmdHandler, LOG_DEBUG, "Set Machine to %s", pMcName);
-        }
-    }
-    else if (strncasecmp(cmdName, "mcoptions", strlen("mcoptions")) == 0)
-    {
-        // Get options
-        const char* pOptions = strstr(cmdName,"=");
-        if (pOptions)
-        {
-            // Move to first char of actual parameter
-            pOptions++;
-            LogWrite(FromCmdHandler, LOG_DEBUG, "Set Machine options to %s", pOptions);
-            if (_pChangeMcOptions != NULL)
-                _pChangeMcOptions(pOptions);
-        }
-    }
-    else if (strcasecmp(cmdName, "RxHost") == 0)
-    {
-        // LogWrite(FromCmdHandler, LOG_DEBUG, "RxFromHost, len %d", dataLen);
-        if (_pRxFromTargetFunction)
-            _pRxFromTargetFunction(pParams, paramsLen);
-    }
     else if (strcasecmp(cmdName, "respMsg") == 0)
     {
         // Handle status response message
         handleStatusResponse(pCmdJson);
     }
-    else if (strcasecmp(cmdName, "rdp") == 0)
-    {
-        // Get message index value
-        strcpy(_lastRDPIndexValStr, "0");
-        if (!jsonGetValueForKey("index", pCmdJson, _lastRDPIndexValStr, MAX_RDP_INDEX_VAL_LEN))
-            LogWrite(FromCmdHandler, LOG_DEBUG, "RDP NO INDEX VAL");
-        // Send to remote debug handler
-        static const int MAX_CMD_STR_LEN = 200;
-        static char commandStr[MAX_CMD_STR_LEN+1];
-        if (paramsLen > MAX_CMD_STR_LEN)
-            paramsLen = MAX_CMD_STR_LEN;
-        memcpy(commandStr, pParams, paramsLen);
-        commandStr[paramsLen] = 0;
-        static const int MAX_RESPONSE_MSG_LEN = 2000;
-        static char responseMessage[MAX_RESPONSE_MSG_LEN+1];
-        responseMessage[0] = 0;
-        McManager::debuggerCommand(commandStr, responseMessage, MAX_RESPONSE_MSG_LEN);
-        // Send response back
-        sendDebugMessage(responseMessage);
-    }
     else
     {
-        LogWrite(FromCmdHandler, LOG_DEBUG, "Unknown command %s", cmdName);
+        if (_pMachineCommandFunction)
+            (*_pMachineCommandFunction)(pCmdJson, pParams, paramsLen, NULL, 0);
     }
 }
 
@@ -270,14 +180,14 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
     if (!jsonGetValueForKey("fileLen", pCmdJson, fileLenStr, MAX_INT_ARG_STR_LEN))
         return;
 
-    LogWrite(FromCmdHandler, LOG_NOTICE, "ufStart FileLenStr %s", 
-                fileLenStr);
+    // LogWrite(FromCmdHandler, LOG_NOTICE, "ufStart FileLenStr %s", 
+    //             fileLenStr);
 
     int fileLen = strtol(fileLenStr, NULL, 10);
     if (fileLen <= 0)
         return;
-    LogWrite(FromCmdHandler, LOG_NOTICE, "ufStart FileLen %d", 
-                fileLen);
+    // LogWrite(FromCmdHandler, LOG_NOTICE, "ufStart FileLen %d", 
+    //             fileLen);
 
     // Copy start info
     strlcpy(_receivedFileStartInfo, pCmdJson, CMD_HANDLER_MAX_CMD_STR_LEN);
@@ -370,17 +280,16 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
     if (strcasecmp(_pReceivedFileType, "firmware") == 0)
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd IMG firmware update File %s, len %d", _receivedFileName, _receivedFileBytesRx);
-        OTAUpdate::performUpdate(_pReceivedFileDataPtr, _receivedFileBytesRx);
+        if (_pOTAUpdateFunction)
+            (*_pOTAUpdateFunction)(_pReceivedFileDataPtr, _receivedFileBytesRx);
     }
     else
     {
         // Offer to the machine specific handler
         // appendJson(_receivedFileStartInfo, pCmdJson);
         LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
-        McBase* pMc = McManager::getMachine();
-        if (pMc)
-            pMc->fileHandler(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx);
-
+        if (_pTargetFileFunction)
+            (*_pTargetFileFunction)(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx);
     }
 }
 
@@ -403,15 +312,6 @@ void CommandHandler::handleStatusResponse(const char* pCmdJson)
         return;
     // LogWrite(FromCmdHandler, LOG_DEBUG, "Ip Address %s", _espIPAddress);
     _statusIPAddressValid = (strcmp(_statusIPAddress, "0.0.0.0") != 0);
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Address callback from decode function
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void CommandHandler::addressRxCallback(uint32_t addr)
-{
-    LogWrite(FromCmdHandler, LOG_DEBUG, "CmdHandler: got addr from SREC %04x", addr);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -466,15 +366,18 @@ void CommandHandler::sendAPIReq(const char* reqLine)
 // Get status response
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void CommandHandler::requestStatusUpdate()
+void CommandHandler::sendRegularStatusUpdate()
 {
     // Check if file transfer in progress
     if (_pReceivedFileDataPtr)
         return;
 
     // Send update
-    const char* mcJSON = McManager::getMachineJSON();
-    sendWithJSON("statusUpdate", mcJSON);
+    if (!_pMachineCommandFunction)
+        return;
+    char respBuffer[MAX_MC_STATUS_MSG_LEN+1];
+    (*_pMachineCommandFunction)("\"cmdName\":\"getStatus\"", NULL, 0, respBuffer, MAX_MC_STATUS_MSG_LEN);
+    sendWithJSON("statusUpdate", respBuffer);
     // Request update
     sendAPIReq("queryESPHealth");    
 }
@@ -495,13 +398,13 @@ void CommandHandler::getStatusResponse(bool* pIPAddressValid, char** pIPAddress,
 // Send debug message
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void CommandHandler::sendDebugMessage(const char* pStr)
+void CommandHandler::sendDebugMessage(const char* pStr, const char* rdpMessageIdStr)
 {
     // LogWrite(FromCmdHandler, LOG_DEBUG, "RDP replying with %s", responseMessage);
     static const int MAX_RESPONSE_MSG_LEN = 2000;
     static char responseJson[MAX_RESPONSE_MSG_LEN+1];
     strlcpy(responseJson, "\"index\":\"", MAX_RESPONSE_MSG_LEN);
-    strlcat(responseJson, _lastRDPIndexValStr, MAX_RESPONSE_MSG_LEN);
+    strlcat(responseJson, rdpMessageIdStr, MAX_RESPONSE_MSG_LEN);
     strlcat(responseJson, "\",\"content\":\"", MAX_RESPONSE_MSG_LEN);
     strlcat(responseJson, pStr, MAX_RESPONSE_MSG_LEN);
     strlcat(responseJson, "\"", MAX_RESPONSE_MSG_LEN);

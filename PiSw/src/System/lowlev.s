@@ -58,6 +58,11 @@ bloop:  ;@ eor r1, r0, r1
 .global disable_mmu_and_cache
 disable_mmu_and_cache:
 
+; mrc p15, 0, r0, c1, c0, 0
+; bic r0,r0,#0x1000 ;@ instruction
+; bic r0,r0,#0x0004 ;@ data
+; mcr p15, 0, r0, c1, c0, 0
+
     push {r0,r1,r2,r3,r10}
     mov r3, #0                      ;@ The read register Should Be Zero before the call
     mcr p15, 0, r3, C7, C6, 0       ;@ Invalidate Entire Data Cache
@@ -76,38 +81,70 @@ disable_mmu_and_cache:
     bx lr
 
 .equ ABASE,  0x20200000 @Base address
-.equ GPFSEL0, 0x00			@FSEL register offset 
+.equ AGPFSEL0, 0x00			@FSEL register offset 
+.equ AGPFSEL4, 0x10
 .equ AGPSET0,  0x1c			@GPSET0 register offset
+.equ AGPSET1,  0x20
 .equ AGPCLR0,  0x28			@GPCLR0 register offset
 .equ ACOUNTER, 0x100
+.equ SET_BIT15,  0x8000
+.equ SET_BIT21,  0x200000
 .equ SET_BIT24,  0x1000000 	@sets bit 24
 .equ AOUTPIN,  0x100 	@sets bit 8
+.equ AGPCLR1,  0x2c
+.equ BCOUNTER, 0xf00000
 
+// Debugging code to blink SPI0 CE0 pin
 .global blinkCE0
 blinkCE0:
 
-
-push {r0,r1,r2,r3,r10}
-
-ldr r0,=ABASE
-ldr r1,=SET_BIT24
-str r1,[r0,#GPFSEL0]
-ldr r1,=AOUTPIN
-ldr r2,=ACOUNTER
+    push {r0,r1,r2,r3,r10}
+    ldr r0,=ABASE
+    ldr r1,=SET_BIT24
+    str r1,[r0,#AGPFSEL0]
+    ldr r1,=AOUTPIN
+    ldr r2,=ACOUNTER
     str r1,[r0,#AGPSET0]
 	mov r10,#0
-	delay:@loop to large number
-		add r10,r10,#1
-		cmp r10,r2	
-		bne delay
+delay:
+    add r10,r10,#1
+    cmp r10,r2	
+    bne delay
 	str r1,[r0,#AGPCLR0]
 	mov r10,#0
-	delay2:
-		add r10,r10,#1
-		cmp r10,r2	
-		bne delay2
-pop {r0,r1,r2,r3,r10}
-        bx lr   ;@ Return 
+delay2:
+    add r10,r10,#1
+    cmp r10,r2	
+    bne delay2
+    pop {r0,r1,r2,r3,r10}
+    bx lr   ;@ Return 
+
+.global blinkLEDForever
+blinkLEDForever:
+    ldr r0,=ABASE
+    ldr r2,=BCOUNTER
+    ldr r1,=SET_BIT21
+    str r1,[r0,#AGPFSEL4]
+    ldr r1,=SET_BIT15
+    str r1,[r0,#AGPSET1]
+
+loopBlink:
+    str r1,[r0,#AGPSET1]	
+
+	mov r10,#0
+delay1a:
+    add r10,r10,#1
+    cmp r10,r2	
+    bne delay1a
+
+	str r1,[r0,#AGPCLR1]
+
+	mov r10,#0
+delay2a:
+    add r10,r10,#1
+    cmp r10,r2	
+    bne delay2a
+    b loopBlink
 
 // blockCopyExecRelocatable - copied to heap and used for firmware update
 // params: dest, source, len, execAddr

@@ -227,7 +227,7 @@ void TargetDebug::service()
         LogWrite(FromTargetDebug, LOG_DEBUG, "breakpoint hit %d debug cb %d", 
                     _breakpointHitIndex, _pSendDebugMessageCallback);
         if (_pSendDebugMessageCallback)
-            (*_pSendDebugMessageCallback)("\ncommand@cpu-step> ");
+            (*_pSendDebugMessageCallback)("\ncommand@cpu-step> ", "0");
         _breakpointHitFlag = false;
     }
 }
