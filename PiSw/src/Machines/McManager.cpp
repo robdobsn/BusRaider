@@ -299,7 +299,7 @@ void McManager::sendKeyCodeToTarget(int asciiCode)
 
 void McManager::sendDebugMessage(const char* pStr, const char* rdpMessageIdStr)
 {
-    LogWrite(FromMcManager, LOG_DEBUG, "debugMsg %s cmdH %d msgId %s", pStr, _pCommandHandler, rdpMessageIdStr); 
+    // LogWrite(FromMcManager, LOG_DEBUG, "debugMsg %s cmdH %d msgId %s", pStr, _pCommandHandler, rdpMessageIdStr); 
     if (_pCommandHandler)
         _pCommandHandler->sendDebugMessage(pStr, rdpMessageIdStr);
 }

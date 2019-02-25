@@ -208,7 +208,7 @@ bool McDebugZ80::reset()
 
     // Debug
     BusAccess::waitIntDisable();
-    pinMode(BR_DEBUG_PI_SPI0_CE0, OUTPUT);
+    // pinMode(BR_DEBUG_PI_SPI0_CE0, OUTPUT);
     debugAccessCount = 0;
     debugAccessLastCount = 0;
     debugCurBCCount = 0;
