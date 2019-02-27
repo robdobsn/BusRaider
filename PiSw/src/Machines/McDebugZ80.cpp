@@ -78,7 +78,7 @@ void McDebugZ80::enable()
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
     BusAccess::accessCallbackAdd(memoryRequestCallback);
     // Bus raider enable wait states on MREQ and IORQ
-    BusAccess::waitEnable(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ);
+    BusAccess::waitSetup(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ);
 }
 
 // Disable machine
@@ -86,7 +86,7 @@ void McDebugZ80::disable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
     // Bus raider disable wait states
-    BusAccess::waitEnable(false, false);
+    BusAccess::waitSetup(false, false);
     BusAccess::accessCallbackRemove();
 }
 
@@ -218,7 +218,7 @@ bool McDebugZ80::reset()
     debugStepCount = 0;
     // Actual reset
     LogWrite(_logPrefix, LOG_WARNING, "RESET");
-    BusAccess::targetReset(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ);
+    BusAccess::targetReset();
 
     return true;
 }

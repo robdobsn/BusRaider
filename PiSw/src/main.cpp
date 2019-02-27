@@ -186,7 +186,7 @@ extern "C" int main()
     timers_init();
 
     // Initialise graphics system
-    display.init(1680, 1050);
+    display.init(1440, 900);
 
     // Logging
     LogSetLevel(LOG_DEBUG);

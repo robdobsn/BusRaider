@@ -20,7 +20,7 @@ private:
 
     static McDescriptorTable _descriptorTable;
 
-    static void handleRegisters(Z80Registers& regs);
+    // static void handleRegisters(Z80Registers& regs);
 
 public:
 

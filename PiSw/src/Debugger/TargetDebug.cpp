@@ -39,6 +39,8 @@ TargetDebug* TargetDebug::get()
 TargetDebug::TargetDebug()
 {
     _debugInitalized = false;
+    _instrWaitRestoreNeeded = false;
+    _instrWaitCurMode = false;
     _registerMode = REGISTER_MODE_NONE;
     _registerModeGotM1 = false;
     _registerQueryWriteIndex = 0;
@@ -140,7 +142,14 @@ void TargetDebug::startSetRegisterSequence(Z80Registers* pRegs)
     if (pRegs)
         _z80Registers = *pRegs;
 
-    LogWrite(FromTargetDebug, LOG_DEBUG, "startSetRegisterSequence regs %d", pRegs);
+    bool curMonitorIORQ = false;
+    BusAccess::waitGet(curMonitorIORQ, _instrWaitCurMode);
+    LogWrite(FromTargetDebug, LOG_DEBUG, "startSetRegisterSequence curMonitorInstr %s",
+                _instrWaitCurMode ? "Y" : "N");
+
+    // Put machine into wait-state mode for MREQ
+    _instrWaitRestoreNeeded = true;
+    BusAccess::waitOnInstruction(true);
 
     // Start sequence of setting registers
     _registerMode = REGISTER_MODE_SET;
@@ -290,13 +299,13 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
         BR_RETURN_TYPE retc = BusAccess::pause();
         if (retc != BR_OK)
             LogWrite(FromTargetDebug, LOG_DEBUG, "pause failed in enter-cpu-step (%s)", BusAccess::retcString(retc));
-        BusAccess::waitEnable(pMachine->getDescriptorTable(0)->monitorIORQ, true);
+        BusAccess::waitOnInstruction(true);
         strlcat(pResponse, "", maxResponseLen);
     }
     else if (matches(cmdStr, "exit-cpu-step", MAX_CMD_STR_LEN))
     {
         LogWrite(FromTargetDebug, LOG_DEBUG, "exit-cpu-step");
-        BusAccess::waitEnable(pMachine->getDescriptorTable(0)->monitorIORQ, pMachine->getDescriptorTable(0)->monitorMREQ);
+        BusAccess::waitRestoreDefaults();
         BR_RETURN_TYPE retc = BusAccess::pauseRelease();
         if (retc != BR_OK)
             LogWrite(FromTargetDebug, LOG_DEBUG, "pauseRelease failed in exit-cpu-step (%s)", BusAccess::retcString(retc));
@@ -305,7 +314,7 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
     else if (matches(cmdStr, "quit", MAX_CMD_STR_LEN))
     {
         LogWrite(FromTargetDebug, LOG_DEBUG, "quit");
-        BusAccess::waitEnable(pMachine->getDescriptorTable(0)->monitorIORQ, pMachine->getDescriptorTable(0)->monitorMREQ);
+        BusAccess::waitRestoreDefaults();
         BR_RETURN_TYPE retc = BusAccess::pauseRelease();
         if ((retc != BR_OK) && (retc != BR_ALREADY_DONE))
             LogWrite(FromTargetDebug, LOG_DEBUG, "pauseRelease failed in quit (%s)", BusAccess::retcString(retc));
@@ -775,6 +784,12 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
         _registerMode = REGISTER_MODE_NONE;
         if (descriptorTable.ramPaging)
             digitalWrite(BR_PAGING_RAM_PIN, 0);
+
+        if (_instrWaitRestoreNeeded)
+        {
+            BusAccess::waitOnInstruction(_instrWaitCurMode);            
+            _instrWaitRestoreNeeded = false;
+        }
     }
 
     // See if breakpoints enabled and M1 cycle

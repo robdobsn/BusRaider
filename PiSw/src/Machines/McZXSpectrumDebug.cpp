@@ -56,7 +56,7 @@ void McZXSpectrumDebug::enable()
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
     BusAccess::accessCallbackAdd(memoryRequestCallback);
     // Bus raider enable wait states on MREQ and IORQ
-    BusAccess::waitEnable(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ);
+    BusAccess::waitSetup(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ);
 }
 
 // Disable machine
@@ -64,14 +64,8 @@ void McZXSpectrumDebug::disable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
     // Bus raider disable wait states
-    BusAccess::waitEnable(false, false);
+    BusAccess::waitSetup(false, false);
     BusAccess::accessCallbackRemove();
-}
-
-void McZXSpectrumDebug::handleRegisters(Z80Registers& regs)
-{
-    // Handle the registers
-    TargetState::setTargetRegisters(regs);
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
@@ -171,7 +165,7 @@ void McZXSpectrumDebug::fileHandler(const char* pFileInfo, const uint8_t* pFileD
         // TZX
         McZXSpectrumTZXFormat formatHandler;
         LogWrite(_logPrefix, LOG_DEBUG, "Processing TZX file len %d", fileLen);
-        formatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
+        formatHandler.proc(TargetState::addMemoryBlock, TargetState::setTargetRegisters, pFileData, fileLen);
     }
     else if (strcasecmp(pFileType, ".sna") == 0)
     {
@@ -179,7 +173,7 @@ void McZXSpectrumDebug::fileHandler(const char* pFileInfo, const uint8_t* pFileD
         McZXSpectrumSNAFormat formatHandler;
         LogWrite(_logPrefix, LOG_DEBUG, "Processing SNA file len %d", fileLen);
         // TODO handle registers and injecting RET
-        formatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
+        formatHandler.proc(TargetState::addMemoryBlock, TargetState::setTargetRegisters, pFileData, fileLen);
     }
     else if (strcasecmp(pFileType, ".z80") == 0)
     {
@@ -187,7 +181,7 @@ void McZXSpectrumDebug::fileHandler(const char* pFileInfo, const uint8_t* pFileD
         McZXSpectrumZ80Format formatHandler;
         LogWrite(_logPrefix, LOG_DEBUG, "Processing Z80 file len %d", fileLen);
         // Handle registers and injecting RET
-        formatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
+        formatHandler.proc(TargetState::addMemoryBlock, TargetState::setTargetRegisters, pFileData, fileLen);
     }
     else
     {

@@ -119,7 +119,7 @@ public:
     static void init();
 
     // Reset host
-    static void targetReset(bool enWaitOnIORQ, bool enWaitOnMREQ);
+    static void targetReset();
     
     // Hold host in reset state - call targetReset() to clear reset
     static void targetResetHold();
@@ -143,8 +143,11 @@ public:
     static BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
     static BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
     
-    // Enable WAIT
-    static void waitEnable(bool enWaitOnIORQ, bool enWaitOnMREQ);
+    // Wait control
+    static void waitGet(bool& monitorIORQ, bool& monitorMREQ);
+    static void waitOnInstruction(bool waitOnInstruction);
+    static void waitRestoreDefaults();
+    static void waitSetup(bool enWaitOnIORQ, bool enWaitOnMREQ);
 
     // Wait interrupt control
     static void waitIntClear();
@@ -188,6 +191,9 @@ private:
 
     // Current wait state mask for restoring wait enablement after change
     static uint32_t _waitStateEnMask;
+
+    // Default setting for wait state enablement
+    static uint32_t _waitStateEnMaskDefault;
 
     // Wait interrupt enablement cache (so it can be restored after disable)
     static bool _waitIntEnabled;

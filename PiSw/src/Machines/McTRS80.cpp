@@ -44,7 +44,7 @@ McDescriptorTable McTRS80::_descriptorTable = {
     .emulatedRAMStart = 0,
     .emulatedRAMLen = 0,
     .setRegistersByInjection = false,
-    .setRegistersCodeAddr = 0
+    .setRegistersCodeAddr = TRS80_DISP_RAM_ADDR
 };
 
 // Enable machine
@@ -64,7 +64,7 @@ void McTRS80::enable()
                 _descriptorTable.setRegistersCodeAddr);
     BusAccess::accessCallbackAdd(memoryRequestCallback);
     // Bus raider enable wait states on IORQ
-    BusAccess::waitEnable(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ);
+    BusAccess::waitSetup(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ);
 }
 
 // Disable machine
@@ -72,18 +72,18 @@ void McTRS80::disable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling TRS80");
     // Bus raider disable wait states
-    BusAccess::waitEnable(false, false);
+    BusAccess::waitSetup(false, false);
     BusAccess::accessCallbackRemove();
 }
 
-void McTRS80::handleRegisters(Z80Registers& regs)
-{
-    // Handle the execution address
-    uint32_t execAddr = regs.PC;
-    uint8_t jumpCmd[3] = { 0xc3, uint8_t(execAddr & 0xff), uint8_t((execAddr >> 8) & 0xff) };
-    TargetState::addMemoryBlock(0, jumpCmd, 3);
-    LogWrite(_logPrefix, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
-}
+// void McTRS80::handleRegisters(Z80Registers& regs)
+// {
+//     // Handle the execution address
+//     uint32_t execAddr = regs.PC;
+//     uint8_t jumpCmd[3] = { 0xc3, uint8_t(execAddr & 0xff), uint8_t((execAddr >> 8) & 0xff) };
+//     TargetState::addMemoryBlock(0, jumpCmd, 3);
+//     LogWrite(_logPrefix, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
+// }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
 void McTRS80::displayRefresh()
@@ -310,7 +310,7 @@ void McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
         // TRS80 command file
         McTRS80CmdFormat cmdFormat;
         LogWrite(_logPrefix, LOG_DEBUG, "Processing TRS80 CMD file len %d", fileLen);
-        cmdFormat.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
+        cmdFormat.proc(TargetState::addMemoryBlock, TargetState::setTargetRegisters, pFileData, fileLen);
     }
     else
     {

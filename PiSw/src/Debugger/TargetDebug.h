@@ -91,6 +91,10 @@ private:
     // Flag to help deal with prefixed instructions when single-stepping
     bool _lastInstructionWasPrefixed;
 
+    // Current MREQ monitor mode when starting register set
+    bool _instrWaitRestoreNeeded;
+    bool _instrWaitCurMode;
+
     // Register mode
     enum REGISTER_MODE {
         REGISTER_MODE_NONE,

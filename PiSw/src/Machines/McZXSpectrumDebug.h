@@ -18,7 +18,7 @@ private:
 
     static McDescriptorTable _descriptorTable;
 
-    static void handleRegisters(Z80Registers& regs);
+    // static void handleRegisters(Z80Registers& regs);
 
     static const int MAX_KEYS = 6;
     static unsigned char _curKeyModifiers;

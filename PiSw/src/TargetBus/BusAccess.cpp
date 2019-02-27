@@ -24,6 +24,7 @@ BusAccessCBFnType* BusAccess::_pBusAccessCallback = NULL;
 
 // Current wait state mask for restoring wait enablement after change
 uint32_t BusAccess::_waitStateEnMask = 0;
+uint32_t BusAccess::_waitStateEnMaskDefault = 0;
 
 // Wait interrupt enablement cache (so it can be restored after disable)
 bool BusAccess::_waitIntEnabled = false;
@@ -67,6 +68,7 @@ void BusAccess::init()
     setPinOut(BR_MREQ_WAIT_EN, 0);
     setPinOut(BR_IORQ_WAIT_EN, 0);
     _waitStateEnMask = 0;
+    _waitStateEnMaskDefault = 0;
     
     // Address push
     setPinOut(BR_PUSH_ADDR_BAR, 1);
@@ -97,13 +99,13 @@ void BusAccess::init()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Reset the host
-void BusAccess::targetReset(bool enWaitOnIORQ, bool enWaitOnMREQ)
+void BusAccess::targetReset()
 {
     // Disable wait interrupts
     waitIntDisable();
 
     // Restore wait settings
-    waitEnable(enWaitOnIORQ, enWaitOnMREQ);
+    waitRestoreDefaults();
 
     // Reset by taking reset_bar low and then high
     muxSet(BR_MUX_RESET_Z80_BAR_LOW);
@@ -573,8 +575,43 @@ void BusAccess::accessCallbackRemove()
 // Wait State Enable
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Enable wait-states and FIQ
-void BusAccess::waitEnable(bool enWaitOnIORQ, bool enWaitOnMREQ)
+void BusAccess::waitGet(bool& monitorIORQ, bool& monitorMREQ)
+{
+    monitorIORQ = (_waitStateEnMask & BR_IORQ_WAIT_EN_MASK) != 0;
+    monitorMREQ = (_waitStateEnMask & BR_MREQ_WAIT_EN_MASK) != 0;
+}
+
+void BusAccess::waitOnInstruction(bool waitOnInstruction)
+{
+    // Setup wait on instruction
+    if (waitOnInstruction)
+    {
+        WR32(ARM_GPIO_GPSET0, BR_MREQ_WAIT_EN_MASK);
+        _waitStateEnMask = _waitStateEnMask | BR_MREQ_WAIT_EN_MASK;
+        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) | (1 << BR_WAIT_BAR));
+    }
+    else
+    {
+        WR32(ARM_GPIO_GPCLR0, BR_MREQ_WAIT_EN_MASK);
+        _waitStateEnMask = _waitStateEnMask & (~BR_MREQ_WAIT_EN_MASK);
+        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) & (~(1 << BR_WAIT_BAR)));
+    }
+}
+
+// Restore wait state generation to default
+void BusAccess::waitRestoreDefaults()
+{
+    _waitStateEnMask = _waitStateEnMaskDefault;
+    WR32(ARM_GPIO_GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
+    WR32(ARM_GPIO_GPSET0, _waitStateEnMask);
+    if ((_waitStateEnMask & BR_MREQ_WAIT_EN_MASK) != 0)
+        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) | (1 << BR_WAIT_BAR));
+    else
+        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) & (~(1 << BR_WAIT_BAR)));
+}
+
+// Setup wait-states and FIQ
+void BusAccess::waitSetup(bool enWaitOnIORQ, bool enWaitOnMREQ)
 {
     // Disable interrupts
     waitIntDisable();
@@ -585,14 +622,15 @@ void BusAccess::waitEnable(bool enWaitOnIORQ, bool enWaitOnMREQ)
         _waitStateEnMask = _waitStateEnMask | BR_IORQ_WAIT_EN_MASK;
     if (enWaitOnMREQ)
         _waitStateEnMask = _waitStateEnMask | BR_MREQ_WAIT_EN_MASK;
+    _waitStateEnMaskDefault = _waitStateEnMask;
     WR32(ARM_GPIO_GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
 
     // Check if any wait-states to be generated
-    if (_waitStateEnMask == 0)
-    {
-        _waitIntEnabled = false;
-        return;
-    }
+    // if (_waitStateEnMask == 0)
+    // {
+    //     _waitIntEnabled = false;
+    //     return;
+    // }
 
 #ifdef BR_ENABLE_WAIT_AND_FIQ
 

@@ -252,9 +252,10 @@ bool McManager::setMachineOpts(const char* mcOpts)
     pMachine->getDescriptorTable(0)->emulatedRAM = (strstr(mcOpts, "EMURAM") != 0);
     pMachine->getDescriptorTable(0)->ramPaging = (strstr(mcOpts, "PAGING") != 0);
     pMachine->getDescriptorTable(0)->setRegistersByInjection = (strstr(mcOpts, "INJECT") != 0);
-    LogWrite(FromMcManager, LOG_DEBUG, "setMachineOpts %s emuRAM %d ramPaging %d", mcOpts,
+    LogWrite(FromMcManager, LOG_DEBUG, "setMachineOpts %s emuRAM %d ramPaging %d instrInject %d", mcOpts,
                 pMachine->getDescriptorTable(0)->emulatedRAM,
-                pMachine->getDescriptorTable(0)->ramPaging);
+                pMachine->getDescriptorTable(0)->ramPaging,
+                pMachine->getDescriptorTable(0)->setRegistersByInjection);
     pMachine->enable();
     return true;
 }
@@ -387,7 +388,9 @@ void McManager::targetReset()
     if (pMc)
         resetDone = pMc->reset();
     if (!resetDone)
-        BusAccess::targetReset(pMc->getDescriptorTable(0)->monitorIORQ, pMc->getDescriptorTable(0)->monitorIORQ);
+    {
+        BusAccess::targetReset();
+    }
 }
 
 void McManager::targetClearAllIO()
@@ -459,7 +462,7 @@ void McManager::handleTargetProgram(const char* cmdName)
                         // Reset vector
                         uint8_t jumpCmd[3] = { 0xc3, uint8_t(codeDestAddr & 0xff), uint8_t((codeDestAddr >> 8) & 0xff) };
                         McManager::blockWrite(0, jumpCmd, 3, false, false);
-                        // ee_dump_mem(regSetCode, regSetCode + codeLen);
+                        ee_dump_mem(regSetCode, regSetCode + codeLen);
                     }
                 }
             }

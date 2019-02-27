@@ -61,7 +61,6 @@ McZXSpectrum::McZXSpectrum() : McBase()
         _spectrumKeyboardIOBitMap[i] = 0xff;
 }
 
-
 // Enable machine
 void McZXSpectrum::enable()
 {
@@ -69,14 +68,14 @@ void McZXSpectrum::enable()
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
     BusAccess::accessCallbackAdd(memoryRequestCallback);
     // Bus raider enable wait states on IORQ
-    BusAccess::waitEnable(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ);
+    BusAccess::waitSetup(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ);
 }
 
 // Disable machine
 void McZXSpectrum::disable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
-    BusAccess::waitEnable(false, false);
+    BusAccess::waitSetup(false, false);
     BusAccess::accessCallbackRemove();
 }
 
