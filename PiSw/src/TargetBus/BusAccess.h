@@ -14,6 +14,7 @@ typedef enum {
     BR_OK = 0,
     BR_ERR = 1,
     BR_NO_BUS_ACK = 2,
+    BR_ALREADY_DONE = 3
 } BR_RETURN_TYPE;
 
 #define BR_MEM_ACCESS_RSLT_NOT_DECODED 0x8000
@@ -109,7 +110,7 @@ public:
     static void init();
 
     // Reset host
-    static void targetReset();
+    static void targetReset(bool enWaitOnIORQ, bool enWaitOnMREQ);
     
     // Hold host in reset state - call targetReset() to clear reset
     static void targetResetHold();
@@ -152,12 +153,25 @@ public:
     static void accessCallbackRemove();
 
     // Single step
-    static bool pause();
-    static bool pauseStep();
+    static BR_RETURN_TYPE pause();
+    static BR_RETURN_TYPE pauseStep();
+    static BR_RETURN_TYPE pauseRelease();
     static void pauseGetCurrent(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags);
     static bool pauseIsPaused();
-    static bool pauseRelease();
     static void pauseRequestBusOnStep(bool requestBus);
+
+    // Get return type string
+    static const char* retcString(BR_RETURN_TYPE retc)
+    {
+        switch (retc)
+        {
+            case BR_OK: return "ok";
+            case BR_ERR: return "err";
+            case BR_ALREADY_DONE: return "already paused";
+            case BR_NO_BUS_ACK: return "bus ack not received";
+            default: return "unknown";
+        }
+    }
 
 private:
     // Callback on bus access
@@ -231,9 +245,10 @@ private:
     static const int CYCLES_DELAY_FOR_CLEAR_LOW_ADDR = 20;
     static const int CYCLES_DELAY_FOR_LOW_ADDR_SET = 20;
     static const int CYCLES_DELAY_FOR_HIGH_ADDR_SET = 20;
-    static const int CYCLES_DELAY_FOR_WAIT_CLEAR = 20;
+    static const int CYCLES_DELAY_FOR_WAIT_CLEAR = 5;
     static const int CYCLES_DELAY_FOR_MREQ_FF_RESET = 20;
     static const int CYCLES_DELAY_FOR_DATA_DIRN = 20;
+    static const int CYCLES_DELAY_FOR_TARGET_READ = 20;
 
     // Delay in machine cycles for M1 to settle
     static const int CYCLES_DELAY_FOR_M1_SETTLING = 100;

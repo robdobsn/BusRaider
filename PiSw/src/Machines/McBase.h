@@ -31,6 +31,8 @@ public:
     int displayBackground;
     // Clock
     uint32_t clockFrequencyHz;
+    // Interrupt rate per second
+    uint32_t irqRate;
     // Bus monitor modes
     bool monitorIORQ;
     bool monitorMREQ;
@@ -40,7 +42,6 @@ public:
     uint32_t emulatedRAMLen;
     bool setRegistersByInjection;
     uint32_t setRegistersCodeAddr;
-    bool reqBusOnSingleStep;
 };
 
 class McBase

@@ -37,16 +37,17 @@ McDescriptorTable McZXSpectrum::_descriptorTable = {
     .displayBackground = WGFX_BLACK,
     // Clock
     .clockFrequencyHz = 3500000,
+    // Interrupt rate per second
+    .irqRate = 0,
     // Bus monitor
     .monitorIORQ = true,
     .monitorMREQ = false,
-    .emulatedRAM = true,
+    .emulatedRAM = false,
     .ramPaging = false,
     .emulatedRAMStart = 0,
     .emulatedRAMLen = 0,
     .setRegistersByInjection = false,
-    .setRegistersCodeAddr = ZXSPECTRUM_DISP_RAM_ADDR,
-    .reqBusOnSingleStep = true
+    .setRegistersCodeAddr = ZXSPECTRUM_DISP_RAM_ADDR
 };
 
 McZXSpectrum::McZXSpectrum() : McBase()
@@ -87,10 +88,6 @@ void McZXSpectrum::handleRegisters(Z80Registers& regs)
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
 void McZXSpectrum::displayRefresh()
 {
-    // Check if paused
-    if (BusAccess::pauseIsPaused())
-        return;
-
     // Read memory at the location of the memory mapped screen
     unsigned char pScrnBuffer[ZXSPECTRUM_DISP_RAM_SIZE];
     bool dataValid = McManager::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, pScrnBuffer, ZXSPECTRUM_DISP_RAM_SIZE, 1, 0);
@@ -153,7 +150,7 @@ void McZXSpectrum::displayRefresh()
     }
 
     // Generate a maskable interrupt to trigger Spectrum's keyboard ISR
-    BusAccess::targetIRQ();
+    McManager::targetIrq();
 }
 
 uint32_t McZXSpectrum::getKeyBitmap(const int* keyCodes, int keyCodesLen, const uint8_t currentKeyPresses[MAX_KEYS])

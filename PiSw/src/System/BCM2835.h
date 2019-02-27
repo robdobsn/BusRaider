@@ -209,6 +209,20 @@ extern "C" {
 #define ARM_TIMER_CNTR		(ARM_TIMER_BASE + 0x420)
 
 //
+// GPU Timer
+//
+
+#define ARM_SYSTIMER_RATE 1000000
+
+#define ARM_SYSTIMER_CS (ARM_IO_BASE+0x3000)
+#define ARM_SYSTIMER_CLO (ARM_IO_BASE+0x3004)
+#define ARM_SYSTIMER_CHI (ARM_IO_BASE+0x3008)
+#define ARM_SYSTIMER_C0 (ARM_IO_BASE+0x300C)
+#define ARM_SYSTIMER_C1 (ARM_IO_BASE+0x3010)
+#define ARM_SYSTIMER_C2 (ARM_IO_BASE+0x3014)
+#define ARM_SYSTIMER_C3 (ARM_IO_BASE+0x3018)
+
+//
 // Mailbox
 //
 #define MAILBOX_BASE		(ARM_IO_BASE + 0xB880)
@@ -223,19 +237,6 @@ extern "C" {
 #define MAILBOX_CHANNEL_PM	0			// power management
 #define MAILBOX_CHANNEL_FB 	1			// frame buffer
 #define BCM_MAILBOX_PROP_OUT	8			// property tags (ARM to VC)
-
-// #define IRQ_BASIC 0x2000B200
-// #define IRQ_PEND1 0x2000B204
-// #define IRQ_PEND2 0x2000B208
-// #define IRQ_FIQ_CONTROL 0x2000B20C
-// #define IRQ_ENABLE1 0x2000B210
-// #define IRQ_ENABLE2 0x2000B214
-// #define IRQ_ENABLE_BASIC 0x2000B218
-// #define IRQ_DISABLE1 0x2000B21C
-// #define IRQ_DISABLE2 0x2000B220
-// #define IRQ_DISABLE_BASIC 0x2000B224
-
-// #define ARM_SYSTIMERCLO 0x20003004
 
 //
 // Clock Manager

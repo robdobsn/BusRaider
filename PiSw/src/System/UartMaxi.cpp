@@ -15,6 +15,13 @@
 // Statics
 static const char FromUartMaxi[] = "UartMaxi";
 
+// Uncomment the following line to use SPI0 CE0 of the Pi as a debug pin
+// #define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
+#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+#define DEBUG_PI_SPI0_CE0 8
+#include "piwiring.h"
+#endif
+
 UartMaxi::UartMaxi() :
     _rxBufferPosn(0), _txBufferPosn(0)
 {
@@ -122,6 +129,12 @@ bool UartMaxi::setup(unsigned int baudRate, int rxBufSize, int txBufSize)
 
     PeripheralExit();
 
+    // Debug
+#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+    pinMode(DEBUG_PI_SPI0_CE0, OUTPUT);
+    digitalWrite(DEBUG_PI_SPI0_CE0, 0);
+#endif
+
     return true;
 }
 
@@ -221,7 +234,10 @@ void UartMaxi::isr()
 {
     PeripheralEntry();
 
-    // digitalWrite(8, 1);
+    // Debug
+#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+    digitalWrite(DEBUG_PI_SPI0_CE0, 1);
+#endif
 
 	// acknowledge pending interrupts
 	WR32(ARM_UART0_ICR, RD32(ARM_UART0_MIS));
@@ -256,7 +272,6 @@ void UartMaxi::isr()
 			if (_nRxStatus == UART_ERROR_NONE)
 				_nRxStatus = UART_ERROR_FULL;
 		}
-        // digitalWrite(8, 1);
 	}
 
 	while (!(RD32(ARM_UART0_FR) & UART0_FR_TXFF_MASK))
@@ -273,7 +288,10 @@ void UartMaxi::isr()
 		}
 	}
 
-    // digitalWrite(8, 0);
+    // Debug
+#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+    digitalWrite(DEBUG_PI_SPI0_CE0, 0);
+#endif
 
     PeripheralExit();
 

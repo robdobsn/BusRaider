@@ -99,7 +99,7 @@ class TargetClockGenerator
 
         // Debug
         uint32_t freqGenerated = 500000000 / divisor;
-        ee_printf("ClockGen: Enabled freqGen %d (req %d ... div= %d), pin %d, mode %d\n",
+        LogWrite("ClockGen", LOG_NOTICE, "Enabled freqGen %d (req %d ... div= %d), pin %d, mode %d",
                         freqGenerated, _freqReqd, divisor, _outputPin, _altMode);
     }
 

@@ -30,16 +30,17 @@ McDescriptorTable McTerminal::_descriptorTable = {
     .displayBackground = WGFX_BLACK,
     // Clock
     .clockFrequencyHz = 7000000,
+    // Interrupt rate per second
+    .irqRate = 0,
     // Bus monitor
     .monitorIORQ = false,
     .monitorMREQ = false,
-    .emulatedRAM = true,
+    .emulatedRAM = false,
     .ramPaging = false,
     .emulatedRAMStart = 0,
     .emulatedRAMLen = 0,
     .setRegistersByInjection = false,
-    .setRegistersCodeAddr = 0,
-    .reqBusOnSingleStep = false
+    .setRegistersCodeAddr = 0
 };
 
 int McTerminal::_shiftDigitKeyMap[SHIFT_DIGIT_KEY_MAP_LEN] =

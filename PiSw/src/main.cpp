@@ -28,10 +28,13 @@ typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.030";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.031";
 static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
+
+// Log string
+const char* FromMain = "Main";
 
 // Display
 Display display;
@@ -210,7 +213,7 @@ extern "C" int main()
     new McZXSpectrumDebug();
 
     // Number of machines
-    ee_printf("%d machines supported\n", McManager::getNumMachines());
+    LogWrite(FromMain, LOG_WARNING, "%d machines supported\n", McManager::getNumMachines());
 
     // Bus raider setup
     BusAccess::init();
@@ -221,29 +224,28 @@ extern "C" int main()
     // Get current machine to check things are working
     if (!McManager::getMachine())
     {
-        ee_printf("Failed to construct default machine\n");
+        LogWrite(FromMain, LOG_WARNING, "Failed to construct default machine");
     }
 
     // USB
     if (USPiInitialize()) 
     {
-        ee_printf("Checking for keyboards...");
+        // LogWrite(FromMain, LOG_DEBUG, "Checking for keyboards...");
 
         if (USPiKeyboardAvailable()) 
         {
             USPiKeyboardRegisterKeyStatusHandlerRaw(_keypress_raw_handler);
-            ee_printf("keyboard found\n");
+            LogWrite(FromMain, LOG_DEBUG, "Keyboard found");
         } else 
         {
             display.termColour(9);
-            ee_printf("keyboard not found\n");
+            LogWrite(FromMain, LOG_WARNING, "Keyboard not found");
             display.termColour(15);
         }
     } else 
     {
-        ee_printf("USB initialization failed\n");
+        LogWrite(FromMain, LOG_WARNING, "USB initialization failed\n");
     }
-    ee_printf("\nPress F2 for immediate mode\n");
 
     // UART
     // pinMode(47, OUTPUT);
@@ -271,9 +273,9 @@ extern "C" int main()
     // Waiting...
     // ee_printf("Waiting for UART data (%d,8,N,1)\n", MAIN_UART_BAUD_RATE);
 
+    ee_printf("\nPress F2 for immediate mode\n");
+
     // Refresh rate
-    McDescriptorTable* pMcDescr = McManager::getDescriptorTable(0);
-    const unsigned long reqUpdateUs = 1000000 / pMcDescr->displayRefreshRatePerSec;
     #define REFRESH_RATE_WINDOW_SIZE_MS 2000
     int refreshCount = 0;
     unsigned long curRateSampleWindowStart = micros();
@@ -326,6 +328,8 @@ extern "C" int main()
     {
 
         // Handle target machine display updates
+        McDescriptorTable* pMcDescr = McManager::getDescriptorTable(0);
+        unsigned long reqUpdateUs = 1000000 / pMcDescr->displayRefreshRatePerSec;
         if (isTimeout(micros(), lastDisplayUpdateUs, reqUpdateUs)) 
         {
             // Check valid
@@ -371,6 +375,17 @@ extern "C" int main()
                     strlcpy(statusStr, "WiFi not connected", MAX_STATUS_STR_LEN);
                     break;
             }
+            display.windowWrite(1, display.termGetWidth()-strlen(statusStr)-1, lineIdx++, (uint8_t*)statusStr);
+
+            // BusAccess status
+            statusStr[0] = 0;
+            strlcpy(statusStr, "BusAccess ", MAX_STATUS_STR_LEN);
+            if (BusAccess::pauseIsPaused())
+                strlcat(statusStr, "Paused", MAX_STATUS_STR_LEN);
+            else
+                strlcat(statusStr, "Free Running", MAX_STATUS_STR_LEN);
+            if (BusAccess::isUnderControl())
+                strlcat(statusStr, "PiControl", MAX_STATUS_STR_LEN);
             display.windowWrite(1, display.termGetWidth()-strlen(statusStr)-1, lineIdx++, (uint8_t*)statusStr);
 
             // Refresh rate

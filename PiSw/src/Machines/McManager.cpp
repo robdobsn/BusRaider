@@ -3,6 +3,7 @@
 
 #include "McManager.h"
 #include "../System/wgfx.h"
+#include "../System/Timers.h"
 #include <string.h>
 #include "../TargetBus/TargetState.h"
 #include "../TargetBus/BusAccess.h"
@@ -44,6 +45,8 @@ McDescriptorTable McManager::defaultDescriptorTable = {
     .displayBackground = WGFX_BLACK,
     // Clock
     .clockFrequencyHz = 1000000,
+    // Interrupt rate per second
+    .irqRate = 0,
     // Bus monitor
     .monitorIORQ = false,
     .monitorMREQ = false,
@@ -52,8 +55,7 @@ McDescriptorTable McManager::defaultDescriptorTable = {
     .emulatedRAMStart = 0,
     .emulatedRAMLen = 0,
     .setRegistersByInjection = false,
-    .setRegistersCodeAddr = 0,
-    .reqBusOnSingleStep = false
+    .setRegistersCodeAddr = 0
 };
 
 uint8_t McManager::_rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];
@@ -135,6 +137,22 @@ const char* McManager::getMachineJSON()
 // Manage Machine List
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void McManager::targetIrq(int durationUs)
+{
+    // Generate a maskable interrupt
+    if (!BusAccess::isUnderControl() && !BusAccess::pauseIsPaused())
+        BusAccess::targetIRQ(durationUs);
+}
+
+void McManager::targetIrqFromTimer([[maybe_unused]] void* pParam)
+{   
+    targetIrq();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Manage Machine List
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void McManager::add(McBase* pMachine)
 {
     if (_numMachines >= MAX_MACHINES)
@@ -190,10 +208,14 @@ bool McManager::setMachineIdx(int mcIdx, bool forceUpdate)
         }
 
         // Set single-step bus request
-        BusAccess::pauseRequestBusOnStep(pMachine->getDescriptorTable(0)->reqBusOnSingleStep);
+        BusAccess::pauseRequestBusOnStep(!pMachine->getDescriptorTable(0)->emulatedRAM);
         
         // Start
         pMachine->enable();
+
+        // Heartbeat timer
+        if (pMachine->getDescriptorTable(0)->irqRate != 0)
+            Timers::set(1000000 / pMachine->getDescriptorTable(0)->irqRate, McManager::targetIrqFromTimer, NULL);
 
         // Started machine
         LogWrite(FromMcManager, LOG_DEBUG, "Started machine %s", 
@@ -348,8 +370,11 @@ bool McManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRq
         return false;
     uint32_t emuRAMStart = pMachine->getDescriptorTable(0)->emulatedRAMStart;
     uint32_t emuRAMLen = pMachine->getDescriptorTable(0)->emulatedRAMLen;
-    // Block cannot cross boundary between emulated and real RAM
-    if (!iorq && (emuRAMStart <= addr) && (emuRAMStart+emuRAMLen >= addr + len))
+    // Check if we are paused - if so bus access cannot get memory but stepping process will have
+    // grabbed all of physical RAM and placed it in the buffer for debugging
+    // Also, if emulating memory, block cannot cross boundary between emulated and real RAM
+    if (BusAccess::pauseIsPaused() ||
+            (!iorq && (emuRAMStart <= addr) && (emuRAMStart+emuRAMLen >= addr + len)))
     {
         TargetDebug* pDebug = TargetDebug::get();
         if (pDebug)
@@ -374,7 +399,7 @@ void McManager::targetReset()
     if (pMc)
         resetDone = pMc->reset();
     if (!resetDone)
-        BusAccess::targetReset();
+        BusAccess::targetReset(pMc->getDescriptorTable(0)->monitorIORQ, pMc->getDescriptorTable(0)->monitorIORQ);
 }
 
 void McManager::targetClearAllIO()

@@ -59,6 +59,8 @@ McDescriptorTable McDebugZ80::_descriptorTable = {
     .displayBackground = WGFX_BLACK,
     // Clock
     .clockFrequencyHz = 200000,
+    // Interrupt rate per second
+    .irqRate = 0,
     // Bus monitor
     .monitorIORQ = true,
     .monitorMREQ = true,
@@ -67,8 +69,7 @@ McDescriptorTable McDebugZ80::_descriptorTable = {
     .emulatedRAMStart = 0,
     .emulatedRAMLen = TargetDebug::MAX_TARGET_MEMORY_LEN,
     .setRegistersByInjection = false,
-    .setRegistersCodeAddr = 0,
-    .reqBusOnSingleStep = false
+    .setRegistersCodeAddr = 0
 };
 
 // Enable machine
@@ -217,7 +218,7 @@ bool McDebugZ80::reset()
     debugStepCount = 0;
     // Actual reset
     LogWrite(_logPrefix, LOG_WARNING, "RESET");
-    BusAccess::targetReset();
+    BusAccess::targetReset(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ);
 
     return true;
 }

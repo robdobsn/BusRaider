@@ -82,4 +82,10 @@ public:
     static void handleCommand(const char* pCmdJson, 
                     const uint8_t* pParams, int paramsLen,
                     char* pRespJson, int maxRespLen);
+
+    static void targetIrq(int durationUs = -1);
+
+private:
+    static void targetIrqFromTimer(void* pParam);
+
 };

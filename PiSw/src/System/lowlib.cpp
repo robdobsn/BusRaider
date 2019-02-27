@@ -15,7 +15,7 @@ extern "C" {
 
 uint32_t micros()
 {
-    static const uint32_t volatile* pTimerLower32Bits = (uint32_t*)0x20003004;
+    static const uint32_t volatile* pTimerLower32Bits = (uint32_t*)ARM_SYSTIMER_CLO;
     return *pTimerLower32Bits;
 }
 

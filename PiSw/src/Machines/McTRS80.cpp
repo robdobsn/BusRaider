@@ -34,6 +34,8 @@ McDescriptorTable McTRS80::_descriptorTable = {
     .displayBackground = WGFX_BLACK,
     // Clock
     .clockFrequencyHz = 1770000,
+    // Interrupt rate per second
+    .irqRate = 0,
     // Bus monitor
     .monitorIORQ = true,
     .monitorMREQ = false,
@@ -42,8 +44,7 @@ McDescriptorTable McTRS80::_descriptorTable = {
     .emulatedRAMStart = 0,
     .emulatedRAMLen = 0,
     .setRegistersByInjection = false,
-    .setRegistersCodeAddr = 0,
-    .reqBusOnSingleStep = true
+    .setRegistersCodeAddr = 0
 };
 
 // Enable machine
@@ -53,13 +54,12 @@ void McTRS80::enable()
     _screenBufferValid = false;
     _keyBufferDirty = false;
 
-    LogWrite(_logPrefix, LOG_DEBUG, "Enabling TRS80 EmuRAM %s (%04x-%04x) RAMPaging %s MonIORQ %s MonMREQ %s BusRqOnSS %s RegByInject %s (%04x)",
+    LogWrite(_logPrefix, LOG_DEBUG, "Enabling TRS80 EmuRAM %s (%04x-%04x) RAMPaging %s MonIORQ %s MonMREQ %s RegByInject %s (%04x)",
                 _descriptorTable.emulatedRAM ? "Y" : "N",
                 _descriptorTable.emulatedRAMStart, _descriptorTable.emulatedRAMStart + _descriptorTable.emulatedRAMLen,
                 _descriptorTable.ramPaging ?  "Y" : "N",
                 _descriptorTable.monitorIORQ ?  "Y" : "N",
                 _descriptorTable.monitorMREQ ?  "Y" : "N",
-                _descriptorTable.reqBusOnSingleStep ?  "Y" : "N",
                 _descriptorTable.setRegistersByInjection ?  "Y" : "N",
                 _descriptorTable.setRegistersCodeAddr);
     BusAccess::accessCallbackAdd(memoryRequestCallback);
@@ -88,10 +88,6 @@ void McTRS80::handleRegisters(Z80Registers& regs)
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
 void McTRS80::displayRefresh()
 {
-    // Check if paused
-    if (BusAccess::pauseIsPaused())
-        return;
-
     // Read memory of RC2014 at the location of the TRS80 memory mapped screen
     unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
     bool dataValid = McManager::blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, 1, 0);

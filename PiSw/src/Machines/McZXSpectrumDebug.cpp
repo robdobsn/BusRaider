@@ -24,7 +24,7 @@ McDescriptorTable McZXSpectrumDebug::_descriptorTable = {
     "ZX Spectrum DBG",
     McDescriptorTable::PROCESSOR_Z80,
     // Required display refresh rate
-    .displayRefreshRatePerSec = 30,
+    .displayRefreshRatePerSec = 50,
     .displayPixelsX = 256,
     .displayPixelsY = 192,
     .displayCellX = 8,
@@ -36,6 +36,8 @@ McDescriptorTable McZXSpectrumDebug::_descriptorTable = {
     .displayBackground = WGFX_BLACK,
     // Clock
     .clockFrequencyHz = 200000,
+    // Interrupt rate per second
+    .irqRate = 0,
     // Bus monitor
     .monitorIORQ = true,
     .monitorMREQ = true,
@@ -44,8 +46,7 @@ McDescriptorTable McZXSpectrumDebug::_descriptorTable = {
     .emulatedRAMStart = 0,
     .emulatedRAMLen = TargetDebug::MAX_TARGET_MEMORY_LEN,
     .setRegistersByInjection = true,
-    .setRegistersCodeAddr = 0,
-    .reqBusOnSingleStep = false
+    .setRegistersCodeAddr = 0
 };
 
 // Enable machine
@@ -137,7 +138,7 @@ void McZXSpectrumDebug::displayRefresh()
     }
     
     // Generate a maskable interrupt to trigger Spectrum's keyboard ISR
-    BusAccess::targetIRQ(20);
+    McManager::targetIrq(100);
 }
 
 // Handle a key press

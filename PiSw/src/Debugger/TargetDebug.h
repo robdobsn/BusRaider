@@ -83,6 +83,9 @@ private:
     // Registers
     Z80Registers _z80Registers;
 
+    // Debug mode initialized indicator
+    bool _debugInitalized;
+
     // Register mode
     enum REGISTER_MODE {
         REGISTER_MODE_NONE,

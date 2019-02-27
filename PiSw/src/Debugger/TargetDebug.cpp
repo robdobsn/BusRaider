@@ -38,6 +38,7 @@ TargetDebug* TargetDebug::get()
 
 TargetDebug::TargetDebug()
 {
+    _debugInitalized = false;
     _registerMode = REGISTER_MODE_NONE;
     _registerModeGotM1 = false;
     _registerQueryWriteIndex = 0;
@@ -275,27 +276,40 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
     else if (matches(cmdStr, "set-debug-settings", MAX_CMD_STR_LEN))
     {
         strlcat(pResponse, "", maxResponseLen);
+        _debugInitalized = true;
     }
     else if (matches(cmdStr, "hard-reset-cpu", MAX_CMD_STR_LEN))
     {
+        LogWrite(FromTargetDebug, LOG_DEBUG, "Reset machine");
         pMachine->reset();
         strlcat(pResponse, "", maxResponseLen);
     }
     else if (matches(cmdStr, "enter-cpu-step", MAX_CMD_STR_LEN))
     {
+        LogWrite(FromTargetDebug, LOG_DEBUG, "enter-cpu-step");
+        BR_RETURN_TYPE retc = BusAccess::pause();
+        if (retc != BR_OK)
+            LogWrite(FromTargetDebug, LOG_DEBUG, "pause failed in enter-cpu-step (%s)", BusAccess::retcString(retc));
         BusAccess::waitEnable(pMachine->getDescriptorTable(0)->monitorIORQ, true);
         strlcat(pResponse, "", maxResponseLen);
     }
     else if (matches(cmdStr, "exit-cpu-step", MAX_CMD_STR_LEN))
     {
+        LogWrite(FromTargetDebug, LOG_DEBUG, "exit-cpu-step");
         BusAccess::waitEnable(pMachine->getDescriptorTable(0)->monitorIORQ, pMachine->getDescriptorTable(0)->monitorMREQ);
-        BusAccess::pauseRelease();
+        BR_RETURN_TYPE retc = BusAccess::pauseRelease();
+        if (retc != BR_OK)
+            LogWrite(FromTargetDebug, LOG_DEBUG, "pauseRelease failed in exit-cpu-step (%s)", BusAccess::retcString(retc));
         strlcat(pResponse, "", maxResponseLen);
     }
     else if (matches(cmdStr, "quit", MAX_CMD_STR_LEN))
     {
+        LogWrite(FromTargetDebug, LOG_DEBUG, "quit");
         BusAccess::waitEnable(pMachine->getDescriptorTable(0)->monitorIORQ, pMachine->getDescriptorTable(0)->monitorMREQ);
-        BusAccess::pauseRelease();
+        BR_RETURN_TYPE retc = BusAccess::pauseRelease();
+        if ((retc != BR_OK) && (retc != BR_ALREADY_DONE))
+            LogWrite(FromTargetDebug, LOG_DEBUG, "pauseRelease failed in quit (%s)", BusAccess::retcString(retc));
+        _debugInitalized = false;
         strlcat(pResponse, "", maxResponseLen);
     }
     else if (matches(cmdStr, "smartload", MAX_CMD_STR_LEN))
@@ -385,15 +399,19 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
     }
     else if (matches(cmdStr, "get-tstates-partial", MAX_CMD_STR_LEN))
     {
-        strlcat(pResponse, "Unknown command", maxResponseLen);
+        strlcat(pResponse, "Unknown command get-tstates-partial", maxResponseLen);
+    }    
+    else if (matches(cmdStr, "check-extensions", MAX_CMD_STR_LEN))
+    {
+        strlcat(pResponse, "Unknown command check-extensions", maxResponseLen);
     }    
     else if (matches(cmdStr, "reset-tstates-partial", MAX_CMD_STR_LEN))
     {
-        strlcat(pResponse, "Unknown command", maxResponseLen);
+        strlcat(pResponse, "Unknown command reset-tstates-partial", maxResponseLen);
     }
     else if (matches(cmdStr, "get-cpu-frequency", MAX_CMD_STR_LEN))
     {
-        strlcat(pResponse, "Unknown command", maxResponseLen);
+        strlcat(pResponse, "Unknown command get-cpu-frequency", maxResponseLen);
     }
     else if (matches(cmdStr, "get-stack-backtrace", MAX_CMD_STR_LEN))
     {
@@ -411,40 +429,52 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
     }
     else if (matches(cmdStr, "run", MAX_CMD_STR_LEN))
     {
-        BusAccess::pauseRelease();
-        strlcat(pResponse, "Running until a breakpoint, key press or data sent, menu opening or other event\n", maxResponseLen);
+        LogWrite(FromTargetDebug, LOG_DEBUG, "run");
+        BR_RETURN_TYPE retc = BusAccess::pauseRelease();
+        if (retc != BR_OK)
+            LogWrite(FromTargetDebug, LOG_DEBUG, "pauseRelease failed in run (%s)", BusAccess::retcString(retc));
+        strlcat(pResponse, "Running until a breakpoint, key press or data sent, menu opening or other event\n", 
+                    maxResponseLen);
         return true;
     }
     else if (matches(cmdStr, "cpu-step", MAX_CMD_STR_LEN))
     {
-        if (BusAccess::pauseStep())
+        LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step");
+        BR_RETURN_TYPE retc = BusAccess::pauseStep();
+        if (retc == BR_OK)
         {
             grabMemoryAndReleaseBusRq(pMachine, true);
             // LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step done");
         }
         else
         {
-            LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step failed");
+            LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step failed (%s)", BusAccess::retcString(retc));
         }
         strlcat(pResponse, "", maxResponseLen);
     }
     else if (matches(cmdStr, "\n", MAX_CMD_STR_LEN))
     {
-        // Blank is used for pause
-        if (BusAccess::pause())
+        LogWrite(FromTargetDebug, LOG_DEBUG, "blank (step) %s", _debugInitalized ? "" : "not in debug mode");
+        if (_debugInitalized)
         {
-            grabMemoryAndReleaseBusRq(pMachine, false);
-            // LogWrite(FromTargetDebug, LOG_DEBUG, "now paused SEND-BLANK");
+            // Blank is used for pause
+            BR_RETURN_TYPE retc = BusAccess::pause();
+            if (retc == BR_OK)
+            {
+                grabMemoryAndReleaseBusRq(pMachine, false);
+                // LogWrite(FromTargetDebug, LOG_DEBUG, "now paused SEND-BLANK");
+            }
+            else
+            {
+                LogWrite(FromTargetDebug, LOG_DEBUG, "pause failed in SEND-BLANK command (%s)", BusAccess::retcString(retc));
+            }
         }
-        else
-        {
-            LogWrite(FromTargetDebug, LOG_DEBUG, "pause failed SEND-BLANK");
-        }        
 
         strlcat(pResponse, "", maxResponseLen);
     }
     else
     {
+        LogWrite(FromTargetDebug, LOG_DEBUG, "unknown command %s", cmdStr);
         for (unsigned int i = 0; i < strlen(pCommand); i++)
         {
             char chBuf[10];
@@ -734,10 +764,11 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
         return retVal;
 
     // Check for the end of paging mode - un-page RAM
-    if ((_registerMode == REGISTER_MODE_UNPAGE) && descriptorTable.ramPaging)
+    if (_registerMode == REGISTER_MODE_UNPAGE)
     {
         _registerMode = REGISTER_MODE_NONE;
-        digitalWrite(BR_PAGING_RAM_PIN, 0);
+        if (descriptorTable.ramPaging)
+            digitalWrite(BR_PAGING_RAM_PIN, 0);
     }
 
     // See if breakpoints enabled and M1 cycle
@@ -749,7 +780,8 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
             int bpIdx = _breakpointIdxsToCheck[i];
             if (_breakpoints[bpIdx].pcValue == addr)
             {
-                if (BusAccess::pause())
+                BR_RETURN_TYPE retc = BusAccess::pause();
+                if (retc == BR_OK)
                     startGetRegisterSequence();
                 _breakpointHitFlag = true;
                 _breakpointHitIndex = bpIdx;
