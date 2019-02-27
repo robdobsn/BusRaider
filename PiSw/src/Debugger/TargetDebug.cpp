@@ -497,7 +497,13 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
 // Handle register setting
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int TargetDebug::getInstructionsToSetRegs(uint8_t* pCodeBuffer, uint32_t codeMaxlen)
+void TargetDebug::store16BitVal(uint8_t arry[], int offset, uint16_t val)
+{
+    arry[offset] = val & 0xff;
+    arry[offset+1] = (val >> 8) & 0xff;
+}
+
+int TargetDebug::getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBuffer, uint32_t codeMaxlen)
 {
     // Instructions to set register values
     static uint8_t regSetInstructions[] = 
@@ -543,23 +549,23 @@ int TargetDebug::getInstructionsToSetRegs(uint8_t* pCodeBuffer, uint32_t codeMax
     const int RegisterPCUpdatePos = 51;
 
     // Fill in the register values
-    *((uint16_t*)(regSetInstructions+RegisterIXUpdatePos)) = _z80Registers.IX;
-    *((uint16_t*)(regSetInstructions+RegisterIYUpdatePos)) = _z80Registers.IY;
-    *((uint16_t*)(regSetInstructions+RegisterHLDASHUpdatePos)) = _z80Registers.HLDASH;
-    *((uint16_t*)(regSetInstructions+RegisterDEDASHUpdatePos)) = _z80Registers.DEDASH;
-    *((uint16_t*)(regSetInstructions+RegisterBCDASHUpdatePos)) = _z80Registers.BCDASH;
-    *((uint16_t*)(regSetInstructions+RegisterSPUpdatePos)) = _z80Registers.SP;
-    *((uint16_t*)(regSetInstructions+RegisterHLUpdatePos)) = _z80Registers.HL;
-    *((uint16_t*)(regSetInstructions+RegisterDEUpdatePos)) = _z80Registers.DE;
-    *((uint16_t*)(regSetInstructions+RegisterBCUpdatePos)) = _z80Registers.BC;
-    *((uint16_t*)(regSetInstructions+RegisterAFDASHUpdatePos)) = _z80Registers.AFDASH;
-    *((uint16_t*)(regSetInstructions+RegisterAFUpdatePos)) = _z80Registers.AF;
-    regSetInstructions[RegisterIUpdatePos] = _z80Registers.I;
-    regSetInstructions[RegisterRUpdatePos] = (_z80Registers.R + 256 - 7) % 256;
-    regSetInstructions[RegisterAUpdatePos] = _z80Registers.AF >> 8;
-    regSetInstructions[RegisterIMUpdatePos] = (_z80Registers.INTMODE == 0) ? 0x46 : ((_z80Registers.INTMODE == 1) ? 0x56 : 0x5e);
-    regSetInstructions[RegisterINTENUpdatePos] = (_z80Registers.INTENABLED == 0) ? 0xf3 : 0xfb;
-    *((uint16_t*)(regSetInstructions+RegisterPCUpdatePos)) = _z80Registers.PC;
+    store16BitVal(regSetInstructions, RegisterIXUpdatePos, regs.IX);
+    store16BitVal(regSetInstructions, RegisterIYUpdatePos, regs.IY);
+    store16BitVal(regSetInstructions, RegisterHLDASHUpdatePos, regs.HLDASH);
+    store16BitVal(regSetInstructions, RegisterDEDASHUpdatePos, regs.DEDASH);
+    store16BitVal(regSetInstructions, RegisterBCDASHUpdatePos, regs.BCDASH);
+    store16BitVal(regSetInstructions, RegisterSPUpdatePos, regs.SP);
+    store16BitVal(regSetInstructions, RegisterHLUpdatePos, regs.HL);
+    store16BitVal(regSetInstructions, RegisterDEUpdatePos, regs.DE);
+    store16BitVal(regSetInstructions, RegisterBCUpdatePos, regs.BC);
+    store16BitVal(regSetInstructions, RegisterAFDASHUpdatePos, regs.AFDASH);
+    store16BitVal(regSetInstructions, RegisterAFUpdatePos, regs.AF);
+    regSetInstructions[RegisterIUpdatePos] = regs.I;
+    regSetInstructions[RegisterRUpdatePos] = (regs.R + 256 - 7) % 256;
+    regSetInstructions[RegisterAUpdatePos] = regs.AF >> 8;
+    regSetInstructions[RegisterIMUpdatePos] = (regs.INTMODE == 0) ? 0x46 : ((regs.INTMODE == 1) ? 0x56 : 0x5e);
+    regSetInstructions[RegisterINTENUpdatePos] = (regs.INTENABLED == 0) ? 0xf3 : 0xfb;
+    store16BitVal(regSetInstructions, RegisterPCUpdatePos, regs.PC);
 
     if (codeMaxlen >= sizeof(regSetInstructions))
     {
@@ -735,7 +741,7 @@ void TargetDebug::handleRegisterSet(uint32_t& retVal)
     // Fill in the register values
     if (_registerModeStep == 0)
     {
-        _registerSetCodeLen = getInstructionsToSetRegs(_registerSetBuffer, MAX_REGISTER_SET_CODE_LEN);
+        _registerSetCodeLen = getInstructionsToSetRegs(_z80Registers, _registerSetBuffer, MAX_REGISTER_SET_CODE_LEN);
         if (_registerSetCodeLen == 0)
         {
             _registerMode = REGISTER_MODE_NONE;

@@ -64,7 +64,7 @@ public:
     // Register injection and code snippet generation
     void startSetRegisterSequence(Z80Registers* pRegs = NULL);
     static const int MAX_REGISTER_SET_CODE_LEN = 100;
-    int getInstructionsToSetRegs(uint8_t* pCodeBuffer, uint32_t codeMaxlen);
+    int getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBuffer, uint32_t codeMaxlen);
 
 private:
 
@@ -76,6 +76,8 @@ private:
     void startGetRegisterSequence();
     void handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
     void handleRegisterSet(uint32_t& retVal);
+    bool isPrefixInstruction(uint32_t instr);
+    void store16BitVal(uint8_t arry[], int offset, uint16_t val);
 
     // Callback to send debug frames
     static SendDebugMessageType* _pSendDebugMessageCallback;
@@ -85,6 +87,9 @@ private:
 
     // Debug mode initialized indicator
     bool _debugInitalized;
+
+    // Flag to help deal with prefixed instructions when single-stepping
+    bool _lastInstructionWasPrefixed;
 
     // Register mode
     enum REGISTER_MODE {
