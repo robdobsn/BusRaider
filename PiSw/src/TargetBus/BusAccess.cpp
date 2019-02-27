@@ -779,6 +779,7 @@ void BusAccess::waitStateISR(void* pData)
 
     // Check if we should hold the target processor at this point
     if (_pauseIsPaused && m1Asserted && !instructionInjection)
+    // if ((retVal & BR_MEM_ACCESS_HOLD) != 0)
     {
         // Store the current address, data and ctrl line state
         _pauseCurAddr = addr;

@@ -753,10 +753,15 @@ void ee_dump_mem(unsigned char* start_addr, unsigned char* end_addr)
     for (long i = 0; i < end_addr - start_addr; i++) {
         ee_printf("%02x", *pAddr++);
         linPos++;
-        if (linPos == 8)
+        if (linPos == 16)
+        {
             ee_printf("\r\n");
+            linPos = 0;
+        }
         else
+        {
             ee_printf(" ");
+        }
     }
     ee_printf("\r\n");
 }

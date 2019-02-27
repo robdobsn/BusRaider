@@ -198,16 +198,17 @@
 
         function setMachine()
         {
-            sendMachineEmuRamAndPagingSetting();
+            sendMachineOptions();
             let mcName = document.getElementById("machine-select").value;
             sendCmdToTarget("setmachine=" + mcName);
         }
 
-        function sendMachineEmuRamAndPagingSetting()
+        function sendMachineOptions()
         {
             let mcEmuRam = document.getElementById("machine-emu-ram").checked;
             let mcPaging = document.getElementById("machine-paging").checked;
-            sendCmdToTarget("mcoptions=" + (mcEmuRam ? "emuram" : (mcPaging ? "paging" : "off")));
+            let mcInjection = document.getElementById("machine-injection").checked;
+            sendCmdToTarget("mcOptions=" + (mcEmuRam ? "EMURAM " : "") + (mcPaging ? "PAGING " : "") + (mcInjection ? "INJECT " : ""));
         }
 
         function machineEmuRamChange()
@@ -217,18 +218,27 @@
             {
                 document.getElementById("machine-paging").disabled = true;
                 document.getElementById("machine-paging").checked = false;
+                document.getElementById("machine-injection").disabled = true;
+                document.getElementById("machine-injection").checked = true;
             }
             else
             {
                 document.getElementById("machine-paging").disabled = false;
+                document.getElementById("machine-injection").disabled = false;
             }
-            sendMachineEmuRamAndPagingSetting();
+            sendMachineOptions();
         }
 
         function machinePagingChange()
         {
             if (!document.getElementById("machine-paging").disabled)
-                sendMachineEmuRamAndPagingSetting();
+                sendMachineOptions();
+        }
+
+        function machineInjectionChange()
+        {
+            if (!document.getElementById("machine-injection").disabled)
+                sendMachineOptions();
         }
 
         function callAjax(url, okCallback, failCallback)
@@ -791,8 +801,14 @@
                     </label>
                 </div>
                 <div class="rdcheckoptions">
-                    <label type="checkbox" class="rdcheckcontainer" >Use RAM/ROM Paging
+                    <label type="checkbox" class="rdcheckcontainer" >RAM/ROM Paging
                         <input type="checkbox" checked id="machine-paging" onchange="machinePagingChange()">
+                        <span class="rdcheckmark"></span>
+                    </label>
+                </div>
+                <div class="rdcheckoptions">
+                    <label type="checkbox" class="rdcheckcontainer" >Opcode Injection
+                        <input type="checkbox" checked id="machine-injection" onchange="machineInjectionChange()">
                         <span class="rdcheckmark"></span>
                     </label>
                 </div>

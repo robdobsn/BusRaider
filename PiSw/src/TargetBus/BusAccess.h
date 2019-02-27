@@ -17,8 +17,17 @@ typedef enum {
     BR_ALREADY_DONE = 3
 } BR_RETURN_TYPE;
 
+// Return codes from wait-state ISR
+
+// Indicate that memory or IO requested is not supported by the machine
 #define BR_MEM_ACCESS_RSLT_NOT_DECODED 0x8000
+
+// The returned value is an instruction to be injected into the target
+// machine program flow - this is the mechanism used to set/get registers
 #define BR_MEM_ACCESS_INSTR_INJECT 0x4000
+
+// The target processor should be held at this point - for single-stepping
+#define BR_MEM_ACCESS_HOLD 0x2000
 
 // Control bus bits used to pass to machines, etc
 #define BR_CTRL_BUS_RD 0

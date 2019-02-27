@@ -249,24 +249,12 @@ bool McManager::setMachineOpts(const char* mcOpts)
     if (!pMachine)
         return false;
     pMachine->disable();
-    if (strcasecmp(mcOpts, "emuram") == 0)
-    {
-        pMachine->getDescriptorTable(0)->emulatedRAM = true;
-        pMachine->getDescriptorTable(0)->ramPaging = false;
-    }
-    else if (strcasecmp(mcOpts, "paging") == 0)
-    {
-        pMachine->getDescriptorTable(0)->emulatedRAM = false;
-        pMachine->getDescriptorTable(0)->ramPaging = true;
-    }
-    else
-    {
-        pMachine->getDescriptorTable(0)->emulatedRAM = false;
-        pMachine->getDescriptorTable(0)->ramPaging = false;
-    }
-    // LogWrite(FromMcManager, LOG_DEBUG, "setMachineOpts %s emuRAM %d ramPaging %d", mcOpts,
-    //             pMachine->getDescriptorTable(0)->emulatedRAM,
-    //             pMachine->getDescriptorTable(0)->ramPaging);
+    pMachine->getDescriptorTable(0)->emulatedRAM = (strstr(mcOpts, "EMURAM") != 0);
+    pMachine->getDescriptorTable(0)->ramPaging = (strstr(mcOpts, "PAGING") != 0);
+    pMachine->getDescriptorTable(0)->setRegistersByInjection = (strstr(mcOpts, "INJECT") != 0);
+    LogWrite(FromMcManager, LOG_DEBUG, "setMachineOpts %s emuRAM %d ramPaging %d", mcOpts,
+                pMachine->getDescriptorTable(0)->emulatedRAM,
+                pMachine->getDescriptorTable(0)->ramPaging);
     pMachine->enable();
     return true;
 }
@@ -439,7 +427,8 @@ void McManager::handleTargetProgram(const char* cmdName)
         // Check for reset too
         if (strcasecmp(cmdName, "ProgramAndReset") == 0)
         {
-            LogWrite(FromMcManager, LOG_DEBUG, "Resetting target");
+            LogWrite(FromMcManager, LOG_DEBUG, "Starting target code");
+            bool performHardReset = true;
             McBase* pMc = getMachine();
             TargetDebug* pDebug = TargetDebug::get();
             if (TargetState::areRegistersValid() && pMc && pDebug)
@@ -450,13 +439,16 @@ void McManager::handleTargetProgram(const char* cmdName)
                     // Use the BusAccess module to inject instructions to set registers
                     Z80Registers regs;
                     TargetState::getTargetRegsAndInvalidate(regs);
-                        pDebug->startSetRegisterSequence(&regs);
+                    pDebug->startSetRegisterSequence(&regs);
+                    performHardReset = false;
                 }
                 else
                 {
                     // Generate a code snippet to set registers and run
                     uint8_t regSetCode[TargetDebug::MAX_REGISTER_SET_CODE_LEN];
-                    int codeLen = pDebug->getInstructionsToSetRegs(regSetCode, TargetDebug::MAX_REGISTER_SET_CODE_LEN);
+                    Z80Registers regs;
+                    TargetState::getTargetRegsAndInvalidate(regs);
+                    int codeLen = pDebug->getInstructionsToSetRegs(regs, regSetCode, TargetDebug::MAX_REGISTER_SET_CODE_LEN);
                     if (codeLen != 0)
                     {
                         // Reg setting code
@@ -467,10 +459,11 @@ void McManager::handleTargetProgram(const char* cmdName)
                         // Reset vector
                         uint8_t jumpCmd[3] = { 0xc3, uint8_t(codeDestAddr & 0xff), uint8_t((codeDestAddr >> 8) & 0xff) };
                         McManager::blockWrite(0, jumpCmd, 3, false, false);
+                        // ee_dump_mem(regSetCode, regSetCode + codeLen);
                     }
                 }
             }
-            BusAccess::controlRelease(true);
+            BusAccess::controlRelease(performHardReset);
         }
         else
         {

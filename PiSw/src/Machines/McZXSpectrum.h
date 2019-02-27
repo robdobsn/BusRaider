@@ -21,8 +21,6 @@ private:
 
     static McDescriptorTable _descriptorTable;
 
-    static void handleRegisters(Z80Registers& regs);
-
     static const int MAX_KEYS = 6;
 
     static uint8_t _spectrumKeyboardIOBitMap[ZXSPECTRUM_KEYBOARD_NUM_ROWS];

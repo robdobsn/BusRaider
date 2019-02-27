@@ -9,6 +9,7 @@
 #include "../System/rdutils.h"
 #include <stdlib.h>
 #include "../FileFormats/McZXSpectrumTZXFormat.h"
+#include "../FileFormats/McZXSpectrumSNAFormat.h"
 #include "../FileFormats/McZXSpectrumZ80Format.h"
 #include "../Debugger/TargetDebug.h"
 #include "../Machines/McManager.h"
@@ -77,12 +78,6 @@ void McZXSpectrum::disable()
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
     BusAccess::waitEnable(false, false);
     BusAccess::accessCallbackRemove();
-}
-
-void McZXSpectrum::handleRegisters(Z80Registers& regs)
-{
-    // Handle the registers
-    TargetState::setTargetRegisters(regs);
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
@@ -253,7 +248,7 @@ void McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         // TZX
         McZXSpectrumTZXFormat formatHandler;
         LogWrite(_logPrefix, LOG_DEBUG, "Processing TZX file len %d", fileLen);
-        formatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
+        formatHandler.proc(TargetState::addMemoryBlock, TargetState::setTargetRegisters, pFileData, fileLen);
     }
     else if (strcasecmp(pFileType, ".z80") == 0)
     {
@@ -261,7 +256,15 @@ void McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         McZXSpectrumZ80Format formatHandler;
         LogWrite(_logPrefix, LOG_DEBUG, "Processing Z80 file len %d", fileLen);
         // Handle registers and injecting RET
-        formatHandler.proc(TargetState::addMemoryBlock, handleRegisters, pFileData, fileLen);
+        formatHandler.proc(TargetState::addMemoryBlock, TargetState::setTargetRegisters, pFileData, fileLen);
+    }
+    else if (strcasecmp(pFileType, ".sna") == 0)
+    {
+        // SNA
+        McZXSpectrumSNAFormat formatHandler;
+        LogWrite(_logPrefix, LOG_DEBUG, "Processing SNA file len %d", fileLen);
+        // TODO handle registers and injecting RET
+        formatHandler.proc(TargetState::addMemoryBlock, TargetState::setTargetRegisters, pFileData, fileLen);
     }
     else
     {
