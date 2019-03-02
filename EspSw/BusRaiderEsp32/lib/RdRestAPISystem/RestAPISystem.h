@@ -40,24 +40,12 @@ public:
                 RdOTAUpdate& otaUpdate, NetLog& netLog,
                 FileManager& fileManager, NTPClient& ntpClient,
                 CommandScheduler& commandScheduler,
-                const char* systemType, const char* systemVersion) :
-                _wifiManager(wifiManager), _mqttManager(mqttManager), 
-                _otaUpdate(otaUpdate), _netLog(netLog),
-                _fileManager(fileManager), _ntpClient(ntpClient),
-                _commandScheduler(commandScheduler)
-    {
-        _deviceRestartPending = false;
-        _deviceRestartMs = 0;
-        _updateCheckPending = false;
-        _updateCheckMs = 0;
-        _systemType = systemType;
-        _systemVersion = systemVersion;
-    }
+                const char* systemType, const char* systemVersion);
 
     // Setup and status
     void setup(RestAPIEndpoints &endpoints);
-    static String getWifiStatusStr();
-    static int reportHealth(int bitPosStart, unsigned long *pOutHash, String *pOutStr);
+    String getWifiStatusStr();
+    int reportHealth(int bitPosStart, unsigned long *pOutHash, String *pOutStr);
 
     // Call frequently
     void service();

@@ -10,6 +10,15 @@
 
 static const char* MODULE_PREFIX = "RestAPIBusRaider: ";
 
+RestAPIBusRaider::RestAPIBusRaider(CommandSerial &commandSerial, MachineInterface &machineInterface, 
+            FileManager& fileManager, RestAPISystem& restAPISystem) :
+            _commandSerial(commandSerial), _machineInterface(machineInterface),
+            _fileManager(fileManager), _restAPISystem(restAPISystem)
+{
+    _restartPending = false;
+    _restartPendingStartMs = 0;
+}
+
 void RestAPIBusRaider::service()
 {
     if (_restartPending && Utils::isTimeout(millis(), _restartPendingStartMs, TIME_TO_WAIT_BEFORE_RESTART_MS))
@@ -143,7 +152,7 @@ void RestAPIBusRaider::apiQueryESPHealth(const String &reqStr, String &respStr)
 {
     Log.verbose("%squeryESPHealth %s\n", MODULE_PREFIX, reqStr.c_str());
     String healthStr;
-    RestAPISystem::reportHealth(0, NULL, &healthStr);
+    _restAPISystem.reportHealth(0, NULL, &healthStr);
     respStr = "\"espHealth\":{" + healthStr + "}";
 }
 

@@ -6,6 +6,24 @@
 
 static const char* MODULE_PREFIX = "RestAPISystem: ";
 
+RestAPISystem::RestAPISystem(WiFiManager& wifiManager, MQTTManager& mqttManager,
+            RdOTAUpdate& otaUpdate, NetLog& netLog,
+            FileManager& fileManager, NTPClient& ntpClient,
+            CommandScheduler& commandScheduler,
+            const char* systemType, const char* systemVersion) :
+            _wifiManager(wifiManager), _mqttManager(mqttManager), 
+            _otaUpdate(otaUpdate), _netLog(netLog),
+            _fileManager(fileManager), _ntpClient(ntpClient),
+            _commandScheduler(commandScheduler)
+{
+    _deviceRestartPending = false;
+    _deviceRestartMs = 0;
+    _updateCheckPending = false;
+    _updateCheckMs = 0;
+    _systemType = systemType;
+    _systemVersion = systemVersion;
+}
+
 void RestAPISystem::setup(RestAPIEndpoints &endpoints)
 {
     endpoints.addEndpoint("w", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET, 
@@ -145,9 +163,9 @@ int RestAPISystem::reportHealth(int bitPosStart, unsigned long *pOutHash, String
         WiFi.macAddress(mac);
         String macStr = String(mac[0], HEX) + ":" + String(mac[1], HEX) + ":" + String(mac[2], HEX) + ":" +
                         String(mac[3], HEX) + ":" + String(mac[4], HEX) + ":" + String(mac[5], HEX);
-        String sOut = "\"wifiIP\":\"" + WiFi.localIP().toString() + "\",\"wifiConn\":\"" + getWifiStatusStr() + "\","
-                                                                                                                "\"ssid\":\"" +
-                      WiFi.SSID() + "\",\"MAC\":\"" + macStr + "\",\"RSSI\":" + String(WiFi.RSSI());
+        String sOut = "\"wifiIP\":\"" + WiFi.localIP().toString() + "\",\"wifiConn\":\"" + getWifiStatusStr() + "\"";
+        sOut += ",\"ssid\":\"" + WiFi.SSID() + "\",\"MAC\":\"" + macStr + "\",\"RSSI\":" + String(WiFi.RSSI());
+        sOut += ",\"espV\":\"" + _systemVersion + "\"";
         *pOutStr = sOut;
     }
     // Return number of bits in hash

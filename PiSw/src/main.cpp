@@ -28,7 +28,7 @@ typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.032";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.033";
 static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
@@ -228,6 +228,7 @@ extern "C" int main()
     }
 
     // USB
+    bool keyboardFound = false;
     if (USPiInitialize()) 
     {
         // LogWrite(FromMain, LOG_DEBUG, "Checking for keyboards...");
@@ -236,11 +237,11 @@ extern "C" int main()
         {
             USPiKeyboardRegisterKeyStatusHandlerRaw(_keypress_raw_handler);
             LogWrite(FromMain, LOG_DEBUG, "Keyboard found");
-        } else 
+            keyboardFound = true;
+        } 
+        else 
         {
-            display.termColour(9);
             LogWrite(FromMain, LOG_WARNING, "Keyboard not found");
-            display.termColour(15);
         }
     } else 
     {
@@ -273,7 +274,18 @@ extern "C" int main()
     // Waiting...
     // ee_printf("Waiting for UART data (%d,8,N,1)\n", MAIN_UART_BAUD_RATE);
 
-    ee_printf("\nPress F2 for immediate mode\n");
+    if (keyboardFound)
+    {
+        display.termColour(10);
+        ee_printf("USB keyboard found, press F2 to set WiFi, etc\n");
+        display.termColour(15);
+    }
+    else
+    {
+        display.termColour(9);
+        ee_printf("USB keyboard not found\n");
+        display.termColour(15);
+    }
 
     // Refresh rate
     #define REFRESH_RATE_WINDOW_SIZE_MS 2000
@@ -353,22 +365,33 @@ extern "C" int main()
             display.windowWrite(1, display.termGetWidth()-strlen(PROG_LINKS_1)-1, lineIdx++, (uint8_t*)PROG_LINKS_1);
             display.windowWrite(1, display.termGetWidth()-strlen(PROG_LINKS_2)-1, lineIdx++, (uint8_t*)PROG_LINKS_2);
 
-            // Show ESP health info
+            // Get ESP health info
             bool ipAddrValid = false;
             char* ipAddr = NULL;
             char* wifiStatusChar = NULL;
             char* wifiSSID = NULL;
-            commandHandler.getStatusResponse(&ipAddrValid, &ipAddr, &wifiStatusChar, &wifiSSID);
+            char* esp32Version = NULL;
+            commandHandler.getStatusResponse(&ipAddrValid, &ipAddr, &wifiStatusChar, &wifiSSID, &esp32Version);
+
+            // ESP32 info
             const int MAX_STATUS_STR_LEN = 50;
             char statusStr[MAX_STATUS_STR_LEN+1];
+            strlcpy(statusStr, "ESP32 Version: ", MAX_STATUS_STR_LEN);
+            if (strlen(esp32Version) == 0)
+                strlcat(statusStr, "Not Connected!", MAX_STATUS_STR_LEN);
+            else
+                strlcat(statusStr, esp32Version, MAX_STATUS_STR_LEN);
+            display.windowWrite(1, display.termGetWidth()-strlen(statusStr)-1, lineIdx++, (uint8_t*)statusStr);
+
+            // WiFi status
             statusStr[0] = 0;
             switch(*wifiStatusChar)
             {
                 case 'C': 
-                    strlcpy(statusStr, "WiFi ", MAX_STATUS_STR_LEN); 
+                    strlcpy(statusStr, "WiFi IP: ", MAX_STATUS_STR_LEN); 
                     if (ipAddrValid)
                     {
-                        strlcpy(statusStr+strlen(statusStr), ipAddr, MAX_STATUS_STR_LEN);
+                        strlcat(statusStr, ipAddr, MAX_STATUS_STR_LEN);
                     }
                     break;
                 default: 
@@ -379,7 +402,7 @@ extern "C" int main()
 
             // BusAccess status
             statusStr[0] = 0;
-            strlcpy(statusStr, "BusAccess ", MAX_STATUS_STR_LEN);
+            strlcpy(statusStr, "BusAccess: ", MAX_STATUS_STR_LEN);
             if (BusAccess::pauseIsPaused())
                 strlcat(statusStr, "Paused", MAX_STATUS_STR_LEN);
             else
@@ -401,11 +424,6 @@ extern "C" int main()
             strlcat(refreshStr, (char*)rateStr, MAX_REFRESH_STR_LEN);
             strlcat(refreshStr, "fps", MAX_REFRESH_STR_LEN);
             display.windowWrite(1, display.termGetWidth()-strlen(refreshStr)-1, lineIdx++, (uint8_t*)refreshStr);
-            // // uart_printf("Rate %d per sec, requs %ld dispTime %ld\n", refreshCount / 2, reqUpdateUs, dispTime);
-            // wgfx_putc(1, 150, 0, '0' + (refreshRate % 10));
-            // wgfx_putc(1, 149, 0, '0' + ((refreshRate / 10) % 10));
-            // if (refreshRate / 100 != 0)
-            //     wgfx_putc(1, 148, 0, '0' + ((refreshRate / 100) % 10));
 
             // Ready for next time
             refreshCount = 0;

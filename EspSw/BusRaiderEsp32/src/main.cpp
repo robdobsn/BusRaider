@@ -165,11 +165,11 @@ MachineInterface machineInterface;
 RestAPISystem restAPISystem(wifiManager, mqttManager,
                             otaUpdate, netLog, fileManager, ntpClient,
                             commandScheduler,
-            systemType, systemVersion);
+                            systemType, systemVersion);
 
 // REST API BusRaider
 #include "RestAPIBusRaider.h"
-RestAPIBusRaider restAPIBusRaider(commandSerial, machineInterface, fileManager);
+RestAPIBusRaider restAPIBusRaider(commandSerial, machineInterface, fileManager, restAPISystem);
 
 // Debug loop used to time main loop
 #include "DebugLoopTimer.h"

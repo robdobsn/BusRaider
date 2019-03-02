@@ -54,7 +54,8 @@ public:
     void sendKeyCodeToTarget(int keyCode);
     void sendWithJSON(const char* cmdName, const char* cmdJson);
     static void sendAPIReq(const char* reqLine);
-    void getStatusResponse(bool* pIPAddressValid, char** pIPAddress, char** pWifiConnStr, char** pWifiSSID);
+    void getStatusResponse(bool* pIPAddressValid, char** pIPAddress, char** pWifiConnStr, 
+                char** pWifiSSID, char** pEsp32Version);
     void sendRegularStatusUpdate();
     void sendDebugMessage(const char* pStr, const char* rdpMessageIdStr);
 
@@ -110,9 +111,11 @@ private:
     static const int MAX_IP_ADDR_STR = 30;
     static const int MAX_WIFI_CONN_STR = 30;
     static const int MAX_WIFI_SSID_STR = 100;
+    static const int MAX_ESP_VERSION_STR = 100;
     char _statusIPAddress[MAX_IP_ADDR_STR];
     char _statusWifiConnStr[MAX_WIFI_CONN_STR];
     char _statusWifiSSID[MAX_WIFI_SSID_STR];
+    char _statusESP32Version[MAX_ESP_VERSION_STR];
     bool _statusIPAddressValid;
 
     // Last RDP message index value string

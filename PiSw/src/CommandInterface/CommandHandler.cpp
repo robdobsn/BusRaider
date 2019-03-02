@@ -46,6 +46,7 @@ CommandHandler::CommandHandler() :
     _statusIPAddress[0] = 0;
     _statusWifiConnStr[0] = 0;
     _statusWifiSSID[0] = 0;
+    _statusESP32Version[0] = 0;
     _statusIPAddressValid = false;
 }
 
@@ -299,19 +300,21 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
 
 void CommandHandler::handleStatusResponse(const char* pCmdJson)
 {
-    // LogWrite(FromCmdHandler, LOG_DEBUG, "RxFrame RespMsg");
+    // LogWrite(FromCmdHandler, LOG_DEBUG, "RxFrame RespMsg %s", pCmdJson);
     // Get espHealth field
     char espHealthJson[MAX_ESP_HEALTH_STR];
     if (!jsonGetValueForKey("espHealth", pCmdJson, espHealthJson, MAX_ESP_HEALTH_STR))
         return;
-    if (!jsonGetValueForKey("wifiIP", espHealthJson, _statusIPAddress, MAX_IP_ADDR_STR+1))
+    if (!jsonGetValueForKey("wifiIP", espHealthJson, _statusIPAddress, MAX_IP_ADDR_STR))
         return;
-    if (!jsonGetValueForKey("wifiConn", espHealthJson, _statusWifiConnStr, MAX_WIFI_CONN_STR+1))
+    _statusIPAddressValid = (strcmp(_statusIPAddress, "0.0.0.0") != 0);
+    if (!jsonGetValueForKey("wifiConn", espHealthJson, _statusWifiConnStr, MAX_WIFI_CONN_STR))
         return;
-    if (!jsonGetValueForKey("ssid", espHealthJson, _statusWifiSSID, MAX_WIFI_SSID_STR+1))
+    if (!jsonGetValueForKey("ssid", espHealthJson, _statusWifiSSID, MAX_WIFI_SSID_STR))
+        return;
+    if (!jsonGetValueForKey("espV", espHealthJson, _statusESP32Version, MAX_ESP_VERSION_STR))
         return;
     // LogWrite(FromCmdHandler, LOG_DEBUG, "Ip Address %s", _espIPAddress);
-    _statusIPAddressValid = (strcmp(_statusIPAddress, "0.0.0.0") != 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -357,7 +360,7 @@ void CommandHandler::sendAPIReq(const char* reqLine)
     static char reqStr[MAX_REQ_STR_LEN+1];
     strlcpy(reqStr, "\"req\":\"", MAX_REQ_STR_LEN);
     strlcpy(reqStr+strlen(reqStr), reqLine, MAX_REQ_STR_LEN);
-    strlcpy(reqStr+strlen(reqStr), "\",", MAX_REQ_STR_LEN);
+    strlcpy(reqStr+strlen(reqStr), "\"", MAX_REQ_STR_LEN);
     if (_pSingletonCommandHandler)
         _pSingletonCommandHandler->sendWithJSON("apiReq", reqStr);
 }
@@ -386,12 +389,14 @@ void CommandHandler::sendRegularStatusUpdate()
 // Get status response
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void CommandHandler::getStatusResponse(bool* pIPAddressValid, char** pIPAddress, char** pWifiConnStr, char** pWifiSSID)
+void CommandHandler::getStatusResponse(bool* pIPAddressValid, char** pIPAddress, char** pWifiConnStr, 
+        char** pWifiSSID, char** pEsp32Version)
 {
     *pIPAddressValid = _statusIPAddressValid;
     *pIPAddress = _statusIPAddress;
     *pWifiConnStr = _statusWifiConnStr;
     *pWifiSSID = _statusWifiSSID;
+    *pEsp32Version = _statusESP32Version;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

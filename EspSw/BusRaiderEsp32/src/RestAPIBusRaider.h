@@ -4,6 +4,7 @@
 #pragma once
 #include <Arduino.h>
 #include "RestAPIEndpoints.h"
+#include "RestAPISystem.h"
 #include "CommandSerial.h"
 #include "MachineInterface.h"
 #include "FileManager.h"
@@ -16,17 +17,14 @@ private:
     CommandSerial& _commandSerial;
     MachineInterface& _machineInterface;
     FileManager& _fileManager;    
+    RestAPISystem& _restAPISystem;
     static const int TIME_TO_WAIT_BEFORE_RESTART_MS = 1000;
     uint32_t _restartPendingStartMs;
     bool _restartPending;
 
 public:
-    RestAPIBusRaider(CommandSerial &commandSerial, MachineInterface &machineInterface, FileManager& fileManager) :
-             _commandSerial(commandSerial), _machineInterface(machineInterface), _fileManager(fileManager)
-    {
-        _restartPending = false;
-        _restartPendingStartMs = 0;
-    }
+    RestAPIBusRaider(CommandSerial &commandSerial, MachineInterface &machineInterface, 
+            FileManager& fileManager, RestAPISystem& restAPISystem);
 
     void service();
     void apiTargetCommand(String &reqStr, String &respStr);
