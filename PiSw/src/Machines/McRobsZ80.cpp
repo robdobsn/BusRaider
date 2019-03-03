@@ -32,7 +32,7 @@ McDescriptorTable McRobsZ80::_descriptorTable = {
     .displayForeground = WGFX_WHITE,
     .displayBackground = WGFX_BLACK,
     // Clock
-    .clockFrequencyHz = 1000000,
+    .clockFrequencyHz = 12000000,
     // Interrupt rate per second
     .irqRate = 0,
     // Bus monitor
