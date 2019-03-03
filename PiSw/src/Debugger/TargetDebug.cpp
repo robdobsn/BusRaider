@@ -116,10 +116,16 @@ bool TargetDebug::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len)
 bool TargetDebug::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len)
 {
     if (!_debugInCPUStep)
+    {
+        // LogWrite(FromTargetDebug, LOG_DEBUG, "blockRead: Not in single step %04x %d", addr, len);
         return false;
+    }
     int copyLen = len;
     if (addr >= MAX_TARGET_MEMORY_LEN)
+    {
+        // LogWrite(FromTargetDebug, LOG_DEBUG, "blockRead: Too long %04x %d", addr, len);
         return false;
+    }
     if (addr + copyLen > MAX_TARGET_MEMORY_LEN)
         copyLen = MAX_TARGET_MEMORY_LEN - addr;
     memcpy(pBuf, _targetMemBuffer + addr, copyLen);
@@ -303,7 +309,6 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
         if (retc == BR_OK)
         {
             BusAccess::waitOnInstruction(true);
-            _debugInCPUStep = true;
         }
         else
         {
@@ -466,6 +471,8 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
         {
             grabMemoryAndReleaseBusRq(pMachine, true);
             // LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step done");
+            _debugInCPUStep = true;
+
         }
         else
         {
@@ -484,6 +491,7 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
             {
                 grabMemoryAndReleaseBusRq(pMachine, false);
                 // LogWrite(FromTargetDebug, LOG_DEBUG, "now paused SEND-BLANK");
+                _debugInCPUStep = true;
             }
             else
             {
@@ -978,25 +986,6 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
 
         }
     }
-
-    // if ((_registerMode == REGISTER_MODE_GET) && (_registerModeGotM1 || (flags & BR_CTRL_BUS_M1_MASK)))
-    // {
-    //     // We're now inserting instructions or getting results back
-    //     _registerModeGotM1 = true;
-    //     handleRegisterGet(addr, data, flags, retVal);
-    //     // Page-out paged RAM/ROM if required
-    //     if (descriptorTable.ramPaging)
-    //         digitalWrite(BR_PAGING_RAM_PIN, 1);
-    // }
-    // else if ((_registerMode == REGISTER_MODE_SET) && (_registerModeGotM1 || (flags & BR_CTRL_BUS_M1_MASK)))
-    // {
-    //     // We're now inserting instructions to set registers
-    //     _registerModeGotM1 = true;
-    //     handleRegisterSet(retVal);
-    //     // Page-out RAM/ROM if required
-    //     if (descriptorTable.ramPaging)
-    //         digitalWrite(BR_PAGING_RAM_PIN, 1);
-    // }
 
     return retVal;
 }

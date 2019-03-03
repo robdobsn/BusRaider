@@ -116,7 +116,8 @@ typedef enum {
 #define ISR_ASSERT(code) BusAccess::isrAssert(code)
 #define ISR_ASSERT_CODE_NONE 0
 #define ISR_ASSERT_CODE_UNPAGE_NOT_M1 1
-#define ISR_ASSERT_NUM_CODES 2
+#define ISR_ASSERT_CODE_DEBUG 2
+#define ISR_ASSERT_NUM_CODES 3
 
 class BusAccess
 {
