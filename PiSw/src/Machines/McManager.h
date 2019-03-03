@@ -69,6 +69,8 @@ public:
 
     // Target control
     static void targetReset();
+    static void targetPause();
+    static void targetRelease();
     static void targetClearAllIO();
 
     // Memory access

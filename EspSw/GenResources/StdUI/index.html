@@ -701,7 +701,7 @@
             z-index: 1;
             bottom: 100%;
             left: 50%;
-            margin-left: -60px;   
+            margin-left: -160px;   
             /* Fade in tooltip - takes 1 second to go from 0% to 100% opac: */
             opacity: 0;
             transition: opacity 1s;
@@ -818,6 +818,8 @@
                 <span class="button" onclick="sendCmdToTarget('cleartarget')">Clear target buffer</span>
                 <span class="button" onclick="sendCmdToTarget('programtarget')">Program from buffer</span>
                 <span class="button" onclick="sendCmdToTarget('programandreset')">Program and reset</span>
+                <span class="button" onclick="sendCmdToTarget('pausetarget')">Pause</span>
+                <span class="button" onclick="sendCmdToTarget('releasetarget')">Release</span>
             </div>
         </div>
         <div id="upload-and-run" class="layout-region drop-zone">

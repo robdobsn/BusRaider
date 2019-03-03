@@ -244,7 +244,6 @@ void UartMaxi::isr()
 
 	while (!(RD32(ARM_UART0_FR) & UART0_FR_RXFE_MASK))
 	{
-        // digitalWrite(8, 0);
 		uint32_t nDR = RD32(ARM_UART0_DR);
 		if (nDR & UART0_DR_BE_MASK)
 		{

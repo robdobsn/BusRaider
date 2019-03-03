@@ -88,7 +88,11 @@ private:
     // Debug mode initialized indicator
     bool _debugInitalized;
 
-    // Flag to help deal with prefixed instructions when single-stepping
+    // Debug in single-step mode
+    bool _debugInCPUStep;
+
+    // Flags to help deal with prefixed instructions when single-stepping
+    bool _thisInstructionIsPrefixed;
     bool _lastInstructionWasPrefixed;
 
     // Current MREQ monitor mode when starting register set
@@ -103,7 +107,7 @@ private:
         REGISTER_MODE_UNPAGE,
     };
     REGISTER_MODE _registerMode;
-    bool _registerModeGotM1;
+    bool _registerPrevInstrComplete;
     int _registerQueryWriteIndex;
     unsigned int _registerModeStep;
     uint8_t _registerSetBuffer[MAX_REGISTER_SET_CODE_LEN];

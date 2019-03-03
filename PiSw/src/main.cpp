@@ -28,7 +28,7 @@ typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.033";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.035";
 static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
@@ -425,6 +425,16 @@ extern "C" int main()
             strlcat(refreshStr, "fps", MAX_REFRESH_STR_LEN);
             display.windowWrite(1, display.termGetWidth()-strlen(refreshStr)-1, lineIdx++, (uint8_t*)refreshStr);
 
+            // Get ISR debug info
+            for (int i = 0; i < ISR_ASSERT_NUM_CODES; i++)
+            {
+                int cnt = BusAccess::isrAssertGetCount(i);
+                if (cnt > 0)
+                {
+                    ee_sprintf(statusStr, "ISR Assert %d = %d", i, cnt);
+                    display.windowWrite(1, display.termGetWidth()-strlen(statusStr)-1, lineIdx++, (uint8_t*) statusStr); 
+                }
+            }
             // Ready for next time
             refreshCount = 0;
             curRateSampleWindowStart = micros();

@@ -298,34 +298,29 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *framebuffer, int frame
     if ((framelength < 0) || (framelength > MAX_COMMAND_LEN))
         return;
 
-    // Ensure string is terminated
-    char* pStr = new char[framelength+1];
-    memcpy(pStr, framebuffer, framelength);
-    pStr[framelength] = 0;
-    String str = pStr;
-    // Tidy up
-    delete [] pStr;
+    // Buffer is null terminated in the HDLC receiver
+    const char* pRxStr = (const char*)framebuffer;
 
-    Log.trace("%sreceivedFromPi %s\n", MODULE_PREFIX, str.c_str());
+    // Log.verbose("%sreceivedFromPi %s\n", MODULE_PREFIX, pRxStr);
 
     // Get command
-    String cmdName = RdJson::getString("cmdName", "", str.c_str());
+    String cmdName = RdJson::getString("cmdName", "", pRxStr);
     if (cmdName.equalsIgnoreCase("statusUpdate"))
     {
         // Cache the status frame
-        _cachedStatusJSON = str;
+        _cachedStatusJSON = pRxStr;
     }
     else if (cmdName.equalsIgnoreCase("keyCode"))
     {
         // Send key to target
-        int asciiCode = RdJson::getLong("key", 0, str.c_str());
+        int asciiCode = RdJson::getLong("key", 0, pRxStr);
         if (_pTargetSerial && (asciiCode != 0))
             _pTargetSerial->write((char)asciiCode);
-        Log.trace("%ssent target char %x\n", MODULE_PREFIX, (char)asciiCode);
+        Log.verbose("%ssent target char %x\n", MODULE_PREFIX, (char)asciiCode);
     }
     else if (cmdName.equalsIgnoreCase("apiReq"))
     {
-        String requestStr = RdJson::getString("req", "", str.c_str());
+        String requestStr = RdJson::getString("req", "", pRxStr);
         if (_pRestAPIEndpoints && requestStr.length() != 0)
         {
             String respStr;
@@ -336,8 +331,8 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *framebuffer, int frame
     }
     else if (cmdName.equalsIgnoreCase("rdp"))
     {
-        Log.verbose("%srdp response message %s\n", MODULE_PREFIX, str.c_str());
-        String contentStr = RdJson::getString("content", "", str.c_str());
+        // Log.verbose("%srdp response message %s\n", MODULE_PREFIX, pRxStr);
+        String contentStr = RdJson::getString("content", "", pRxStr);
         if (_pRemoteDebugServer)
             _pRemoteDebugServer->sendChars(contentStr.c_str(), contentStr.length());
     }
@@ -418,37 +413,9 @@ void MachineInterface::handleDemoModeButtonPress(int buttonValue)
 
     // Bump
     _demoProgramIdx++;
-
-    // {
-    //     String filesJson;
-    //     if (_pFileManager->getFilesJSON("SPIFFS", "/", filesJson))
-    //     {
-    //         // Get the index of file to upload
-    //         String filesList = RdJson::getString("files", "[]", filesJson.c_str());
-    //         int fileListLen = 0;
-    //         RdJson::getType(fileListLen, filesList.c_str());
-    //         _demoProgramIdx = _demoProgramIdx % fileListLen;
-
-    //         // Get filename
-    //         String fileinfoToUpload = RdJson::getString(("[" + String(_demoProgramIdx) + "]").c_str(),
-    //                         "", filesList.c_str());
-    //         String filenameToUpload = RdJson::getString("name", "", fileinfoToUpload.c_str());
-    //         // Handle upload
-    //         Log.notice("MachineInterface: demo %d %s\n", _demoProgramIdx,
-    //                         filenameToUpload.c_str());
-    //         if (filenameToUpload.length() > 0)
-    //         {
-    //             String apiCmd = "runfileontarget/SPIFFS/" + filenameToUpload;
-    //             String respStr;
-    //             if (_pRestAPIEndpoints)
-    //                 _pRestAPIEndpoints->handleApiRequest(apiCmd.c_str(), respStr);
-    //         }
-    //         _demoProgramIdx++;
-    //     }
-    // }
-
-
 }
+
+#ifdef USE_WEBSOCKET_TERMINAL
 // int convertEscKey(String& keyStr)
 // {
 //     // Handle escape keys
@@ -525,7 +492,7 @@ void MachineInterface::handleDemoModeButtonPress(int buttonValue)
 //     return -1;
 // }
 
-#ifdef USE_WEBSOCKET_TERMINAL
+
 void wsEventHandler(AsyncWebSocket *server,
                     AsyncWebSocketClient *client,
                     AwsEventType type,

@@ -43,6 +43,9 @@ uint32_t BusAccess::_pauseCurAddr = 0;
 uint32_t BusAccess::_pauseCurData = 0;
 uint32_t BusAccess::_pauseCurControlBus = 0;
 
+// Debug
+int BusAccess::_isrAssertCounts[ISR_ASSERT_NUM_CODES];
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Initialisation
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -625,13 +628,6 @@ void BusAccess::waitSetup(bool enWaitOnIORQ, bool enWaitOnMREQ)
     _waitStateEnMaskDefault = _waitStateEnMask;
     WR32(ARM_GPIO_GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
 
-    // Check if any wait-states to be generated
-    // if (_waitStateEnMask == 0)
-    // {
-    //     _waitIntEnabled = false;
-    //     return;
-    // }
-
 #ifdef BR_ENABLE_WAIT_AND_FIQ
 
     // Set wait-state generation
@@ -713,27 +709,6 @@ void BusAccess::waitStateISR(void* pData)
         avoidLockupCtr++;
     }
 
-//     // Check if we have valid control lines
-//     if ((!ctrlValid) || ((busVals & (1 << BR_WAIT_BAR)) != 0))
-//     {
-
-// #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-//         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-// #endif
-
-//         // Spurious ISR?
-//         // Clear WAIT flip-flop
-//         clearWaitFF();
-
-//         // Clear detected edge on any pin
-//         WR32(ARM_GPIO_GPEDS0, 0xffffffff);
-
-// #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-//         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-// #endif
-//         return;
-//     }
-
     // Enable the low address onto the PIB
     muxSet(BR_MUX_LADDR_OE_BAR);
 
@@ -789,7 +764,8 @@ void BusAccess::waitStateISR(void* pData)
     if (_pBusAccessCallback)
         retVal = _pBusAccessCallback(addr, dataBusVals, ctrlBusVals);
 
-    // If not writing and result is valid then put the returned data onto the bus
+    // If Z80 is reading from the data bus (inc reading an ISR vector)
+    // and result is valid then put the returned data onto the bus
     bool isWriting = (busVals & (1 << BR_WR_BAR)) == 0;
     if (!isWriting && ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0))
     {
@@ -805,23 +781,17 @@ void BusAccess::waitStateISR(void* pData)
         lowlev_cycleDelay(CYCLES_DELAY_FOR_TARGET_READ);
     }
 
-    // Check if M1 active (an instruction fetch cycle)
-    bool m1Asserted = (busVals & (1 << BR_M1_PIB_BAR)) == 0;
-
-    // Check for instruction injection
-    bool instructionInjection = ((retVal & BR_MEM_ACCESS_INSTR_INJECT) != 0);
-
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
     // digitalWrite(BR_DEBUG_PI_SPI0_CE0, m1Asserted);
 #endif
 
     // Check if we should hold the target processor at this point
-    if (_pauseIsPaused && m1Asserted && !instructionInjection)
-    // if ((retVal & BR_MEM_ACCESS_HOLD) != 0)
+    // if (_pauseIsPaused && m1Asserted && !instructionInjection)
+    if ((retVal & BR_MEM_ACCESS_HOLD) != 0)
     {
         // Store the current address, data and ctrl line state
         _pauseCurAddr = addr;
-        _pauseCurData = isWriting ? dataBusVals : retVal;
+        _pauseCurData = (isWriting || (retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED)) ? dataBusVals : retVal;
         _pauseCurControlBus = ctrlBusVals;
 
         // Clear wait detected
@@ -1047,4 +1017,17 @@ void BusAccess::clearWaitDetected()
 {
     // Clear detected edge on any pin
     WR32(ARM_GPIO_GPEDS0, 0xffffffff);
+}
+
+void BusAccess::isrAssert(int code)
+{
+    if (code < ISR_ASSERT_NUM_CODES)
+        _isrAssertCounts[code]++;
+}
+
+int  BusAccess::isrAssertGetCount(int code)
+{
+    if (code < ISR_ASSERT_NUM_CODES)
+        return _isrAssertCounts[code];
+    return 0;
 }

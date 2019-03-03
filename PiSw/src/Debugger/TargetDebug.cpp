@@ -39,10 +39,11 @@ TargetDebug* TargetDebug::get()
 TargetDebug::TargetDebug()
 {
     _debugInitalized = false;
+    _debugInCPUStep = false;
     _instrWaitRestoreNeeded = false;
     _instrWaitCurMode = false;
     _registerMode = REGISTER_MODE_NONE;
-    _registerModeGotM1 = false;
+    _registerPrevInstrComplete = false;
     _registerQueryWriteIndex = 0;
     _registerModeStep = 0;
     for (int i = 0; i < MAX_BREAKPOINTS; i++)
@@ -114,6 +115,8 @@ bool TargetDebug::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len)
 
 bool TargetDebug::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len)
 {
+    if (!_debugInCPUStep)
+        return false;
     int copyLen = len;
     if (addr >= MAX_TARGET_MEMORY_LEN)
         return false;
@@ -131,7 +134,7 @@ void TargetDebug::startGetRegisterSequence()
 {
     // Start sequence of getting registers
     _registerMode = REGISTER_MODE_GET;
-    _registerModeGotM1 = false;
+    _registerPrevInstrComplete = false;
     _registerQueryWriteIndex = 0;
     _registerModeStep = 0;
 }
@@ -153,7 +156,7 @@ void TargetDebug::startSetRegisterSequence(Z80Registers* pRegs)
 
     // Start sequence of setting registers
     _registerMode = REGISTER_MODE_SET;
-    _registerModeGotM1 = false;
+    _registerPrevInstrComplete = false;
     _registerModeStep = 0;
 }
 
@@ -297,9 +300,15 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
     {
         LogWrite(FromTargetDebug, LOG_DEBUG, "enter-cpu-step");
         BR_RETURN_TYPE retc = BusAccess::pause();
-        if (retc != BR_OK)
+        if (retc == BR_OK)
+        {
+            BusAccess::waitOnInstruction(true);
+            _debugInCPUStep = true;
+        }
+        else
+        {
             LogWrite(FromTargetDebug, LOG_DEBUG, "pause failed in enter-cpu-step (%s)", BusAccess::retcString(retc));
-        BusAccess::waitOnInstruction(true);
+        }
         strlcat(pResponse, "", maxResponseLen);
     }
     else if (matches(cmdStr, "exit-cpu-step", MAX_CMD_STR_LEN))
@@ -307,6 +316,7 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
         LogWrite(FromTargetDebug, LOG_DEBUG, "exit-cpu-step");
         BusAccess::waitRestoreDefaults();
         BR_RETURN_TYPE retc = BusAccess::pauseRelease();
+        _debugInCPUStep = false;
         if (retc != BR_OK)
             LogWrite(FromTargetDebug, LOG_DEBUG, "pauseRelease failed in exit-cpu-step (%s)", BusAccess::retcString(retc));
         strlcat(pResponse, "", maxResponseLen);
@@ -316,6 +326,7 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
         LogWrite(FromTargetDebug, LOG_DEBUG, "quit");
         BusAccess::waitRestoreDefaults();
         BR_RETURN_TYPE retc = BusAccess::pauseRelease();
+        _debugInCPUStep = false;
         if ((retc != BR_OK) && (retc != BR_ALREADY_DONE))
             LogWrite(FromTargetDebug, LOG_DEBUG, "pauseRelease failed in quit (%s)", BusAccess::retcString(retc));
         _debugInitalized = false;
@@ -440,6 +451,7 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
     {
         LogWrite(FromTargetDebug, LOG_DEBUG, "run");
         BR_RETURN_TYPE retc = BusAccess::pauseRelease();
+        _debugInCPUStep = false;
         if (retc != BR_OK)
             LogWrite(FromTargetDebug, LOG_DEBUG, "pauseRelease failed in run (%s)", BusAccess::retcString(retc));
         strlcat(pResponse, "Running until a breakpoint, key press or data sent, menu opening or other event\n", 
@@ -767,6 +779,22 @@ void TargetDebug::handleRegisterSet(uint32_t& retVal)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Test is an instruction is a prefix
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+bool TargetDebug::isPrefixInstruction(uint32_t instr)
+{
+    switch(instr)
+    {
+        case 0xdd:
+        case 0xed:
+        case 0xfd:
+        case 0xcb:
+            return true;
+    }
+    return false;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Interrupt extension for debugger
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -778,18 +806,94 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
     if ((flags & BR_CTRL_BUS_MREQ_MASK) == 0)
         return retVal;
 
+    // Check if RAM is emulated
+    if (descriptorTable.emulatedRAM && (addr >= descriptorTable.emulatedRAMStart) && 
+            (addr < descriptorTable.emulatedRAMStart + descriptorTable.emulatedRAMLen))
+    {
+        // Check for read or write to emulated RAM / ROM
+        if (flags & BR_CTRL_BUS_RD_MASK)
+        {
+            if (flags & BR_CTRL_BUS_MREQ_MASK)
+            {
+                retVal = _targetMemBuffer[addr];
+            }
+        }
+        else if (flags & BR_CTRL_BUS_WR_MASK)
+        {
+            if (flags & BR_CTRL_BUS_MREQ_MASK)
+            {
+                _targetMemBuffer[addr] = data;
+            }
+        }
+        
+    }
+
+    // Handle M1 cycles
+    if (flags & BR_CTRL_BUS_M1_MASK)
+    {
+        // Record state from previous instruction
+        _lastInstructionWasPrefixed = _thisInstructionIsPrefixed;
+        // Check if this is a prefixed instruction
+        _thisInstructionIsPrefixed = isPrefixInstruction(((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) ? data : retVal) & 0xff);
+        // if (_lastInstructionWasPrefixed)
+        // {
+        //     digitalWrite(BR_PAGING_RAM_PIN, 1);
+        //     microsDelay(3);
+        //     digitalWrite(BR_PAGING_RAM_PIN, 0);
+        //     microsDelay(1);
+        // }
+        // if (_thisInstructionIsPrefixed)
+        // {
+        //     digitalWrite(BR_PAGING_RAM_PIN, 1);
+        //     microsDelay(1);
+        //     digitalWrite(BR_PAGING_RAM_PIN, 0);
+        //     microsDelay(1);
+        // }
+    }
+    else
+    {
+        // Can't be in the middle of a prefixed instruction if this isn't an M1 cycle
+        _thisInstructionIsPrefixed = false;
+        _lastInstructionWasPrefixed = false;
+    }
+
     // Check for the end of paging mode - un-page RAM
     if (_registerMode == REGISTER_MODE_UNPAGE)
     {
+        // Clear the paging of RAM
         _registerMode = REGISTER_MODE_NONE;
         if (descriptorTable.ramPaging)
             digitalWrite(BR_PAGING_RAM_PIN, 0);
 
+        // Restore wait-state generation if required
         if (_instrWaitRestoreNeeded)
         {
             BusAccess::waitOnInstruction(_instrWaitCurMode);            
             _instrWaitRestoreNeeded = false;
         }
+
+        // Handle M1 cycle
+        _registerPrevInstrComplete = false;
+        if (flags & BR_CTRL_BUS_M1_MASK)
+        {
+
+            // Always need to hold at this point
+            retVal |= BR_MEM_ACCESS_HOLD;
+
+            // // Debug
+            // // TODO
+            // digitalWrite(BR_PAGING_RAM_PIN, 1);
+            // microsDelay(1);
+            // if (_lastInstructionWasPrefixed)
+            //     microsDelay(10);
+            // digitalWrite(BR_PAGING_RAM_PIN, 0);
+        }
+        else
+        {
+            // After regsiter set/get there should always be an M1 cycle
+            ISR_ASSERT(ISR_ASSERT_CODE_UNPAGE_NOT_M1);
+        }
+
     }
 
     // See if breakpoints enabled and M1 cycle
@@ -811,45 +915,88 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
         }
     }
 
-    // Check if we're in register query mode
-    if ((_registerMode == REGISTER_MODE_GET) && (_registerModeGotM1 || (flags & BR_CTRL_BUS_M1_MASK)))
+    // Handle register query and set modes
+    if ((_registerMode == REGISTER_MODE_GET) || (_registerMode == REGISTER_MODE_SET))
     {
-        // We're now inserting instructions or getting results back
-        _registerModeGotM1 = true;
-        handleRegisterGet(addr, data, flags, retVal);
-        // Page-out paged RAM/ROM if required
-        if (descriptorTable.ramPaging)
-            digitalWrite(BR_PAGING_RAM_PIN, 1);
-    }
-    else if ((_registerMode == REGISTER_MODE_SET) && (_registerModeGotM1 || (flags & BR_CTRL_BUS_M1_MASK)))
-    {
-        // We're now inserting instructions to set registers
-        _registerModeGotM1 = true;
-        handleRegisterSet(retVal);
-        // Page-out RAM/ROM if required
-        if (descriptorTable.ramPaging)
-            digitalWrite(BR_PAGING_RAM_PIN, 1);
-    }
-    else if (descriptorTable.emulatedRAM && (addr >= descriptorTable.emulatedRAMStart) && 
-            (addr < descriptorTable.emulatedRAMStart + descriptorTable.emulatedRAMLen))
-    {
-        // Check for read or write to emulated RAM / ROM
-        if (flags & BR_CTRL_BUS_RD_MASK)
+        // See if we are waiting for the end of the previous instruction
+        if (_registerPrevInstrComplete || ((!_lastInstructionWasPrefixed) && (flags & BR_CTRL_BUS_M1_MASK)))
         {
-            if (flags & BR_CTRL_BUS_MREQ_MASK)
+            if (_registerMode == REGISTER_MODE_GET)
             {
-                retVal = _targetMemBuffer[addr];
+                // We're now inserting instructions or getting results back
+                _registerPrevInstrComplete = true;
+                handleRegisterGet(addr, data, flags, retVal);
+                // Page-out paged RAM/ROM if required
+                if (descriptorTable.ramPaging)
+                    digitalWrite(BR_PAGING_RAM_PIN, 1);
             }
+            else
+            {
+                // We're now inserting instructions to set registers
+                _registerPrevInstrComplete = true;
+                handleRegisterSet(retVal);
+                // Page-out RAM/ROM if required
+                if (descriptorTable.ramPaging)
+                    digitalWrite(BR_PAGING_RAM_PIN, 1);
+            }
+
+            // // Debug
+            // // TODO
+            // digitalWrite(BR_PAGING_RAM_PIN, 1);
+            // microsDelay(1);
+            // if (_registerPrevInstrComplete)
+            //     microsDelay(5);
+            // digitalWrite(BR_PAGING_RAM_PIN, 0);
+            // microsDelay(1);
+            // if (_lastInstructionWasPrefixed)
+            //     microsDelay(5);
+            // digitalWrite(BR_PAGING_RAM_PIN, 1);
+            // microsDelay(1);
+            // digitalWrite(BR_PAGING_RAM_PIN, 0);
+
         }
-        else if (flags & BR_CTRL_BUS_WR_MASK)
+        else
         {
-            if (flags & BR_CTRL_BUS_MREQ_MASK)
-            {
-                _targetMemBuffer[addr] = data;
-            }
+            // Check if this is a prefix instruction - if so we need to avoid breaking at the wrong time
+            _lastInstructionWasPrefixed &= isPrefixInstruction(((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) ? data : retVal) & 0xff);
+
+            // // // Debug
+            // // // TODO
+            // digitalWrite(BR_PAGING_RAM_PIN, 1);
+            // microsDelay(1);
+            // for (int i = 0; i < 5; i++)
+            // {
+            //     digitalWrite(BR_PAGING_RAM_PIN, 0);
+            //     if (_registerPrevInstrComplete)
+            //         microsDelay(3);
+            //     else
+            //         microsDelay(1);
+            //     digitalWrite(BR_PAGING_RAM_PIN, 1);
+            //     microsDelay(1);
+            // }
+            // digitalWrite(BR_PAGING_RAM_PIN, 0);
+
         }
-        
     }
+
+    // if ((_registerMode == REGISTER_MODE_GET) && (_registerModeGotM1 || (flags & BR_CTRL_BUS_M1_MASK)))
+    // {
+    //     // We're now inserting instructions or getting results back
+    //     _registerModeGotM1 = true;
+    //     handleRegisterGet(addr, data, flags, retVal);
+    //     // Page-out paged RAM/ROM if required
+    //     if (descriptorTable.ramPaging)
+    //         digitalWrite(BR_PAGING_RAM_PIN, 1);
+    // }
+    // else if ((_registerMode == REGISTER_MODE_SET) && (_registerModeGotM1 || (flags & BR_CTRL_BUS_M1_MASK)))
+    // {
+    //     // We're now inserting instructions to set registers
+    //     _registerModeGotM1 = true;
+    //     handleRegisterSet(retVal);
+    //     // Page-out RAM/ROM if required
+    //     if (descriptorTable.ramPaging)
+    //         digitalWrite(BR_PAGING_RAM_PIN, 1);
+    // }
 
     return retVal;
 }

@@ -123,7 +123,7 @@ void CommandSerial::service()
         return;
 
     // See if characters to be processed
-    for (int rxCtr = 0; rxCtr < 1000; rxCtr++)
+    for (int rxCtr = 0; rxCtr < 5000; rxCtr++)
     {
         int rxCh = _pSerial->read();
         if (rxCh < 0)

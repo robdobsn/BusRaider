@@ -398,6 +398,16 @@ void McManager::targetClearAllIO()
     BusAccess::clearAllIO();
 }
 
+void McManager::targetPause()
+{
+    BusAccess::pause();
+}
+
+void McManager::targetRelease()
+{
+    BusAccess::pauseRelease();
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Target programming
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -522,6 +532,16 @@ void McManager::handleCommand(const char* pCmdJson,
     {
         LogWrite(FromMcManager, LOG_DEBUG, "ResetTarget");
         McManager::targetReset();
+    }
+    else if (strcasecmp(cmdName, "PauseTarget") == 0)
+    {
+        LogWrite(FromMcManager, LOG_DEBUG, "PauseTarget");
+        McManager::targetPause();
+    }
+    else if (strcasecmp(cmdName, "ReleaseTarget") == 0)
+    {
+        LogWrite(FromMcManager, LOG_DEBUG, "ReleaseTarget");
+        McManager::targetRelease();
     }
     else if (strcasecmp(cmdName, "IOClrTarget") == 0)
     {

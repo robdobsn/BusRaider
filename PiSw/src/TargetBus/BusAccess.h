@@ -112,6 +112,12 @@ typedef enum {
 #define BR_PIB_GPF_INPUT 0x00000000
 #define BR_PIB_GPF_OUTPUT 0x00249249
 
+// Debug code for ISR
+#define ISR_ASSERT(code) BusAccess::isrAssert(code)
+#define ISR_ASSERT_CODE_NONE 0
+#define ISR_ASSERT_CODE_UNPAGE_NOT_M1 1
+#define ISR_ASSERT_NUM_CODES 2
+
 class BusAccess
 {
 public:
@@ -185,6 +191,10 @@ public:
         }
     }
 
+    // Debug
+    static void isrAssert(int code);
+    static int isrAssertGetCount(int code);
+
 private:
     // Callback on bus access
     static BusAccessCBFnType* _pBusAccessCallback;
@@ -211,6 +221,9 @@ private:
     static uint32_t _pauseCurAddr;
     static uint32_t _pauseCurData;
     static uint32_t _pauseCurControlBus;
+
+    // Debug
+    static int _isrAssertCounts[ISR_ASSERT_NUM_CODES];
 
 private:
     // Set address
@@ -263,7 +276,7 @@ private:
     static const int CYCLES_DELAY_FOR_WAIT_CLEAR = 5;
     static const int CYCLES_DELAY_FOR_MREQ_FF_RESET = 20;
     static const int CYCLES_DELAY_FOR_DATA_DIRN = 20;
-    static const int CYCLES_DELAY_FOR_TARGET_READ = 20;
+    static const int CYCLES_DELAY_FOR_TARGET_READ = 100;
 
     // Delay in machine cycles for M1 to settle
     static const int CYCLES_DELAY_FOR_M1_SETTLING = 100;
