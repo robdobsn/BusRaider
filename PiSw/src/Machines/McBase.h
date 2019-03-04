@@ -36,8 +36,8 @@ public:
     // Bus monitor modes
     bool monitorIORQ;
     bool monitorMREQ;
-    bool emulatedRAM;
     bool ramPaging;
+    bool emulatedRAM;
     uint32_t emulatedRAMStart;
     uint32_t emulatedRAMLen;
     bool setRegistersByInjection;

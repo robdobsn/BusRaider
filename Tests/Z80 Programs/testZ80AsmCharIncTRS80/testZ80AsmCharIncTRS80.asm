@@ -7,7 +7,7 @@ loopstart:
 loophere:
 	ld hl,0x3c00
 	ld (hl),e
-	ld bc,0xffff
+	ld bc,0x0001
 loopin:
 	dec bc
 	ld a,b

@@ -50,8 +50,8 @@ McDescriptorTable McManager::defaultDescriptorTable = {
     // Bus monitor
     .monitorIORQ = false,
     .monitorMREQ = false,
-    .emulatedRAM = false,
     .ramPaging = false,
+    .emulatedRAM = false,
     .emulatedRAMStart = 0,
     .emulatedRAMLen = 0,
     .setRegistersByInjection = false,
@@ -207,9 +207,11 @@ bool McManager::setMachineIdx(int mcIdx, bool forceUpdate)
             _clockGen.enable(false);
         }
 
-        // Set single-step bus request
-        BusAccess::pauseRequestBusOnStep(!pMachine->getDescriptorTable(0)->emulatedRAM);
-        
+        // Set target machine in debug
+        TargetDebug* pDebug = TargetDebug::get();
+        if (pDebug)
+            pDebug->setup(pMachine);
+
         // Start
         pMachine->enable();
 

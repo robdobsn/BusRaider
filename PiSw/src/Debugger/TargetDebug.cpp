@@ -30,16 +30,16 @@ int TargetDebug::_breakpointHitIndex = 0;
 // Callback to send debug frame
 SendDebugMessageType* TargetDebug::_pSendDebugMessageCallback = NULL;
 
-// Get target
-TargetDebug* TargetDebug::get()
-{
-    return &__targetDebug;
-}
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Construction
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 TargetDebug::TargetDebug()
 {
+    _pTargetMachine = NULL;
     _debugInitalized = false;
     _debugInCPUStep = false;
+    _busControlRequestedForMemGrab = false;
     _instrWaitRestoreNeeded = false;
     _instrWaitCurMode = false;
     _registerMode = REGISTER_MODE_NONE;
@@ -54,6 +54,24 @@ TargetDebug::TargetDebug()
     _breakpointHitIndex = 0;
     _registerSetCodeLen = 0;
 }
+// Get singleton
+TargetDebug* TargetDebug::get()
+{
+    return &__targetDebug;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Setup
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TargetDebug::setup(McBase* pTargetMachine)
+{
+    _pTargetMachine = pTargetMachine;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Breakpoints
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void TargetDebug::enableBreakpoint(int idx, bool enabled)
 {
@@ -82,6 +100,10 @@ void TargetDebug::setBreakpointPCAddr(int idx, uint32_t pcVal)
         return;
     _breakpoints[idx].pcValue = pcVal;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Memory access
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 uint8_t TargetDebug::getMemoryByte(uint32_t addr)
 {
@@ -170,17 +192,14 @@ void TargetDebug::startSetRegisterSequence(Z80Registers* pRegs)
 // Grab all physical memory and release bus
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetDebug::grabMemoryAndReleaseBusRq(McBase* pMachine, [[maybe_unused]] bool singleStep)
+void TargetDebug::grabMemoryAndReleaseBusRq()
 {
-    // Start sequence of getting registers
-    startGetRegisterSequence();
-
     // Check if the bus in under BusRaider control
-    if (BusAccess::isUnderControl())
+    if (BusAccess::isUnderControl() && _pTargetMachine)
     {
-        uint32_t emuRAM = pMachine->getDescriptorTable(0)->emulatedRAM;
-        uint32_t emuRAMStart = pMachine->getDescriptorTable(0)->emulatedRAMStart;
-        uint32_t emuRAMLen = pMachine->getDescriptorTable(0)->emulatedRAMLen;
+        uint32_t emuRAM = _pTargetMachine->getDescriptorTable(0)->emulatedRAM;
+        uint32_t emuRAMStart = _pTargetMachine->getDescriptorTable(0)->emulatedRAMStart;
+        uint32_t emuRAMLen = _pTargetMachine->getDescriptorTable(0)->emulatedRAMLen;
         // Check if emulating memory
         if (emuRAM && (emuRAMLen > 0))
         {
@@ -241,6 +260,22 @@ bool TargetDebug::matches(const char* s1, const char* s2, int maxLen)
 
 void TargetDebug::service()
 {
+    // Check for memory grab required
+    if (_busControlRequestedForMemGrab)
+    {
+        // No longer request
+        _busControlRequestedForMemGrab = false;
+
+        // Release paging if used
+        if (_pTargetMachine && _pTargetMachine->getDescriptorTable(0)->ramPaging)
+            digitalWrite(BR_PAGING_RAM_PIN, 0);
+
+        // Request bus so we can grab memory data before entering a wait state
+        if (BusAccess::controlRequestAndTake() == BR_OK)
+            grabMemoryAndReleaseBusRq();
+    }
+
+    // Check for breakpoint hit
     if (_breakpointHitFlag)
     {
         LogWrite(FromTargetDebug, LOG_DEBUG, "breakpoint hit %d debug cb %d", 
@@ -469,7 +504,8 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
         BR_RETURN_TYPE retc = BusAccess::pauseStep();
         if (retc == BR_OK)
         {
-            grabMemoryAndReleaseBusRq(pMachine, true);
+            // Start sequence of getting registers
+            startGetRegisterSequence();
             // LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step done");
             _debugInCPUStep = true;
 
@@ -489,7 +525,8 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
             BR_RETURN_TYPE retc = BusAccess::pause();
             if (retc == BR_OK)
             {
-                grabMemoryAndReleaseBusRq(pMachine, false);
+                // Start sequence of getting registers
+                startGetRegisterSequence();
                 // LogWrite(FromTargetDebug, LOG_DEBUG, "now paused SEND-BLANK");
                 _debugInCPUStep = true;
             }
@@ -513,7 +550,6 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
         strlcat(pResponse, "Unknown command", maxResponseLen);
     }
     
-
     // Complete and add command request
     strlcat(pResponse, (BusAccess::pauseIsPaused() ? "\ncommand@cpu-step> " : "\ncommand> "), maxResponseLen);
 
@@ -901,7 +937,6 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
             // After regsiter set/get there should always be an M1 cycle
             ISR_ASSERT(ISR_ASSERT_CODE_UNPAGE_NOT_M1);
         }
-
     }
 
     // See if breakpoints enabled and M1 cycle
@@ -946,6 +981,14 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
                 // Page-out RAM/ROM if required
                 if (descriptorTable.ramPaging)
                     digitalWrite(BR_PAGING_RAM_PIN, 1);
+            }
+
+            // If register get/set is finished after this cycle then request the bus (if not fully emulating RAM)
+            if ((_registerMode == REGISTER_MODE_UNPAGE) && ((!descriptorTable.emulatedRAM) || 
+                    (descriptorTable.emulatedRAMStart != 0) || (descriptorTable.emulatedRAMLen != 0x10000)))
+            {
+                BusAccess::controlRequest();
+                _busControlRequestedForMemGrab = true;
             }
 
             // // Debug

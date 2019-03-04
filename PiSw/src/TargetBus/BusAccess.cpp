@@ -35,9 +35,6 @@ volatile bool BusAccess::_pauseIsPaused = false;
 // Bus under BusRaider control
 volatile bool BusAccess::_busIsUnderControl = false;
 
-// Request bus when single stepping
-bool BusAccess::_requestBusWhenSingleStepping = false;
-
 // // Bus values while single stepping
 uint32_t BusAccess::_pauseCurAddr = 0;
 uint32_t BusAccess::_pauseCurData = 0;
@@ -85,7 +82,7 @@ void BusAccess::init()
     // Data bus direction
     setPinOut(BR_DATA_DIR_IN, 1);
 
-    // Paging
+    // Paging initially inactive
     setPinOut(BR_PAGING_RAM_PIN, 0);
     
     // Remember wait interrupts currently disabled
@@ -850,14 +847,7 @@ void BusAccess::waitIntEnable()
 
 BR_RETURN_TYPE BusAccess::pause()
 {
-    if (_pauseIsPaused)
-        return BR_ALREADY_DONE;
-
-    // Request bus so we can grab memory data before entering a wait state
-    if (_requestBusWhenSingleStepping)
-        if (controlRequestAndTake() != BR_OK)
-            return BR_NO_BUS_ACK;
-
+    // Pause will occur in the ISR when next possible to do so
     _pauseIsPaused = true;
 
     return BR_OK;
@@ -884,10 +874,6 @@ BR_RETURN_TYPE BusAccess::pauseStep()
     // Disable interrupts
     lowlev_disable_fiq();
 
-    // Request if required
-    if (_requestBusWhenSingleStepping)
-        controlRequest();
-
     // Timing critical in here
     lowlev_disable_irq();
 
@@ -900,11 +886,6 @@ BR_RETURN_TYPE BusAccess::pauseStep()
     // Enable interrupts
     lowlev_enable_irq();
     lowlev_enable_fiq();
-
-    // Request bus so we can grab memory data before entering a wait state
-    if (_requestBusWhenSingleStepping)
-        if (controlRequestAndTake() != BR_OK)
-            return BR_NO_BUS_ACK;
 
     return BR_OK;
 }
@@ -933,11 +914,6 @@ BR_RETURN_TYPE BusAccess::pauseRelease()
     lowlev_enable_fiq();
 
     return BR_OK;
-}
-
-void BusAccess::pauseRequestBusOnStep(bool requestBus)
-{
-    _requestBusWhenSingleStepping = requestBus;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

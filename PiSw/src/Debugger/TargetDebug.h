@@ -38,8 +38,10 @@ public:
 public:
     TargetDebug();
 
+    // Service, Setup etc
     static TargetDebug* get();
     void service();
+    void setup(McBase* pTargetMachine);
 
     bool debuggerCommand(McBase* pMachine, [[maybe_unused]] const char* pCommand, 
             [[maybe_unused]] char* pResponse, [[maybe_unused]] int maxResponseLen);
@@ -69,7 +71,7 @@ public:
 private:
 
     bool matches(const char* s1, const char* s2, int maxLen);
-    void grabMemoryAndReleaseBusRq(McBase* pMachine, bool singleStep);
+    void grabMemoryAndReleaseBusRq();
     void enableBreakpoint(int idx, bool enabled);
     void setBreakpointMessage(int idx, const char* hitMessage);
     void setBreakpointPCAddr(int idx, uint32_t pcVal);
@@ -78,6 +80,9 @@ private:
     void handleRegisterSet(uint32_t& retVal);
     bool isPrefixInstruction(uint32_t instr);
     void store16BitVal(uint8_t arry[], int offset, uint16_t val);
+
+    // Machine being debugged
+    McBase* _pTargetMachine;
 
     // Callback to send debug frames
     static SendDebugMessageType* _pSendDebugMessageCallback;
@@ -94,6 +99,9 @@ private:
     // Flags to help deal with prefixed instructions when single-stepping
     bool _thisInstructionIsPrefixed;
     bool _lastInstructionWasPrefixed;
+
+    // Flag indicating bus has been requested for full-memory read
+    bool _busControlRequestedForMemGrab;
 
     // Current MREQ monitor mode when starting register set
     bool _instrWaitRestoreNeeded;

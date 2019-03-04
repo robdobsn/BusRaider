@@ -39,8 +39,8 @@ McDescriptorTable McTRS80::_descriptorTable = {
     // Bus monitor
     .monitorIORQ = true,
     .monitorMREQ = false,
+    .ramPaging = true,
     .emulatedRAM = false,
-    .ramPaging = false,
     .emulatedRAMStart = 0,
     .emulatedRAMLen = 0,
     .setRegistersByInjection = false,

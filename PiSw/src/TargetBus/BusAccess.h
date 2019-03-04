@@ -138,6 +138,7 @@ public:
     static void targetIRQ(int durationUs = -1);
         
     // Bus control
+    static void controlRequest();
     static BR_RETURN_TYPE controlRequestAndTake();
     static void controlRelease(bool resetTargetOnRelease);
     static bool isUnderControl();
@@ -177,7 +178,6 @@ public:
     static BR_RETURN_TYPE pauseRelease();
     static void pauseGetCurrent(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags);
     static bool pauseIsPaused();
-    static void pauseRequestBusOnStep(bool requestBus);
 
     // Get return type string
     static const char* retcString(BR_RETURN_TYPE retc)
@@ -215,9 +215,6 @@ private:
     // Bus currently under BusRaider control
     static volatile bool _busIsUnderControl;
 
-    // Request bus when single stepping
-    static bool _requestBusWhenSingleStepping;
-
     // Bus values while single stepping
     static uint32_t _pauseCurAddr;
     static uint32_t _pauseCurData;
@@ -240,7 +237,6 @@ private:
     static uint8_t pibGetValue();
 
     // Bus request/ack
-    static void controlRequest();
     static int controlBusAcknowledged();
     static void controlTake();
 

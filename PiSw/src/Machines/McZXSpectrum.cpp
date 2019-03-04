@@ -43,8 +43,8 @@ McDescriptorTable McZXSpectrum::_descriptorTable = {
     // Bus monitor
     .monitorIORQ = true,
     .monitorMREQ = false,
+    .ramPaging = true,
     .emulatedRAM = false,
-    .ramPaging = false,
     .emulatedRAMStart = 0,
     .emulatedRAMLen = 0,
     .setRegistersByInjection = false,
@@ -212,16 +212,16 @@ void McZXSpectrum::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[mayb
     if (((ucModifiers & KEY_MOD_LCTRL) != 0) || ((ucModifiers & KEY_MOD_RCTRL) != 0))
         _spectrumKeyboardIOBitMap[7] &= 0xfd;
 
-    LogWrite(_logPrefix, LOG_DEBUG, "KeyBits %02x %02x %02x %02x %02x %02x %02x %02x", 
-                    _spectrumKeyboardIOBitMap[0],
-                    _spectrumKeyboardIOBitMap[1],
-                    _spectrumKeyboardIOBitMap[2],
-                    _spectrumKeyboardIOBitMap[3],
-                    _spectrumKeyboardIOBitMap[4],
-                    _spectrumKeyboardIOBitMap[5],
-                    _spectrumKeyboardIOBitMap[6],
-                    _spectrumKeyboardIOBitMap[7]
-                    );
+    // LogWrite(_logPrefix, LOG_DEBUG, "KeyBits %02x %02x %02x %02x %02x %02x %02x %02x", 
+    //                 _spectrumKeyboardIOBitMap[0],
+    //                 _spectrumKeyboardIOBitMap[1],
+    //                 _spectrumKeyboardIOBitMap[2],
+    //                 _spectrumKeyboardIOBitMap[3],
+    //                 _spectrumKeyboardIOBitMap[4],
+    //                 _spectrumKeyboardIOBitMap[5],
+    //                 _spectrumKeyboardIOBitMap[6],
+    //                 _spectrumKeyboardIOBitMap[7]
+    //                 );
 
 }
 

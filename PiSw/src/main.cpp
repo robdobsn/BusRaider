@@ -28,7 +28,7 @@ typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.035";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.036";
 static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
@@ -208,9 +208,9 @@ extern "C" int main()
     new McTerminal();
     new McTRS80();
     new McRobsZ80();
-    new McDebugZ80();
+    // new McDebugZ80();
     new McZXSpectrum();
-    new McZXSpectrumDebug();
+    // new McZXSpectrumDebug();
 
     // Number of machines
     LogWrite(FromMain, LOG_WARNING, "%d machines supported\n", McManager::getNumMachines());
