@@ -43,8 +43,7 @@ public:
     void service();
     void setup(McBase* pTargetMachine);
 
-    bool debuggerCommand(McBase* pMachine, [[maybe_unused]] const char* pCommand, 
-            [[maybe_unused]] char* pResponse, [[maybe_unused]] int maxResponseLen);
+    bool debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen);
 
     uint32_t handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
             [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal,
@@ -70,7 +69,7 @@ public:
 
 private:
 
-    bool matches(const char* s1, const char* s2, int maxLen);
+    bool commandMatch(const char* s1, const char* s2);
     void grabMemoryAndReleaseBusRq();
     void enableBreakpoint(int idx, bool enabled);
     void setBreakpointMessage(int idx, const char* hitMessage);
@@ -80,6 +79,7 @@ private:
     void handleRegisterSet(uint32_t& retVal);
     bool isPrefixInstruction(uint32_t instr);
     void store16BitVal(uint8_t arry[], int offset, uint16_t val);
+    bool procDebuggerLine(char* pCmd, char* pResponse, int maxResponseLen);
 
     // Machine being debugged
     McBase* _pTargetMachine;

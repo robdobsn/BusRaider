@@ -9,13 +9,12 @@ McBase::McBase()
     McManager::add(this);
 }
 
-bool McBase::debuggerCommand([[maybe_unused]] const char* pCommand, 
-        [[maybe_unused]] char* pResponse, [[maybe_unused]] int maxResponseLen)
+bool McBase::debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen)
 {
     TargetDebug* pDebug = TargetDebug::get();
     // LogWrite("McBase", LOG_DEBUG, "debuggerCommand %s %d %d\n", pCommand, 
     //         maxResponseLen, pDebug);
     if (pDebug)
-        return pDebug->debuggerCommand(this, pCommand, pResponse, maxResponseLen);
+        return pDebug->debuggerCommand(pCommand, pResponse, maxResponseLen);
     return false;
 }

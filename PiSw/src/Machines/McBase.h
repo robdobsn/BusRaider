@@ -63,7 +63,7 @@ class McBase
     virtual void displayRefresh() = 0;
 
     // Handle reset for the machine - if false returned then the bus raider will issue a hardware reset
-    virtual bool reset()
+    virtual bool reset([[maybe_unused]] bool holdInReset = false)
     {
         return false;
     }
@@ -75,5 +75,5 @@ class McBase
     virtual void fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen) = 0;
 
     // Handle debugger command
-    virtual bool debuggerCommand([[maybe_unused]] const char* pCommand, [[maybe_unused]] char* pResponse, [[maybe_unused]] int maxResponseLen);
+    virtual bool debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen);
 };

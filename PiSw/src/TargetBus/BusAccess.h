@@ -119,17 +119,17 @@ typedef enum {
 #define ISR_ASSERT_CODE_DEBUG 2
 #define ISR_ASSERT_NUM_CODES 3
 
+// Width of a reset pulse
+#define BR_RESET_PULSE_US 100
+
 class BusAccess
 {
 public:
     // Initialise the bus raider
     static void init();
 
-    // Reset host
-    static void targetReset();
-    
-    // Hold host in reset state - call targetReset() to clear reset
-    static void targetResetHold();
+    // Reset host - call pause release to release reset
+    static void targetReset(bool holdInReset = false);
     
     // NMI host
     static void targetNMI(int durationUs = -1);

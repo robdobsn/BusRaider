@@ -99,7 +99,7 @@ void BusAccess::init()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Reset the host
-void BusAccess::targetReset()
+void BusAccess::targetReset(bool holdInReset)
 {
     // Disable wait interrupts
     waitIntDisable();
@@ -110,8 +110,12 @@ void BusAccess::targetReset()
     // Reset by taking reset_bar low and then high
     muxSet(BR_MUX_RESET_Z80_BAR_LOW);
 
+    // Check if reset should be released
+    if (holdInReset)
+        return;
+
     // Hold the reset line low
-    microsDelay(100);
+    microsDelay(BR_RESET_PULSE_US);
 
     // Clear WAIT flip-flop
     clearWaitFF();
@@ -126,16 +130,6 @@ void BusAccess::targetReset()
 
     // Clear wait detected
     clearWaitDetected();
-}
-
-// Hold host in reset state - call targetReset() to clear reset
-void BusAccess::targetResetHold()
-{
-    // Disable wait interrupts
-    waitIntDisable();
-
-    // Reset by taking reset_bar low
-    muxSet(BR_MUX_RESET_Z80_BAR_LOW);
 }
 
 // Non-maskable interrupt the host
@@ -262,7 +256,7 @@ void BusAccess::controlRelease(bool resetTargetOnRelease)
 
         // No longer request bus
         digitalWrite(BR_BUSRQ_BAR, 1);
-        microsDelay(10);
+        microsDelay(BR_RESET_PULSE_US);
         muxClear();
     }
     else
@@ -884,8 +878,8 @@ BR_RETURN_TYPE BusAccess::pauseStep()
     clearWaitDetected();
 
     // Enable interrupts
-    lowlev_enable_irq();
     lowlev_enable_fiq();
+    lowlev_enable_irq();
 
     return BR_OK;
 }
@@ -906,12 +900,15 @@ BR_RETURN_TYPE BusAccess::pauseRelease()
     // Clear the WAIT state flip-flop
     clearWaitFF();
 
+    // Remove reset or other signal
+    muxClear();
+
     // Clear wait detected
     clearWaitDetected();
 
     // Enable interrupts
-    lowlev_enable_irq();
     lowlev_enable_fiq();
+    lowlev_enable_irq();
 
     return BR_OK;
 }

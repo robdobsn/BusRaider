@@ -9,6 +9,7 @@
 #include "../System/piwiring.h"
 #include "../System/lowlib.h"
 #include "../System/rdutils.h"
+#include "../Machines/McManager.h"
 
 // Module name
 static const char FromTargetDebug[] = "TargetDebug";
@@ -230,7 +231,7 @@ void TargetDebug::grabMemoryAndReleaseBusRq()
 // Utility functions
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool TargetDebug::matches(const char* s1, const char* s2, int maxLen)
+bool TargetDebug::commandMatch(const char* s1, const char* s2)
 {
     const char* p1 = s1;
     const char* p2 = s2;
@@ -238,7 +239,7 @@ bool TargetDebug::matches(const char* s1, const char* s2, int maxLen)
     while (*p1 == ' ')
         p1++;
     // Check match from start of received string
-    for (int i = 0; i < maxLen; i++)
+    while(*p1)
     {
         if (*p2 == 0)
         {
@@ -247,11 +248,18 @@ bool TargetDebug::matches(const char* s1, const char* s2, int maxLen)
             return *p1 == 0;
         }
         if (*p1 == 0)
+        {
+            // LogWrite(FromTargetDebug, LOG_DEBUG, "Compare <%s> <%s> FALSE s1 shorter", s1, s2);
             return false;
+        }
         if (rdtolower(*p1++) != rdtolower(*p2++))
+        {
+            // LogWrite(FromTargetDebug, LOG_DEBUG, "Compare <%s> <%s> FALSE no match at %d", s1, s2, p1 - s1);
             return false;
+        }
     }
-    return false;
+    // LogWrite(FromTargetDebug, LOG_DEBUG, "Compare <%s> <%s> %s ", s1, s2, *p2 == 0 ? "TRUE" : "FALSE");
+    return (*p2 == 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -290,16 +298,43 @@ void TargetDebug::service()
 // Debugger command handler - based on ZEsarUX / Z80 Debugger for VS Code
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char* pCommand, 
-        [[maybe_unused]] char* pResponse, [[maybe_unused]] int maxResponseLen)
+bool TargetDebug::debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen)
 {
-    static const int MAX_CMD_STR_LEN = 2000;
-    char command[MAX_CMD_STR_LEN+1];
-    strlcpy(command, pCommand, MAX_CMD_STR_LEN);
+    // Empty response initially
     pResponse[0] = 0;
 
+    // Break into lines
+    char* pCmdCur = pCommand;
+    char* pCmdNext = pCmdCur;
+    while (*pCmdCur)
+    {
+        // Find end of command string
+        while(*pCmdNext)
+        {
+            if (*pCmdNext == '\n')
+            {
+                // Replace newline with terminator
+                *pCmdNext = 0;
+                // Move to next command (or null)
+                pCmdNext++;
+                break;
+            }
+            pCmdNext++;
+        }
+
+        // Process the command
+        procDebuggerLine(pCmdCur, pResponse, maxResponseLen);
+
+        // Next command
+        pCmdCur = pCmdNext;
+    }
+    return true;
+}
+
+bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseLen)
+{
     // Split
-    char* cmdStr = strtok(command, " ");
+    char* cmdStr = strtok(pCmd, " ");
     // // Trim command string
     // int j = 0;
     // for (size_t i = 0; i < strlen(cmdStr); i++)
@@ -314,32 +349,36 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
     char* argStr2 = strtok(NULL, " ");
     char* argRest = strtok(NULL, "");
 
-    if (matches(cmdStr, "about", MAX_CMD_STR_LEN))
+    if (commandMatch(cmdStr, "about"))
     {
         strlcat(pResponse, "BusRaider RCP", maxResponseLen);
     }
-    else if (matches(cmdStr, "get-version", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "get-version"))
     {
         strlcat(pResponse, "7.2-SN", maxResponseLen);
     }
-    else if (matches(cmdStr, "get-current-machine", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "get-current-machine"))
     {
-        strlcat(pResponse, pMachine->getDescriptorTable(0)->machineName, maxResponseLen);
+        if (_pTargetMachine)
+            strlcat(pResponse, _pTargetMachine->getDescriptorTable(0)->machineName, maxResponseLen);
+        else
+            strlcat(pResponse, "Unknown Machine", maxResponseLen);
     }
-    else if (matches(cmdStr, "set-debug-settings", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "set-debug-settings"))
     {
         strlcat(pResponse, "", maxResponseLen);
         _debugInitalized = true;
     }
-    else if (matches(cmdStr, "hard-reset-cpu", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "hard-reset-cpu"))
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "Reset machine");
-        pMachine->reset();
+        // LogWrite(FromTargetDebug, LOG_DEBUG, "Reset machine");
+        if (_pTargetMachine)
+            _pTargetMachine->reset();
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (matches(cmdStr, "enter-cpu-step", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "enter-cpu-step"))
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "enter-cpu-step");
+        // LogWrite(FromTargetDebug, LOG_DEBUG, "enter-cpu-step");
         BR_RETURN_TYPE retc = BusAccess::pause();
         if (retc == BR_OK)
         {
@@ -351,9 +390,9 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
         }
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (matches(cmdStr, "exit-cpu-step", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "exit-cpu-step"))
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "exit-cpu-step");
+        // LogWrite(FromTargetDebug, LOG_DEBUG, "exit-cpu-step");
         BusAccess::waitRestoreDefaults();
         BR_RETURN_TYPE retc = BusAccess::pauseRelease();
         _debugInCPUStep = false;
@@ -361,9 +400,9 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
             LogWrite(FromTargetDebug, LOG_DEBUG, "pauseRelease failed in exit-cpu-step (%s)", BusAccess::retcString(retc));
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (matches(cmdStr, "quit", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "quit"))
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "quit");
+        // LogWrite(FromTargetDebug, LOG_DEBUG, "quit");
         BusAccess::waitRestoreDefaults();
         BR_RETURN_TYPE retc = BusAccess::pauseRelease();
         _debugInCPUStep = false;
@@ -372,42 +411,43 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
         _debugInitalized = false;
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (matches(cmdStr, "smartload", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "smartload"))
     {
         LogWrite(FromTargetDebug, LOG_DEBUG, "smartload %s", argStr);
+        McManager::handleTargetProgram(true, true);
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (matches(cmdStr, "clear-membreakpoints", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "clear-membreakpoints"))
     {
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (matches(cmdStr, "enable-breakpoint", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "enable-breakpoint"))
     {
         // LogWrite(FromTargetDebug, LOG_DEBUG, "enable breakpoint %s", argStr);
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
         enableBreakpoint(breakpointIdx, true);
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (matches(cmdStr, "enable-breakpoints", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "enable-breakpoints"))
     {
         _breakpointsEnabled = true;
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (matches(cmdStr, "disable-breakpoint", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "disable-breakpoint"))
     {
         // LogWrite(FromTargetDebug, LOG_DEBUG, "disable breakpoint %s", argStr);
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
         enableBreakpoint(breakpointIdx, false);
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (matches(cmdStr, "disable-breakpoints", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "disable-breakpoints"))
     {
         _breakpointsEnabled = false;
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (matches(cmdStr, "set-breakpoint", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "set-breakpoint"))
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "set breakpoint %s %s", argStr, argStr2);
+        // LogWrite(FromTargetDebug, LOG_DEBUG, "set breakpoint %s %s", argStr, argStr2);
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
         if ((argStr2[0] != 'P') || (argStr2[1] != 'C') || (argStr2[2] != '='))
         {
@@ -420,11 +460,11 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
             setBreakpointPCAddr(breakpointIdx, addr);
         }        
     }
-    else if (matches(cmdStr, "set-breakpointaction", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "set-breakpointaction"))
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "set breakpoint action %s %s %s", argStr, argStr2, argRest);
+        // LogWrite(FromTargetDebug, LOG_DEBUG, "set breakpoint action %s %s %s", argStr, argStr2, argRest);
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
-        if (!matches(argStr2, "prints", MAX_CMD_STR_LEN))
+        if (!commandMatch(argStr2, "prints"))
         {
             LogWrite(FromTargetDebug, LOG_DEBUG, "breakpoint doesn't have message");
         }
@@ -433,7 +473,12 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
             setBreakpointMessage(breakpointIdx, argRest);
         }
     }
-    else if (matches(cmdStr, "get-registers", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "disassemble"))
+    {
+        // Disassembly not currently supported
+        strlcat(pResponse, "", maxResponseLen);
+    }
+    else if (commandMatch(cmdStr, "get-registers"))
     {
         uint32_t curAddr = 0;
         uint32_t curData = 0;
@@ -442,7 +487,7 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
         _z80Registers.PC = curAddr;
         _z80Registers.format1(pResponse, maxResponseLen);
     }
-    else if (matches(cmdStr, "read-memory", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "read-memory"))
     {
         // LogWrite(FromTargetDebug, LOG_DEBUG, "read mem %s %s", argStr, argStr2);
         int startAddr = strtol(argStr, NULL, 10);
@@ -457,23 +502,23 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
             }
         }
     }
-    else if (matches(cmdStr, "get-tstates-partial", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "get-tstates-partial"))
     {
         strlcat(pResponse, "Unknown command get-tstates-partial", maxResponseLen);
     }    
-    else if (matches(cmdStr, "check-extensions", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "check-extensions"))
     {
         strlcat(pResponse, "Unknown command check-extensions", maxResponseLen);
-    }    
-    else if (matches(cmdStr, "reset-tstates-partial", MAX_CMD_STR_LEN))
+    }
+    else if (commandMatch(cmdStr, "reset-tstates-partial"))
     {
         strlcat(pResponse, "Unknown command reset-tstates-partial", maxResponseLen);
     }
-    else if (matches(cmdStr, "get-cpu-frequency", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "get-cpu-frequency"))
     {
         strlcat(pResponse, "Unknown command get-cpu-frequency", maxResponseLen);
     }
-    else if (matches(cmdStr, "get-stack-backtrace", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "get-stack-backtrace"))
     {
         int startAddr = _z80Registers.SP;
         int numFrames = strtol(argStr, NULL, 10);
@@ -487,9 +532,9 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
             }
         }
     }
-    else if (matches(cmdStr, "run", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "run"))
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "run");
+        // LogWrite(FromTargetDebug, LOG_DEBUG, "run");
         BR_RETURN_TYPE retc = BusAccess::pauseRelease();
         _debugInCPUStep = false;
         if (retc != BR_OK)
@@ -498,9 +543,9 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
                     maxResponseLen);
         return true;
     }
-    else if (matches(cmdStr, "cpu-step", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, "cpu-step"))
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step");
+        // LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step");
         BR_RETURN_TYPE retc = BusAccess::pauseStep();
         if (retc == BR_OK)
         {
@@ -516,9 +561,9 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
         }
         strlcat(pResponse, "", maxResponseLen);
     }
-    else if (matches(cmdStr, "\n", MAX_CMD_STR_LEN))
+    else if (commandMatch(cmdStr, ""))
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "blank (step) %s", _debugInitalized ? "" : "not in debug mode");
+        // LogWrite(FromTargetDebug, LOG_DEBUG, "blank (step) %s", _debugInitalized ? "" : "not in debug mode");
         if (_debugInitalized)
         {
             // Blank is used for pause
@@ -541,12 +586,12 @@ bool TargetDebug::debuggerCommand(McBase* pMachine, [[maybe_unused]] const char*
     else
     {
         LogWrite(FromTargetDebug, LOG_DEBUG, "unknown command %s", cmdStr);
-        for (unsigned int i = 0; i < strlen(pCommand); i++)
-        {
-            char chBuf[10];
-            ee_sprintf(chBuf, "%02x ", pCommand[i]);
-            strlcat(pResponse, chBuf, maxResponseLen);
-        }
+        // for (unsigned int i = 0; i < strlen(pCommand); i++)
+        // {
+        //     char chBuf[10];
+        //     ee_sprintf(chBuf, "%02x ", pCommand[i]);
+        //     strlcat(pResponse, chBuf, maxResponseLen);
+        // }
         strlcat(pResponse, "Unknown command", maxResponseLen);
     }
     

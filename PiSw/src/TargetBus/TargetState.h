@@ -36,6 +36,6 @@ public:
     static unsigned char* getMemoryImagePtr();
     static void setTargetRegisters(Z80Registers& regs);
     static bool areRegistersValid();
-    static void getTargetRegsAndInvalidate(Z80Registers& regs);
+    static void getTargetRegs(Z80Registers& regs);
     static void handleExecAddr(uint32_t addr);
 };

@@ -28,10 +28,14 @@ typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.036";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.050";
 static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Globals
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Log string
 const char* FromMain = "Main";
@@ -52,6 +56,10 @@ bool _immediateMode = false;
 char _immediateModeLine[IMM_MODE_LINE_MAXLEN+1];
 int _immediateModeLineLen = 0;
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Callbacks
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void uartWriteString(const char* pStr)
 {
     while (*pStr)
@@ -71,12 +79,6 @@ void handlePutToSerialForCmdHandler(const uint8_t* pBuf, int len)
     for (int i = 0; i < len; i++)
         mainUart.write(pBuf[i]);
 }
-
-// Function to handle OTA update
-// void handleOtaUpdate(const uint8_t* pData, int dataLen)
-// {
-//     OTAUpdate::performUpdate(pData, dataLen);
-// }
 
 int errorCounts[UartMaxi::UART_ERROR_FULL+1];
 
@@ -100,24 +102,6 @@ void serviceGetFromSerial()
         CommandHandler::handleSerialReceivedChars(buf, 1);
     }    
 }
-
-// void handleMachineCommand(const char* pCmdJson, 
-//                     [[maybe_unused]] const uint8_t* pParams, [[maybe_unused]] int paramsLen,
-//                     char* pRespJson, int maxRespLen)
-// {
-//     McManager::handleCommand(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
-// }
-
-// extern "C" void setMachineByName(const char* mcName)
-// {
-//     // Set the machine
-//     if (McManager::setMachineByName(mcName))
-//     {
-//         // Set the display
-//         layout_display();
-//     }
-
-// }
 
 extern "C" void setMachineOptions(const char* mcOpts)
 {
@@ -178,6 +162,10 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
     if (pMc)
         pMc->keyHandler(ucModifiers, rawKeys);
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Main
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 extern "C" int main()
 {
@@ -416,7 +404,7 @@ extern "C" int main()
             const int MAX_REFRESH_STR_LEN = 40;
             const char* refreshText = "Refresh ";
             char refreshStr[MAX_REFRESH_STR_LEN+1] = "  ";
-            refreshStr[0] = lastActivityTickerState ? '|' : '-';
+            strlcpy(refreshStr, lastActivityTickerState ? "  | " : "  - ", MAX_REFRESH_STR_LEN);
             lastActivityTickerState = !lastActivityTickerState;
             strlcat(refreshStr, refreshText, MAX_REFRESH_STR_LEN);
             uint8_t rateStr[20];

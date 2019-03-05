@@ -62,10 +62,10 @@ public:
 
     // Debug message handling
     static void sendDebugMessage(const char* pStr, const char* rdpMessageIdStr);
-    static bool debuggerCommand(const char* pCommand, char* pResponse, int maxResponseLen);
+    static bool debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen);
 
     // Target programming
-    static void handleTargetProgram(const char* cmdName);
+    static void handleTargetProgram(bool resetAfterProgramming, bool holdInPause);
 
     // Target control
     static void targetReset();

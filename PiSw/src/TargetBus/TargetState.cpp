@@ -89,11 +89,10 @@ bool TargetState::areRegistersValid()
     return _targetRegsValid;
 }
 
-void TargetState::getTargetRegsAndInvalidate(Z80Registers& regs)
+void TargetState::getTargetRegs(Z80Registers& regs)
 {
     regs = _targetRegisters;
-    _targetRegsValid = false;
-    LogWrite(FromTargetState, LOG_DEBUG, "getTargetRegsAndInvalidate PC=%04x\n", regs.PC);
+    LogWrite(FromTargetState, LOG_DEBUG, "getTargetRegs PC=%04x\n", regs.PC);
 }
 
 void TargetState::handleExecAddr(uint32_t addr)

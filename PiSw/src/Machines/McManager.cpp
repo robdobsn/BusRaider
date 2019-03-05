@@ -317,7 +317,7 @@ void McManager::sendDebugMessage(const char* pStr, const char* rdpMessageIdStr)
         _pCommandHandler->sendDebugMessage(pStr, rdpMessageIdStr);
 }
 
-bool McManager::debuggerCommand(const char* pCommand, char* pResponse, int maxResponseLen)
+bool McManager::debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen)
 {
     McBase* pMc = getMachine();
     // LogWrite(FromMcManager, LOG_DEBUG, "debuggerCommand %s %d %d\n", pCommand, 
@@ -415,8 +415,9 @@ void McManager::targetRelease()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Handle programming of target machine
-void McManager::handleTargetProgram(const char* cmdName)
+void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause)
 {
+    // Check there is something to write
     if (TargetState::numMemoryBlocks() == 0) 
     {
         // Nothing new to write
@@ -424,6 +425,10 @@ void McManager::handleTargetProgram(const char* cmdName)
     } 
     else 
     {
+        // Release bus if paused or controlled
+        BusAccess::controlRelease(true);
+        BusAccess::pauseRelease();
+
         // Handle programming in one BUSRQ/BUSACK pass
         if (BusAccess::controlRequestAndTake() != BR_OK)
         {
@@ -439,8 +444,12 @@ void McManager::handleTargetProgram(const char* cmdName)
         // Written
         LogWrite(FromMcManager, LOG_DEBUG, "ProgramTarget - written %d blocks", TargetState::numMemoryBlocks());
 
+        // Check for hold in pause
+        if (holdInPause)
+            BusAccess::pause();
+
         // Check for reset too
-        if (strcasecmp(cmdName, "ProgramAndReset") == 0)
+        if (resetAfterProgramming)
         {
             LogWrite(FromMcManager, LOG_DEBUG, "Starting target code");
             bool performHardReset = true;
@@ -453,7 +462,7 @@ void McManager::handleTargetProgram(const char* cmdName)
                 {
                     // Use the BusAccess module to inject instructions to set registers
                     Z80Registers regs;
-                    TargetState::getTargetRegsAndInvalidate(regs);
+                    TargetState::getTargetRegs(regs);
                     pDebug->startSetRegisterSequence(&regs);
                     performHardReset = false;
                 }
@@ -462,7 +471,7 @@ void McManager::handleTargetProgram(const char* cmdName)
                     // Generate a code snippet to set registers and run
                     uint8_t regSetCode[TargetDebug::MAX_REGISTER_SET_CODE_LEN];
                     Z80Registers regs;
-                    TargetState::getTargetRegsAndInvalidate(regs);
+                    TargetState::getTargetRegs(regs);
                     int codeLen = pDebug->getInstructionsToSetRegs(regs, regSetCode, TargetDebug::MAX_REGISTER_SET_CODE_LEN);
                     if (codeLen != 0)
                     {
@@ -478,15 +487,16 @@ void McManager::handleTargetProgram(const char* cmdName)
                     }
                 }
             }
+
+            // Release bus
             BusAccess::controlRelease(performHardReset);
         }
         else
         {
+            // Release bus
             BusAccess::controlRelease(false);
         }
     }
-    // Clear target state
-    TargetState::clear();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -526,9 +536,13 @@ void McManager::handleCommand(const char* pCmdJson,
         LogWrite(FromMcManager, LOG_DEBUG, "ClearTarget");
         TargetState::clear();
     }
-    else if ((strcasecmp(cmdName, "ProgramAndReset") == 0) || (strcasecmp(cmdName, "ProgramTarget") == 0))
+    else if (strcasecmp(cmdName, "ProgramTarget") == 0)
     {
-        McManager::handleTargetProgram(cmdName);
+        McManager::handleTargetProgram(false, false);
+    }
+    else if (strcasecmp(cmdName, "ProgramAndReset") == 0)
+    {
+        McManager::handleTargetProgram(true, false);
     }
     else if (strcasecmp(cmdName, "ResetTarget") == 0)
     {
