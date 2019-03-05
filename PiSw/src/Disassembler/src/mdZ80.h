@@ -10,6 +10,8 @@ typedef unsigned char uchar;
 typedef unsigned short ushort;
 typedef unsigned long ulong;
 
+extern int disasmZ80( uchar *buf, ulong base, ulong addr, char *stream, int sw, int nullcheck, int incHexDump );
+
 typedef struct _regZ80 {
 	uchar	a[2];
 	uchar	b[2];

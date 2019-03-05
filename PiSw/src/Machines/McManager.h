@@ -65,7 +65,7 @@ public:
     static bool debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen);
 
     // Target programming
-    static void handleTargetProgram(bool resetAfterProgramming, bool holdInPause);
+    static void handleTargetProgram(bool resetAfterProgramming, bool holdInPause, bool forceSetRegsByInjection);
 
     // Target control
     static void targetReset();

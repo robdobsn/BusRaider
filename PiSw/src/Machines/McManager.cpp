@@ -415,7 +415,7 @@ void McManager::targetRelease()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Handle programming of target machine
-void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause)
+void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause, bool forceSetRegsByInjection)
 {
     // Check there is something to write
     if (TargetState::numMemoryBlocks() == 0) 
@@ -458,7 +458,7 @@ void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause
             if (TargetState::areRegistersValid() && pMc && pDebug)
             {
                 // Check how to set registers
-                if (pMc->getDescriptorTable(0)->setRegistersByInjection)
+                if (pMc->getDescriptorTable(0)->setRegistersByInjection || forceSetRegsByInjection)
                 {
                     // Use the BusAccess module to inject instructions to set registers
                     Z80Registers regs;
@@ -538,11 +538,11 @@ void McManager::handleCommand(const char* pCmdJson,
     }
     else if (strcasecmp(cmdName, "ProgramTarget") == 0)
     {
-        McManager::handleTargetProgram(false, false);
+        McManager::handleTargetProgram(false, false, false);
     }
     else if (strcasecmp(cmdName, "ProgramAndReset") == 0)
     {
-        McManager::handleTargetProgram(true, false);
+        McManager::handleTargetProgram(true, false, false);
     }
     else if (strcasecmp(cmdName, "ResetTarget") == 0)
     {

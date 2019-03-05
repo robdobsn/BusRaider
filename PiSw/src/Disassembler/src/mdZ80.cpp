@@ -5,6 +5,7 @@
  */
 
 #include <string.h>
+#include <ctype.h>
 #include "../../System/ee_printf.h"
 
 #include "mdZ80.h"
@@ -2162,7 +2163,7 @@ disZ80data *getOPdata( uchar *buf, ulong addr )
 /*------------------------------------------------------------------------------
 
 ------------------------------------------------------------------------------*/
-int disasmZ80( uchar *buf, ulong base, ulong addr, char *stream, int sw, int nullcheck )
+int disasmZ80( uchar *buf, ulong base, ulong addr, char *stream, int sw, int nullcheck, int zesaurxFormat )
 {
 	disZ80data	*data;
 	int		i, st;
@@ -2174,7 +2175,11 @@ int disasmZ80( uchar *buf, ulong base, ulong addr, char *stream, int sw, int nul
 	disZ80data NullData = { 0, 0, NMT_NUL, 0, OT_NUL, OT_NONE, ACT_NL };
 
 	// output for address
-	st = ee_sprintf( stream, "%04X :", base+addr );
+	if (zesaurxFormat)
+		st = ee_sprintf( stream, "%6d ", base+addr );
+	else
+		st = ee_sprintf( stream, "%04X :", base+addr );
+
 	// get opdata structur
 	data = getOPdata( buf, addr );
 	// exeption by nullcheck and 0xff,0xff data
@@ -2189,19 +2194,29 @@ int disasmZ80( uchar *buf, ulong base, ulong addr, char *stream, int sw, int nul
 		}
 	}
 	// write instruction binary data
-	for ( i = 0; i < data->len; i++ ) {
-		st += ee_sprintf( &stream[st], " %02X", buf[addr+i] );
+	if (zesaurxFormat)
+	{
+		// write nimonic
+		const char* nimonicStr = nimonic[data->nimonic];
+		for (unsigned int i = 0; i < strlen(nimonicStr); i++)
+			stream[st++] = toupper(nimonicStr[i]);
+		stream[st++] = ' ';
 	}
-	switch( data->len ) {
-	case 4:
-		st += ee_sprintf( &stream[st], "\t" );
-		break;
-	default:
-		st += ee_sprintf( &stream[st], "\t\t" );
-		break;
+	else
+	{
+		for ( i = 0; i < data->len; i++ ) {
+			st += ee_sprintf( &stream[st], " %02X", buf[addr+i] );
+		}
+		switch( data->len ) {
+		case 4:
+			st += ee_sprintf( &stream[st], "\t" );
+			break;
+		default:
+			st += ee_sprintf( &stream[st], "\t\t" );
+			break;
+		}
+		st += ee_sprintf( &stream[st], "%s\t", nimonic[data->nimonic]);
 	}
-	// write nimonic
-	st += ee_sprintf( &stream[st], "%s\t", nimonic[data->nimonic] );
 	line = 32;					// �����܂ł�tab8��32���ɂȂ��Ă���͂�
 	if( data->op_num != 0 ) {
 		op_type = &(data->op0_type);

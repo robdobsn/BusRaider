@@ -10,6 +10,7 @@
 #include "../System/lowlib.h"
 #include "../System/rdutils.h"
 #include "../Machines/McManager.h"
+#include "../Disassembler/src/mdZ80.h"
 
 // Module name
 static const char FromTargetDebug[] = "TargetDebug";
@@ -198,6 +199,12 @@ void TargetDebug::grabMemoryAndReleaseBusRq()
     // Check if the bus in under BusRaider control
     if (BusAccess::isUnderControl() && _pTargetMachine)
     {
+        // Get the current wait enablement and disable MREQ waits
+        bool curMonitorIORQ = false;
+        bool curMonitorMREQ = false;
+        BusAccess::waitGet(curMonitorIORQ, curMonitorMREQ);
+        BusAccess::waitOnInstruction(false);
+
         uint32_t emuRAM = _pTargetMachine->getDescriptorTable(0)->emulatedRAM;
         uint32_t emuRAMStart = _pTargetMachine->getDescriptorTable(0)->emulatedRAMStart;
         uint32_t emuRAMLen = _pTargetMachine->getDescriptorTable(0)->emulatedRAMLen;
@@ -224,6 +231,9 @@ void TargetDebug::grabMemoryAndReleaseBusRq()
 
         // Release control of bus
         BusAccess::controlRelease(false);
+
+        // Restore wait enablement
+        BusAccess::waitOnInstruction(curMonitorMREQ);
     }
 }
 
@@ -286,8 +296,7 @@ void TargetDebug::service()
     // Check for breakpoint hit
     if (_breakpointHitFlag)
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "breakpoint hit %d debug cb %d", 
-                    _breakpointHitIndex, _pSendDebugMessageCallback);
+        LogWrite(FromTargetDebug, LOG_DEBUG, "breakpoint hit %d debug", _breakpointHitIndex);
         if (_pSendDebugMessageCallback)
             (*_pSendDebugMessageCallback)("\ncommand@cpu-step> ", "0");
         _breakpointHitFlag = false;
@@ -414,7 +423,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     else if (commandMatch(cmdStr, "smartload"))
     {
         LogWrite(FromTargetDebug, LOG_DEBUG, "smartload %s", argStr);
-        McManager::handleTargetProgram(true, true);
+        McManager::handleTargetProgram(true, true, true);
         strlcat(pResponse, "", maxResponseLen);
     }
     else if (commandMatch(cmdStr, "clear-membreakpoints"))
@@ -447,11 +456,11 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, "set-breakpoint"))
     {
-        // LogWrite(FromTargetDebug, LOG_DEBUG, "set breakpoint %s %s", argStr, argStr2);
+        LogWrite(FromTargetDebug, LOG_DEBUG, "set breakpoint %s %s", argStr, argStr2);
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
         if ((argStr2[0] != 'P') || (argStr2[1] != 'C') || (argStr2[2] != '='))
         {
-            LogWrite(FromTargetDebug, LOG_DEBUG, "breakpoint doesn't start PC= argstr2 %02x %02x %02x", 
+            LogWrite(FromTargetDebug, LOG_DEBUG, "breakpoint format must be PC= argstr2 %02x %02x %02x", 
                         argStr2[0], argStr2[1], argStr2[2]);
         }
         else
@@ -462,7 +471,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, "set-breakpointaction"))
     {
-        // LogWrite(FromTargetDebug, LOG_DEBUG, "set breakpoint action %s %s %s", argStr, argStr2, argRest);
+        LogWrite(FromTargetDebug, LOG_DEBUG, "set breakpoint action %s %s %s", argStr, argStr2, argRest);
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
         if (!commandMatch(argStr2, "prints"))
         {
@@ -475,8 +484,10 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, "disassemble"))
     {
-        // Disassembly not currently supported
-        strlcat(pResponse, "", maxResponseLen);
+        // Disassemble at current location
+        int addr = strtol(argStr, NULL, 10);
+        disasmZ80(_targetMemBuffer, 0, addr, pResponse, INTEL, false, true);
+        LogWrite(FromTargetDebug, LOG_DEBUG, "disassemble %s %s %s %d %s", argStr, argStr2, argRest, addr, pResponse);
     }
     else if (commandMatch(cmdStr, "get-registers"))
     {
@@ -545,7 +556,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, "cpu-step"))
     {
-        // LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step");
+        LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step");
         BR_RETURN_TYPE retc = BusAccess::pauseStep();
         if (retc == BR_OK)
         {
@@ -561,9 +572,27 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
         }
         strlcat(pResponse, "", maxResponseLen);
     }
+    else if (commandMatch(cmdStr, "cpu-step-over"))
+    {
+        LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step-over");
+        BR_RETURN_TYPE retc = BusAccess::pauseStep();
+        if (retc == BR_OK)
+        {
+            // Start sequence of getting registers
+            startGetRegisterSequence();
+            // LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step done");
+            _debugInCPUStep = true;
+
+        }
+        else
+        {
+            LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step-over failed (%s)", BusAccess::retcString(retc));
+        }
+        strlcat(pResponse, "", maxResponseLen);
+    }
     else if (commandMatch(cmdStr, ""))
     {
-        // LogWrite(FromTargetDebug, LOG_DEBUG, "blank (step) %s", _debugInitalized ? "" : "not in debug mode");
+        LogWrite(FromTargetDebug, LOG_DEBUG, "blank (step) %s", _debugInitalized ? "" : "not in debug mode");
         if (_debugInitalized)
         {
             // Blank is used for pause
@@ -914,7 +943,6 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
                 _targetMemBuffer[addr] = data;
             }
         }
-        
     }
 
     // Handle M1 cycles
@@ -924,20 +952,6 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
         _lastInstructionWasPrefixed = _thisInstructionIsPrefixed;
         // Check if this is a prefixed instruction
         _thisInstructionIsPrefixed = isPrefixInstruction(((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) ? data : retVal) & 0xff);
-        // if (_lastInstructionWasPrefixed)
-        // {
-        //     digitalWrite(BR_PAGING_RAM_PIN, 1);
-        //     microsDelay(3);
-        //     digitalWrite(BR_PAGING_RAM_PIN, 0);
-        //     microsDelay(1);
-        // }
-        // if (_thisInstructionIsPrefixed)
-        // {
-        //     digitalWrite(BR_PAGING_RAM_PIN, 1);
-        //     microsDelay(1);
-        //     digitalWrite(BR_PAGING_RAM_PIN, 0);
-        //     microsDelay(1);
-        // }
     }
     else
     {
@@ -965,17 +979,8 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
         _registerPrevInstrComplete = false;
         if (flags & BR_CTRL_BUS_M1_MASK)
         {
-
             // Always need to hold at this point
             retVal |= BR_MEM_ACCESS_HOLD;
-
-            // // Debug
-            // // TODO
-            // digitalWrite(BR_PAGING_RAM_PIN, 1);
-            // microsDelay(1);
-            // if (_lastInstructionWasPrefixed)
-            //     microsDelay(10);
-            // digitalWrite(BR_PAGING_RAM_PIN, 0);
         }
         else
         {
@@ -985,7 +990,8 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
     }
 
     // See if breakpoints enabled and M1 cycle
-    if ((_registerMode == REGISTER_MODE_NONE) && _breakpointsEnabled && (_breakpointNumEnabled > 0) && (flags & BR_CTRL_BUS_M1_MASK))
+    if ((_registerMode == REGISTER_MODE_NONE) && _breakpointsEnabled && (_breakpointNumEnabled > 0) && 
+            (!_debugInCPUStep) && (flags & BR_CTRL_BUS_M1_MASK) && (!BusAccess::isUnderControl()))
     {
         // Check breakpoints
         for (int i = 0; i < _breakpointNumEnabled; i++)
@@ -996,6 +1002,8 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
                 BR_RETURN_TYPE retc = BusAccess::pause();
                 if (retc == BR_OK)
                     startGetRegisterSequence();
+                _registerPrevInstrComplete = true;
+                _debugInCPUStep = true;
                 _breakpointHitFlag = true;
                 _breakpointHitIndex = bpIdx;
                 break;
