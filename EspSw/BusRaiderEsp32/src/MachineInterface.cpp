@@ -93,6 +93,7 @@ void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandS
             delete [] pStr;
 
             // Send target command to Pi
+            // Log.trace("%s-> %s", MODULE_PREFIX, str.c_str());
             if (_pCommandSerial)
                 _pCommandSerial->sendTargetData("rdp", (const uint8_t*)str.c_str(), 
                         str.length(), _rdpCommandIndex++);
@@ -301,7 +302,7 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *framebuffer, int frame
     // Buffer is null terminated in the HDLC receiver
     const char* pRxStr = (const char*)framebuffer;
 
-    // Log.verbose("%sreceivedFromPi %s\n", MODULE_PREFIX, pRxStr);
+    // Log.trace("%s<- %s\n", MODULE_PREFIX, pRxStr);
 
     // Get command
     String cmdName = RdJson::getString("cmdName", "", pRxStr);
@@ -331,7 +332,7 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *framebuffer, int frame
     }
     else if (cmdName.equalsIgnoreCase("rdp"))
     {
-        // Log.verbose("%srdp response message %s\n", MODULE_PREFIX, pRxStr);
+        // Log.verbose("%srdp <- %s\n", MODULE_PREFIX, pRxStr);
         String contentStr = RdJson::getString("content", "", pRxStr);
         if (_pRemoteDebugServer)
             _pRemoteDebugServer->sendChars(contentStr.c_str(), contentStr.length());
