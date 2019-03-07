@@ -136,6 +136,11 @@ private:
     static Breakpoint _breakpoints[MAX_BREAKPOINTS];
     static bool _breakpointHitFlag;
     static int _breakpointHitIndex;
+
+    // Step-over address
+    static bool _stepOverEnabled;
+    static uint32_t _stepOverPCValue;
+    static bool _stepOverHit;
 };
 
 extern TargetDebug __targetDebug;
