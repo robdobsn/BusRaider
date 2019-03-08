@@ -8,6 +8,7 @@
 #include "../System/lowlev.h"
 #include "../System/lowlib.h"
 #include "../System/BCM2835.h"
+#include "../TargetBus/TargetClockGenerator.h"
 
 // Uncomment the following line to use SPI0 CE0 of the Pi as a debug pin
 // #define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
@@ -39,6 +40,9 @@ volatile bool BusAccess::_busIsUnderControl = false;
 uint32_t BusAccess::_pauseCurAddr = 0;
 uint32_t BusAccess::_pauseCurData = 0;
 uint32_t BusAccess::_pauseCurControlBus = 0;
+
+// Clock generator
+TargetClockGenerator BusAccess::_clockGenerator;
 
 // Debug
 int BusAccess::_isrAssertCounts[ISR_ASSERT_NUM_CODES];
@@ -548,6 +552,27 @@ void BusAccess::clearAllIO()
     for (int kk = 0; kk < 0x100; kk++)
         tmpBuf[kk] = 0xff;
     blockWrite(0, tmpBuf, 0x100, 1, 1);  
+}
+
+// Setup clock generator
+void BusAccess::clockSetup()
+{
+    _clockGenerator.setOutputPin();
+}
+
+void BusAccess::clockSetFreqHz(uint32_t freqHz)
+{
+    _clockGenerator.setFrequency(freqHz);
+}
+
+void BusAccess::clockEnable(bool en)
+{
+    _clockGenerator.enable(en);
+}
+
+uint32_t BusAccess::clockCurFreqHz()
+{
+    return _clockGenerator.getFreqInHz();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

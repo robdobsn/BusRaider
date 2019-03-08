@@ -9,6 +9,7 @@
 #include "../System/rdutils.h"
 #include <stdlib.h>
 #include "../System/nmalloc.h" //TODO
+#include "../System/lowlib.h"
 
 const char* McTerminal::_logPrefix = "McTerm";
 
@@ -35,7 +36,6 @@ McDescriptorTable McTerminal::_descriptorTable = {
     // Bus monitor
     .monitorIORQ = false,
     .monitorMREQ = false,
-    .ramPaging = false,
     .emulatedRAM = false,
     .emulatedRAMStart = 0,
     .emulatedRAMLen = 0,

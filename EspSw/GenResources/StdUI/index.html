@@ -206,39 +206,18 @@
         function sendMachineOptions()
         {
             let mcEmuRam = document.getElementById("machine-emu-ram").checked;
-            let mcPaging = document.getElementById("machine-paging").checked;
             let mcInjection = document.getElementById("machine-injection").checked;
-            sendCmdToTarget("mcOptions=" + (mcEmuRam ? "EMURAM " : "") + (mcPaging ? "PAGING " : "") + (mcInjection ? "INJECT " : ""));
+            sendCmdToTarget("mcOptions=" + (mcEmuRam ? "EMURAM " : "") + (mcInjection ? "INJECT " : ""));
         }
 
         function machineEmuRamChange()
         {
-            let mcEmuRam = document.getElementById("machine-emu-ram").checked;
-            if (mcEmuRam)
-            {
-                document.getElementById("machine-paging").disabled = true;
-                document.getElementById("machine-paging").checked = false;
-                document.getElementById("machine-injection").disabled = true;
-                document.getElementById("machine-injection").checked = true;
-            }
-            else
-            {
-                document.getElementById("machine-paging").disabled = false;
-                document.getElementById("machine-injection").disabled = false;
-            }
             sendMachineOptions();
-        }
-
-        function machinePagingChange()
-        {
-            if (!document.getElementById("machine-paging").disabled)
-                sendMachineOptions();
         }
 
         function machineInjectionChange()
         {
-            if (!document.getElementById("machine-injection").disabled)
-                sendMachineOptions();
+            sendMachineOptions();
         }
 
         function callAjax(url, okCallback, failCallback)
@@ -796,12 +775,6 @@
                 <div class="rdcheckoptions">
                     <label class="rdcheckcontainer" >Emulate RAM
                         <input type="checkbox" id="machine-emu-ram" onchange="machineEmuRamChange()">
-                        <span class="rdcheckmark"></span>
-                    </label>
-                </div>
-                <div class="rdcheckoptions">
-                    <label type="checkbox" class="rdcheckcontainer" >RAM/ROM Paging
-                        <input type="checkbox" checked id="machine-paging" onchange="machinePagingChange()">
                         <span class="rdcheckmark"></span>
                     </label>
                 </div>

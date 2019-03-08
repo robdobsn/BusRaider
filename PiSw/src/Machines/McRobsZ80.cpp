@@ -38,7 +38,6 @@ McDescriptorTable McRobsZ80::_descriptorTable = {
     // Bus monitor
     .monitorIORQ = false,
     .monitorMREQ = false,
-    .ramPaging = true,
     .emulatedRAM = false,
     .emulatedRAMStart = 0,
     .emulatedRAMLen = 0,

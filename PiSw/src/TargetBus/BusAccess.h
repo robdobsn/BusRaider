@@ -122,6 +122,11 @@ typedef enum {
 // Width of a reset pulse
 #define BR_RESET_PULSE_US 100
 
+// Clock frequency for debug
+#define BR_TARGET_DEBUG_CLOCK_HZ 1000000
+
+class TargetClockGenerator;
+
 class BusAccess
 {
 public:
@@ -192,6 +197,12 @@ public:
         }
     }
 
+    // Clock
+    static void clockSetup();
+    static void clockSetFreqHz(uint32_t freqHz);
+    static void clockEnable(bool en);
+    static uint32_t clockCurFreqHz();
+
     // Debug
     static void isrAssert(int code);
     static int isrAssertGetCount(int code);
@@ -223,6 +234,9 @@ private:
     // Debug
     static int _isrAssertCounts[ISR_ASSERT_NUM_CODES];
 
+    // Clock generator
+    static TargetClockGenerator _clockGenerator;
+    
 private:
     // Set address
     static void addrLowSet(uint32_t lowAddrByte);
@@ -278,3 +292,4 @@ private:
     // Delay in machine cycles for M1 to settle
     static const int CYCLES_DELAY_FOR_M1_SETTLING = 100;
 };
+

@@ -47,6 +47,7 @@ TargetDebug::TargetDebug()
     _busControlRequestedForMemGrab = false;
     _instrWaitRestoreNeeded = false;
     _instrWaitCurMode = false;
+    _instrClockCurFreqHz = BR_TARGET_DEBUG_CLOCK_HZ;
     _registerMode = REGISTER_MODE_NONE;
     _registerPrevInstrComplete = false;
     _registerQueryWriteIndex = 0;
@@ -182,12 +183,16 @@ void TargetDebug::startSetRegisterSequence(Z80Registers* pRegs)
 
     bool curMonitorIORQ = false;
     BusAccess::waitGet(curMonitorIORQ, _instrWaitCurMode);
+    _instrClockCurFreqHz = BusAccess::clockCurFreqHz();
     LogWrite(FromTargetDebug, LOG_DEBUG, "startSetRegisterSequence curMonitorInstr %s",
                 _instrWaitCurMode ? "Y" : "N");
 
     // Put machine into wait-state mode for MREQ
+    if (!_instrWaitCurMode)
+        _lastInstructionWasPrefixed = false;
     _instrWaitRestoreNeeded = true;
     BusAccess::waitOnInstruction(true);
+    BusAccess::clockSetFreqHz(BR_TARGET_DEBUG_CLOCK_HZ);
 
     // Start sequence of setting registers
     _registerMode = REGISTER_MODE_SET;
@@ -234,11 +239,12 @@ void TargetDebug::grabMemoryAndReleaseBusRq()
             BusAccess::blockRead(0, _targetMemBuffer, 0x10000, false, false);
         }
 
+        // Restore wait enablement
+        BusAccess::waitOnInstruction(curMonitorMREQ);
+        
         // Release control of bus
         BusAccess::controlRelease(false);
 
-        // Restore wait enablement
-        BusAccess::waitOnInstruction(curMonitorMREQ);
     }
 }
 
@@ -289,9 +295,8 @@ void TargetDebug::service()
         // No longer request
         _busControlRequestedForMemGrab = false;
 
-        // Release paging if used
-        if (_pTargetMachine && _pTargetMachine->getDescriptorTable(0)->ramPaging)
-            digitalWrite(BR_PAGING_RAM_PIN, 0);
+        // Release paging
+        digitalWrite(BR_PAGING_RAM_PIN, 0);
 
         // Request bus so we can grab memory data before entering a wait state
         if (BusAccess::controlRequestAndTake() == BR_OK)
@@ -310,9 +315,13 @@ void TargetDebug::service()
     // Check for step-over hit
     if (_stepOverHit)
     {
+        static const int MAX_DISASSEMBLY_LINE_LEN = 200;
+        char respBuf[MAX_DISASSEMBLY_LINE_LEN];
         LogWrite(FromTargetDebug, LOG_DEBUG, "step-over hit");
+        disasmZ80(_targetMemBuffer, 0, _stepOverPCValue, respBuf, INTEL, false, true);
+        strlcat(respBuf, "\ncommand@cpu-step> ", MAX_DISASSEMBLY_LINE_LEN);
         if (_pSendDebugMessageCallback)
-            (*_pSendDebugMessageCallback)("\ncommand@cpu-step> ", "0");
+            (*_pSendDebugMessageCallback)(respBuf, "0");
         _stepOverHit = false;
     }
 
@@ -407,6 +416,8 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
         if (retc == BR_OK)
         {
             BusAccess::waitOnInstruction(true);
+            BusAccess::clockSetFreqHz(BR_TARGET_DEBUG_CLOCK_HZ);
+            _lastInstructionWasPrefixed = false;
         }
         else
         {
@@ -506,11 +517,6 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, "get-registers"))
     {
-        uint32_t curAddr = 0;
-        uint32_t curData = 0;
-        uint32_t curFlags = 0;
-        BusAccess::pauseGetCurrent(&curAddr, &curData, &curFlags);
-        _z80Registers.PC = curAddr;
         _z80Registers.format1(pResponse, maxResponseLen);
     }
     else if (commandMatch(cmdStr, "read-memory"))
@@ -600,7 +606,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
         _debugInCPUStep = false;
         if (retc != BR_OK)
             LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step-over pauseRelease failed (%s)", BusAccess::retcString(retc));
-        strlcat(pResponse, "\ncommand@cpu-step> ", maxResponseLen);
+        strlcpy(pResponse, "\n", maxResponseLen);
         return true;
     }
     else if (commandMatch(cmdStr, ""))
@@ -660,6 +666,7 @@ int TargetDebug::getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBuff
     // Instructions to set register values
     static uint8_t regSetInstructions[] = 
     {
+        0x00,                       // nop - in case previous instruction was prefixed
         0xdd, 0x21, 0x00, 0x00,     // ld ix, xxxx
         0xfd, 0x21, 0x00, 0x00,     // ld iy, xxxx
         0x21, 0x00, 0x00,           // ld hl, xxxx
@@ -682,23 +689,23 @@ int TargetDebug::getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBuff
         0xfb,                       // ei
         0xc3, 0x00, 0x00            // jp xxxx
     };
-    const int RegisterIXUpdatePos = 2;
-    const int RegisterIYUpdatePos = 6;
-    const int RegisterHLDASHUpdatePos = 9;
-    const int RegisterDEDASHUpdatePos = 12;
-    const int RegisterBCDASHUpdatePos = 15;
-    const int RegisterSPUpdatePos = 19;
-    const int RegisterHLUpdatePos = 22;
-    const int RegisterDEUpdatePos = 25;
-    const int RegisterBCUpdatePos = 28;
-    const int RegisterAFDASHUpdatePos = 31;
-    const int RegisterAFUpdatePos = 35;
-    const int RegisterIUpdatePos = 38;
-    const int RegisterRUpdatePos = 42;
-    const int RegisterAUpdatePos = 46;
-    const int RegisterIMUpdatePos = 48;
-    const int RegisterINTENUpdatePos = 49;
-    const int RegisterPCUpdatePos = 51;
+    const int RegisterIXUpdatePos = 3;
+    const int RegisterIYUpdatePos = 7;
+    const int RegisterHLDASHUpdatePos = 10;
+    const int RegisterDEDASHUpdatePos = 13;
+    const int RegisterBCDASHUpdatePos = 16;
+    const int RegisterSPUpdatePos = 20;
+    const int RegisterHLUpdatePos = 23;
+    const int RegisterDEUpdatePos = 26;
+    const int RegisterBCUpdatePos = 29;
+    const int RegisterAFDASHUpdatePos = 32;
+    const int RegisterAFUpdatePos = 36;
+    const int RegisterIUpdatePos = 39;
+    const int RegisterRUpdatePos = 43;
+    const int RegisterAUpdatePos = 47;
+    const int RegisterIMUpdatePos = 49;
+    const int RegisterINTENUpdatePos = 50;
+    const int RegisterPCUpdatePos = 52;
 
     // Fill in the register values
     store16BitVal(regSetInstructions, RegisterIXUpdatePos, regs.IX);
@@ -978,13 +985,13 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
     {
         // Clear the paging of RAM
         _registerMode = REGISTER_MODE_NONE;
-        if (descriptorTable.ramPaging)
-            digitalWrite(BR_PAGING_RAM_PIN, 0);
+        digitalWrite(BR_PAGING_RAM_PIN, 0);
 
         // Restore wait-state generation if required
         if (_instrWaitRestoreNeeded)
         {
-            BusAccess::waitOnInstruction(_instrWaitCurMode);            
+            BusAccess::waitOnInstruction(_instrWaitCurMode);
+            BusAccess::clockSetFreqHz(_instrClockCurFreqHz);            
             _instrWaitRestoreNeeded = false;
         }
 
@@ -1018,6 +1025,7 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
                 BR_RETURN_TYPE retc = BusAccess::pause();
                 if (retc == BR_OK)
                     startGetRegisterSequence();
+                _z80Registers.PC = addr;
                 _registerPrevInstrComplete = true;
                 _debugInCPUStep = true;
                 _breakpointHitFlag = true;
@@ -1040,9 +1048,11 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
             BR_RETURN_TYPE retc = BusAccess::pause();
             if (retc == BR_OK)
                 startGetRegisterSequence();
+            _z80Registers.PC = addr;
             _registerPrevInstrComplete = true;
             _debugInCPUStep = true;
             _stepOverHit = true;
+            _stepOverEnabled = false;
         }
     }
 
@@ -1052,23 +1062,28 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
         // See if we are waiting for the end of the previous instruction
         if (_registerPrevInstrComplete || ((!_lastInstructionWasPrefixed) && (flags & BR_CTRL_BUS_M1_MASK)))
         {
+            // If we've just completed the previous instruction then the current address is the PC
+            if ((!_registerPrevInstrComplete) && (_registerMode == REGISTER_MODE_GET))
+                _z80Registers.PC = addr;
+
+            // Previous instruction now done
+            _registerPrevInstrComplete = true;
+
+            // Page-out RAM/ROM while injecting
+            digitalWrite(BR_PAGING_RAM_PIN, 1);
+
+            // Handle the injection mode
             if (_registerMode == REGISTER_MODE_GET)
             {
                 // We're now inserting instructions or getting results back
-                _registerPrevInstrComplete = true;
                 handleRegisterGet(addr, data, flags, retVal);
-                // Page-out paged RAM/ROM if required
-                if (descriptorTable.ramPaging)
-                    digitalWrite(BR_PAGING_RAM_PIN, 1);
             }
             else
             {
                 // We're now inserting instructions to set registers
-                _registerPrevInstrComplete = true;
                 handleRegisterSet(retVal);
-                // Page-out RAM/ROM if required
-                if (descriptorTable.ramPaging)
-                    digitalWrite(BR_PAGING_RAM_PIN, 1);
+                // Page-out RAM/ROM
+                digitalWrite(BR_PAGING_RAM_PIN, 1);
             }
 
             // If register get/set is finished after this cycle then request the bus (if not fully emulating RAM)

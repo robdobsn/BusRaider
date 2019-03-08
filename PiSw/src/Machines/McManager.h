@@ -4,7 +4,6 @@
 #pragma once
 
 #include "McBase.h"
-#include "../TargetBus/TargetClockGenerator.h"
 #include "../Debugger/TargetDebug.h"
 #include "../System/ee_printf.h"
 #include "../CommandInterface/CommandHandler.h"
@@ -36,7 +35,6 @@ private:
     static McBase* _pMachines[MAX_MACHINES];
     static int _numMachines;
     static int _curMachineIdx;
-    static TargetClockGenerator _clockGen;
 
 public:
     // Init

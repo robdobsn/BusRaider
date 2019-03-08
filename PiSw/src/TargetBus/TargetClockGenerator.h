@@ -103,4 +103,9 @@ class TargetClockGenerator
                         freqGenerated, _freqReqd, divisor, _outputPin, _altMode);
     }
 
+    uint32_t getFreqInHz()
+    {
+        return _freqReqd;
+    }
+
 };

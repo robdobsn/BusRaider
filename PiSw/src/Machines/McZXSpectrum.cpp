@@ -43,7 +43,6 @@ McDescriptorTable McZXSpectrum::_descriptorTable = {
     // Bus monitor
     .monitorIORQ = true,
     .monitorMREQ = false,
-    .ramPaging = true,
     .emulatedRAM = false,
     .emulatedRAMStart = 0,
     .emulatedRAMLen = 0,

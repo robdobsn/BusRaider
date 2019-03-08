@@ -50,7 +50,6 @@ McDescriptorTable McManager::defaultDescriptorTable = {
     // Bus monitor
     .monitorIORQ = false,
     .monitorMREQ = false,
-    .ramPaging = false,
     .emulatedRAM = false,
     .emulatedRAMStart = 0,
     .emulatedRAMLen = 0,
@@ -60,8 +59,6 @@ McDescriptorTable McManager::defaultDescriptorTable = {
 
 uint8_t McManager::_rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];
 int McManager::_rxHostCharsBufferLen = 0;
-
-TargetClockGenerator McManager::_clockGen;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Init
@@ -198,13 +195,13 @@ bool McManager::setMachineIdx(int mcIdx, bool forceUpdate)
         uint32_t clockFreqHz = pMachine->getDescriptorTable(0)->clockFrequencyHz;
         if (clockFreqHz != 0)
         {
-            _clockGen.setOutputPin();
-            _clockGen.setFrequency(clockFreqHz);
-            _clockGen.enable(true);
+            BusAccess::clockSetup();
+            BusAccess::clockSetFreqHz(clockFreqHz);
+            BusAccess::clockEnable(true);
         }
         else
         {
-            _clockGen.enable(false);
+            BusAccess::clockEnable(false);
         }
 
         // Set target machine in debug
@@ -252,11 +249,9 @@ bool McManager::setMachineOpts(const char* mcOpts)
         return false;
     pMachine->disable();
     pMachine->getDescriptorTable(0)->emulatedRAM = (strstr(mcOpts, "EMURAM") != 0);
-    pMachine->getDescriptorTable(0)->ramPaging = (strstr(mcOpts, "PAGING") != 0);
     pMachine->getDescriptorTable(0)->setRegistersByInjection = (strstr(mcOpts, "INJECT") != 0);
-    LogWrite(FromMcManager, LOG_DEBUG, "setMachineOpts %s emuRAM %d ramPaging %d instrInject %d", mcOpts,
+    LogWrite(FromMcManager, LOG_DEBUG, "setMachineOpts %s emuRAM %d instrInject %d", mcOpts,
                 pMachine->getDescriptorTable(0)->emulatedRAM,
-                pMachine->getDescriptorTable(0)->ramPaging,
                 pMachine->getDescriptorTable(0)->setRegistersByInjection);
     pMachine->enable();
     return true;

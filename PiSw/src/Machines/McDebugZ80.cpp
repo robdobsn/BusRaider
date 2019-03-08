@@ -64,7 +64,6 @@ McDescriptorTable McDebugZ80::_descriptorTable = {
     // Bus monitor
     .monitorIORQ = true,
     .monitorMREQ = true,
-    .ramPaging = false,
     .emulatedRAM = true,
     .emulatedRAMStart = 0,
     .emulatedRAMLen = TargetDebug::MAX_TARGET_MEMORY_LEN,

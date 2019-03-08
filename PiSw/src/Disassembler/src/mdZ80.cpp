@@ -2176,7 +2176,7 @@ int disasmZ80( uchar *buf, ulong base, ulong addr, char *stream, int sw, int nul
 
 	// output for address
 	if (zesaurxFormat)
-		st = ee_sprintf( stream, "%6d ", base+addr );
+		st = ee_sprintf( stream, "  %4X ", base+addr );
 	else
 		st = ee_sprintf( stream, "%04X :", base+addr );
 

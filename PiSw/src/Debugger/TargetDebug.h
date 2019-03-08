@@ -106,6 +106,7 @@ private:
     // Current MREQ monitor mode when starting register set
     bool _instrWaitRestoreNeeded;
     bool _instrWaitCurMode;
+    uint32_t _instrClockCurFreqHz;
 
     // Register mode
     enum REGISTER_MODE {
