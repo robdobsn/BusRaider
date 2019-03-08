@@ -61,6 +61,9 @@ TargetDebug::TargetDebug()
     _stepOverHit = false;
     _breakpointHitIndex = 0;
     _registerSetCodeLen = 0;
+    _lastInstructionWasPrefixed = false;
+    _thisInstructionIsPrefixed = false;
+    _emulatedRAMReadPagingActive = false;
 }
 // Get singleton
 TargetDebug* TargetDebug::get()
@@ -946,6 +949,14 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
     if ((flags & BR_CTRL_BUS_MREQ_MASK) == 0)
         return retVal;
 
+    // Check if RAM/ROM paged out from last MREQ
+    if (_emulatedRAMReadPagingActive)
+    {
+        // Release paging on physical RAM/ROM
+        digitalWrite(BR_PAGING_RAM_PIN, 0);
+        _emulatedRAMReadPagingActive = false;
+    }
+
     // Check if RAM is emulated
     if (descriptorTable.emulatedRAM && (addr >= descriptorTable.emulatedRAMStart) && 
             (addr < descriptorTable.emulatedRAMStart + descriptorTable.emulatedRAMLen))
@@ -954,6 +965,10 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
         if (flags & BR_CTRL_BUS_RD_MASK)
         {
             retVal = _targetMemBuffer[addr];
+            // Page-out physical RAM/ROM
+            digitalWrite(BR_PAGING_RAM_PIN, 1);
+            _emulatedRAMReadPagingActive = true;
+
         }
         else if (flags & BR_CTRL_BUS_WR_MASK)
         {

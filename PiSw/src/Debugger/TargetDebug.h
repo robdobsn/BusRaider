@@ -122,6 +122,9 @@ private:
     uint8_t _registerSetBuffer[MAX_REGISTER_SET_CODE_LEN];
     uint32_t _registerSetCodeLen;
 
+    // Paging of RAM/ROM during read from emulated RAM
+    bool _emulatedRAMReadPagingActive;
+
     // Target memory buffer  
     static const int MAX_TARGET_MEM_ADDR = 0xffff;
     static uint8_t _targetMemBuffer[MAX_TARGET_MEMORY_LEN];
