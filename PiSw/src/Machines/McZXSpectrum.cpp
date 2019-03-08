@@ -45,7 +45,7 @@ McDescriptorTable McZXSpectrum::_descriptorTable = {
     .monitorMREQ = false,
     .emulatedRAM = false,
     .emulatedRAMStart = 0,
-    .emulatedRAMLen = 0,
+    .emulatedRAMLen = 0x100000,
     .setRegistersByInjection = false,
     .setRegistersCodeAddr = ZXSPECTRUM_DISP_RAM_ADDR
 };
@@ -67,7 +67,7 @@ void McZXSpectrum::enable()
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
     BusAccess::accessCallbackAdd(memoryRequestCallback);
     // Bus raider enable wait states on IORQ
-    BusAccess::waitSetup(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ);
+    BusAccess::waitSetup(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ || _descriptorTable.emulatedRAM);
 }
 
 // Disable machine

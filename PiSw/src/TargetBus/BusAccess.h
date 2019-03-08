@@ -123,7 +123,7 @@ typedef enum {
 #define BR_RESET_PULSE_US 100
 
 // Clock frequency for debug
-#define BR_TARGET_DEBUG_CLOCK_HZ 1000000
+#define BR_TARGET_DEBUG_CLOCK_HZ 500000
 
 class TargetClockGenerator;
 

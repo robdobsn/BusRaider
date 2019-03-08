@@ -40,7 +40,7 @@ McDescriptorTable McRobsZ80::_descriptorTable = {
     .monitorMREQ = false,
     .emulatedRAM = false,
     .emulatedRAMStart = 0,
-    .emulatedRAMLen = 0,
+    .emulatedRAMLen = 0x100000,
     .setRegistersByInjection = false,
     .setRegistersCodeAddr = 0
 };
@@ -51,12 +51,15 @@ void McRobsZ80::enable()
     _screenBufferValid = false;
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
     BusAccess::accessCallbackAdd(memoryRequestCallback);
+    // Bus raider enable wait states on IORQ
+    BusAccess::waitSetup(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ || _descriptorTable.emulatedRAM);
 }
 
 // Disable machine
 void McRobsZ80::disable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
+    BusAccess::waitSetup(false, false);
     BusAccess::accessCallbackRemove();
 }
 

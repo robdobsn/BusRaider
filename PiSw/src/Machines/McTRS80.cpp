@@ -41,7 +41,7 @@ McDescriptorTable McTRS80::_descriptorTable = {
     .monitorMREQ = false,
     .emulatedRAM = false,
     .emulatedRAMStart = 0,
-    .emulatedRAMLen = 0,
+    .emulatedRAMLen = 0x100000,
     .setRegistersByInjection = false,
     .setRegistersCodeAddr = TRS80_DISP_RAM_ADDR
 };
@@ -53,16 +53,16 @@ void McTRS80::enable()
     _screenBufferValid = false;
     _keyBufferDirty = false;
 
-    LogWrite(_logPrefix, LOG_DEBUG, "Enabling TRS80 EmuRAM %s (%04x-%04x) RegByInject %s MonIORQ %s MonMREQ %s (%04x)",
+    LogWrite(_logPrefix, LOG_DEBUG, "Enabling TRS80 EmuRAM %s (%04x-%04x) RegByInject %s IntIORQ %s IntMREQ %s (%04x)",
                 _descriptorTable.emulatedRAM ? "Y" : "N",
                 _descriptorTable.emulatedRAMStart, _descriptorTable.emulatedRAMStart + _descriptorTable.emulatedRAMLen,
                 _descriptorTable.setRegistersByInjection ?  "Y" : "N",
                 _descriptorTable.monitorIORQ ?  "Y" : "N",
-                _descriptorTable.monitorMREQ ?  "Y" : "N",
+                _descriptorTable.monitorMREQ || _descriptorTable.emulatedRAM ?  "Y" : "N",
                 _descriptorTable.setRegistersCodeAddr);
     BusAccess::accessCallbackAdd(memoryRequestCallback);
-    // Bus raider enable wait states on IORQ
-    BusAccess::waitSetup(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ);
+    // Bus raider enable wait states
+    BusAccess::waitSetup(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ || _descriptorTable.emulatedRAM);
 }
 
 // Disable machine

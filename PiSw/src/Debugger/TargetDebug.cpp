@@ -145,9 +145,11 @@ bool TargetDebug::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len)
 
 bool TargetDebug::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len)
 {
-    if (!_debugInCPUStep)
+    if (!((_debugInCPUStep) || (_pTargetMachine && _pTargetMachine->getDescriptorTable(0)->emulatedRAM &&
+            (addr >= _pTargetMachine->getDescriptorTable(0)->emulatedRAMStart) && 
+            (addr < _pTargetMachine->getDescriptorTable(0)->emulatedRAMStart + _pTargetMachine->getDescriptorTable(0)->emulatedRAMLen))))
     {
-        // LogWrite(FromTargetDebug, LOG_DEBUG, "blockRead: Not in single step %04x %d", addr, len);
+        // LogWrite(FromTargetDebug, LOG_DEBUG, "blockRead: Not in single step or emulated RAM %04x %d", addr, len);
         return false;
     }
     int copyLen = len;
@@ -951,17 +953,11 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
         // Check for read or write to emulated RAM / ROM
         if (flags & BR_CTRL_BUS_RD_MASK)
         {
-            if (flags & BR_CTRL_BUS_MREQ_MASK)
-            {
-                retVal = _targetMemBuffer[addr];
-            }
+            retVal = _targetMemBuffer[addr];
         }
         else if (flags & BR_CTRL_BUS_WR_MASK)
         {
-            if (flags & BR_CTRL_BUS_MREQ_MASK)
-            {
-                _targetMemBuffer[addr] = data;
-            }
+            _targetMemBuffer[addr] = data;
         }
     }
 

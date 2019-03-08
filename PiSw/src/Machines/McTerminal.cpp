@@ -38,7 +38,7 @@ McDescriptorTable McTerminal::_descriptorTable = {
     .monitorMREQ = false,
     .emulatedRAM = false,
     .emulatedRAMStart = 0,
-    .emulatedRAMLen = 0,
+    .emulatedRAMLen = 0x100000,
     .setRegistersByInjection = false,
     .setRegistersCodeAddr = 0
 };
@@ -67,12 +67,15 @@ void McTerminal::enable()
     _screenBufferValid = false;
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
     BusAccess::accessCallbackAdd(memoryRequestCallback);
+    // Bus raider enable wait states on IORQ
+    BusAccess::waitSetup(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ || _descriptorTable.emulatedRAM);
 }
 
 // Disable machine
 void McTerminal::disable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
+    BusAccess::waitSetup(false, false);
     BusAccess::accessCallbackRemove();
 }
 

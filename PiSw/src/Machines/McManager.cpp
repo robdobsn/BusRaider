@@ -8,6 +8,7 @@
 #include "../TargetBus/TargetState.h"
 #include "../TargetBus/BusAccess.h"
 #include "../System/rdutils.h"
+#include "../System/piwiring.h"
 
 // Module name
 static const char FromMcManager[] = "McManager";
@@ -334,8 +335,9 @@ bool McManager::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, boo
         return false;
     uint32_t emuRAMStart = pMachine->getDescriptorTable(0)->emulatedRAMStart;
     uint32_t emuRAMLen = pMachine->getDescriptorTable(0)->emulatedRAMLen;
+    bool emulatedRAM = pMachine->getDescriptorTable(0)->emulatedRAM;
     // Block cannot cross boundary between emulated and real RAM
-    if (!iorq && (emuRAMStart <= addr) && (emuRAMStart+emuRAMLen >= addr + len))
+    if (emulatedRAM && (!iorq) && (emuRAMStart <= addr) && (emuRAMStart+emuRAMLen >= addr + len))
     {
         TargetDebug* pDebug = TargetDebug::get();
         if (pDebug)
@@ -356,11 +358,12 @@ bool McManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRq
         return false;
     uint32_t emuRAMStart = pMachine->getDescriptorTable(0)->emulatedRAMStart;
     uint32_t emuRAMLen = pMachine->getDescriptorTable(0)->emulatedRAMLen;
+    bool emulatedRAM = pMachine->getDescriptorTable(0)->emulatedRAM;
     // Check if we are paused - if so bus access cannot get memory but stepping process will have
     // grabbed all of physical RAM and placed it in the buffer for debugging
     // Also, if emulating memory, block cannot cross boundary between emulated and real RAM
     if (BusAccess::pauseIsPaused() ||
-            (!iorq && (emuRAMStart <= addr) && (emuRAMStart+emuRAMLen >= addr + len)))
+            (emulatedRAM && (!iorq) && (emuRAMStart <= addr) && (emuRAMStart+emuRAMLen >= addr + len)))
     {
         TargetDebug* pDebug = TargetDebug::get();
         if (pDebug)
@@ -421,7 +424,7 @@ void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause
     else 
     {
         // Release bus if paused or controlled
-        BusAccess::controlRelease(true);
+        BusAccess::controlRelease(false);
         BusAccess::pauseRelease();
 
         // Handle programming in one BUSRQ/BUSACK pass
