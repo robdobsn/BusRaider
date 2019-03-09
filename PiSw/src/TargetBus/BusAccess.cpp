@@ -297,6 +297,11 @@ BR_RETURN_TYPE BusAccess::controlRequestAndTake()
         return BR_NO_BUS_ACK;
     }
 
+    // Set the PIB to input
+    pibSetIn();
+    // Set data bus to input
+    WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
+
     // Take control
     controlTake();
     return BR_OK;
