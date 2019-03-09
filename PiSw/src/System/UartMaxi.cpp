@@ -59,7 +59,7 @@ bool UartMaxi::setup(unsigned int baudRate, int rxBufSize, int txBufSize)
     uint32_t intBaudDivisor = FUARTCLK / baudRateX16;
     if ((intBaudDivisor < 1) || (intBaudDivisor > 0xffff))
     {
-        LogWrite(FromUartMaxi, LOG_DEBUG, "Divisor issue %d, FUARTCLK %d, FUARTCLK_MAX %d, baudRate*16 %d",
+        LogWrite(FromUartMaxi, LOG_VERBOSE, "Divisor issue %d, FUARTCLK %d, FUARTCLK_MAX %d, baudRate*16 %d",
                      intBaudDivisor, FUARTCLK, FUARTCLK_MAX, baudRateX16);
         return false;
     }
@@ -67,10 +67,10 @@ bool UartMaxi::setup(unsigned int baudRate, int rxBufSize, int txBufSize)
 	unsigned fracBaudDivisor = fracBaudDivisor2 / 2 + fracBaudDivisor2 % 2;
     if (fracBaudDivisor > 0x3f)
     {
-        LogWrite(FromUartMaxi, LOG_DEBUG, "Frac issue %d", fracBaudDivisor);
+        LogWrite(FromUartMaxi, LOG_VERBOSE, "Frac issue %d", fracBaudDivisor);
         return false;
     }
-    LogWrite(FromUartMaxi, LOG_DEBUG, "Baud rate %d (%d:%d)\n",
+    LogWrite(FromUartMaxi, LOG_VERBOSE, "Baud rate %d (%d:%d)\n",
                         baudRate, intBaudDivisor, fracBaudDivisor);
 
     // Deallocate buffers if required

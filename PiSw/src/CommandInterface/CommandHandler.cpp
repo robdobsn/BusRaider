@@ -72,7 +72,7 @@ void CommandHandler::static_hdlcFrameRx(const uint8_t *frameBuffer, int frameLen
 
 void CommandHandler::static_hdlcPutCh(uint8_t ch)
 {
-    // LogWrite(FromCmdHandler, LOG_DEBUG, "static_hdlcPutCh");
+    // LogWrite(FromCmdHandler, LOG_VERBOSE, "static_hdlcPutCh");
 
     if (_pSingletonCommandHandler)
         _pSingletonCommandHandler->hdlcPutCh(ch);
@@ -96,7 +96,7 @@ void CommandHandler::hdlcPutCh(uint8_t ch)
 // This is a ascii character string (null terminated) followed by a byte buffer containing parameters
 void CommandHandler::hdlcFrameRx(const uint8_t *pFrame, int frameLength)
 {
-    // LogWrite(FromCmdHandler, LOG_DEBUG, "Rx %d bytes", frameLength);
+    // LogWrite(FromCmdHandler, LOG_VERBOSE, "Rx %d bytes", frameLength);
 
     // Handle the frame - extract command string
     char commandString[CMD_HANDLER_MAX_CMD_STR_LEN+1];
@@ -124,7 +124,7 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
         return;
 
-    // LogWrite(FromCmdHandler, LOG_NOTICE, "processCommand JSON %s cmdName %s", pCmdJson, cmdName); 
+    // LogWrite(FromCmdHandler, LOG_VERBOSE, "processCommand JSON %s cmdName %s", pCmdJson, cmdName); 
     // char logStr[1000];
     // ee_sprintf(logStr, "processCommand JSON %s cmdName %s", pCmdJson, cmdName);
     // sendLogMessage(logStr);
@@ -132,7 +132,7 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     // Handle commands
     if (strcasecmp(cmdName, "ufStart") == 0)
     {
-        LogWrite(FromCmdHandler, LOG_NOTICE, "processCommand fileStart"); 
+        LogWrite(FromCmdHandler, LOG_VERBOSE, "processCommand fileStart"); 
         handleFileStart(pCmdJson);
     }
     else if (strcasecmp(cmdName, "ufBlock") == 0)
@@ -166,14 +166,14 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
     if (!jsonGetValueForKey("fileName", pCmdJson, _receivedFileName, MAX_FILE_NAME_STR))
         return;
 
-    LogWrite(FromCmdHandler, LOG_NOTICE, "ufStart File %s, toPtr %08x", 
+    LogWrite(FromCmdHandler, LOG_VERBOSE, "ufStart File %s, toPtr %08x", 
                 _receivedFileName, _pReceivedFileDataPtr);
 
     // Get file type
     if (!jsonGetValueForKey("fileType", pCmdJson, _pReceivedFileType, MAX_FILE_TYPE_STR))
         return;
 
-    LogWrite(FromCmdHandler, LOG_NOTICE, "ufStart FileType %s", 
+    LogWrite(FromCmdHandler, LOG_VERBOSE, "ufStart FileType %s", 
                 _receivedFileName);
 
     // Get file length
@@ -181,13 +181,13 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
     if (!jsonGetValueForKey("fileLen", pCmdJson, fileLenStr, MAX_INT_ARG_STR_LEN))
         return;
 
-    // LogWrite(FromCmdHandler, LOG_NOTICE, "ufStart FileLenStr %s", 
+    // LogWrite(FromCmdHandler, LOG_VERBOSE, "ufStart FileLenStr %s", 
     //             fileLenStr);
 
     int fileLen = strtol(fileLenStr, NULL, 10);
     if (fileLen <= 0)
         return;
-    // LogWrite(FromCmdHandler, LOG_NOTICE, "ufStart FileLen %d", 
+    // LogWrite(FromCmdHandler, LOG_VERBOSE, "ufStart FileLen %d", 
     //             fileLen);
 
     // Copy start info
@@ -204,7 +204,7 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
         _receivedFileBufSize = fileLen;
 
         // Debug
-        LogWrite(FromCmdHandler, LOG_NOTICE, "efStart File %s, toPtr %08x, bufSize %d", 
+        LogWrite(FromCmdHandler, LOG_VERBOSE, "efStart File %s, toPtr %08x, bufSize %d", 
                     _receivedFileName, _pReceivedFileDataPtr, _receivedFileBufSize);
     }
     else
@@ -244,7 +244,7 @@ void CommandHandler::handleFileBlock(const char* pCmdJson, const uint8_t* pData,
 
     // Add to count of blocks
     _receivedBlockCount++;
-    // LogWrite(FromCmdHandler, LOG_DEBUG, "efBlock, len %d, blocks %d", 
+    // LogWrite(FromCmdHandler, LOG_VERBOSE, "efBlock, len %d, blocks %d", 
     //             _receivedFileBytesRx, _receivedBlockCount);
 }
 
@@ -288,7 +288,7 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
     {
         // Offer to the machine specific handler
         // appendJson(_receivedFileStartInfo, pCmdJson);
-        LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
+        LogWrite(FromCmdHandler, LOG_VERBOSE, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
         if (_pTargetFileFunction)
             (*_pTargetFileFunction)(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx);
     }
@@ -300,7 +300,7 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
 
 void CommandHandler::handleStatusResponse(const char* pCmdJson)
 {
-    // LogWrite(FromCmdHandler, LOG_DEBUG, "RxFrame RespMsg %s", pCmdJson);
+    // LogWrite(FromCmdHandler, LOG_VERBOSE, "RxFrame RespMsg %s", pCmdJson);
     // Get espHealth field
     char espHealthJson[MAX_ESP_HEALTH_STR];
     if (!jsonGetValueForKey("espHealth", pCmdJson, espHealthJson, MAX_ESP_HEALTH_STR))
@@ -314,7 +314,7 @@ void CommandHandler::handleStatusResponse(const char* pCmdJson)
         return;
     if (!jsonGetValueForKey("espV", espHealthJson, _statusESP32Version, MAX_ESP_VERSION_STR))
         return;
-    // LogWrite(FromCmdHandler, LOG_DEBUG, "Ip Address %s", _espIPAddress);
+    // LogWrite(FromCmdHandler, LOG_VERBOSE, "Ip Address %s", _espIPAddress);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -405,7 +405,7 @@ void CommandHandler::getStatusResponse(bool* pIPAddressValid, char** pIPAddress,
 
 void CommandHandler::sendDebugMessage(const char* pStr, const char* rdpMessageIdStr)
 {
-    // LogWrite(FromCmdHandler, LOG_DEBUG, "RDP replying with %s", responseMessage);
+    // LogWrite(FromCmdHandler, LOG_VERBOSE, "RDP replying with %s", responseMessage);
     static const int MAX_RESPONSE_MSG_LEN = 2000;
     static char responseJson[MAX_RESPONSE_MSG_LEN+1];
     strlcpy(responseJson, "\"index\":\"", MAX_RESPONSE_MSG_LEN);

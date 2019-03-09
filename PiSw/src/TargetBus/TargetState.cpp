@@ -77,11 +77,11 @@ uint8_t* TargetState::getMemoryImagePtr()
     return _pTargetMemoryImage;
 }
 
-void TargetState::setTargetRegisters(Z80Registers& regs)
+void TargetState::setTargetRegisters(const Z80Registers& regs)
 {
     _targetRegisters = regs;
     _targetRegsValid = true;
-    LogWrite(FromTargetState, LOG_DEBUG, "SetTargetRegs PC=%04x\n", regs.PC);
+    LogWrite(FromTargetState, LOG_VERBOSE, "SetTargetRegs PC=%04x SP=%04x", regs.PC, regs.SP);
 }
 
 bool TargetState::areRegistersValid()
@@ -92,11 +92,11 @@ bool TargetState::areRegistersValid()
 void TargetState::getTargetRegs(Z80Registers& regs)
 {
     regs = _targetRegisters;
-    LogWrite(FromTargetState, LOG_DEBUG, "getTargetRegs PC=%04x\n", regs.PC);
+    LogWrite(FromTargetState, LOG_VERBOSE, "getTargetRegs PC=%04x", regs.PC);
 }
 
 void TargetState::handleExecAddr(uint32_t addr)
 {
-    LogWrite(FromTargetState, LOG_DEBUG, "got exec addr %04x", addr);
+    LogWrite(FromTargetState, LOG_VERBOSE, "got exec addr %04x", addr);
 }
 

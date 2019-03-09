@@ -12,24 +12,24 @@
 class Z80Registers
 {
 public:
-    uint16_t PC;
-    uint16_t SP;
-    uint16_t HL;
-    uint16_t DE;
-    uint16_t BC;
-    uint16_t AF;
-    uint16_t IX;
-    uint16_t IY;
-    uint16_t HLDASH;
-    uint16_t DEDASH;
-    uint16_t BCDASH;
-    uint16_t AFDASH;
-    uint16_t MEMPTR;
-    uint8_t I;
-    uint8_t R;
-    uint8_t INTMODE;
-    uint8_t INTENABLED;
-    uint8_t VPS;
+    int PC;
+    int SP;
+    int HL;
+    int DE;
+    int BC;
+    int AF;
+    int IX;
+    int IY;
+    int HLDASH;
+    int DEDASH;
+    int BCDASH;
+    int AFDASH;
+    int MEMPTR;
+    int I;
+    int R;
+    int INTMODE;
+    int INTENABLED;
+    int VPS;
 
 public:
     Z80Registers()
@@ -38,7 +38,7 @@ public:
         HLDASH = DEDASH = BCDASH = AFDASH = MEMPTR = 0;
         I = R = INTMODE = INTENABLED = VPS = 0;
     }
-    void format1(char* pResponse, int maxLen)
+    void format(char* pResponse, int maxLen)
     {
         char tmpStr[100];
         ee_sprintf(tmpStr, "PC=%04x SP=%04x BC=%04x AF=%04x HL=%04x DE=%04x IX=%04x IY=%04x",

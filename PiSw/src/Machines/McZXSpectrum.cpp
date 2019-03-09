@@ -64,7 +64,7 @@ McZXSpectrum::McZXSpectrum() : McBase()
 void McZXSpectrum::enable()
 {
     _screenBufferValid = false;
-    LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
+    LogWrite(_logPrefix, LOG_VERBOSE, "Enabling");
     BusAccess::accessCallbackAdd(memoryRequestCallback);
     // Bus raider enable wait states on IORQ
     BusAccess::waitSetup(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ || _descriptorTable.emulatedRAM);
@@ -73,7 +73,7 @@ void McZXSpectrum::enable()
 // Disable machine
 void McZXSpectrum::disable()
 {
-    LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
+    LogWrite(_logPrefix, LOG_VERBOSE, "Disabling");
     BusAccess::waitSetup(false, false);
     BusAccess::accessCallbackRemove();
 }
@@ -81,6 +81,27 @@ void McZXSpectrum::disable()
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
 void McZXSpectrum::displayRefresh()
 {
+    // Colour lookup table
+    static const int NUM_SPECTRUM_COLOURS = 16;
+    static int colourLUT[NUM_SPECTRUM_COLOURS] = {
+            WGFX_BLACK,
+            WGFX_DARK_BLUE,
+            WGFX_DARK_RED,
+            WGFX_DARK_PURPLE,
+            WGFX_DARK_GREEN,
+            WGFX_DARK_CYAN,
+            WGFX_DARK_YELLOW,
+            WGFX_GRAY,
+            WGFX_BLACK,
+            WGFX_BLUE,
+            WGFX_RED,
+            WGFX_PURPLE,
+            WGFX_GREEN,
+            WGFX_CYAN,
+            WGFX_YELLOW,
+            WGFX_WHITE
+    };
+
     // Read memory at the location of the memory mapped screen
     unsigned char pScrnBuffer[ZXSPECTRUM_DISP_RAM_SIZE];
     bool dataValid = McManager::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, pScrnBuffer, ZXSPECTRUM_DISP_RAM_SIZE, 1, 0);
@@ -125,9 +146,9 @@ void McZXSpectrum::displayRefresh()
                     y = ((y & 0x38) >> 3) | ((y & 0x07) << 3) | (y & 0xc0);
                     // Get pixel colour
                     bool pixVal = pScrnBuffer[bufIdx] & pixMask;
-                    int pixColour = ((cellColourData & 0x38) >> 3) | ((cellColourData & 0x80) >> 4);
+                    int pixColour = colourLUT[((cellColourData & 0x38) >> 3) | ((cellColourData & 0x40) >> 3)];
                     if (pixVal)
-                        pixColour = (cellColourData & 0x07) | ((cellColourData & 0x80) >> 4); 
+                        pixColour = colourLUT[(cellColourData & 0x07) | ((cellColourData & 0x40) >> 3)]; 
                     wgfxSetColourPixel(MC_WINDOW_NUMBER, x, y, pixColour);
                     // Bump the pixel mask
                     pixMask = pixMask >> 1;
@@ -310,6 +331,12 @@ uint32_t McZXSpectrum::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[m
                 addrBitMask = addrBitMask << 1;
             }
         }
+        else if ((addr & 0xff) == 0x1f)
+        {
+            // Kempston joystick - just say nothing pressed
+            retVal = 0;
+        }
+
     }
 
     #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN

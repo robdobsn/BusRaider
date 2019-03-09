@@ -28,7 +28,7 @@ typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.051";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.054";
 static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
@@ -174,7 +174,7 @@ extern "C" int main()
     timers_init();
 
     // Initialise graphics system
-    display.init(1440, 900);
+    display.init(1920, 1200);
 
     // Logging
     LogSetLevel(LOG_DEBUG);
@@ -224,7 +224,7 @@ extern "C" int main()
         if (USPiKeyboardAvailable()) 
         {
             USPiKeyboardRegisterKeyStatusHandlerRaw(_keypress_raw_handler);
-            LogWrite(FromMain, LOG_DEBUG, "Keyboard found");
+            LogWrite(FromMain, LOG_VERBOSE, "Keyboard found");
             keyboardFound = true;
         } 
         else 

@@ -152,13 +152,13 @@ bool TargetDebug::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len)
             (addr >= _pTargetMachine->getDescriptorTable(0)->emulatedRAMStart) && 
             (addr < _pTargetMachine->getDescriptorTable(0)->emulatedRAMStart + _pTargetMachine->getDescriptorTable(0)->emulatedRAMLen))))
     {
-        // LogWrite(FromTargetDebug, LOG_DEBUG, "blockRead: Not in single step or emulated RAM %04x %d", addr, len);
+        // LogWrite(FromTargetDebug, LOG_VERBOSE, "blockRead: Not in single step or emulated RAM %04x %d", addr, len);
         return false;
     }
     int copyLen = len;
     if (addr >= MAX_TARGET_MEMORY_LEN)
     {
-        // LogWrite(FromTargetDebug, LOG_DEBUG, "blockRead: Too long %04x %d", addr, len);
+        LogWrite(FromTargetDebug, LOG_DEBUG, "blockRead: Too long %04x %d", addr, len);
         return false;
     }
     if (addr + copyLen > MAX_TARGET_MEMORY_LEN)
@@ -189,7 +189,7 @@ void TargetDebug::startSetRegisterSequence(Z80Registers* pRegs)
     bool curMonitorIORQ = false;
     BusAccess::waitGet(curMonitorIORQ, _instrWaitCurMode);
     _instrClockCurFreqHz = BusAccess::clockCurFreqHz();
-    LogWrite(FromTargetDebug, LOG_DEBUG, "startSetRegisterSequence curMonitorInstr %s",
+    LogWrite(FromTargetDebug, LOG_VERBOSE, "startSetRegisterSequence curMonitorInstr %s",
                 _instrWaitCurMode ? "Y" : "N");
 
     // Put machine into wait-state mode for MREQ
@@ -275,16 +275,16 @@ bool TargetDebug::commandMatch(const char* s1, const char* s2)
         }
         if (*p1 == 0)
         {
-            // LogWrite(FromTargetDebug, LOG_DEBUG, "Compare <%s> <%s> FALSE s1 shorter", s1, s2);
+            // LogWrite(FromTargetDebug, LOG_VERBOSE, "Compare <%s> <%s> FALSE s1 shorter", s1, s2);
             return false;
         }
         if (rdtolower(*p1++) != rdtolower(*p2++))
         {
-            // LogWrite(FromTargetDebug, LOG_DEBUG, "Compare <%s> <%s> FALSE no match at %d", s1, s2, p1 - s1);
+            // LogWrite(FromTargetDebug, LOG_VERBOSE, "Compare <%s> <%s> FALSE no match at %d", s1, s2, p1 - s1);
             return false;
         }
     }
-    // LogWrite(FromTargetDebug, LOG_DEBUG, "Compare <%s> <%s> %s ", s1, s2, *p2 == 0 ? "TRUE" : "FALSE");
+    // LogWrite(FromTargetDebug, LOG_VERBOSE, "Compare <%s> <%s> %s ", s1, s2, *p2 == 0 ? "TRUE" : "FALSE");
     return (*p2 == 0);
 }
 
@@ -311,7 +311,7 @@ void TargetDebug::service()
     // Check for breakpoint hit
     if (_breakpointHitFlag)
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "breakpoint hit %d debug", _breakpointHitIndex);
+        LogWrite(FromTargetDebug, LOG_VERBOSE, "breakpoint hit %d debug", _breakpointHitIndex);
         if (_pSendDebugMessageCallback)
             (*_pSendDebugMessageCallback)("\ncommand@cpu-step> ", "0");
         _breakpointHitFlag = false;
@@ -322,7 +322,7 @@ void TargetDebug::service()
     {
         static const int MAX_DISASSEMBLY_LINE_LEN = 200;
         char respBuf[MAX_DISASSEMBLY_LINE_LEN];
-        LogWrite(FromTargetDebug, LOG_DEBUG, "step-over hit");
+        LogWrite(FromTargetDebug, LOG_VERBOSE, "step-over hit");
         disasmZ80(_targetMemBuffer, 0, _stepOverPCValue, respBuf, INTEL, false, true);
         strlcat(respBuf, "\ncommand@cpu-step> ", MAX_DISASSEMBLY_LINE_LEN);
         if (_pSendDebugMessageCallback)
@@ -409,14 +409,14 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, "hard-reset-cpu"))
     {
-        // LogWrite(FromTargetDebug, LOG_DEBUG, "Reset machine");
+        LogWrite(FromTargetDebug, LOG_VERBOSE, "Reset machine");
         if (_pTargetMachine)
             _pTargetMachine->reset();
         strlcat(pResponse, "", maxResponseLen);
     }
     else if (commandMatch(cmdStr, "enter-cpu-step"))
     {
-        // LogWrite(FromTargetDebug, LOG_DEBUG, "enter-cpu-step");
+        LogWrite(FromTargetDebug, LOG_VERBOSE, "enter-cpu-step");
         BR_RETURN_TYPE retc = BusAccess::pause();
         if (retc == BR_OK)
         {
@@ -432,7 +432,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, "exit-cpu-step"))
     {
-        // LogWrite(FromTargetDebug, LOG_DEBUG, "exit-cpu-step");
+        LogWrite(FromTargetDebug, LOG_VERBOSE, "exit-cpu-step");
         BusAccess::waitRestoreDefaults();
         BR_RETURN_TYPE retc = BusAccess::pauseRelease();
         _debugInCPUStep = false;
@@ -442,7 +442,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, "quit"))
     {
-        // LogWrite(FromTargetDebug, LOG_DEBUG, "quit");
+        // LogWrite(FromTargetDebug, LOG_VERBOSE, "quit");
         BusAccess::waitRestoreDefaults();
         BR_RETURN_TYPE retc = BusAccess::pauseRelease();
         _debugInCPUStep = false;
@@ -453,7 +453,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, "smartload"))
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "smartload %s", argStr);
+        LogWrite(FromTargetDebug, LOG_VERBOSE, "smartload %s", argStr);
         McManager::handleTargetProgram(true, true, true);
         strlcat(pResponse, "", maxResponseLen);
     }
@@ -463,7 +463,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, "enable-breakpoint"))
     {
-        // LogWrite(FromTargetDebug, LOG_DEBUG, "enable breakpoint %s", argStr);
+        LogWrite(FromTargetDebug, LOG_VERBOSE, "enable breakpoint %s", argStr);
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
         enableBreakpoint(breakpointIdx, true);
         strlcat(pResponse, "", maxResponseLen);
@@ -475,7 +475,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, "disable-breakpoint"))
     {
-        // LogWrite(FromTargetDebug, LOG_DEBUG, "disable breakpoint %s", argStr);
+        LogWrite(FromTargetDebug, LOG_VERBOSE, "disable breakpoint %s", argStr);
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
         enableBreakpoint(breakpointIdx, false);
         strlcat(pResponse, "", maxResponseLen);
@@ -487,7 +487,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, "set-breakpoint"))
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "set breakpoint %s %s", argStr, argStr2);
+        LogWrite(FromTargetDebug, LOG_VERBOSE, "set breakpoint %s %s", argStr, argStr2);
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
         if ((argStr2[0] != 'P') || (argStr2[1] != 'C') || (argStr2[2] != '='))
         {
@@ -502,7 +502,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, "set-breakpointaction"))
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "set breakpoint action %s %s %s", argStr, argStr2, argRest);
+        LogWrite(FromTargetDebug, LOG_VERBOSE, "set breakpoint action %s %s %s", argStr, argStr2, argRest);
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
         if (!commandMatch(argStr2, "prints"))
         {
@@ -518,16 +518,30 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
         // Disassemble at current location
         int addr = strtol(argStr, NULL, 10);
         disasmZ80(_targetMemBuffer, 0, addr, pResponse, INTEL, false, true);
-        // LogWrite(FromTargetDebug, LOG_DEBUG, "disassemble %s %s %s %d %s", argStr, argStr2, argRest, addr, pResponse);
+        // LogWrite(FromTargetDebug, LOG_VERBOSE, "disassemble %s %s %s %d %s", argStr, argStr2, argRest, addr, pResponse);
     }
     else if (commandMatch(cmdStr, "get-registers"))
     {
-        _z80Registers.format1(pResponse, maxResponseLen);
+        _z80Registers.format(pResponse, maxResponseLen);
     }
     else if (commandMatch(cmdStr, "read-memory"))
     {
-        // LogWrite(FromTargetDebug, LOG_DEBUG, "read mem %s %s", argStr, argStr2);
-        int startAddr = strtol(argStr, NULL, 10);
+        // LogWrite(FromTargetDebug, LOG_VERBOSE, "read mem %s %s", argStr, argStr2);
+        int memAddn = 0;
+        if (strlen(argStr) > 5)
+        {
+            char memAddnStr[10];
+            memset(memAddnStr, 0, 10);
+            for (int i = 0; i < 10; i++)
+            {
+                memAddnStr[i] = argStr[5+i];
+                if (memAddnStr[i] == 0)
+                    break;
+            }
+            memAddn = strtol(memAddnStr, NULL, 10);
+            argStr[5] = 0;
+        }
+        int startAddr = strtol(argStr, NULL, 10) + memAddn;
         int leng = strtol(argStr2, NULL, 10);
         if (startAddr >= 0 && startAddr <= MAX_TARGET_MEM_ADDR)
         {
@@ -571,7 +585,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, "run"))
     {
-        // LogWrite(FromTargetDebug, LOG_DEBUG, "run");
+        // LogWrite(FromTargetDebug, LOG_VERBOSE, "run");
         BR_RETURN_TYPE retc = BusAccess::pauseRelease();
         _debugInCPUStep = false;
         if (retc != BR_OK)
@@ -582,14 +596,14 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, "cpu-step"))
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step");
+        // LogWrite(FromTargetDebug, LOG_VERBOSE, "cpu-step");
         disasmZ80(_targetMemBuffer, 0, _z80Registers.PC, pResponse, INTEL, false, true);
         BR_RETURN_TYPE retc = BusAccess::pauseStep();
         if (retc == BR_OK)
         {
             // Start sequence of getting registers
             startGetRegisterSequence();
-            // LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step done");
+            // LogWrite(FromTargetDebug, LOG_VERBOSE, "cpu-step done");
             _debugInCPUStep = true;
 
         }
@@ -603,7 +617,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
         // Get address to run to by disassembling code at current location
         int instrLen = disasmZ80(_targetMemBuffer, 0, _z80Registers.PC, pResponse, INTEL, false, true);
         _stepOverPCValue = _z80Registers.PC + instrLen;
-        LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step-over PCnow %04x StepToPC %04x", _z80Registers.PC, _stepOverPCValue);
+        // LogWrite(FromTargetDebug, LOG_VERBOSE, "cpu-step-over PCnow %04x StepToPC %04x", _z80Registers.PC, _stepOverPCValue);
         _stepOverEnabled = true;
         _stepOverHit = false;
         // Release execution
@@ -616,7 +630,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, ""))
     {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "blank (step) %s", _debugInitalized ? "" : "not in debug mode");
+        // LogWrite(FromTargetDebug, LOG_VERBOSE, "blank (step) %s", _debugInitalized ? "" : "not in debug mode");
         if (_debugInitalized)
         {
             // Blank is used for pause
@@ -625,7 +639,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
             {
                 // Start sequence of getting registers
                 startGetRegisterSequence();
-                // LogWrite(FromTargetDebug, LOG_DEBUG, "now paused SEND-BLANK");
+                // LogWrite(FromTargetDebug, LOG_VERBOSE, "now paused SEND-BLANK");
                 _debugInCPUStep = true;
             }
             else
@@ -651,7 +665,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     // Complete and add command request
     strlcat(pResponse, (BusAccess::pauseIsPaused() ? "\ncommand@cpu-step> " : "\ncommand> "), maxResponseLen);
 
-    // LogWrite(FromTargetDebug, LOG_DEBUG, "resp %s", pResponse);
+    // LogWrite(FromTargetDebug, LOG_VERBOSE, "resp %s", pResponse);
 
     return true;
 }
@@ -678,13 +692,13 @@ int TargetDebug::getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBuff
         0x11, 0x00, 0x00,           // ld de, xxxx
         0x01, 0x00, 0x00,           // ld bc, xxxx
         0xd9,                       // exx
-        0x31, 0x00, 0x00,           // ld sp, xxxx
         0x21, 0x00, 0x00,           // ld hl, xxxx
         0x11, 0x00, 0x00,           // ld de, xxxx
         0x01, 0x00, 0x00,           // ld bc, xxxx
         0xf1, 0x00, 0x00,           // pop af + two bytes that are read as if from stack
         0x08,                       // ex af,af'
         0xf1, 0x00, 0x00,           // pop af + two bytes that are read as if from stack
+        0x31, 0x00, 0x00,           // ld sp, xxxx
         0x3e, 0x00,                 // ld a, xx
         0xed, 0x47,                 // ld i, a
         0x3e, 0x00,                 // ld a, xx
@@ -699,12 +713,12 @@ int TargetDebug::getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBuff
     const int RegisterHLDASHUpdatePos = 10;
     const int RegisterDEDASHUpdatePos = 13;
     const int RegisterBCDASHUpdatePos = 16;
-    const int RegisterSPUpdatePos = 20;
-    const int RegisterHLUpdatePos = 23;
-    const int RegisterDEUpdatePos = 26;
-    const int RegisterBCUpdatePos = 29;
-    const int RegisterAFDASHUpdatePos = 32;
-    const int RegisterAFUpdatePos = 36;
+    const int RegisterHLUpdatePos = 20;
+    const int RegisterDEUpdatePos = 23;
+    const int RegisterBCUpdatePos = 26;
+    const int RegisterAFDASHUpdatePos = 29;
+    const int RegisterAFUpdatePos = 33;
+    const int RegisterSPUpdatePos = 36;
     const int RegisterIUpdatePos = 39;
     const int RegisterRUpdatePos = 43;
     const int RegisterAUpdatePos = 47;
@@ -725,7 +739,7 @@ int TargetDebug::getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBuff
     store16BitVal(regSetInstructions, RegisterAFDASHUpdatePos, regs.AFDASH);
     store16BitVal(regSetInstructions, RegisterAFUpdatePos, regs.AF);
     regSetInstructions[RegisterIUpdatePos] = regs.I;
-    regSetInstructions[RegisterRUpdatePos] = (regs.R + 256 - 7) % 256;
+    regSetInstructions[RegisterRUpdatePos] = (regs.R + 256 - 5) % 256;
     regSetInstructions[RegisterAUpdatePos] = regs.AF >> 8;
     regSetInstructions[RegisterIMUpdatePos] = (regs.INTMODE == 0) ? 0x46 : ((regs.INTMODE == 1) ? 0x56 : 0x5e);
     regSetInstructions[RegisterINTENUpdatePos] = (regs.INTENABLED == 0) ? 0xf3 : 0xfb;
@@ -774,7 +788,7 @@ void TargetDebug::handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags
         0xFD, 0xE5,     //     push iy - no inc sp as we pop af lower down which restores sp to where it was    
         0x3E, 0x00,     //     ld a, 0 - note that the value 0 gets changed in the code below  
         0xED, 0x4F,     //     ld r, a
-        0xF1, 0x00, 0x00,    //     pop af + two bytes that are read is if from stack 
+        0xF1, 0x00, 0x00,    //     pop af + two bytes that are read as if from stack 
                         //     - note that the values 0, 0 get changed in the code below  
         0x18, 0xDE      //     jr loop
     };
@@ -793,7 +807,7 @@ void TargetDebug::handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags
                 if (_registerQueryWriteIndex == 0)
                 {
                     _z80Registers.SP = addr+1;
-                    _z80Registers.AF = (_z80Registers.AF & 0xff) | (data << 8);
+                    _z80Registers.AF = data << 8;
                     regQueryInstructions[RegisterAFUpdatePos+1] = data;                     
                     _registerQueryWriteIndex++;
                 }

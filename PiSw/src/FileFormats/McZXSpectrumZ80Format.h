@@ -22,7 +22,7 @@ typedef struct {
 	uint8_t interruptFlipFlop;
 	uint8_t iff2;
 	uint8_t interruptMode;
-	uint8_t extraData[60000];
+	uint8_t extraData[100000];
 } version1Header_t;
 
 #pragma pack(pop)
@@ -96,13 +96,45 @@ class McZXSpectrumZ80Format
 			extraHeaderLen = (sna->extraData[0] + ((int)sna->extraData[1]) * 256);
 			if (extraHeaderLen > 23)
 				versionNum = 3;
-			ramDumpOffset += extraHeaderLen + 5;
+			ramDumpOffset += extraHeaderLen;
 		}
 
 		// Convert
 		static uint8_t ram[49152];
-		int lenDecoded = decompress(sna->extraData + ramDumpOffset, ram, 49152, isCompressed); 
-		pDataCallback(16384, ram, 49152); 
+		int totalLenDecoded = 0;
+		if (versionNum == 1)
+		{
+			totalLenDecoded = decompress(sna->extraData + ramDumpOffset, ram, 49152, isCompressed); 
+			pDataCallback(16384, ram, 49152);
+		}
+		else
+		{
+			int curPos = extraHeaderLen + 2;
+			while (true)
+			{
+				int compressedBlockLen = (sna->extraData[curPos]) + sna->extraData[curPos+1] * 256;
+				int blockBase = -1;
+				int blockPage = sna->extraData[curPos+2];
+				LogWrite(_logPrefix, LOG_VERBOSE, "Decoding block curPos %d blockLen %d page %d", curPos, compressedBlockLen, blockPage);
+				switch(blockPage)
+				{
+					case 4: blockBase = 0x8000; break;
+					case 5: blockBase = 0xC000; break;
+					case 8: blockBase = 0x4000; break;
+				}
+				if (blockBase != -1)
+				{
+					int lenDecoded = decompress(sna->extraData + curPos + 3, ram, 16384, true); 
+					if (lenDecoded != 16384)
+						LogWrite(_logPrefix, LOG_DEBUG, "Decode block len %d != 16384", lenDecoded);
+					totalLenDecoded += lenDecoded;
+					pDataCallback(blockBase, ram, 16384);
+				}
+				curPos += 3 + compressedBlockLen;
+				if (30 + curPos >= dataLen)
+					break;
+			}
+		}
 
 		// Registers
 		Z80Registers regs;
@@ -122,15 +154,19 @@ class McZXSpectrumZ80Format
 		regs.R = (sna->r & 0x7f) + ((sna->borderEtc & 0x01) >> 7);
 		regs.INTMODE = sna->interruptMode & 0x03;
 		regs.INTENABLED = sna->interruptFlipFlop;
-		pRegsCallback(regs);
 
 		// Check for V2/3 PC
 		if (versionNum > 1)
 			regs.PC = (sna->extraData[2] + ((int)sna->extraData[3]) * 256);
 
+		pRegsCallback(regs);
+
 		// Done
-		LogWrite(_logPrefix, LOG_DEBUG, "OK format (v%d hdrLen %d compr %s) input len %d -> len %d run from %04x\n",
-					versionNum, extraHeaderLen, isCompressed ? "Y" : "N", dataLen, lenDecoded, regs.PC);
+		LogWrite(_logPrefix, LOG_VERBOSE, "OK format (v%d hdrLen %d compr %s) input len %d -> len %d run from %04x",
+					versionNum, extraHeaderLen, isCompressed ? "Y" : "N", dataLen, totalLenDecoded, regs.PC);
+		char regsStr[500];
+		regs.format(regsStr, 500);
+		LogWrite(_logPrefix, LOG_VERBOSE, "Regs: %s", regsStr);
 		return true;
 	}
 };

@@ -623,12 +623,18 @@ static int ee_vsprintf(char* buf, const char* fmt, va_list args)
 //     UART_WRITE_STRING(str);
 // }
 
+#define USPI_LOG_SEVERITY LOG_VERBOSE
+
 unsigned int __logSeverity = LOG_DEBUG;
 
 void LogWrite(const char* pSource,
     unsigned severity,
     const char* fmt, ...)
 {
+    // Check for USPI log messages
+    if (strstr(pSource, "uspi") || strstr(pSource, "usbdev") || strstr(pSource, "dwroot"))
+        severity = USPI_LOG_SEVERITY;
+
     if (severity > __logSeverity)
         return;
 
@@ -642,7 +648,7 @@ void LogWrite(const char* pSource,
     LOG_WRITE_STRING("[");
     switch (severity) {
     case LOG_ERROR:
-        LOG_WRITE_STRING(" ERROR ");
+        LOG_WRITE_STRING("ERROR  ");
         break;
     case LOG_WARNING:
         LOG_WRITE_STRING("WARNING");
@@ -651,10 +657,13 @@ void LogWrite(const char* pSource,
         LOG_WRITE_STRING("NOTICE ");
         break;
     case LOG_DEBUG:
-        LOG_WRITE_STRING(" DEBUG ");
+        LOG_WRITE_STRING("DEBUG  ");
+        break;
+    case LOG_VERBOSE:
+        LOG_WRITE_STRING("VERBOSE");
         break;
     default:
-        LOG_WRITE_STRING("  ??   ");
+        LOG_WRITE_STRING("??     ");
     }
 
     LOG_WRITE_STRING("] ");

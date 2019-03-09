@@ -34,7 +34,7 @@ public:
     static int numMemoryBlocks();
     static TargetMemoryBlock* getMemoryBlock(int n);
     static unsigned char* getMemoryImagePtr();
-    static void setTargetRegisters(Z80Registers& regs);
+    static void setTargetRegisters(const Z80Registers& regs);
     static bool areRegistersValid();
     static void getTargetRegs(Z80Registers& regs);
     static void handleExecAddr(uint32_t addr);

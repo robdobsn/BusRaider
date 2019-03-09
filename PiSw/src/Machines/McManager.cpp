@@ -218,7 +218,7 @@ bool McManager::setMachineIdx(int mcIdx, bool forceUpdate)
             Timers::set(1000000 / pMachine->getDescriptorTable(0)->irqRate, McManager::targetIrqFromTimer, NULL);
 
         // Started machine
-        LogWrite(FromMcManager, LOG_DEBUG, "Started machine %s", 
+        LogWrite(FromMcManager, LOG_VERBOSE, "Started machine %s", 
                     pMachine->getDescriptorTable(0)->machineName);
 
     }
@@ -251,7 +251,7 @@ bool McManager::setMachineOpts(const char* mcOpts)
     pMachine->disable();
     pMachine->getDescriptorTable(0)->emulatedRAM = (strstr(mcOpts, "EMURAM") != 0);
     pMachine->getDescriptorTable(0)->setRegistersByInjection = (strstr(mcOpts, "INJECT") != 0);
-    LogWrite(FromMcManager, LOG_DEBUG, "setMachineOpts %s emuRAM %d instrInject %d", mcOpts,
+    LogWrite(FromMcManager, LOG_VERBOSE, "setMachineOpts %s emuRAM %d instrInject %d", mcOpts,
                 pMachine->getDescriptorTable(0)->emulatedRAM,
                 pMachine->getDescriptorTable(0)->setRegistersByInjection);
     pMachine->enable();
@@ -308,7 +308,7 @@ void McManager::sendKeyCodeToTarget(int asciiCode)
 
 void McManager::sendDebugMessage(const char* pStr, const char* rdpMessageIdStr)
 {
-    // LogWrite(FromMcManager, LOG_DEBUG, "debugMsg %s cmdH %d msgId %s", pStr, _pCommandHandler, rdpMessageIdStr); 
+    // LogWrite(FromMcManager, LOG_VERBOSE, "debugMsg %s cmdH %d msgId %s", pStr, _pCommandHandler, rdpMessageIdStr); 
     if (_pCommandHandler)
         _pCommandHandler->sendDebugMessage(pStr, rdpMessageIdStr);
 }
@@ -316,7 +316,7 @@ void McManager::sendDebugMessage(const char* pStr, const char* rdpMessageIdStr)
 bool McManager::debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen)
 {
     McBase* pMc = getMachine();
-    // LogWrite(FromMcManager, LOG_DEBUG, "debuggerCommand %s %d %d\n", pCommand, 
+    // LogWrite(FromMcManager, LOG_VERBOSE, "debuggerCommand %s %d %d\n", pCommand, 
     //         maxResponseLen, pMc);
     if (pMc)
         return pMc->debuggerCommand(pCommand, pResponse, maxResponseLen);
@@ -436,11 +436,11 @@ void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause
         // Write the blocks
         for (int i = 0; i < TargetState::numMemoryBlocks(); i++) {
             TargetState::TargetMemoryBlock* pBlock = TargetState::getMemoryBlock(i);
-            LogWrite(FromMcManager, LOG_DEBUG,"ProgramTarget start %08x len %d", pBlock->start, pBlock->len);
+            LogWrite(FromMcManager, LOG_VERBOSE,"ProgramTarget start %08x len %d", pBlock->start, pBlock->len);
             McManager::blockWrite(pBlock->start, TargetState::getMemoryImagePtr() + pBlock->start, pBlock->len, false, false);
         }
         // Written
-        LogWrite(FromMcManager, LOG_DEBUG, "ProgramTarget - written %d blocks", TargetState::numMemoryBlocks());
+        LogWrite(FromMcManager, LOG_VERBOSE, "ProgramTarget - written %d blocks", TargetState::numMemoryBlocks());
 
         // Check for hold in pause
         if (holdInPause)
@@ -449,7 +449,7 @@ void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause
         // Check for reset too
         if (resetAfterProgramming)
         {
-            LogWrite(FromMcManager, LOG_DEBUG, "Starting target code");
+            LogWrite(FromMcManager, LOG_VERBOSE, "Starting target code");
             bool performHardReset = true;
             McBase* pMc = getMachine();
             TargetDebug* pDebug = TargetDebug::get();
@@ -516,7 +516,7 @@ void McManager::handleCommand(const char* pCmdJson,
                     [[maybe_unused]] const uint8_t* pParams, [[maybe_unused]] int paramsLen,
                     char* pRespJson, int maxRespLen)
 {
-    // LogWrite(FromMcManager, LOG_DEBUG, "req %s", pCmdJson);
+    // LogWrite(FromMcManager, LOG_VERBOSE, "req %s", pCmdJson);
     #define MAX_CMD_NAME_STR 30
     char cmdName[MAX_CMD_NAME_STR+1];
     if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
@@ -531,7 +531,7 @@ void McManager::handleCommand(const char* pCmdJson,
     }
     else if (strcasecmp(cmdName, "ClearTarget") == 0)
     {
-        LogWrite(FromMcManager, LOG_DEBUG, "ClearTarget");
+        // LogWrite(FromMcManager, LOG_VERBOSE, "ClearTarget");
         TargetState::clear();
     }
     else if (strcasecmp(cmdName, "ProgramTarget") == 0)
@@ -544,34 +544,34 @@ void McManager::handleCommand(const char* pCmdJson,
     }
     else if (strcasecmp(cmdName, "ResetTarget") == 0)
     {
-        LogWrite(FromMcManager, LOG_DEBUG, "ResetTarget");
+        // LogWrite(FromMcManager, LOG_VERBOSE, "ResetTarget");
         McManager::targetReset();
     }
     else if (strcasecmp(cmdName, "PauseTarget") == 0)
     {
-        LogWrite(FromMcManager, LOG_DEBUG, "PauseTarget");
+        // LogWrite(FromMcManager, LOG_VERBOSE, "PauseTarget");
         McManager::targetPause();
     }
     else if (strcasecmp(cmdName, "ReleaseTarget") == 0)
     {
-        LogWrite(FromMcManager, LOG_DEBUG, "ReleaseTarget");
+        // LogWrite(FromMcManager, LOG_VERBOSE, "ReleaseTarget");
         McManager::targetRelease();
     }
     else if (strcasecmp(cmdName, "IOClrTarget") == 0)
     {
-        LogWrite(FromMcManager, LOG_DEBUG, "IO Clear Target");
+        LogWrite(FromMcManager, LOG_VERBOSE, "IO Clear Target");
         McManager::targetClearAllIO();
     }
     else if ((strcasecmp(cmdName, "FileTarget") == 0) || ((strcasecmp(cmdName, "SRECTarget") == 0)))
     {
-        LogWrite(FromMcManager, LOG_DEBUG, "File to Target, len %d", paramsLen);
+        // LogWrite(FromMcManager, LOG_VERBOSE, "File to Target, len %d", paramsLen);
         McBase* pMc = McManager::getMachine();
         if (pMc)
             pMc->fileHandler(pCmdJson, pParams, paramsLen);
     }
     else if (strcasecmp(cmdName, "SRECTarget") == 0)
     {
-        LogWrite(FromMcManager, LOG_DEBUG, "SREC to Target, len %d", paramsLen);
+        // LogWrite(FromMcManager, LOG_VERBOSE, "SREC to Target, len %d", paramsLen);
         McBase* pMc = McManager::getMachine();
         if (pMc)
             pMc->fileHandler(pCmdJson, pParams, paramsLen);
@@ -586,7 +586,7 @@ void McManager::handleCommand(const char* pCmdJson,
             // Move to first char of actual name
             pMcName++;
             setMachineByName(pMcName);
-            LogWrite(FromMcManager, LOG_DEBUG, "Set Machine to %s", pMcName);
+            LogWrite(FromMcManager, LOG_VERBOSE, "Set Machine to %s", pMcName);
         }
     }
     else if (strncasecmp(cmdName, "mcoptions", strlen("mcoptions")) == 0)
@@ -597,13 +597,13 @@ void McManager::handleCommand(const char* pCmdJson,
         {
             // Move to first char of actual parameter
             pOptions++;
-            LogWrite(FromMcManager, LOG_DEBUG, "Set Machine options to %s", pOptions);
+            // LogWrite(FromMcManager, LOG_VERBOSE, "Set Machine options to %s", pOptions);
             setMachineOpts(pOptions);
         }
     }
     else if (strcasecmp(cmdName, "RxHost") == 0)
     {
-        // LogWrite(FromMcManager, LOG_DEBUG, "RxFromHost, len %d", dataLen);
+        // LogWrite(FromMcManager, LOG_VERBOSE, "RxFromHost, len %d", dataLen);
         handleRxCharFromTarget(pParams, paramsLen);
     }
     else if (strcasecmp(cmdName, "rdp") == 0)
