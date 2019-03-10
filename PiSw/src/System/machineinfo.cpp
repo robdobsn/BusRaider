@@ -281,7 +281,7 @@ unsigned CMachineInfo::GetClockRate (uint32_t nClockId) const
 		}
 		else
 		{
-			nResult = 300000000;		// TODO
+			nResult = 300000000;
 		}
 		break;
 

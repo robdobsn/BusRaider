@@ -190,6 +190,11 @@ void BusAccess::controlTake()
     // Bus is under BusRaider control
     _busIsUnderControl = true;
 
+    // Set the PIB to input
+    pibSetIn();
+    // Set data bus to input
+    WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
+
     // Control bus
     setPinOut(BR_WR_BAR, 1);
     setPinOut(BR_RD_BAR, 1);
@@ -235,7 +240,8 @@ void BusAccess::controlRelease(bool resetTargetOnRelease)
     // Clear the mux to deactivate output enables
     muxClear();
 
-    // Clear wait detected
+    // Clear wait detected in case we created some MREQ cycles that
+    // triggered wait
     clearWaitFF();
     clearWaitDetected();
 
@@ -291,16 +297,13 @@ BR_RETURN_TYPE BusAccess::controlRequestAndTake()
             break;
         microsDelay(1);
     }
+    
+    // Check we really have the bus
     if (!controlBusAcknowledged()) 
     {
         controlRelease(false);
         return BR_NO_BUS_ACK;
     }
-
-    // Set the PIB to input
-    pibSetIn();
-    // Set data bus to input
-    WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
 
     // Take control
     controlTake();
@@ -707,7 +710,7 @@ void BusAccess::waitStateISR(void* pData)
     muxClear();
 
     // Delay to allow M1 to settle
-    //TODO
+    //TODO check this is the best timing
     lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
 
     // Loop until control lines are valid
@@ -738,6 +741,12 @@ void BusAccess::waitStateISR(void* pData)
 
     // Get low address value
     uint32_t addr = pibGetValue() & 0xff;
+
+    // TODO
+                    // digitalWrite(8,1);
+                    // microsDelay(1);
+                    // digitalWrite(8,0);
+                    // microsDelay(1);
 
     // Read the high address
     muxSet(BR_MUX_HADDR_OE_BAR);

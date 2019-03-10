@@ -282,7 +282,7 @@ void McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         // SNA
         McZXSpectrumSNAFormat formatHandler;
         LogWrite(_logPrefix, LOG_DEBUG, "Processing SNA file len %d", fileLen);
-        // TODO handle registers and injecting RET
+        // Handle the format
         formatHandler.proc(TargetState::addMemoryBlock, TargetState::setTargetRegisters, pFileData, fileLen);
     }
     else

@@ -1087,9 +1087,31 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
         // See if we are waiting for the end of the previous instruction
         if (_registerPrevInstrComplete || ((!_lastInstructionWasPrefixed) && (flags & BR_CTRL_BUS_M1_MASK)))
         {
+            //TODO
+                // for (int i = 0; i < 5; i++)
+                // {
+                //     digitalWrite(8,1);
+                //     microsDelay(1);
+                //     digitalWrite(8,0);
+                //     microsDelay(1);
+                // }
             // If we've just completed the previous instruction then the current address is the PC
             if ((!_registerPrevInstrComplete) && (_registerMode == REGISTER_MODE_GET))
+            {
+                //     digitalWrite(BR_PUSH_ADDR_BAR, 1);
+                // int addrMask = 0x8000;
+                // digitalWrite(8,1);
+                // microsDelay(1);
+                // for (int i = 0; i < 16; i++)
+                // {
+                //     digitalWrite(8,addr & addrMask);
+                //     microsDelay(1);
+                //     addrMask = addrMask >> 1;
+                // }
+                // digitalWrite(8,0);
+                // microsDelay(1);
                 _z80Registers.PC = addr;
+            }
 
             // Previous instruction now done
             _registerPrevInstrComplete = true;
