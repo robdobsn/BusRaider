@@ -400,10 +400,10 @@ void CommandHandler::getStatusResponse(bool* pIPAddressValid, char** pIPAddress,
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Send debug message
+// Send remote debug protocol message
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void CommandHandler::sendDebugMessage(const char* pStr, const char* rdpMessageIdStr)
+void CommandHandler::sendRemoteDebugProtocolMsg(const char* pStr, const char* rdpMessageIdStr)
 {
     // LogWrite(FromCmdHandler, LOG_VERBOSE, "RDP replying with %s", responseMessage);
     static const int MAX_RESPONSE_MSG_LEN = 2000;
@@ -414,6 +414,15 @@ void CommandHandler::sendDebugMessage(const char* pStr, const char* rdpMessageId
     strlcat(responseJson, pStr, MAX_RESPONSE_MSG_LEN);
     strlcat(responseJson, "\"", MAX_RESPONSE_MSG_LEN);
     sendWithJSON("rdp", responseJson);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Log debug message
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void CommandHandler::logDebugMessage(const char* pStr)
+{
+    sendWithJSON("log", pStr);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

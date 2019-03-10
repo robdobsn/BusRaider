@@ -72,7 +72,7 @@ void McManager::init(CommandHandler* pCommandHandler, Display* pDisplay)
     _pDisplay = pDisplay;
     
     // Let the target debugger know how to communicate
-    TargetDebug::get()->setSendDebugMessageCallback(sendDebugMessage);
+    TargetDebug::get()->setSendRemoteDebugProtocolMsgCallback(sendRemoteDebugProtocolMsg);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -306,11 +306,11 @@ void McManager::sendKeyCodeToTarget(int asciiCode)
 // Debug messaging
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void McManager::sendDebugMessage(const char* pStr, const char* rdpMessageIdStr)
+void McManager::sendRemoteDebugProtocolMsg(const char* pStr, const char* rdpMessageIdStr)
 {
     // LogWrite(FromMcManager, LOG_VERBOSE, "debugMsg %s cmdH %d msgId %s", pStr, _pCommandHandler, rdpMessageIdStr); 
     if (_pCommandHandler)
-        _pCommandHandler->sendDebugMessage(pStr, rdpMessageIdStr);
+        _pCommandHandler->sendRemoteDebugProtocolMsg(pStr, rdpMessageIdStr);
 }
 
 bool McManager::debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen)
@@ -626,7 +626,7 @@ void McManager::handleCommand(const char* pCmdJson,
         responseMessage[0] = 0;
         McManager::debuggerCommand(commandStr, responseMessage, MAX_RESPONSE_MSG_LEN);
         // Send response back
-        sendDebugMessage(responseMessage, rdpMessageIdStr);
+        sendRemoteDebugProtocolMsg(responseMessage, rdpMessageIdStr);
     }
     else
     {

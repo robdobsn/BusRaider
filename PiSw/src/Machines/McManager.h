@@ -59,7 +59,7 @@ public:
     static void sendKeyCodeToTarget(int asciiCode);
 
     // Debug message handling
-    static void sendDebugMessage(const char* pStr, const char* rdpMessageIdStr);
+    static void sendRemoteDebugProtocolMsg(const char* pStr, const char* rdpMessageIdStr);
     static bool debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen);
 
     // Target programming

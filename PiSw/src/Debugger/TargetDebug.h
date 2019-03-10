@@ -11,7 +11,7 @@
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetRegisters.h"
 
-typedef void SendDebugMessageType(const char* pStr, const char* rdpMessageIdStr);
+typedef void SendRemoteDebugProtocolMsgType(const char* pStr, const char* rdpMessageIdStr);
 
 class Breakpoint
 {
@@ -50,9 +50,9 @@ public:
             [[maybe_unused]] McDescriptorTable& descriptorTable);
 
     // Comms callback
-    void setSendDebugMessageCallback(SendDebugMessageType* pSendDebugMessageCallback)
+    void setSendRemoteDebugProtocolMsgCallback(SendRemoteDebugProtocolMsgType* pSendRemoteDebugProtocolMsgCallback)
     {
-        _pSendDebugMessageCallback = pSendDebugMessageCallback;
+        _pSendRemoteDebugProtocolMsgCallback = pSendRemoteDebugProtocolMsgCallback;
     }
 
     // Memory access
@@ -85,7 +85,7 @@ private:
     McBase* _pTargetMachine;
 
     // Callback to send debug frames
-    static SendDebugMessageType* _pSendDebugMessageCallback;
+    static SendRemoteDebugProtocolMsgType* _pSendRemoteDebugProtocolMsgCallback;
 
     // Registers
     Z80Registers _z80Registers;

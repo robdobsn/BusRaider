@@ -33,7 +33,7 @@ uint32_t TargetDebug::_stepOverPCValue = 0;
 bool TargetDebug::_stepOverHit = false;
 
 // Callback to send debug frame
-SendDebugMessageType* TargetDebug::_pSendDebugMessageCallback = NULL;
+SendRemoteDebugProtocolMsgType* TargetDebug::_pSendRemoteDebugProtocolMsgCallback = NULL;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Construction
@@ -312,8 +312,8 @@ void TargetDebug::service()
     if (_breakpointHitFlag)
     {
         LogWrite(FromTargetDebug, LOG_VERBOSE, "breakpoint hit %d debug", _breakpointHitIndex);
-        if (_pSendDebugMessageCallback)
-            (*_pSendDebugMessageCallback)("\ncommand@cpu-step> ", "0");
+        if (_pSendRemoteDebugProtocolMsgCallback)
+            (*_pSendRemoteDebugProtocolMsgCallback)("\ncommand@cpu-step> ", "0");
         _breakpointHitFlag = false;
     }
 
@@ -325,8 +325,8 @@ void TargetDebug::service()
         LogWrite(FromTargetDebug, LOG_VERBOSE, "step-over hit");
         disasmZ80(_targetMemBuffer, 0, _stepOverPCValue, respBuf, INTEL, false, true);
         strlcat(respBuf, "\ncommand@cpu-step> ", MAX_DISASSEMBLY_LINE_LEN);
-        if (_pSendDebugMessageCallback)
-            (*_pSendDebugMessageCallback)(respBuf, "0");
+        if (_pSendRemoteDebugProtocolMsgCallback)
+            (*_pSendRemoteDebugProtocolMsgCallback)(respBuf, "0");
         _stepOverHit = false;
     }
 

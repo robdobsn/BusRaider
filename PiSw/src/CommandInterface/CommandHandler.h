@@ -57,7 +57,8 @@ public:
     void getStatusResponse(bool* pIPAddressValid, char** pIPAddress, char** pWifiConnStr, 
                 char** pWifiSSID, char** pEsp32Version);
     void sendRegularStatusUpdate();
-    void sendDebugMessage(const char* pStr, const char* rdpMessageIdStr);
+    void sendRemoteDebugProtocolMsg(const char* pStr, const char* rdpMessageIdStr);
+    void logDebugMessage(const char* pStr);
 
 private:
     static void static_hdlcPutCh(uint8_t ch);
