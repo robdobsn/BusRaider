@@ -4,19 +4,6 @@
 #include "McBase.h"
 #include "McManager.h"
 #include "../System/ee_printf.h"
-#include "../System/RingBufferPosn.h"
-
-#define DEBUG_IO_ACCESS 1
-
-#ifdef DEBUG_IO_ACCESS
-class DebugIOPortAccess
-{
-public:
-    int port;
-    bool type;
-    int val;
-};
-#endif
 
 class McTerminal : public McBase
 {
@@ -49,13 +36,6 @@ private:
     // Shifted digits on keyboard
     static const int SHIFT_DIGIT_KEY_MAP_LEN = 10;
     static int _shiftDigitKeyMap[SHIFT_DIGIT_KEY_MAP_LEN];
-
-#ifdef DEBUG_IO_ACCESS
-    // Debug collection of IO accesses
-    static const int DEBUG_MAX_IO_PORT_ACCESSES = 500;
-    static DebugIOPortAccess _debugIOPortBuf[DEBUG_MAX_IO_PORT_ACCESSES];
-    static RingBufferPosn _debugIOPortPosn;
-#endif
 
 public:
 

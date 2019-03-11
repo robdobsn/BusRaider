@@ -5,7 +5,7 @@
 
 class McRobsZ80 : public McBase
 {
-  private:
+private:
     static const char* _logPrefix;
     static constexpr uint32_t ROBSZ80_DISP_RAM_ADDR = 0x4000;
     static constexpr uint32_t ROBSZ80_DISP_RAM_SIZE = 0x4000;
@@ -16,7 +16,7 @@ class McRobsZ80 : public McBase
 
     static void handleExecAddr(uint32_t execAddr);
 
-  public:
+public:
 
     McRobsZ80() : McBase()
     {

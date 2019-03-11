@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include "../System/nmalloc.h" //TODO
 #include "../System/lowlib.h"
+#include "../Hardware/HwManager.h"
 
 const char* McTerminal::_logPrefix = "McTerm";
 
@@ -78,12 +79,6 @@ int McTerminal::_shiftDigitKeyMap[SHIFT_DIGIT_KEY_MAP_LEN] =
     { '!', '"', '#', '$', '%', '^', '&', '*', '(', ')' };
 
 int McTerminal::_machineSubType = MC_SUB_TYPE_STD;
-
-// Debug IO Port access
-#ifdef DEBUG_IO_ACCESS
-DebugIOPortAccess McTerminal::_debugIOPortBuf[];
-RingBufferPosn McTerminal::_debugIOPortPosn(DEBUG_MAX_IO_PORT_ACCESSES);
-#endif
 
 McTerminal::McTerminal() : McBase()
 {
@@ -201,27 +196,6 @@ void McTerminal::displayRefresh()
             _cursorBlinkLastUs = micros();
         }
     }
-
-#ifdef DEBUG_IO_ACCESS
-    // Handle debug 
-    char debugJson[500];
-    debugJson[0] = 0;
-    for (int i = 0; i < 20; i++)
-    {
-        if (_debugIOPortPosn.canGet())
-        {
-            int pos = _debugIOPortPosn.posToGet();
-            ee_sprintf(debugJson+strlen(debugJson), "%s %04x=%02x,",
-                ((_debugIOPortBuf[pos].type == 0) ? "RD" : ((_debugIOPortBuf[pos].type == 1) ? "WR" : "INTACK")),
-                _debugIOPortBuf[pos].port,
-                _debugIOPortBuf[pos].val);
-            _debugIOPortPosn.hasGot();
-        }
-    }
-    if (strlen(debugJson) != 0)
-        McManager::logDebugMessage(debugJson);
-#endif
-
 }
 
 int McTerminal::convertRawToAscii(unsigned char ucModifiers, const unsigned char rawKeys[6])
@@ -334,24 +308,9 @@ void McTerminal::fileHandler(const char* pFileInfo, const uint8_t* pFileData, in
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
 uint32_t McTerminal::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
 {
-    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
-
-    // Check for IO and RD or WRITE
-    if (flags & BR_CTRL_BUS_IORQ_MASK)
-    {
-#ifdef DEBUG_IO_ACCESS
-        // Decode port
-        if (_debugIOPortPosn.canPut())
-        {
-            int pos = _debugIOPortPosn.posToPut();
-            _debugIOPortBuf[pos].port = addr;
-            _debugIOPortBuf[pos].type = (flags & BR_CTRL_BUS_RD_MASK) ? 0 : ((flags & BR_CTRL_BUS_WR_MASK) ? 1 : 2);
-            _debugIOPortBuf[pos].val = data;
-            _debugIOPortPosn.hasPut();
-        }
-#endif
-    }
-
+    // Offer to the hardware manager
+    uint32_t retVal = HwManager::handleMemOrIOReq(addr, data, flags);
+    
     // Callback to debugger
     TargetDebug* pDebug = TargetDebug::get();
     if (pDebug)

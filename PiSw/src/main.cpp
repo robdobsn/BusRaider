@@ -18,6 +18,8 @@
 #include "Machines/McZXSpectrum.h"
 #include "Machines/McZXSpectrumDebug.h"
 #include "Machines/McTerminal.h"
+#include "Hardware/HwManager.h"
+#include "Hardware/Hw512KRamRom.h"
 #include "System/timer.h"
 #include "System/lowlib.h"
 #include "System/lowlev.h"
@@ -28,7 +30,7 @@ typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.060";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.061";
 static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
@@ -190,6 +192,12 @@ extern "C" int main()
     // Target machine memory
     TargetState::clear();
 
+    // Init hardware manager
+    HwManager::init(&commandHandler, &display);
+
+    // Add hardware
+    new Hw512KRamRom();
+
     // Init machine manager
     McManager::init(&commandHandler, &display);
 
@@ -197,7 +205,7 @@ extern "C" int main()
     new McTerminal();
     new McTRS80();
     new McRobsZ80();
-    // new McDebugZ80();
+    new McDebugZ80();
     new McZXSpectrum();
     // new McZXSpectrumDebug();
 
@@ -449,6 +457,9 @@ extern "C" int main()
 
         // Service bus raider
         BusAccess::service();
+
+        // Service hardware manager
+        HwManager::service();
 
         // Service target debugger
         TargetDebug* pDebug = TargetDebug::get();

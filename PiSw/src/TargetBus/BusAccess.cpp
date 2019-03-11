@@ -1043,3 +1043,9 @@ int  BusAccess::isrAssertGetCount(int code)
         return _isrAssertCounts[code];
     return 0;
 }
+
+void BusAccess::isrValue(int code, int val)
+{
+    if (code < ISR_ASSERT_NUM_CODES)
+        _isrAssertCounts[code] = val;
+}
