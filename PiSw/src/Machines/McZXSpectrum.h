@@ -32,13 +32,13 @@ public:
     McZXSpectrum();
 
     // Enable machine
-    virtual void enable();
+    virtual void enable(int subType);
 
     // Disable machine
     virtual void disable();
 
     // Get descriptor table for the machine
-    virtual McDescriptorTable* getDescriptorTable([[maybe_unused]] int subType)
+    virtual McDescriptorTable* getDescriptorTable([[maybe_unused]] int subType = -1)
     {
         return &McZXSpectrum::_descriptorTable;
     }

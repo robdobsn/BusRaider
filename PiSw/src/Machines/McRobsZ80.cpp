@@ -46,7 +46,7 @@ McDescriptorTable McRobsZ80::_descriptorTable = {
 };
 
 // Enable machine
-void McRobsZ80::enable()
+void McRobsZ80::enable([[maybe_unused]]int subType)
 {
     _screenBufferValid = false;
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");

@@ -4,10 +4,23 @@
 #include "McBase.h"
 #include "McManager.h"
 #include "../System/ee_printf.h"
+#include "../System/RingBufferPosn.h"
+
+#define DEBUG_IO_ACCESS 1
+
+#ifdef DEBUG_IO_ACCESS
+class DebugIOPortAccess
+{
+public:
+    int port;
+    bool type;
+    int val;
+};
+#endif
 
 class McTerminal : public McBase
 {
-  private:
+private:
     static const char* _logPrefix;
     static const int DEFAULT_TERM_COLS = 80;
     static const int DEFAULT_TERM_ROWS = 30;
@@ -26,27 +39,39 @@ class McTerminal : public McBase
     bool _cursorIsOn;
     uint8_t _cursorChar;
 
-    static McDescriptorTable _descriptorTable;
+    // Subtype
+    static const int MC_SUB_TYPE_STD = 0;
+    static const int MC_SUB_TYPE_EMULATED_UART = 1;
+    static int _machineSubType;
+
+    static McDescriptorTable _descriptorTables[];
 
     // Shifted digits on keyboard
     static const int SHIFT_DIGIT_KEY_MAP_LEN = 10;
     static int _shiftDigitKeyMap[SHIFT_DIGIT_KEY_MAP_LEN];
 
-  public:
+#ifdef DEBUG_IO_ACCESS
+    // Debug collection of IO accesses
+    static const int DEBUG_MAX_IO_PORT_ACCESSES = 500;
+    static DebugIOPortAccess _debugIOPortBuf[DEBUG_MAX_IO_PORT_ACCESSES];
+    static RingBufferPosn _debugIOPortPosn;
+#endif
+
+public:
 
     McTerminal();
 
     // Enable machine
-    virtual void enable();
+    virtual void enable(int subType);
 
     // Disable machine
     virtual void disable();
 
+    // Get number of descriptor tables for machine
+    virtual int getDescriptorTableCount();
+    
     // Get descriptor table for the machine
-    virtual McDescriptorTable* getDescriptorTable([[maybe_unused]] int subType)
-    {
-        return &McTerminal::_descriptorTable;
-    }
+    virtual McDescriptorTable* getDescriptorTable([[maybe_unused]] int subType = -1);
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
     virtual void displayRefresh();
@@ -63,7 +88,7 @@ class McTerminal : public McBase
     // Convert raw USB code to ASCII
     static int convertRawToAscii(unsigned char ucModifiers, const unsigned char rawKeys[6]);
 
-  private:
+private:
     void clearScreen();
     void dispChar(uint8_t ch);
     void vscrollBuffer(int rows);

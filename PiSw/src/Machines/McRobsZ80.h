@@ -24,13 +24,13 @@ class McRobsZ80 : public McBase
     }
 
     // Enable machine
-    virtual void enable();
+    virtual void enable(int subType);
 
     // Disable machine
     virtual void disable();
 
     // Get descriptor table for the machine
-    virtual McDescriptorTable* getDescriptorTable([[maybe_unused]] int subType)
+    virtual McDescriptorTable* getDescriptorTable([[maybe_unused]] int subType = -1)
     {
         return &McRobsZ80::_descriptorTable;
     }

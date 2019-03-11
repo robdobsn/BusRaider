@@ -1,51 +1,29 @@
-# Pi Bus Raider by Rob Dobson 2018
-## Raspberry Pi Display for vintage computers
+# BusRaider by Rob Dobson
+## Memory Mapped Graphics and Single-Step Debugging for Retro Computer
 
-Pi Bus Raider uses a Raspberry Pi Zero based PCB to snoop on the bus of a 
-host vintage 8 bit CPU and provide things like a memory mapped display and
-keyboard. The PCB is designed for the RC2014.
+BusRaider uses a Raspberry Pi Zero based PCB to snoop on the bus of a 
+host vintage 8 bit CPU and provide things like a memory mapped display,
+keyboard and single-step debugging. The PCB is designed for the RC2014.
 
 This work is inspired by PiGFX and RC2014
 
-More information is in the blog post https://robdobson.com/2018/08/trs80-galaxy-invasion-on-rc2014/
+More information is in the blog post [https://robdobson.com/2018/08/trs80-galaxy-invasion-on-rc2014/](https://robdobson.com/2018/08/trs80-galaxy-invasion-on-rc2014/)
+and [https://robdobson.com/2018/08/trs80-galaxy-invasion-on-rc2014/](https://robdobson.com/2018/09/raid-the-bus-and-the-speccy-lives/)
 
 ## How to run
 
 1. Format an SD-card with FAT32 filesystem.
 2. Copy ```PiSw/bin/kernel.img``` to the root of the SD card along with the files
-   ```start.elf``` and ```bootcode.bin``` that are commonly [distributed with
+   ```config.txt```, ```start.elf``` and ```bootcode.bin``` that are commonly [distributed with
 the Raspberry Pi](https://github.com/raspberrypi/firmware/tree/master/boot)
 3. Insert the card and reboot the Pi on the Bus Raider PCB
 
-As soon as your raspi is turned on, the message "RC2014 Bus Raider V1.0" should be
-displayed on the HDMI video stream.
+As soon as your BusRaider is turned on, the message "RC2014 Bus Raider V1.x.xxx" should be
+displayed on the HDMI video stream along with a display area for the Retro computer.
 
-## Compiling
+## Documentation
 
-To compile you will need to install a GNU ARM cross compiler toolchain and
-ensure that  ```arm-none-eabi-gcc```, ```arm-none-eabi-as```
-```arm-none-eabi-ld``` and ```arm-none-eabi-objcopy``` are in your PATH.
-
-At this point, run:
-
-```
-$ make
-```
-
-in the PiSw directory.
- 
-## Development loop
-
-To simplify development:
-1. Replace the kernel.img file in the root of the Pi's SD card
-with the bootloader1mbpskernel.img file in the bootloader folder (renaming
-it to kernel.img). 
-2. Then reboot the Pi each time you want to run a new test program and send (at 921600 baud)
-the newly rebuilt (using make) pi_bus_raider.srec file in the PiSw folder using a serial
-terminal software like TeraTerm. Indeed using TeraTerm you can drag and drop the .srec file
-onto the terminal software and click to send
-3. Press G in the terminal software and the bootloader on the Pi will run the software you just
-sent down to it
+For full documentation see the [BusRaider 1.x Manual.pdf](https://github.com/robdobsn/PiBusRaider/blob/master/Docs/BusRaider%201.7%20Manual.pdf)
 
 ## License
 

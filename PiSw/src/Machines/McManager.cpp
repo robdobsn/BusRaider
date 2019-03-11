@@ -21,6 +21,7 @@ static const char FromMcManager[] = "McManager";
 McBase* McManager::_pMachines[McManager::MAX_MACHINES];
 int McManager::_numMachines = 0;
 int McManager::_curMachineIdx = -1;
+int McManager::_curMachineSubType = 0;
 CommandHandler* McManager::_pCommandHandler = NULL;
 Display* McManager::_pDisplay = NULL;
 
@@ -110,21 +111,26 @@ const char* McManager::getMachineJSON()
 
     // Machine list
     strlcpy(mcString, "\"machineList\":[", MAX_MC_JSON_LEN);
+    bool firstItem = true;
     for (int i = 0; i < getNumMachines(); i++)
     {
-        if (i != 0)
-            strlcpy(mcString+strlen(mcString),",", MAX_MC_JSON_LEN);
-        strlcpy(mcString+strlen(mcString),"\"", MAX_MC_JSON_LEN);
-        strlcpy(mcString+strlen(mcString), _pMachines[i]->getDescriptorTable(0)->machineName, MAX_MC_JSON_LEN);
-        strlcpy(mcString+strlen(mcString),"\"", MAX_MC_JSON_LEN);
+        // Iterate sub types
+        for (int j = 0; j < _pMachines[i]->getDescriptorTableCount(); j++)
+        {
+            if (!firstItem)
+                strlcpy(mcString+strlen(mcString),",", MAX_MC_JSON_LEN);
+            firstItem = false;
+            strlcpy(mcString+strlen(mcString),"\"", MAX_MC_JSON_LEN);
+            strlcpy(mcString+strlen(mcString), _pMachines[i]->getDescriptorTable(j)->machineName, MAX_MC_JSON_LEN);
+            strlcpy(mcString+strlen(mcString),"\"", MAX_MC_JSON_LEN);
+        }
     }
     strlcpy(mcString+strlen(mcString),"]", MAX_MC_JSON_LEN);
 
     // Current machine
     strlcpy(mcString+strlen(mcString),",\"machineCur\":", MAX_MC_JSON_LEN);
     strlcpy(mcString+strlen(mcString), "\"", MAX_MC_JSON_LEN);
-    if ((_curMachineIdx >= 0) && (_curMachineIdx < _numMachines))
-        strlcpy(mcString+strlen(mcString), getDescriptorTable(_curMachineIdx)->machineName, MAX_MC_JSON_LEN);
+    strlcpy(mcString+strlen(mcString), getDescriptorTable(_curMachineSubType)->machineName, MAX_MC_JSON_LEN);
     strlcpy(mcString+strlen(mcString), "\"", MAX_MC_JSON_LEN);
 
     // Ret
@@ -158,14 +164,14 @@ void McManager::add(McBase* pMachine)
     _pMachines[_numMachines++] = pMachine;
 }
 
-bool McManager::setMachineIdx(int mcIdx, bool forceUpdate)
+bool McManager::setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate)
 {
     // Check valid
     if (mcIdx < 0 || mcIdx >= _numMachines)
         return false;
 
     // Check if no change
-    if ((_curMachineIdx == mcIdx) && !forceUpdate)
+    if ((_curMachineIdx == mcIdx) && (_curMachineSubType != mcSubType) && !forceUpdate)
         return false;
     
     // Disable current machine
@@ -174,9 +180,10 @@ bool McManager::setMachineIdx(int mcIdx, bool forceUpdate)
 
     // Set the new machine
     _curMachineIdx = mcIdx;
+    _curMachineSubType = mcSubType;
 
     // Layout display for machine
-    McDescriptorTable* pMcDescr = McManager::getDescriptorTable(0);
+    McDescriptorTable* pMcDescr = McManager::getDescriptorTable(mcSubType);
     int windowBorderWidth = 5;
     if (_pDisplay)
         _pDisplay->targetLayout(-1, 0, 
@@ -211,7 +218,7 @@ bool McManager::setMachineIdx(int mcIdx, bool forceUpdate)
             pDebug->setup(pMachine);
 
         // Start
-        pMachine->enable();
+        pMachine->enable(mcSubType);
 
         // Heartbeat timer
         if (pMachine->getDescriptorTable(0)->irqRate != 0)
@@ -234,9 +241,13 @@ bool McManager::setMachineByName(const char* mcName)
     // Find machine
     for (int i = 0; i < _numMachines; i++)
     {
-        if (strncasecmp(mcName, _pMachines[i]->getDescriptorTable(0)->machineName, MAX_MACHINE_NAME_LEN) == 0)
+        // Iterate sub types
+        for (int j = 0; j < _pMachines[i]->getDescriptorTableCount(); j++)
         {
-            return setMachineIdx(i, false);
+            if (strncasecmp(mcName, _pMachines[i]->getDescriptorTable(j)->machineName, MAX_MACHINE_NAME_LEN) == 0)
+            {
+                return setMachineIdx(i, j, false);
+            }
         }
     }
     return false;
@@ -254,7 +265,7 @@ bool McManager::setMachineOpts(const char* mcOpts)
     LogWrite(FromMcManager, LOG_VERBOSE, "setMachineOpts %s emuRAM %d instrInject %d", mcOpts,
                 pMachine->getDescriptorTable(0)->emulatedRAM,
                 pMachine->getDescriptorTable(0)->setRegistersByInjection);
-    pMachine->enable();
+    pMachine->enable(_curMachineSubType);
     return true;
 }
 
@@ -516,8 +527,8 @@ void McManager::handleCommand(const char* pCmdJson,
                     [[maybe_unused]] const uint8_t* pParams, [[maybe_unused]] int paramsLen,
                     char* pRespJson, int maxRespLen)
 {
-    // LogWrite(FromMcManager, LOG_VERBOSE, "req %s", pCmdJson);
-    #define MAX_CMD_NAME_STR 30
+    // LogWrite(FromMcManager, LOG_DEBUG, "req %s", pCmdJson);
+    #define MAX_CMD_NAME_STR 200
     char cmdName[MAX_CMD_NAME_STR+1];
     if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
         return;
@@ -632,4 +643,14 @@ void McManager::handleCommand(const char* pCmdJson,
     {
         LogWrite(FromMcManager, LOG_DEBUG, "Unknown command %s", cmdName);
     }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Log
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void McManager::logDebugMessage(const char* pStr)
+{
+    if (_pCommandHandler)
+        _pCommandHandler->logDebugMessage(pStr);
 }

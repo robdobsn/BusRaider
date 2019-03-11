@@ -50,13 +50,19 @@ class McBase
     McBase();
 
     // Enable machine
-    virtual void enable() = 0;
+    virtual void enable(int subType) = 0;
 
     // Disable machine
     virtual void disable() = 0;
 
+    // Get number of descriptor tables for machine
+    virtual int getDescriptorTableCount()
+    {
+        return 1;
+    }
+
     // Get descriptor table for the machine
-    virtual McDescriptorTable* getDescriptorTable(int subType) = 0;
+    virtual McDescriptorTable* getDescriptorTable(int subType = -1) = 0;
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
     virtual void displayRefresh() = 0;

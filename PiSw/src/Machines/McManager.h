@@ -35,6 +35,7 @@ private:
     static McBase* _pMachines[MAX_MACHINES];
     static int _numMachines;
     static int _curMachineIdx;
+    static int _curMachineSubType;
 
 public:
     // Init
@@ -42,7 +43,7 @@ public:
 
     // Manage machines
     static void add(McBase* pMachine);
-    static bool setMachineIdx(int mcIdx, bool forceUpdate);
+    static bool setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate);
     static bool setMachineByName(const char* mcName);
     static bool setMachineOpts(const char* mcOpts);
 
@@ -84,6 +85,9 @@ public:
                     char* pRespJson, int maxRespLen);
 
     static void targetIrq(int durationUs = -1);
+
+    // Debug
+    static void logDebugMessage(const char* pStr);
 
 private:
     static void targetIrqFromTimer(void* pParam);

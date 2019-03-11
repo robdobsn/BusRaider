@@ -13,7 +13,8 @@ static const char* MODULE_PREFIX = "RestAPIBusRaider: ";
 RestAPIBusRaider::RestAPIBusRaider(CommandSerial &commandSerial, MachineInterface &machineInterface, 
             FileManager& fileManager, RestAPISystem& restAPISystem) :
             _commandSerial(commandSerial), _machineInterface(machineInterface),
-            _fileManager(fileManager), _restAPISystem(restAPISystem)
+            _fileManager(fileManager), _restAPISystem(restAPISystem),
+            _machineConfig("mc", 500)
 {
     _restartPending = false;
     _restartPendingStartMs = 0;
@@ -27,6 +28,11 @@ void RestAPIBusRaider::service()
     }
 }
 
+String RestAPIBusRaider::getMcConfigStr()
+{
+    return "\"setmachine\":\"" + _lastSetMachineCommand + "\",\"mcOptions\":\"" + _lastMachineOptionsCommand + "\"";
+}
+
 void RestAPIBusRaider::apiTargetCommand(String &reqStr, String &respStr)
 {
     bool rslt = true;
@@ -35,6 +41,20 @@ void RestAPIBusRaider::apiTargetCommand(String &reqStr, String &respStr)
     Log.trace("%sCommand %s\n", MODULE_PREFIX, targetCmd.c_str());
     _commandSerial.sendTargetCommand(targetCmd);
     Utils::setJsonBoolResult(respStr, rslt);
+
+    // Cache last machine and options
+    if (targetCmd.startsWith("setmachine"))
+    {
+        _lastSetMachineCommand = targetCmd;
+        _machineConfig.setConfigData(getMcConfigStr().c_str());
+        _machineConfig.writeConfig();
+    }
+    else if (targetCmd.startsWith("mcOptions"))
+    {
+        _lastMachineOptionsCommand = targetCmd;
+        _machineConfig.setConfigData(getMcConfigStr().c_str());
+        _machineConfig.writeConfig();
+    }
 }
 
 #ifdef SUPPORT_WEB_TERMINAL_REST
@@ -148,6 +168,18 @@ void RestAPIBusRaider::apiQueryStatus(const String &reqStr, String &respStr)
     respStr = _machineInterface.getStatus();
 }
 
+void RestAPIBusRaider::apiQueryCurMc(const String &reqStr, String &respStr)
+{
+    Log.verbose("%sapiQueryCurMc %s\n", MODULE_PREFIX, reqStr.c_str());
+    respStr = "\"mcCmd\":\"" + _lastSetMachineCommand + "\"";
+}
+
+void RestAPIBusRaider::apiQueryCurOpts(const String &reqStr, String &respStr)
+{
+    Log.verbose("%sapiQueryCurOpts %s\n", MODULE_PREFIX, reqStr.c_str());
+    respStr = "\"mcOpts\":\"" + _lastMachineOptionsCommand + "\"";
+}
+
 void RestAPIBusRaider::apiQueryESPHealth(const String &reqStr, String &respStr)
 {
     Log.verbose("%squeryESPHealth %s\n", MODULE_PREFIX, reqStr.c_str());
@@ -219,6 +251,12 @@ void RestAPIBusRaider::apiESPFirmwareUpdateDone(String &reqStr, String &respStr)
 
 void RestAPIBusRaider::setup(RestAPIEndpoints &endpoints)
 {
+    // Get initial config
+    _machineConfig.setup();
+    _lastSetMachineCommand = _machineConfig.getString("setmachine", "");
+    _lastMachineOptionsCommand = _machineConfig.getString("mcOptions", "");
+    Log.trace("%ssetup curMc %s curOpts %s\n", _lastSetMachineCommand, _lastMachineOptionsCommand);
+
     endpoints.addEndpoint("targetcmd", 
                         RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                         RestAPIEndpointDef::ENDPOINT_GET, 
@@ -323,6 +361,18 @@ void RestAPIBusRaider::setup(RestAPIEndpoints &endpoints)
                         std::bind(&RestAPIBusRaider::apiQueryStatus, this,
                                 std::placeholders::_1, std::placeholders::_2),
                         "Query status");
+    endpoints.addEndpoint("querycurmc", 
+                        RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                        RestAPIEndpointDef::ENDPOINT_GET, 
+                        std::bind(&RestAPIBusRaider::apiQueryCurMc, this,
+                                std::placeholders::_1, std::placeholders::_2),
+                        "Query machine");
+    endpoints.addEndpoint("querycuropts", 
+                        RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                        RestAPIEndpointDef::ENDPOINT_GET, 
+                        std::bind(&RestAPIBusRaider::apiQueryCurOpts, this,
+                                std::placeholders::_1, std::placeholders::_2),
+                        "Query options");
     endpoints.addEndpoint("queryESPHealth", 
                         RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                         RestAPIEndpointDef::ENDPOINT_GET, 

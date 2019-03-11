@@ -13,38 +13,77 @@
 
 const char* McTerminal::_logPrefix = "McTerm";
 
-McDescriptorTable McTerminal::_descriptorTable = {
-    // Machine name
-    "Serial Terminal",
-    // Processor
-    McDescriptorTable::PROCESSOR_Z80,
-    // Required display refresh rate
-    .displayRefreshRatePerSec = 30,
-    .displayPixelsX = 80*8,
-    .displayPixelsY = 30*16,
-    .displayCellX = 8,
-    .displayCellY = 16,
-    .pixelScaleX = 1,
-    .pixelScaleY = 1,
-    .pFont = &__systemFont,
-    .displayForeground = WGFX_WHITE,
-    .displayBackground = WGFX_BLACK,
-    // Clock
-    .clockFrequencyHz = 7000000,
-    // Interrupt rate per second
-    .irqRate = 0,
-    // Bus monitor
-    .monitorIORQ = false,
-    .monitorMREQ = false,
-    .emulatedRAM = false,
-    .emulatedRAMStart = 0,
-    .emulatedRAMLen = 0x100000,
-    .setRegistersByInjection = false,
-    .setRegistersCodeAddr = 0
+McDescriptorTable McTerminal::_descriptorTables[] = {
+    {
+        // Machine name
+        "Serial Terminal",
+        // Processor
+        McDescriptorTable::PROCESSOR_Z80,
+        // Required display refresh rate
+        .displayRefreshRatePerSec = 30,
+        .displayPixelsX = 80*8,
+        .displayPixelsY = 30*16,
+        .displayCellX = 8,
+        .displayCellY = 16,
+        .pixelScaleX = 1,
+        .pixelScaleY = 1,
+        .pFont = &__systemFont,
+        .displayForeground = WGFX_WHITE,
+        .displayBackground = WGFX_BLACK,
+        // Clock
+        .clockFrequencyHz = 7000000,
+        // Interrupt rate per second
+        .irqRate = 0,
+        // Bus monitor
+        .monitorIORQ = false,
+        .monitorMREQ = false,
+        .emulatedRAM = false,
+        .emulatedRAMStart = 0,
+        .emulatedRAMLen = 0x100000,
+        .setRegistersByInjection = false,
+        .setRegistersCodeAddr = 0
+    },
+    {
+        // Machine name
+        "Serial Terminal EmuUART",
+        // Processor
+        McDescriptorTable::PROCESSOR_Z80,
+        // Required display refresh rate
+        .displayRefreshRatePerSec = 30,
+        .displayPixelsX = 80*8,
+        .displayPixelsY = 30*16,
+        .displayCellX = 8,
+        .displayCellY = 16,
+        .pixelScaleX = 1,
+        .pixelScaleY = 1,
+        .pFont = &__systemFont,
+        .displayForeground = WGFX_WHITE,
+        .displayBackground = WGFX_BLACK,
+        // Clock
+        .clockFrequencyHz = 7000000,
+        // Interrupt rate per second
+        .irqRate = 0,
+        // Bus monitor
+        .monitorIORQ = true,
+        .monitorMREQ = false,
+        .emulatedRAM = false,
+        .emulatedRAMStart = 0,
+        .emulatedRAMLen = 0x100000,
+        .setRegistersByInjection = false,
+        .setRegistersCodeAddr = 0
+    }
 };
 
 int McTerminal::_shiftDigitKeyMap[SHIFT_DIGIT_KEY_MAP_LEN] =
     { '!', '"', '#', '$', '%', '^', '&', '*', '(', ')' };
+
+int McTerminal::_machineSubType = MC_SUB_TYPE_STD;
+
+// Debug IO Port access
+#ifdef DEBUG_IO_ACCESS
+DebugIOPortAccess McTerminal::_debugIOPortBuf[];
+RingBufferPosn McTerminal::_debugIOPortPosn(DEBUG_MAX_IO_PORT_ACCESSES);
+#endif
 
 McTerminal::McTerminal() : McBase()
 {
@@ -60,15 +99,33 @@ McTerminal::McTerminal() : McBase()
     clearScreen();
 }
 
-// Enable machine
-void McTerminal::enable()
+// Get number of descriptor tables for machine
+int McTerminal::getDescriptorTableCount()
 {
+    return sizeof(_descriptorTables)/sizeof(_descriptorTables[0]);
+}
+
+// Get descriptor table for the machine
+McDescriptorTable* McTerminal::getDescriptorTable([[maybe_unused]] int subType)
+{
+    if ((subType < 0) || (subType >= getDescriptorTableCount()))
+        return &_descriptorTables[0];
+    return &_descriptorTables[subType];
+}
+
+// Enable machine
+void McTerminal::enable([[maybe_unused]]int subType)
+{
+    // Check valid type
+    _machineSubType = subType;
+    if ((subType < 0) || (subType >= getDescriptorTableCount()))
+        _machineSubType = MC_SUB_TYPE_STD;
     // Invalidate screen buffer
     _screenBufferValid = false;
-    LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
+    LogWrite(_logPrefix, LOG_DEBUG, "Enabling %s", _descriptorTables[subType].machineName);
     BusAccess::accessCallbackAdd(memoryRequestCallback);
     // Bus raider enable wait states on IORQ
-    BusAccess::waitSetup(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ || _descriptorTable.emulatedRAM);
+    BusAccess::waitSetup(_descriptorTables[subType].monitorIORQ, _descriptorTables[subType].monitorMREQ || _descriptorTables[subType].emulatedRAM);
 }
 
 // Disable machine
@@ -83,37 +140,44 @@ void McTerminal::disable()
 void McTerminal::displayRefresh()
 {
     // Use this to get keys from host and display
+    bool screenChanged = false;
     int numCharsAvailable = McManager::getNumCharsReceivedFromHost();
     if (numCharsAvailable != 0)
     {
         // Get chars
         uint8_t* pCharBuf = (uint8_t*)nmalloc_malloc(numCharsAvailable+1);
-        if (!pCharBuf)
-            return;
-        int gotChars = McManager::getCharsReceivedFromHost(pCharBuf, numCharsAvailable);
-        // LogWrite(_logPrefix, LOG_DEBUG, "Got Rx Chars act len = %d\n", gotChars);
-        
-        // Handle each char
-        for (int i = 0; i < gotChars; i++)
+        if (pCharBuf)
         {
-            // Send to terminal window
-            dispChar(pCharBuf[i]);
+            screenChanged = true;
+            int gotChars = McManager::getCharsReceivedFromHost(pCharBuf, numCharsAvailable);
+            // LogWrite(_logPrefix, LOG_DEBUG, "Got Rx Chars act len = %d\n", gotChars);
+            
+            // Handle each char
+            for (int i = 0; i < gotChars; i++)
+            {
+                // Send to terminal window
+                dispChar(pCharBuf[i]);
+            }
+
+            // Release chars
+            nmalloc_free((void**)(&pCharBuf));
         }
 
-        // Release chars
-        nmalloc_free((void**)(&pCharBuf));
     }
 
-    // Write to the display on the Pi Zero
-    for (int k = 0; k < _termRows; k++) 
+    // Update the display on the Pi Zero
+    if (screenChanged)
     {
-        for (int i = 0; i < _termCols; i++)
+        for (int k = 0; k < _termRows; k++) 
         {
-            int cellIdx = k * _termCols + i;
-            if (!_screenBufferValid || (_screenBuffer[cellIdx] != _screenChars[cellIdx]))
+            for (int i = 0; i < _termCols; i++)
             {
-                wgfx_putc(MC_WINDOW_NUMBER, i, k, _screenChars[cellIdx]);
-                _screenBuffer[cellIdx] = _screenChars[cellIdx];
+                int cellIdx = k * _termCols + i;
+                if (!_screenBufferValid || (_screenBuffer[cellIdx] != _screenChars[cellIdx]))
+                {
+                    wgfx_putc(MC_WINDOW_NUMBER, i, k, _screenChars[cellIdx]);
+                    _screenBuffer[cellIdx] = _screenChars[cellIdx];
+                }
             }
         }
     }
@@ -137,6 +201,27 @@ void McTerminal::displayRefresh()
             _cursorBlinkLastUs = micros();
         }
     }
+
+#ifdef DEBUG_IO_ACCESS
+    // Handle debug 
+    char debugJson[500];
+    debugJson[0] = 0;
+    for (int i = 0; i < 20; i++)
+    {
+        if (_debugIOPortPosn.canGet())
+        {
+            int pos = _debugIOPortPosn.posToGet();
+            ee_sprintf(debugJson+strlen(debugJson), "%s %04x=%02x,",
+                ((_debugIOPortBuf[pos].type == 0) ? "RD" : ((_debugIOPortBuf[pos].type == 1) ? "WR" : "INTACK")),
+                _debugIOPortBuf[pos].port,
+                _debugIOPortBuf[pos].val);
+            _debugIOPortPosn.hasGot();
+        }
+    }
+    if (strlen(debugJson) != 0)
+        McManager::logDebugMessage(debugJson);
+#endif
+
 }
 
 int McTerminal::convertRawToAscii(unsigned char ucModifiers, const unsigned char rawKeys[6])
@@ -249,7 +334,30 @@ void McTerminal::fileHandler(const char* pFileInfo, const uint8_t* pFileData, in
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
 uint32_t McTerminal::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
 {
-    return BR_MEM_ACCESS_RSLT_NOT_DECODED;
+    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
+
+    // Check for IO and RD or WRITE
+    if (flags & BR_CTRL_BUS_IORQ_MASK)
+    {
+#ifdef DEBUG_IO_ACCESS
+        // Decode port
+        if (_debugIOPortPosn.canPut())
+        {
+            int pos = _debugIOPortPosn.posToPut();
+            _debugIOPortBuf[pos].port = addr;
+            _debugIOPortBuf[pos].type = (flags & BR_CTRL_BUS_RD_MASK) ? 0 : ((flags & BR_CTRL_BUS_WR_MASK) ? 1 : 2);
+            _debugIOPortBuf[pos].val = data;
+            _debugIOPortPosn.hasPut();
+        }
+#endif
+    }
+
+    // Callback to debugger
+    TargetDebug* pDebug = TargetDebug::get();
+    if (pDebug)
+        retVal = pDebug->handleInterrupt(addr, data, flags, retVal, _descriptorTables[_machineSubType]);
+
+    return retVal;
 }
 
 void McTerminal::clearScreen()

@@ -28,7 +28,7 @@ typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.056";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.060";
 static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
@@ -208,7 +208,7 @@ extern "C" int main()
     BusAccess::init();
 
     // Enable first machine
-    McManager::setMachineIdx(1, true);
+    McManager::setMachineIdx(1, 0, true);
 
     // Get current machine to check things are working
     if (!McManager::getMachine())

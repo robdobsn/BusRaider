@@ -47,7 +47,7 @@ McDescriptorTable McTRS80::_descriptorTable = {
 };
 
 // Enable machine
-void McTRS80::enable()
+void McTRS80::enable([[maybe_unused]]int subType)
 {
     // Invalidate screen buffer
     _screenBufferValid = false;

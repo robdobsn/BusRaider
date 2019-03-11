@@ -49,7 +49,7 @@ McDescriptorTable McZXSpectrumDebug::_descriptorTable = {
 };
 
 // Enable machine
-void McZXSpectrumDebug::enable()
+void McZXSpectrumDebug::enable([[maybe_unused]]int subType)
 {
     _screenBufferValid = false;
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");

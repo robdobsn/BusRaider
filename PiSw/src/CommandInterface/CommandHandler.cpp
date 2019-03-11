@@ -119,7 +119,7 @@ void CommandHandler::hdlcFrameRx(const uint8_t *pFrame, int frameLength)
 void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams, int paramsLen)
 {
     // Get the command string from JSON
-    #define MAX_CMD_NAME_STR 30
+    #define MAX_CMD_NAME_STR 200
     char cmdName[MAX_CMD_NAME_STR+1];
     if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
         return;

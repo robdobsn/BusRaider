@@ -337,6 +337,10 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *framebuffer, int frame
         if (_pRemoteDebugServer)
             _pRemoteDebugServer->sendChars(contentStr.c_str(), contentStr.length());
     }
+    else if (cmdName.equalsIgnoreCase("log"))
+    {
+        Log.trace("%slog <- %s\n", MODULE_PREFIX, pRxStr);
+    }
 
 }
 

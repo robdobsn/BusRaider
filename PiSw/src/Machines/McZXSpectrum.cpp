@@ -61,7 +61,7 @@ McZXSpectrum::McZXSpectrum() : McBase()
 }
 
 // Enable machine
-void McZXSpectrum::enable()
+void McZXSpectrum::enable([[maybe_unused]]int subType)
 {
     _screenBufferValid = false;
     LogWrite(_logPrefix, LOG_VERBOSE, "Enabling");

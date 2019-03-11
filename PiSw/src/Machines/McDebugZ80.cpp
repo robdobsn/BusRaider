@@ -72,7 +72,7 @@ McDescriptorTable McDebugZ80::_descriptorTable = {
 };
 
 // Enable machine
-void McDebugZ80::enable()
+void McDebugZ80::enable([[maybe_unused]]int subType)
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
     BusAccess::accessCallbackAdd(memoryRequestCallback);
