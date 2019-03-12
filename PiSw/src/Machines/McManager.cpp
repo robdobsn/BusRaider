@@ -7,8 +7,10 @@
 #include <string.h>
 #include "../TargetBus/TargetState.h"
 #include "../TargetBus/BusAccess.h"
+#include "../TargetBus/RAMEmulator.h"
 #include "../System/rdutils.h"
 #include "../System/piwiring.h"
+#include "../TargetBus/TargetCPUZ80.h"
 
 // Module name
 static const char FromMcManager[] = "McManager";
@@ -212,6 +214,9 @@ bool McManager::setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate)
             BusAccess::clockEnable(false);
         }
 
+        // Set target machine in RAMEmulator
+        RAMEmulator::setup(pMachine);
+
         // Set target machine in debug
         TargetDebug* pDebug = TargetDebug::get();
         if (pDebug)
@@ -349,16 +354,9 @@ bool McManager::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, boo
     bool emulatedRAM = pMachine->getDescriptorTable(0)->emulatedRAM;
     // Block cannot cross boundary between emulated and real RAM
     if (emulatedRAM && (!iorq) && (emuRAMStart <= addr) && (emuRAMStart+emuRAMLen >= addr + len))
-    {
-        TargetDebug* pDebug = TargetDebug::get();
-        if (pDebug)
-            return pDebug->blockWrite(addr, pBuf, len);
-    }
-    else
-    {
-        return BusAccess::blockWrite(addr, pBuf, len, busRqAndRelease, iorq) == BR_OK;
-    }
-    return false;
+        return RAMEmulator::blockWrite(addr, pBuf, len);
+    // Grab the bus
+    return BusAccess::blockWrite(addr, pBuf, len, busRqAndRelease, iorq) == BR_OK;
 }
 
 bool McManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq)
@@ -375,16 +373,9 @@ bool McManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRq
     // Also, if emulating memory, block cannot cross boundary between emulated and real RAM
     if (BusAccess::pauseIsPaused() ||
             (emulatedRAM && (!iorq) && (emuRAMStart <= addr) && (emuRAMStart+emuRAMLen >= addr + len)))
-    {
-        TargetDebug* pDebug = TargetDebug::get();
-        if (pDebug)
-            return pDebug->blockRead(addr, pBuf, len);
-    }
-    else
-    {
-        return BusAccess::blockRead(addr, pBuf, len, busRqAndRelease, iorq) == BR_OK;
-    }
-    return false;
+        return RAMEmulator::blockRead(addr, pBuf, len);
+    // Grab the bus
+    return BusAccess::blockRead(addr, pBuf, len, busRqAndRelease, iorq) == BR_OK;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -478,14 +469,17 @@ void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause
                 else
                 {
                     // Generate a code snippet to set registers and run
-                    uint8_t regSetCode[TargetDebug::MAX_REGISTER_SET_CODE_LEN];
+                    uint8_t regSetCode[MAX_REGISTER_SET_CODE_LEN];
                     Z80Registers regs;
                     TargetState::getTargetRegs(regs);
-                    int codeLen = pDebug->getInstructionsToSetRegs(regs, regSetCode, TargetDebug::MAX_REGISTER_SET_CODE_LEN);
+                    char regsStr[500];
+                    regs.format(regsStr, 500);
+                    LogWrite(FromMcManager, LOG_DEBUG, "Regs: %s", regsStr);
+                    uint32_t codeDestAddr = pMc->getDescriptorTable(0)->setRegistersCodeAddr;
+                    int codeLen = TargetCPUZ80::getSnippetToSetRegs(codeDestAddr, regs, regSetCode, MAX_REGISTER_SET_CODE_LEN);
                     if (codeLen != 0)
                     {
                         // Reg setting code
-                        uint32_t codeDestAddr = pMc->getDescriptorTable(0)->setRegistersCodeAddr;
                         LogWrite(FromMcManager, LOG_DEBUG,"Set regs snippet at %04x len %d", codeDestAddr, codeLen);
                         McManager::blockWrite(codeDestAddr, regSetCode, codeLen, false, false);
                         

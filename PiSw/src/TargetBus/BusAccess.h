@@ -133,6 +133,9 @@ public:
     static BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
     static BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
     
+    // Memory access and bus control
+    static void grabMemoryAndReleaseBusRq(uint8_t* pBuf, uint32_t bufLen);
+
     // Wait control
     static void waitGet(bool& monitorIORQ, bool& monitorMREQ);
     static void waitOnInstruction(bool waitOnInstruction);

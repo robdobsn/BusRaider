@@ -8,7 +8,7 @@
 #include "../TargetBus/TargetState.h"
 #include "../System/rdutils.h"
 #include "../System/ee_printf.h"
-#include "../Debugger/TargetDebug.h"
+#include "../TargetBus/TargetDebug.h"
 #include "../Machines/McManager.h"
 #include <stdlib.h>
 #include <string.h>

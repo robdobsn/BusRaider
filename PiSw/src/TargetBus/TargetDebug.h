@@ -33,10 +33,6 @@ public:
 class TargetDebug
 {
 public:
-    // Max size of emulated target memory
-    static const uint32_t MAX_TARGET_MEMORY_LEN = 0x10000;
-
-public:
     TargetDebug();
 
     // Service, Setup etc
@@ -56,17 +52,8 @@ public:
         _pSendRemoteDebugProtocolMsgCallback = pSendRemoteDebugProtocolMsgCallback;
     }
 
-    // Memory access
-    uint8_t getMemoryByte(uint32_t addr);
-    uint16_t getMemoryWord(uint32_t addr);
-    void clearMemory();
-    bool blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len);
-    bool blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len);
-
     // Register injection and code snippet generation
     void startSetRegisterSequence(Z80Registers* pRegs = NULL);
-    static const int MAX_REGISTER_SET_CODE_LEN = 100;
-    int getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBuffer, uint32_t codeMaxlen);
 
     // Step testing
     void startStepTester()
@@ -78,7 +65,6 @@ public:
 private:
 
     bool commandMatch(const char* s1, const char* s2);
-    void grabMemoryAndReleaseBusRq();
     void enableBreakpoint(int idx, bool enabled);
     void setBreakpointMessage(int idx, const char* hitMessage);
     void setBreakpointPCAddr(int idx, uint32_t pcVal);
@@ -86,7 +72,6 @@ private:
     void handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
     void handleRegisterSet(uint32_t& retVal);
     bool isPrefixInstruction(uint32_t instr);
-    void store16BitVal(uint8_t arry[], int offset, uint16_t val);
     bool procDebuggerLine(char* pCmd, char* pResponse, int maxResponseLen);
 
     // Machine being debugged
@@ -129,13 +114,6 @@ private:
     unsigned int _registerModeStep;
     uint8_t _registerSetBuffer[MAX_REGISTER_SET_CODE_LEN];
     uint32_t _registerSetCodeLen;
-
-    // Paging of RAM/ROM during read from emulated RAM
-    bool _emulatedRAMReadPagingActive;
-
-    // Target memory buffer  
-    static const int MAX_TARGET_MEM_ADDR = 0xffff;
-    static uint8_t _targetMemBuffer[MAX_TARGET_MEMORY_LEN];
 
     // Limit on data sent back
     static const int MAX_MEM_DUMP_LEN = 1024;

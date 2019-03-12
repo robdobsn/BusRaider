@@ -7,6 +7,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+// Unpaged size of target memory
+static const uint32_t STD_TARGET_MEMORY_LEN = 0x10000;
+
 // Return codes from wait-state ISR
 
 // Indicate that memory or IO requested is not supported by the machine
@@ -36,3 +39,5 @@
 #define BR_CTRL_BUS_WAIT_MASK (1 << BR_CTRL_BUS_WAIT)
 
 typedef uint32_t BusAccessCBFnType(uint32_t addr, uint32_t data, uint32_t flags);
+
+#define MAX_REGISTER_SET_CODE_LEN 100

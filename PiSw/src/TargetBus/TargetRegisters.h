@@ -48,8 +48,11 @@ public:
         ee_sprintf(tmpStr, "PC=%04x SP=%04x BC=%04x AF=%04x HL=%04x DE=%04x IX=%04x IY=%04x",
                 PC, SP, BC, AF, HL, DE, IX, IY);
         strlcpy(pResponse, tmpStr, maxLen);
-        ee_sprintf(tmpStr, " AF'=%04x BC'=%04x HL'=%04x DE'=%04x I=%02x R=%02x  F=-------- F'=-------- MEMPTR=%04x IM%d INTEN%02x VPS: %d",
-                AFDASH, BCDASH, HLDASH, DEDASH, I, R, MEMPTR, INTMODE, INTENABLED, VPS );
+        ee_sprintf(tmpStr, " AF'=%04x BC'=%04x HL'=%04x DE'=%04x I=%02x R=%02x",
+                AFDASH, BCDASH, HLDASH, DEDASH, I, R);
+        strlcat(pResponse, tmpStr, maxLen);
+        ee_sprintf(tmpStr, "  F=-------- F'=-------- MEMPTR=%04x IM%d INTEN%02x VPS: %d",
+                MEMPTR, INTMODE, INTENABLED, VPS );
         strlcat(pResponse, tmpStr, maxLen);
     }
 };

@@ -11,15 +11,14 @@
 #include "../System/rdutils.h"
 #include "../Machines/McManager.h"
 #include "../Disassembler/src/mdZ80.h"
+#include "../TargetBus/RAMEmulator.h"
+#include "../TargetBus/TargetCPUZ80.h"
 
 // Module name
 static const char FromTargetDebug[] = "TargetDebug";
 
 // Debugger
 TargetDebug __targetDebug;
-
-// Memory buffer
-uint8_t TargetDebug::_targetMemBuffer[MAX_TARGET_MEMORY_LEN];
 
 // Breakpoints
 bool TargetDebug::_breakpointsEnabled = true;
@@ -63,7 +62,6 @@ TargetDebug::TargetDebug()
     _registerSetCodeLen = 0;
     _lastInstructionWasPrefixed = false;
     _thisInstructionIsPrefixed = false;
-    _emulatedRAMReadPagingActive = false;
     _stepTesterEnabled = false;
 }
 
@@ -115,61 +113,6 @@ void TargetDebug::setBreakpointPCAddr(int idx, uint32_t pcVal)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Memory access
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-uint8_t TargetDebug::getMemoryByte(uint32_t addr)
-{
-    if (addr >= MAX_TARGET_MEM_ADDR)
-        return 0;
-    return _targetMemBuffer[addr];
-}
-
-uint16_t TargetDebug::getMemoryWord(uint32_t addr)
-{
-    if (addr >= MAX_TARGET_MEM_ADDR)
-        return 0;
-    return _targetMemBuffer[(addr+1) % MAX_TARGET_MEMORY_LEN] * 256 + _targetMemBuffer[addr];
-}
-
-void TargetDebug::clearMemory()
-{
-    memset(_targetMemBuffer, 0, MAX_TARGET_MEMORY_LEN);
-}
-
-bool TargetDebug::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len)
-{
-    int copyLen = len;
-    if (addr >= MAX_TARGET_MEMORY_LEN)
-        return false;
-    if (addr + copyLen > MAX_TARGET_MEMORY_LEN)
-        copyLen = MAX_TARGET_MEMORY_LEN - addr;
-    memcpy(_targetMemBuffer + addr, pBuf, copyLen);
-    return true;
-}
-
-bool TargetDebug::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len)
-{
-    if (!((_debugInCPUStep) || (_pTargetMachine && _pTargetMachine->getDescriptorTable(0)->emulatedRAM &&
-            (addr >= _pTargetMachine->getDescriptorTable(0)->emulatedRAMStart) && 
-            (addr < _pTargetMachine->getDescriptorTable(0)->emulatedRAMStart + _pTargetMachine->getDescriptorTable(0)->emulatedRAMLen))))
-    {
-        // LogWrite(FromTargetDebug, LOG_VERBOSE, "blockRead: Not in single step or emulated RAM %04x %d", addr, len);
-        return false;
-    }
-    int copyLen = len;
-    if (addr >= MAX_TARGET_MEMORY_LEN)
-    {
-        LogWrite(FromTargetDebug, LOG_DEBUG, "blockRead: Too long %04x %d", addr, len);
-        return false;
-    }
-    if (addr + copyLen > MAX_TARGET_MEMORY_LEN)
-        copyLen = MAX_TARGET_MEMORY_LEN - addr;
-    memcpy(pBuf, _targetMemBuffer + addr, copyLen);
-    return true;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Injected instruction sequence handling for register set/get
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -205,54 +148,6 @@ void TargetDebug::startSetRegisterSequence(Z80Registers* pRegs)
     _registerMode = REGISTER_MODE_SET;
     _registerPrevInstrComplete = false;
     _registerModeStep = 0;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Grab all physical memory and release bus
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void TargetDebug::grabMemoryAndReleaseBusRq()
-{
-    // Check if the bus in under BusRaider control
-    if (BusAccess::isUnderControl() && _pTargetMachine)
-    {
-        // Get the current wait enablement and disable MREQ waits
-        bool curMonitorIORQ = false;
-        bool curMonitorMREQ = false;
-        BusAccess::waitGet(curMonitorIORQ, curMonitorMREQ);
-        BusAccess::waitOnInstruction(false);
-
-        uint32_t emuRAM = _pTargetMachine->getDescriptorTable(0)->emulatedRAM;
-        uint32_t emuRAMStart = _pTargetMachine->getDescriptorTable(0)->emulatedRAMStart;
-        uint32_t emuRAMLen = _pTargetMachine->getDescriptorTable(0)->emulatedRAMLen;
-        // Check if emulating memory
-        if (emuRAM && (emuRAMLen > 0))
-        {
-            if (emuRAMStart > 0)
-            {
-                // Read memory before emulated section
-                BusAccess::blockRead(0, _targetMemBuffer, emuRAMLen, false, false);
-            }
-            if (emuRAMStart+emuRAMLen < MAX_TARGET_MEMORY_LEN)
-            {
-                // Read memory after emulated section
-                BusAccess::blockRead(0, _targetMemBuffer+emuRAMStart+emuRAMLen, 
-                            MAX_TARGET_MEMORY_LEN-(emuRAMStart+emuRAMLen), false, false);
-            }
-        }
-        else
-        {
-            // Read all of memory
-            BusAccess::blockRead(0, _targetMemBuffer, 0x10000, false, false);
-        }
-
-        // Restore wait enablement
-        BusAccess::waitOnInstruction(curMonitorMREQ);
-        
-        // Release control of bus
-        BusAccess::controlRelease(false);
-
-    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -307,7 +202,7 @@ void TargetDebug::service()
 
         // Request bus so we can grab memory data before entering a wait state
         if (BusAccess::controlRequestAndTake() == BR_OK)
-            grabMemoryAndReleaseBusRq();
+            BusAccess::grabMemoryAndReleaseBusRq(RAMEmulator::getMemBuffer(), RAMEmulator::getMemBufferLen());
     }
 
     // Check for breakpoint hit
@@ -325,7 +220,7 @@ void TargetDebug::service()
         static const int MAX_DISASSEMBLY_LINE_LEN = 200;
         char respBuf[MAX_DISASSEMBLY_LINE_LEN];
         LogWrite(FromTargetDebug, LOG_VERBOSE, "step-over hit");
-        disasmZ80(_targetMemBuffer, 0, _stepOverPCValue, respBuf, INTEL, false, true);
+        disasmZ80(RAMEmulator::getMemBuffer(), 0, _stepOverPCValue, respBuf, INTEL, false, true);
         strlcat(respBuf, "\ncommand@cpu-step> ", MAX_DISASSEMBLY_LINE_LEN);
         if (_pSendRemoteDebugProtocolMsgCallback)
             (*_pSendRemoteDebugProtocolMsgCallback)(respBuf, "0");
@@ -524,7 +419,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     {
         // Disassemble at current location
         int addr = strtol(argStr, NULL, 10);
-        disasmZ80(_targetMemBuffer, 0, addr, pResponse, INTEL, false, true);
+        disasmZ80(RAMEmulator::getMemBuffer(), 0, addr, pResponse, INTEL, false, true);
         // LogWrite(FromTargetDebug, LOG_VERBOSE, "disassemble %s %s %s %d %s", argStr, argStr2, argRest, addr, pResponse);
     }
     else if (commandMatch(cmdStr, "get-registers"))
@@ -550,12 +445,12 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
         }
         int startAddr = strtol(argStr, NULL, 10) + memAddn;
         int leng = strtol(argStr2, NULL, 10);
-        if (startAddr >= 0 && startAddr <= MAX_TARGET_MEM_ADDR)
+        if (startAddr >= 0 && startAddr <= RAMEmulator::getMemBufferLen())
         {
             for (int i = 0; i < leng; i++)
             {
                 char chBuf[10];
-                ee_sprintf(chBuf, "%02x", getMemoryByte(startAddr+i));
+                ee_sprintf(chBuf, "%02x", RAMEmulator::getMemoryByte(startAddr+i));
                 strlcat(pResponse, chBuf, maxResponseLen);
             }
         }
@@ -585,7 +480,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
             for (int i = 0; i < numFrames; i++)
             {
                 char chBuf[20];
-                ee_sprintf(chBuf, "%04xH ", getMemoryWord(startAddr + i*2));;
+                ee_sprintf(chBuf, "%04xH ", RAMEmulator::getMemoryWord(startAddr + i*2));;
                 strlcat(pResponse, chBuf, maxResponseLen);
             }
         }
@@ -604,7 +499,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     else if (commandMatch(cmdStr, "cpu-step"))
     {
         // LogWrite(FromTargetDebug, LOG_VERBOSE, "cpu-step");
-        disasmZ80(_targetMemBuffer, 0, _z80Registers.PC, pResponse, INTEL, false, true);
+        disasmZ80(RAMEmulator::getMemBuffer(), 0, _z80Registers.PC, pResponse, INTEL, false, true);
         BR_RETURN_TYPE retc = BusAccess::pauseStep();
         if (retc == BR_OK)
         {
@@ -622,7 +517,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     else if (commandMatch(cmdStr, "cpu-step-over"))
     {
         // Get address to run to by disassembling code at current location
-        int instrLen = disasmZ80(_targetMemBuffer, 0, _z80Registers.PC, pResponse, INTEL, false, true);
+        int instrLen = disasmZ80(RAMEmulator::getMemBuffer(), 0, _z80Registers.PC, pResponse, INTEL, false, true);
         _stepOverPCValue = _z80Registers.PC + instrLen;
         // LogWrite(FromTargetDebug, LOG_VERBOSE, "cpu-step-over PCnow %04x StepToPC %04x", _z80Registers.PC, _stepOverPCValue);
         _stepOverEnabled = true;
@@ -675,89 +570,6 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     // LogWrite(FromTargetDebug, LOG_VERBOSE, "resp %s", pResponse);
 
     return true;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Handle register setting
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void TargetDebug::store16BitVal(uint8_t arry[], int offset, uint16_t val)
-{
-    arry[offset] = val & 0xff;
-    arry[offset+1] = (val >> 8) & 0xff;
-}
-
-int TargetDebug::getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBuffer, uint32_t codeMaxlen)
-{
-    // Instructions to set register values
-    static uint8_t regSetInstructions[] = 
-    {
-        0x00,                       // nop - in case previous instruction was prefixed
-        0xdd, 0x21, 0x00, 0x00,     // ld ix, xxxx
-        0xfd, 0x21, 0x00, 0x00,     // ld iy, xxxx
-        0x21, 0x00, 0x00,           // ld hl, xxxx
-        0x11, 0x00, 0x00,           // ld de, xxxx
-        0x01, 0x00, 0x00,           // ld bc, xxxx
-        0xd9,                       // exx
-        0x21, 0x00, 0x00,           // ld hl, xxxx
-        0x11, 0x00, 0x00,           // ld de, xxxx
-        0x01, 0x00, 0x00,           // ld bc, xxxx
-        0xf1, 0x00, 0x00,           // pop af + two bytes that are read as if from stack
-        0x08,                       // ex af,af'
-        0xf1, 0x00, 0x00,           // pop af + two bytes that are read as if from stack
-        0x31, 0x00, 0x00,           // ld sp, xxxx
-        0x3e, 0x00,                 // ld a, xx
-        0xed, 0x47,                 // ld i, a
-        0x3e, 0x00,                 // ld a, xx
-        0xed, 0x4f,                 // ld r, a
-        0x3e, 0x00,                 // ld a, xx
-        0xed, 0x46,                 // im 0
-        0xfb,                       // ei
-        0xc3, 0x00, 0x00            // jp xxxx
-    };
-    const int RegisterIXUpdatePos = 3;
-    const int RegisterIYUpdatePos = 7;
-    const int RegisterHLDASHUpdatePos = 10;
-    const int RegisterDEDASHUpdatePos = 13;
-    const int RegisterBCDASHUpdatePos = 16;
-    const int RegisterHLUpdatePos = 20;
-    const int RegisterDEUpdatePos = 23;
-    const int RegisterBCUpdatePos = 26;
-    const int RegisterAFDASHUpdatePos = 29;
-    const int RegisterAFUpdatePos = 33;
-    const int RegisterSPUpdatePos = 36;
-    const int RegisterIUpdatePos = 39;
-    const int RegisterRUpdatePos = 43;
-    const int RegisterAUpdatePos = 47;
-    const int RegisterIMUpdatePos = 49;
-    const int RegisterINTENUpdatePos = 50;
-    const int RegisterPCUpdatePos = 52;
-
-    // Fill in the register values
-    store16BitVal(regSetInstructions, RegisterIXUpdatePos, regs.IX);
-    store16BitVal(regSetInstructions, RegisterIYUpdatePos, regs.IY);
-    store16BitVal(regSetInstructions, RegisterHLDASHUpdatePos, regs.HLDASH);
-    store16BitVal(regSetInstructions, RegisterDEDASHUpdatePos, regs.DEDASH);
-    store16BitVal(regSetInstructions, RegisterBCDASHUpdatePos, regs.BCDASH);
-    store16BitVal(regSetInstructions, RegisterSPUpdatePos, regs.SP);
-    store16BitVal(regSetInstructions, RegisterHLUpdatePos, regs.HL);
-    store16BitVal(regSetInstructions, RegisterDEUpdatePos, regs.DE);
-    store16BitVal(regSetInstructions, RegisterBCUpdatePos, regs.BC);
-    store16BitVal(regSetInstructions, RegisterAFDASHUpdatePos, regs.AFDASH);
-    store16BitVal(regSetInstructions, RegisterAFUpdatePos, regs.AF);
-    regSetInstructions[RegisterIUpdatePos] = regs.I;
-    regSetInstructions[RegisterRUpdatePos] = (regs.R + 256 - 5) % 256;
-    regSetInstructions[RegisterAUpdatePos] = regs.AF >> 8;
-    regSetInstructions[RegisterIMUpdatePos] = (regs.INTMODE == 0) ? 0x46 : ((regs.INTMODE == 1) ? 0x56 : 0x5e);
-    regSetInstructions[RegisterINTENUpdatePos] = (regs.INTENABLED == 0) ? 0xf3 : 0xfb;
-    store16BitVal(regSetInstructions, RegisterPCUpdatePos, regs.PC);
-
-    if (codeMaxlen >= sizeof(regSetInstructions))
-    {
-        memcpy(pCodeBuffer, regSetInstructions, codeMaxlen);
-        return sizeof(regSetInstructions);
-    }
-    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -926,7 +738,7 @@ void TargetDebug::handleRegisterSet(uint32_t& retVal)
     // Fill in the register values
     if (_registerModeStep == 0)
     {
-        _registerSetCodeLen = getInstructionsToSetRegs(_z80Registers, _registerSetBuffer, MAX_REGISTER_SET_CODE_LEN);
+        _registerSetCodeLen = TargetCPUZ80::getInjectToSetRegs(_z80Registers, _registerSetBuffer, MAX_REGISTER_SET_CODE_LEN);
         if (_registerSetCodeLen == 0)
         {
             _registerMode = REGISTER_MODE_NONE;
@@ -966,33 +778,6 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
             [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal,
             [[maybe_unused]] McDescriptorTable& descriptorTable)
 {
-    // Check if RAM/ROM paged out from last MREQ
-    if (_emulatedRAMReadPagingActive)
-    {
-        // Release paging on physical RAM/ROM
-        digitalWrite(BR_PAGING_RAM_PIN, 0);
-        _emulatedRAMReadPagingActive = false;
-    }
-
-    // Check if RAM is emulated
-    if (descriptorTable.emulatedRAM && (addr >= descriptorTable.emulatedRAMStart) && 
-            (addr < descriptorTable.emulatedRAMStart + descriptorTable.emulatedRAMLen))
-    {
-        // Check for read or write to emulated RAM / ROM
-        if (flags & BR_CTRL_BUS_RD_MASK)
-        {
-            retVal = _targetMemBuffer[addr];
-            // Page-out physical RAM/ROM
-            digitalWrite(BR_PAGING_RAM_PIN, 1);
-            _emulatedRAMReadPagingActive = true;
-
-        }
-        else if (flags & BR_CTRL_BUS_WR_MASK)
-        {
-            _targetMemBuffer[addr] = data;
-        }
-    }
-
     // See if we're in step-test mode
     if (_stepTesterEnabled)
         _stepTester.handleInterrupt(addr, data, flags, retVal);

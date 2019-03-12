@@ -14,9 +14,7 @@
 #include "Machines/McManager.h"
 #include "Machines/McTRS80.h"
 #include "Machines/McRobsZ80.h"
-#include "Machines/McDebugZ80.h"
 #include "Machines/McZXSpectrum.h"
-#include "Machines/McZXSpectrumDebug.h"
 #include "Machines/McTerminal.h"
 #include "Hardware/HwManager.h"
 #include "Hardware/Hw512KRamRom.h"
@@ -205,9 +203,7 @@ extern "C" int main()
     new McTerminal();
     new McTRS80();
     new McRobsZ80();
-    // new McDebugZ80();
     new McZXSpectrum();
-    // new McZXSpectrumDebug();
 
     // Number of machines
     LogWrite(FromMain, LOG_WARNING, "%d machines supported\n", McManager::getNumMachines());

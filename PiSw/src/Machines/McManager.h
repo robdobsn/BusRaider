@@ -4,7 +4,7 @@
 #pragma once
 
 #include "McBase.h"
-#include "../Debugger/TargetDebug.h"
+#include "../TargetBus/TargetDebug.h"
 #include "../System/ee_printf.h"
 #include "../CommandInterface/CommandHandler.h"
 #include "../System/Display.h"

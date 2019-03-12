@@ -11,7 +11,7 @@
 #include "../FileFormats/McZXSpectrumTZXFormat.h"
 #include "../FileFormats/McZXSpectrumSNAFormat.h"
 #include "../FileFormats/McZXSpectrumZ80Format.h"
-#include "../Debugger/TargetDebug.h"
+#include "../TargetBus/TargetDebug.h"
 #include "../Machines/McManager.h"
 
 // Uncomment the following line to use SPI0 CE0 of the Pi as a debug pin

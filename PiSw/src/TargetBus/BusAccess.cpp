@@ -547,6 +547,32 @@ BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Grab all physical memory and release bus
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusAccess::grabMemoryAndReleaseBusRq(uint8_t* pBuf, uint32_t bufLen)
+{
+    // Check if the bus in under BusRaider control
+    if (BusAccess::isUnderControl())
+    {
+        // Get the current wait enablement and disable MREQ waits
+        bool curMonitorIORQ = false;
+        bool curMonitorMREQ = false;
+        BusAccess::waitGet(curMonitorIORQ, curMonitorMREQ);
+        BusAccess::waitOnInstruction(false);
+
+        // Read all of memory
+        BusAccess::blockRead(0, pBuf, bufLen, false, false);
+
+        // Restore wait enablement
+        BusAccess::waitOnInstruction(curMonitorMREQ);
+        
+        // Release control of bus
+        BusAccess::controlRelease(false);
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Utility Functions
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

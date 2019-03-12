@@ -9,7 +9,7 @@
 #include "../System/rdutils.h"
 #include <stdlib.h>
 #include "../FileFormats/McTRS80CmdFormat.h"
-#include "../Debugger/TargetDebug.h"
+#include "../TargetBus/TargetDebug.h"
 #include "../Machines/McManager.h"
 
 const char* McTRS80::_logPrefix = "TRS80";
