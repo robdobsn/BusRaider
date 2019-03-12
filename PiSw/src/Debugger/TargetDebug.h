@@ -10,6 +10,7 @@
 #include "../System/ee_printf.h"
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetRegisters.h"
+#include "StepTester.h"
 
 typedef void SendRemoteDebugProtocolMsgType(const char* pStr, const char* rdpMessageIdStr);
 
@@ -66,6 +67,13 @@ public:
     void startSetRegisterSequence(Z80Registers* pRegs = NULL);
     static const int MAX_REGISTER_SET_CODE_LEN = 100;
     int getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBuffer, uint32_t codeMaxlen);
+
+    // Step testing
+    void startStepTester()
+    {
+        _stepTesterEnabled = true;
+        _stepTester.writeTestCode();
+    }
 
 private:
 
@@ -145,6 +153,10 @@ private:
     static bool _stepOverEnabled;
     static uint32_t _stepOverPCValue;
     static bool _stepOverHit;
+
+    // Step-tester
+    StepTester _stepTester;
+    bool _stepTesterEnabled;
 };
 
 extern TargetDebug __targetDebug;

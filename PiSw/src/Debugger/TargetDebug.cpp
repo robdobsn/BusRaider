@@ -64,7 +64,9 @@ TargetDebug::TargetDebug()
     _lastInstructionWasPrefixed = false;
     _thisInstructionIsPrefixed = false;
     _emulatedRAMReadPagingActive = false;
+    _stepTesterEnabled = false;
 }
+
 // Get singleton
 TargetDebug* TargetDebug::get()
 {
@@ -330,6 +332,9 @@ void TargetDebug::service()
         _stepOverHit = false;
     }
 
+    // Step-tester
+    if (_stepTesterEnabled)
+        _stepTester.service();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -383,6 +388,8 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     //     }
     // }
     // cmdStr[j] = 0;
+    // McManager::logDebugMessage(pCmd);
+
     char* argStr = strtok(NULL, " ");
     char* argStr2 = strtok(NULL, " ");
     char* argRest = strtok(NULL, "");
@@ -959,10 +966,6 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
             [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal,
             [[maybe_unused]] McDescriptorTable& descriptorTable)
 {
-    // Only handle MREQs
-    if ((flags & BR_CTRL_BUS_MREQ_MASK) == 0)
-        return retVal;
-
     // Check if RAM/ROM paged out from last MREQ
     if (_emulatedRAMReadPagingActive)
     {
@@ -989,6 +992,14 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
             _targetMemBuffer[addr] = data;
         }
     }
+
+    // See if we're in step-test mode
+    if (_stepTesterEnabled)
+        _stepTester.handleInterrupt(addr, data, flags, retVal);
+
+    // Only handle MREQs
+    if ((flags & BR_CTRL_BUS_MREQ_MASK) == 0)
+        return retVal;
 
     // Handle M1 cycles
     if (flags & BR_CTRL_BUS_M1_MASK)

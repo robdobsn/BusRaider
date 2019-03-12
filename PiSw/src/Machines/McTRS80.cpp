@@ -337,7 +337,7 @@ uint32_t McTRS80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_
             retVal = 0xff;
         }
     }
-
+    
     // Callback to debugger
     TargetDebug* pDebug = TargetDebug::get();
     if (pDebug)

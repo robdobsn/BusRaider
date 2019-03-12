@@ -253,7 +253,7 @@ private:
     static const int MAX_WAIT_FOR_CTRL_LINES_COUNT = 10000;
 
     // Period target write control bus line is asserted during a write
-    static const int CYCLES_DELAY_FOR_WRITE_TO_TARGET = 25;
+    static const int CYCLES_DELAY_FOR_WRITE_TO_TARGET = 250;
 
     // Period target read control bus line is asserted during a read from the PIB (any bus element)
     static const int CYCLES_DELAY_FOR_READ_FROM_PIB = 25;

@@ -34,6 +34,10 @@ public:
 public:
     Z80Registers()
     {
+        clear();
+    }
+    void clear()
+    {
         PC = SP = HL = DE = BC = AF = IX = IY = 0;
         HLDASH = DEDASH = BCDASH = AFDASH = MEMPTR = 0;
         I = R = INTMODE = INTENABLED = VPS = 0;

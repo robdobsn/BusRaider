@@ -639,6 +639,13 @@ void McManager::handleCommand(const char* pCmdJson,
         // Send response back
         sendRemoteDebugProtocolMsg(responseMessage, rdpMessageIdStr);
     }
+    else if (strcasecmp(cmdName, "steptester") == 0)
+    {
+        // Set steptesting
+        TargetDebug* pDebug = TargetDebug::get();
+        if (pDebug)
+            pDebug->startStepTester();
+    }
     else
     {
         LogWrite(FromMcManager, LOG_DEBUG, "Unknown command %s", cmdName);

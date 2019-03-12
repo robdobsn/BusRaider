@@ -401,10 +401,8 @@ void BusAccess::byteWrite(uint32_t byte, int iorq)
     WR32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
     // Write the data by setting WR_BAR active
     WR32(ARM_GPIO_GPCLR0, (1 << BR_WR_BAR));
-#ifdef CYCLES_DELAY_FOR_WRITE_TO_TARGET
     // Target write delay
     lowlev_cycleDelay(CYCLES_DELAY_FOR_WRITE_TO_TARGET);
-#endif
     // Deactivate and leave data direction set to inwards
     WR32(ARM_GPIO_GPSET0, (1 << BR_DATA_DIR_IN) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_WR_BAR));
     muxClear();
