@@ -57,8 +57,6 @@ McDescriptorTable McManager::defaultDescriptorTable = {
     .monitorIORQ = false,
     .monitorMREQ = false,
     .emulatedRAM = false,
-    .emulatedRAMStart = 0,
-    .emulatedRAMLen = 0,
     .setRegistersByInjection = false,
     .setRegistersCodeAddr = 0
 };
@@ -78,6 +76,9 @@ void McManager::init(CommandHandler* pCommandHandler, Display* pDisplay)
     
     // Let the target debugger know how to communicate
     TargetDebug::get()->setSendRemoteDebugProtocolMsgCallback(sendRemoteDebugProtocolMsg);
+
+    // Set callback for bus access
+    BusAccess::accessCallbackAdd(busAccessCallback);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -172,6 +173,7 @@ bool McManager::setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate)
         return false;
     
     // Disable current machine
+    BusAccess::waitSetup(false, false);
     if (_pCurMachine)
         _pCurMachine->disable();
 
@@ -195,7 +197,7 @@ bool McManager::setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate)
     if (getMachine())
     {
         // Setup clock
-        uint32_t clockFreqHz = _pCurMachine->getDescriptorTable(_curMachineSubType)->clockFrequencyHz;
+        uint32_t clockFreqHz = pMcDescr->clockFrequencyHz;
         if (clockFreqHz != 0)
         {
             BusAccess::clockSetup();
@@ -209,24 +211,35 @@ bool McManager::setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate)
 
         // Setup RAMEmulator and paging
         RAMEmulator::setup(_pCurMachine);
-        RAMEmulator::activateEmulation(_pCurMachine->getDescriptorTable(_curMachineSubType)->emulatedRAM);
-        HwManager::pageOutForEmulation(_pCurMachine->getDescriptorTable(_curMachineSubType)->emulatedRAM);
+        RAMEmulator::activateEmulation(pMcDescr->emulatedRAM);
+        HwManager::pageOutForEmulation(pMcDescr->emulatedRAM);
 
         // Set target machine in debug
         TargetDebug* pDebug = TargetDebug::get();
         if (pDebug)
             pDebug->setup(_pCurMachine);
 
+        // Debug
+        LogWrite(FromMcManager, LOG_DEBUG, "Enabling %s EmuRAM %s RegByInject %s IntIORQ %s IntMREQ %s (%04x)",
+                    pMcDescr->emulatedRAM ? "Y" : "N",
+                    pMcDescr->setRegistersByInjection ?  "Y" : "N",
+                    pMcDescr->monitorIORQ ?  "Y" : "N",
+                    pMcDescr->monitorMREQ || pMcDescr->emulatedRAM ?  "Y" : "N",
+                    pMcDescr->setRegistersCodeAddr);
+
+        // Bus raider enable wait states
+        BusAccess::waitSetup(pMcDescr->monitorIORQ, pMcDescr->monitorMREQ || pMcDescr->emulatedRAM);
+
         // Start
         _pCurMachine->enable(mcSubType);
 
         // Heartbeat timer
         if (_pCurMachine->getDescriptorTable(mcSubType)->irqRate != 0)
-            Timers::set(1000000 / _pCurMachine->getDescriptorTable(_curMachineSubType)->irqRate, McManager::targetIrqFromTimer, NULL);
+            Timers::set(1000000 / pMcDescr->irqRate, McManager::targetIrqFromTimer, NULL);
 
         // Started machine
         LogWrite(FromMcManager, LOG_VERBOSE, "Started machine %s", 
-                    _pCurMachine->getDescriptorTable(_curMachineSubType)->machineName);
+                    pMcDescr->machineName);
 
     }
     else
@@ -260,21 +273,26 @@ bool McManager::setMachineOpts(const char* mcOpts)
         return false;
 
     // Disable machine
+    BusAccess::waitSetup(false, false);
     _pCurMachine->disable();
 
     // Get options
-    getDescriptorTable()->emulatedRAM = (strstr(mcOpts, "EMURAM") != 0);
-    getDescriptorTable()->setRegistersByInjection = (strstr(mcOpts, "INJECT") != 0);
+    McDescriptorTable* pMcDescr = getDescriptorTable();
+    pMcDescr->emulatedRAM = (strstr(mcOpts, "EMURAM") != 0);
+    pMcDescr->setRegistersByInjection = (strstr(mcOpts, "INJECT") != 0);
 
     // Debug
     LogWrite(FromMcManager, LOG_DEBUG, "setMachineOpts %s emuRAM %d instrInject %d", mcOpts,
-                getDescriptorTable()->emulatedRAM,
-                getDescriptorTable()->setRegistersByInjection);
+                pMcDescr->emulatedRAM,
+                pMcDescr->setRegistersByInjection);
 
     // Set RAM paging based on whether emulation is active
-    RAMEmulator::activateEmulation(getDescriptorTable()->emulatedRAM);
-    HwManager::pageOutForEmulation(getDescriptorTable()->emulatedRAM);
-    
+    RAMEmulator::activateEmulation(pMcDescr->emulatedRAM);
+    HwManager::pageOutForEmulation(pMcDescr->emulatedRAM);
+
+    // Bus raider enable wait states
+    BusAccess::waitSetup(pMcDescr->monitorIORQ, pMcDescr->monitorMREQ || pMcDescr->emulatedRAM);
+
     // Enable
     _pCurMachine->enable(_curMachineSubType);
     return true;
@@ -351,11 +369,8 @@ bool McManager::debuggerCommand(char* pCommand, char* pResponse, int maxResponse
 
 bool McManager::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq)
 {
-    uint32_t emuRAMStart = getDescriptorTable()->emulatedRAMStart;
-    uint32_t emuRAMLen = getDescriptorTable()->emulatedRAMLen;
-    bool emulatedRAM = getDescriptorTable()->emulatedRAM;
-    // Block cannot cross boundary between emulated and real RAM
-    if (emulatedRAM && (!iorq) && (emuRAMStart <= addr) && (emuRAMStart+emuRAMLen >= addr + len))
+    // Check if we are paused or emulating memory - if so bus access cannot write memory
+    if ((BusAccess::pauseIsPaused() || RAMEmulator::isActive()) && (!iorq))
         return RAMEmulator::blockWrite(addr, pBuf, len);
     // Grab the bus
     return BusAccess::blockWrite(addr, pBuf, len, busRqAndRelease, iorq) == BR_OK;
@@ -363,24 +378,19 @@ bool McManager::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, boo
 
 bool McManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq)
 {
-    uint32_t emuRAMStart = getDescriptorTable()->emulatedRAMStart;
-    uint32_t emuRAMLen = getDescriptorTable()->emulatedRAMLen;
-    bool emulatedRAM = getDescriptorTable()->emulatedRAM;
-    // Check if we are paused - if so bus access cannot get memory but stepping process will have
+    // Check if emulating memory or if we are paused - if the latter bus access cannot get memory but stepping process will have
     // grabbed all of physical RAM and placed it in the buffer for debugging
-    // Also, if emulating memory, block cannot cross boundary between emulated and real RAM
-    if (BusAccess::pauseIsPaused() ||
-            (emulatedRAM && (!iorq) && (emuRAMStart <= addr) && (emuRAMStart+emuRAMLen >= addr + len)))
+    if ((BusAccess::pauseIsPaused() || RAMEmulator::isActive()) && (!iorq))
         return RAMEmulator::blockRead(addr, pBuf, len);
     // Grab the bus
     return BusAccess::blockRead(addr, pBuf, len, busRqAndRelease, iorq) == BR_OK;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Target programming
+// Target control
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Handle programming of target machine
+// Handle control of target machine
 void McManager::targetReset()
 {
     // Reset attached hardware
@@ -425,6 +435,28 @@ bool McManager::targetIsPaused()
 bool McManager::targetBusUnderPiControl()
 {
     return BusAccess::isUnderControl();
+}
+
+uint32_t McManager::busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags)
+{
+    // Offer to the hardware manager
+    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
+
+    // Emulated RAM
+    retVal = RAMEmulator::handleInterrupt(addr, data, flags, retVal);
+    
+    // Hardware management   
+    retVal = HwManager::handleMemOrIOReq(addr, data, flags, retVal);
+
+    // Callback to debugger
+    TargetDebug* pDebug = TargetDebug::get();
+    if (pDebug)
+        retVal = pDebug->handleInterrupt(addr, data, flags, retVal);
+
+    // Target machine
+    if (_pCurMachine)
+        return _pCurMachine->busAccessCallback(addr, data, flags, retVal);
+    return BR_MEM_ACCESS_RSLT_NOT_DECODED;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -518,6 +550,7 @@ void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause
             }
 
             // Release bus
+            LogWrite(FromMcManager, LOG_DEBUG, "controlRelease hardReset %s", performHardReset ? "Y" : "N");
             BusAccess::controlRelease(performHardReset);
         }
         else
@@ -628,7 +661,7 @@ void McManager::handleCommand(const char* pCmdJson,
         {
             // Move to first char of actual parameter
             pOptions++;
-            // LogWrite(FromMcManager, LOG_VERBOSE, "Set Machine options to %s", pOptions);
+            LogWrite(FromMcManager, LOG_VERBOSE, "Set Machine options to %s", pOptions);
             setMachineOpts(pOptions);
         }
     }
@@ -681,3 +714,4 @@ void McManager::logDebugMessage(const char* pStr)
     if (_pCommandHandler)
         _pCommandHandler->logDebugMessage(pStr);
 }
+

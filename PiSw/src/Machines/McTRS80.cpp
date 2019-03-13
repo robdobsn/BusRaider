@@ -40,8 +40,6 @@ McDescriptorTable McTRS80::_descriptorTable = {
     .monitorIORQ = true,
     .monitorMREQ = false,
     .emulatedRAM = false,
-    .emulatedRAMStart = 0,
-    .emulatedRAMLen = 0x100000,
     .setRegistersByInjection = false,
     .setRegistersCodeAddr = TRS80_DISP_RAM_ADDR
 };
@@ -52,26 +50,12 @@ void McTRS80::enable([[maybe_unused]]int subType)
     // Invalidate screen buffer
     _screenBufferValid = false;
     _keyBufferDirty = false;
-
-    LogWrite(_logPrefix, LOG_DEBUG, "Enabling TRS80 EmuRAM %s (%04x-%04x) RegByInject %s IntIORQ %s IntMREQ %s (%04x)",
-                _descriptorTable.emulatedRAM ? "Y" : "N",
-                _descriptorTable.emulatedRAMStart, _descriptorTable.emulatedRAMStart + _descriptorTable.emulatedRAMLen,
-                _descriptorTable.setRegistersByInjection ?  "Y" : "N",
-                _descriptorTable.monitorIORQ ?  "Y" : "N",
-                _descriptorTable.monitorMREQ || _descriptorTable.emulatedRAM ?  "Y" : "N",
-                _descriptorTable.setRegistersCodeAddr);
-    BusAccess::accessCallbackAdd(memoryRequestCallback);
-    // Bus raider enable wait states
-    BusAccess::waitSetup(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ || _descriptorTable.emulatedRAM);
 }
 
 // Disable machine
 void McTRS80::disable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling TRS80");
-    // Bus raider disable wait states
-    BusAccess::waitSetup(false, false);
-    BusAccess::accessCallbackRemove();
 }
 
 // void McTRS80::handleRegisters(Z80Registers& regs)
@@ -323,10 +307,9 @@ void McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
 }
 
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-uint32_t McTRS80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
+uint32_t McTRS80::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
 {
-    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
-
     // Check for read from IO
     if ((flags & BR_CTRL_BUS_RD_MASK) && (flags & BR_CTRL_BUS_IORQ_MASK))
     {
@@ -338,10 +321,5 @@ uint32_t McTRS80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_
         }
     }
     
-    // Callback to debugger
-    TargetDebug* pDebug = TargetDebug::get();
-    if (pDebug)
-        retVal = pDebug->handleInterrupt(addr, data, flags, retVal, _descriptorTable);
-
     return retVal;
 }

@@ -39,8 +39,6 @@ McDescriptorTable McRobsZ80::_descriptorTable = {
     .monitorIORQ = false,
     .monitorMREQ = false,
     .emulatedRAM = false,
-    .emulatedRAMStart = 0,
-    .emulatedRAMLen = 0x100000,
     .setRegistersByInjection = false,
     .setRegistersCodeAddr = 0
 };
@@ -50,17 +48,12 @@ void McRobsZ80::enable([[maybe_unused]]int subType)
 {
     _screenBufferValid = false;
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
-    BusAccess::accessCallbackAdd(memoryRequestCallback);
-    // Bus raider enable wait states on IORQ
-    BusAccess::waitSetup(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ || _descriptorTable.emulatedRAM);
 }
 
 // Disable machine
 void McRobsZ80::disable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
-    BusAccess::waitSetup(false, false);
-    BusAccess::accessCallbackRemove();
 }
 
 void McRobsZ80::handleExecAddr(uint32_t execAddr)
@@ -132,15 +125,9 @@ void McRobsZ80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int
 }
 
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-uint32_t McRobsZ80::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
+uint32_t McRobsZ80::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+        [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
 {
-    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
-
-    // Callback to debugger
-    TargetDebug* pDebug = TargetDebug::get();
-    if (pDebug)
-        retVal = pDebug->handleInterrupt(addr, data, flags, retVal, _descriptorTable);
-
     // Not decoded
     return retVal;
 }

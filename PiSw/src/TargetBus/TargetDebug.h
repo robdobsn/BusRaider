@@ -43,8 +43,7 @@ public:
     bool debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen);
 
     uint32_t handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
-            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal,
-            [[maybe_unused]] McDescriptorTable& descriptorTable);
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal);
 
     // Comms callback
     void setSendRemoteDebugProtocolMsgCallback(SendRemoteDebugProtocolMsgType* pSendRemoteDebugProtocolMsgCallback)

@@ -98,4 +98,7 @@ public:
 private:
     static void targetIrqFromTimer(void* pParam);
 
+    // Handle wait interrupt
+    static uint32_t busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags);
+
 };

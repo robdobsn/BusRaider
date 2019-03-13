@@ -24,6 +24,7 @@ void Hw64KPagedRam::reset()
     _pageOutForEmulation = false;
     _pagingEnabled = true;
     _currentlyPagedOut = false;
+    digitalWrite(BR_PAGING_RAM_PIN, 0);
 }
 
 // Page out RAM/ROM due to emulation
@@ -55,10 +56,12 @@ void Hw64KPagedRam::pageOutForEmulation(bool pageOut)
 // Page out RAM/ROM for opcode injection
 void Hw64KPagedRam::pageOutForInjection(bool pageOut)
 {
+    _currentlyPagedOut = pageOut;
+    
     // Check enabled
     if (!_pagingEnabled)
         return;
-
+        
     // Page out
     if (pageOut)
     {

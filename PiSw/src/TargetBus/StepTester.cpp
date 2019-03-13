@@ -57,10 +57,6 @@ void StepTester::writeTestCode()
 uint32_t StepTester::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
         [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
 {
-
-    ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_A);
-
-
     // Mirror Z80 expected behaviour
     uint32_t expCtrl = BR_CTRL_BUS_RD_MASK | BR_CTRL_BUS_MREQ_MASK | BR_CTRL_BUS_WAIT_MASK;
     uint32_t nextAddr = _debugCurAddr;
@@ -120,8 +116,6 @@ uint32_t StepTester::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unu
         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
         microsDelay(2);
         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_B);
-
     }
     _debugCurAddr = nextAddr;
     _debugStepCount++;

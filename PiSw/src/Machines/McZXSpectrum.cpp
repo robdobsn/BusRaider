@@ -44,8 +44,6 @@ McDescriptorTable McZXSpectrum::_descriptorTable = {
     .monitorIORQ = true,
     .monitorMREQ = false,
     .emulatedRAM = false,
-    .emulatedRAMStart = 0,
-    .emulatedRAMLen = 0x100000,
     .setRegistersByInjection = false,
     .setRegistersCodeAddr = ZXSPECTRUM_DISP_RAM_ADDR
 };
@@ -65,17 +63,12 @@ void McZXSpectrum::enable([[maybe_unused]]int subType)
 {
     _screenBufferValid = false;
     LogWrite(_logPrefix, LOG_VERBOSE, "Enabling");
-    BusAccess::accessCallbackAdd(memoryRequestCallback);
-    // Bus raider enable wait states on IORQ
-    BusAccess::waitSetup(_descriptorTable.monitorIORQ, _descriptorTable.monitorMREQ || _descriptorTable.emulatedRAM);
 }
 
 // Disable machine
 void McZXSpectrum::disable()
 {
     LogWrite(_logPrefix, LOG_VERBOSE, "Disabling");
-    BusAccess::waitSetup(false, false);
-    BusAccess::accessCallbackRemove();
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
@@ -298,24 +291,15 @@ void McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
 }
 
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-uint32_t McZXSpectrum::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
+uint32_t McZXSpectrum::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
 {
-    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
     
     #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
     #endif
 
-    // Callback to debugger if not IORQ
-    if ((flags & BR_CTRL_BUS_MREQ_MASK) != 0)
-    {
-        TargetDebug* pDebug = TargetDebug::get();
-        if (pDebug)
-            retVal = pDebug->handleInterrupt(addr, data, flags, retVal, _descriptorTable);
-        if ((retVal & BR_MEM_ACCESS_INSTR_INJECT) != 0)
-            return retVal;
-    }
-    else if (flags & BR_CTRL_BUS_RD_MASK)
+    if (flags & BR_CTRL_BUS_RD_MASK)
     {
         // Check for a keyboard address range - any even port number
         if ((addr & 0x01) == 0)

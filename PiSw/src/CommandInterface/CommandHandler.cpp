@@ -124,7 +124,7 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
         return;
 
-    // LogWrite(FromCmdHandler, LOG_VERBOSE, "processCommand JSON %s cmdName %s", pCmdJson, cmdName); 
+    // LogWrite(FromCmdHandler, LOG_DEBUG, "processCommand JSON %s cmdName %s", pCmdJson, cmdName); 
     // char logStr[1000];
     // ee_sprintf(logStr, "processCommand JSON %s cmdName %s", pCmdJson, cmdName);
     // sendLogMessage(logStr);
@@ -145,8 +145,25 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     }
     else if (strcasecmp(cmdName, "respMsg") == 0)
     {
-        // Handle status response message
-        handleStatusResponse(pCmdJson);
+        // Check for machine settings responses
+        static const int MAX_ESP_CMD_OPT_STR = 100;
+        char mcCmdOrOpts[MAX_ESP_CMD_OPT_STR];
+        if (jsonGetValueForKey("mcCmd", pCmdJson, mcCmdOrOpts, MAX_ESP_CMD_OPT_STR) ||
+                jsonGetValueForKey("mcOpts", pCmdJson, mcCmdOrOpts, MAX_ESP_CMD_OPT_STR))
+        {
+            char mcCmd[MAX_ESP_CMD_OPT_STR];
+            strlcpy(mcCmd, "{\"cmdName\":\"", MAX_ESP_CMD_OPT_STR);
+            strlcat(mcCmd, mcCmdOrOpts, MAX_ESP_CMD_OPT_STR);
+            strlcat(mcCmd, "\"}", MAX_ESP_CMD_OPT_STR);
+            if (_pMachineCommandFunction)
+                (*_pMachineCommandFunction)(mcCmd, pParams, paramsLen, NULL, 0);
+            // LogWrite(FromCmdHandler, LOG_DEBUG, "mcCmd %s", pCmdJson);
+        }
+        else
+        {
+            // Handle status response message
+            handleStatusResponse(pCmdJson);
+        }
     }
     else
     {

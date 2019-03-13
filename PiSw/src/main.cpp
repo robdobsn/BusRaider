@@ -18,6 +18,7 @@
 #include "Machines/McTerminal.h"
 #include "Hardware/HwManager.h"
 #include "Hardware/Hw512KRamRom.h"
+#include "Hardware/Hw64KPagedRAM.h"
 #include "System/timer.h"
 #include "System/lowlib.h"
 #include "System/lowlev.h"
@@ -28,7 +29,7 @@ typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.062";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.063";
 static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
@@ -195,6 +196,7 @@ extern "C" int main()
 
     // Add hardware
     new Hw512KRamRom();
+    new Hw64KPagedRam();
 
     // Init machine manager
     McManager::init(&commandHandler, &display);
@@ -327,6 +329,10 @@ extern "C" int main()
 
      }
 #else
+
+    // Request machine info from ESP32
+    CommandHandler::sendAPIReq("querycurmc");
+    CommandHandler::sendAPIReq("querycuropts");
 
     // Loop forever
     while (1) 

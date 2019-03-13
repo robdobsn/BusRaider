@@ -111,11 +111,10 @@ void RAMEmulator::service()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 uint32_t RAMEmulator::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
-            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal,
-            [[maybe_unused]] McDescriptorTable& descriptorTable)
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
 {
-    // Check if RAM is emulated
-    if (_emulationActive)
+    // Check if RAM is emulated and MREQ
+    if (_emulationActive && (flags & BR_CTRL_BUS_MREQ_MASK))
     {
         // Check for read or write to emulated RAM / ROM
         if (flags & BR_CTRL_BUS_RD_MASK)

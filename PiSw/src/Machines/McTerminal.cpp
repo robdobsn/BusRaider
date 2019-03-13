@@ -39,8 +39,6 @@ McDescriptorTable McTerminal::_descriptorTables[] = {
         .monitorIORQ = false,
         .monitorMREQ = false,
         .emulatedRAM = false,
-        .emulatedRAMStart = 0,
-        .emulatedRAMLen = 0x100000,
         .setRegistersByInjection = false,
         .setRegistersCodeAddr = 0
     },
@@ -68,8 +66,6 @@ McDescriptorTable McTerminal::_descriptorTables[] = {
         .monitorIORQ = true,
         .monitorMREQ = false,
         .emulatedRAM = false,
-        .emulatedRAMStart = 0,
-        .emulatedRAMLen = 0x100000,
         .setRegistersByInjection = false,
         .setRegistersCodeAddr = 0
     }
@@ -118,17 +114,12 @@ void McTerminal::enable([[maybe_unused]]int subType)
     // Invalidate screen buffer
     _screenBufferValid = false;
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling %s", _descriptorTables[subType].machineName);
-    BusAccess::accessCallbackAdd(memoryRequestCallback);
-    // Bus raider enable wait states on IORQ
-    BusAccess::waitSetup(_descriptorTables[subType].monitorIORQ, _descriptorTables[subType].monitorMREQ || _descriptorTables[subType].emulatedRAM);
 }
 
 // Disable machine
 void McTerminal::disable()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
-    BusAccess::waitSetup(false, false);
-    BusAccess::accessCallbackRemove();
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
@@ -305,22 +296,6 @@ void McTerminal::fileHandler(const char* pFileInfo, const uint8_t* pFileData, in
     TargetState::addMemoryBlock(baseAddr, pFileData, fileLen);
 }
 
-// Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-uint32_t McTerminal::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
-{
-    // Offer to the hardware manager
-    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
-    
-    retVal = HwManager::handleMemOrIOReq(addr, data, flags, retVal);
-    
-    // Callback to debugger
-    TargetDebug* pDebug = TargetDebug::get();
-    if (pDebug)
-        retVal = pDebug->handleInterrupt(addr, data, flags, retVal, _descriptorTables[_machineSubType]);
-
-    return retVal;
-}
-
 void McTerminal::clearScreen()
 {
     for (int i = 0; i < _termRows * _termCols; i++)
@@ -424,3 +399,11 @@ void McTerminal::moveAndCheckCurPos(int absX, int absY, int relX, int relY)
         _curPosY = 0;
     // LogWrite("Th", LOG_DEBUG, "after %d %d %d %d cur %d %d", absX, absY, relX, relY, _curPosX, _curPosY);
 }
+
+// Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
+uint32_t McTerminal::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
+{
+    return retVal;
+}
+

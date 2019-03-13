@@ -20,11 +20,14 @@ public:
 
     // Activate emulation
     static void activateEmulation(bool active);
+    static bool isActive()
+    {
+        return _emulationActive;
+    }
 
     // Interrupt handler
     static uint32_t handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
-            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal,
-            [[maybe_unused]] McDescriptorTable& descriptorTable);
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal);
 
     // Memory access
     static uint8_t getMemoryByte(uint32_t addr);

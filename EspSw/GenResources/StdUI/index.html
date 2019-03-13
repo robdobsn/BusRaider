@@ -198,9 +198,9 @@
 
         function setMachine()
         {
-            sendMachineOptions();
             let mcName = document.getElementById("machine-select").value;
             sendCmdToTarget("setmachine=" + mcName);
+            sendMachineOptions();
         }
 
         function sendMachineOptions()

@@ -327,7 +327,10 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *framebuffer, int frame
             String respStr;
             _pRestAPIEndpoints->handleApiRequest(requestStr.c_str(), respStr);
             if (_pCommandSerial)
+            {
                 _pCommandSerial->responseMessage(respStr);
+                // Log.trace("%ssending to Pi %s\n", MODULE_PREFIX, respStr.c_str());
+            }
         }
     }
     else if (cmdName.equalsIgnoreCase("rdp"))

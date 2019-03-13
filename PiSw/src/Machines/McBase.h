@@ -37,8 +37,6 @@ public:
     bool monitorIORQ;
     bool monitorMREQ;
     bool emulatedRAM;
-    uint32_t emulatedRAMStart;
-    uint32_t emulatedRAMLen;
     bool setRegistersByInjection;
     uint32_t setRegistersCodeAddr;
 };
@@ -81,4 +79,8 @@ public:
 
     // Handle debugger command
     virtual bool debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen);
+
+    // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
+    virtual uint32_t busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags, uint32_t retVal) = 0;
+
 };

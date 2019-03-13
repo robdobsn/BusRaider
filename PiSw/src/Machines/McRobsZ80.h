@@ -44,9 +44,7 @@ public:
     // Handle a file
     virtual void fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen);
 
-private:
-    
     // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-    static uint32_t memoryRequestCallback(uint32_t addr, uint32_t data, uint32_t flags);
+    virtual uint32_t busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags, uint32_t retVal);
 
 };

@@ -10,7 +10,7 @@
 #include "../System/Display.h"
 #include "HwBase.h"
 
-#define DEBUG_IO_ACCESS 1
+// #define DEBUG_IO_ACCESS 1
 
 #ifdef DEBUG_IO_ACCESS
 class DebugIOPortAccess

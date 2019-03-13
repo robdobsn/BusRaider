@@ -718,7 +718,7 @@ void BusAccess::waitSetup(bool enWaitOnIORQ, bool enWaitOnMREQ)
 void BusAccess::waitStateISR(void* pData)
 {
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
 #endif
 
     // pData unused
@@ -816,7 +816,10 @@ void BusAccess::waitStateISR(void* pData)
     // Send this to anything listening
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
     if (_pBusAccessCallback)
+    {
+        // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_A);
         retVal = _pBusAccessCallback(addr, dataBusVals, ctrlBusVals);
+    }
 
     // If Z80 is reading from the data bus (inc reading an ISR vector)
     // and result is valid then put the returned data onto the bus
@@ -855,7 +858,7 @@ void BusAccess::waitStateISR(void* pData)
     {
         // No pause requested - clear the WAIT state so execution can continue
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
 #endif
         // Clear wait detected
         clearWaitDetected();
@@ -863,12 +866,12 @@ void BusAccess::waitStateISR(void* pData)
         // Clear the WAIT state flip-flop
         clearWaitFF();
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
 #endif
     }
 
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
 #endif
 
 }

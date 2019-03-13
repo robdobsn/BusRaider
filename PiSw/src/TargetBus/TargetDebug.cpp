@@ -773,8 +773,7 @@ bool TargetDebug::isPrefixInstruction(uint32_t instr)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
-            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal,
-            [[maybe_unused]] McDescriptorTable& descriptorTable)
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
 {
     // See if we're in step-test mode
     if (_stepTesterEnabled)
@@ -926,8 +925,7 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
             }
 
             // If register get/set is finished after this cycle then request the bus (if not fully emulating RAM)
-            if ((_registerMode == REGISTER_MODE_UNPAGE) && ((!descriptorTable.emulatedRAM) || 
-                    (descriptorTable.emulatedRAMStart != 0) || (descriptorTable.emulatedRAMLen != 0x10000)))
+            if ((_registerMode == REGISTER_MODE_UNPAGE) && (!RAMEmulator::isActive()))
             {
                 BusAccess::controlRequest();
                 _busControlRequestedForMemGrab = true;
