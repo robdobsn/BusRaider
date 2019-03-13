@@ -17,7 +17,7 @@ static const char FromRAMEMU[] = "RAMEMU";
 uint8_t RAMEmulator::_targetMemBuffer[STD_TARGET_MEMORY_LEN];
 
 // Vars
-bool RAMEmulator::_emulatedRAMReadPagingActive = false;
+bool RAMEmulator::_emulationActive = false;
 McBase* RAMEmulator::_pTargetMachine = NULL;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -27,6 +27,11 @@ McBase* RAMEmulator::_pTargetMachine = NULL;
 void RAMEmulator::setup(McBase* pTargetMachine)
 {
     _pTargetMachine = pTargetMachine;
+}
+
+void RAMEmulator::activateEmulation(bool active)
+{
+    _emulationActive = active;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -66,13 +71,11 @@ bool RAMEmulator::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len)
 
 bool RAMEmulator::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len)
 {
-    if (!((_pTargetMachine && _pTargetMachine->getDescriptorTable(0)->emulatedRAM &&
-            (addr >= _pTargetMachine->getDescriptorTable(0)->emulatedRAMStart) && 
-            (addr < _pTargetMachine->getDescriptorTable(0)->emulatedRAMStart + _pTargetMachine->getDescriptorTable(0)->emulatedRAMLen))))
-    {
-        // LogWrite(FromTargetDebug, LOG_VERBOSE, "blockRead: Not in single step or emulated RAM %04x %d", addr, len);
-        return false;
-    }
+    // if ((!_pTargetMachine) || (!_pTargetMachine->getDescriptorTable()->emulatedRAM))
+    // {
+    //     LogWrite(FromTargetDebug, LOG_DEBUG, "blockRead: Not in single step or emulated RAM %04x %d", addr, len);
+    //     return false;
+    // }
     int copyLen = len;
     if (addr >= STD_TARGET_MEMORY_LEN)
     {
@@ -111,26 +114,13 @@ uint32_t RAMEmulator::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
             [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal,
             [[maybe_unused]] McDescriptorTable& descriptorTable)
 {
-    // Check if RAM/ROM paged out from last MREQ
-    if (_emulatedRAMReadPagingActive)
-    {
-        // Release paging on physical RAM/ROM
-        digitalWrite(BR_PAGING_RAM_PIN, 0);
-        _emulatedRAMReadPagingActive = false;
-    }
-
     // Check if RAM is emulated
-    if (descriptorTable.emulatedRAM && (addr >= descriptorTable.emulatedRAMStart) && 
-            (addr < descriptorTable.emulatedRAMStart + descriptorTable.emulatedRAMLen))
+    if (_emulationActive)
     {
         // Check for read or write to emulated RAM / ROM
         if (flags & BR_CTRL_BUS_RD_MASK)
         {
             retVal = _targetMemBuffer[addr];
-            // Page-out physical RAM/ROM
-            digitalWrite(BR_PAGING_RAM_PIN, 1);
-            _emulatedRAMReadPagingActive = true;
-
         }
         else if (flags & BR_CTRL_BUS_WR_MASK)
         {

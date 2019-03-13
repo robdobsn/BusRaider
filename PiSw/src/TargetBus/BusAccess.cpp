@@ -910,13 +910,6 @@ BR_RETURN_TYPE BusAccess::pause()
     return BR_OK;
 }
 
-void BusAccess::pauseGetCurrent(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags)
-{
-    *pAddr = _pauseCurAddr;
-    *pData = _pauseCurData;
-    *pFlags = _pauseCurControlBus;
-}
-
 bool BusAccess::pauseIsPaused()
 {
     return _pauseIsPaused;

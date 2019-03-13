@@ -84,22 +84,64 @@ void HwManager::add(HwBase* pHw)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Hardware activity
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Reset
+void HwManager::reset()
+{
+    // Iterate machines
+    for (int i = 0; i < _numHardware; i++)
+    {
+        _pHw[i]->reset();
+    }
+}
+
+// Page out RAM/ROM due to emulation
+void HwManager::pageOutForEmulation(bool pageOut)
+{
+    // Debug
+    LogWrite(FromHwManager, LOG_DEBUG, "pageOutForEmulation %s", pageOut ? "Y" : "N");
+
+    // Iterate machines
+    for (int i = 0; i < _numHardware; i++)
+    {
+        _pHw[i]->pageOutForEmulation(pageOut);
+    }
+}
+
+// Page out RAM/ROM for opcode injection
+void HwManager::pageOutForInjection(bool pageOut)
+{
+    // Iterate machines
+    for (int i = 0; i < _numHardware; i++)
+    {
+        _pHw[i]->pageOutForInjection(pageOut);
+    }
+}
+
+// Check if paging requires bus access
+bool HwManager::pagingRequiresBusAccess()
+{
+    // Iterate machines
+    for (int i = 0; i < _numHardware; i++)
+    {
+        if (pagingRequiresBusAccess())
+            return true;
+    }
+    return false;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Interrupt handler
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Interrupt handler for MREQ/IORQ
-uint32_t HwManager::handleMemOrIOReq(uint32_t addr, uint32_t data, uint32_t flags)
+uint32_t HwManager::handleMemOrIOReq(uint32_t addr, uint32_t data, uint32_t flags, uint32_t retVal)
 {
-    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
-
     // Iterate machines
-    // Return a retVal which is not BR_MEM_ACCESS_RSLT_NOT_DECODED from the first hardware that produces it
     for (int i = 0; i < _numHardware; i++)
-    {
-        uint32_t hwRet = _pHw[i]->handleMemOrIOReq(addr, data, flags);
-        if (retVal == BR_MEM_ACCESS_RSLT_NOT_DECODED)
-            retVal = hwRet;
-    }
+        retVal = _pHw[i]->handleMemOrIOReq(addr, data, flags, retVal);
 
     // Debug logging - check for IO and RD or WRITE
     if (flags & BR_CTRL_BUS_IORQ_MASK)
@@ -119,27 +161,5 @@ uint32_t HwManager::handleMemOrIOReq(uint32_t addr, uint32_t data, uint32_t flag
 
 
     return retVal;
-}
-
-// Page out RAM/ROM for opcode injection
-void HwManager::pageOutRamRom(bool restore)
-{
-    // Iterate machines
-    for (int i = 0; i < _numHardware; i++)
-    {
-        _pHw[i]->pageOutRamRom(restore);
-    }
-}
-
-// Check if paging requires bus access
-bool HwManager::pagingRequiresBusAccess()
-{
-    // Iterate machines
-    for (int i = 0; i < _numHardware; i++)
-    {
-        if (pagingRequiresBusAccess())
-            return true;
-    }
-    return false;
 }
 

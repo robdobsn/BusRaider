@@ -54,12 +54,19 @@ public:
     // Manage machines
     static void add(HwBase* pHw);
 
-    // Interrupt handler for MREQ/IORQ
-    static uint32_t handleMemOrIOReq(uint32_t addr, uint32_t data, uint32_t flags);
+    // Reset
+    static void reset();
+
+    // Page out RAM/ROM due to emulation
+    static void pageOutForEmulation(bool pageOut);
 
     // Page out RAM/ROM for opcode injection
-    static void pageOutRamRom(bool restore);
+    static void pageOutForInjection(bool pageOut);
 
     // Check if paging requires bus access
     static bool pagingRequiresBusAccess();
+
+    // Interrupt handler for MREQ/IORQ
+    static uint32_t handleMemOrIOReq(uint32_t addr, uint32_t data, uint32_t flags, uint32_t retVal);
+
 };

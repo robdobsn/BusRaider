@@ -10,14 +10,25 @@ HwBase::HwBase()
     HwManager::add(this);
 }
 
-// Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-uint32_t HwBase::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
+// Reset
+void HwBase::reset()
 {
-    return BR_MEM_ACCESS_RSLT_NOT_DECODED;
+}
+
+// Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
+uint32_t HwBase::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
+{
+    return retVal;
+}
+
+// Page out RAM/ROM due to emulation
+void HwBase::pageOutForEmulation([[maybe_unused]] bool pageOut)
+{
 }
 
 // Page out RAM/ROM for opcode injection
-void HwBase::pageOutRamRom([[maybe_unused]] bool restore)
+void HwBase::pageOutForInjection([[maybe_unused]] bool pageOut)
 {
 }
 

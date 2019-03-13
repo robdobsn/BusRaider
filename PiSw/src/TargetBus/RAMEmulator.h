@@ -18,6 +18,9 @@ public:
     // Service
     static void service();
 
+    // Activate emulation
+    static void activateEmulation(bool active);
+
     // Interrupt handler
     static uint32_t handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
             [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal,
@@ -39,8 +42,8 @@ private:
     // Machine being debugged
     static McBase* _pTargetMachine;
 
-    // Paging of RAM/ROM during read from emulated RAM
-    static bool _emulatedRAMReadPagingActive;
+    // RAM Emulation active
+    static bool _emulationActive;
 
     // Target memory buffer  
     static const int MAX_TARGET_MEM_ADDR = 0xffff;

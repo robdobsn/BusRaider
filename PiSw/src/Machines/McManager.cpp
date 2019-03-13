@@ -11,6 +11,7 @@
 #include "../System/rdutils.h"
 #include "../System/piwiring.h"
 #include "../TargetBus/TargetCPUZ80.h"
+#include "../Hardware/HwManager.h"
 
 // Module name
 static const char FromMcManager[] = "McManager";
@@ -24,6 +25,7 @@ McBase* McManager::_pMachines[McManager::MAX_MACHINES];
 int McManager::_numMachines = 0;
 int McManager::_curMachineIdx = -1;
 int McManager::_curMachineSubType = 0;
+McBase* McManager::_pCurMachine = NULL;
 CommandHandler* McManager::_pCommandHandler = NULL;
 Display* McManager::_pDisplay = NULL;
 
@@ -89,20 +91,13 @@ int McManager::getNumMachines()
 
 McBase* McManager::getMachine()
 {
-    if ((_curMachineIdx < 0) || (_curMachineIdx >= _numMachines))
-    {
-        if (_numMachines > 0)
-            return _pMachines[0];
-        return NULL;
-    }
-    return _pMachines[_curMachineIdx];
+    return _pCurMachine;
 }
 
-McDescriptorTable* McManager::getDescriptorTable(int subType)
+McDescriptorTable* McManager::getDescriptorTable()
 {
-    McBase* pMc = getMachine();
-    if (pMc)
-        return pMc->getDescriptorTable(subType);
+    if (_pCurMachine)
+        return _pCurMachine->getDescriptorTable();
     return &defaultDescriptorTable;
 }
 
@@ -132,7 +127,7 @@ const char* McManager::getMachineJSON()
     // Current machine
     strlcpy(mcString+strlen(mcString),",\"machineCur\":", MAX_MC_JSON_LEN);
     strlcpy(mcString+strlen(mcString), "\"", MAX_MC_JSON_LEN);
-    strlcpy(mcString+strlen(mcString), getDescriptorTable(_curMachineSubType)->machineName, MAX_MC_JSON_LEN);
+    strlcpy(mcString+strlen(mcString), getDescriptorTable()->machineName, MAX_MC_JSON_LEN);
     strlcpy(mcString+strlen(mcString), "\"", MAX_MC_JSON_LEN);
 
     // Ret
@@ -177,15 +172,16 @@ bool McManager::setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate)
         return false;
     
     // Disable current machine
-    if (getMachine())
-        getMachine()->disable();
+    if (_pCurMachine)
+        _pCurMachine->disable();
 
     // Set the new machine
     _curMachineIdx = mcIdx;
     _curMachineSubType = mcSubType;
+    _pCurMachine = _pMachines[mcIdx];
 
     // Layout display for machine
-    McDescriptorTable* pMcDescr = McManager::getDescriptorTable(mcSubType);
+    McDescriptorTable* pMcDescr = _pCurMachine->getDescriptorTable(_curMachineSubType);
     int windowBorderWidth = 5;
     if (_pDisplay)
         _pDisplay->targetLayout(-1, 0, 
@@ -198,11 +194,8 @@ bool McManager::setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate)
     // Enable machine
     if (getMachine())
     {
-        // Machine
-        McBase* pMachine = getMachine();
-
         // Setup clock
-        uint32_t clockFreqHz = pMachine->getDescriptorTable(0)->clockFrequencyHz;
+        uint32_t clockFreqHz = _pCurMachine->getDescriptorTable(_curMachineSubType)->clockFrequencyHz;
         if (clockFreqHz != 0)
         {
             BusAccess::clockSetup();
@@ -214,24 +207,26 @@ bool McManager::setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate)
             BusAccess::clockEnable(false);
         }
 
-        // Set target machine in RAMEmulator
-        RAMEmulator::setup(pMachine);
+        // Setup RAMEmulator and paging
+        RAMEmulator::setup(_pCurMachine);
+        RAMEmulator::activateEmulation(_pCurMachine->getDescriptorTable(_curMachineSubType)->emulatedRAM);
+        HwManager::pageOutForEmulation(_pCurMachine->getDescriptorTable(_curMachineSubType)->emulatedRAM);
 
         // Set target machine in debug
         TargetDebug* pDebug = TargetDebug::get();
         if (pDebug)
-            pDebug->setup(pMachine);
+            pDebug->setup(_pCurMachine);
 
         // Start
-        pMachine->enable(mcSubType);
+        _pCurMachine->enable(mcSubType);
 
         // Heartbeat timer
-        if (pMachine->getDescriptorTable(0)->irqRate != 0)
-            Timers::set(1000000 / pMachine->getDescriptorTable(0)->irqRate, McManager::targetIrqFromTimer, NULL);
+        if (_pCurMachine->getDescriptorTable(mcSubType)->irqRate != 0)
+            Timers::set(1000000 / _pCurMachine->getDescriptorTable(_curMachineSubType)->irqRate, McManager::targetIrqFromTimer, NULL);
 
         // Started machine
         LogWrite(FromMcManager, LOG_VERBOSE, "Started machine %s", 
-                    pMachine->getDescriptorTable(0)->machineName);
+                    _pCurMachine->getDescriptorTable(_curMachineSubType)->machineName);
 
     }
     else
@@ -261,16 +256,27 @@ bool McManager::setMachineByName(const char* mcName)
 bool McManager::setMachineOpts(const char* mcOpts)
 {
     // Machine
-    McBase* pMachine = getMachine();
-    if (!pMachine)
+    if (!_pCurMachine)
         return false;
-    pMachine->disable();
-    pMachine->getDescriptorTable(0)->emulatedRAM = (strstr(mcOpts, "EMURAM") != 0);
-    pMachine->getDescriptorTable(0)->setRegistersByInjection = (strstr(mcOpts, "INJECT") != 0);
-    LogWrite(FromMcManager, LOG_VERBOSE, "setMachineOpts %s emuRAM %d instrInject %d", mcOpts,
-                pMachine->getDescriptorTable(0)->emulatedRAM,
-                pMachine->getDescriptorTable(0)->setRegistersByInjection);
-    pMachine->enable(_curMachineSubType);
+
+    // Disable machine
+    _pCurMachine->disable();
+
+    // Get options
+    getDescriptorTable()->emulatedRAM = (strstr(mcOpts, "EMURAM") != 0);
+    getDescriptorTable()->setRegistersByInjection = (strstr(mcOpts, "INJECT") != 0);
+
+    // Debug
+    LogWrite(FromMcManager, LOG_DEBUG, "setMachineOpts %s emuRAM %d instrInject %d", mcOpts,
+                getDescriptorTable()->emulatedRAM,
+                getDescriptorTable()->setRegistersByInjection);
+
+    // Set RAM paging based on whether emulation is active
+    RAMEmulator::activateEmulation(getDescriptorTable()->emulatedRAM);
+    HwManager::pageOutForEmulation(getDescriptorTable()->emulatedRAM);
+    
+    // Enable
+    _pCurMachine->enable(_curMachineSubType);
     return true;
 }
 
@@ -345,13 +351,9 @@ bool McManager::debuggerCommand(char* pCommand, char* pResponse, int maxResponse
 
 bool McManager::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq)
 {
-    // Machine info
-    McBase* pMachine = getMachine();
-    if (!pMachine)
-        return false;
-    uint32_t emuRAMStart = pMachine->getDescriptorTable(0)->emulatedRAMStart;
-    uint32_t emuRAMLen = pMachine->getDescriptorTable(0)->emulatedRAMLen;
-    bool emulatedRAM = pMachine->getDescriptorTable(0)->emulatedRAM;
+    uint32_t emuRAMStart = getDescriptorTable()->emulatedRAMStart;
+    uint32_t emuRAMLen = getDescriptorTable()->emulatedRAMLen;
+    bool emulatedRAM = getDescriptorTable()->emulatedRAM;
     // Block cannot cross boundary between emulated and real RAM
     if (emulatedRAM && (!iorq) && (emuRAMStart <= addr) && (emuRAMStart+emuRAMLen >= addr + len))
         return RAMEmulator::blockWrite(addr, pBuf, len);
@@ -361,13 +363,9 @@ bool McManager::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, boo
 
 bool McManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq)
 {
-    // Machine info
-    McBase* pMachine = getMachine();
-    if (!pMachine)
-        return false;
-    uint32_t emuRAMStart = pMachine->getDescriptorTable(0)->emulatedRAMStart;
-    uint32_t emuRAMLen = pMachine->getDescriptorTable(0)->emulatedRAMLen;
-    bool emulatedRAM = pMachine->getDescriptorTable(0)->emulatedRAM;
+    uint32_t emuRAMStart = getDescriptorTable()->emulatedRAMStart;
+    uint32_t emuRAMLen = getDescriptorTable()->emulatedRAMLen;
+    bool emulatedRAM = getDescriptorTable()->emulatedRAM;
     // Check if we are paused - if so bus access cannot get memory but stepping process will have
     // grabbed all of physical RAM and placed it in the buffer for debugging
     // Also, if emulating memory, block cannot cross boundary between emulated and real RAM
@@ -385,6 +383,10 @@ bool McManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRq
 // Handle programming of target machine
 void McManager::targetReset()
 {
+    // Reset attached hardware
+    HwManager::reset();
+
+    // Reset target
     bool resetDone = false;
     McBase* pMc = McManager::getMachine();
     if (pMc)
@@ -400,14 +402,29 @@ void McManager::targetClearAllIO()
     BusAccess::clearAllIO();
 }
 
-void McManager::targetPause()
+BR_RETURN_TYPE McManager::targetPause()
 {
-    BusAccess::pause();
+    return BusAccess::pause();
 }
 
-void McManager::targetRelease()
+BR_RETURN_TYPE McManager::targetRelease()
 {
-    BusAccess::pauseRelease();
+    return BusAccess::pauseRelease();
+}
+
+BR_RETURN_TYPE McManager::targetStep()
+{
+    return BusAccess::pauseStep();
+}
+
+bool McManager::targetIsPaused()
+{
+    return BusAccess::pauseIsPaused();
+}
+
+bool McManager::targetBusUnderPiControl()
+{
+    return BusAccess::isUnderControl();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -425,6 +442,8 @@ void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause
     } 
     else 
     {
+        // BUSRQ is used even if memory is emulated because it holds the processor while changes are made
+
         // Release bus if paused or controlled
         BusAccess::controlRelease(false);
         BusAccess::pauseRelease();
@@ -435,12 +454,17 @@ void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause
             LogWrite(FromMcManager, LOG_DEBUG, "ProgramTarget - failed to capture bus");   
             return;
         }
+
         // Write the blocks
+        bool blockWrittenAtResetEntryPoint = false;
         for (int i = 0; i < TargetState::numMemoryBlocks(); i++) {
             TargetState::TargetMemoryBlock* pBlock = TargetState::getMemoryBlock(i);
             LogWrite(FromMcManager, LOG_VERBOSE,"ProgramTarget start %08x len %d", pBlock->start, pBlock->len);
             McManager::blockWrite(pBlock->start, TargetState::getMemoryImagePtr() + pBlock->start, pBlock->len, false, false);
+            if (pBlock->start == Z80_PROGRAM_RESET_VECTOR)
+                blockWrittenAtResetEntryPoint = true;
         }
+
         // Written
         LogWrite(FromMcManager, LOG_VERBOSE, "ProgramTarget - written %d blocks", TargetState::numMemoryBlocks());
 
@@ -451,14 +475,13 @@ void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause
         // Check for reset too
         if (resetAfterProgramming)
         {
-            LogWrite(FromMcManager, LOG_VERBOSE, "Starting target code");
+            LogWrite(FromMcManager, LOG_DEBUG, "Starting target code");
             bool performHardReset = true;
-            McBase* pMc = getMachine();
             TargetDebug* pDebug = TargetDebug::get();
-            if (TargetState::areRegistersValid() && pMc && pDebug)
+            if (TargetState::areRegistersValid() && pDebug)
             {
                 // Check how to set registers
-                if (pMc->getDescriptorTable(0)->setRegistersByInjection || forceSetRegsByInjection)
+                if (getDescriptorTable()->setRegistersByInjection || forceSetRegsByInjection)
                 {
                     // Use the BusAccess module to inject instructions to set registers
                     Z80Registers regs;
@@ -468,25 +491,28 @@ void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause
                 }
                 else
                 {
-                    // Generate a code snippet to set registers and run
-                    uint8_t regSetCode[MAX_REGISTER_SET_CODE_LEN];
-                    Z80Registers regs;
-                    TargetState::getTargetRegs(regs);
-                    char regsStr[500];
-                    regs.format(regsStr, 500);
-                    LogWrite(FromMcManager, LOG_DEBUG, "Regs: %s", regsStr);
-                    uint32_t codeDestAddr = pMc->getDescriptorTable(0)->setRegistersCodeAddr;
-                    int codeLen = TargetCPUZ80::getSnippetToSetRegs(codeDestAddr, regs, regSetCode, MAX_REGISTER_SET_CODE_LEN);
-                    if (codeLen != 0)
+                    // If the code doesn't start at 0, generate a code snippet to set registers and run
+                    if (!blockWrittenAtResetEntryPoint)
                     {
-                        // Reg setting code
-                        LogWrite(FromMcManager, LOG_DEBUG,"Set regs snippet at %04x len %d", codeDestAddr, codeLen);
-                        McManager::blockWrite(codeDestAddr, regSetCode, codeLen, false, false);
-                        
-                        // Reset vector
-                        uint8_t jumpCmd[3] = { 0xc3, uint8_t(codeDestAddr & 0xff), uint8_t((codeDestAddr >> 8) & 0xff) };
-                        McManager::blockWrite(0, jumpCmd, 3, false, false);
-                        ee_dump_mem(regSetCode, regSetCode + codeLen);
+                        uint8_t regSetCode[MAX_REGISTER_SET_CODE_LEN];
+                        Z80Registers regs;
+                        TargetState::getTargetRegs(regs);
+                        char regsStr[500];
+                        regs.format(regsStr, 500);
+                        LogWrite(FromMcManager, LOG_DEBUG, "Regs: %s", regsStr);
+                        uint32_t codeDestAddr = getDescriptorTable()->setRegistersCodeAddr;
+                        int codeLen = TargetCPUZ80::getSnippetToSetRegs(codeDestAddr, regs, regSetCode, MAX_REGISTER_SET_CODE_LEN);
+                        if (codeLen != 0)
+                        {
+                            // Reg setting code
+                            LogWrite(FromMcManager, LOG_DEBUG,"Set regs snippet at %04x len %d", codeDestAddr, codeLen);
+                            McManager::blockWrite(codeDestAddr, regSetCode, codeLen, false, false);
+                            
+                            // Reset vector
+                            uint8_t jumpCmd[3] = { 0xc3, uint8_t(codeDestAddr & 0xff), uint8_t((codeDestAddr >> 8) & 0xff) };
+                            McManager::blockWrite(0, jumpCmd, 3, false, false);
+                            ee_dump_mem(regSetCode, regSetCode + codeLen);
+                        }
                     }
                 }
             }

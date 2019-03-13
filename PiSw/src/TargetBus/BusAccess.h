@@ -161,7 +161,6 @@ public:
     static BR_RETURN_TYPE pause();
     static BR_RETURN_TYPE pauseStep();
     static BR_RETURN_TYPE pauseRelease();
-    static void pauseGetCurrent(uint32_t* pAddr, uint32_t* pData, uint32_t* pFlags);
     static bool pauseIsPaused();
 
     // Get return type string

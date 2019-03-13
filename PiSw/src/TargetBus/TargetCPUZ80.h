@@ -8,6 +8,8 @@
 #include <stddef.h>
 #include "../TargetBus/TargetRegisters.h"
 
+#define Z80_PROGRAM_RESET_VECTOR 0
+
 class TargetCPUZ80
 {
 public:

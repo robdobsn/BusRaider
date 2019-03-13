@@ -36,6 +36,7 @@ private:
     static int _numMachines;
     static int _curMachineIdx;
     static int _curMachineSubType;
+    static McBase* _pCurMachine;
 
 public:
     // Init
@@ -50,8 +51,10 @@ public:
     // Machine access
     static int getNumMachines();
     static McBase* getMachine();
-    static McDescriptorTable* getDescriptorTable(int subType);
     static const char* getMachineJSON();
+
+    // Current machine descriptor table
+    static McDescriptorTable* getDescriptorTable();
 
     // Handle communication with machine
     static void handleRxCharFromTarget(const uint8_t* pRxChars, int rxLen);
@@ -68,9 +71,12 @@ public:
 
     // Target control
     static void targetReset();
-    static void targetPause();
-    static void targetRelease();
+    static BR_RETURN_TYPE targetPause();
+    static BR_RETURN_TYPE targetRelease();
     static void targetClearAllIO();
+    static BR_RETURN_TYPE targetStep();
+    static bool targetIsPaused();
+    static bool targetBusUnderPiControl();
 
     // Memory access
     static bool blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq);

@@ -29,7 +29,7 @@ public:
     // Disable machine
     virtual void disable();
 
-    // Get descriptor table for the machine
+    // Get descriptor table for the machine (-1 for current subType)
     virtual McDescriptorTable* getDescriptorTable([[maybe_unused]] int subType = -1)
     {
         return &McRobsZ80::_descriptorTable;

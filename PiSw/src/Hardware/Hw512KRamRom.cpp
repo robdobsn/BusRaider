@@ -28,48 +28,33 @@ uint8_t Hw512KRamRom::_pageOutAllBanks[] = {
 
 Hw512KRamRom::Hw512KRamRom() : HwBase()
 {
+    reset();
+}
+
+// Reset has occurred
+void Hw512KRamRom::reset()
+{
+    _pageOutForEmulation = false;
     _pagingEnabled = true;
     for (int i = 0; i < NUM_BANKS; i++)
         _bankRegisters[i] = 0;
 }
 
-// Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-uint32_t Hw512KRamRom::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
+// Page out RAM/ROM due to emulation
+void Hw512KRamRom::pageOutForEmulation(bool pageOut)
 {
-    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
-
-    ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_A);
-
-    // Check for address range used by this card
-    if (_pagingEnabled && ((addr & 0xff) >= Hw512KRamRom_BASE_ADDR) && ((addr & 0xff) < Hw512KRamRom_BASE_ADDR + NUM_BANKS))
-    {
-        if(flags & BR_CTRL_BUS_WR_MASK)
-        {
-            _bankRegisters[(addr & 0xff) - Hw512KRamRom_BASE_ADDR] = data;
-            ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B + (addr & 0xff) - Hw512KRamRom_BASE_ADDR, data);
-        }
-    }
-    else if ((addr & 0xff) == Hw512KRamRom_PAGE_ENABLE)
-    {
-        if (flags & BR_CTRL_BUS_WR_MASK)
-        {
-            _pagingEnabled = ((data & 0x01) != 0);
-        }
-    }
-
-    // Not decoded
-    return retVal;
+    _pageOutForEmulation = pageOut;
 }
 
 // Page out RAM/ROM for opcode injection
-void Hw512KRamRom::pageOutRamRom(bool restore)
+void Hw512KRamRom::pageOutForInjection(bool pageOut)
 {
     // Check enabled
     if (!_pagingEnabled)
         return;
 
     // Check page out or restore
-    if (!restore)
+    if (pageOut)
     {
         // Write pageOut value
         BusAccess::blockWrite(Hw512KRamRom_BASE_ADDR, _pageOutAllBanks,
@@ -89,3 +74,28 @@ bool Hw512KRamRom::pagingRequiresBusAccess()
     return _pagingEnabled;
 }
 
+// Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
+uint32_t Hw512KRamRom::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
+{
+    ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_A);
+
+    // Check for address range used by this card
+    if (_pagingEnabled && ((addr & 0xff) >= Hw512KRamRom_BASE_ADDR) && ((addr & 0xff) < Hw512KRamRom_BASE_ADDR + NUM_BANKS))
+    {
+        if(flags & BR_CTRL_BUS_WR_MASK)
+        {
+            _bankRegisters[(addr & 0xff) - Hw512KRamRom_BASE_ADDR] = data;
+            ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B + (addr & 0xff) - Hw512KRamRom_BASE_ADDR, data);
+        }
+    }
+    else if ((addr & 0xff) == Hw512KRamRom_PAGE_ENABLE)
+    {
+        if (flags & BR_CTRL_BUS_WR_MASK)
+        {
+            _pagingEnabled = ((data & 0x01) != 0);
+        }
+    }
+
+    return retVal;
+}

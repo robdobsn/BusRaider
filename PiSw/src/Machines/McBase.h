@@ -45,7 +45,7 @@ public:
 
 class McBase
 {
-  public:
+public:
 
     McBase();
 
@@ -61,7 +61,7 @@ class McBase
         return 1;
     }
 
-    // Get descriptor table for the machine
+    // Get descriptor table for the machine (-1 for current subType)
     virtual McDescriptorTable* getDescriptorTable(int subType = -1) = 0;
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)

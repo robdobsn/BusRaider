@@ -50,7 +50,7 @@ public:
     // Get number of descriptor tables for machine
     virtual int getDescriptorTableCount();
     
-    // Get descriptor table for the machine
+    // Get descriptor table for the machine (-1 for current subType)
     virtual McDescriptorTable* getDescriptorTable([[maybe_unused]] int subType = -1);
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)

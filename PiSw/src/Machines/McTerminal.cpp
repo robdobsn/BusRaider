@@ -100,11 +100,11 @@ int McTerminal::getDescriptorTableCount()
     return sizeof(_descriptorTables)/sizeof(_descriptorTables[0]);
 }
 
-// Get descriptor table for the machine
+// Get descriptor table for the machine (-1 for current subType)
 McDescriptorTable* McTerminal::getDescriptorTable([[maybe_unused]] int subType)
 {
     if ((subType < 0) || (subType >= getDescriptorTableCount()))
-        return &_descriptorTables[0];
+        return &_descriptorTables[_machineSubType];
     return &_descriptorTables[subType];
 }
 
@@ -309,7 +309,9 @@ void McTerminal::fileHandler(const char* pFileInfo, const uint8_t* pFileData, in
 uint32_t McTerminal::memoryRequestCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, [[maybe_unused]] uint32_t flags)
 {
     // Offer to the hardware manager
-    uint32_t retVal = HwManager::handleMemOrIOReq(addr, data, flags);
+    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
+    
+    retVal = HwManager::handleMemOrIOReq(addr, data, flags, retVal);
     
     // Callback to debugger
     TargetDebug* pDebug = TargetDebug::get();

@@ -333,7 +333,7 @@ extern "C" int main()
     {
 
         // Handle target machine display updates
-        McDescriptorTable* pMcDescr = McManager::getDescriptorTable(0);
+        McDescriptorTable* pMcDescr = McManager::getDescriptorTable();
         unsigned long reqUpdateUs = 1000000 / pMcDescr->displayRefreshRatePerSec;
         if (isTimeout(micros(), lastDisplayUpdateUs, reqUpdateUs)) 
         {
@@ -396,11 +396,11 @@ extern "C" int main()
             // BusAccess status
             statusStr[0] = 0;
             strlcpy(statusStr, "BusAccess: ", MAX_STATUS_STR_LEN);
-            if (BusAccess::pauseIsPaused())
+            if (McManager::targetIsPaused())
                 strlcat(statusStr, "Paused", MAX_STATUS_STR_LEN);
             else
                 strlcat(statusStr, "Free Running", MAX_STATUS_STR_LEN);
-            if (BusAccess::isUnderControl())
+            if (McManager::targetBusUnderPiControl())
                 strlcat(statusStr, "PiControl", MAX_STATUS_STR_LEN);
             display.windowWrite(1, display.termGetWidth()-strlen(statusStr)-1, lineIdx++, (uint8_t*)statusStr);
 
