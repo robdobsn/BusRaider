@@ -40,9 +40,17 @@ public:
     void service();
     void setup(McBase* pTargetMachine);
 
-    bool debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen);
+    // Execution control
+    void pause();
+    void step(bool stepOver);
+    void release();
+    bool isPaused();
 
-    uint32_t handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+    // Handle a debugger command
+    bool handleDebuggerCommand(char* pCommand, char* pResponse, int maxResponseLen);
+
+    // Handle wait-state interrupt
+    uint32_t handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
             [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal);
 
     // Comms callback
@@ -54,6 +62,9 @@ public:
     // Register injection and code snippet generation
     void startSetRegisterSequence(Z80Registers* pRegs = NULL);
 
+    // Inform target debug that target programming is started
+    void targetProgrammingStarted();
+    
     // Step testing
     void startStepTester()
     {
@@ -62,6 +73,38 @@ public:
     }
 
 private:
+
+    // Debug Mode
+    // Keeps track of the current mode the debugger is in
+    enum DEBUG_MODE {
+        DEBUG_MODE_NONE,
+        DEBUG_MODE_STEP_INTO,
+        DEBUG_MODE_STEP_OVER,
+        DEBUG_MODE_RUN
+    };
+    DEBUG_MODE _debugMode;
+
+    // Target state acquisition
+    // This is a state-machine which controls:
+    // - the sequence of opcode injection to get registers
+    // - paging of hardware that requires bus access (e.g. 512K RAM/ROM)
+    // - memory grab (into RAMEmulation) for debug access to memory
+    void targetStateAcqClear();
+    void targetStateAcqStart(bool leaveInPause);
+    void targetStateAcqRelease(DEBUG_MODE debugMode);
+    void targetStateAcqService();
+    uint32_t targetStateAcqWaitISR([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal);
+
+
+    enum TARGET_STATE_ACQ_STATE {
+        TARGET_STATE_ACQ_NONE,
+        TARGET_STATE_ACQ_PRE_INJECT,
+        TARGET_STATE_ACQ_INJECT,
+        TARGET_STATE_ACQ_REGISTER_GRAB,
+        TARGET_STATE_ACQ_POST_INJECT
+    };
+    TARGET_STATE_ACQ_STATE _targetStateAcqMode;
 
     bool commandMatch(const char* s1, const char* s2);
     void enableBreakpoint(int idx, bool enabled);
@@ -85,15 +128,15 @@ private:
     // Debug mode initialized indicator
     bool _debugInitalized;
 
-    // Debug in single-step mode
-    bool _debugInCPUStep;
+    // // Debug in single-step mode
+    // bool _debugInCPUStep;
 
     // Flags to help deal with prefixed instructions when single-stepping
     bool _thisInstructionIsPrefixed;
     bool _lastInstructionWasPrefixed;
 
-    // Flag indicating bus has been requested for full-memory read
-    bool _busControlRequestedForMemGrab;
+    // // Flag indicating bus has been requested for full-memory read
+    // bool _busControlRequestedForMemGrab;
 
     // Current MREQ monitor mode when starting register set
     bool _instrWaitRestoreNeeded;
@@ -108,6 +151,7 @@ private:
         REGISTER_MODE_UNPAGE,
     };
     REGISTER_MODE _registerMode;
+
     bool _registerPrevInstrComplete;
     int _registerQueryWriteIndex;
     unsigned int _registerModeStep;

@@ -141,6 +141,7 @@ public:
     static void waitOnInstruction(bool waitOnInstruction);
     static void waitRestoreDefaults();
     static void waitSetup(bool enWaitOnIORQ, bool enWaitOnMREQ);
+    static void waitClear();
 
     // Wait interrupt control
     static void waitIntClear();
@@ -156,12 +157,6 @@ public:
     // Set and remove callbacks on bus access
     static void accessCallbackAdd(BusAccessCBFnType* pBusAccessCallback);
     static void accessCallbackRemove();
-
-    // Single step
-    static BR_RETURN_TYPE pause();
-    static BR_RETURN_TYPE pauseStep();
-    static BR_RETURN_TYPE pauseRelease();
-    static bool pauseIsPaused();
 
     // Get return type string
     static const char* retcString(BR_RETURN_TYPE retc)

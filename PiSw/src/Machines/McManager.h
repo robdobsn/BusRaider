@@ -71,10 +71,10 @@ public:
 
     // Target control
     static void targetReset();
-    static BR_RETURN_TYPE targetPause();
-    static BR_RETURN_TYPE targetRelease();
+    static void targetPause();
+    static void targetRelease();
     static void targetClearAllIO();
-    static BR_RETURN_TYPE targetStep();
+    static void targetStep(bool stepOver);
     static bool targetIsPaused();
     static bool targetBusUnderPiControl();
 

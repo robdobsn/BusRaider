@@ -30,9 +30,6 @@ uint32_t BusAccess::_waitStateEnMaskDefault = 0;
 // Wait interrupt enablement cache (so it can be restored after disable)
 bool BusAccess::_waitIntEnabled = false;
 
-// Currently paused - i.e. wait is active
-volatile bool BusAccess::_pauseIsPaused = false;
-
 // Bus under BusRaider control
 volatile bool BusAccess::_busIsUnderControl = false;
 
@@ -816,10 +813,7 @@ void BusAccess::waitStateISR(void* pData)
     // Send this to anything listening
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
     if (_pBusAccessCallback)
-    {
-        // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_A);
         retVal = _pBusAccessCallback(addr, dataBusVals, ctrlBusVals);
-    }
 
     // If Z80 is reading from the data bus (inc reading an ISR vector)
     // and result is valid then put the returned data onto the bus
@@ -843,7 +837,6 @@ void BusAccess::waitStateISR(void* pData)
 #endif
 
     // Check if we should hold the target processor at this point
-    // if (_pauseIsPaused && m1Asserted && !instructionInjection)
     if ((retVal & BR_MEM_ACCESS_HOLD) != 0)
     {
         // Store the current address, data and ctrl line state
@@ -905,56 +898,13 @@ void BusAccess::waitIntEnable()
 // Pause & Single Step Handling
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-BR_RETURN_TYPE BusAccess::pause()
+void BusAccess::waitClear()
 {
-    // Pause will occur in the ISR when next possible to do so
-    _pauseIsPaused = true;
-
-    return BR_OK;
-}
-
-bool BusAccess::pauseIsPaused()
-{
-    return _pauseIsPaused;
-}
-
-BR_RETURN_TYPE BusAccess::pauseStep()
-{
-    // Check if paused
-    if (!_pauseIsPaused)
-        return BR_ALREADY_DONE;
-
     // Disable interrupts
     lowlev_disable_fiq();
 
     // Timing critical in here
     lowlev_disable_irq();
-
-    // Clear the WAIT state flip-flop
-    clearWaitFF();
-
-    // Clear wait detected
-    clearWaitDetected();
-
-    // Enable interrupts
-    lowlev_enable_fiq();
-    lowlev_enable_irq();
-
-    return BR_OK;
-}
-
-BR_RETURN_TYPE BusAccess::pauseRelease()
-{
-    // Check if paused
-    if (!_pauseIsPaused)
-        return BR_ALREADY_DONE;
-
-    // Disable interrupts
-    lowlev_disable_irq();
-    lowlev_disable_fiq();
-
-    // Release pause
-    _pauseIsPaused = false;
 
     // Clear the WAIT state flip-flop
     clearWaitFF();
@@ -968,8 +918,6 @@ BR_RETURN_TYPE BusAccess::pauseRelease()
     // Enable interrupts
     lowlev_enable_fiq();
     lowlev_enable_irq();
-
-    return BR_OK;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

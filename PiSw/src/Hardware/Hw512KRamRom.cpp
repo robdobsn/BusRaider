@@ -78,8 +78,6 @@ bool Hw512KRamRom::pagingRequiresBusAccess()
 uint32_t Hw512KRamRom::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
             [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
 {
-    // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_A);
-
     // Check for address range used by this card
     if (_pagingEnabled && ((addr & 0xff) >= Hw512KRamRom_BASE_ADDR) && ((addr & 0xff) < Hw512KRamRom_BASE_ADDR + NUM_BANKS))
     {

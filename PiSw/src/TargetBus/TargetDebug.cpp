@@ -18,10 +18,20 @@
 // Module name
 static const char FromTargetDebug[] = "TargetDebug";
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Callbacks and singletons
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Debugger
 TargetDebug __targetDebug;
 
-// Breakpoints
+// Callback to send debug frame
+SendRemoteDebugProtocolMsgType* TargetDebug::_pSendRemoteDebugProtocolMsgCallback = NULL;
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Breakpoint and step-over
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 bool TargetDebug::_breakpointsEnabled = true;
 int TargetDebug::_breakpointNumEnabled = 0;
 Breakpoint TargetDebug::_breakpoints[MAX_BREAKPOINTS];
@@ -32,9 +42,6 @@ bool TargetDebug::_stepOverEnabled = false;
 uint32_t TargetDebug::_stepOverPCValue = 0;
 bool TargetDebug::_stepOverHit = false;
 
-// Callback to send debug frame
-SendRemoteDebugProtocolMsgType* TargetDebug::_pSendRemoteDebugProtocolMsgCallback = NULL;
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Construction
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -42,9 +49,8 @@ SendRemoteDebugProtocolMsgType* TargetDebug::_pSendRemoteDebugProtocolMsgCallbac
 TargetDebug::TargetDebug()
 {
     _pTargetMachine = NULL;
-    _debugInitalized = false;
-    _debugInCPUStep = false;
-    _busControlRequestedForMemGrab = false;
+    _debugMode = DEBUG_MODE_NONE;
+    _targetStateAcqMode = TARGET_STATE_ACQ_NONE;
     _instrWaitRestoreNeeded = false;
     _instrWaitCurMode = false;
     _instrClockCurFreqHz = BR_TARGET_DEBUG_CLOCK_HZ;
@@ -82,6 +88,258 @@ void TargetDebug::setup(McBase* pTargetMachine)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Execution control
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TargetDebug::pause()
+{
+    targetStateAcqStart(true);
+}
+
+void TargetDebug::step([[maybe_unused]]bool stepOver)
+{
+
+}
+
+void TargetDebug::release()
+{
+
+}
+
+bool TargetDebug::isPaused()
+{
+    return _debugMode == DEBUG_MODE_STEP_INTO;
+}
+
+// Inform target debug that target programming is started
+void TargetDebug::targetProgrammingStarted()
+{
+
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Target state acquisition - state machine
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TargetDebug::targetStateAcqClear()
+{
+    _targetStateAcqMode = TARGET_STATE_ACQ_NONE;
+    // _debugInCPUStep = false;
+    _debugMode = DEBUG_MODE_NONE;
+}
+
+void TargetDebug::targetStateAcqStart([[maybe_unused]]bool leaveInPause)
+{
+    // Start the state machine to machine state
+
+    // Check if bus access required at start
+    // if (HwManager::pagingRequiresBusAccess() && !RAMEmulator::isActive())
+    //     _targetStateAcqMode = TARGET_STATE_ACQ_PRE_INJECT;
+    // else
+    //     _targetStateAcqMode = TARGET_STATE_ACQ_INJECT;
+
+    //             // Pause execution
+    //     pause();
+    //     BusAccess::waitOnInstruction(true);
+    //     BusAccess::clockSetFreqHz(BR_TARGET_DEBUG_CLOCK_HZ);
+    //     _lastInstructionWasPrefixed = false;
+
+
+    //     _debugInCPUStep = true;
+    //     _debugMode = ????
+
+    // // BLANK
+    //             pause();
+
+    //         // Start sequence of getting registers
+    //         startGetRegisterSequence();
+
+    //         // LogWrite(FromTargetDebug, LOG_VERBOSE, "now paused SEND-BLANK");
+    //         _debugInCPUStep = true;
+
+
+
+}
+
+void TargetDebug::targetStateAcqRelease(DEBUG_MODE debugMode)
+{
+
+    // BusAccess::waitRestoreDefaults();
+    // BR_RETURN_TYPE retc = McManager::targetRelease();
+    // _debugInCPUStep = false;
+    // if (retc != BR_OK)
+    //     LogWrite(FromTargetDebug, LOG_DEBUG, "pauseRelease failed in exit-cpu-step (%s)", BusAccess::retcString(retc));
+
+
+    //     // STEP
+    //     BR_RETURN_TYPE retc = McManager::targetStep();
+    //     if (retc == BR_OK)
+    //     {
+    //         // Start sequence of getting registers
+    //         startGetRegisterSequence();
+    //         // LogWrite(FromTargetDebug, LOG_VERBOSE, "cpu-step done");
+    //         _debugInCPUStep = true;
+
+    //     }
+    //     else
+    //     {
+    //         LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step failed (%s)", BusAccess::retcString(retc));
+    //     }
+
+
+    //     // STEPOVER
+    //             _stepOverEnabled = true;
+    //     _stepOverHit = false;
+    //     // Release execution
+    //     BR_RETURN_TYPE retc = McManager::targetRelease();
+    //     _debugInCPUStep = false;
+    //     if (retc != BR_OK)
+    //         LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step-over pauseRelease failed (%s)", BusAccess::retcString(retc));
+
+
+    _debugMode = debugMode;
+}
+
+void TargetDebug::targetStateAcqService()
+{
+    // Check for memory grab required
+    // if (_busControlRequestedForMemGrab)
+    // {
+    //     // No longer request
+    //     _busControlRequestedForMemGrab = false;
+
+    //     // Release paging
+    //     HwManager::pageOutForInjection(false);
+
+    //     // Request bus so we can grab memory data before entering a wait state
+    //     if (BusAccess::controlRequestAndTake() == BR_OK)
+    //         BusAccess::grabMemoryAndReleaseBusRq(RAMEmulator::getMemBuffer(), RAMEmulator::getMemBufferLen());
+    // }
+}
+
+uint32_t TargetDebug::targetStateAcqWaitISR([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
+{
+    // switch(_targetStateAcqMode)
+    // {
+    //     case TARGET_STATE_ACQ_NONE:
+    //     {
+    //         break;
+    //     }
+    //     case TARGET_STATE_ACQ_PRE_INJECT:
+    //     {
+    //         break;
+    //     }
+    // }
+
+
+//     if (mode == START GETTING REGS)
+//     {
+//             // Start sequence of getting registers
+//         _registerMode = REGISTER_MODE_GET;
+//         _registerPrevInstrComplete = false;
+//         _registerQueryWriteIndex = 0;
+//         _registerModeStep = 0;
+//     }
+
+// #else
+//     // Check for the end of paging mode - un-page RAM
+//     if (_registerMode == REGISTER_MODE_UNPAGE)
+//     {
+//         // Clear the paging of RAM
+//         HwManager::pageOutForInjection(false);
+//         _registerMode = REGISTER_MODE_NONE;
+
+//         // Restore wait-state generation if required
+//         if (_instrWaitRestoreNeeded)
+//         {
+//             BusAccess::waitOnInstruction(_instrWaitCurMode);
+//             BusAccess::clockSetFreqHz(_instrClockCurFreqHz);            
+//             _instrWaitRestoreNeeded = false;
+//         }
+
+//         // Handle M1 cycle
+//         _registerPrevInstrComplete = false;
+//         if (flags & BR_CTRL_BUS_M1_MASK)
+//         {
+//             // Always need to hold at this point
+//             retVal |= BR_MEM_ACCESS_HOLD;
+//         }
+//         else
+//         {
+//             // After regsiter set/get there should always be an M1 cycle
+//             ISR_ASSERT(ISR_ASSERT_CODE_UNPAGE_NOT_M1);
+//         }
+//     }
+
+//     // Handle register query and set modes
+//     if ((_registerMode == REGISTER_MODE_GET) || (_registerMode == REGISTER_MODE_SET))
+//     {
+//         // See if we are waiting for the end of the previous instruction
+//         if (_registerPrevInstrComplete || ((!_lastInstructionWasPrefixed) && (flags & BR_CTRL_BUS_M1_MASK)))
+//         {
+//             //TODO
+//                 // for (int i = 0; i < 5; i++)
+//                 // {
+//                 //     digitalWrite(8,1);
+//                 //     microsDelay(1);
+//                 //     digitalWrite(8,0);
+//                 //     microsDelay(1);
+//                 // }
+//             // If we've just completed the previous instruction then the current address is the PC
+//             if ((!_registerPrevInstrComplete) && (_registerMode == REGISTER_MODE_GET))
+//             {
+//                 //     digitalWrite(BR_PUSH_ADDR_BAR, 1);
+//                 // int addrMask = 0x8000;
+//                 // digitalWrite(8,1);
+//                 // microsDelay(1);
+//                 // for (int i = 0; i < 16; i++)
+//                 // {
+//                 //     digitalWrite(8,addr & addrMask);
+//                 //     microsDelay(1);
+//                 //     addrMask = addrMask >> 1;
+//                 // }
+//                 // digitalWrite(8,0);
+//                 // microsDelay(1);
+//                 _z80Registers.PC = addr;
+//             }
+
+//             // Previous instruction now done
+//             _registerPrevInstrComplete = true;
+
+//             // Page-out RAM/ROM while injecting
+//             HwManager::pageOutForInjection(true);
+
+//             // Handle the injection mode
+//             if (_registerMode == REGISTER_MODE_GET)
+//             {
+//                 // We're now inserting instructions or getting results back
+//                 handleRegisterGet(addr, data, flags, retVal);
+//             }
+//             else
+//             {
+//                 // We're now inserting instructions to set registers
+//                 handleRegisterSet(retVal);
+//             }
+
+//             // If register get/set is finished after this cycle then request the bus (if not fully emulating RAM)
+//             if ((_registerMode == REGISTER_MODE_UNPAGE) && (!RAMEmulator::isActive()))
+//             {
+//                 BusAccess::controlRequest();
+//                 _busControlRequestedForMemGrab = true;
+//             }
+//         }
+//         else
+//         {
+//             // Check if this is a prefix instruction - if so we need to avoid breaking at the wrong time
+//             _lastInstructionWasPrefixed &= isPrefixInstruction(((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) ? data : retVal) & 0xff);
+//         }
+//     }
+
+    return retVal;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Breakpoints
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -114,17 +372,8 @@ void TargetDebug::setBreakpointPCAddr(int idx, uint32_t pcVal)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Injected instruction sequence handling for register set/get
+// Injected instruction sequence handling for register set
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void TargetDebug::startGetRegisterSequence()
-{
-    // Start sequence of getting registers
-    _registerMode = REGISTER_MODE_GET;
-    _registerPrevInstrComplete = false;
-    _registerQueryWriteIndex = 0;
-    _registerModeStep = 0;
-}
 
 void TargetDebug::startSetRegisterSequence(Z80Registers* pRegs)
 {
@@ -192,19 +441,8 @@ bool TargetDebug::commandMatch(const char* s1, const char* s2)
 
 void TargetDebug::service()
 {
-    // Check for memory grab required
-    if (_busControlRequestedForMemGrab)
-    {
-        // No longer request
-        _busControlRequestedForMemGrab = false;
-
-        // Release paging
-        HwManager::pageOutForInjection(true);
-
-        // Request bus so we can grab memory data before entering a wait state
-        if (BusAccess::controlRequestAndTake() == BR_OK)
-            BusAccess::grabMemoryAndReleaseBusRq(RAMEmulator::getMemBuffer(), RAMEmulator::getMemBufferLen());
-    }
+    // Service the target state acquisition state-machine
+    targetStateAcqService();
 
     // Check for breakpoint hit
     if (_breakpointHitFlag)
@@ -237,7 +475,7 @@ void TargetDebug::service()
 // Debugger command handler - based on ZEsarUX / Z80 Debugger for VS Code
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool TargetDebug::debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen)
+bool TargetDebug::handleDebuggerCommand(char* pCommand, char* pResponse, int maxResponseLen)
 {
     // Empty response initially
     pResponse[0] = 0;
@@ -304,81 +542,65 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, "set-debug-settings"))
     {
-        strlcat(pResponse, "", maxResponseLen);
-        _debugInitalized = true;
     }
     else if (commandMatch(cmdStr, "hard-reset-cpu"))
     {
         LogWrite(FromTargetDebug, LOG_VERBOSE, "Reset machine");
-        if (_pTargetMachine)
-            _pTargetMachine->reset();
-        strlcat(pResponse, "", maxResponseLen);
+        McManager::targetReset();
+        targetStateAcqClear();
     }
     else if (commandMatch(cmdStr, "enter-cpu-step"))
     {
         LogWrite(FromTargetDebug, LOG_VERBOSE, "enter-cpu-step");
-        BR_RETURN_TYPE retc = McManager::targetPause();
-        if (retc == BR_OK)
-        {
-            BusAccess::waitOnInstruction(true);
-            BusAccess::clockSetFreqHz(BR_TARGET_DEBUG_CLOCK_HZ);
-            _lastInstructionWasPrefixed = false;
-        }
-        else
-        {
-            LogWrite(FromTargetDebug, LOG_DEBUG, "pause failed in enter-cpu-step (%s)", BusAccess::retcString(retc));
-        }
-        strlcat(pResponse, "", maxResponseLen);
+
+        // Acquire target state and hold
+        targetStateAcqStart(true);
     }
     else if (commandMatch(cmdStr, "exit-cpu-step"))
     {
         LogWrite(FromTargetDebug, LOG_VERBOSE, "exit-cpu-step");
-        BusAccess::waitRestoreDefaults();
-        BR_RETURN_TYPE retc = McManager::targetRelease();
-        _debugInCPUStep = false;
-        if (retc != BR_OK)
-            LogWrite(FromTargetDebug, LOG_DEBUG, "pauseRelease failed in exit-cpu-step (%s)", BusAccess::retcString(retc));
-        strlcat(pResponse, "", maxResponseLen);
+
+        // Release target
+        targetStateAcqRelease(DEBUG_MODE_NONE);
     }
     else if (commandMatch(cmdStr, "quit"))
     {
         // LogWrite(FromTargetDebug, LOG_VERBOSE, "quit");
         BusAccess::waitRestoreDefaults();
-        BR_RETURN_TYPE retc = McManager::targetRelease();
-        _debugInCPUStep = false;
-        if ((retc != BR_OK) && (retc != BR_ALREADY_DONE))
-            LogWrite(FromTargetDebug, LOG_DEBUG, "pauseRelease failed in quit (%s)", BusAccess::retcString(retc));
-        _debugInitalized = false;
-        strlcat(pResponse, "", maxResponseLen);
+
+        // Release target
+        targetStateAcqRelease(DEBUG_MODE_NONE);
     }
     else if (commandMatch(cmdStr, "smartload"))
     {
         LogWrite(FromTargetDebug, LOG_VERBOSE, "smartload %s", argStr);
+
+        // Program the target
         McManager::handleTargetProgram(true, true, true);
-        strlcat(pResponse, "", maxResponseLen);
     }
     else if (commandMatch(cmdStr, "clear-membreakpoints"))
     {
-        strlcat(pResponse, "", maxResponseLen);
     }
     else if (commandMatch(cmdStr, "enable-breakpoint"))
     {
         LogWrite(FromTargetDebug, LOG_VERBOSE, "enable breakpoint %s", argStr);
+
+        // Get breakpoint to enable
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
         enableBreakpoint(breakpointIdx, true);
-        strlcat(pResponse, "", maxResponseLen);
     }
     else if (commandMatch(cmdStr, "enable-breakpoints"))
     {
+        // Enable
         _breakpointsEnabled = true;
-        strlcat(pResponse, "", maxResponseLen);
     }
     else if (commandMatch(cmdStr, "disable-breakpoint"))
     {
         LogWrite(FromTargetDebug, LOG_VERBOSE, "disable breakpoint %s", argStr);
+
+        // Breakpoint number
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
         enableBreakpoint(breakpointIdx, false);
-        strlcat(pResponse, "", maxResponseLen);
     }
     else if (commandMatch(cmdStr, "disable-breakpoints"))
     {
@@ -388,6 +610,8 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     else if (commandMatch(cmdStr, "set-breakpoint"))
     {
         LogWrite(FromTargetDebug, LOG_VERBOSE, "set breakpoint %s %s", argStr, argStr2);
+
+        // Set breakpoint
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
         if ((argStr2[0] != 'P') || (argStr2[1] != 'C') || (argStr2[2] != '='))
         {
@@ -403,6 +627,8 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     else if (commandMatch(cmdStr, "set-breakpointaction"))
     {
         LogWrite(FromTargetDebug, LOG_VERBOSE, "set breakpoint action %s %s %s", argStr, argStr2, argRest);
+
+        // Set action on breakpoint
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
         if (!commandMatch(argStr2, "prints"))
         {
@@ -422,6 +648,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     }
     else if (commandMatch(cmdStr, "get-registers"))
     {
+        // Format registers to return
         _z80Registers.format(pResponse, maxResponseLen);
     }
     else if (commandMatch(cmdStr, "read-memory"))
@@ -486,10 +713,11 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     else if (commandMatch(cmdStr, "run"))
     {
         // LogWrite(FromTargetDebug, LOG_VERBOSE, "run");
-        BR_RETURN_TYPE retc = McManager::targetRelease();
-        _debugInCPUStep = false;
-        if (retc != BR_OK)
-            LogWrite(FromTargetDebug, LOG_DEBUG, "pauseRelease failed in run (%s)", BusAccess::retcString(retc));
+
+        // Release target to run (still in debug mode as breakpoint maybe hit)
+        targetStateAcqRelease(DEBUG_MODE_RUN);
+
+        // Reply without sending a prompt
         strlcat(pResponse, "Running until a breakpoint, key press or data sent, menu opening or other event\n", 
                     maxResponseLen);
         return true;
@@ -497,20 +725,12 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     else if (commandMatch(cmdStr, "cpu-step"))
     {
         // LogWrite(FromTargetDebug, LOG_VERBOSE, "cpu-step");
-        disasmZ80(RAMEmulator::getMemBuffer(), 0, _z80Registers.PC, pResponse, INTEL, false, true);
-        BR_RETURN_TYPE retc = McManager::targetStep();
-        if (retc == BR_OK)
-        {
-            // Start sequence of getting registers
-            startGetRegisterSequence();
-            // LogWrite(FromTargetDebug, LOG_VERBOSE, "cpu-step done");
-            _debugInCPUStep = true;
 
-        }
-        else
-        {
-            LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step failed (%s)", BusAccess::retcString(retc));
-        }
+        // Disassemble to generate response
+        disasmZ80(RAMEmulator::getMemBuffer(), 0, _z80Registers.PC, pResponse, INTEL, false, true);
+
+        // Release target for a single instruction
+        targetStateAcqRelease(DEBUG_MODE_STEP_INTO);
     }
     else if (commandMatch(cmdStr, "cpu-step-over"))
     {
@@ -518,37 +738,21 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
         int instrLen = disasmZ80(RAMEmulator::getMemBuffer(), 0, _z80Registers.PC, pResponse, INTEL, false, true);
         _stepOverPCValue = _z80Registers.PC + instrLen;
         // LogWrite(FromTargetDebug, LOG_VERBOSE, "cpu-step-over PCnow %04x StepToPC %04x", _z80Registers.PC, _stepOverPCValue);
-        _stepOverEnabled = true;
-        _stepOverHit = false;
-        // Release execution
-        BR_RETURN_TYPE retc = McManager::targetRelease();
-        _debugInCPUStep = false;
-        if (retc != BR_OK)
-            LogWrite(FromTargetDebug, LOG_DEBUG, "cpu-step-over pauseRelease failed (%s)", BusAccess::retcString(retc));
-        strlcpy(pResponse, "\n", maxResponseLen);
+
+        // Release target for step over
+        targetStateAcqRelease(DEBUG_MODE_STEP_OVER);
+
+        // Return immediately (no prompt)
         return true;
     }
     else if (commandMatch(cmdStr, ""))
     {
         // LogWrite(FromTargetDebug, LOG_VERBOSE, "blank (step) %s", _debugInitalized ? "" : "not in debug mode");
-        if (_debugInitalized)
+        if (_debugMode != DEBUG_MODE_NONE)
         {
             // Blank is used for pause
-            BR_RETURN_TYPE retc = McManager::targetPause();
-            if (retc == BR_OK)
-            {
-                // Start sequence of getting registers
-                startGetRegisterSequence();
-                // LogWrite(FromTargetDebug, LOG_VERBOSE, "now paused SEND-BLANK");
-                _debugInCPUStep = true;
-            }
-            else
-            {
-                LogWrite(FromTargetDebug, LOG_DEBUG, "pause failed in SEND-BLANK command (%s)", BusAccess::retcString(retc));
-            }
+            targetStateAcqStart(true);
         }
-
-        strlcat(pResponse, "", maxResponseLen);
     }
     else
     {
@@ -772,18 +976,19 @@ bool TargetDebug::isPrefixInstruction(uint32_t instr)
 // Interrupt extension for debugger
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+uint32_t TargetDebug::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
             [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
 {
     // See if we're in step-test mode
     if (_stepTesterEnabled)
-        _stepTester.handleInterrupt(addr, data, flags, retVal);
+        _stepTester.handleWaitInterrupt(addr, data, flags, retVal);
 
     // Only handle MREQs
     if ((flags & BR_CTRL_BUS_MREQ_MASK) == 0)
         return retVal;
 
-    // Handle M1 cycles
+    // Track M1 cycles to ensure we know when we're at the start of a new instruction
+    // and not in the middle of a prefixed instruction sequence
     if (flags & BR_CTRL_BUS_M1_MASK)
     {
         // Record state from previous instruction
@@ -798,146 +1003,54 @@ uint32_t TargetDebug::handleInterrupt([[maybe_unused]] uint32_t addr, [[maybe_un
         _lastInstructionWasPrefixed = false;
     }
 
-    // Check for the end of paging mode - un-page RAM
-    if (_registerMode == REGISTER_MODE_UNPAGE)
-    {
-        // Clear the paging of RAM
-        HwManager::pageOutForInjection(false);
-        _registerMode = REGISTER_MODE_NONE;
+    // // Breakpoint handling: enabled and M1 cycle and not in BUSRQ mode and not injecting register get/set
+    // if ((_breakpointsEnabled && (_breakpointNumEnabled > 0)) && 
+    //         (_registerMode == REGISTER_MODE_NONE) &&
+    //         (!_debugInCPUStep) &&
+    //         (flags & BR_CTRL_BUS_M1_MASK) && 
+    //         (!BusAccess::isUnderControl()))
+    // {
+    //     // Check breakpoints
+    //     for (int i = 0; i < _breakpointNumEnabled; i++)
+    //     {
+    //         int bpIdx = _breakpointIdxsToCheck[i];
+    //         if (_breakpoints[bpIdx].pcValue == addr)
+    //         {
+    //             BR_RETURN_TYPE retc = McManager::targetPause();
+    //             if (retc == BR_OK)
+    //                 startGetRegisterSequence();
+    //             _z80Registers.PC = addr;
+    //             _registerPrevInstrComplete = true;
+    //             _debugInCPUStep = true;
+    //             _breakpointHitFlag = true;
+    //             _breakpointHitIndex = bpIdx;
+    //             break;
+    //         }
+    //     }
+    // }
 
-        // Restore wait-state generation if required
-        if (_instrWaitRestoreNeeded)
-        {
-            BusAccess::waitOnInstruction(_instrWaitCurMode);
-            BusAccess::clockSetFreqHz(_instrClockCurFreqHz);            
-            _instrWaitRestoreNeeded = false;
-        }
+    // // Step-over handling: enabled and M1 cycle and not in BUSRQ mode and not injecting register get/set
+    // if (_stepOverEnabled && 
+    //         (_registerMode == REGISTER_MODE_NONE) &&
+    //         (!_debugInCPUStep) &&
+    //         (flags & BR_CTRL_BUS_M1_MASK) && 
+    //         (!BusAccess::isUnderControl()))
+    // {
+    //     // Check stepover
+    //     if (_stepOverPCValue == addr)
+    //     {
+    //         BR_RETURN_TYPE retc = McManager::targetPause();
+    //         if (retc == BR_OK)
+    //             startGetRegisterSequence();
+    //         _z80Registers.PC = addr;
+    //         _registerPrevInstrComplete = true;
+    //         _debugInCPUStep = true;
+    //         _stepOverHit = true;
+    //         _stepOverEnabled = false;
+    //     }
+    // }
 
-        // Handle M1 cycle
-        _registerPrevInstrComplete = false;
-        if (flags & BR_CTRL_BUS_M1_MASK)
-        {
-            // Always need to hold at this point
-            retVal |= BR_MEM_ACCESS_HOLD;
-        }
-        else
-        {
-            // After regsiter set/get there should always be an M1 cycle
-            ISR_ASSERT(ISR_ASSERT_CODE_UNPAGE_NOT_M1);
-        }
-    }
-
-    // Breakpoint handling: enabled and M1 cycle and not in BUSRQ mode and not injecting register get/set
-    if ((_breakpointsEnabled && (_breakpointNumEnabled > 0)) && 
-            (_registerMode == REGISTER_MODE_NONE) &&
-            (!_debugInCPUStep) &&
-            (flags & BR_CTRL_BUS_M1_MASK) && 
-            (!BusAccess::isUnderControl()))
-    {
-        // Check breakpoints
-        for (int i = 0; i < _breakpointNumEnabled; i++)
-        {
-            int bpIdx = _breakpointIdxsToCheck[i];
-            if (_breakpoints[bpIdx].pcValue == addr)
-            {
-                BR_RETURN_TYPE retc = McManager::targetPause();
-                if (retc == BR_OK)
-                    startGetRegisterSequence();
-                _z80Registers.PC = addr;
-                _registerPrevInstrComplete = true;
-                _debugInCPUStep = true;
-                _breakpointHitFlag = true;
-                _breakpointHitIndex = bpIdx;
-                break;
-            }
-        }
-    }
-
-    // Step-over handling: enabled and M1 cycle and not in BUSRQ mode and not injecting register get/set
-    if (_stepOverEnabled && 
-            (_registerMode == REGISTER_MODE_NONE) &&
-            (!_debugInCPUStep) &&
-            (flags & BR_CTRL_BUS_M1_MASK) && 
-            (!BusAccess::isUnderControl()))
-    {
-        // Check stepover
-        if (_stepOverPCValue == addr)
-        {
-            BR_RETURN_TYPE retc = McManager::targetPause();
-            if (retc == BR_OK)
-                startGetRegisterSequence();
-            _z80Registers.PC = addr;
-            _registerPrevInstrComplete = true;
-            _debugInCPUStep = true;
-            _stepOverHit = true;
-            _stepOverEnabled = false;
-        }
-    }
-
-    // Handle register query and set modes
-    if ((_registerMode == REGISTER_MODE_GET) || (_registerMode == REGISTER_MODE_SET))
-    {
-        // See if we are waiting for the end of the previous instruction
-        if (_registerPrevInstrComplete || ((!_lastInstructionWasPrefixed) && (flags & BR_CTRL_BUS_M1_MASK)))
-        {
-            //TODO
-                // for (int i = 0; i < 5; i++)
-                // {
-                //     digitalWrite(8,1);
-                //     microsDelay(1);
-                //     digitalWrite(8,0);
-                //     microsDelay(1);
-                // }
-            // If we've just completed the previous instruction then the current address is the PC
-            if ((!_registerPrevInstrComplete) && (_registerMode == REGISTER_MODE_GET))
-            {
-                //     digitalWrite(BR_PUSH_ADDR_BAR, 1);
-                // int addrMask = 0x8000;
-                // digitalWrite(8,1);
-                // microsDelay(1);
-                // for (int i = 0; i < 16; i++)
-                // {
-                //     digitalWrite(8,addr & addrMask);
-                //     microsDelay(1);
-                //     addrMask = addrMask >> 1;
-                // }
-                // digitalWrite(8,0);
-                // microsDelay(1);
-                _z80Registers.PC = addr;
-            }
-
-            // Previous instruction now done
-            _registerPrevInstrComplete = true;
-
-            // Page-out RAM/ROM while injecting
-            HwManager::pageOutForInjection(true);
-
-            // Handle the injection mode
-            if (_registerMode == REGISTER_MODE_GET)
-            {
-                // We're now inserting instructions or getting results back
-                handleRegisterGet(addr, data, flags, retVal);
-            }
-            else
-            {
-                // We're now inserting instructions to set registers
-                handleRegisterSet(retVal);
-            }
-
-            // If register get/set is finished after this cycle then request the bus (if not fully emulating RAM)
-            if ((_registerMode == REGISTER_MODE_UNPAGE) && (!RAMEmulator::isActive()))
-            {
-                BusAccess::controlRequest();
-                _busControlRequestedForMemGrab = true;
-            }
-        }
-        else
-        {
-            // Check if this is a prefix instruction - if so we need to avoid breaking at the wrong time
-            _lastInstructionWasPrefixed &= isPrefixInstruction(((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) ? data : retVal) & 0xff);
-        }
-    }
-
-    return retVal;
+    // Handle targetStateAcquisition
+    return targetStateAcqWaitISR(addr, data, flags, retVal);
 }
 

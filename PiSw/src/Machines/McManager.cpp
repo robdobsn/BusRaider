@@ -142,8 +142,7 @@ const char* McManager::getMachineJSON()
 void McManager::targetIrq(int durationUs)
 {
     // Generate a maskable interrupt
-    if (!BusAccess::isUnderControl() && !BusAccess::pauseIsPaused())
-        BusAccess::targetIRQ(durationUs);
+    BusAccess::targetIRQ(durationUs);
 }
 
 void McManager::targetIrqFromTimer([[maybe_unused]] void* pParam)
@@ -215,9 +214,7 @@ bool McManager::setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate)
         HwManager::pageOutForEmulation(pMcDescr->emulatedRAM);
 
         // Set target machine in debug
-        TargetDebug* pDebug = TargetDebug::get();
-        if (pDebug)
-            pDebug->setup(_pCurMachine);
+        TargetDebug::get()->setup(_pCurMachine);
 
         // Debug
         LogWrite(FromMcManager, LOG_DEBUG, "Enabling %s EmuRAM %s RegByInject %s IntIORQ %s IntMREQ %s (%04x)",
@@ -370,7 +367,7 @@ bool McManager::debuggerCommand(char* pCommand, char* pResponse, int maxResponse
 bool McManager::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq)
 {
     // Check if we are paused or emulating memory - if so bus access cannot write memory
-    if ((BusAccess::pauseIsPaused() || RAMEmulator::isActive()) && (!iorq))
+    if ((TargetDebug::get()->isPaused() || RAMEmulator::isActive()) && (!iorq))
         return RAMEmulator::blockWrite(addr, pBuf, len);
     // Grab the bus
     return BusAccess::blockWrite(addr, pBuf, len, busRqAndRelease, iorq) == BR_OK;
@@ -380,7 +377,7 @@ bool McManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRq
 {
     // Check if emulating memory or if we are paused - if the latter bus access cannot get memory but stepping process will have
     // grabbed all of physical RAM and placed it in the buffer for debugging
-    if ((BusAccess::pauseIsPaused() || RAMEmulator::isActive()) && (!iorq))
+    if ((TargetDebug::get()->isPaused() || RAMEmulator::isActive()) && (!iorq))
         return RAMEmulator::blockRead(addr, pBuf, len);
     // Grab the bus
     return BusAccess::blockRead(addr, pBuf, len, busRqAndRelease, iorq) == BR_OK;
@@ -412,24 +409,24 @@ void McManager::targetClearAllIO()
     BusAccess::clearAllIO();
 }
 
-BR_RETURN_TYPE McManager::targetPause()
+void McManager::targetPause()
 {
-    return BusAccess::pause();
+    TargetDebug::get()->pause();
 }
 
-BR_RETURN_TYPE McManager::targetRelease()
+void McManager::targetRelease()
 {
-    return BusAccess::pauseRelease();
+    TargetDebug::get()->release();
 }
 
-BR_RETURN_TYPE McManager::targetStep()
+void McManager::targetStep(bool stepOver)
 {
-    return BusAccess::pauseStep();
+    TargetDebug::get()->step(stepOver);
 }
 
 bool McManager::targetIsPaused()
 {
-    return BusAccess::pauseIsPaused();
+    return TargetDebug::get()->isPaused();
 }
 
 bool McManager::targetBusUnderPiControl()
@@ -443,15 +440,13 @@ uint32_t McManager::busAccessCallback(uint32_t addr, uint32_t data, uint32_t fla
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
 
     // Emulated RAM
-    retVal = RAMEmulator::handleInterrupt(addr, data, flags, retVal);
+    retVal = RAMEmulator::handleWaitInterrupt(addr, data, flags, retVal);
     
     // Hardware management   
     retVal = HwManager::handleMemOrIOReq(addr, data, flags, retVal);
 
     // Callback to debugger
-    TargetDebug* pDebug = TargetDebug::get();
-    if (pDebug)
-        retVal = pDebug->handleInterrupt(addr, data, flags, retVal);
+    TargetDebug::get()->handleWaitInterrupt(addr, data, flags, retVal);
 
     // Target machine
     if (_pCurMachine)
@@ -474,11 +469,13 @@ void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause
     } 
     else 
     {
+        // Let the TargetDebug module know that we are programming
+        TargetDebug::get()->targetProgrammingStarted();
+
         // BUSRQ is used even if memory is emulated because it holds the processor while changes are made
 
         // Release bus if paused or controlled
         BusAccess::controlRelease(false);
-        BusAccess::pauseRelease();
 
         // Handle programming in one BUSRQ/BUSACK pass
         if (BusAccess::controlRequestAndTake() != BR_OK)
@@ -502,24 +499,23 @@ void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause
 
         // Check for hold in pause
         if (holdInPause)
-            BusAccess::pause();
+            TargetDebug::get()->pause();
 
         // Check for reset too
         if (resetAfterProgramming)
         {
             LogWrite(FromMcManager, LOG_DEBUG, "Starting target code");
             bool performHardReset = true;
-            TargetDebug* pDebug = TargetDebug::get();
-            if (TargetState::areRegistersValid() && pDebug)
+            if (TargetState::areRegistersValid())
             {
                 // Check how to set registers
                 if (getDescriptorTable()->setRegistersByInjection || forceSetRegsByInjection)
                 {
                     // Use the BusAccess module to inject instructions to set registers
-                    Z80Registers regs;
-                    TargetState::getTargetRegs(regs);
-                    pDebug->startSetRegisterSequence(&regs);
-                    performHardReset = false;
+                    // Z80Registers regs;
+                    // TargetState::getTargetRegs(regs);
+                    // TargetDebug::get()->startSetRegisterSequence(&regs);
+                    // performHardReset = false;
                 }
                 else
                 {
@@ -695,9 +691,7 @@ void McManager::handleCommand(const char* pCmdJson,
     else if (strcasecmp(cmdName, "steptester") == 0)
     {
         // Set steptesting
-        TargetDebug* pDebug = TargetDebug::get();
-        if (pDebug)
-            pDebug->startStepTester();
+        TargetDebug::get()->startStepTester();
     }
     else
     {

@@ -464,9 +464,7 @@ extern "C" int main()
         HwManager::service();
 
         // Service target debugger
-        TargetDebug* pDebug = TargetDebug::get();
-        if (pDebug)
-            pDebug->service();
+        TargetDebug::get()->service();
     }
 #endif
 }
