@@ -15,11 +15,25 @@ StepTester::StepTester() :
     _debugStepCount = 0;
     _excpCount = 0;
     _serviceCount = 0;
+    _isActive = false;
+}
+
+void StepTester::start()
+{
+    writeTestCode();
+    _isActive = true;
+}
+
+void StepTester::stop()
+{
+    BusAccess::waitRestoreDefaults();
+
+    _isActive = false;
 }
 
 void StepTester::writeTestCode()
 {
-    static const char* testStr = "Step Tester starting ...";
+    static const char* testStr = "  <- Step Tester starting ...";
 
     // Write using McManager
     McManager::blockWrite(0x3c00, (uint8_t*)testStr, strlen(testStr), true, false);
@@ -49,7 +63,7 @@ void StepTester::writeTestCode()
 
     BusAccess::waitSetup(true, true);
 
-    McManager::targetReset();
+    McManager::targetReset(false, false);
     _regs.clear();
 
 }
@@ -57,6 +71,9 @@ void StepTester::writeTestCode()
 uint32_t StepTester::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
         [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
 {
+    if (!_isActive)
+        return retVal;
+
     // Mirror Z80 expected behaviour
     uint32_t expCtrl = BR_CTRL_BUS_RD_MASK | BR_CTRL_BUS_MREQ_MASK | BR_CTRL_BUS_WAIT_MASK;
     uint32_t nextAddr = _debugCurAddr;
@@ -113,9 +130,9 @@ uint32_t StepTester::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe
         // So guess that it is the next address
         nextAddr = addr + 1;
         // Debug signal
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-        microsDelay(2);
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+        // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        // microsDelay(2);
+        // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
     }
     _debugCurAddr = nextAddr;
     _debugStepCount++;
@@ -125,6 +142,9 @@ uint32_t StepTester::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe
 
 void StepTester::service()
 {
+    if (!_isActive)
+        return;
+
     _serviceCount++;
     if (_serviceCount < 100)
         return;
@@ -136,29 +156,25 @@ void StepTester::service()
     // Handle debug 
     char debugJson[500];
     debugJson[0] = 0;
-    for (int i = 0; i < 20; i++)
+    if (_exceptionsPosn.canGet())
     {
-        if (_exceptionsPosn.canGet())
-        {
-            int pos = _exceptionsPosn.posToGet();
+        int pos = _exceptionsPosn.posToGet();
 
-            int flags = _exceptions[pos].flags;
-            int expFlags = _exceptions[pos].expectedFlags;
-            ee_sprintf(debugJson+strlen(debugJson), "%2d %07d got %04x %02x %c%c%c%c%c%c exp %04x %02x %c%c%c%c%c%c ToZ80 %02x",
-                        i, 
-                        _exceptions[pos].stepCount,
-                        _exceptions[pos].addr, 
-                        _exceptions[pos].dataFromZ80, 
-                        flags & 0x01 ? 'R': ' ', flags & 0x02 ? 'W': ' ', flags & 0x04 ? 'M': ' ',
-                        flags & 0x08 ? 'I': ' ', flags & 0x10 ? '1': ' ', flags & 0x20 ? 'T': ' ',
-                        _exceptions[pos].expectedAddr, 
-                        _exceptions[pos].expectedData == 0xffff ? 0 : _exceptions[pos].expectedData, 
-                        expFlags & 0x01 ? 'R': ' ', expFlags & 0x02 ? 'W': ' ', expFlags & 0x04 ? 'M': ' ',
-                        expFlags & 0x08 ? 'I': ' ', expFlags & 0x10 ? '1': ' ', expFlags & 0x20 ? 'T': ' ',
-                        _exceptions[pos].dataToZ80);
-            McManager::logDebugMessage(debugJson);
+        int flags = _exceptions[pos].flags;
+        int expFlags = _exceptions[pos].expectedFlags;
+        ee_sprintf(debugJson+strlen(debugJson), "%07d got %04x %02x %c%c%c%c%c%c exp %04x %02x %c%c%c%c%c%c ToZ80 %02x",
+                    _exceptions[pos].stepCount,
+                    _exceptions[pos].addr, 
+                    _exceptions[pos].dataFromZ80, 
+                    flags & 0x01 ? 'R': ' ', flags & 0x02 ? 'W': ' ', flags & 0x04 ? 'M': ' ',
+                    flags & 0x08 ? 'I': ' ', flags & 0x10 ? '1': ' ', flags & 0x20 ? 'T': ' ',
+                    _exceptions[pos].expectedAddr, 
+                    _exceptions[pos].expectedData == 0xffff ? 0 : _exceptions[pos].expectedData, 
+                    expFlags & 0x01 ? 'R': ' ', expFlags & 0x02 ? 'W': ' ', expFlags & 0x04 ? 'M': ' ',
+                    expFlags & 0x08 ? 'I': ' ', expFlags & 0x10 ? '1': ' ', expFlags & 0x20 ? 'T': ' ',
+                    _exceptions[pos].dataToZ80);
+        McManager::logDebugMessage(debugJson);
 
-            _exceptionsPosn.hasGot();
-        }
+        _exceptionsPosn.hasGot();
     }
 }

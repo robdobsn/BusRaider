@@ -69,6 +69,10 @@ typedef enum {
 // Masks for above
 #define BR_IORQ_WAIT_EN_MASK (1 << BR_IORQ_WAIT_EN)
 #define BR_MREQ_WAIT_EN_MASK (1 << BR_MREQ_WAIT_EN)
+#define BR_MREQ_BAR_MASK (1 << BR_MREQ_BAR)
+#define BR_IORQ_BAR_MASK (1 << BR_IORQ_BAR)
+#define BR_WR_BAR_MASK (1 << BR_WR_BAR)
+#define BR_RD_BAR_MASK (1 << BR_RD_BAR)
 
 // M1 piggy back onto PIB line
 #define BR_M1_PIB_DATA_LINE 0
@@ -111,7 +115,7 @@ public:
     static void init();
 
     // Reset host - call pause release to release reset
-    static void targetReset(bool holdInReset = false);
+    static void targetReset(bool restoreWaitDefaults, bool holdInReset);
     
     // NMI host
     static void targetNMI(int durationUs = -1);
@@ -122,7 +126,7 @@ public:
     // Bus control
     static void controlRequest();
     static BR_RETURN_TYPE controlRequestAndTake();
-    static void controlRelease(bool resetTargetOnRelease);
+    static void controlRelease(bool resetTargetOnRelease, bool addWaitOnInstruction);
     static bool isUnderControl();
     
     // Read and write bytes
@@ -132,9 +136,6 @@ public:
     // Read and write blocks
     static BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
     static BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
-    
-    // Memory access and bus control
-    static void grabMemoryAndReleaseBusRq(uint8_t* pBuf, uint32_t bufLen);
 
     // Wait control
     static void waitGet(bool& monitorIORQ, bool& monitorMREQ);
@@ -195,16 +196,8 @@ private:
     // Wait interrupt enablement cache (so it can be restored after disable)
     static bool _waitIntEnabled;
 
-    // Currently paused - i.e. wait is active
-    static volatile bool _pauseIsPaused;
-
     // Bus currently under BusRaider control
     static volatile bool _busIsUnderControl;
-
-    // Bus values while single stepping
-    static uint32_t _pauseCurAddr;
-    static uint32_t _pauseCurData;
-    static uint32_t _pauseCurControlBus;
 
     // Debug
     static int _isrAssertCounts[ISR_ASSERT_NUM_CODES];
@@ -251,6 +244,9 @@ private:
 
     // Period target write control bus line is asserted during a write
     static const int CYCLES_DELAY_FOR_WRITE_TO_TARGET = 250;
+
+    // Delay for settling of high address lines on PIB read
+    static const int CYCLES_DELAY_FOR_HIGH_ADDR_READ = 500;
 
     // Period target read control bus line is asserted during a read from the PIB (any bus element)
     static const int CYCLES_DELAY_FOR_READ_FROM_PIB = 25;

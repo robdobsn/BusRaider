@@ -12,6 +12,7 @@
 #include "../System/piwiring.h"
 #include "../TargetBus/TargetCPUZ80.h"
 #include "../Hardware/HwManager.h"
+#include "../StepValidator/StepValidator.h"
 
 // Module name
 static const char FromMcManager[] = "McManager";
@@ -61,6 +62,12 @@ McDescriptorTable McManager::defaultDescriptorTable = {
     .setRegistersCodeAddr = 0
 };
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Statics
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+StepTester McManager::_stepTester;
+StepValidator* McManager::_pStepValidator = NULL;
 uint8_t McManager::_rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];
 int McManager::_rxHostCharsBufferLen = 0;
 
@@ -79,6 +86,21 @@ void McManager::init(CommandHandler* pCommandHandler, Display* pDisplay)
 
     // Set callback for bus access
     BusAccess::accessCallbackAdd(busAccessCallback);
+
+    // Create step validator
+    if (!_pStepValidator)
+        _pStepValidator = new StepValidator();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Service
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void McManager::service()
+{
+    _stepTester.service();
+    if (_pStepValidator)
+        _pStepValidator->service();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -388,7 +410,7 @@ bool McManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRq
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Handle control of target machine
-void McManager::targetReset()
+void McManager::targetReset(bool restoreWaitDefaults, bool holdInReset)
 {
     // Reset attached hardware
     HwManager::reset();
@@ -397,11 +419,9 @@ void McManager::targetReset()
     bool resetDone = false;
     McBase* pMc = McManager::getMachine();
     if (pMc)
-        resetDone = pMc->reset();
+        resetDone = pMc->reset(restoreWaitDefaults, holdInReset);
     if (!resetDone)
-    {
-        BusAccess::targetReset();
-    }
+        BusAccess::targetReset(restoreWaitDefaults, holdInReset);
 }
 
 void McManager::targetClearAllIO()
@@ -443,14 +463,20 @@ uint32_t McManager::busAccessCallback(uint32_t addr, uint32_t data, uint32_t fla
     retVal = RAMEmulator::handleWaitInterrupt(addr, data, flags, retVal);
     
     // Hardware management   
-    retVal = HwManager::handleMemOrIOReq(addr, data, flags, retVal);
+    retVal = HwManager::handleWaitInterrupt(addr, data, flags, retVal);
 
     // Callback to debugger
-    TargetDebug::get()->handleWaitInterrupt(addr, data, flags, retVal);
+    retVal = TargetDebug::get()->handleWaitInterrupt(addr, data, flags, retVal);
 
-    // Target machine
+    // Step validator
+    retVal = _stepTester.handleWaitInterrupt(addr, data, flags, retVal);
+    if (_pStepValidator)
+        retVal = _pStepValidator->handleWaitInterrupt(addr, data, flags, retVal);
+
+    // Offer to target machine
     if (_pCurMachine)
         return _pCurMachine->busAccessCallback(addr, data, flags, retVal);
+
     return BR_MEM_ACCESS_RSLT_NOT_DECODED;
 }
 
@@ -459,7 +485,8 @@ uint32_t McManager::busAccessCallback(uint32_t addr, uint32_t data, uint32_t fla
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Handle programming of target machine
-void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause, bool forceSetRegsByInjection)
+void McManager::handleTargetProgram(bool resetAfterProgramming, bool addWaitOnInstruction,
+            bool holdInPause, bool forceSetRegsByInjection)
 {
     // Check there is something to write
     if (TargetState::numMemoryBlocks() == 0) 
@@ -475,7 +502,7 @@ void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause
         // BUSRQ is used even if memory is emulated because it holds the processor while changes are made
 
         // Release bus if paused or controlled
-        BusAccess::controlRelease(false);
+        BusAccess::controlRelease(false, false);
 
         // Handle programming in one BUSRQ/BUSACK pass
         if (BusAccess::controlRequestAndTake() != BR_OK)
@@ -547,12 +574,12 @@ void McManager::handleTargetProgram(bool resetAfterProgramming, bool holdInPause
 
             // Release bus
             LogWrite(FromMcManager, LOG_DEBUG, "controlRelease hardReset %s", performHardReset ? "Y" : "N");
-            BusAccess::controlRelease(performHardReset);
+            BusAccess::controlRelease(performHardReset, addWaitOnInstruction);
         }
         else
         {
             // Release bus
-            BusAccess::controlRelease(false);
+            BusAccess::controlRelease(false, addWaitOnInstruction);
         }
     }
 }
@@ -596,16 +623,16 @@ void McManager::handleCommand(const char* pCmdJson,
     }
     else if (strcasecmp(cmdName, "ProgramTarget") == 0)
     {
-        McManager::handleTargetProgram(false, false, false);
+        McManager::handleTargetProgram(false, false, false, false);
     }
     else if (strcasecmp(cmdName, "ProgramAndReset") == 0)
     {
-        McManager::handleTargetProgram(true, false, false);
+        McManager::handleTargetProgram(true, false, false, false);
     }
     else if (strcasecmp(cmdName, "ResetTarget") == 0)
     {
         // LogWrite(FromMcManager, LOG_VERBOSE, "ResetTarget");
-        McManager::targetReset();
+        McManager::targetReset(true, false);
     }
     else if (strcasecmp(cmdName, "PauseTarget") == 0)
     {
@@ -688,10 +715,17 @@ void McManager::handleCommand(const char* pCmdJson,
         // Send response back
         sendRemoteDebugProtocolMsg(responseMessage, rdpMessageIdStr);
     }
-    else if (strcasecmp(cmdName, "steptester") == 0)
+    else if (strcasecmp(cmdName, "steptesterstart") == 0)
     {
-        // Set steptesting
-        TargetDebug::get()->startStepTester();
+        // Step validation
+        if (_pStepValidator)
+            _pStepValidator->start();
+    }
+    else if (strcasecmp(cmdName, "steptesterstop") == 0)
+    {
+        // Step validation
+        if (_pStepValidator)
+            _pStepValidator->stop();
     }
     else
     {

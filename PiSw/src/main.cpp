@@ -29,7 +29,7 @@ typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.063";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.071";
 static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
@@ -462,6 +462,9 @@ extern "C" int main()
 
         // Service hardware manager
         HwManager::service();
+
+        // Service machine manager
+        McManager::service();
 
         // Service target debugger
         TargetDebug::get()->service();

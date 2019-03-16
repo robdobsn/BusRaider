@@ -9,6 +9,9 @@
 #include "../CommandInterface/CommandHandler.h"
 #include "../System/Display.h"
 #include <string.h> 
+#include "../TargetBus/StepTester.h"
+
+class StepValidator;
 
 class McManager
 {
@@ -42,6 +45,9 @@ public:
     // Init
     static void init(CommandHandler* pCommandHandler, Display* pDisplay);
 
+    // Service
+    static void service();
+
     // Manage machines
     static void add(McBase* pMachine);
     static bool setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate);
@@ -67,10 +73,11 @@ public:
     static bool debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen);
 
     // Target programming
-    static void handleTargetProgram(bool resetAfterProgramming, bool holdInPause, bool forceSetRegsByInjection);
+    static void handleTargetProgram(bool resetAfterProgramming, bool addWaitOnInstruction,
+                bool holdInPause, bool forceSetRegsByInjection);
 
     // Target control
-    static void targetReset();
+    static void targetReset(bool restoreWaitDefaults, bool holdInReset);
     static void targetPause();
     static void targetRelease();
     static void targetClearAllIO();
@@ -101,4 +108,7 @@ private:
     // Handle wait interrupt
     static uint32_t busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags);
 
+    // Step-tester
+    static StepTester _stepTester;
+    static StepValidator* _pStepValidator;
 };

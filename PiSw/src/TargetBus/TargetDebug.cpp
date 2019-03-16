@@ -69,7 +69,6 @@ TargetDebug::TargetDebug()
     _registerSetCodeLen = 0;
     _lastInstructionWasPrefixed = false;
     _thisInstructionIsPrefixed = false;
-    _stepTesterEnabled = false;
 }
 
 // Get singleton
@@ -339,6 +338,32 @@ uint32_t TargetDebug::targetStateAcqWaitISR([[maybe_unused]] uint32_t addr, [[ma
     return retVal;
 }
 
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// // Grab all physical memory and release bus
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// void TargetDebug::grabMemoryAndReleaseBusRq(uint8_t* pBuf, uint32_t bufLen)
+// {
+//     // Check if the bus in under BusRaider control
+//     if (BusAccess::isUnderControl())
+//     {
+//         // Get the current wait enablement and disable MREQ waits
+//         bool curMonitorIORQ = false;
+//         bool curMonitorMREQ = false;
+//         BusAccess::waitGet(curMonitorIORQ, curMonitorMREQ);
+//         BusAccess::waitOnInstruction(false);
+
+//         // Read all of memory
+//         BusAccess::blockRead(0, pBuf, bufLen, false, false);
+
+//         // Restore wait enablement
+//         BusAccess::waitOnInstruction(curMonitorMREQ);
+        
+//         // Release control of bus
+//         BusAccess::controlRelease(false, false);
+//     }
+// }
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Breakpoints
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -465,10 +490,6 @@ void TargetDebug::service()
             (*_pSendRemoteDebugProtocolMsgCallback)(respBuf, "0");
         _stepOverHit = false;
     }
-
-    // Step-tester
-    if (_stepTesterEnabled)
-        _stepTester.service();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -546,7 +567,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
     else if (commandMatch(cmdStr, "hard-reset-cpu"))
     {
         LogWrite(FromTargetDebug, LOG_VERBOSE, "Reset machine");
-        McManager::targetReset();
+        McManager::targetReset(false, false);
         targetStateAcqClear();
     }
     else if (commandMatch(cmdStr, "enter-cpu-step"))
@@ -576,7 +597,7 @@ bool TargetDebug::procDebuggerLine(char* pCmd, char* pResponse, int maxResponseL
         LogWrite(FromTargetDebug, LOG_VERBOSE, "smartload %s", argStr);
 
         // Program the target
-        McManager::handleTargetProgram(true, true, true);
+        McManager::handleTargetProgram(true, false, true, true);
     }
     else if (commandMatch(cmdStr, "clear-membreakpoints"))
     {
@@ -979,10 +1000,6 @@ bool TargetDebug::isPrefixInstruction(uint32_t instr)
 uint32_t TargetDebug::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
             [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
 {
-    // See if we're in step-test mode
-    if (_stepTesterEnabled)
-        _stepTester.handleWaitInterrupt(addr, data, flags, retVal);
-
     // Only handle MREQs
     if ((flags & BR_CTRL_BUS_MREQ_MASK) == 0)
         return retVal;

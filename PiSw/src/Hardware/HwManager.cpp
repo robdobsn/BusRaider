@@ -133,11 +133,11 @@ bool HwManager::pagingRequiresBusAccess()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Interrupt handler
+// Interrupt handler for WAIT
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Interrupt handler for MREQ/IORQ
-uint32_t HwManager::handleMemOrIOReq(uint32_t addr, uint32_t data, uint32_t flags, uint32_t retVal)
+// Interrupt handler for MREQ/IORQ WAIT
+uint32_t HwManager::handleWaitInterrupt(uint32_t addr, uint32_t data, uint32_t flags, uint32_t retVal)
 {
     // Iterate machines
     for (int i = 0; i < _numHardware; i++)

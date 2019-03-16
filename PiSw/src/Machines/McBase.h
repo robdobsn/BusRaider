@@ -66,7 +66,7 @@ public:
     virtual void displayRefresh() = 0;
 
     // Handle reset for the machine - if false returned then the bus raider will issue a hardware reset
-    virtual bool reset([[maybe_unused]] bool holdInReset = false)
+    virtual bool reset([[maybe_unused]] bool restoreWaitDefaults, [[maybe_unused]] bool holdInReset)
     {
         return false;
     }

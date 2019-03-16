@@ -56,14 +56,6 @@ void McRobsZ80::disable()
     LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
 }
 
-void McRobsZ80::handleExecAddr(uint32_t execAddr)
-{
-    // Handle the execution address
-    uint8_t jumpCmd[3] = { 0xc3, uint8_t(execAddr & 0xff), uint8_t((execAddr >> 8) & 0xff) };
-    TargetState::addMemoryBlock(0, jumpCmd, 3);
-    LogWrite(_logPrefix, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
-}
-
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
 void McRobsZ80::displayRefresh()
 {

@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "../Machines/McBase.h"
-#include "../TargetBus/TargetCPU.h"
+#include "../TargetBus/MemorySystem.h"
 
 class RAMEmulator
 {
@@ -42,14 +42,12 @@ public:
 
 private:
 
-    // Machine being debugged
-    static McBase* _pTargetMachine;
-
     // RAM Emulation active
     static bool _emulationActive;
 
-    // Target memory buffer  
-    static const int MAX_TARGET_MEM_ADDR = 0xffff;
-    static uint8_t _targetMemBuffer[STD_TARGET_MEMORY_LEN];
+    // Memory system
+    static MemorySystem _memorySystem;
 
+    // Target machine
+    static McBase* _pTargetMachine;
 };

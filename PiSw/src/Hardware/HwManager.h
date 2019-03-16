@@ -67,6 +67,6 @@ public:
     static bool pagingRequiresBusAccess();
 
     // Interrupt handler for MREQ/IORQ
-    static uint32_t handleMemOrIOReq(uint32_t addr, uint32_t data, uint32_t flags, uint32_t retVal);
+    static uint32_t handleWaitInterrupt(uint32_t addr, uint32_t data, uint32_t flags, uint32_t retVal);
 
 };

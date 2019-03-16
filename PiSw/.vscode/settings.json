@@ -2,6 +2,10 @@
     "python.linting.enabled": false,
     "files.associations": {
         "irq.h": "c",
-        "wgfxfont.h": "c"
+        "wgfxfont.h": "c",
+        "xmemory0": "cpp",
+        "vector": "cpp",
+        "xstring": "cpp",
+        "xutility": "cpp"
     }
 }

@@ -4,12 +4,13 @@
 #pragma once
 #include <stdint.h>
 #include "../TargetBus/TargetRegisters.h"
+#include "../TargetBus/TargetCPU.h"
 
 class TargetState
 {
 public:
     // Consts
-    static const int MAX_TARGET_MEMORY_SIZE = 0x10000;
+    static const int MAX_TARGET_MEMORY_SIZE = STD_TARGET_MEMORY_LEN;
     static const int MAX_TARGET_MEMORY_BLOCKS = 20;
 
     typedef struct TargetMemoryBlock {
@@ -34,8 +35,8 @@ public:
     static int numMemoryBlocks();
     static TargetMemoryBlock* getMemoryBlock(int n);
     static unsigned char* getMemoryImagePtr();
+    static int getMemoryImageSize();
     static void setTargetRegisters(const Z80Registers& regs);
     static bool areRegistersValid();
     static void getTargetRegs(Z80Registers& regs);
-    static void handleExecAddr(uint32_t addr);
 };

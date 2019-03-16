@@ -14,8 +14,6 @@ private:
 
     static McDescriptorTable _descriptorTable;
 
-    static void handleExecAddr(uint32_t execAddr);
-
 public:
 
     McRobsZ80() : McBase()

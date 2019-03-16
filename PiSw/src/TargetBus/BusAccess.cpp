@@ -33,11 +33,6 @@ bool BusAccess::_waitIntEnabled = false;
 // Bus under BusRaider control
 volatile bool BusAccess::_busIsUnderControl = false;
 
-// // Bus values while single stepping
-uint32_t BusAccess::_pauseCurAddr = 0;
-uint32_t BusAccess::_pauseCurData = 0;
-uint32_t BusAccess::_pauseCurControlBus = 0;
-
 // Clock generator
 TargetClockGenerator BusAccess::_clockGenerator;
 
@@ -100,13 +95,14 @@ void BusAccess::init()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Reset the host
-void BusAccess::targetReset(bool holdInReset)
+void BusAccess::targetReset(bool restoreWaitDefaults, bool holdInReset)
 {
     // Disable wait interrupts
     waitIntDisable();
 
     // Restore wait settings
-    waitRestoreDefaults();
+    if (restoreWaitDefaults)
+        waitRestoreDefaults();
 
     // Reset by taking reset_bar low and then high
     muxSet(BR_MUX_RESET_Z80_BAR_LOW);
@@ -126,11 +122,11 @@ void BusAccess::targetReset(bool holdInReset)
     if (_waitIntEnabled)
         waitIntEnable();
 
-    // Remove the reset condition
-    muxClear();
-
     // Clear wait detected
     clearWaitDetected();
+
+    // Remove the reset condition
+    muxClear();
 }
 
 // Non-maskable interrupt the host
@@ -203,7 +199,7 @@ void BusAccess::controlTake()
 }
 
 // Release control of bus
-void BusAccess::controlRelease(bool resetTargetOnRelease)
+void BusAccess::controlRelease(bool resetTargetOnRelease, bool addWaitOnInstruction)
 {
     // #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
     //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
@@ -251,26 +247,34 @@ void BusAccess::controlRelease(bool resetTargetOnRelease)
     // Address bus not enabled
     digitalWrite(BR_PUSH_ADDR_BAR, 1);
     
-    // Re-enable interrupts if required
-    if (_waitIntEnabled)
-        waitIntEnable();
-    
+    // Wait on instruction (MREQ) if required
+    if (addWaitOnInstruction)
+        waitOnInstruction(true);
+
     // Check for reset
     if (resetTargetOnRelease)
     {
+        // Disable wait interrupts
+        waitIntDisable();
+
         // Reset by taking reset_bar low and then high
         muxSet(BR_MUX_RESET_Z80_BAR_LOW);
 
         // No longer request bus
         digitalWrite(BR_BUSRQ_BAR, 1);
         microsDelay(BR_RESET_PULSE_US);
-        muxClear();
     }
     else
     {
         // No longer request bus
         digitalWrite(BR_BUSRQ_BAR, 1);
     }
+
+    // Re-enable interrupts if required
+    if (_waitIntEnabled)
+        waitIntEnable();    
+
+    muxClear();
 
     // Bus no longer under BusRaider control
     _busIsUnderControl = false;        
@@ -298,7 +302,7 @@ BR_RETURN_TYPE BusAccess::controlRequestAndTake()
     // Check we really have the bus
     if (!controlBusAcknowledged()) 
     {
-        controlRelease(false);
+        controlRelease(false, false);
         return BR_NO_BUS_ACK;
     }
 
@@ -472,7 +476,7 @@ BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32
     // Check if we need to release bus
     if (busRqAndRelease) {
         // release bus
-        controlRelease(false);
+        controlRelease(false, false);
     }
     return BR_OK;
 }
@@ -538,35 +542,9 @@ BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
     // Check if we need to release bus
     if (busRqAndRelease) {
         // release bus
-        controlRelease(false);
+        controlRelease(false, false);
     }
     return BR_OK;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Grab all physical memory and release bus
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void BusAccess::grabMemoryAndReleaseBusRq(uint8_t* pBuf, uint32_t bufLen)
-{
-    // Check if the bus in under BusRaider control
-    if (BusAccess::isUnderControl())
-    {
-        // Get the current wait enablement and disable MREQ waits
-        bool curMonitorIORQ = false;
-        bool curMonitorMREQ = false;
-        BusAccess::waitGet(curMonitorIORQ, curMonitorMREQ);
-        BusAccess::waitOnInstruction(false);
-
-        // Read all of memory
-        BusAccess::blockRead(0, pBuf, bufLen, false, false);
-
-        // Restore wait enablement
-        BusAccess::waitOnInstruction(curMonitorMREQ);
-        
-        // Release control of bus
-        BusAccess::controlRelease(false);
-    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -715,7 +693,7 @@ void BusAccess::waitSetup(bool enWaitOnIORQ, bool enWaitOnMREQ)
 void BusAccess::waitStateISR(void* pData)
 {
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
 #endif
 
     // pData unused
@@ -724,7 +702,7 @@ void BusAccess::waitStateISR(void* pData)
     // Set PIB to input
     pibSetIn();
 
-    // Set data direction out so we can read the M1 value
+    // Set data bus direction out so we can read the M1 value
     WR32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
 
     // Clear the mux to deactivate output enables
@@ -734,25 +712,50 @@ void BusAccess::waitStateISR(void* pData)
     //TODO check this is the best timing
     lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
 
+    // TODO
+    microsDelay(1);
+
     // Loop until control lines are valid
     // In a write cycle WR is asserted after MREQ so we need to wait until WR changes before
     // we can determine what kind of operation is in progress 
-    bool ctrlValid = false;
     int avoidLockupCtr = 0;
-    uint32_t busVals = 0;
+    uint32_t ctrlBusVals = 0;
     while(avoidLockupCtr < MAX_WAIT_FOR_CTRL_LINES_COUNT)
     {
         // Read the control lines
-        busVals = RD32(ARM_GPIO_GPLEV0);
+        uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
 
-        // Specifically need to wait if MREQ is low but both RD and WR are high (wait for WR to go low in this case)
-        ctrlValid = !(((busVals & (1 << BR_MREQ_BAR)) == 0) && (((busVals & (1 << BR_RD_BAR)) != 0) && ((busVals & (1 << BR_WR_BAR)) != 0)));
+        // Get the appropriate bits for up-line communication
+        ctrlBusVals = 
+                (((busVals & (1 << BR_RD_BAR)) == 0) ? BR_CTRL_BUS_RD_MASK : 0) |
+                (((busVals & (1 << BR_WR_BAR)) == 0) ? BR_CTRL_BUS_WR_MASK : 0) |
+                (((busVals & (1 << BR_MREQ_BAR)) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
+                (((busVals & (1 << BR_IORQ_BAR)) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
+                (((busVals & (1 << BR_WAIT_BAR)) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
+                (((busVals & (1 << BR_M1_PIB_BAR)) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
+
+        // Check for (MREQ || IORQ) && (RD || WR)
+        bool ctrlValid = ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) || (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)) && ((ctrlBusVals & BR_CTRL_BUS_RD_MASK) || (ctrlBusVals & BR_CTRL_BUS_WR_MASK));
+        
+        // Also valid if IORQ && M1 as this is used for interrupt ack
+        ctrlValid = ctrlValid || (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) & (ctrlBusVals & BR_CTRL_BUS_M1_MASK);
+
+        // If ctrl is already valid then continue
         if (ctrlValid)
             break;
 
-        // Count loops
+        // An NMI ack cycle will time out
         avoidLockupCtr++;
     }
+
+    // Enable the high address onto the PIB
+    muxSet(BR_MUX_HADDR_OE_BAR);
+
+    // Delay to allow data to settle
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_READ);
+
+    // Or in the high address
+    uint32_t addr = (pibGetValue() & 0xff) << 8;
 
     // Enable the low address onto the PIB
     muxSet(BR_MUX_LADDR_OE_BAR);
@@ -761,7 +764,7 @@ void BusAccess::waitStateISR(void* pData)
     lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
 
     // Get low address value
-    uint32_t addr = pibGetValue() & 0xff;
+    addr |= pibGetValue() & 0xff;
 
     // TODO
                     // digitalWrite(8,1);
@@ -769,29 +772,12 @@ void BusAccess::waitStateISR(void* pData)
                     // digitalWrite(8,0);
                     // microsDelay(1);
 
-    // Read the high address
-    muxSet(BR_MUX_HADDR_OE_BAR);
-
-    // Delay to allow data to settle
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
-
-    // Or in the high address
-    addr |= (pibGetValue() & 0xff) << 8;
  
     // Clear the mux to deactivate output enables
     muxClear();
 
     // Delay to allow data to settle
     lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
-
-    // Get the appropriate bits for up-line communication
-    uint32_t ctrlBusVals = 
-        (((busVals & (1 << BR_RD_BAR)) == 0) ? BR_CTRL_BUS_RD_MASK : 0) |
-        (((busVals & (1 << BR_WR_BAR)) == 0) ? BR_CTRL_BUS_WR_MASK : 0) |
-        (((busVals & (1 << BR_MREQ_BAR)) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
-        (((busVals & (1 << BR_IORQ_BAR)) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
-        (((busVals & (1 << BR_WAIT_BAR)) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
-        (((busVals & (1 << BR_M1_PIB_BAR)) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
 
     // Read the data bus
     // If the target machine is writing then this will be the data it wants to write
@@ -817,7 +803,7 @@ void BusAccess::waitStateISR(void* pData)
 
     // If Z80 is reading from the data bus (inc reading an ISR vector)
     // and result is valid then put the returned data onto the bus
-    bool isWriting = (busVals & (1 << BR_WR_BAR)) == 0;
+    bool isWriting = (ctrlBusVals & BR_CTRL_BUS_WR_MASK);
     if (!isWriting && ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0))
     {
         // Now driving data onto the target data bus
@@ -839,11 +825,6 @@ void BusAccess::waitStateISR(void* pData)
     // Check if we should hold the target processor at this point
     if ((retVal & BR_MEM_ACCESS_HOLD) != 0)
     {
-        // Store the current address, data and ctrl line state
-        _pauseCurAddr = addr;
-        _pauseCurData = (isWriting || (retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED)) ? dataBusVals : retVal;
-        _pauseCurControlBus = ctrlBusVals;
-
         // Clear wait detected
         clearWaitDetected();
     }
@@ -851,7 +832,7 @@ void BusAccess::waitStateISR(void* pData)
     {
         // No pause requested - clear the WAIT state so execution can continue
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
 #endif
         // Clear wait detected
         clearWaitDetected();
@@ -859,12 +840,12 @@ void BusAccess::waitStateISR(void* pData)
         // Clear the WAIT state flip-flop
         clearWaitFF();
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
 #endif
     }
 
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
 #endif
 
 }

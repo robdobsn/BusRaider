@@ -29,6 +29,9 @@ class StepTester
 public:
     StepTester();
 
+    void start();
+    void stop();
+
     void service();
 
     void writeTestCode();
@@ -47,6 +50,7 @@ private:
     RingBufferPosn _exceptionsPosn;
     int _excpCount;
     int _serviceCount;
+    bool _isActive;
 
     int32_t volatile _debugCurBCCount;
     uint32_t volatile _debugCurChVal;

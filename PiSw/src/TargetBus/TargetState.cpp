@@ -77,6 +77,11 @@ uint8_t* TargetState::getMemoryImagePtr()
     return _pTargetMemoryImage;
 }
 
+int TargetState::getMemoryImageSize()
+{
+    return MAX_TARGET_MEMORY_SIZE;
+}
+
 void TargetState::setTargetRegisters(const Z80Registers& regs)
 {
     _targetRegisters = regs;
@@ -93,10 +98,5 @@ void TargetState::getTargetRegs(Z80Registers& regs)
 {
     regs = _targetRegisters;
     LogWrite(FromTargetState, LOG_VERBOSE, "getTargetRegs PC=%04x", regs.PC);
-}
-
-void TargetState::handleExecAddr(uint32_t addr)
-{
-    LogWrite(FromTargetState, LOG_VERBOSE, "got exec addr %04x", addr);
 }
 

@@ -10,7 +10,6 @@
 #include "../System/ee_printf.h"
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetRegisters.h"
-#include "StepTester.h"
 
 typedef void SendRemoteDebugProtocolMsgType(const char* pStr, const char* rdpMessageIdStr);
 
@@ -64,13 +63,6 @@ public:
 
     // Inform target debug that target programming is started
     void targetProgrammingStarted();
-    
-    // Step testing
-    void startStepTester()
-    {
-        _stepTesterEnabled = true;
-        _stepTester.writeTestCode();
-    }
 
 private:
 
@@ -95,8 +87,7 @@ private:
     void targetStateAcqService();
     uint32_t targetStateAcqWaitISR([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
             [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal);
-
-
+    
     enum TARGET_STATE_ACQ_STATE {
         TARGET_STATE_ACQ_NONE,
         TARGET_STATE_ACQ_PRE_INJECT,
@@ -138,6 +129,9 @@ private:
     // // Flag indicating bus has been requested for full-memory read
     // bool _busControlRequestedForMemGrab;
 
+    // Memory access and bus control
+    // void grabMemoryAndReleaseBusRq(uint8_t* pBuf, uint32_t bufLen);
+
     // Current MREQ monitor mode when starting register set
     bool _instrWaitRestoreNeeded;
     bool _instrWaitCurMode;
@@ -175,9 +169,6 @@ private:
     static uint32_t _stepOverPCValue;
     static bool _stepOverHit;
 
-    // Step-tester
-    StepTester _stepTester;
-    bool _stepTesterEnabled;
 };
 
 extern TargetDebug __targetDebug;
