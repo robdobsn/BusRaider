@@ -29,7 +29,7 @@ typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.071";
+static const char* PROG_VERSION = "                    Bus Raider V1.7.072";
 static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
 static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
@@ -178,6 +178,13 @@ extern "C" int main()
     // display.init(1440, 960);
     display.init(1920, 1200);
 
+    // Initialise UART
+    if (!mainUart.setup(MAIN_UART_BAUD_RATE, 100000, 1000))
+    {
+        display.termWrite("Unable to start UART");
+        microsDelay(5000000);
+    }
+
     // Logging
     LogSetLevel(LOG_DEBUG);
     LogSetOutFn(termWriteString);
@@ -242,32 +249,6 @@ extern "C" int main()
     {
         LogWrite(FromMain, LOG_WARNING, "USB initialization failed\n");
     }
-
-    // UART
-    // pinMode(47, OUTPUT);
-    if (!mainUart.setup(MAIN_UART_BAUD_RATE, 100000, 1000))
-    {
-        LogWrite("MAIN", LOG_DEBUG, "Unable to start UART");
-        microsDelay(5000000);
-        // while (1) 
-        // {
-        //     digitalWrite(47, 1);
-        //     microsDelay(100000);
-        //     digitalWrite(47, 0);
-        //     microsDelay(100000);
-        // }
-    }
-
-    // Debug show colour palette
-    // for (int i = 0; i < 255; i++)
-    // {
-    //     display.termColour(i);
-    //     ee_printf("%02d ", i);
-    // }
-    // display.termColour(15);
-
-    // Waiting...
-    // ee_printf("Waiting for UART data (%d,8,N,1)\n", MAIN_UART_BAUD_RATE);
 
     if (keyboardFound)
     {

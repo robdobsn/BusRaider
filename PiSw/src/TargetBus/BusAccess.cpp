@@ -712,9 +712,6 @@ void BusAccess::waitStateISR(void* pData)
     //TODO check this is the best timing
     lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
 
-    // TODO
-    microsDelay(1);
-
     // Loop until control lines are valid
     // In a write cycle WR is asserted after MREQ so we need to wait until WR changes before
     // we can determine what kind of operation is in progress 

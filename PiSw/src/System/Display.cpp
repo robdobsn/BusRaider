@@ -8,7 +8,7 @@
 
 Display::Display()
 {
-
+    _displayStarted = false;
 }
 
 Display::~Display()
@@ -19,6 +19,7 @@ Display::~Display()
 bool Display::init(int displayWidth, int displayHeight)
 {
     wgfx_init(displayWidth, displayHeight);
+    _displayStarted = true;
     return true;
 }
 
@@ -30,6 +31,9 @@ void Display::targetLayout(int tlX, int tlY,
                 int foreColour, int backColour, 
                 int borderWidth, int borderColour)
 {
+    if (!_displayStarted)
+        return;
+
     // Clear display
     wgfx_clear();
     
@@ -50,25 +54,35 @@ void Display::targetSetChar()
 
 void Display::windowWrite(int winIdx, int col, int row, const uint8_t* pStr)
 {
+    if (!_displayStarted)
+        return;
     wgfx_puts(winIdx, col, row, pStr);
 }
 
 void Display::termWrite(const char* pStr)
 {
+    if (!_displayStarted)
+        return;
     wgfx_term_putstring(pStr);
 }
 
 void Display::termWrite(int ch)
 {
+    if (!_displayStarted)
+        return; 
     wgfx_term_putchar(ch);
 }
 
 void Display::termColour(int colour)
 {
+    if (!_displayStarted)
+        return;
     wgfx_set_fg(colour);
 }
 
 int Display::termGetWidth()
 {
+    if (!_displayStarted)
+        return 0;
     return wgfx_get_term_width();
 }

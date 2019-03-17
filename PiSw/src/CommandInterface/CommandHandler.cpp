@@ -439,6 +439,12 @@ void CommandHandler::sendRemoteDebugProtocolMsg(const char* pStr, const char* rd
 
 void CommandHandler::logDebugMessage(const char* pStr)
 {
+    // static const int MAX_RESPONSE_MSG_LEN = 2000;
+    // static char responseJson[MAX_RESPONSE_MSG_LEN+1];
+    // strlcpy(responseJson, "\"msg\":\"", MAX_RESPONSE_MSG_LEN);
+    // strlcat(responseJson, pStr, MAX_RESPONSE_MSG_LEN);
+    // strlcpy(responseJson, "\"", MAX_RESPONSE_MSG_LEN);
+    // sendWithJSON("log", responseJson);
     sendWithJSON("log", pStr);
 }
 

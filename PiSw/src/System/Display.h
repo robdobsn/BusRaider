@@ -32,4 +32,7 @@ public:
     void termColour(int colour);
     int termGetWidth();
 
+private:
+    bool _displayStarted;
+
 };

@@ -49,6 +49,9 @@ class TargetClockGenerator
     void setFrequency(uint32_t newFreq)
     {
         bool isEnabled = _enabled;
+        LogWrite("ClockGen", LOG_VERBOSE, "setFrequency %d curEnabled %d",
+                newFreq, isEnabled);
+
         if (_enabled)
             enable(false);
         _freqReqd = newFreq;
@@ -69,11 +72,20 @@ class TargetClockGenerator
         static const uint32_t clockGenPLLD = 6; // pp 107
         WR32(ARM_CM_GP0CTL, ARM_CM_PASSWD | clockGenPLLD);
         if (!en)
+        {
+            _enabled = false;
+            LogWrite("ClockGen", LOG_VERBOSE, "Disabled");
             return;
+        }
 
         // Validity
         if (_outputPin == -1 || _altMode == INPUT)
+        {
+            _enabled = false;
+            LogWrite("ClockGen", LOG_VERBOSE, "Invalid settings pin %d mode %d",
+                            _outputPin, _altMode);
             return;
+        }
 
         // Wait a little if busy
         static const uint32_t clockGenBusyMask = 0x80;
@@ -96,6 +108,7 @@ class TargetClockGenerator
         static const uint32_t clockGenEnabledMask = 0x10;  // pp107
         uint32_t enMask = en ? clockGenEnabledMask : 0;
         WR32(ARM_CM_GP0CTL, ARM_CM_PASSWD | enMask | clockGenPLLD);
+        _enabled = true;
 
         // Debug
         uint32_t freqGenerated = 500000000 / divisor;

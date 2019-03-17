@@ -255,7 +255,7 @@ private:
     static const int CYCLES_DELAY_FOR_CLEAR_LOW_ADDR = 20;
     static const int CYCLES_DELAY_FOR_LOW_ADDR_SET = 20;
     static const int CYCLES_DELAY_FOR_HIGH_ADDR_SET = 20;
-    static const int CYCLES_DELAY_FOR_WAIT_CLEAR = 5;
+    static const int CYCLES_DELAY_FOR_WAIT_CLEAR = 25;
     static const int CYCLES_DELAY_FOR_MREQ_FF_RESET = 20;
     static const int CYCLES_DELAY_FOR_DATA_DIRN = 20;
     static const int CYCLES_DELAY_FOR_TARGET_READ = 100;

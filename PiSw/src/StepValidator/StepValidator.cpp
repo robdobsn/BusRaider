@@ -41,6 +41,9 @@ void StepValidator::start()
 {
     LogWrite(FromStepValidator, LOG_DEBUG, "start");
 
+    // Change CPU clock
+    // BusAccess::clockSetFreqHz(500000);
+
     // Setup test
     testCase1();
 
@@ -70,7 +73,10 @@ void StepValidator::start()
 void StepValidator::stop()
 {
     LogWrite(FromStepValidator, LOG_DEBUG, "stop");
-    BusAccess::waitRestoreDefaults();
+
+    // Re-select the machine to reset everything back to defaults    
+    McManager::setMachineByName(McManager::getDescriptorTable()->machineName);
+    
     _isActive = false;
 }
 
@@ -81,10 +87,6 @@ uint32_t StepValidator::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[ma
     if (!_isActive)
         return retVal;
 
-    // Debug signal
-    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-    microsDelay(1);
-    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
     // microsDelay(2);
     // int addrMask = 0x8000;
     // for (int i = 0; i < 16; i++)
@@ -158,6 +160,10 @@ uint32_t StepValidator::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[ma
                 ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_A);
         }
         _excpCount++;
+        // Debug signal
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        microsDelay(1);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
 
         // Since there was an error we don't know what the next address should be
         // So guess that it is the next address
@@ -220,7 +226,7 @@ void StepValidator::testCase1()
                                 // loophere:
         0x21, 0x00, 0x3c,       // 	ld hl,0x3c00
         0x73,                   // 	ld (hl),e
-        0x01, 0xff, 0x1f,       // 	ld bc,0x0001
+        0x01, 0xff, 0x1f,       // 	ld bc,0x1fff
                                 // loopin:
         0x0b,                   // 	dec bc
         0x78,                   // 	ld a,b
