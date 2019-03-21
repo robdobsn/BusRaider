@@ -15,6 +15,10 @@ extern WgfxFont __systemFont;
 #define MIN(v1, v2) (((v1) < (v2)) ? (v1) : (v2))
 #define MAX(v1, v2) (((v1) > (v2)) ? (v1) : (v2))
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Window definition
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 typedef struct WgfxWindowDef {
     int tlx;
     int width;
@@ -29,10 +33,18 @@ typedef struct WgfxWindowDef {
     WgfxFont* pFont;
 } WgfxWindowDef;
 
-#define WGFX_MAX_WINDOWS 5
-static WgfxWindowDef __wgfxWindows[WGFX_MAX_WINDOWS];
-static bool __wgfxWindowValid[WGFX_MAX_WINDOWS];
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Windows
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define DISPLAY_FX_MAX_WINDOWS 5
+static WgfxWindowDef __wgfxWindows[DISPLAY_FX_MAX_WINDOWS];
+static bool __wgfxWindowValid[DISPLAY_FX_MAX_WINDOWS];
 static bool __wgfxDMAActive = false;
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Display Context
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 typedef struct {
     unsigned int screenWidth;
@@ -52,16 +64,21 @@ typedef struct {
         int outputWinIdx;
     } term;
 
-    WGFX_COL bg;
-    WGFX_COL fg;
+    DISPLAY_FX_COL bg;
+    DISPLAY_FX_COL fg;
 
     // Make sure this is big enough for any font's character cell
     unsigned char cursor_buffer[512];
 
-} FRAMEBUFFER_CTX;
+} DISPLAY_FX_CONTEXT;
 
-static FRAMEBUFFER_CTX ctx;
+static DISPLAY_FX_CONTEXT __displayContext;
 unsigned int __attribute__((aligned(0x100))) mem_buff_dma[16];
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Init
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void wgfx_init(unsigned int desiredWidth, unsigned int desiredHeight)
 {
@@ -91,33 +108,38 @@ void wgfx_init(unsigned int desiredWidth, unsigned int desiredHeight)
     wgfx_clear();
 
     // Reset window validity
-    for (int i = 0; i < WGFX_MAX_WINDOWS; i++)
+    for (int i = 0; i < DISPLAY_FX_MAX_WINDOWS; i++)
         __wgfxWindowValid[i] = false;
 }
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Setup framebuffer
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void wgfx_set_framebuffer(void* p_framebuffer, unsigned int width, unsigned int height,
     unsigned int pitch, unsigned int size)
 {
     dma_init();
 
-    ctx.pfb = p_framebuffer;
-    ctx.screenWidth = width;
-    ctx.screenHeight = height;
-    ctx.pitch = pitch;
-    ctx.size = size;
+    __displayContext.pfb = p_framebuffer;
+    __displayContext.screenWidth = width;
+    __displayContext.screenHeight = height;
+    __displayContext.pitch = pitch;
+    __displayContext.size = size;
 
     // Windows
     wgfx_set_window(0, 0, 0, width, height, -1, -1, 2, 2, NULL, -1, -1, 0, 0);
 
     // Initial settings
-    ctx.term.numCols = ctx.screenWidth / __systemFont.cellX;
-    ctx.term.numRows = ctx.screenHeight / __systemFont.cellY;
-    ctx.term.cursor_row = ctx.term.cursor_col = 0;
-    ctx.term.cursor_visible = 1;
-    ctx.term.outputWinIdx = 0;
+    __displayContext.term.numCols = __displayContext.screenWidth / __systemFont.cellX;
+    __displayContext.term.numRows = __displayContext.screenHeight / __systemFont.cellY;
+    __displayContext.term.cursor_row = __displayContext.term.cursor_col = 0;
+    __displayContext.term.cursor_visible = 1;
+    __displayContext.term.outputWinIdx = 0;
 
-    ctx.bg = 0;
-    ctx.fg = 15;
+    __displayContext.bg = 0;
+    __displayContext.fg = 15;
     wgfx_term_render_cursor();
 }
 
@@ -127,22 +149,24 @@ void wgfx_set_window(int winIdx, int tlx, int tly, int width, int height,
     int borderWidth, int borderColour)
 {
     WgfxFont* pFontToUse = (pFont != NULL) ? pFont : (&__systemFont);
-    if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS)
+    if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
         return;
     // Width and height
     if (width == -1 && tlx != -1)
-        __wgfxWindows[winIdx].width = ctx.screenWidth - tlx - borderWidth * 2;
+        __wgfxWindows[winIdx].width = __displayContext.screenWidth - tlx - borderWidth * 2;
+    else if (width == -1)
+        __wgfxWindows[winIdx].width = __displayContext.screenWidth;
     else
         __wgfxWindows[winIdx].width = width * xPixScale;
     if (height == -1)
-        __wgfxWindows[winIdx].height = ctx.screenHeight - tly - borderWidth * 2;
+        __wgfxWindows[winIdx].height = __displayContext.screenHeight - tly - borderWidth * 2;
     else
         __wgfxWindows[winIdx].height = height * yPixScale;
     // Top,Left
     if (tlx != -1)
         __wgfxWindows[winIdx].tlx = tlx * xPixScale + borderWidth;
     else
-        __wgfxWindows[winIdx].tlx = (ctx.screenWidth - __wgfxWindows[winIdx].width) / 2;
+        __wgfxWindows[winIdx].tlx = (__displayContext.screenWidth - __wgfxWindows[winIdx].width) / 2;
     __wgfxWindows[winIdx].tly = tly * yPixScale + borderWidth;
 
     // Cell
@@ -201,25 +225,33 @@ void wgfx_set_window(int winIdx, int tlx, int tly, int width, int height,
     __wgfxWindowValid[winIdx] = true;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Set window used for console
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void wgfx_set_console_window(int winIdx)
 {
-    if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS)
+    if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
         return;
-    ctx.term.outputWinIdx = winIdx;
+    __displayContext.term.outputWinIdx = winIdx;
     // Reset term params
-    ctx.term.numCols = __wgfxWindows[winIdx].width / (__wgfxWindows[winIdx].cellWidth * __wgfxWindows[winIdx].xPixScale);
-    ctx.term.numRows = __wgfxWindows[winIdx].height / (__wgfxWindows[winIdx].cellHeight * __wgfxWindows[winIdx].yPixScale);
-    ctx.term.cursor_row = ctx.term.cursor_col = 0;
+    __displayContext.term.numCols = __wgfxWindows[winIdx].width / (__wgfxWindows[winIdx].cellWidth * __wgfxWindows[winIdx].xPixScale);
+    __displayContext.term.numRows = __wgfxWindows[winIdx].height / (__wgfxWindows[winIdx].cellHeight * __wgfxWindows[winIdx].yPixScale);
+    __displayContext.term.cursor_row = __displayContext.term.cursor_col = 0;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Clear entire display
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void wgfx_clear()
 {
     // Wait for previous operation (dma) to complete
     wgfx_wait_for_prev_operation();
-    unsigned char* pf = ctx.pfb;
-    unsigned char* pfb_end = pf + ctx.size;
+    unsigned char* pf = __displayContext.pfb;
+    unsigned char* pfb_end = pf + __displayContext.size;
     while (pf < pfb_end)
-        *pf++ = ctx.bg;
+        *pf++ = __displayContext.bg;
 }
 
 void wgfx_clear_screen()
@@ -228,70 +260,82 @@ void wgfx_clear_screen()
     wgfx_term_render_cursor();
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Cursor handling
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void wgfx_check_curpos()
 {
-    if (ctx.term.cursor_col >= ctx.term.numCols) {
-        ctx.term.cursor_row++;
-        ctx.term.cursor_col = 0;
+    if (__displayContext.term.cursor_col >= __displayContext.term.numCols) {
+        __displayContext.term.cursor_row++;
+        __displayContext.term.cursor_col = 0;
     }
 
-    if (ctx.term.cursor_row >= ctx.term.numRows) {
-        --ctx.term.cursor_row;
-        wgfx_scroll(ctx.term.outputWinIdx, 1);
+    if (__displayContext.term.cursor_row >= __displayContext.term.numRows) {
+        --__displayContext.term.cursor_row;
+        wgfx_scroll(__displayContext.term.outputWinIdx, 1);
     }
 }
 
-void wgfx_term_putchar(char ch)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Put to console window
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void wgfx_console_putchar(char ch)
 {
     switch (ch) {
     case '\r':
-        ctx.term.cursor_col = 0;
+        __displayContext.term.cursor_col = 0;
         break;
 
     case '\n':
-        ctx.term.cursor_col = 0;
-        ctx.term.cursor_row++;
+        __displayContext.term.cursor_col = 0;
+        __displayContext.term.cursor_row++;
         wgfx_check_curpos();
         break;
 
     case 0x09: /* tab */
-        ctx.term.cursor_col += 1;
-        ctx.term.cursor_col = MIN(ctx.term.cursor_col + 8 - ctx.term.cursor_col % 8, ctx.term.numCols - 1);
+        __displayContext.term.cursor_col += 1;
+        __displayContext.term.cursor_col = MIN(__displayContext.term.cursor_col + 8 - __displayContext.term.cursor_col % 8, __displayContext.term.numCols - 1);
         wgfx_check_curpos();
         break;
 
     case 0x08:
         /* backspace */
-        if (ctx.term.cursor_col > 0) {
-            ctx.term.cursor_col--;
-            wgfx_putc(ctx.term.outputWinIdx, ctx.term.cursor_col, ctx.term.cursor_row, ' ');
+        if (__displayContext.term.cursor_col > 0) {
+            __displayContext.term.cursor_col--;
+            wgfx_putc(__displayContext.term.outputWinIdx, __displayContext.term.cursor_col, __displayContext.term.cursor_row, ' ');
         }
         break;
 
     default:
-        wgfx_putc(ctx.term.outputWinIdx, ctx.term.cursor_col, ctx.term.cursor_row, ch);
-        ctx.term.cursor_col++;
+        wgfx_putc(__displayContext.term.outputWinIdx, __displayContext.term.cursor_col, __displayContext.term.cursor_row, ch);
+        __displayContext.term.cursor_col++;
         wgfx_check_curpos();
         break;
     }
 }
 
-void wgfx_term_putstring(const char* str)
+void wgfx_console_putstring(const char* str)
 {
     wgfx_restore_cursor_content();
     while (*str)
-        wgfx_term_putchar(*str++);
+        wgfx_console_putchar(*str++);
     wgfx_term_render_cursor();
 }
 
-int wgfx_get_term_width()
+int wgfx_get_console_width()
 {
-    return ctx.term.numCols;
+    return __displayContext.term.numCols;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Put string to window
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void wgfx_puts(int winIdx, unsigned int col, unsigned int row, const uint8_t* pStr)
 {
-    if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS)
+    if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
         return;
     while(*pStr)
     {
@@ -301,9 +345,13 @@ void wgfx_puts(int winIdx, unsigned int col, unsigned int row, const uint8_t* pS
     }
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Put char to window
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void wgfx_putc(int winIdx, unsigned int col, unsigned int row, unsigned char ch)
 {
-    if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS)
+    if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
         return;
     if (!__wgfxWindowValid[winIdx])
         return;
@@ -323,9 +371,9 @@ void wgfx_putc(int winIdx, unsigned int col, unsigned int row, unsigned char ch)
     // For each bit in the font character write the appropriate data to the pixel in framebuffer
     unsigned char* pBufCur = pBuf;
     int fgColour = ((__wgfxWindows[winIdx].foregroundColour != -1) ?
-                    __wgfxWindows[winIdx].foregroundColour : ctx.fg);
+                    __wgfxWindows[winIdx].foregroundColour : __displayContext.fg);
     int bgColour = ((__wgfxWindows[winIdx].backgroundColour != -1) ?
-                    __wgfxWindows[winIdx].backgroundColour : ctx.bg);
+                    __wgfxWindows[winIdx].backgroundColour : __displayContext.bg);
     int cellHeight = __wgfxWindows[winIdx].cellHeight;
     int yPixScale = __wgfxWindows[winIdx].yPixScale;
     int cellWidth = __wgfxWindows[winIdx].cellWidth;
@@ -341,11 +389,15 @@ void wgfx_putc(int winIdx, unsigned int col, unsigned int row, unsigned char ch)
                 }
                 bitMask = bitMask >> 1;
             }
-            pBuf += ctx.pitch;
+            pBuf += __displayContext.pitch;
         }
         pFont += __wgfxWindows[winIdx].pFont->bytesAcross;
     }
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Set Pixel
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void wgfxSetMonoPixel(int winIdx, int x, int y, int value)
 {
@@ -353,12 +405,12 @@ void wgfxSetMonoPixel(int winIdx, int x, int y, int value)
     wgfx_wait_for_prev_operation();
     unsigned char* pBuf = wgfx_get_win_pfb_xy(winIdx, x, y);
     int fgColour = ((__wgfxWindows[winIdx].foregroundColour != -1) ?
-                    __wgfxWindows[winIdx].foregroundColour : ctx.fg);
+                    __wgfxWindows[winIdx].foregroundColour : __displayContext.fg);
     int bgColour = ((__wgfxWindows[winIdx].backgroundColour != -1) ?
-                    __wgfxWindows[winIdx].backgroundColour : ctx.bg);
+                    __wgfxWindows[winIdx].backgroundColour : __displayContext.bg);
     for (int iy = 0; iy < __wgfxWindows[winIdx].yPixScale; iy++)
     {
-        unsigned char* pBufL = pBuf + iy * ctx.pitch;
+        unsigned char* pBufL = pBuf + iy * __displayContext.pitch;
         for (int ix = 0; ix < __wgfxWindows[winIdx].xPixScale; ix++)
             *pBufL++ = value ? fgColour : bgColour;
     }
@@ -371,20 +423,24 @@ void wgfxSetColourPixel(int winIdx, int x, int y, int colour)
     unsigned char* pBuf = wgfx_get_win_pfb_xy(winIdx, x, y);
     for (int iy = 0; iy < __wgfxWindows[winIdx].yPixScale; iy++)
     {
-        unsigned char* pBufL = pBuf + iy * ctx.pitch;
+        unsigned char* pBufL = pBuf + iy * __displayContext.pitch;
         for (int ix = 0; ix < __wgfxWindows[winIdx].xPixScale; ix++)
             *pBufL++ = colour;
     }
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Access a char cell
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Write data from a char cell in a window
 void wgfx_write_cell(int winIdx, unsigned int col, unsigned int row, unsigned char* pCellBuf)
 {
-    if (col >= ctx.term.numCols)
+    if (col >= __displayContext.term.numCols)
         return;
-    if (row >= ctx.term.numRows)
+    if (row >= __displayContext.term.numRows)
         return;
-    if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS)
+    if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
         return;
     if (!__wgfxWindowValid[winIdx])
         return;
@@ -405,7 +461,7 @@ void wgfx_write_cell(int winIdx, unsigned int col, unsigned int row, unsigned ch
                     *pBufCur++ = *pCellBuf++;
                 }
             }
-            pBuf += ctx.pitch;
+            pBuf += __displayContext.pitch;
         }
     }
 }
@@ -413,11 +469,11 @@ void wgfx_write_cell(int winIdx, unsigned int col, unsigned int row, unsigned ch
 // Read data from a char cell in a window
 void wgfx_read_cell(int winIdx, unsigned int col, unsigned int row, unsigned char* pCellBuf)
 {
-    if (col >= ctx.term.numCols)
+    if (col >= __displayContext.term.numCols)
         return;
-    if (row >= ctx.term.numRows)
+    if (row >= __displayContext.term.numRows)
         return;
-    if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS)
+    if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
         return;
     if (!__wgfxWindowValid[winIdx])
         return;
@@ -438,54 +494,58 @@ void wgfx_read_cell(int winIdx, unsigned int col, unsigned int row, unsigned cha
                     *pCellBuf++ = *pBufCur++;
                 }
             }
-            pBuf += ctx.pitch;
+            pBuf += __displayContext.pitch;
         }
     }
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Get frame buffer pointers
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 unsigned char* wgfx_get_win_pfb(int winIdx, int col, int row)
 {
-    return ctx.pfb + 
+    return __displayContext.pfb + 
             ((row * __wgfxWindows[winIdx].cellHeight * __wgfxWindows[winIdx].yPixScale) +
-            __wgfxWindows[winIdx].tly) * ctx.pitch + 
+            __wgfxWindows[winIdx].tly) * __displayContext.pitch + 
             (col * __wgfxWindows[winIdx].cellWidth * __wgfxWindows[winIdx].xPixScale) + 
             __wgfxWindows[winIdx].tlx;
 }
 
 unsigned char* wgfx_get_win_pfb_xy(int winIdx, int x, int y)
 {
-    return ctx.pfb + 
-            ((y * __wgfxWindows[winIdx].yPixScale) + __wgfxWindows[winIdx].tly) * ctx.pitch + 
+    return __displayContext.pfb + 
+            ((y * __wgfxWindows[winIdx].yPixScale) + __wgfxWindows[winIdx].tly) * __displayContext.pitch + 
             (x * __wgfxWindows[winIdx].xPixScale) + __wgfxWindows[winIdx].tlx;
 }
 
 unsigned char* wgfx_get_pfb_xy(int x, int y)
 {
-    return ctx.pfb + y * ctx.pitch + x;
+    return __displayContext.pfb + y * __displayContext.pitch + x;
 }
 
 void wgfx_restore_cursor_content()
 {
     // Write content of cell buffer to current screen location
-    wgfx_write_cell(ctx.term.outputWinIdx, ctx.term.cursor_col, ctx.term.cursor_row, ctx.cursor_buffer);
+    wgfx_write_cell(__displayContext.term.outputWinIdx, __displayContext.term.cursor_col, __displayContext.term.cursor_row, __displayContext.cursor_buffer);
 }
 
 void wgfx_term_render_cursor()
 {
     // Read content of cell buffer to current screen location
-    wgfx_read_cell(ctx.term.outputWinIdx, ctx.term.cursor_col, ctx.term.cursor_row, ctx.cursor_buffer);
+    wgfx_read_cell(__displayContext.term.outputWinIdx, __displayContext.term.cursor_col, __displayContext.term.cursor_row, __displayContext.cursor_buffer);
     // Show cursor
-    wgfx_putc(ctx.term.outputWinIdx, ctx.term.cursor_col, ctx.term.cursor_row, '_');
+    wgfx_putc(__displayContext.term.outputWinIdx, __displayContext.term.cursor_col, __displayContext.term.cursor_row, '_');
 }
 
-void wgfx_set_bg(WGFX_COL col)
+void wgfx_set_bg(DISPLAY_FX_COL col)
 {
-    ctx.bg = col;
+    __displayContext.bg = col;
 }
 
-void wgfx_set_fg(WGFX_COL col)
+void wgfx_set_fg(DISPLAY_FX_COL col)
 {
-    ctx.fg = col;
+    __displayContext.fg = col;
 }
 
 void wgfx_wait_for_prev_operation()
@@ -497,12 +557,16 @@ void wgfx_wait_for_prev_operation()
     __wgfxDMAActive = false;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Scroll
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #define USE_DMA_FOR_SCROLL 1
 
 // Positive values for rows scroll up, negative down
 void wgfx_scroll(int winIdx, int rows)
 {
-    if (winIdx < 0 || winIdx >= WGFX_MAX_WINDOWS || rows == 0)
+    if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS || rows == 0)
         return;
 
     // Wait for previous operation (dma) to complete
@@ -516,17 +580,17 @@ void wgfx_scroll(int winIdx, int rows)
     {
         unsigned char* pDest = wgfx_get_win_pfb(winIdx, 0, 0);
         unsigned char* pSrc = wgfx_get_win_pfb(winIdx, 0, numRows);
-        unsigned char* pEnd = wgfx_get_win_pfb(winIdx, 0, ctx.term.numRows);
-        pBlankStart = wgfx_get_win_pfb(winIdx, 0, ctx.term.numRows-numRows);
+        unsigned char* pEnd = wgfx_get_win_pfb(winIdx, 0, __displayContext.term.numRows);
+        pBlankStart = wgfx_get_win_pfb(winIdx, 0, __displayContext.term.numRows-numRows);
         pBlankEnd = pEnd;
 
 #ifdef USE_DMA_FOR_SCROLL
     unsigned int* BG = (unsigned int*)lowlev_mem_2uncached( mem_buff_dma );
-    *BG = ctx.bg<<24 | ctx.bg<<16 | ctx.bg<<8 | ctx.bg;
+    *BG = __displayContext.bg<<24 | __displayContext.bg<<16 | __displayContext.bg<<8 | __displayContext.bg;
     *(BG+1) = *BG;
     *(BG+2) = *BG;
     *(BG+3) = *BG;
-    // unsigned int line_height = ctx.Pitch * npixels;
+    // unsigned int line_height = __displayContext.Pitch * npixels;
 
     dma_enqueue_operation( (unsigned int *)( pSrc ),
                            (unsigned int *)( pDest ),
@@ -552,8 +616,8 @@ void wgfx_scroll(int winIdx, int rows)
     }
     else
     {
-        unsigned char* pDest = wgfx_get_win_pfb(winIdx, 0, ctx.term.numRows) - 1;
-        unsigned char* pSrc = wgfx_get_win_pfb(winIdx, 0, ctx.term.numRows-numRows) - 1;
+        unsigned char* pDest = wgfx_get_win_pfb(winIdx, 0, __displayContext.term.numRows) - 1;
+        unsigned char* pSrc = wgfx_get_win_pfb(winIdx, 0, __displayContext.term.numRows-numRows) - 1;
         unsigned char* pEnd = wgfx_get_win_pfb(winIdx, 0, 0);
         pBlankStart = pEnd;
         pBlankEnd = wgfx_get_win_pfb(winIdx, 0, numRows);
@@ -567,9 +631,13 @@ void wgfx_scroll(int winIdx, int rows)
     // // Clear lines
     // while(pBlankStart < pBlankEnd)
     // {
-    //     *pBlankStart++ = ctx.bg;
+    //     *pBlankStart++ = __displayContext.bg;
     // }
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Line functions
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void wgfxHLine(int x, int y, int len, int colour)
 {
@@ -591,6 +659,6 @@ void wgfxVLine(int x, int y, int len, int colour)
     for (int i = 0; i < len; i++)
     {
         *pBuf = colour;
-        pBuf += ctx.pitch;
+        pBuf += __displayContext.pitch;
     }
 }

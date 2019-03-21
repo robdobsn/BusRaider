@@ -48,8 +48,8 @@ McDescriptorTable McManager::defaultDescriptorTable = {
     .pixelScaleX = 2,
     .pixelScaleY = 1,
     .pFont = &__systemFont,
-    .displayForeground = WGFX_WHITE,
-    .displayBackground = WGFX_BLACK,
+    .displayForeground = DISPLAY_FX_WHITE,
+    .displayBackground = DISPLAY_FX_BLACK,
     // Clock
     .clockFrequencyHz = 1000000,
     // Interrupt rate per second
@@ -157,6 +157,11 @@ const char* McManager::getMachineJSON()
     return mcString;
 }
 
+int McManager::getMachineClock()
+{
+    return BusAccess::clockCurFreqHz();
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Manage Machine List
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -207,7 +212,7 @@ bool McManager::setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate)
     McDescriptorTable* pMcDescr = _pCurMachine->getDescriptorTable(_curMachineSubType);
     int windowBorderWidth = 5;
     if (_pDisplay)
-        _pDisplay->targetLayout(-1, 0, 
+        _pDisplay->targetLayout(0, 0, 
             pMcDescr->displayPixelsX, pMcDescr->displayPixelsY,
             pMcDescr->displayCellX, pMcDescr->displayCellY,
             pMcDescr->pixelScaleX, pMcDescr->pixelScaleY,
@@ -239,12 +244,11 @@ bool McManager::setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate)
         TargetDebug::get()->setup(_pCurMachine);
 
         // Debug
-        LogWrite(FromMcManager, LOG_DEBUG, "Enabling %s EmuRAM %s RegByInject %s IntIORQ %s IntMREQ %s (%04x)",
+        LogWrite(FromMcManager, LOG_DEBUG, "EmuRAM %s Inject %s WIORQ %s WMREQ %s",
                     pMcDescr->emulatedRAM ? "Y" : "N",
                     pMcDescr->setRegistersByInjection ?  "Y" : "N",
                     pMcDescr->monitorIORQ ?  "Y" : "N",
-                    pMcDescr->monitorMREQ || pMcDescr->emulatedRAM ?  "Y" : "N",
-                    pMcDescr->setRegistersCodeAddr);
+                    pMcDescr->monitorMREQ || pMcDescr->emulatedRAM ?  "Y" : "N");
 
         // Bus raider enable wait states
         BusAccess::waitSetup(pMcDescr->monitorIORQ, pMcDescr->monitorMREQ || pMcDescr->emulatedRAM);

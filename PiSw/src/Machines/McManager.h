@@ -58,6 +58,7 @@ public:
     static int getNumMachines();
     static McBase* getMachine();
     static const char* getMachineJSON();
+    static int getMachineClock();
 
     // Current machine descriptor table
     static McDescriptorTable* getDescriptorTable();

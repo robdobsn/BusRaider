@@ -29,10 +29,8 @@ typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "                    Bus Raider V1.7.072";
-static const char* PROG_CREDITS = "                   Rob Dobson 2018-2019";
-static const char* PROG_LINKS_1 = "       https://robdobson.com/tag/raider";
-static const char* PROG_LINKS_2 = "https://github.com/robdobsn/PiBusRaider";
+static const char* PROG_VERSION = "Bus Raider V1.7.073 (C) Rob Dobson 2018-2019";
+static const char* PROG_LINKS_1 = "https://robdobson.com/tag/raider";
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Globals
@@ -69,9 +67,9 @@ void uartWriteString(const char* pStr)
     }
 }
 
-void termWriteString(const char* pStr)
+void consolePutString(const char* pStr)
 {
-    display.termWrite(pStr);
+    display.consolePut(pStr);
 }
 
 // Function to send to uart from command handler
@@ -133,8 +131,8 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
             {
                 if (_immediateModeLineLen > 0)
                     _immediateModeLineLen--;
-                display.termWrite(asciiCode);
-                display.termWrite(' ');
+                display.consolePut(asciiCode);
+                display.consolePut(' ');
             }
             else if (asciiCode == 0x0d)
             {
@@ -151,7 +149,7 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
             {
                 _immediateModeLine[_immediateModeLineLen++] = asciiCode;
             }
-            display.termWrite(asciiCode);
+            display.consolePut(asciiCode);
             // ee_printf("%x ", asciiCode);
         }
         return;
@@ -165,29 +163,162 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Status Display
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Refresh rate
+#define REFRESH_RATE_WINDOW_SIZE_MS 2000
+static int refreshCount = 0;
+static unsigned long curRateSampleWindowStart = micros();
+static unsigned long lastDisplayUpdateUs = 0;
+static unsigned long dispTime = 0;
+static bool lastActivityTickerState = false;
+
+// Status update rate and last timer
+static unsigned long lastStatusUpdateMs = 0;
+static const unsigned long STATUS_UPDATE_RATE_MS = 3000;
+
+void statusDisplayUpdate()
+{
+    // Update display refresh rate
+    if (isTimeout(micros(), curRateSampleWindowStart, REFRESH_RATE_WINDOW_SIZE_MS * 1000)) 
+    {
+        // Get ESP health info
+        bool ipAddrValid = false;
+        char* ipAddr = NULL;
+        char* wifiStatusChar = NULL;
+        char* wifiSSID = NULL;
+        char* esp32Version = NULL;
+        commandHandler.getStatusResponse(&ipAddrValid, &ipAddr, &wifiStatusChar, &wifiSSID, &esp32Version);
+
+        // ESP32 info
+        const int MAX_STATUS_STR_LEN = 150;
+        char statusStr[MAX_STATUS_STR_LEN+1];
+        strlcpy(statusStr, "ESP32 Version: ", MAX_STATUS_STR_LEN);
+        if (strlen(esp32Version) == 0)
+        {
+            strlcat(statusStr, "Not Connected!", MAX_STATUS_STR_LEN);
+            display.statusPut(Display::STATUS_FIELD_ESP_VERSION, Display::STATUS_FAIL, statusStr);
+        }
+        else
+        {
+            strlcat(statusStr, esp32Version, MAX_STATUS_STR_LEN);
+            display.statusPut(Display::STATUS_FIELD_ESP_VERSION, Display::STATUS_NORMAL, statusStr);
+        }
+
+        // WiFi status
+        statusStr[0] = 0;
+        switch(*wifiStatusChar)
+        {
+            case 'C': 
+                strlcpy(statusStr, "WiFi IP: ", MAX_STATUS_STR_LEN); 
+                if (ipAddrValid)
+                    strlcat(statusStr, ipAddr, MAX_STATUS_STR_LEN);
+                display.statusPut(Display::STATUS_FIELD_IP_ADDR, Display::STATUS_NORMAL, statusStr);
+                break;
+            default: 
+                strlcpy(statusStr, "WiFi not connected", MAX_STATUS_STR_LEN);
+                display.statusPut(Display::STATUS_FIELD_IP_ADDR, Display::STATUS_FAIL, statusStr);
+                break;
+        }
+
+        // Machine name
+        strlcpy(statusStr, "M/C: ", MAX_STATUS_STR_LEN);
+        strlcat(statusStr, McManager::getDescriptorTable()->machineName, MAX_STATUS_STR_LEN);
+        display.statusPut(Display::STATUS_FIELD_CUR_MACHINE, Display::STATUS_NORMAL, statusStr);
+
+        // Speed
+        int clockSpeed = McManager::getMachineClock();
+        int mhz = clockSpeed/1000000;
+        int khz = (clockSpeed - mhz*1000000)/1000;
+        ee_sprintf(statusStr, "Clock: %d.%s%s%dMHz",
+                    mhz,
+                    khz <= 99 ? "0" : "",
+                    khz <= 9 ? "0" : "",
+                    khz);
+        // strlcpy(statusStr, "Clock: ", MAX_STATUS_STR_LEN);
+        // ltoa(mhz, statusStr+strlen(statusStr), 10);
+        // strlcat(statusStr, ".", MAX_STATUS_STR_LEN);
+        // if (khz <= 99)
+        //     strlcat(statusStr, "0", MAX_STATUS_STR_LEN);
+        // if (khz <= 9)
+        //     strlcat(statusStr, "0", MAX_STATUS_STR_LEN);
+        // ltoa(khz, statusStr+strlen(statusStr), 10);
+        // strlcat(statusStr, "MHz", MAX_STATUS_STR_LEN);
+        display.statusPut(Display::STATUS_FIELD_MACHINES, Display::STATUS_NORMAL, statusStr);
+
+        // BusAccess status
+        statusStr[0] = 0;
+        strlcpy(statusStr, "Bus: ", MAX_STATUS_STR_LEN);
+        if (McManager::targetIsPaused())
+            strlcat(statusStr, "Paused", MAX_STATUS_STR_LEN);
+        else
+            strlcat(statusStr, "Free Running", MAX_STATUS_STR_LEN);
+        if (McManager::targetBusUnderPiControl())
+            strlcat(statusStr, "PiControl", MAX_STATUS_STR_LEN);
+        display.statusPut(Display::STATUS_FIELD_BUS_ACCESS, Display::STATUS_NORMAL, statusStr);
+
+        // Refresh rate
+        int refreshRate = refreshCount * 1000 / REFRESH_RATE_WINDOW_SIZE_MS;
+        const int MAX_REFRESH_STR_LEN = 40;
+        const char* refreshText = "Refresh: ";
+        char refreshStr[MAX_REFRESH_STR_LEN+1];
+        strlcpy(refreshStr, lastActivityTickerState ? "| " : "- ", MAX_REFRESH_STR_LEN);
+        lastActivityTickerState = !lastActivityTickerState;
+        strlcat(refreshStr, refreshText, MAX_REFRESH_STR_LEN);
+        uint8_t rateStr[20];
+        rditoa(refreshRate, rateStr, MAX_REFRESH_STR_LEN, 10);
+        strlcat(refreshStr, (char*)rateStr, MAX_REFRESH_STR_LEN);
+        strlcat(refreshStr, "fps", MAX_REFRESH_STR_LEN);
+        display.statusPut(Display::STATUS_FIELD_REFRESH_RATE, Display::STATUS_NORMAL, refreshStr);
+
+        // Get ISR debug info
+        strcpy(statusStr, "");
+        for (int i = 0; i < ISR_ASSERT_NUM_CODES; i++)
+        {
+            int cnt = BusAccess::isrAssertGetCount(i);
+            if (cnt > 0)
+            {
+                ee_sprintf(refreshStr, "[%d]=%d,", i, cnt);
+                strlcat(statusStr, refreshStr, MAX_STATUS_STR_LEN);
+            }
+        }
+        if (strlen(statusStr) > 0)
+            display.statusPut(Display::STATUS_FIELD_ASSERTS, Display::STATUS_FAIL, statusStr);
+
+        // Ready for next time
+        refreshCount = 0;
+        curRateSampleWindowStart = micros();
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Main
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 extern "C" int main()
 {
-
     // Init timers
     timers_init();
 
     // Initialise graphics system
-    // display.init(1440, 960);
-    display.init(1920, 1200);
+    display.init();
+
+    // Status
+    display.statusPut(Display::STATUS_FIELD_PI_VERSION, Display::STATUS_NORMAL, PROG_VERSION);
+    display.statusPut(Display::STATUS_FIELD_ESP_VERSION, Display::STATUS_FAIL, "ESP32 Not Connected");
+    display.statusPut(Display::STATUS_FIELD_LINKS, Display::STATUS_NORMAL, PROG_LINKS_1);
 
     // Initialise UART
     if (!mainUart.setup(MAIN_UART_BAUD_RATE, 100000, 1000))
     {
-        display.termWrite("Unable to start UART");
+        display.statusPut(Display::STATUS_FIELD_ESP_VERSION, Display::STATUS_FAIL, "ESP32: Not Connected, UART Fail");
         microsDelay(5000000);
     }
 
     // Logging
     LogSetLevel(LOG_DEBUG);
-    LogSetOutFn(termWriteString);
+    LogSetOutFn(consolePutString);
 
     // Command Handler
     commandHandler.setMachineCommandCallback(McManager::handleCommand);
@@ -215,7 +346,10 @@ extern "C" int main()
     new McZXSpectrum();
 
     // Number of machines
-    LogWrite(FromMain, LOG_WARNING, "%d machines supported\n", McManager::getNumMachines());
+    // static const int MAX_STATUS_STR_LEN = 200;
+    // char statusStr[MAX_STATUS_STR_LEN];
+    // ee_sprintf(statusStr, "Machines Supported: %d", McManager::getNumMachines());
+    // display.statusPut(Display::STATUS_FIELD_MACHINES, Display::STATUS_NORMAL, statusStr);
 
     // Bus raider setup
     BusAccess::init();
@@ -224,13 +358,15 @@ extern "C" int main()
     McManager::setMachineIdx(1, 0, true);
 
     // Get current machine to check things are working
+    static const int MAX_STATUS_STR_LEN = 200;
+    char statusStr[MAX_STATUS_STR_LEN];
     if (!McManager::getMachine())
     {
-        LogWrite(FromMain, LOG_WARNING, "Failed to construct default machine");
+        strlcat(statusStr, ", Failed to Start Default", MAX_STATUS_STR_LEN);
+        display.statusPut(Display::STATUS_FIELD_MACHINES, Display::STATUS_FAIL, statusStr);
     }
 
     // USB
-    bool keyboardFound = false;
     if (USPiInitialize()) 
     {
         // LogWrite(FromMain, LOG_DEBUG, "Checking for keyboards...");
@@ -238,42 +374,16 @@ extern "C" int main()
         if (USPiKeyboardAvailable()) 
         {
             USPiKeyboardRegisterKeyStatusHandlerRaw(_keypress_raw_handler);
-            LogWrite(FromMain, LOG_VERBOSE, "Keyboard found");
-            keyboardFound = true;
+            display.statusPut(Display::STATUS_FIELD_KEYBOARD, Display::STATUS_NORMAL, "Keyboard OK, F2 for Settings");
         } 
         else 
         {
-            LogWrite(FromMain, LOG_WARNING, "Keyboard not found");
+            display.statusPut(Display::STATUS_FIELD_KEYBOARD, Display::STATUS_FAIL, "Keyboard Not Found");
         }
     } else 
     {
-        LogWrite(FromMain, LOG_WARNING, "USB initialization failed\n");
+        display.statusPut(Display::STATUS_FIELD_KEYBOARD, Display::STATUS_NORMAL, "USB Init Fail - No Keyboard");
     }
-
-    if (keyboardFound)
-    {
-        display.termColour(10);
-        ee_printf("USB keyboard found, press F2 to set WiFi, etc\n");
-        display.termColour(15);
-    }
-    else
-    {
-        display.termColour(9);
-        ee_printf("USB keyboard not found\n");
-        display.termColour(15);
-    }
-
-    // Refresh rate
-    #define REFRESH_RATE_WINDOW_SIZE_MS 2000
-    int refreshCount = 0;
-    unsigned long curRateSampleWindowStart = micros();
-    unsigned long lastDisplayUpdateUs = 0;
-    unsigned long dispTime = 0;
-    bool lastActivityTickerState = false;
-
-    // Status update rate and last timer
-    unsigned long lastStatusUpdateMs = 0;
-    const unsigned long STATUS_UPDATE_RATE_MS = 3000;
 
 // #define TEST_VFP
 #ifdef TEST_VFP
@@ -334,92 +444,8 @@ extern "C" int main()
             refreshCount++;
         }
 
-        // Handle refresh rate calculation
-        if (isTimeout(micros(), curRateSampleWindowStart, REFRESH_RATE_WINDOW_SIZE_MS * 1000)) 
-        {
-            // Initial message
-            display.termColour(11); // 11 = yellow
-            int lineIdx = 0;
-            display.windowWrite(1, display.termGetWidth()-strlen(PROG_VERSION)-1, lineIdx++, (uint8_t*)PROG_VERSION);
-            display.windowWrite(1, display.termGetWidth()-strlen(PROG_CREDITS)-1, lineIdx++, (uint8_t*)PROG_CREDITS);
-            display.windowWrite(1, display.termGetWidth()-strlen(PROG_LINKS_1)-1, lineIdx++, (uint8_t*)PROG_LINKS_1);
-            display.windowWrite(1, display.termGetWidth()-strlen(PROG_LINKS_2)-1, lineIdx++, (uint8_t*)PROG_LINKS_2);
-
-            // Get ESP health info
-            bool ipAddrValid = false;
-            char* ipAddr = NULL;
-            char* wifiStatusChar = NULL;
-            char* wifiSSID = NULL;
-            char* esp32Version = NULL;
-            commandHandler.getStatusResponse(&ipAddrValid, &ipAddr, &wifiStatusChar, &wifiSSID, &esp32Version);
-
-            // ESP32 info
-            const int MAX_STATUS_STR_LEN = 50;
-            char statusStr[MAX_STATUS_STR_LEN+1];
-            strlcpy(statusStr, "ESP32 Version: ", MAX_STATUS_STR_LEN);
-            if (strlen(esp32Version) == 0)
-                strlcat(statusStr, "Not Connected!", MAX_STATUS_STR_LEN);
-            else
-                strlcat(statusStr, esp32Version, MAX_STATUS_STR_LEN);
-            display.windowWrite(1, display.termGetWidth()-strlen(statusStr)-1, lineIdx++, (uint8_t*)statusStr);
-
-            // WiFi status
-            statusStr[0] = 0;
-            switch(*wifiStatusChar)
-            {
-                case 'C': 
-                    strlcpy(statusStr, "WiFi IP: ", MAX_STATUS_STR_LEN); 
-                    if (ipAddrValid)
-                    {
-                        strlcat(statusStr, ipAddr, MAX_STATUS_STR_LEN);
-                    }
-                    break;
-                default: 
-                    strlcpy(statusStr, "WiFi not connected", MAX_STATUS_STR_LEN);
-                    break;
-            }
-            display.windowWrite(1, display.termGetWidth()-strlen(statusStr)-1, lineIdx++, (uint8_t*)statusStr);
-
-            // BusAccess status
-            statusStr[0] = 0;
-            strlcpy(statusStr, "BusAccess: ", MAX_STATUS_STR_LEN);
-            if (McManager::targetIsPaused())
-                strlcat(statusStr, "Paused", MAX_STATUS_STR_LEN);
-            else
-                strlcat(statusStr, "Free Running", MAX_STATUS_STR_LEN);
-            if (McManager::targetBusUnderPiControl())
-                strlcat(statusStr, "PiControl", MAX_STATUS_STR_LEN);
-            display.windowWrite(1, display.termGetWidth()-strlen(statusStr)-1, lineIdx++, (uint8_t*)statusStr);
-
-            // Refresh rate
-            int refreshRate = refreshCount * 1000 / REFRESH_RATE_WINDOW_SIZE_MS;
-            const int MAX_REFRESH_STR_LEN = 40;
-            const char* refreshText = "Refresh ";
-            char refreshStr[MAX_REFRESH_STR_LEN+1] = "  ";
-            strlcpy(refreshStr, lastActivityTickerState ? "  | " : "  - ", MAX_REFRESH_STR_LEN);
-            lastActivityTickerState = !lastActivityTickerState;
-            strlcat(refreshStr, refreshText, MAX_REFRESH_STR_LEN);
-            uint8_t rateStr[20];
-            rditoa(refreshRate, rateStr, MAX_REFRESH_STR_LEN, 10);
-            strlcat(refreshStr, (char*)rateStr, MAX_REFRESH_STR_LEN);
-            strlcat(refreshStr, "fps", MAX_REFRESH_STR_LEN);
-            display.windowWrite(1, display.termGetWidth()-strlen(refreshStr)-1, lineIdx++, (uint8_t*)refreshStr);
-
-            // Get ISR debug info
-            for (int i = 0; i < ISR_ASSERT_NUM_CODES; i++)
-            {
-                int cnt = BusAccess::isrAssertGetCount(i);
-                if (cnt > 0)
-                {
-                    ee_sprintf(statusStr, "ISR Assert %d = %d", i, cnt);
-                    display.windowWrite(1, display.termGetWidth()-strlen(statusStr)-1, lineIdx++, (uint8_t*) statusStr); 
-                }
-            }
-            // Ready for next time
-            refreshCount = 0;
-            curRateSampleWindowStart = micros();
-            display.termColour(15);
-        }
+        // Update status display
+        statusDisplayUpdate();
 
         // Handle status update to ESP32
         if (isTimeout(micros(), lastStatusUpdateMs, STATUS_UPDATE_RATE_MS * 1000)) 

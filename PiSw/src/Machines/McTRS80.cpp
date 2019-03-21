@@ -28,10 +28,10 @@ McDescriptorTable McTRS80::_descriptorTable = {
     .displayCellX = 8,
     .displayCellY = 24,
     .pixelScaleX = 2,
-    .pixelScaleY = 1,
+    .pixelScaleY = 2,
     .pFont = &__TRS80Level3Font,
-    .displayForeground = WGFX_GREEN,
-    .displayBackground = WGFX_BLACK,
+    .displayForeground = DISPLAY_FX_GREEN,
+    .displayBackground = DISPLAY_FX_BLACK,
     // Clock
     .clockFrequencyHz = 1770000,
     // Interrupt rate per second

@@ -29,8 +29,8 @@ McDescriptorTable McRobsZ80::_descriptorTable = {
     .pixelScaleX = 2,
     .pixelScaleY = 2,
     .pFont = &__systemFont,
-    .displayForeground = WGFX_WHITE,
-    .displayBackground = WGFX_BLACK,
+    .displayForeground = DISPLAY_FX_WHITE,
+    .displayBackground = DISPLAY_FX_BLACK,
     // Clock
     .clockFrequencyHz = 12000000,
     // Interrupt rate per second

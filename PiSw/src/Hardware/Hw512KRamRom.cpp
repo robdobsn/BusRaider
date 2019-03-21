@@ -84,6 +84,7 @@ uint32_t Hw512KRamRom::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_
         if(flags & BR_CTRL_BUS_WR_MASK)
         {
             _bankRegisters[(addr & 0xff) - Hw512KRamRom_BASE_ADDR] = data;
+            //TODO
             // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B + (addr & 0xff) - Hw512KRamRom_BASE_ADDR, data);
         }
     }

@@ -89,7 +89,7 @@ class TargetClockGenerator
 
         // Wait a little if busy
         static const uint32_t clockGenBusyMask = 0x80;
-        for (int i = 0; i < 1000; i++)
+        for (int i = 0; i < 10000; i++)
         {
             if ((RD32(ARM_CM_GP0CTL) & clockGenBusyMask) == 0)
                 break;
@@ -112,7 +112,7 @@ class TargetClockGenerator
 
         // Debug
         uint32_t freqGenerated = 500000000 / divisor;
-        LogWrite("ClockGen", LOG_NOTICE, "Enabled freqGen %d (req %d ... div= %d), pin %d, mode %d",
+        LogWrite("ClockGen", LOG_NOTICE, "Freq %d (req %d div %d) pin %d mode %d",
                         freqGenerated, _freqReqd, divisor, _outputPin, _altMode);
     }
 

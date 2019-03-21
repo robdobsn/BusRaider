@@ -34,8 +34,8 @@ McDescriptorTable McZXSpectrum::_descriptorTable = {
     .pixelScaleX = 4,
     .pixelScaleY = 3,
     .pFont = &__systemFont,
-    .displayForeground = WGFX_WHITE,
-    .displayBackground = WGFX_BLACK,
+    .displayForeground = DISPLAY_FX_WHITE,
+    .displayBackground = DISPLAY_FX_BLACK,
     // Clock
     .clockFrequencyHz = 3500000,
     // Interrupt rate per second
@@ -77,22 +77,22 @@ void McZXSpectrum::displayRefresh()
     // Colour lookup table
     static const int NUM_SPECTRUM_COLOURS = 16;
     static int colourLUT[NUM_SPECTRUM_COLOURS] = {
-            WGFX_BLACK,
-            WGFX_DARK_BLUE,
-            WGFX_DARK_RED,
-            WGFX_DARK_PURPLE,
-            WGFX_DARK_GREEN,
-            WGFX_DARK_CYAN,
-            WGFX_DARK_YELLOW,
-            WGFX_GRAY,
-            WGFX_BLACK,
-            WGFX_BLUE,
-            WGFX_RED,
-            WGFX_PURPLE,
-            WGFX_GREEN,
-            WGFX_CYAN,
-            WGFX_YELLOW,
-            WGFX_WHITE
+            DISPLAY_FX_BLACK,
+            DISPLAY_FX_DARK_BLUE,
+            DISPLAY_FX_DARK_RED,
+            DISPLAY_FX_DARK_PURPLE,
+            DISPLAY_FX_DARK_GREEN,
+            DISPLAY_FX_DARK_CYAN,
+            DISPLAY_FX_DARK_YELLOW,
+            DISPLAY_FX_GRAY,
+            DISPLAY_FX_BLACK,
+            DISPLAY_FX_BLUE,
+            DISPLAY_FX_RED,
+            DISPLAY_FX_PURPLE,
+            DISPLAY_FX_GREEN,
+            DISPLAY_FX_CYAN,
+            DISPLAY_FX_YELLOW,
+            DISPLAY_FX_WHITE
     };
 
     // Read memory at the location of the memory mapped screen

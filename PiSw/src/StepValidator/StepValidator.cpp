@@ -157,6 +157,7 @@ uint32_t StepValidator::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[ma
             _exceptions[pos].expectedFlags = expCtrl;
             _exceptions[pos].stepCount = _debugStepCount;
             _exceptionsPosn.hasPut();
+            //TODO
                 ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_A);
         }
         _excpCount++;

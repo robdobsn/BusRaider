@@ -29,8 +29,8 @@ McDescriptorTable McTerminal::_descriptorTables[] = {
         .pixelScaleX = 1,
         .pixelScaleY = 1,
         .pFont = &__systemFont,
-        .displayForeground = WGFX_WHITE,
-        .displayBackground = WGFX_BLACK,
+        .displayForeground = DISPLAY_FX_WHITE,
+        .displayBackground = DISPLAY_FX_BLACK,
         // Clock
         .clockFrequencyHz = 7000000,
         // Interrupt rate per second
@@ -56,8 +56,8 @@ McDescriptorTable McTerminal::_descriptorTables[] = {
         .pixelScaleX = 1,
         .pixelScaleY = 1,
         .pFont = &__systemFont,
-        .displayForeground = WGFX_WHITE,
-        .displayBackground = WGFX_BLACK,
+        .displayForeground = DISPLAY_FX_WHITE,
+        .displayBackground = DISPLAY_FX_BLACK,
         // Clock
         .clockFrequencyHz = 7000000,
         // Interrupt rate per second

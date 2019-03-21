@@ -62,10 +62,10 @@ void LogSetOutFn(outChFnType* pOutFn)
 
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
 
-// #define DISP_WRITE_STRING(x) wgfx_term_putstring((const char*)x)
+// #define DISP_WRITE_STRING(x) wgfx_console_putstring((const char*)x)
 #define DISP_WRITE_STRING(x) if(__ee_pOutFunction) (*__ee_pOutFunction)((const char*)x)
 // #define UART_WRITE_STRING(x) uart_write_str((const char*)x)
-// #define LOG_WRITE_STRING(x) wgfx_term_putstring((const char*)x)
+// #define LOG_WRITE_STRING(x) wgfx_console_putstring((const char*)x)
 #define LOG_WRITE_STRING(x) if(__ee_pOutFunction) (*__ee_pOutFunction)((const char*)x)
 
 static char* lower_digits = "0123456789abcdefghijklmnopqrstuvwxyz";
