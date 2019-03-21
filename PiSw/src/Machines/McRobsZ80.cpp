@@ -3,7 +3,6 @@
 
 #include "McRobsZ80.h"
 #include "usb_hid_keys.h"
-#include "../System/wgfx.h"
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetState.h"
 #include "../System/rdutils.h"
@@ -57,7 +56,7 @@ void McRobsZ80::disable()
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-void McRobsZ80::displayRefresh()
+void McRobsZ80::displayRefresh(DisplayBase* pDisplay)
 {
     // Read memory at the location of the memory mapped screen
     unsigned char pScrnBuffer[ROBSZ80_DISP_RAM_SIZE];
@@ -78,7 +77,8 @@ void McRobsZ80::displayRefresh()
             {
                 int x = ((bufIdx % bytesPerRow) * 8) + i;
                 int y = bufIdx / bytesPerRow;
-                wgfxSetMonoPixel(MC_WINDOW_NUMBER, x, y, (pScrnBuffer[bufIdx] & pixMask) ? 1 : 0);
+                if (pDisplay)
+                    pDisplay->setPixel(x, y, (pScrnBuffer[bufIdx] & pixMask) ? 1 : 0, DISPLAY_FX_DEFAULT);
                 pixMask = pixMask >> 1;
             }
         }

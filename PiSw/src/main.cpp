@@ -192,17 +192,18 @@ void statusDisplayUpdate()
         commandHandler.getStatusResponse(&ipAddrValid, &ipAddr, &wifiStatusChar, &wifiSSID, &esp32Version);
 
         // ESP32 info
-        const int MAX_STATUS_STR_LEN = 150;
+        const int MAX_STATUS_STR_LEN = 50;
         char statusStr[MAX_STATUS_STR_LEN+1];
         strlcpy(statusStr, "ESP32 Version: ", MAX_STATUS_STR_LEN);
         if (strlen(esp32Version) == 0)
         {
-            strlcat(statusStr, "Not Connected!", MAX_STATUS_STR_LEN);
+            strlcat(statusStr, "Not Connected!        ", MAX_STATUS_STR_LEN);
             display.statusPut(Display::STATUS_FIELD_ESP_VERSION, Display::STATUS_FAIL, statusStr);
         }
         else
         {
             strlcat(statusStr, esp32Version, MAX_STATUS_STR_LEN);
+            strlcat(statusStr, "              ", MAX_STATUS_STR_LEN);
             display.statusPut(Display::STATUS_FIELD_ESP_VERSION, Display::STATUS_NORMAL, statusStr);
         }
 
@@ -214,10 +215,11 @@ void statusDisplayUpdate()
                 strlcpy(statusStr, "WiFi IP: ", MAX_STATUS_STR_LEN); 
                 if (ipAddrValid)
                     strlcat(statusStr, ipAddr, MAX_STATUS_STR_LEN);
+                strlcat(statusStr, "        ", MAX_STATUS_STR_LEN);
                 display.statusPut(Display::STATUS_FIELD_IP_ADDR, Display::STATUS_NORMAL, statusStr);
                 break;
             default: 
-                strlcpy(statusStr, "WiFi not connected", MAX_STATUS_STR_LEN);
+                strlcpy(statusStr, "WiFi not connected     ", MAX_STATUS_STR_LEN);
                 display.statusPut(Display::STATUS_FIELD_IP_ADDR, Display::STATUS_FAIL, statusStr);
                 break;
         }
@@ -225,6 +227,7 @@ void statusDisplayUpdate()
         // Machine name
         strlcpy(statusStr, "M/C: ", MAX_STATUS_STR_LEN);
         strlcat(statusStr, McManager::getDescriptorTable()->machineName, MAX_STATUS_STR_LEN);
+        strlcat(statusStr, "              ", MAX_STATUS_STR_LEN);
         display.statusPut(Display::STATUS_FIELD_CUR_MACHINE, Display::STATUS_NORMAL, statusStr);
 
         // Speed
@@ -236,26 +239,18 @@ void statusDisplayUpdate()
                     khz <= 99 ? "0" : "",
                     khz <= 9 ? "0" : "",
                     khz);
-        // strlcpy(statusStr, "Clock: ", MAX_STATUS_STR_LEN);
-        // ltoa(mhz, statusStr+strlen(statusStr), 10);
-        // strlcat(statusStr, ".", MAX_STATUS_STR_LEN);
-        // if (khz <= 99)
-        //     strlcat(statusStr, "0", MAX_STATUS_STR_LEN);
-        // if (khz <= 9)
-        //     strlcat(statusStr, "0", MAX_STATUS_STR_LEN);
-        // ltoa(khz, statusStr+strlen(statusStr), 10);
-        // strlcat(statusStr, "MHz", MAX_STATUS_STR_LEN);
+        strlcat(statusStr, "    ", MAX_STATUS_STR_LEN);
         display.statusPut(Display::STATUS_FIELD_MACHINES, Display::STATUS_NORMAL, statusStr);
 
         // BusAccess status
         statusStr[0] = 0;
         strlcpy(statusStr, "Bus: ", MAX_STATUS_STR_LEN);
         if (McManager::targetIsPaused())
-            strlcat(statusStr, "Paused", MAX_STATUS_STR_LEN);
+            strlcat(statusStr, "Paused      ", MAX_STATUS_STR_LEN);
         else
             strlcat(statusStr, "Free Running", MAX_STATUS_STR_LEN);
         if (McManager::targetBusUnderPiControl())
-            strlcat(statusStr, "PiControl", MAX_STATUS_STR_LEN);
+            strlcat(statusStr, "PiControl   ", MAX_STATUS_STR_LEN);
         display.statusPut(Display::STATUS_FIELD_BUS_ACCESS, Display::STATUS_NORMAL, statusStr);
 
         // Refresh rate
@@ -269,7 +264,7 @@ void statusDisplayUpdate()
         uint8_t rateStr[20];
         rditoa(refreshRate, rateStr, MAX_REFRESH_STR_LEN, 10);
         strlcat(refreshStr, (char*)rateStr, MAX_REFRESH_STR_LEN);
-        strlcat(refreshStr, "fps", MAX_REFRESH_STR_LEN);
+        strlcat(refreshStr, "fps     ", MAX_REFRESH_STR_LEN);
         display.statusPut(Display::STATUS_FIELD_REFRESH_RATE, Display::STATUS_NORMAL, refreshStr);
 
         // Get ISR debug info
@@ -283,8 +278,9 @@ void statusDisplayUpdate()
                 strlcat(statusStr, refreshStr, MAX_STATUS_STR_LEN);
             }
         }
-        if (strlen(statusStr) > 0)
-            display.statusPut(Display::STATUS_FIELD_ASSERTS, Display::STATUS_FAIL, statusStr);
+        strlcat(statusStr, "                                    ", MAX_STATUS_STR_LEN);
+    
+        display.statusPut(Display::STATUS_FIELD_ASSERTS, Display::STATUS_FAIL, statusStr);
 
         // Ready for next time
         refreshCount = 0;
@@ -374,7 +370,7 @@ extern "C" int main()
         if (USPiKeyboardAvailable()) 
         {
             USPiKeyboardRegisterKeyStatusHandlerRaw(_keypress_raw_handler);
-            display.statusPut(Display::STATUS_FIELD_KEYBOARD, Display::STATUS_NORMAL, "Keyboard OK, F2 for Settings");
+            display.statusPut(Display::STATUS_FIELD_KEYBOARD, Display::STATUS_HILITE, "Keyboard OK, F2 for Settings");
         } 
         else 
         {
@@ -384,42 +380,6 @@ extern "C" int main()
     {
         display.statusPut(Display::STATUS_FIELD_KEYBOARD, Display::STATUS_NORMAL, "USB Init Fail - No Keyboard");
     }
-
-// #define TEST_VFP
-#ifdef TEST_VFP
-
-    volatile uint32_t lastMicros = micros();
-        // Loop forever
-    while (1) 
-    {
-
-        volatile uint32_t newMicros = micros();
-        // volatile uint32_t lastModMicros = newMicros;
-        if (newMicros > lastMicros)
-        {
-            if (newMicros - lastMicros > 5)
-            // if (newMicros % 1000 < lastModMicros)
-            {
-                // while (1)
-                // {
-                // for (int i = 0; i < 100; i++)
-                    digitalWrite(BR_DEBUG_PI_SPI0_CE0,1);
-                    lowlev_cycleDelay(1000);
-                // for (int i = 0; i < 100; i++)
-                    digitalWrite(BR_DEBUG_PI_SPI0_CE0,0);
-                    lowlev_cycleDelay(1000);
-                // }
-            }
-            // lastModMicros = newMicros % 1000;
-        }
-        digitalWrite(BR_HADDR_CK, 1);
-        lowlev_cycleDelay(10);
-        digitalWrite(BR_HADDR_CK, 0);
-        lowlev_cycleDelay(10);
-        lastMicros = micros();
-
-     }
-#else
 
     // Request machine info from ESP32
     CommandHandler::sendAPIReq("querycurmc");
@@ -437,9 +397,7 @@ extern "C" int main()
             // Check valid
             dispTime = micros();
             lastDisplayUpdateUs = micros();
-            McBase* pMc = McManager::getMachine();
-            if (pMc)
-                pMc->displayRefresh();
+            McManager::displayRefresh();
             dispTime = micros() - dispTime;
             refreshCount++;
         }
@@ -476,6 +434,5 @@ extern "C" int main()
         // Service target debugger
         TargetDebug::get()->service();
     }
-#endif
 }
 

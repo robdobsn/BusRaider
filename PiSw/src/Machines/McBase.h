@@ -3,6 +3,7 @@
 
 #pragma once
 #include <stdint.h>
+#include "../System/DisplayBase.h"
 
 static const int MC_WINDOW_NUMBER = 0;
 
@@ -63,7 +64,7 @@ public:
     virtual McDescriptorTable* getDescriptorTable(int subType = -1) = 0;
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-    virtual void displayRefresh() = 0;
+    virtual void displayRefresh(DisplayBase* pDisplay) = 0;
 
     // Handle reset for the machine - if false returned then the bus raider will issue a hardware reset
     virtual bool reset([[maybe_unused]] bool restoreWaitDefaults, [[maybe_unused]] bool holdInReset)

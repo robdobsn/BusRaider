@@ -5,9 +5,10 @@
 
 #include "wgfxfont.h"
 #include "stdint.h"
+#include "DisplayBase.h"
 #include "DisplayFX.h"
 
-class Display
+class Display : public DisplayBase
 {
 public:
     enum STATUS_FIELD_ELEMENTS
@@ -26,6 +27,7 @@ public:
 
     static const int STATUS_NORMAL = 0;
     static const int STATUS_FAIL = 1;
+    static const int STATUS_HILITE = 2;
 
 public:
     Display();
@@ -33,17 +35,13 @@ public:
 
     bool init();
 
-    void masterLayout(int targetWindowWidth, int targetWindowHeight,
-            int targetWindowBoarderPix);
-
     // Target
-    void targetLayout(int tlX, int tlY,
+    void targetLayout(
                     int pixX, int pixY, 
                     int cellX, int cellY, 
                     int xScale, int yScale,
                     WgfxFont* pFont, 
-                    int foreColour, int backColour, 
-                    int borderWidth, int borderColour);
+                    int foreColour, int backColour);
 
     // Status
     void statusPut(int statusElement, int statusType, const char* pStr);
@@ -51,12 +49,20 @@ public:
     // Window
     void windowForeground(int winIdx, DISPLAY_FX_COLOUR colour);
     void windowWrite(int winIdx, int col, int row, const char* pStr);
+    void windowWrite(int winIdx, int col, int row, int ch);
+    void windowSetPixel(int winIdx, int x, int y, int value, DISPLAY_FX_COLOUR colour);
 
     // Console
     void consolePut(const char* pStr);
     void consolePut(int ch);
     void consoleForeground(DISPLAY_FX_COLOUR colour);
     int consoleGetWidth();
+
+    // Target window
+    void foreground(DISPLAY_FX_COLOUR colour);
+    void write(int col, int row, const char* pStr);
+    void write(int col, int row, int ch);
+    void setPixel(int x, int y, int value, DISPLAY_FX_COLOUR colour);
 
 private:
 

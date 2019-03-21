@@ -5,11 +5,12 @@
 #include "ee_printf.h"
 #include <string.h>
 
-#ifdef USE_WGFX
-#include "wgfx.h"
-#else
 #include "DisplayFX.h"
-#endif
+
+
+//TODO
+#include "../TargetBus/BusAccess.h"
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Layout
@@ -50,16 +51,24 @@ bool Display::init()
     // Init hardware
     _displayFX.init(DISPLAY_WIDTH, DISPLAY_HEIGHT);
 
-    // Setup basic window layout
+    // Target machine window
+    _displayFX.windowSetup(DISPLAY_WINDOW_TARGET, 0, 0, DISPLAY_TARGET_WIDTH, DISPLAY_TARGET_HEIGHT, 
+            8, 8, 1, 1,
+            NULL, -1, -1,
+            DISPLAY_TARGET_BORDER, DISPLAY_FX_DARK_GRAY);
+
+    // Status window
     _displayFX.windowSetup(DISPLAY_WINDOW_STATUS, DISPLAY_TARGET_WIDTH + DISPLAY_TARGET_BORDER * 2 + DISPLAY_STATUS_MARGIN, 0,
         -1, -1, -1, -1, 1, 1, 
         NULL, -1, -1,
-        0, 8);
+        0, DISPLAY_FX_DARK_GRAY);
+
+    // Console window
     _displayFX.windowSetup(DISPLAY_WINDOW_CONSOLE, DISPLAY_TARGET_WIDTH + DISPLAY_TARGET_BORDER * 2 + DISPLAY_CONSOLE_MARGIN, 
         DISPLAY_STATUS_LINES * __systemFont.cellY,
         -1, -1, -1, -1, 1, 1, 
         NULL, -1, -1,
-        0, 8);
+        0, DISPLAY_FX_DARK_GRAY);
     _displayFX.consoleSetWindow(DISPLAY_WINDOW_CONSOLE);
 
     // Started ok
@@ -92,7 +101,7 @@ void Display::statusPut(int statusElement, int statusType, const char* pStr)
     };
     int x = fieldPositions[statusElement].x;
     int y = fieldPositions[statusElement].y;
-    windowForeground(DISPLAY_WINDOW_STATUS, statusType == STATUS_FAIL ? DISPLAY_FX_RED : DISPLAY_FX_YELLOW);
+    windowForeground(DISPLAY_WINDOW_STATUS, (statusType == STATUS_FAIL) ? DISPLAY_FX_RED : (statusType == STATUS_NORMAL) ? DISPLAY_FX_YELLOW : DISPLAY_FX_GREEN);
     windowWrite(DISPLAY_WINDOW_STATUS, x, y, pStr);
     windowForeground(DISPLAY_WINDOW_STATUS, DISPLAY_FX_WHITE);
 }
@@ -101,19 +110,19 @@ void Display::statusPut(int statusElement, int statusType, const char* pStr)
 // Target
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Display::targetLayout(int tlX, int tlY,
+void Display::targetLayout(
                 int pixX, int pixY, 
                 int cellX, int cellY, 
                 int xScale, int yScale,
                 WgfxFont* pFont, 
-                int foreColour, int backColour, 
-                int borderWidth, int borderColour)
+                int foreColour, int backColour)
 {
     if (!_displayStarted)
         return;
 
-    _displayFX.windowSetup(DISPLAY_WINDOW_TARGET, tlX, tlY, pixX, pixY, cellX, cellY, xScale, yScale,
-                pFont, foreColour, backColour, borderWidth, borderColour);
+    _displayFX.screenRectClear(0, 0, DISPLAY_TARGET_WIDTH + DISPLAY_TARGET_BORDER * 2, DISPLAY_TARGET_HEIGHT + DISPLAY_TARGET_BORDER * 2);
+    _displayFX.windowSetup(DISPLAY_WINDOW_TARGET, 0, 0, pixX, pixY, cellX, cellY, xScale, yScale,
+                pFont, foreColour, backColour, DISPLAY_TARGET_BORDER, DISPLAY_FX_DARK_GRAY);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -131,11 +140,41 @@ void Display::windowWrite(int winIdx, int col, int row, const char* pStr)
 {
     if (!_displayStarted)
         return;
-#ifdef USE_WGFX
-    wgfx_puts(winIdx, col, row, pStr);
-#else
     _displayFX.windowPut(winIdx, col, row, pStr);
-#endif
+}
+
+void Display::windowWrite(int winIdx, int col, int row, int ch)
+{
+    if (!_displayStarted)
+        return;
+    _displayFX.windowPut(winIdx, col, row, ch);
+}
+
+void Display::windowSetPixel(int winIdx, int x, int y, int value, DISPLAY_FX_COLOUR colour)
+{
+    if (!_displayStarted)
+        return;
+    _displayFX.windowSetPixel(winIdx, x, y, value, colour);
+}
+
+void Display::foreground(DISPLAY_FX_COLOUR colour)
+{
+    windowForeground(DISPLAY_WINDOW_TARGET, colour);
+}
+
+void Display::write(int col, int row, const char* pStr)
+{
+    windowWrite(DISPLAY_WINDOW_TARGET, col, row, pStr);
+}
+
+void Display::write(int col, int row, int ch)
+{
+    windowWrite(DISPLAY_WINDOW_TARGET, col, row, ch);
+}
+
+void Display::setPixel(int x, int y, int value, DISPLAY_FX_COLOUR colour)
+{
+    windowSetPixel(DISPLAY_WINDOW_TARGET, x, y, value, colour);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -146,42 +185,26 @@ void Display::consolePut(const char* pStr)
 {
     if (!_displayStarted)
         return;
-#ifdef USE_WGFX
-    wgfx_console_putstring(pStr);
-#else
     _displayFX.consolePut(pStr);
-#endif
 }
 
 void Display::consolePut(int ch)
 {
     if (!_displayStarted)
         return; 
-#ifdef USE_WGFX
-    wgfx_console_putchar(ch);
-#else
     _displayFX.consolePut(ch);
-#endif
 }
 
 void Display::consoleForeground(DISPLAY_FX_COLOUR colour)
 {
     if (!_displayStarted)
         return;
-#ifdef USE_WGFX
-    wgfx_set_fg(colour);
-#else
     _displayFX.consoleForeground(colour);
-#endif
 }
 
 int Display::consoleGetWidth()
 {
     if (!_displayStarted)
         return 0;
-#ifdef USE_WGFX
-    return wgfx_get_console_width();
-#else
     return _displayFX.consoleGetWidth();
-#endif
 }

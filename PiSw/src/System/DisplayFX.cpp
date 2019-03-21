@@ -7,10 +7,6 @@
 #include <string.h>
 #include "lowlib.h"
 
-
-//TODO
-#include "../TargetBus/BusAccess.h"
-
 DisplayFX::DisplayFX()
 {
     _screenWidth = 0;
@@ -74,6 +70,18 @@ void DisplayFX::screenClear()
         *pFrameBuf++ = _screenBackground;
 }
 
+void DisplayFX::screenRectClear(int tlx, int tly, int width, int height)
+{
+    uint8_t* pDest = screenGetPFBXY(tlx, tly);
+    int bytesAcross = width;
+    int pixDown = height;
+    for (int i = 0; i < pixDown; i++)
+    {
+        memset(pDest, _screenBackground, bytesAcross);
+        pDest += _pitch;
+    }
+}
+
 void DisplayFX::screenBackground(DISPLAY_FX_COLOUR colour)
 {
     _screenBackground = colour;
@@ -89,7 +97,7 @@ void DisplayFX::windowPut(int winIdx, int col, int row, const char* pStr)
         return;
     while(*pStr)
     {
-        if ((int)col >= _windows[winIdx].width / (_windows[winIdx].cellWidth * _windows[winIdx].xPixScale))
+        if (col >= _windows[winIdx].cols())
             break;
         windowPut(winIdx, col++, row, *pStr++);
     }
@@ -102,9 +110,9 @@ void DisplayFX::windowPut(int winIdx, int col, int row, int ch)
         return;
     if (!_windows[winIdx]._valid)
         return;
-    if (col >= _windows[winIdx].width / (_windows[winIdx].cellWidth * _windows[winIdx].xPixScale))
+    if (col >= _windows[winIdx].cols())
         return;
-    if (row >= _windows[winIdx].height / (_windows[winIdx].cellHeight * _windows[winIdx].yPixScale))
+    if (row >= _windows[winIdx].rows())
         return;
 
     // Pointer to framebuffer where char cell starts
@@ -144,6 +152,23 @@ void DisplayFX::windowForeground(int winIdx, DISPLAY_FX_COLOUR colour)
     if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
         return;
     _windows[winIdx].windowForeground = colour;
+}
+
+void DisplayFX::windowSetPixel(int winIdx, int x, int y, int value, DISPLAY_FX_COLOUR colour)
+{
+    unsigned char* pBuf = windowGetPFBXY(winIdx, x, y);
+    int fgColour = ((_windows[winIdx].windowForeground != -1) ?
+                    _windows[winIdx].windowForeground : _screenForeground);
+    if (colour != -1)
+        fgColour = colour;
+    int bgColour = ((_windows[winIdx].windowBackground != -1) ?
+                    _windows[winIdx].windowBackground : _screenBackground);
+    for (int iy = 0; iy < _windows[winIdx].yPixScale; iy++)
+    {
+        unsigned char* pBufL = pBuf + iy * _pitch;
+        for (int ix = 0; ix < _windows[winIdx].xPixScale; ix++)
+            *pBufL++ = value ? fgColour : bgColour;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -257,15 +282,39 @@ void DisplayFX::windowSetup(int winIdx, int tlx, int tly, int width, int height,
     _windows[winIdx]._valid = true;
 }
 
+void DisplayFX::windowClear(int winIdx)
+{
+    if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
+        return;
+    if (!_windows[winIdx]._valid)
+        return;
+
+    uint8_t* pDest = windowGetPFB(winIdx, 0, 0);
+    int bytesAcross = _windows[winIdx].width;
+    int pixDown = _windows[winIdx].height;
+    for (int i = 0; i < pixDown; i++)
+    {
+        memset(pDest, _screenBackground, bytesAcross);
+        pDest += _pitch;
+    }
+}
+
 uint8_t* DisplayFX::windowGetPFB(int winIdx, int col, int row)
 {
     return _pfb + ((row * _windows[winIdx].cellHeight * _windows[winIdx].yPixScale) + _windows[winIdx].tly) * _pitch + 
             (col * _windows[winIdx].cellWidth * _windows[winIdx].xPixScale) + _windows[winIdx].tlx;
 }
 
-uint8_t* DisplayFX::windowGetPFBXY(int x, int y)
+uint8_t* DisplayFX::screenGetPFBXY(int x, int y)
 {
     return _pfb + y * _pitch + x;
+}
+
+uint8_t* DisplayFX::windowGetPFBXY(int winIdx, int x, int y)
+{
+    return _pfb + 
+            ((y * _windows[winIdx].yPixScale) + _windows[winIdx].tly) * _pitch + 
+            (x * _windows[winIdx].xPixScale) + _windows[winIdx].tlx;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -407,16 +456,19 @@ void DisplayFX::windowScroll(int winIdx, int rows)
     {
         uint8_t* pDest = windowGetPFB(winIdx, 0, 0);
         uint8_t* pSrc = windowGetPFB(winIdx, 0, numRows);
-        uint8_t* pEnd = windowGetPFB(winIdx, 0, _windows[_consoleWinIdx].rows());
-        while (pSrc < pEnd)
+        int bytesAcross = _windows[winIdx].cols() * _windows[winIdx].cellWidth * _windows[winIdx].xPixScale;
+        int pixDown = _windows[winIdx].rows() * _windows[winIdx].cellHeight * _windows[winIdx].yPixScale;
+        for (int i = 0; i < pixDown; i++)
         {
-            *pDest++ = *pSrc++;
+            memcpy(pDest, pSrc, bytesAcross);
+            pDest += _pitch;
+            pSrc += _pitch;
         }
     }
     else
     {
-        uint8_t* pDest = windowGetPFB(winIdx, 0, _windows[_consoleWinIdx].rows()) - 1;
-        uint8_t* pSrc = windowGetPFB(winIdx, 0, _windows[_consoleWinIdx].rows()-numRows) - 1;
+        uint8_t* pDest = windowGetPFB(winIdx, 0, _windows[winIdx].rows()) - 1;
+        uint8_t* pSrc = windowGetPFB(winIdx, 0, _windows[winIdx].rows()-numRows) - 1;
         uint8_t* pEnd = windowGetPFB(winIdx, 0, 0);
         while (pSrc > pEnd)
         {
@@ -431,7 +483,7 @@ void DisplayFX::windowScroll(int winIdx, int rows)
 
 void DisplayFX::drawHorizontal(int x, int y, int len, int colour)
 {
-    uint8_t* pBuf = windowGetPFBXY(x, y);
+    uint8_t* pBuf = screenGetPFBXY(x, y);
     for (int i = 0; i < len; i++)
     {
         *pBuf++ = colour;
@@ -440,7 +492,7 @@ void DisplayFX::drawHorizontal(int x, int y, int len, int colour)
 
 void DisplayFX::drawVertical(int x, int y, int len, int colour)
 {
-    uint8_t* pBuf = windowGetPFBXY(x, y);
+    uint8_t* pBuf = screenGetPFBXY(x, y);
     for (int i = 0; i < len; i++)
     {
         *pBuf = colour;
@@ -455,11 +507,11 @@ void DisplayFX::drawVertical(int x, int y, int len, int colour)
 void DisplayFX::screenReadCell(int winIdx, int col, int row, uint8_t* pCellBuf)
 {
     // Validity
-    if (col >= _windows[_consoleWinIdx].cols())
-        return;
-    if (row >= _windows[_consoleWinIdx].rows())
-        return;
     if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
+        return;
+    if (col >= _windows[winIdx].cols())
+        return;
+    if (row >= _windows[winIdx].rows())
         return;
     if (!_windows[winIdx]._valid)
         return;
@@ -469,11 +521,11 @@ void DisplayFX::screenReadCell(int winIdx, int col, int row, uint8_t* pCellBuf)
 
     // Write data from cell buffer
     uint8_t* pBufCur = pBuf;
-    for (int y = 0; y < _windows[_consoleWinIdx].cellHeight; y++) {
-        for (int i = 0; i < _windows[_consoleWinIdx].yPixScale; i++) {
+    for (int y = 0; y < _windows[winIdx].cellHeight; y++) {
+        for (int i = 0; i < _windows[winIdx].yPixScale; i++) {
             pBufCur = pBuf;
-            for (int x = 0; x < _windows[_consoleWinIdx].cellWidth; x++) {
-                for (int j = 0; j < _windows[_consoleWinIdx].xPixScale; j++) {
+            for (int x = 0; x < _windows[winIdx].cellWidth; x++) {
+                for (int j = 0; j < _windows[winIdx].xPixScale; j++) {
                     *pCellBuf++ = *pBufCur++;
                 }
             }
@@ -485,11 +537,11 @@ void DisplayFX::screenReadCell(int winIdx, int col, int row, uint8_t* pCellBuf)
 void DisplayFX::screenWriteCell(int winIdx, int col, int row, uint8_t* pCellBuf)
 {
     // Validity
-    if (col >= _windows[_consoleWinIdx].cols())
-        return;
-    if (row >= _windows[_consoleWinIdx].rows())
-        return;
     if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
+        return;
+    if (col >= _windows[winIdx].cols())
+        return;
+    if (row >= _windows[winIdx].rows())
         return;
     if (!_windows[winIdx]._valid)
         return;
@@ -499,11 +551,11 @@ void DisplayFX::screenWriteCell(int winIdx, int col, int row, uint8_t* pCellBuf)
 
     // Write data from cell buffer
     uint8_t* pBufCur = pBuf;
-    for (int y = 0; y < _windows[_consoleWinIdx].cellHeight; y++) {
-        for (int i = 0; i < _windows[_consoleWinIdx].yPixScale; i++) {
+    for (int y = 0; y < _windows[winIdx].cellHeight; y++) {
+        for (int i = 0; i < _windows[winIdx].yPixScale; i++) {
             pBufCur = pBuf;
-            for (int x = 0; x < _windows[_consoleWinIdx].cellWidth; x++) {
-                for (int j = 0; j < _windows[_consoleWinIdx].xPixScale; j++) {
+            for (int x = 0; x < _windows[winIdx].cellWidth; x++) {
+                for (int j = 0; j < _windows[winIdx].xPixScale; j++) {
                     *pBufCur++ = *pCellBuf++;
                 }
             }

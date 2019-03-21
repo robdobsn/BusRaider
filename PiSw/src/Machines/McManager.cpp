@@ -2,7 +2,6 @@
 // Rob Dobson 2018
 
 #include "McManager.h"
-#include "../System/wgfx.h"
 #include "../System/Timers.h"
 #include <string.h>
 #include "../TargetBus/TargetState.h"
@@ -210,14 +209,13 @@ bool McManager::setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate)
 
     // Layout display for machine
     McDescriptorTable* pMcDescr = _pCurMachine->getDescriptorTable(_curMachineSubType);
-    int windowBorderWidth = 5;
     if (_pDisplay)
-        _pDisplay->targetLayout(0, 0, 
+        _pDisplay->targetLayout(
             pMcDescr->displayPixelsX, pMcDescr->displayPixelsY,
             pMcDescr->displayCellX, pMcDescr->displayCellY,
             pMcDescr->pixelScaleX, pMcDescr->pixelScaleY,
-            pMcDescr->pFont, pMcDescr->displayForeground, pMcDescr->displayBackground,
-            windowBorderWidth, 8);
+            pMcDescr->pFont, 
+            pMcDescr->displayForeground, pMcDescr->displayBackground);
 
     // Enable machine
     if (getMachine())
@@ -319,6 +317,16 @@ bool McManager::setMachineOpts(const char* mcOpts)
     // Enable
     _pCurMachine->enable(_curMachineSubType);
     return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Display refresh
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void McManager::displayRefresh()
+{
+    if (_pCurMachine)
+       _pCurMachine->displayRefresh(_pDisplay);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

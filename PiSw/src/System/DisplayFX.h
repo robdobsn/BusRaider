@@ -3,31 +3,12 @@
 
 #pragma once
 
+#include "DisplayBase.h"
 #include "wgfxfont.h"
 #include "stdint.h"
 #include "stddef.h"
 
 extern "C" WgfxFont __systemFont;
-
-enum DISPLAY_FX_COLOUR
-{
-	DISPLAY_FX_BLACK,
-	DISPLAY_FX_DARK_RED,
-	DISPLAY_FX_DARK_GREEN,
-	DISPLAY_FX_DARK_YELLOW,
-	DISPLAY_FX_DARK_BLUE,
-	DISPLAY_FX_DARK_PURPLE,
-	DISPLAY_FX_DARK_CYAN,
-	DISPLAY_FX_GRAY,
-	DISPLAY_FX_DARK_GRAY,
-	DISPLAY_FX_RED,
-	DISPLAY_FX_GREEN,
-	DISPLAY_FX_YELLOW,
-	DISPLAY_FX_BLUE,
-	DISPLAY_FX_PURPLE,
-	DISPLAY_FX_CYAN,
-	DISPLAY_FX_WHITE
-};
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Window
@@ -129,6 +110,7 @@ public:
 
     // Screen
     void screenClear();
+    void screenRectClear(int tlx, int tly, int width, int height);
     void screenBackground(DISPLAY_FX_COLOUR colour);
 
     // Window
@@ -139,9 +121,11 @@ public:
                     WgfxFont* pFont, 
                     int foreColour, int backColour, 
                     int borderWidth, int borderColour);
+    void windowClear(int winIdx);
     void windowPut(int winIdx, int col, int row, const char* pStr);
     void windowPut(int winIdx, int col, int row, int ch);
     void windowForeground(int winIdx, DISPLAY_FX_COLOUR colour);
+    void windowSetPixel(int winIdx, int x, int y, int value, DISPLAY_FX_COLOUR colour);
 
     // Console
     void consoleSetWindow(int consoleWinIdx);
@@ -178,7 +162,8 @@ private:
 
     // Get framebuffer
     uint8_t* windowGetPFB(int winIdx, int col, int row);
-    uint8_t* windowGetPFBXY(int x, int y);
+    uint8_t* screenGetPFBXY(int x, int y);
+    uint8_t* windowGetPFBXY(int winIdx, int x, int y);
 
     // Cursor
     void cursorCheck();
@@ -191,6 +176,4 @@ private:
     // Access
     void screenReadCell(int winIdx, int col, int row, uint8_t* pCellBuf);
     void screenWriteCell(int winIdx, int col, int row, uint8_t* pCellBuf);
-
-
 };

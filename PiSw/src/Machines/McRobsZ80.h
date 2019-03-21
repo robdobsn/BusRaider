@@ -34,7 +34,7 @@ public:
     }
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-    virtual void displayRefresh();
+    virtual void displayRefresh(DisplayBase* pDisplay);
 
     // Handle a key press
     virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]);

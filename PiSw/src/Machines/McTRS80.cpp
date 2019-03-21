@@ -3,7 +3,6 @@
 
 #include "McTRS80.h"
 #include "usb_hid_keys.h"
-#include "../System/wgfx.h"
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetState.h"
 #include "../System/rdutils.h"
@@ -68,7 +67,7 @@ void McTRS80::disable()
 // }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-void McTRS80::displayRefresh()
+void McTRS80::displayRefresh(DisplayBase* pDisplay)
 {
     // Read memory of RC2014 at the location of the TRS80 memory mapped screen
     unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
@@ -86,7 +85,8 @@ void McTRS80::displayRefresh()
             int cellIdx = k * cols + i;
             if (!_screenBufferValid || (_screenBuffer[cellIdx] != pScrnBuffer[cellIdx]))
             {
-                wgfx_putc(MC_WINDOW_NUMBER, i, k, pScrnBuffer[cellIdx]);
+                if (pDisplay)
+                    pDisplay->write(i, k, (char)pScrnBuffer[cellIdx]);
                 _screenBuffer[cellIdx] = pScrnBuffer[cellIdx];
             }
         }

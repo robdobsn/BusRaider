@@ -60,6 +60,9 @@ public:
     static const char* getMachineJSON();
     static int getMachineClock();
 
+    // Display updates
+    static void displayRefresh();
+
     // Current machine descriptor table
     static McDescriptorTable* getDescriptorTable();
 

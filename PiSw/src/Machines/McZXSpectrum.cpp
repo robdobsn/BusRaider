@@ -3,7 +3,6 @@
 
 #include "McZXSpectrum.h"
 #include "usb_hid_keys.h"
-#include "../System/wgfx.h"
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetState.h"
 #include "../System/rdutils.h"
@@ -32,7 +31,7 @@ McDescriptorTable McZXSpectrum::_descriptorTable = {
     .displayCellX = 8,
     .displayCellY = 8,
     .pixelScaleX = 4,
-    .pixelScaleY = 3,
+    .pixelScaleY = 4,
     .pFont = &__systemFont,
     .displayForeground = DISPLAY_FX_WHITE,
     .displayBackground = DISPLAY_FX_BLACK,
@@ -72,11 +71,11 @@ void McZXSpectrum::disable()
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-void McZXSpectrum::displayRefresh()
+void McZXSpectrum::displayRefresh(DisplayBase* pDisplay)
 {
     // Colour lookup table
     static const int NUM_SPECTRUM_COLOURS = 16;
-    static int colourLUT[NUM_SPECTRUM_COLOURS] = {
+    static DISPLAY_FX_COLOUR colourLUT[NUM_SPECTRUM_COLOURS] = {
             DISPLAY_FX_BLACK,
             DISPLAY_FX_DARK_BLUE,
             DISPLAY_FX_DARK_RED,
@@ -139,10 +138,11 @@ void McZXSpectrum::displayRefresh()
                     y = ((y & 0x38) >> 3) | ((y & 0x07) << 3) | (y & 0xc0);
                     // Get pixel colour
                     bool pixVal = pScrnBuffer[bufIdx] & pixMask;
-                    int pixColour = colourLUT[((cellColourData & 0x38) >> 3) | ((cellColourData & 0x40) >> 3)];
+                    DISPLAY_FX_COLOUR pixColour = colourLUT[((cellColourData & 0x38) >> 3) | ((cellColourData & 0x40) >> 3)];
                     if (pixVal)
                         pixColour = colourLUT[(cellColourData & 0x07) | ((cellColourData & 0x40) >> 3)]; 
-                    wgfxSetColourPixel(MC_WINDOW_NUMBER, x, y, pixColour);
+                    if (pDisplay)
+                        pDisplay->setPixel(x, y, 1, pixColour);
                     // Bump the pixel mask
                     pixMask = pixMask >> 1;
                 }

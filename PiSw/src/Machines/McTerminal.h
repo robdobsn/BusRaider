@@ -54,7 +54,7 @@ public:
     virtual McDescriptorTable* getDescriptorTable([[maybe_unused]] int subType = -1);
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-    virtual void displayRefresh();
+    virtual void displayRefresh(DisplayBase* pDisplay);
 
     // Handle a key press
     virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]);
@@ -70,7 +70,7 @@ public:
 
 private:
     void clearScreen();
-    void dispChar(uint8_t ch);
+    void dispChar(uint8_t ch, DisplayBase* pDisplay);
     void vscrollBuffer(int rows);
-    void moveAndCheckCurPos(int absX, int absY, int relX, int relY);
+    void moveAndCheckCurPos(int absX, int absY, int relX, int relY, DisplayBase* pDisplay);
 };

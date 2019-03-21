@@ -3,7 +3,6 @@
 
 #include "McTerminal.h"
 #include "usb_hid_keys.h"
-#include "../System/wgfx.h"
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetState.h"
 #include "../System/rdutils.h"
@@ -123,7 +122,7 @@ void McTerminal::disable()
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-void McTerminal::displayRefresh()
+void McTerminal::displayRefresh(DisplayBase* pDisplay)
 {
     // Use this to get keys from host and display
     bool screenChanged = false;
@@ -142,7 +141,7 @@ void McTerminal::displayRefresh()
             for (int i = 0; i < gotChars; i++)
             {
                 // Send to terminal window
-                dispChar(pCharBuf[i]);
+                dispChar(pCharBuf[i], pDisplay);
             }
 
             // Release chars
@@ -161,7 +160,8 @@ void McTerminal::displayRefresh()
                 int cellIdx = k * _termCols + i;
                 if (!_screenBufferValid || (_screenBuffer[cellIdx] != _screenChars[cellIdx]))
                 {
-                    wgfx_putc(MC_WINDOW_NUMBER, i, k, _screenChars[cellIdx]);
+                    if (pDisplay)
+                        pDisplay->write(i, k, _screenChars[cellIdx]);
                     _screenBuffer[cellIdx] = _screenChars[cellIdx];
                 }
             }
@@ -177,11 +177,13 @@ void McTerminal::displayRefresh()
             if (_cursorIsOn)
             {
                 int cellIdx = _curPosY * _termCols + _curPosX;
-                wgfx_putc(MC_WINDOW_NUMBER, _curPosX, _curPosY, _screenChars[cellIdx]);
+                if (pDisplay)
+                    pDisplay->write(_curPosX, _curPosY, _screenChars[cellIdx]);
             }
             else
             {
-                wgfx_putc(MC_WINDOW_NUMBER, _curPosX, _curPosY, _cursorChar);
+                if (pDisplay)
+                    pDisplay->write(_curPosX, _curPosY, _cursorChar);
             }
             _cursorIsOn = !_cursorIsOn;
             _cursorBlinkLastUs = micros();
@@ -304,13 +306,13 @@ void McTerminal::clearScreen()
     _curPosY = 0;
 }
 
-void McTerminal::dispChar(uint8_t ch)
+void McTerminal::dispChar(uint8_t ch, DisplayBase* pDisplay)
 {
     switch(ch)
     {
         case 0x0d:
         {
-            moveAndCheckCurPos(-1,-1,0,1);
+            moveAndCheckCurPos(-1, -1, 0, 1, pDisplay);
             break;
         }
         case 0x0a:
@@ -320,7 +322,7 @@ void McTerminal::dispChar(uint8_t ch)
         }
         case 0x08:
         {
-            moveAndCheckCurPos(-1,-1,-1,0);
+            moveAndCheckCurPos(-1, -1, -1, 0, pDisplay);
             _screenChars[_curPosY * _termCols + _curPosX] = ' ';
             break;
         }
@@ -339,7 +341,7 @@ void McTerminal::dispChar(uint8_t ch)
             _screenChars[_curPosY * _termCols + _curPosX] = ch;
 
             // Move cursor
-            moveAndCheckCurPos(-1, -1, 1, 0);
+            moveAndCheckCurPos(-1, -1, 1, 0, pDisplay);
             break;
         }
     }
@@ -366,12 +368,13 @@ void McTerminal::vscrollBuffer(int rows)
     _screenBufferValid = false;
 }
 
-void McTerminal::moveAndCheckCurPos(int absX, int absY, int relX, int relY)
+void McTerminal::moveAndCheckCurPos(int absX, int absY, int relX, int relY, DisplayBase* pDisplay)
 {
     if (_cursorIsOn)
     {
         int cellIdx = _curPosY * _termCols + _curPosX;
-        wgfx_putc(MC_WINDOW_NUMBER, _curPosX, _curPosY, _screenChars[cellIdx]);
+        if (pDisplay)
+            pDisplay->write(_curPosX, _curPosY, _screenChars[cellIdx]);
     }
     // LogWrite("Th", LOG_DEBUG, "%d %d %d %d cur %d %d", absX, absY, relX, relY, _curPosX, _curPosY);
     if (absX >= 0)
