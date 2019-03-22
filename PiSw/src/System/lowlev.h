@@ -56,6 +56,9 @@ extern void disable_mmu_and_cache();
 #define lowlev_mem_2uncached(X) ((((unsigned int)X) & 0x0FFFFFFF) | 0x40000000)
 #define lowlev_mem_2cached(X) ((((unsigned int)X) & 0x0FFFFFFF))
 
+// Fast memcpy
+void *memcopyfast(void *pDest, const void *pSrc, uint32_t nLength);
+
 #ifdef __cplusplus
 }
 #endif

@@ -163,12 +163,38 @@ void DisplayFX::windowSetPixel(int winIdx, int x, int y, int value, DISPLAY_FX_C
         fgColour = colour;
     int bgColour = ((_windows[winIdx].windowBackground != -1) ?
                     _windows[winIdx].windowBackground : _screenBackground);
-    for (int iy = 0; iy < _windows[winIdx].yPixScale; iy++)
+    uint8_t pixColour = value ? fgColour : bgColour;
+    if ((_windows[winIdx].xPixScale & 0x03) == 0)
     {
-        unsigned char* pBufL = pBuf + iy * _pitch;
-        for (int ix = 0; ix < _windows[winIdx].xPixScale; ix++)
-            *pBufL++ = value ? fgColour : bgColour;
+        uint32_t pixColourL = (pixColour << 24) + (pixColour << 16) + (pixColour << 8) + pixColour;
+        for (int iy = 0; iy < _windows[winIdx].yPixScale; iy++)
+        {
+            uint32_t* pBufL = (uint32_t*) (pBuf + iy * _pitch);
+            for (int ix = 0; ix < _windows[winIdx].xPixScale/4; ix++)
+                *pBufL++ = pixColourL;
+        }
     }
+    else
+    {
+        for (int iy = 0; iy < _windows[winIdx].yPixScale; iy++)
+        {
+            unsigned char* pBufL = pBuf + iy * _pitch;
+            for (int ix = 0; ix < _windows[winIdx].xPixScale; ix++)
+                *pBufL++ = pixColour;
+        }
+    }
+}
+
+void DisplayFX::getFramebuffer(int winIdx, FrameBufferInfo& frameBufferInfo)
+{
+    frameBufferInfo.pFB = _pfb;
+    frameBufferInfo.pixelsWidth = _screenWidth;
+    frameBufferInfo.pixelsHeight = _screenWidth;
+    frameBufferInfo.pitch = _pitch;
+    frameBufferInfo.pFBWindow = windowGetPFBXY(winIdx, 0, 0);
+    frameBufferInfo.pixelsWidthWindow = _windows[winIdx].width;
+    frameBufferInfo.pixelsHeightWindow = _windows[winIdx].height;
+    frameBufferInfo.bytesPerPixel = 1;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -460,7 +486,7 @@ void DisplayFX::windowScroll(int winIdx, int rows)
         int pixDown = _windows[winIdx].rows() * _windows[winIdx].cellHeight * _windows[winIdx].yPixScale;
         for (int i = 0; i < pixDown; i++)
         {
-            memcpy(pDest, pSrc, bytesAcross);
+            memcopyfast(pDest, pSrc, bytesAcross);
             pDest += _pitch;
             pSrc += _pitch;
         }

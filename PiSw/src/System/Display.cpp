@@ -22,7 +22,7 @@ static const int DISPLAY_HEIGHT = 900;
 static const int DISPLAY_TARGET_WIDTH = 1024;
 static const int DISPLAY_TARGET_HEIGHT = 768;
 
-static const int DISPLAY_TARGET_BORDER = 5;
+static const int DISPLAY_TARGET_BORDER = 8;
 static const int DISPLAY_STATUS_LINES = 7;
 static const int DISPLAY_STATUS_MARGIN = 10;
 static const int DISPLAY_CONSOLE_MARGIN = 10;
@@ -175,6 +175,11 @@ void Display::write(int col, int row, int ch)
 void Display::setPixel(int x, int y, int value, DISPLAY_FX_COLOUR colour)
 {
     windowSetPixel(DISPLAY_WINDOW_TARGET, x, y, value, colour);
+}
+
+void Display::getFramebuffer(FrameBufferInfo& frameBufferInfo)
+{
+    _displayFX.getFramebuffer(DISPLAY_WINDOW_TARGET, frameBufferInfo);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

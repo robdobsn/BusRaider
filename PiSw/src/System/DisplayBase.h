@@ -3,6 +3,9 @@
 
 #pragma once
 
+#include "stddef.h"
+#include "stdint.h"
+
 enum DISPLAY_FX_COLOUR
 {
     DISPLAY_FX_DEFAULT = -1,
@@ -24,6 +27,19 @@ enum DISPLAY_FX_COLOUR
 	DISPLAY_FX_WHITE
 };
 
+class FrameBufferInfo
+{
+public:
+    uint8_t* pFB;
+    int pixelsWidth;
+    int pixelsHeight;
+    int pitch;
+    uint8_t* pFBWindow;
+    int pixelsWidthWindow;
+    int pixelsHeightWindow;
+    int bytesPerPixel;
+};
+
 class DisplayBase
 {
 public:
@@ -31,4 +47,6 @@ public:
     virtual void write(int col, int row, const char* pStr) = 0;
     virtual void write(int col, int row, int ch) = 0;
     virtual void setPixel(int x, int y, int value, DISPLAY_FX_COLOUR colour) = 0;
+    virtual void getFramebuffer(FrameBufferInfo& frameBufferInfo) = 0;
+
 };

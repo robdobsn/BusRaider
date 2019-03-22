@@ -10,8 +10,8 @@ class McZXSpectrum : public McBase
 private:
     static constexpr uint32_t ZXSPECTRUM_DISP_RAM_ADDR = 0x4000;
     static constexpr uint32_t ZXSPECTRUM_DISP_RAM_SIZE = 0x1b00;
-    uint8_t _screenBuffer[ZXSPECTRUM_DISP_RAM_SIZE];
-    bool _screenBufferValid;
+    uint8_t _screenCache[ZXSPECTRUM_DISP_RAM_SIZE];
+    bool _screenCacheValid;
     static constexpr uint32_t ZXSPECTRUM_PIXEL_RAM_SIZE = 0x1800;
     static constexpr uint32_t ZXSPECTRUM_COLOUR_OFFSET = 0x1800;
     static constexpr uint32_t ZXSPECTRUM_COLOUR_DATA_SIZE = 0x300;

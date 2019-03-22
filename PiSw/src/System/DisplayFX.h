@@ -138,6 +138,9 @@ public:
     void drawHorizontal(int x, int y, int len, int colour);
     void drawVertical(int x, int y, int len, int colour);
 
+    // RAW access
+    void getFramebuffer(int winIdx, FrameBufferInfo& frameBufferInfo);
+
 private:
 
     // Windows

@@ -64,6 +64,9 @@ public:
     void write(int col, int row, int ch);
     void setPixel(int x, int y, int value, DISPLAY_FX_COLOUR colour);
 
+    // RAW access
+    void getFramebuffer(FrameBufferInfo& frameBufferInfo);
+
 private:
 
     // DisplayFX
