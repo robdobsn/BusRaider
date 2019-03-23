@@ -100,7 +100,8 @@ fiq_handler_:
     subs pc,lr,#4
 
 // In exceptions such as bad instruction
+.global blinkLEDForever
 .global hang
 hang: 
-    b hang
+    b blinkLEDForever
 

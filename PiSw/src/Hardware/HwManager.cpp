@@ -106,7 +106,8 @@ void HwManager::pageOutForEmulation(bool pageOut)
     // Iterate machines
     for (int i = 0; i < _numHardware; i++)
     {
-        _pHw[i]->pageOutForEmulation(pageOut);
+        if (_pHw[i])
+            _pHw[i]->pageOutForEmulation(pageOut);
     }
 }
 
@@ -116,7 +117,8 @@ void HwManager::pageOutForInjection(bool pageOut)
     // Iterate machines
     for (int i = 0; i < _numHardware; i++)
     {
-        _pHw[i]->pageOutForInjection(pageOut);
+        if (_pHw[i])
+            _pHw[i]->pageOutForInjection(pageOut);
     }
 }
 

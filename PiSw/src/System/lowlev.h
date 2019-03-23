@@ -31,6 +31,7 @@ typedef void* lowlev_blockCopyExecRelocatableFnT(uint8_t* pDest, uint8_t* pSrc, 
 extern unsigned int lowlev_blockCopyExecRelocatableLen;
 
 extern void blinkCE0();
+extern void blinkLEDForever();
 
 extern void disable_mmu_and_cache();
 
