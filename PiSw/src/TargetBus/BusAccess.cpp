@@ -13,9 +13,6 @@
 // Uncomment the following line to use SPI0 CE0 of the Pi as a debug pin
 // #define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
 
-// Comment out this line to disable WAIT state generation altogether
-#define BR_ENABLE_WAIT_AND_FIQ 1
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Variables
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -178,7 +175,8 @@ int BusAccess::controlBusAcknowledged()
 void BusAccess::controlTake()
 {
     // Disable interrupts
-    waitIntDisable();
+    // TODO - required??
+    // waitIntDisable();
 
     // Bus is under BusRaider control
     _busIsUnderControl = true;
@@ -251,11 +249,13 @@ void BusAccess::controlRelease(bool resetTargetOnRelease, bool addWaitOnInstruct
     if (addWaitOnInstruction)
         waitOnInstruction(true);
 
+
     // Check for reset
     if (resetTargetOnRelease)
     {
         // Disable wait interrupts
-        waitIntDisable();
+        // TODO ?? required
+        // waitIntDisable();
 
         // Reset by taking reset_bar low and then high
         muxSet(BR_MUX_RESET_Z80_BAR_LOW);
@@ -271,9 +271,11 @@ void BusAccess::controlRelease(bool resetTargetOnRelease, bool addWaitOnInstruct
     }
 
     // Re-enable interrupts if required
-    if (_waitIntEnabled)
-        waitIntEnable();    
+    // TODO ??
+    // if (_waitIntEnabled)
+    //     waitIntEnable();    
 
+    // Clear mux to release reset, etc
     muxClear();
 
     // Bus no longer under BusRaider control
@@ -651,8 +653,6 @@ void BusAccess::waitSetup(bool enWaitOnIORQ, bool enWaitOnMREQ)
     _waitStateEnMaskDefault = _waitStateEnMask;
     WR32(ARM_GPIO_GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
 
-#ifdef BR_ENABLE_WAIT_AND_FIQ
-
     // Set wait-state generation
     WR32(ARM_GPIO_GPSET0, _waitStateEnMask);
 
@@ -679,8 +679,6 @@ void BusAccess::waitSetup(bool enWaitOnIORQ, bool enWaitOnMREQ)
     // Enable Fast Interrupts
     _waitIntEnabled = true;
     waitIntEnable();
-
-#endif  
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -695,6 +693,19 @@ void BusAccess::waitStateISR(void* pData)
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
 #endif
+    ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_F);
+
+    // Check if we are in a BUSAK
+    // TODO ?? needed
+    if ((RD32(ARM_GPIO_GPLEV0) & (1 << BR_BUSACK_BAR)) == 0)
+    {
+        // Clear the interrupt and return
+        clearWaitDetected();
+        clearWaitFF();
+            ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_C);
+
+        return;
+    }
 
     // pData unused
     pData = pData;

@@ -274,7 +274,7 @@ void statusDisplayUpdate()
             int cnt = BusAccess::isrAssertGetCount(i);
             if (cnt > 0)
             {
-                ee_sprintf(refreshStr, "[%d]=%d,", i, cnt);
+                ee_sprintf(refreshStr, "[%c]=%d,", i+'A'-1, cnt);
                 strlcat(statusStr, refreshStr, MAX_STATUS_STR_LEN);
             }
         }

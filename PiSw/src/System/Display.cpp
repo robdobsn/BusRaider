@@ -97,7 +97,7 @@ void Display::statusPut(int statusElement, int statusType, const char* pStr)
         { 0,                        4 }, // Bus access
         { DISPLAY_STATUS_INDENT-2,  4 }, // Refresh
         { 0,                        5 }, // Keyboard
-        { DISPLAY_STATUS_INDENT,    5 }, // Asserts
+        { 30,                       5 }, // Asserts
     };
     int x = fieldPositions[statusElement].x;
     int y = fieldPositions[statusElement].y;

@@ -91,13 +91,13 @@ typedef enum {
 #define ISR_ASSERT(code) BusAccess::isrAssert(code)
 #define ISR_VALUE(code, val) BusAccess::isrValue(code, val)
 #define ISR_ASSERT_CODE_NONE 0
-#define ISR_ASSERT_CODE_UNPAGE_NOT_M1 1
-#define ISR_ASSERT_CODE_DEBUG_A 2
-#define ISR_ASSERT_CODE_DEBUG_B 3
-#define ISR_ASSERT_CODE_DEBUG_C 4
-#define ISR_ASSERT_CODE_DEBUG_D 5
-#define ISR_ASSERT_CODE_DEBUG_E 6
-#define ISR_ASSERT_CODE_DEBUG_F 7
+#define ISR_ASSERT_CODE_DEBUG_A 1
+#define ISR_ASSERT_CODE_DEBUG_B 2
+#define ISR_ASSERT_CODE_DEBUG_C 3
+#define ISR_ASSERT_CODE_DEBUG_D 4
+#define ISR_ASSERT_CODE_DEBUG_E 5
+#define ISR_ASSERT_CODE_DEBUG_F 6
+#define ISR_ASSERT_CODE_DEBUG_G 7
 #define ISR_ASSERT_NUM_CODES 8
 
 // Width of a reset pulse

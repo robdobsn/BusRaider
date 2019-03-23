@@ -12,6 +12,10 @@
 #include <stddef.h>
 #include <string.h>
 
+
+// TODO
+#include "../TargetBus/BusAccess.h"
+
 // Statics
 static const char FromUartMaxi[] = "UartMaxi";
 
@@ -247,16 +251,19 @@ void UartMaxi::isr()
 		uint32_t nDR = RD32(ARM_UART0_DR);
 		if (nDR & UART0_DR_BE_MASK)
 		{
+            ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_D);
 			if (_nRxStatus == UART_ERROR_NONE)
 				_nRxStatus = UART_ERROR_BREAK;
 		}
 		else if (nDR & UART0_DR_OE_MASK)
 		{
+            ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_E);
 			if (_nRxStatus == UART_ERROR_NONE)
 				_nRxStatus = UART_ERROR_OVERRUN;
 		}
 		else if (nDR & UART0_DR_FE_MASK)
 		{
+            ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_F);
 			if (_nRxStatus == UART_ERROR_NONE)
 				_nRxStatus = UART_ERROR_FRAMING;
 		}

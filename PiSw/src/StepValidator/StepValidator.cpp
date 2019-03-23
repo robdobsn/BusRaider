@@ -47,10 +47,13 @@ void StepValidator::start()
     // Setup test
     testCase1();
 
-    // Deactivate wait interrupts so we don't get a false start
     _isActive = false;
-    BusAccess::waitRestoreDefaults();
-    BusAccess::waitIntDisable();
+
+
+    // Deactivate wait interrupts so we don't get a false start
+    // TODO - needed??? - causes failure to start interrupts
+    // BusAccess::waitRestoreDefaults();
+    // BusAccess::waitIntDisable();
 
     // Reset the emulated CPU
     Z80RESET(&_cpu_z80);
@@ -82,8 +85,7 @@ void StepValidator::stop()
 
 uint32_t StepValidator::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
         [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
-{
-
+{    
     if (!_isActive)
         return retVal;
 
