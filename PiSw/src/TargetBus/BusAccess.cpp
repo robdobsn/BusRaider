@@ -693,7 +693,6 @@ void BusAccess::waitStateISR(void* pData)
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
 #endif
-    ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_F);
 
     // Check if we are in a BUSAK
     // TODO ?? needed
@@ -702,7 +701,9 @@ void BusAccess::waitStateISR(void* pData)
         // Clear the interrupt and return
         clearWaitDetected();
         clearWaitFF();
-            ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_C);
+
+        // TODO
+        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_B);
 
         return;
     }
@@ -774,13 +775,6 @@ void BusAccess::waitStateISR(void* pData)
     // Get low address value
     addr |= pibGetValue() & 0xff;
 
-    // TODO
-                    // digitalWrite(8,1);
-                    // microsDelay(1);
-                    // digitalWrite(8,0);
-                    // microsDelay(1);
-
- 
     // Clear the mux to deactivate output enables
     muxClear();
 
@@ -825,10 +819,6 @@ void BusAccess::waitStateISR(void* pData)
         muxClear();
         lowlev_cycleDelay(CYCLES_DELAY_FOR_TARGET_READ);
     }
-
-#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, m1Asserted);
-#endif
 
     // Check if we should hold the target processor at this point
     if ((retVal & BR_MEM_ACCESS_HOLD) != 0)
