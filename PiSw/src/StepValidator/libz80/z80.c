@@ -25,7 +25,7 @@
 
 #include "z80.h"
 #include "string.h"
-#include "../../System/ee_printf.h"
+#include "../../System/ee_sprintf.h"
 
 #define BR (ctx->R1.br)
 #define WR (ctx->R1.wr)
@@ -597,16 +597,18 @@ static byte doSR (Z80Context* ctx, byte val, int isArith)
 static void doPush (Z80Context* ctx, ushort val)
 {
 	WR.SP--;
+	write8(ctx, WR.SP, val >> 8);
 	WR.SP--;
-	write16(ctx, WR.SP, val);
+	write8(ctx, WR.SP, val & 0xff);
 }
 
 
 static ushort doPop (Z80Context* ctx)
 {
 	ushort val;
-	val = read16(ctx, WR.SP);
+	val = read8(ctx, WR.SP);
 	WR.SP++;
+	val = val | (read8(ctx, WR.SP) << 8);
 	WR.SP++;
     return val;
 }
