@@ -6,7 +6,7 @@
 
 #include <string.h>
 #include <ctype.h>
-#include "../../System/ee_printf.h"
+#include "../../System/ee_sprintf.h"
 
 #include "mdZ80.h"
 

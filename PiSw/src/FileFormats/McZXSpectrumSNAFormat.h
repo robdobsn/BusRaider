@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 #include <stdint.h>
 #include <string.h>
 #include "McFormatBase.h"

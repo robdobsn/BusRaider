@@ -6,8 +6,8 @@
 #include "../TargetBus/TargetState.h"
 #include "../TargetBus/BusAccess.h"
 #include "../System/rdutils.h"
+#include "../System/ee_sprintf.h"
 #include "../System/piwiring.h"
-#include "../Machines/McManager.h"
 
 // Module name
 static const char FromHwManager[] = "HwManager";
@@ -22,9 +22,6 @@ DebugIOPortAccess HwManager::_debugIOPortBuf[];
 RingBufferPosn HwManager::_debugIOPortPosn(DEBUG_MAX_IO_PORT_ACCESSES);
 #endif
 
-CommandHandler* HwManager::_pCommandHandler = NULL;
-Display* HwManager::_pDisplay = NULL;
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Hardware
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -37,11 +34,8 @@ int HwManager::_numHardware = 0;
 // Init
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void HwManager::init(CommandHandler* pCommandHandler, Display* pDisplay)
+void HwManager::init()
 {
-    // Command handler & display
-    _pCommandHandler = pCommandHandler;
-    _pDisplay = pDisplay;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -90,7 +84,7 @@ void HwManager::add(HwBase* pHw)
 // Reset
 void HwManager::reset()
 {
-    // Iterate machines
+    // Iterate hardware
     for (int i = 0; i < _numHardware; i++)
     {
         _pHw[i]->reset();
@@ -103,7 +97,7 @@ void HwManager::pageOutForEmulation(bool pageOut)
     // Debug
     LogWrite(FromHwManager, LOG_DEBUG, "pageOutForEmulation %s", pageOut ? "Y" : "N");
 
-    // Iterate machines
+    // Iterate hardware
     for (int i = 0; i < _numHardware; i++)
     {
         if (_pHw[i])
@@ -114,7 +108,7 @@ void HwManager::pageOutForEmulation(bool pageOut)
 // Page out RAM/ROM for opcode injection
 void HwManager::pageOutForInjection(bool pageOut)
 {
-    // Iterate machines
+    // Iterate hardware
     for (int i = 0; i < _numHardware; i++)
     {
         if (_pHw[i])
@@ -125,7 +119,7 @@ void HwManager::pageOutForInjection(bool pageOut)
 // Check if paging requires bus access
 bool HwManager::pagingRequiresBusAccess()
 {
-    // Iterate machines
+    // Iterate hardware
     for (int i = 0; i < _numHardware; i++)
     {
         if (pagingRequiresBusAccess())
@@ -141,7 +135,7 @@ bool HwManager::pagingRequiresBusAccess()
 // Interrupt handler for MREQ/IORQ WAIT
 uint32_t HwManager::handleWaitInterrupt(uint32_t addr, uint32_t data, uint32_t flags, uint32_t retVal)
 {
-    // Iterate machines
+    // Iterate hardware
     for (int i = 0; i < _numHardware; i++)
         retVal = _pHw[i]->handleMemOrIOReq(addr, data, flags, retVal);
 

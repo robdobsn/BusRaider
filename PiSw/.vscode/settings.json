@@ -6,6 +6,8 @@
         "xmemory0": "cpp",
         "vector": "cpp",
         "xstring": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "stdarg.h": "c",
+        "ee_sprintf.h": "c"
     }
 }

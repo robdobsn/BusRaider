@@ -3,7 +3,7 @@
 
 #include "../System/nmalloc.h"
 #include "jsmnR.h"
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 #include <string.h>
 
 bool jsonGetValueForKey(const char* srchKey, const char* jsonStr, char* pOutStr, int outStrMaxLen)

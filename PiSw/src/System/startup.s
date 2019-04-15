@@ -47,19 +47,20 @@ _reset_:
     // Set interrupt mode stack pointer
     mov r0,#0xD2
     msr cpsr_c,r0
-    ldr sp, =0xBF00000
+    ldr sp, =0x17F00000
 
     // (PSR_FIQ_MODE|PSR_FIQ_DIS|PSR_IRQ_DIS)
     // Set FIQ mode stack pointer
     mov r0,#0xD1
     msr cpsr_c,r0
-    ldr sp, =0xBE00000
+    ldr sp, =0x17E00000
 
     // Back in supervisor mode set the stack pointer
     // (PSR_SVC_MODE|PSR_FIQ_DIS|PSR_IRQ_DIS)
+    // End of physical memory 0x1FFFFFFF
     mov r0,#0xD3
     msr cpsr_c,r0
-    ldr sp, =0xBD00000
+    ldr sp, =0x17E00000
 
 // https://www.raspberrypi.org/forums/viewtopic.php?t=16851
 // To enable L1 Cache on the ARMv6 CPU and enable branch prediction we set bits 11 and 12 in the Control Registor of CP15.

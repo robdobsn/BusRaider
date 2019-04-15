@@ -7,7 +7,7 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
-#include "../System/ee_printf.h"
+#include "../System/ee_sprintf.h"
 
 class Z80Registers
 {

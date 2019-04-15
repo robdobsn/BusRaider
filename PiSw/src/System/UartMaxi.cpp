@@ -2,13 +2,13 @@
 // Rob Dobson 2018
 
 #include "UartMaxi.h"
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 #include "BCM2835.h"
 #include "CInterrupts.h"
 #include "MachineInfo.h"
 #include "nmalloc.h"
 #include "PiWiring.h"
-#include "LowLib.h"
+#include "lowlib.h"
 #include <stddef.h>
 #include <string.h>
 
@@ -26,12 +26,17 @@ static const char FromUartMaxi[] = "UartMaxi";
 #include "piwiring.h"
 #endif
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Construct/Destruct
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 UartMaxi::UartMaxi() :
     _rxBufferPosn(0), _txBufferPosn(0)
 {
     _pRxBuffer = NULL;
     _pTxBuffer = NULL;
     _nRxStatus = UART_ERROR_NONE;
+    resetStatusCounts();
 }
 
 UartMaxi::~UartMaxi()
@@ -52,10 +57,13 @@ UartMaxi::~UartMaxi()
         nmalloc_free((void**)&_pTxBuffer);
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Setup
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 bool UartMaxi::setup(unsigned int baudRate, int rxBufSize, int txBufSize)
 {
         // Baud rate calculation
-    // uint32_t FUARTCLK = ARM_UART_CLOCK;
     uint32_t FUARTCLK_MAX = CMachineInfo::Get ()->GetMaxClockRate (CLOCK_ID_UART);
     CMachineInfo::Get ()->SetClockRate (CLOCK_ID_UART, 16000000, true);
     uint32_t FUARTCLK = CMachineInfo::Get ()->GetClockRate (CLOCK_ID_UART);
@@ -105,13 +113,6 @@ bool UartMaxi::setup(unsigned int baudRate, int rxBufSize, int txBufSize)
     pinMode(15, PINMODE_ALT0);
     pinMode(14, PINMODE_ALT0);
 
-    // uint32_t ra = RD32(ARM_GPIO_GPFSEL1);
-    // ra &= ~(7 << 12); //gpio14
-    // ra |= 4 << 12; //alt0
-    // ra &= ~(7 << 15); //gpio15
-    // ra |= 4 << 15; //alt0
-    // WR32(ARM_GPIO_GPFSEL1, ra);
-
     // Connect interrupt
     CInterrupts::connectIRQ(ARM_IRQ_UART, isrStatic, this);
 
@@ -139,42 +140,37 @@ bool UartMaxi::setup(unsigned int baudRate, int rxBufSize, int txBufSize)
     digitalWrite(DEBUG_PI_SPI0_CE0, 0);
 #endif
 
+    // Clear status
+    resetStatusCounts();
+    _nRxStatus = UART_ERROR_NONE;
     return true;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Clear
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void UartMaxi::clear()
 {
     _rxBufferPosn.clear();
+    resetStatusCounts();
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Write
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int UartMaxi::writeBase(unsigned int c)
 {
-    if ((!_pTxBuffer) || (!_txBufferPosn.canPut()))
+    bool canPut = _txBufferPosn.canPut();
+    if ((!_pTxBuffer) || (!canPut))
+    {
+        _txBufferFullCount++;
         return 0;
-
+    }
     _pTxBuffer[_txBufferPosn._putPos] = c;
     _txBufferPosn.hasPut();
     return 1;
-}
-
-void UartMaxi::txPumpPrime()
-{
-    // Handle situation where tx has been idle / FIFO not full
-    while(_txBufferPosn.canGet() && _pTxBuffer)
-    {
-        PeripheralEntry();
-        if ((RD32(ARM_UART0_FR) & UART0_FR_TXFF_MASK) == 0)
-        {
-            WR32(ARM_UART0_DR, _pTxBuffer[_txBufferPosn.posToGet()]);
-            _txBufferPosn.hasGot();
-        }
-        else
-        {
-            WR32(ARM_UART0_IMSC, RD32(ARM_UART0_IMSC) | UART0_INT_TX);
-            break;
-        }
-        PeripheralExit();
-    }
 }
 
 int UartMaxi::write(unsigned int c)
@@ -202,6 +198,40 @@ void UartMaxi::writeStr(const char* data)
     write(data, strlen(data));
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// TX Priming
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void UartMaxi::txPumpPrime()
+{
+    lowlev_disable_irq();
+    // Handle situation where tx has been idle / FIFO not full
+    while(_txBufferPosn.canGet() && _pTxBuffer)
+    {
+        PeripheralEntry();
+        // Check TX FIFO  
+        if ((RD32(ARM_UART0_FR) & UART0_FR_TXFF_MASK) == 0)
+        {
+            // Fifo is not full - add data from buffer to FIFO
+            uint8_t val = _pTxBuffer[_txBufferPosn.posToGet()];
+            _txBufferPosn.hasGot();
+            WR32(ARM_UART0_DR, val);
+        }
+        else
+        {
+            // FIFO is full - enable interrupts
+            WR32(ARM_UART0_IMSC, RD32(ARM_UART0_IMSC) | UART0_INT_TX);
+            break;
+        }
+        PeripheralExit();
+    }
+    lowlev_enable_irq();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Read
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 int UartMaxi::read()
 {
     if ((!_pRxBuffer) || (!_rxBufferPosn.canGet()))
@@ -210,6 +240,10 @@ int UartMaxi::read()
     _rxBufferPosn.hasGot();
     return ch;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Poll/Peek/Available
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool UartMaxi::poll()
 {
@@ -227,6 +261,10 @@ int UartMaxi::available()
 {
     return _rxBufferPosn.count();
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// ISR
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void UartMaxi::isrStatic(void* pParam)
 {
@@ -246,28 +284,34 @@ void UartMaxi::isr()
 	// acknowledge pending interrupts
 	WR32(ARM_UART0_ICR, RD32(ARM_UART0_MIS));
 
+    // Handle received chars
 	while (!(RD32(ARM_UART0_FR) & UART0_FR_RXFE_MASK))
 	{
+        // Get rx data and flags
 		uint32_t nDR = RD32(ARM_UART0_DR);
 		if (nDR & UART0_DR_BE_MASK)
 		{
-            ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_D);
+            // Check for Serial BREAK  
+            _rxBreakCount++;
 			if (_nRxStatus == UART_ERROR_NONE)
 				_nRxStatus = UART_ERROR_BREAK;
 		}
 		else if (nDR & UART0_DR_OE_MASK)
 		{
-            ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_E);
+            // Check for overrun error
+            _rxOverrunErrCount++;
 			if (_nRxStatus == UART_ERROR_NONE)
 				_nRxStatus = UART_ERROR_OVERRUN;
 		}
 		else if (nDR & UART0_DR_FE_MASK)
 		{
-            ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_F);
+            // Check for framing error
+            _rxFramingErrCount++;
 			if (_nRxStatus == UART_ERROR_NONE)
 				_nRxStatus = UART_ERROR_FRAMING;
 		}
 
+        // Store in rx buffer
     	if (_rxBufferPosn.canPut() && _pRxBuffer)
 		{
 			_pRxBuffer[_rxBufferPosn.posToPut()] = nDR & 0xFF;
@@ -275,20 +319,26 @@ void UartMaxi::isr()
 		}
 		else
 		{
+            // Record buffer full error
+            _rxBufferFullCount++;
 			if (_nRxStatus == UART_ERROR_NONE)
 				_nRxStatus = UART_ERROR_FULL;
 		}
 	}
 
+    // Check the tx fifo 
 	while (!(RD32(ARM_UART0_FR) & UART0_FR_TXFF_MASK))
 	{
+        // FIFO is not full
 		if (_txBufferPosn.canGet() && _pTxBuffer)
 		{
+            // Tx buffer has some chars to tx so add one to the FIFO
 			WR32(ARM_UART0_DR, _pTxBuffer[_txBufferPosn.posToGet()]);
 			_txBufferPosn.hasGot();
 		}
 		else
 		{
+            // Nothing more in the buffer to tx so disable the TX ISR
 			WR32(ARM_UART0_IMSC, RD32(ARM_UART0_IMSC) & ~UART0_INT_TX);
 			break;
 		}
@@ -300,5 +350,4 @@ void UartMaxi::isr()
 #endif
 
     PeripheralExit();
-
 }

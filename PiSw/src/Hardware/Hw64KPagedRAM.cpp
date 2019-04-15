@@ -6,8 +6,7 @@
 #include "../TargetBus/TargetState.h"
 #include "../System/rdutils.h"
 #include "../System/piwiring.h"
-#include "../System/ee_printf.h"
-#include "../TargetBus/TargetDebug.h"
+#include "../System/logging.h"
 #include <stdlib.h>
 #include <string.h>
 

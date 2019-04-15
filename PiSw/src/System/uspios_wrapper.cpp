@@ -1,5 +1,5 @@
 #include "../../uspi/include/uspios.h"
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 #include "CInterrupts.h"
 #include "nmalloc.h"
 #include "raspihwconfig.h"
@@ -72,7 +72,7 @@ int GetMACAddress(unsigned char Buffer[6]) // "get board MAC address"
 
 void uspi_assertion_failed(const char* pExpr, const char* pFile, unsigned nLine)
 {
-    ee_printf("ASSERTION FAILED: %s, in %s (Line %d)\n", pExpr, pFile, nLine);
+    LogPrintf("ASSERTION FAILED: %s, in %s (Line %d)\n", pExpr, pFile, nLine);
 
     while (1)
         microsDelay(1000000);
@@ -80,8 +80,8 @@ void uspi_assertion_failed(const char* pExpr, const char* pFile, unsigned nLine)
 
 void DebugHexdump(const void* pBuffer, unsigned nBufLen, const char* pSource /* = 0 */)
 {
-    ee_printf("Memory dump of %s:\n", pSource);
-    ee_dump_mem((unsigned char*)pBuffer, (unsigned char*)(pBuffer) + nBufLen);
+    LogPrintf("Memory dump of %s:\n", pSource);
+    LogDumpMemory((unsigned char*)pBuffer, (unsigned char*)(pBuffer) + nBufLen);
 }
 
 #ifdef __cplusplus

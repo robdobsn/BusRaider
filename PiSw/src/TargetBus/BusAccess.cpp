@@ -4,7 +4,6 @@
 #include "BusAccess.h"
 #include "../System/piwiring.h"
 #include "../System/CInterrupts.h"
-#include "../System/ee_printf.h"
 #include "../System/lowlev.h"
 #include "../System/lowlib.h"
 #include "../System/BCM2835.h"
@@ -248,7 +247,6 @@ void BusAccess::controlRelease(bool resetTargetOnRelease, bool addWaitOnInstruct
     // Wait on instruction (MREQ) if required
     if (addWaitOnInstruction)
         waitOnInstruction(true);
-
 
     // Check for reset
     if (resetTargetOnRelease)
@@ -801,7 +799,7 @@ void BusAccess::waitStateISR(void* pData)
     // Send this to anything listening
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
     if (_pBusAccessCallback)
-        retVal = _pBusAccessCallback(addr, dataBusVals, ctrlBusVals);
+        _pBusAccessCallback(addr, dataBusVals, ctrlBusVals, retVal);
 
     // If Z80 is reading from the data bus (inc reading an ISR vector)
     // and result is valid then put the returned data onto the bus

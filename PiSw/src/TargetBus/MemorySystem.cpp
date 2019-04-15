@@ -4,9 +4,8 @@
 #include "MemorySystem.h"
 #include <string.h>
 #include <stdlib.h>
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 #include "../System/lowlib.h"
-#include "../System/rdutils.h"
 
 // Module name
 static const char FromMemorySystem[] = "MemorySystem";
@@ -86,7 +85,7 @@ bool MemorySystem::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len)
 {
     // if ((!_pTargetMachine) || (!_pTargetMachine->getDescriptorTable()->emulatedRAM))
     // {
-    //     LogWrite(FromTargetDebug, LOG_DEBUG, "blockRead: Not in single step or emulated RAM %04x %d", addr, len);
+    //     LogWrite(FromMemorySystem, LOG_DEBUG, "blockRead: Not in single step or emulated RAM %04x %d", addr, len);
     //     return false;
     // }
     int copyLen = len;

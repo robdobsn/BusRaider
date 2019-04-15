@@ -3,11 +3,10 @@
 
 #pragma once
 
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 #include <string.h> 
 #include "../System/RingBufferPosn.h"
 #include "../CommandInterface/CommandHandler.h"
-#include "../System/Display.h"
 #include "HwBase.h"
 
 // #define DEBUG_IO_ACCESS 1
@@ -31,12 +30,6 @@ private:
     static HwBase* _pHw[MAX_HARDWARE];
     static int _numHardware;
 
-    // Command handler
-    static CommandHandler* _pCommandHandler;
-
-    // Display
-    static Display* _pDisplay;
-
 #ifdef DEBUG_IO_ACCESS
     // Debug collection of IO accesses
     static const int DEBUG_MAX_IO_PORT_ACCESSES = 500;
@@ -46,7 +39,7 @@ private:
 
 public:
     // Init
-    static void init(CommandHandler* pCommandHandler, Display* pDisplay);
+    static void init();
 
     // Service
     static void service();

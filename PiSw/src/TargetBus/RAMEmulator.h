@@ -6,14 +6,13 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
-#include "../Machines/McBase.h"
 #include "../TargetBus/MemorySystem.h"
 
 class RAMEmulator
 {
 public:
     // Setup
-    static void setup(McBase* pTargetMachine);
+    static void setup();
 
     // Service
     static void service();
@@ -47,7 +46,4 @@ private:
 
     // Memory system
     static MemorySystem _memorySystem;
-
-    // Target machine
-    static McBase* _pTargetMachine;
 };

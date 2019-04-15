@@ -7,7 +7,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "../Machines/McBase.h"
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetRegisters.h"
 

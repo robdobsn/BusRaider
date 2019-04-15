@@ -3,7 +3,7 @@
 
 #include "McBase.h"
 #include "McManager.h"
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 
 class McTerminal : public McBase
 {

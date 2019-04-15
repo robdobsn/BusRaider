@@ -4,7 +4,7 @@
 // Rob Dobson 2017-2018
 
 #include "jsmnR.h"
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 #include <string.h>
 
 static const char* FromJSMNR = "JSMNR";

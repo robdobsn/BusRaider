@@ -4,27 +4,24 @@
 #include "RAMEmulator.h"
 #include <string.h>
 #include <stdlib.h>
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 #include "../TargetBus/BusAccess.h"
 #include "../System/piwiring.h"
 #include "../System/lowlib.h"
-#include "../System/rdutils.h"
 
 // Module name
 static const char FromRAMEMU[] = "RAMEMU";
 
 // Vars
 bool RAMEmulator::_emulationActive = false;
-McBase* RAMEmulator::_pTargetMachine = NULL;
 MemorySystem RAMEmulator::_memorySystem(STD_TARGET_MEMORY_LEN);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Setup
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void RAMEmulator::setup(McBase* pTargetMachine)
+void RAMEmulator::setup()
 {
-    _pTargetMachine = pTargetMachine;
 }
 
 void RAMEmulator::activateEmulation(bool active)

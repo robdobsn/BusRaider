@@ -7,6 +7,7 @@
 #include "../System/lowlib.h"
 #include "../TargetBus/TargetState.h"
 #include "libz80/z80.h"
+#include "../System/ee_sprintf.h"
 
 // Module name
 static const char FromStepValidator[] = "StepValidator";

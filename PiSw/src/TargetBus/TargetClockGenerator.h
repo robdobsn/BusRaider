@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 #include "BusAccess.h"
 #include "../System/piwiring.h"
 #include "../System/lowlib.h"

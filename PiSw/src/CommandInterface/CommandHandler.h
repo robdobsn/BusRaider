@@ -6,11 +6,15 @@
 #include "MiniHDLC.h"
 #include <stdint.h>
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Callback types
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Callback types
 typedef void CmdHandlerPutToSerialFnType(const uint8_t* pBytes, int numBytes);
 typedef void CmdHandlerMachineCommandFnType(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
                     char* pRespJson, int maxRespLen);
-typedef void CmdHandlerOTAUpdateFnType(const uint8_t* pData, int dataLen);
+typedef bool CmdHandlerOTAUpdateFnType(const uint8_t* pData, int dataLen);
 typedef void CmdHandlerTargetFileFnType(const char* rxFileInfo, const uint8_t* pData, int dataLen);
 
 // Handles commands from ESP32
@@ -59,6 +63,7 @@ public:
     void sendRegularStatusUpdate();
     void sendRemoteDebugProtocolMsg(const char* pStr, const char* rdpMessageIdStr);
     void logDebugMessage(const char* pStr);
+    void logDebugJson(const char* pStr);
 
 private:
     static void static_hdlcPutCh(uint8_t ch);
@@ -66,7 +71,6 @@ private:
     void hdlcPutCh(uint8_t ch);
     void hdlcFrameRx(const uint8_t *frameBuffer, int frameLength);
 
-private:
     // Command processing
     void processCommand(const char* pCmdJson, const uint8_t* pParams, int paramsLen);
     void handleFileStart(const char* pCmdJson);
@@ -75,7 +79,6 @@ private:
     void handleStatusResponse(const char* pCmdJson);
     static void addressRxCallback(uint32_t addr);
 
-private:
     // Callbacks
     static CmdHandlerPutToSerialFnType* _pPutToSerialFunction;
     static CmdHandlerMachineCommandFnType* _pMachineCommandFunction;

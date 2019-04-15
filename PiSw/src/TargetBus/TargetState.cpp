@@ -2,7 +2,7 @@
 // Rob Dobson 2018
 
 #include "TargetState.h"
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 
 // Module name
 static const char FromTargetState[] = "TargetState";

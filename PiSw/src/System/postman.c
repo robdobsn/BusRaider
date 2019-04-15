@@ -1,5 +1,5 @@
 #include "postman.h"
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 #include "lowlev.h"
 #include "lowlib.h"
 

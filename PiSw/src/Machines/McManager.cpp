@@ -234,7 +234,7 @@ bool McManager::setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate)
         }
 
         // Setup RAMEmulator and paging
-        RAMEmulator::setup(_pCurMachine);
+        RAMEmulator::setup();
         RAMEmulator::activateEmulation(pMcDescr->emulatedRAM);
         HwManager::pageOutForEmulation(pMcDescr->emulatedRAM);
 
@@ -466,10 +466,10 @@ bool McManager::targetBusUnderPiControl()
     return BusAccess::isUnderControl();
 }
 
-uint32_t McManager::busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags)
+void McManager::busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal)
 {
     // Offer to the hardware manager
-    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
+    retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
 
     // Emulated RAM
     retVal = RAMEmulator::handleWaitInterrupt(addr, data, flags, retVal);
@@ -487,9 +487,7 @@ uint32_t McManager::busAccessCallback(uint32_t addr, uint32_t data, uint32_t fla
 
     // Offer to target machine
     if (_pCurMachine)
-        return _pCurMachine->busAccessCallback(addr, data, flags, retVal);
-
-    return BR_MEM_ACCESS_RSLT_NOT_DECODED;
+        retVal = _pCurMachine->busAccessCallback(addr, data, flags, retVal);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -578,7 +576,7 @@ void McManager::handleTargetProgram(bool resetAfterProgramming, bool addWaitOnIn
                             // Reset vector
                             uint8_t jumpCmd[3] = { 0xc3, uint8_t(codeDestAddr & 0xff), uint8_t((codeDestAddr >> 8) & 0xff) };
                             McManager::blockWrite(0, jumpCmd, 3, false, false);
-                            ee_dump_mem(regSetCode, regSetCode + codeLen);
+                            LogDumpMemory(regSetCode, regSetCode + codeLen);
                         }
                     }
                 }
@@ -755,3 +753,8 @@ void McManager::logDebugMessage(const char* pStr)
         _pCommandHandler->logDebugMessage(pStr);
 }
 
+void McManager::logDebugJson(const char* pStr)
+{
+    if (_pCommandHandler)
+        _pCommandHandler->logDebugJson(pStr);
+}

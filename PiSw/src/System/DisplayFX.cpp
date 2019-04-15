@@ -3,7 +3,7 @@
 
 #include "DisplayFX.h"
 #include "framebuffer.h"
-#include "ee_printf.h"
+#include "logging.h"
 #include <string.h>
 #include "lowlib.h"
 

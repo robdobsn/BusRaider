@@ -45,16 +45,38 @@ public:
         _nRxStatus = UART_ERROR_NONE;
         return tmpCode;
     }
+    void getStatusCounts(int& txBufferFullCount, int& rxFramingCount, int& rxOverrunCount, 
+                int& rxBreakCount, int &rxBufferFullCount)
+    {
+        txBufferFullCount = _txBufferFullCount;
+        rxFramingCount = _rxFramingErrCount;
+        rxOverrunCount = _rxOverrunErrCount;
+        rxBreakCount = _rxBreakCount;
+        rxBufferFullCount = _rxBufferFullCount;
+    }
+    void resetStatusCounts()
+    {
+        _txBufferFullCount = 0;
+        _rxFramingErrCount = 0;
+        _rxOverrunErrCount = 0;
+        _rxBreakCount = 0;
+        _rxBufferFullCount = 0;
+    }
 
 private:
     // Rx Buffer & status
     uint8_t *_pRxBuffer;
     RingBufferPosn _rxBufferPosn;
     UART_ERROR_CODES _nRxStatus;
+    int _rxFramingErrCount;
+    int _rxOverrunErrCount;
+    int _rxBreakCount;
+    int _rxBufferFullCount;
 
     // Tx Buffer
     uint8_t *_pTxBuffer;
     RingBufferPosn _txBufferPosn;
+    int _txBufferFullCount;
 
     static void isrStatic(void* pParam);
     void isr();

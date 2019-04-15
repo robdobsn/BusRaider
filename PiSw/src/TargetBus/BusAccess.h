@@ -8,13 +8,25 @@
 #include <stddef.h>
 #include "TargetCPU.h"
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Defs
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Return codes
-typedef enum {
+enum BR_RETURN_TYPE {
     BR_OK = 0,
     BR_ERR = 1,
     BR_NO_BUS_ACK = 2,
     BR_ALREADY_DONE = 3
-} BR_RETURN_TYPE;
+};
+
+// Wait reset actions 
+enum BR_BUS_ACTION {
+    BR_BUS_ACTION_NONE, 
+    BR_BUS_ACTION_RESET,
+    BR_BUS_ACTION_NMI,
+    BR_BUS_ACTION_IRQ
+};
 
 // Multiplexer
 // Wiring is a little off as A0, A1, A2 on 74HC138 are Pi 11, 9, 10 respectively
@@ -73,6 +85,7 @@ typedef enum {
 #define BR_IORQ_BAR_MASK (1 << BR_IORQ_BAR)
 #define BR_WR_BAR_MASK (1 << BR_WR_BAR)
 #define BR_RD_BAR_MASK (1 << BR_RD_BAR)
+#define BR_ANY_EDGE_MASK 0xffffffff
 
 // M1 piggy back onto PIB line
 #define BR_M1_PIB_DATA_LINE 0
@@ -90,6 +103,7 @@ typedef enum {
 // Debug code for ISR
 #define ISR_ASSERT(code) BusAccess::isrAssert(code)
 #define ISR_VALUE(code, val) BusAccess::isrValue(code, val)
+#define ISR_PEAK(code, val) BusAccess::isrPeak(code, val)
 #define ISR_ASSERT_CODE_NONE 0
 #define ISR_ASSERT_CODE_DEBUG_A 1
 #define ISR_ASSERT_CODE_DEBUG_B 2
@@ -98,13 +112,32 @@ typedef enum {
 #define ISR_ASSERT_CODE_DEBUG_E 5
 #define ISR_ASSERT_CODE_DEBUG_F 6
 #define ISR_ASSERT_CODE_DEBUG_G 7
-#define ISR_ASSERT_NUM_CODES 8
+#define ISR_ASSERT_CODE_DEBUG_H 8
+#define ISR_ASSERT_CODE_DEBUG_I 9
+#define ISR_ASSERT_CODE_DEBUG_J 10
+#define ISR_ASSERT_CODE_DEBUG_K 11
+#define ISR_ASSERT_NUM_CODES 12
 
-// Width of a reset pulse
+// Width of a reset, NMI, IRQ pulses
 #define BR_RESET_PULSE_US 100
+#define BR_NMI_PULSE_US 20
+#define BR_IRQ_PULSE_US 20
 
 // Clock frequency for debug
 #define BR_TARGET_DEBUG_CLOCK_HZ 500000
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Callback types
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Callback types
+typedef void BusAccessCBFnType(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& curRetVal);
+typedef void BusActionCBFnType(BR_BUS_ACTION actionType);
+typedef void BusControlCBFnType();
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Bus Socket Info - this is used to plug-in to the BusAccess layer
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class TargetClockGenerator;
 

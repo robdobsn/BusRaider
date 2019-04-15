@@ -2,7 +2,7 @@
 // Rob Dobson 2018
 
 #include "srecparser.h"
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 #include <stddef.h>
 
 #define MAX_SREC_DATA_LEN 200

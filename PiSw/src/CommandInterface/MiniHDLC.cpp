@@ -3,7 +3,7 @@
 // Very loosely based on https://github.com/mengguang/minihdlc
 
 #include "MiniHDLC.h"
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 
 // CRC Lookup table
 const uint16_t MiniHDLC::_CRCTable[256] = { 

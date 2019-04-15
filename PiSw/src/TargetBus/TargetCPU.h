@@ -29,6 +29,9 @@ static const uint32_t STD_TARGET_MEMORY_LEN = 0x10000;
 #define BR_CTRL_BUS_IORQ 3
 #define BR_CTRL_BUS_M1 4
 #define BR_CTRL_BUS_WAIT 5
+#define BR_CTRL_BUS_RESET 6
+#define BR_CTRL_BUS_IRQ 7
+#define BR_CTRL_BUS_NMI 8
 
 // Control bit masks
 #define BR_CTRL_BUS_RD_MASK (1 << BR_CTRL_BUS_RD)
@@ -37,7 +40,8 @@ static const uint32_t STD_TARGET_MEMORY_LEN = 0x10000;
 #define BR_CTRL_BUS_IORQ_MASK (1 << BR_CTRL_BUS_IORQ)
 #define BR_CTRL_BUS_M1_MASK (1 << BR_CTRL_BUS_M1)
 #define BR_CTRL_BUS_WAIT_MASK (1 << BR_CTRL_BUS_WAIT)
-
-typedef uint32_t BusAccessCBFnType(uint32_t addr, uint32_t data, uint32_t flags);
+#define BR_CTRL_BUS_RESET_MASK (1 << BR_CTRL_BUS_RESET)
+#define BR_CTRL_BUS_IRQ_MASK (1 << BR_CTRL_BUS_IRQ)
+#define BR_CTRL_BUS_NMI_MASK (1 << BR_CTRL_BUS_NMI)
 
 #define MAX_REGISTER_SET_CODE_LEN 100

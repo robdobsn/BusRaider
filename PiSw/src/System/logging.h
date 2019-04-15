@@ -1,3 +1,6 @@
+// Bus Raider
+// Rob Dobson 2019
+
 #pragma once
 
 // Severity
@@ -11,14 +14,7 @@
 extern "C" {
 #endif
 
-extern void ee_printf(const char* fmt, ...);
-extern int ee_sprintf(char* outBuf, const char* fmt, ...);
-// extern void uart_printf(const char* fmt, ...);
-// extern void uart_write_hex_u8(unsigned int d);
-// extern void uart_write_hex_u32(unsigned int d);
-extern void ee_dump_mem(unsigned char* start_addr, unsigned char* end_addr);
-// extern void uart_load_ihex(void);
-// extern unsigned int uart_read_hex();
+// extern void ee_dump_mem(unsigned char* start_addr, unsigned char* end_addr);
 
 extern void LogSetLevel(int severity);
 extern void LogWrite(const char* pSource, // short name of module
@@ -27,6 +23,10 @@ extern void LogWrite(const char* pSource, // short name of module
 
 typedef void outChFnType(const char* pStr);
 extern void LogSetOutFn(outChFnType* pOutFn);
+
+extern void LogDumpMemory(unsigned char* start_addr, unsigned char* end_addr);
+
+extern void LogPrintf(const char* fmt, ...);
 
 #ifdef __cplusplus
 }

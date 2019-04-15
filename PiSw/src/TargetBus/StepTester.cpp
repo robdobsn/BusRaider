@@ -5,6 +5,7 @@
 #include "../Machines/McManager.h"
 #include "../System/piwiring.h"
 #include "../System/lowlib.h"
+#include "../System/ee_sprintf.h"
 
 StepTester::StepTester() : 
         _exceptionsPosn(NUM_DEBUG_VALS)

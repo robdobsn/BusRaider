@@ -2,7 +2,7 @@
 // Rob Dobson 2018
 
 #include "McTRS80CmdFormat.h"
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 #include <string.h>
 #include <stdint.h>
 

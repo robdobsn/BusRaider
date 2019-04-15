@@ -8,5 +8,5 @@
 class OTAUpdate
 {
 public:
-    static void performUpdate(const uint8_t* pData, int dataLen);
+    static bool performUpdate(const uint8_t* pData, int dataLen);
 };

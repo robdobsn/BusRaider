@@ -2,7 +2,7 @@
 // Rob Dobson 2019
 
 #include "Display.h"
-#include "ee_printf.h"
+#include "logging.h"
 #include <string.h>
 
 #include "DisplayFX.h"

@@ -1,29 +1,29 @@
 // Bus Raider
 // Rob Dobson 2018
 
-#include "System/UartMini.h"
-#include "System/UartMaxi.h"
-#include "System/Display.h"
-#include "System/ee_printf.h"
+#include <stdlib.h>
+#include "System/lowlev.h"
+#include "System/lowlib.h"
 #include "System/piwiring.h"
+#include "System/UartMaxi.h"
+#include "System/ee_sprintf.h"
+#include "System/timer.h"
+#include "System/OTAUpdate.h"
+#include "System/rdutils.h"
+#include "System/Display.h"
 #include "TargetBus/BusAccess.h"
 #include "TargetBus/TargetState.h"
 #include "CommandInterface/CommandHandler.h"
-#include "System/OTAUpdate.h"
-#include "System/rdutils.h"
+
+#include "Hardware/HwManager.h"
+#include "Hardware/Hw512KRamRom.h"
+#include "Hardware/Hw64KPagedRAM.h"
+#include "Machines/usb_hid_keys.h"
 #include "Machines/McManager.h"
 #include "Machines/McTRS80.h"
 #include "Machines/McRobsZ80.h"
 #include "Machines/McZXSpectrum.h"
 #include "Machines/McTerminal.h"
-#include "Hardware/HwManager.h"
-#include "Hardware/Hw512KRamRom.h"
-#include "Hardware/Hw64KPagedRAM.h"
-#include "System/timer.h"
-#include "System/lowlib.h"
-#include "System/lowlev.h"
-#include "Machines/usb_hid_keys.h"
-#include <stdlib.h>
 
 typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
@@ -43,7 +43,7 @@ const char* FromMain = "Main";
 Display display;
 
 // Baud rate
-#define MAIN_UART_BAUD_RATE 500000
+#define MAIN_UART_BAUD_RATE 460800
 UartMaxi mainUart;
 
 // CommandHandler
@@ -115,7 +115,7 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
     {
         if (!_immediateMode)
         {
-            ee_printf("Entering immediate mode, e.g. w/ssid/password/hostname<enter> to setup WiFi ...\n");
+            LogPrintf("Entering immediate mode, e.g. w/ssid/password/hostname<enter> to setup WiFi ...\n");
         }
         _immediateMode = true;
         return;
@@ -141,7 +141,7 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
                 if (_immediateModeLineLen > 0)
                 {
                     CommandHandler::sendAPIReq(_immediateModeLine);
-                    ee_printf("Sent request to ESP32: %s\n", _immediateModeLine);
+                    LogPrintf("Sent request to ESP32: %s\n", _immediateModeLine);
                 }
                 _immediateModeLineLen = 0;
             }
@@ -150,7 +150,7 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
                 _immediateModeLine[_immediateModeLineLen++] = asciiCode;
             }
             display.consolePut(asciiCode);
-            // ee_printf("%x ", asciiCode);
+            // LogPrintf("%x ", asciiCode);
         }
         return;
     }
@@ -326,7 +326,7 @@ extern "C" int main()
     TargetState::clear();
 
     // Init hardware manager
-    HwManager::init(&commandHandler, &display);
+    HwManager::init();
 
     // Add hardware
     new Hw512KRamRom();

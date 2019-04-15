@@ -4,7 +4,7 @@
 #include "TargetDebug.h"
 #include <string.h>
 #include <stdlib.h>
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 #include "../TargetBus/BusAccess.h"
 #include "../System/piwiring.h"
 #include "../System/lowlib.h"

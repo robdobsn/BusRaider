@@ -6,7 +6,7 @@
 #include <stdlib.h>
 
 // Module name
-static const char FromTargetDebug[] = "TargetCPUZ80";
+static const char FromTargetCPUZ80[] = "TargetCPUZ80";
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Utils

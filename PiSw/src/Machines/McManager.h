@@ -5,7 +5,7 @@
 
 #include "McBase.h"
 #include "../TargetBus/TargetDebug.h"
-#include "../System/ee_printf.h"
+#include "../System/logging.h"
 #include "../CommandInterface/CommandHandler.h"
 #include "../System/Display.h"
 #include <string.h> 
@@ -105,12 +105,13 @@ public:
 
     // Debug
     static void logDebugMessage(const char* pStr);
+    static void logDebugJson(const char* pStr);
 
 private:
     static void targetIrqFromTimer(void* pParam);
 
     // Handle wait interrupt
-    static uint32_t busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags);
+    static void busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
 
     // Step-tester
     static StepTester _stepTester;

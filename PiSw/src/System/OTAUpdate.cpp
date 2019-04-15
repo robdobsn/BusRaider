@@ -5,14 +5,17 @@
 #include "OTAUpdate.h"
 #include "lowlev.h"
 #include "lowlib.h"
-#include "ee_printf.h"
+#include "logging.h"
 #include "memorymap.h"
 #include <string.h>
 
 static const char FromOTAUpdate[] = "OTAUpdate";
 
-void OTAUpdate::performUpdate(const uint8_t* pData, int dataLen)
+bool OTAUpdate::performUpdate(const uint8_t* pData, int dataLen)
 {
+    // Delay to allow sending of serial data, etc
+    microsDelay(1000000);
+
     // Calculations
     uint8_t* pCopyBlockNewLocation = (unsigned char*)OTA_UPDATE_START;
     uint8_t* pRxDataNewLocation = pCopyBlockNewLocation + lowlev_blockCopyExecRelocatableLen;
@@ -47,4 +50,6 @@ void OTAUpdate::performUpdate(const uint8_t* pData, int dataLen)
     //         diffs++;
     // }
     // LogWrite(FromOTAUpdate, LOG_DEBUG, "Num diffs %d", diffs);
+    // Should actually never return
+    return true;
 }

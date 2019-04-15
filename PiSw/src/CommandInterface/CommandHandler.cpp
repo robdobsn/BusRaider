@@ -3,12 +3,19 @@
 
 #include "CommandHandler.h"
 #include "../System/nmalloc.h"
-#include "../System/ee_printf.h"
+#include "../System/ee_sprintf.h"
+#include "../System/logging.h"
 #include "minihdlc.h"
 #include "../System/rdutils.h"
 #include "../System/RdStdCpp.h"
+#include "../System/lowlib.h"
 #include <string.h>
 #include <stdlib.h>
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Variables
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 // Module name
 static const char FromCmdHandler[] = "CommandHandler";
@@ -299,7 +306,11 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
     {
         LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd IMG firmware update File %s, len %d", _receivedFileName, _receivedFileBytesRx);
         if (_pOTAUpdateFunction)
+        {
+            // Short delay to allow comms completion 
+            microsDelay(100000);
             (*_pOTAUpdateFunction)(_pReceivedFileDataPtr, _receivedFileBytesRx);
+    }
     }
     else
     {
@@ -439,12 +450,16 @@ void CommandHandler::sendRemoteDebugProtocolMsg(const char* pStr, const char* rd
 
 void CommandHandler::logDebugMessage(const char* pStr)
 {
-    // static const int MAX_RESPONSE_MSG_LEN = 2000;
-    // static char responseJson[MAX_RESPONSE_MSG_LEN+1];
-    // strlcpy(responseJson, "\"msg\":\"", MAX_RESPONSE_MSG_LEN);
-    // strlcat(responseJson, pStr, MAX_RESPONSE_MSG_LEN);
-    // strlcpy(responseJson, "\"", MAX_RESPONSE_MSG_LEN);
-    // sendWithJSON("log", responseJson);
+    static const int MAX_RESPONSE_MSG_LEN = 2000;
+    char responseJson[MAX_RESPONSE_MSG_LEN+1];
+    strlcpy(responseJson, "\"msg\":\"", MAX_RESPONSE_MSG_LEN);
+    strlcat(responseJson, pStr, MAX_RESPONSE_MSG_LEN);
+    strlcat(responseJson, "\"", MAX_RESPONSE_MSG_LEN);
+    sendWithJSON("log", responseJson);
+}
+
+void CommandHandler::logDebugJson(const char* pStr)
+{
     sendWithJSON("log", pStr);
 }
 

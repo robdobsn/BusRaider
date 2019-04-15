@@ -42,14 +42,7 @@ This code is based on a file that contains the following:
 #include <stdarg.h>
 #include <stddef.h>
 #include <string.h>
-#include "../System/ee_printf.h"
-
-outChFnType* __ee_pOutFunction = NULL;
-
-void LogSetOutFn(outChFnType* pOutFn)
-{
-    __ee_pOutFunction = pOutFn;
-}
+#include "../System/ee_sprintf.h"
 
 #define ZEROPAD (1 << 0) /* Pad with zero */
 #define SIGN (1 << 1) /* Unsigned/signed long */
@@ -60,9 +53,6 @@ void LogSetOutFn(outChFnType* pOutFn)
 #define UPPERCASE (1 << 6) /* 'ABCDEF' */
 
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
-
-#define DISP_WRITE_STRING(x) if(__ee_pOutFunction) (*__ee_pOutFunction)((const char*)x)
-#define LOG_WRITE_STRING(x) if(__ee_pOutFunction) (*__ee_pOutFunction)((const char*)x)
 
 static char* lower_digits = "0123456789abcdefghijklmnopqrstuvwxyz";
 static char* upper_digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -438,7 +428,7 @@ static char* flt(char* str, double num, int size, int precision, char fmt, int f
 #pragma GCC push_options
 #pragma GCC optimize ("O0")
 
-static int ee_vsprintf(char* buf, const char* fmt, va_list args)
+int ee_vsprintf(char* buf, const char* fmt, va_list args)
 {
     int len;
     unsigned long num;
@@ -611,69 +601,6 @@ static int ee_vsprintf(char* buf, const char* fmt, va_list args)
 }
 #pragma GCC pop_options
 
-// void uart_send_char(char c)
-// {
-//     char str[2];
-//     str[0] = c;
-//     str[1] = '\0';
-//     UART_WRITE_STRING(str);
-// }
-
-#define USPI_LOG_SEVERITY LOG_VERBOSE
-
-unsigned int __logSeverity = LOG_DEBUG;
-
-void LogWrite(const char* pSource,
-    unsigned severity,
-    const char* fmt, ...)
-{
-    // Check for USPI log messages
-    if (strstr(pSource, "uspi") || strstr(pSource, "usbdev") || strstr(pSource, "dwroot"))
-        severity = USPI_LOG_SEVERITY;
-
-    if (severity > __logSeverity)
-        return;
-
-    char buf[15 * 80];
-    va_list args;
-
-    va_start(args, fmt);
-    ee_vsprintf(buf, fmt, args);
-    va_end(args);
-
-    LOG_WRITE_STRING("[");
-    switch (severity) {
-    case LOG_ERROR:
-        LOG_WRITE_STRING("ERROR  ");
-        break;
-    case LOG_WARNING:
-        LOG_WRITE_STRING("WARNING");
-        break;
-    case LOG_NOTICE:
-        LOG_WRITE_STRING("NOTICE ");
-        break;
-    case LOG_DEBUG:
-        LOG_WRITE_STRING("DEBUG  ");
-        break;
-    case LOG_VERBOSE:
-        LOG_WRITE_STRING("VERBOSE");
-        break;
-    default:
-        LOG_WRITE_STRING("??     ");
-    }
-
-    LOG_WRITE_STRING("] ");
-    LOG_WRITE_STRING(pSource);
-    LOG_WRITE_STRING(": ");
-    LOG_WRITE_STRING(buf);
-    LOG_WRITE_STRING("\n");
-}
-
-void LogSetLevel(int severity)
-{
-    __logSeverity = severity;
-}
-
 int ee_sprintf(char* outBuf, const char* fmt, ...)
 {
     va_list args;
@@ -683,100 +610,4 @@ int ee_sprintf(char* outBuf, const char* fmt, ...)
     va_end(args);
     return (strlen(outBuf));
 }
-
-void ee_printf(const char* fmt, ...)
-{
-    char buf[15 * 80];
-    va_list args;
-
-    va_start(args, fmt);
-    ee_vsprintf(buf, fmt, args);
-    va_end(args);
-
-    DISP_WRITE_STRING(buf);
-}
-
-// void uart_printf(const char* fmt, ...)
-// {
-//     char buf[15 * 80];
-//     va_list args;
-
-//     va_start(args, fmt);
-//     ee_vsprintf(buf, fmt, args);
-//     va_end(args);
-
-//     UART_WRITE_STRING(buf);
-// }
-
-// //------------------------------------------------------------------------
-// void uart_write_hex_u8(unsigned int d)
-// {
-//     //unsigned int ra;
-//     unsigned int rb;
-//     unsigned int rc;
-
-//     rb = 8;
-//     while (1) {
-//         rb -= 4;
-//         rc = (d >> rb) & 0xF;
-//         if (rc > 9)
-//             rc += 0x37;
-//         else
-//             rc += 0x30;
-//         uart_send(rc);
-//         if (rb == 0)
-//             break;
-//     }
-//     // uart_send(0x20);
-// }
-// //------------------------------------------------------------------------
-// void uart_write_hex_u32(unsigned int d)
-// {
-//     //unsigned int ra;
-//     unsigned int rb;
-//     unsigned int rc;
-
-//     rb = 32;
-//     while (1) {
-//         rb -= 4;
-//         rc = (d >> rb) & 0xF;
-//         if (rc > 9)
-//             rc += 0x37;
-//         else
-//             rc += 0x30;
-//         uart_send(rc);
-//         if (rb == 0)
-//             break;
-//     }
-//     // uart_send(0x20);
-// }
-//------------------------------------------------------------------------
-void ee_dump_mem(unsigned char* start_addr, unsigned char* end_addr)
-{
-    unsigned char* pAddr = start_addr;
-    int linPos = 0;
-    for (long i = 0; i < end_addr - start_addr; i++) {
-        ee_printf("%02x", *pAddr++);
-        linPos++;
-        if (linPos == 16)
-        {
-            ee_printf("\r\n");
-            linPos = 0;
-        }
-        else
-        {
-            ee_printf(" ");
-        }
-    }
-    ee_printf("\r\n");
-}
-// //------------------------------------------------------------------------
-// void uart_load_ihex(void)
-// {
-// }
-// //------------------------------------------------------------------------
-// unsigned int uart_read_hex()
-// {
-//     return 0;
-// }
 
