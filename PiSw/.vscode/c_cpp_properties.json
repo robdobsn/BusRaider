@@ -3,8 +3,10 @@
         {
             "name": "Win32",
             "includePath": [
-                "C:\\Users\\rob\\AppData\\Local\\Arduino15\\packages\\esp8266\\tools\\**",
-                "C:\\Users\\rob\\AppData\\Local\\Arduino15\\packages\\esp8266\\hardware\\esp8266\\2.4.2\\**"
+            ],
+            "defines": [
+                "RASPPI=1",
+                "AARCH=32"
             ],
             "forcedInclude": [],
             "intelliSenseMode": "msvc-x64",

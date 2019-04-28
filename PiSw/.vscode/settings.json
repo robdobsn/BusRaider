@@ -7,7 +7,13 @@
         "vector": "cpp",
         "xstring": "cpp",
         "xutility": "cpp",
-        "stdarg.h": "c",
-        "ee_sprintf.h": "c"
-    }
+        "*.c_inc": "cpp"
+    },
+    "python.testing.pyTestArgs": [
+        "test"
+    ],
+    "python.testing.pyTestEnabled": true,
+    "python.testing.unittestEnabled": false,
+    "python.testing.nosetestsEnabled": false,
+    "python.pythonPath": "C:\\Users\\rob\\AppData\\Local\\Programs\\Python\\Python37\\python.exe"
 }

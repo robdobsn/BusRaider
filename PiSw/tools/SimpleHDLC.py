@@ -56,17 +56,17 @@ class Frame(object):
         return res
 
     def toString(self):
-        return str(self.data)
-
+        return self.data.decode('utf-8').rstrip('\0')
 
 class HDLC(object):
-    def __init__(self, serial):
+    def __init__(self, serial, dumpFile=None):
         self.serial = serial
         self.current_frame = None
         self.last_frame = None
         self.frame_callback = None
         self.error_callback = None
         self.running = False
+        self.dumpFile = dumpFile
 
     @classmethod
     def toBytes(cls, data):
@@ -81,19 +81,21 @@ class HDLC(object):
     def _onFrame(self, frame):
         self.last_frame = frame
         s = self.last_frame.toString()
-        # logger.info("Received Frame: %d", len(s))
+        # logger.info("Received Frame: %d %s", len(s), s[:20])
         if self.frame_callback is not None:
             self.frame_callback(s)
 
     def _onError(self, frame):
         self.last_frame = frame
         s = self.last_frame.toString()
-        logger.warning("Frame Error: %d", len(s))
+        logger.warning("Frame Error: %d %s", len(s), s[:20])
         if self.error_callback is not None:
             self.error_callback(s)
 
     def _readBytesAndProc(self, size):
         b = bytearray(self.serial.read(size))
+        if self.dumpFile is not None:
+            self.dumpFile.write(b)
         for i in range(len(b)):
             self._readByteAndProc(b[i])
 
@@ -170,9 +172,9 @@ class HDLC(object):
         while self.running:
             i = self.serial.in_waiting
             if i < 1:
-                time.sleep(0.1)
-                print(".", end="")
-                sys.stdout.flush()
+                time.sleep(0.001)
+                # print(".", end="")
+                # sys.stdout.flush()
                 continue
             self._readBytesAndProc(i)
 
