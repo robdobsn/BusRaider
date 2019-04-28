@@ -5,6 +5,7 @@
 
 #include "stddef.h"
 #include "stdint.h"
+#include "wgfxfont.h"
 
 enum DISPLAY_FX_COLOUR
 {
@@ -48,5 +49,12 @@ public:
     virtual void write(int col, int row, int ch) = 0;
     virtual void setPixel(int x, int y, int value, DISPLAY_FX_COLOUR colour) = 0;
     virtual void getFramebuffer(FrameBufferInfo& frameBufferInfo) = 0;
+    // Target
+    virtual void targetLayout(
+                    int pixX, int pixY, 
+                    int cellX, int cellY, 
+                    int xScale, int yScale,
+                    WgfxFont* pFont, 
+                    int foreColour, int backColour);
 
 };

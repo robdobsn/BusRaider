@@ -350,4 +350,5 @@ void UartMaxi::isr()
 #endif
 
     PeripheralExit();
+
 }

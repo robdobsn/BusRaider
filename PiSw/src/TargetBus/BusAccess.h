@@ -12,22 +12,6 @@
 // Defs
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Return codes
-enum BR_RETURN_TYPE {
-    BR_OK = 0,
-    BR_ERR = 1,
-    BR_NO_BUS_ACK = 2,
-    BR_ALREADY_DONE = 3
-};
-
-// Wait reset actions 
-enum BR_BUS_ACTION {
-    BR_BUS_ACTION_NONE, 
-    BR_BUS_ACTION_RESET,
-    BR_BUS_ACTION_NMI,
-    BR_BUS_ACTION_IRQ
-};
-
 // Multiplexer
 // Wiring is a little off as A0, A1, A2 on 74HC138 are Pi 11, 9, 10 respectively
 // Pi GPIO0    74HC138      CTRL Value
@@ -122,6 +106,7 @@ enum BR_BUS_ACTION {
 #define BR_RESET_PULSE_US 100
 #define BR_NMI_PULSE_US 20
 #define BR_IRQ_PULSE_US 20
+#define BR_BUSRQ_MAX_US 100
 
 // Clock frequency for debug
 #define BR_TARGET_DEBUG_CLOCK_HZ 500000

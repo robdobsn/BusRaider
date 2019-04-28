@@ -10,3 +10,4 @@ typedef struct WgfxFont {
     int bytesPerChar;
     unsigned char* pFontData;
 } WgfxFont;
+
