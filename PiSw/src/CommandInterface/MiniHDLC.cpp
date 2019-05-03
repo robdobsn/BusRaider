@@ -120,12 +120,17 @@ void MiniHDLC::handleChar(uint8_t ch)
                 if(_frameRxFn)
                     _frameRxFn(_rxBuffer, _framePos - 2);
             }
+            else
+            {
+                _stats._frameCRCErrCount++;
+            }
         }
 
         // Ready for new frame
         _inEscapeSeq = false;
         _framePos = 0;
         _frameCRC = CRC16_CCITT_INIT_VAL;
+        _stats._rxFrameCount++;
         return;
     }
 
@@ -159,6 +164,7 @@ void MiniHDLC::handleChar(uint8_t ch)
         // Discard and start again
         _framePos = 0;
         _frameCRC = CRC16_CCITT_INIT_VAL;
+        _stats._frameTooLongCount++;
     }
 }
 

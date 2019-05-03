@@ -26,8 +26,23 @@ enum BR_BUS_ACTION {
     BR_BUS_ACTION_NMI,
     BR_BUS_ACTION_IRQ,
     BR_BUS_ACTION_BUSRQ,
+    BR_BUS_ACTION_BUSRQ_FAIL,
+    BR_BUS_ACTION_HOLD_IN_WAIT,
     BR_BUS_ACTION_PAGE_OUT_FOR_INJECT,
-    BR_BUS_ACTION_PAGE_IN_FOR_INJECT
+    BR_BUS_ACTION_PAGE_IN_FOR_INJECT,
+    BR_BUS_ACTION_COUNT
+};
+
+// Bus action reasons
+enum BR_BUS_ACTION_REASON {
+    // Request for display memory access
+    BR_BUS_ACTION_DISPLAY,
+    // Request to mirror memory during debugging
+    BR_BUS_ACTION_MIRROR,
+    // Request to program the target memory
+    BR_BUS_ACTION_PROGRAMMING,
+    // General indicator - used when bus action is not bus mastering
+    BR_BUS_ACTION_GENERAL
 };
 
 // Return codes from wait-state ISR
@@ -39,31 +54,28 @@ enum BR_BUS_ACTION {
 // machine program flow - this is the mechanism used to set/get registers
 #define BR_MEM_ACCESS_INSTR_INJECT 0x40000000
 
-// The target processor should be held at this point - for single-stepping
-#define BR_MEM_ACCESS_HOLD 0x20000000
-
 // Control bus bits used to pass to machines, etc
-#define BR_CTRL_BUS_RD 0
-#define BR_CTRL_BUS_WR 1
-#define BR_CTRL_BUS_MREQ 2
-#define BR_CTRL_BUS_IORQ 3
-#define BR_CTRL_BUS_M1 4
-#define BR_CTRL_BUS_WAIT 5
-#define BR_CTRL_BUS_RESET 6
-#define BR_CTRL_BUS_IRQ 7
-#define BR_CTRL_BUS_NMI 8
-#define BR_CTRL_BUS_BUSRQ 9
+#define BR_CTRL_BUS_RD_BITNUM 0
+#define BR_CTRL_BUS_WR_BITNUM 1
+#define BR_CTRL_BUS_MREQ_BITNUM 2
+#define BR_CTRL_BUS_IORQ_BITNUM 3
+#define BR_CTRL_BUS_M1_BITNUM 4
+#define BR_CTRL_BUS_WAIT_BITNUM 5
+#define BR_CTRL_BUS_RESET_BITNUM 6
+#define BR_CTRL_BUS_IRQ_BITNUM 7
+#define BR_CTRL_BUS_NMI_BITNUM 8
+#define BR_CTRL_BUS_BUSRQ_BITNUM 9
 
 // Control bit masks
-#define BR_CTRL_BUS_RD_MASK (1 << BR_CTRL_BUS_RD)
-#define BR_CTRL_BUS_WR_MASK (1 << BR_CTRL_BUS_WR)
-#define BR_CTRL_BUS_MREQ_MASK (1 << BR_CTRL_BUS_MREQ)
-#define BR_CTRL_BUS_IORQ_MASK (1 << BR_CTRL_BUS_IORQ)
-#define BR_CTRL_BUS_M1_MASK (1 << BR_CTRL_BUS_M1)
-#define BR_CTRL_BUS_WAIT_MASK (1 << BR_CTRL_BUS_WAIT)
-#define BR_CTRL_BUS_RESET_MASK (1 << BR_CTRL_BUS_RESET)
-#define BR_CTRL_BUS_IRQ_MASK (1 << BR_CTRL_BUS_IRQ)
-#define BR_CTRL_BUS_NMI_MASK (1 << BR_CTRL_BUS_NMI)
-#define BR_CTRL_BUS_BUSRQ_MASK (1 << BR_CTRL_BUS_BUSRQ)
+#define BR_CTRL_BUS_RD_MASK (1 << BR_CTRL_BUS_RD_BITNUM)
+#define BR_CTRL_BUS_WR_MASK (1 << BR_CTRL_BUS_WR_BITNUM)
+#define BR_CTRL_BUS_MREQ_MASK (1 << BR_CTRL_BUS_MREQ_BITNUM)
+#define BR_CTRL_BUS_IORQ_MASK (1 << BR_CTRL_BUS_IORQ_BITNUM)
+#define BR_CTRL_BUS_M1_MASK (1 << BR_CTRL_BUS_M1_BITNUM)
+#define BR_CTRL_BUS_WAIT_MASK (1 << BR_CTRL_BUS_WAIT_BITNUM)
+#define BR_CTRL_BUS_RESET_MASK (1 << BR_CTRL_BUS_RESET_BITNUM)
+#define BR_CTRL_BUS_IRQ_MASK (1 << BR_CTRL_BUS_IRQ_BITNUM)
+#define BR_CTRL_BUS_NMI_MASK (1 << BR_CTRL_BUS_NMI_BITNUM)
+#define BR_CTRL_BUS_BUSRQ_MASK (1 << BR_CTRL_BUS_BUSRQ_BITNUM)
 
 #define MAX_REGISTER_SET_CODE_LEN 100

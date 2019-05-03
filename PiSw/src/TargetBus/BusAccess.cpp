@@ -819,6 +819,7 @@ void BusAccess::waitStateISR(void* pData)
     }
 
     // Check if we should hold the target processor at this point
+    static const int BR_MEM_ACCESS_HOLD = 0x2000000;
     if ((retVal & BR_MEM_ACCESS_HOLD) != 0)
     {
         // Clear wait detected

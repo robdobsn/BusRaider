@@ -5,6 +5,10 @@
 #include <stdbool.h>
 #include <limits.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * JSON type identifier. Basic types are:
  * 	o Object
@@ -72,3 +76,8 @@ extern int JSMNR_parse(JSMNR_parser *parser, const char *js, size_t len,
 
 
 extern void JSMNR_logLongStr(const char* headerMsg, const char* toLog, bool infoLevel);
+
+#ifdef __cplusplus
+}
+#endif
+

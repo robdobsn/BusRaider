@@ -246,6 +246,54 @@ extern "C" {
 #define ARM_CM_GP0DIV		(ARM_CM_BASE + 0x74)
 #define ARM_CM_PASSWD 		(0x5A << 24)
 
+// Following documented here: https://www.scribd.com/doc/127599939/BCM2835-Audio-clocks
+#define ARM_CM_PCMCTL		(ARM_CM_BASE + 0x98)
+#define ARM_CM_PCMDIV		(ARM_CM_BASE + 0x9C)
+#define ARM_CM_PWMCTL		(ARM_CM_BASE + 0xA0)
+#define ARM_CM_PWMDIV		(ARM_CM_BASE + 0xA4)
+
+#define ARM_CM_CTL_PLLD_FREQ 500000000
+#define ARM_CM_CTL_CLKSRC_OSCILLATOR     0x01
+#define ARM_CM_CTL_CLKSRC_TEST0     0x02
+#define ARM_CM_CTL_CLKSRC_TEST1     0x03
+#define ARM_CM_CTL_CLKSRC_PLLA     0x04
+#define ARM_CM_CTL_CLKSRC_PLLC     0x05
+#define ARM_CM_CTL_CLKSRC_PLLD     0x06
+#define ARM_CM_CTL_CLKSRC_HDMIAUX     0x07
+#define ARM_CM_CTL_KILL     (1 << 5)
+#define ARM_CM_CTL_ENAB     (1 << 4)
+#define ARM_CM_CTL_BUSY     (1 << 7)
+
+//
+// Pulse Width Modulator
+//
+#define ARM_PWM_BASE		(ARM_IO_BASE + 0x20C000)
+
+#define ARM_PWM_CTL			(ARM_PWM_BASE + 0x00)
+#define ARM_PWM_STA			(ARM_PWM_BASE + 0x04)
+#define ARM_PWM_DMAC		(ARM_PWM_BASE + 0x08)
+#define ARM_PWM_RNG1		(ARM_PWM_BASE + 0x10)
+#define ARM_PWM_DAT1		(ARM_PWM_BASE + 0x14)
+#define ARM_PWM_FIF1		(ARM_PWM_BASE + 0x18)
+#define ARM_PWM_RNG2		(ARM_PWM_BASE + 0x20)
+#define ARM_PWM_DAT2		(ARM_PWM_BASE + 0x24)
+
+#define ARM_PWM_CTL_MSEN2   (1 << 15)
+#define ARM_PWM_CTL_USEF2   (1 << 13)
+#define ARM_PWM_CTL_POLA2   (1 << 12)
+#define ARM_PWM_CTL_SBIT2   (1 << 11)
+#define ARM_PWM_CTL_RPTL2   (1 << 10)
+#define ARM_PWM_CTL_MODE2   (1 << 9)
+#define ARM_PWM_CTL_PWEN2   (1 << 8)
+#define ARM_PWM_CTL_MSEN1   (1 << 7)
+#define ARM_PWM_CTL_CLRF1   (1 << 6)
+#define ARM_PWM_CTL_USEF1   (1 << 5)
+#define ARM_PWM_CTL_POLA1   (1 << 4)
+#define ARM_PWM_CTL_SBIT1   (1 << 3)
+#define ARM_PWM_CTL_RPTL1   (1 << 2)
+#define ARM_PWM_CTL_MODE1   (1 << 1)
+#define ARM_PWM_CTL_PWEN1   (1 << 0)
+
 // Interrupts
 #define ARM_IRQS_PER_REG	32
 #define ARM_NUM_IRQ_LINES	(ARM_IRQS_PER_REG * 2 + 8)

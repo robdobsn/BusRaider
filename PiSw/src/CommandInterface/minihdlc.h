@@ -24,6 +24,24 @@ typedef void (*MiniHDLCPutChFnType)(uint8_t ch);
 typedef void (*MiniHDLCFrameRxFnType)(const uint8_t *framebuffer, int framelength);
 #endif
 
+class MiniHDLCStats
+{
+public:
+    MiniHDLCStats()
+    {
+        clear();
+    }
+    void clear()
+    {
+        _rxFrameCount = 0;
+        _frameCRCErrCount = 0;
+        _frameTooLongCount = 0;
+    }
+    uint32_t _rxFrameCount;
+    uint32_t _frameCRCErrCount;
+    uint32_t _frameTooLongCount;
+};
+
 // MiniHDLC
 class MiniHDLC
 {
@@ -42,6 +60,12 @@ public:
 
     // Called to send a frame
     void sendFrame(const uint8_t *pData, int frameLen);
+
+    // Get stats
+    MiniHDLCStats* getStats()
+    {
+        return &_stats;
+    }
 
 private:
     // If either of the following two octets appears in the transmitted data, an escape octet is sent,
@@ -62,7 +86,7 @@ private:
     static constexpr uint16_t CRC16_CCITT_INIT_VAL = 0xFFFF;
 
     // Max FRAME length
-    static constexpr int MINIHDLC_MAX_FRAME_LENGTH = 5000;
+    static constexpr int MINIHDLC_MAX_FRAME_LENGTH = 100000;
 
     // CRC table
     static const uint16_t _CRCTable[256];
@@ -95,6 +119,9 @@ private:
 
     // Receive buffer
     uint8_t _rxBuffer[MINIHDLC_MAX_FRAME_LENGTH + 1];
+
+    // Stats
+    MiniHDLCStats _stats;
 
 private:
     uint16_t crcUpdateCCITT(unsigned short fcs, unsigned char value);
