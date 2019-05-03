@@ -12,10 +12,26 @@
 
 // Callback types
 typedef void CmdHandlerPutToSerialFnType(const uint8_t* pBytes, int numBytes);
-typedef void CmdHandlerMachineCommandFnType(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
+typedef bool CmdHandlerHandleRxMsgFnType(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
                     char* pRespJson, int maxRespLen);
 typedef bool CmdHandlerOTAUpdateFnType(const uint8_t* pData, int dataLen);
-typedef void CmdHandlerTargetFileFnType(const char* rxFileInfo, const uint8_t* pData, int dataLen);
+typedef bool CmdHandlerTargetFileFnType(const char* rxFileInfo, const uint8_t* pData, int dataLen);
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Comms Socket Info - this is used to plug-in to the CommmandHandler layer
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class CommsSocketInfo
+{
+public:
+    // Socket enablement
+    bool enabled;
+
+    // Callbacks
+    CmdHandlerHandleRxMsgFnType* handleRxMsg;
+    CmdHandlerOTAUpdateFnType* otaUpdateFn;
+    CmdHandlerTargetFileFnType* receivedFileFn;
+};
 
 // Handles commands from ESP32
 class CommandHandler
@@ -24,39 +40,32 @@ public:
     CommandHandler();
     ~CommandHandler();
 
-    // Callback when machine change command is received
-    void setMachineCommandCallback(CmdHandlerMachineCommandFnType* pMachineCommandFunction)
-    {
-        _pMachineCommandFunction = pMachineCommandFunction;
-    }
-
-    void setTargetFileCallback(CmdHandlerTargetFileFnType* pTargetFileFunction)
-    {
-        _pTargetFileFunction = pTargetFileFunction;
-    }
-
-    // Callback for OTA update
-    void setOTAUpdateCallback(CmdHandlerOTAUpdateFnType* pOTAUpdateFunction)
-    {
-        _pOTAUpdateFunction = pOTAUpdateFunction;
-    }
+    // Comms Sockets - used to hook things like received message handling
+    static int commsSocketAdd(CommsSocketInfo& commsSocketInfo);
+    static void commsSocketEnable(int commsSocket, bool enable);
 
     // Callback when command handler wants to send on serial channel to ESP32
     void setPutToSerialCallback(CmdHandlerPutToSerialFnType* pPutToSerialFunction)
     {
-        _pPutToSerialFunction = pPutToSerialFunction;
+        _pPutToHDLCSerialFunction = pPutToSerialFunction;
     }
 
     // Handle data received from ESP32 via serial connection
-    static void handleSerialReceivedChars(const uint8_t* pBytes, int numBytes);
+    static void handleHDLCReceivedChars(const uint8_t* pBytes, int numBytes);
 
     // Service the command handler
     void service();
 
+    // Get HDLC stats
+    MiniHDLCStats* getHDLCStats()
+    {
+        return _miniHDLC.getStats();
+    }
+
 public:
     // Send key code to target
-    void sendKeyCodeToTarget(int keyCode);
-    void sendWithJSON(const char* cmdName, const char* cmdJson);
+    static void sendKeyCodeToTarget(int keyCode);
+    static void sendWithJSON(const char* cmdName, const char* cmdJson);
     static void sendAPIReq(const char* reqLine);
     void getStatusResponse(bool* pIPAddressValid, char** pIPAddress, char** pWifiConnStr, 
                 char** pWifiSSID, char** pEsp32Version);
@@ -64,10 +73,20 @@ public:
     void sendRemoteDebugProtocolMsg(const char* pStr, const char* rdpMessageIdStr);
     void logDebugMessage(const char* pStr);
     void logDebugJson(const char* pStr);
+    static void logDebug(const char* pSeverity, const char* pSource, const char* pMsg);
 
 private:
-    static void static_hdlcPutCh(uint8_t ch);
-    static void static_hdlcFrameRx(const uint8_t *frameBuffer, int frameLength);
+    // Comms Sockets
+    static const int MAX_COMMS_SOCKETS = 10;
+    static CommsSocketInfo _commsSockets[MAX_COMMS_SOCKETS];
+    static int _commsSocketCount;
+    void commsSocketHandleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
+                    char* pRespJson, int maxRespLen);
+    void commsSocketHandleReceivedFile(const char* fileStartInfo, uint8_t* rxData, int rxBytes, bool isFirmware);
+
+    // HDLC
+    static void hdlcPutChStatic(uint8_t ch);
+    static void hdlcFrameRxStatic(const uint8_t *frameBuffer, int frameLength);
     void hdlcPutCh(uint8_t ch);
     void hdlcFrameRx(const uint8_t *frameBuffer, int frameLength);
 
@@ -80,12 +99,9 @@ private:
     static void addressRxCallback(uint32_t addr);
 
     // Callbacks
-    static CmdHandlerPutToSerialFnType* _pPutToSerialFunction;
-    static CmdHandlerMachineCommandFnType* _pMachineCommandFunction;
-    static CmdHandlerOTAUpdateFnType* _pOTAUpdateFunction;
-    static CmdHandlerTargetFileFnType* _pTargetFileFunction;
+    static CmdHandlerPutToSerialFnType* _pPutToHDLCSerialFunction;
 
-    // Singleton pointer - to allow access to the singleton bus-commander from static functions
+    // Singleton pointer - to allow access to the singleton commandHandler from static functions
     static CommandHandler* _pSingletonCommandHandler;
 
     // HDLC protocol support

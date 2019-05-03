@@ -26,12 +26,7 @@ private:
     bool _cursorIsOn;
     uint8_t _cursorChar;
 
-    // Subtype
-    static const int MC_SUB_TYPE_STD = 0;
-    static const int MC_SUB_TYPE_EMULATED_UART = 1;
-    static int _machineSubType;
-
-    static McDescriptorTable _descriptorTables[];
+    static McDescriptorTable _defaultDescriptorTables[];
 
     // Shifted digits on keyboard
     static const int SHIFT_DIGIT_KEY_MAP_LEN = 10;
@@ -42,28 +37,25 @@ public:
     McTerminal();
 
     // Enable machine
-    virtual void enable(int subType);
+    virtual void enable();
 
     // Disable machine
     virtual void disable();
 
-    // Get number of descriptor tables for machine
-    virtual int getDescriptorTableCount();
-    
-    // Get descriptor table for the machine (-1 for current subType)
-    virtual McDescriptorTable* getDescriptorTable([[maybe_unused]] int subType = -1);
-
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-    virtual void displayRefresh(DisplayBase* pDisplay);
+    virtual void displayRefreshFromMirrorHw();
 
     // Handle a key press
     virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]);
 
     // Handle a file
-    virtual void fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen);
+    virtual bool fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen);
 
     // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
     virtual uint32_t busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags, uint32_t retVal);
+
+    // Bus action complete callback
+    virtual void busActionCompleteCallback(BR_BUS_ACTION actionType);
 
     // Convert raw USB code to ASCII
     static int convertRawToAscii(unsigned char ucModifiers, const unsigned char rawKeys[6]);

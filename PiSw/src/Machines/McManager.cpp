@@ -2,19 +2,62 @@
 // Rob Dobson 2018
 
 #include "McManager.h"
-#include "../System/Timers.h"
 #include <string.h>
-#include "../TargetBus/TargetState.h"
-#include "../TargetBus/BusAccess.h"
-#include "../TargetBus/RAMEmulator.h"
+#include "../System/lowlib.h"
 #include "../System/rdutils.h"
 #include "../System/piwiring.h"
+#include "../TargetBus/TargetState.h"
+#include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetCPUZ80.h"
+#include "../TargetBus/TargetTracker.h"
 #include "../Hardware/HwManager.h"
 #include "../StepValidator/StepValidator.h"
+#include "../Fonts/SystemFont.h"
+#include "../Machines/McTRS80.h"
+#include "../Machines/McRobsZ80.h"
+#include "../Machines/McZXSpectrum.h"
+#include "../Machines/McTerminal.h"
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Variables
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Module name
 static const char FromMcManager[] = "McManager";
+
+// Sockets
+int McManager::_busSocketId = -1;
+int McManager::_commsSocketId = -1;
+
+// Main comms socket - to wire up command handler
+CommsSocketInfo McManager::_commsSocketInfo =
+{
+    true,
+    McManager::handleRxMsg,
+    NULL,
+    McManager::handleTargetFile
+};
+
+// Step validator
+BusSocketInfo McManager::_busSocketInfo = 
+{
+    true,
+    handleWaitInterruptStatic,
+    McManager::busActionCompleteStatic,
+    false,
+    false,
+    BR_BUS_ACTION_NONE,
+    1,
+    false,
+    BR_BUS_ACTION_DISPLAY,
+    false
+};
+
+// Pending actions
+bool McManager::_busActionPendingProgramTarget = false;
+bool McManager::_busActionPendingExecAfterProgram = false;
+bool McManager::_busActionCodeWrittenAtResetVector = false;
+bool McManager::_busActionPendingDisplayRefresh = false;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Machines
@@ -23,11 +66,9 @@ static const char FromMcManager[] = "McManager";
 // Machine list
 McBase* McManager::_pMachines[McManager::MAX_MACHINES];
 int McManager::_numMachines = 0;
-int McManager::_curMachineIdx = -1;
-int McManager::_curMachineSubType = 0;
+char McManager::_currentMachineName[MAX_MACHINE_NAME_LEN] = "Default";
 McBase* McManager::_pCurMachine = NULL;
-CommandHandler* McManager::_pCommandHandler = NULL;
-Display* McManager::_pDisplay = NULL;
+DisplayBase* McManager::_pDisplay = NULL;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Default descriptor
@@ -49,6 +90,7 @@ McDescriptorTable McManager::defaultDescriptorTable = {
     .pFont = &__systemFont,
     .displayForeground = DISPLAY_FX_WHITE,
     .displayBackground = DISPLAY_FX_BLACK,
+    .displayMemoryMapped = false,
     // Clock
     .clockFrequencyHz = 1000000,
     // Interrupt rate per second
@@ -56,8 +98,6 @@ McDescriptorTable McManager::defaultDescriptorTable = {
     // Bus monitor
     .monitorIORQ = false,
     .monitorMREQ = false,
-    .emulatedRAM = false,
-    .setRegistersByInjection = false,
     .setRegistersCodeAddr = 0
 };
 
@@ -65,8 +105,6 @@ McDescriptorTable McManager::defaultDescriptorTable = {
 // Statics
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-StepTester McManager::_stepTester;
-StepValidator* McManager::_pStepValidator = NULL;
 uint8_t McManager::_rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];
 int McManager::_rxHostCharsBufferLen = 0;
 
@@ -74,21 +112,24 @@ int McManager::_rxHostCharsBufferLen = 0;
 // Init
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void McManager::init(CommandHandler* pCommandHandler, Display* pDisplay)
+void McManager::init(DisplayBase* pDisplay)
 {
-    // Command handler & display
-    _pCommandHandler = pCommandHandler;
+    // Display
     _pDisplay = pDisplay;
     
-    // Let the target debugger know how to communicate
-    TargetDebug::get()->setSendRemoteDebugProtocolMsgCallback(sendRemoteDebugProtocolMsg);
+    // Connect to the bus socket
+    if (_busSocketId < 0)
+        _busSocketId = BusAccess::busSocketAdd(_busSocketInfo);
 
-    // Set callback for bus access
-    BusAccess::accessCallbackAdd(busAccessCallback);
+    // Connect to the comms socket
+    if (_commsSocketId < 0)
+        _commsSocketId = CommandHandler::commsSocketAdd(_commsSocketInfo);
 
-    // Create step validator
-    if (!_pStepValidator)
-        _pStepValidator = new StepValidator();
+    // Add machines - McBase does the actual add
+    new McTerminal();
+    new McTRS80();
+    new McRobsZ80();
+    new McZXSpectrum();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,9 +138,6 @@ void McManager::init(CommandHandler* pCommandHandler, Display* pDisplay)
 
 void McManager::service()
 {
-    _stepTester.service();
-    if (_pStepValidator)
-        _pStepValidator->service();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -116,6 +154,11 @@ McBase* McManager::getMachine()
     return _pCurMachine;
 }
 
+const char* McManager::getMachineName()
+{
+    return _currentMachineName;
+}
+
 McDescriptorTable* McManager::getDescriptorTable()
 {
     if (_pCurMachine)
@@ -125,32 +168,33 @@ McDescriptorTable* McManager::getDescriptorTable()
 
 const char* McManager::getMachineJSON()
 {
+    // Format output
     static const int MAX_MC_JSON_LEN = MAX_MACHINES * (MAX_MACHINE_NAME_LEN + 10) + 20;
     static char mcString[MAX_MC_JSON_LEN+1];
+    strlcpy(mcString, "\"machineList\":[", MAX_MC_JSON_LEN);
 
     // Machine list
-    strlcpy(mcString, "\"machineList\":[", MAX_MC_JSON_LEN);
+    static const int MAX_MC_NAMES_LEN = 300;
+    char mcNamesCommaSep[MAX_MC_NAMES_LEN];
     bool firstItem = true;
     for (int i = 0; i < getNumMachines(); i++)
     {
-        // Iterate sub types
-        for (int j = 0; j < _pMachines[i]->getDescriptorTableCount(); j++)
-        {
-            if (!firstItem)
-                strlcpy(mcString+strlen(mcString),",", MAX_MC_JSON_LEN);
-            firstItem = false;
-            strlcpy(mcString+strlen(mcString),"\"", MAX_MC_JSON_LEN);
-            strlcpy(mcString+strlen(mcString), _pMachines[i]->getDescriptorTable(j)->machineName, MAX_MC_JSON_LEN);
-            strlcpy(mcString+strlen(mcString),"\"", MAX_MC_JSON_LEN);
-        }
+        // Get names of machines (comma separated)
+        _pMachines[i]->getMachineNames(mcNamesCommaSep, MAX_MC_NAMES_LEN);
+        if (!firstItem)
+            strlcat(mcString,",", MAX_MC_JSON_LEN);
+        firstItem = false;
+        strlcat(mcString, mcNamesCommaSep, MAX_MC_JSON_LEN);
     }
-    strlcpy(mcString+strlen(mcString),"]", MAX_MC_JSON_LEN);
+
+    // Close array
+    strlcat(mcString,"]", MAX_MC_JSON_LEN);
 
     // Current machine
-    strlcpy(mcString+strlen(mcString),",\"machineCur\":", MAX_MC_JSON_LEN);
-    strlcpy(mcString+strlen(mcString), "\"", MAX_MC_JSON_LEN);
-    strlcpy(mcString+strlen(mcString), getDescriptorTable()->machineName, MAX_MC_JSON_LEN);
-    strlcpy(mcString+strlen(mcString), "\"", MAX_MC_JSON_LEN);
+    strlcat(mcString,",\"machineCur\":", MAX_MC_JSON_LEN);
+    strlcat(mcString, "\"", MAX_MC_JSON_LEN);
+    strlcat(mcString, _currentMachineName, MAX_MC_JSON_LEN);
+    strlcat(mcString, "\"", MAX_MC_JSON_LEN);
 
     // Ret
     return mcString;
@@ -168,12 +212,7 @@ int McManager::getMachineClock()
 void McManager::targetIrq(int durationUs)
 {
     // Generate a maskable interrupt
-    BusAccess::targetIRQ(durationUs);
-}
-
-void McManager::targetIrqFromTimer([[maybe_unused]] void* pParam)
-{   
-    targetIrq();
+    BusAccess::targetReqIRQ(_busSocketId, durationUs);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -187,137 +226,229 @@ void McManager::add(McBase* pMachine)
     _pMachines[_numMachines++] = pMachine;
 }
 
-bool McManager::setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate)
-{
-    // Check valid
-    if (mcIdx < 0 || mcIdx >= _numMachines)
-        return false;
-
-    // Check if no change
-    if ((_curMachineIdx == mcIdx) && (_curMachineSubType != mcSubType) && !forceUpdate)
-        return false;
-    
-    // Disable current machine
-    BusAccess::waitSetup(false, false);
-    if (_pCurMachine)
-        _pCurMachine->disable();
-
-    // Set the new machine
-    _curMachineIdx = mcIdx;
-    _curMachineSubType = mcSubType;
-    _pCurMachine = _pMachines[mcIdx];
-
-    // Layout display for machine
-    McDescriptorTable* pMcDescr = _pCurMachine->getDescriptorTable(_curMachineSubType);
-    if (_pDisplay)
-        _pDisplay->targetLayout(
-            pMcDescr->displayPixelsX, pMcDescr->displayPixelsY,
-            pMcDescr->displayCellX, pMcDescr->displayCellY,
-            pMcDescr->pixelScaleX, pMcDescr->pixelScaleY,
-            pMcDescr->pFont, 
-            pMcDescr->displayForeground, pMcDescr->displayBackground);
-
-    // Enable machine
-    if (getMachine())
-    {
-        // Setup clock
-        uint32_t clockFreqHz = pMcDescr->clockFrequencyHz;
-        if (clockFreqHz != 0)
-        {
-            BusAccess::clockSetup();
-            BusAccess::clockSetFreqHz(clockFreqHz);
-            BusAccess::clockEnable(true);
-        }
-        else
-        {
-            BusAccess::clockEnable(false);
-        }
-
-        // Setup RAMEmulator and paging
-        RAMEmulator::setup();
-        RAMEmulator::activateEmulation(pMcDescr->emulatedRAM);
-        HwManager::pageOutForEmulation(pMcDescr->emulatedRAM);
-
-        // Set target machine in debug
-        TargetDebug::get()->setup(_pCurMachine);
-
-        // Debug
-        LogWrite(FromMcManager, LOG_DEBUG, "EmuRAM %s Inject %s WIORQ %s WMREQ %s",
-                    pMcDescr->emulatedRAM ? "Y" : "N",
-                    pMcDescr->setRegistersByInjection ?  "Y" : "N",
-                    pMcDescr->monitorIORQ ?  "Y" : "N",
-                    pMcDescr->monitorMREQ || pMcDescr->emulatedRAM ?  "Y" : "N");
-
-        // Bus raider enable wait states
-        BusAccess::waitSetup(pMcDescr->monitorIORQ, pMcDescr->monitorMREQ || pMcDescr->emulatedRAM);
-
-        // Start
-        _pCurMachine->enable(mcSubType);
-
-        // Heartbeat timer
-        if (_pCurMachine->getDescriptorTable(mcSubType)->irqRate != 0)
-            Timers::set(1000000 / pMcDescr->irqRate, McManager::targetIrqFromTimer, NULL);
-
-        // Started machine
-        LogWrite(FromMcManager, LOG_VERBOSE, "Started machine %s", 
-                    pMcDescr->machineName);
-
-    }
-    else
-    {
-        LogWrite(FromMcManager, LOG_DEBUG, "Failed to start machine idx %d", mcIdx);
-    }
-    return true;
-}
-
 bool McManager::setMachineByName(const char* mcName)
 {
-    // Find machine
+    // Setup json
+    static const int MAX_MC_JSON_LEN = 200;
+    char mcJson[MAX_MC_JSON_LEN];
+    ee_sprintf(mcJson, "\"name\":\"%s\"", mcName);
+    return McManager::setupMachine(mcJson);
+}
+
+bool McManager::setupMachine(const char* mcJson)
+{
+    // Extract machine name
+    static const int MAX_MC_NAME_LEN = 200;
+    char mcName [MAX_MC_NAME_LEN];
+    if (!jsonGetValueForKey("name", mcJson, mcName, MAX_MC_NAME_LEN))
+        return false;
+
+    // Ask each machine if it is them
+    McBase* pMc = NULL;
     for (int i = 0; i < _numMachines; i++)
     {
-        // Iterate sub types
-        for (int j = 0; j < _pMachines[i]->getDescriptorTableCount(); j++)
+        if (_pMachines[i])
         {
-            if (strncasecmp(mcName, _pMachines[i]->getDescriptorTable(j)->machineName, MAX_MACHINE_NAME_LEN) == 0)
+            if (_pMachines[i]->isCalled(mcName))
             {
-                return setMachineIdx(i, j, false);
+                pMc = _pMachines[i];
+                break;
             }
         }
     }
-    return false;
-}
-
-bool McManager::setMachineOpts(const char* mcOpts)
-{
-    // Machine
-    if (!_pCurMachine)
+    if (!pMc)
         return false;
 
-    // Disable machine
-    BusAccess::waitSetup(false, false);
+    // Set cur machine
+    _pCurMachine = pMc;
+
+    // Remove wait generation
+    BusAccess::waitOnIO(_busSocketId, false);
+    BusAccess::waitOnMemory(_busSocketId, false);
+
+    // Disable current machine
     _pCurMachine->disable();
 
-    // Get options
-    McDescriptorTable* pMcDescr = getDescriptorTable();
-    pMcDescr->emulatedRAM = (strstr(mcOpts, "EMURAM") != 0);
-    pMcDescr->setRegistersByInjection = (strstr(mcOpts, "INJECT") != 0);
+    // Store new name
+    strlcpy(_currentMachineName, mcName, MAX_MACHINE_NAME_LEN);
+
+    // Setup display
+    pMc->setupDisplay(_pDisplay);
+
+    // Setup the machine
+    pMc->setupMachine(mcName, mcJson);
+
+    // Handle the 
+
+    // // Set options
+    // McDescriptorTable* pMcDescr = getDescriptorTable();
+
+    // pMcDescr->emulatedRAM = (strstr(mcOpts, "EMURAM") != 0);
+    // pMcDescr->setRegistersByInjection = (strstr(mcOpts, "INJECT") != 0);
 
     // Debug
-    LogWrite(FromMcManager, LOG_DEBUG, "setMachineOpts %s emuRAM %d instrInject %d", mcOpts,
-                pMcDescr->emulatedRAM,
-                pMcDescr->setRegistersByInjection);
+    // LogWrite(FromMcManager, LOG_DEBUG, "setMachineOpts %s emuRAM %d instrInject %d", mcOpts,
+    //             pMcDescr->emulatedRAM,
+    //             pMcDescr->setRegistersByInjection);
 
     // Set RAM paging based on whether emulation is active
-    RAMEmulator::activateEmulation(pMcDescr->emulatedRAM);
-    HwManager::pageOutForEmulation(pMcDescr->emulatedRAM);
+    // TODO
+    // RAMEmulator::activateEmulation(pMcDescr->emulatedRAM);
+    // HwManager::pageOutForEmulation(pMcDescr->emulatedRAM);
 
     // Bus raider enable wait states
-    BusAccess::waitSetup(pMcDescr->monitorIORQ, pMcDescr->monitorMREQ || pMcDescr->emulatedRAM);
+    // TODO
+    // BusAccess::waitSetup(pMcDescr->monitorIORQ, pMcDescr->monitorMREQ || pMcDescr->emulatedRAM);
 
     // Enable
-    _pCurMachine->enable(_curMachineSubType);
+    _pCurMachine->enable();
+
+    // Enable wait generation as required
+    BusAccess::waitOnIO(_busSocketId, _pCurMachine->getDescriptorTable()->monitorIORQ);
+    BusAccess::waitOnMemory(_busSocketId, _pCurMachine->getDescriptorTable()->monitorMREQ);
+
     return true;
 }
+
+// bool McManager::setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate)
+// {
+//     // Check valid
+//     if (mcIdx < 0 || mcIdx >= _numMachines)
+//         return false;
+
+//     // Check if no change
+//     if ((_curMachineIdx == mcIdx) && (_curMachineSubType != mcSubType) && !forceUpdate)
+//         return false;
+    
+//     // Disable current machine
+//     // TODO
+//     // BusAccess::waitSetup(false, false);
+//     if (_pCurMachine)
+//         _pCurMachine->disable();
+
+//     // Set the new machine
+//     _curMachineIdx = mcIdx;
+//     _curMachineSubType = mcSubType;
+//     _pCurMachine = _pMachines[mcIdx];
+
+//     // Layout display for machine
+//     McDescriptorTable* pMcDescr = _pCurMachine->getDescriptorTable(_curMachineSubType);
+//     if (_pDisplay)
+//         _pDisplay->targetLayout(
+//             pMcDescr->displayPixelsX, pMcDescr->displayPixelsY,
+//             pMcDescr->displayCellX, pMcDescr->displayCellY,
+//             pMcDescr->pixelScaleX, pMcDescr->pixelScaleY,
+//             pMcDescr->pFont, 
+//             pMcDescr->displayForeground, pMcDescr->displayBackground);
+
+//     // Enable machine
+//     if (getMachine())
+//     {
+//         // Setup clock
+//         uint32_t clockFreqHz = pMcDescr->clockFrequencyHz;
+//         if (clockFreqHz != 0)
+//         {
+//             BusAccess::clockSetup();
+//             BusAccess::clockSetFreqHz(clockFreqHz);
+//             BusAccess::clockEnable(true);
+//         }
+//         else
+//         {
+//             BusAccess::clockEnable(false);
+//         }
+
+//         // Setup RAMEmulator and paging
+//         // TODO
+//         // RAMEmulator::setup();
+//         // RAMEmulator::activateEmulation(pMcDescr->emulatedRAM);
+//         // HwManager::pageOutForEmulation(pMcDescr->emulatedRAM);
+
+//         // Set target machine in debug
+//         //TODO
+//         // TargetDebug::get()->setup(_pCurMachine);
+
+//         // Debug
+//         LogWrite(FromMcManager, LOG_DEBUG, "EmuRAM %s Inject %s WIORQ %s WMREQ %s",
+//                     pMcDescr->emulatedRAM ? "Y" : "N",
+//                     pMcDescr->setRegistersByInjection ?  "Y" : "N",
+//                     pMcDescr->monitorIORQ ?  "Y" : "N",
+//                     pMcDescr->monitorMREQ || pMcDescr->emulatedRAM ?  "Y" : "N");
+
+//         // Bus raider enable wait states
+//         // TODO
+//         // BusAccess::waitSetup(pMcDescr->monitorIORQ, pMcDescr->monitorMREQ || pMcDescr->emulatedRAM);
+
+//         // Start
+//         _pCurMachine->enable(mcSubType);
+
+//         // // Heartbeat timer
+//         // TODO
+//         // if (_pCurMachine->getDescriptorTable(mcSubType)->irqRate != 0)
+//         //     Timers::set(1000000 / pMcDescr->irqRate, McManager::targetIrqFromTimer, NULL);
+
+//         // Started machine
+//         LogWrite(FromMcManager, LOG_VERBOSE, "Started machine %s", 
+//                     pMcDescr->machineName);
+
+//     }
+//     else
+//     {
+//         LogWrite(FromMcManager, LOG_DEBUG, "Failed to start machine idx %d", mcIdx);
+//     }
+//     return true;
+// }
+
+// bool McManager::setMachineByName(const char* mcName)
+// {
+//     // Find machine
+//     for (int i = 0; i < _numMachines; i++)
+//     {
+//         // Iterate sub types
+//         for (int j = 0; j < _pMachines[i]->getMcSubTypeCount(); j++)
+//         {
+//             if (strncasecmp(mcName, _pMachines[i]->getDescriptorTable(j)->machineName, MAX_MACHINE_NAME_LEN) == 0)
+//             {
+//                 return setMachineIdx(i, j, false);
+//             }
+//         }
+//     }
+//     return false;
+// }
+
+// bool McManager::setMachineOpts(const char* mcOpts)
+// {
+//     // Machine
+//     if (!_pCurMachine)
+//         return false;
+
+//     // Disable machine
+//     // TODO
+//     // BusAccess::waitSetup(false, false);
+//     _pCurMachine->disable();
+
+//     // Get options
+//     McDescriptorTable* pMcDescr = getDescriptorTable();
+//     pMcDescr->emulatedRAM = (strstr(mcOpts, "EMURAM") != 0);
+//     pMcDescr->setRegistersByInjection = (strstr(mcOpts, "INJECT") != 0);
+
+//     // Debug
+//     LogWrite(FromMcManager, LOG_DEBUG, "setMachineOpts %s emuRAM %d instrInject %d", mcOpts,
+//                 pMcDescr->emulatedRAM,
+//                 pMcDescr->setRegistersByInjection);
+
+//     // Set RAM paging based on whether emulation is active
+//     // TODO
+//     // RAMEmulator::activateEmulation(pMcDescr->emulatedRAM);
+//     // HwManager::pageOutForEmulation(pMcDescr->emulatedRAM);
+
+//     // Bus raider enable wait states
+//     // TODO
+//     // BusAccess::waitSetup(pMcDescr->monitorIORQ, pMcDescr->monitorMREQ || pMcDescr->emulatedRAM);
+
+//     // Enable
+//     _pCurMachine->enable(_curMachineSubType);
+//     return true;
+// }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Display refresh
@@ -325,8 +456,21 @@ bool McManager::setMachineOpts(const char* mcOpts)
 
 void McManager::displayRefresh()
 {
-    if (_pCurMachine)
-       _pCurMachine->displayRefresh(_pDisplay);
+    // Determine whether display is memory mapped
+    bool isMemoryMapped = getDescriptorTable()->displayMemoryMapped;
+    bool useDirectBusAccess = isMemoryMapped && TargetTracker::busAccessAvailable();
+    if (useDirectBusAccess)
+    {
+        // Asynch display refresh - start bus access request here
+        BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_DISPLAY);
+        _busActionPendingDisplayRefresh = true;
+    }
+    else
+    {
+        // Synchronous display update (from local memory copy)
+        if (_pCurMachine)
+            _pCurMachine->displayRefreshFromMirrorHw();
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -369,96 +513,67 @@ int McManager::getCharsReceivedFromHost(uint8_t* pBuf, int bufMaxLen)
 
 void McManager::sendKeyCodeToTarget(int asciiCode)
 {
-    if (_pCommandHandler)
-        _pCommandHandler->sendKeyCodeToTarget(asciiCode);
+    CommandHandler::sendKeyCodeToTarget(asciiCode);
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Debug messaging
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// // Debug messaging
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void McManager::sendRemoteDebugProtocolMsg(const char* pStr, const char* rdpMessageIdStr)
-{
-    // LogWrite(FromMcManager, LOG_VERBOSE, "debugMsg %s cmdH %d msgId %s", pStr, _pCommandHandler, rdpMessageIdStr); 
-    if (_pCommandHandler)
-        _pCommandHandler->sendRemoteDebugProtocolMsg(pStr, rdpMessageIdStr);
-}
+// void McManager::sendRemoteDebugProtocolMsg(const char* pStr, const char* rdpMessageIdStr)
+// {
+//     // LogWrite(FromMcManager, LOG_VERBOSE, "debugMsg %s cmdH %d msgId %s", pStr, _pCommandHandler, rdpMessageIdStr); 
+//     if (_pCommandHandler)
+//         _pCommandHandler->sendRemoteDebugProtocolMsg(pStr, rdpMessageIdStr);
+// }
 
-bool McManager::debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen)
-{
-    McBase* pMc = getMachine();
-    // LogWrite(FromMcManager, LOG_VERBOSE, "debuggerCommand %s %d %d\n", pCommand, 
-    //         maxResponseLen, pMc);
-    if (pMc)
-        return pMc->debuggerCommand(pCommand, pResponse, maxResponseLen);
-    return false;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Memory access
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool McManager::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq)
-{
-    // Check if we are paused or emulating memory - if so bus access cannot write memory
-    if ((TargetDebug::get()->isPaused() || RAMEmulator::isActive()) && (!iorq))
-        return RAMEmulator::blockWrite(addr, pBuf, len);
-    // Grab the bus
-    return BusAccess::blockWrite(addr, pBuf, len, busRqAndRelease, iorq) == BR_OK;
-}
-
-bool McManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq)
-{
-    // Check if emulating memory or if we are paused - if the latter bus access cannot get memory but stepping process will have
-    // grabbed all of physical RAM and placed it in the buffer for debugging
-    if ((TargetDebug::get()->isPaused() || RAMEmulator::isActive()) && (!iorq))
-        return RAMEmulator::blockRead(addr, pBuf, len);
-    // Grab the bus
-    return BusAccess::blockRead(addr, pBuf, len, busRqAndRelease, iorq) == BR_OK;
-}
+// bool McManager::debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen)
+// {
+//     McBase* pMc = getMachine();
+//     // LogWrite(FromMcManager, LOG_VERBOSE, "debuggerCommand %s %d %d\n", pCommand, 
+//     //         maxResponseLen, pMc);
+//     if (pMc)
+//         return pMc->debuggerCommand(pCommand, pResponse, maxResponseLen);
+//     return false;
+// }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Target control
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Handle control of target machine
-void McManager::targetReset(bool restoreWaitDefaults, bool holdInReset)
+// // Handle control of target machine
+void McManager::targetReset()
 {
-    // Reset attached hardware
-    HwManager::reset();
-
     // Reset target
-    bool resetDone = false;
-    McBase* pMc = McManager::getMachine();
-    if (pMc)
-        resetDone = pMc->reset(restoreWaitDefaults, holdInReset);
-    if (!resetDone)
-        BusAccess::targetReset(restoreWaitDefaults, holdInReset);
+    BusAccess::targetReqReset(_busSocketId);
 }
 
-void McManager::targetClearAllIO()
-{
-    BusAccess::clearAllIO();
-}
+// void McManager::targetClearAllIO()
+// {
+//     BusAccess::clearAllIO();
+// }
 
-void McManager::targetPause()
-{
-    TargetDebug::get()->pause();
-}
+// void McManager::targetPause()
+// {
+//     // TODO
+//     // TargetDebug::get()->pause();
+// }
 
-void McManager::targetRelease()
-{
-    TargetDebug::get()->release();
-}
+// void McManager::targetRelease()
+// {
+//     // TODO
+//     // TargetDebug::get()->release();
+// }
 
-void McManager::targetStep(bool stepOver)
-{
-    TargetDebug::get()->step(stepOver);
-}
+// void McManager::targetStep(bool stepOver)
+// {
+//     // TODO
+//     // TargetDebug::get()->step(stepOver);
+// }
 
 bool McManager::targetIsPaused()
 {
-    return TargetDebug::get()->isPaused();
+    return BusAccess::waitIsHeld();
 }
 
 bool McManager::targetBusUnderPiControl()
@@ -466,37 +581,38 @@ bool McManager::targetBusUnderPiControl()
     return BusAccess::isUnderControl();
 }
 
-void McManager::busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal)
-{
-    // Offer to the hardware manager
-    retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
+    // TODO
 
-    // Emulated RAM
-    retVal = RAMEmulator::handleWaitInterrupt(addr, data, flags, retVal);
+// void McManager::busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal)
+// {
+//     // Offer to the hardware manager
+//     retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
+
+//     // Emulated RAM
+//     retVal = RAMEmulator::handleWaitInterrupt(addr, data, flags, retVal);
     
-    // Hardware management   
-    retVal = HwManager::handleWaitInterrupt(addr, data, flags, retVal);
+//     // Hardware management   
+//     retVal = HwManager::handleWaitInterrupt(addr, data, flags, retVal);
 
-    // Callback to debugger
-    retVal = TargetDebug::get()->handleWaitInterrupt(addr, data, flags, retVal);
+//     // Callback to debugger
+//     retVal = TargetDebug::get()->handleWaitInterrupt(addr, data, flags, retVal);
 
-    // Step validator
-    retVal = _stepTester.handleWaitInterrupt(addr, data, flags, retVal);
-    if (_pStepValidator)
-        retVal = _pStepValidator->handleWaitInterrupt(addr, data, flags, retVal);
+//     // Step validator
+//     retVal = _stepTester.handleWaitInterrupt(addr, data, flags, retVal);
+//     if (_pStepValidator)
+//         retVal = _pStepValidator->handleWaitInterrupt(addr, data, flags, retVal);
 
-    // Offer to target machine
-    if (_pCurMachine)
-        retVal = _pCurMachine->busAccessCallback(addr, data, flags, retVal);
-}
+//     // Offer to target machine
+//     if (_pCurMachine)
+//         retVal = _pCurMachine->busAccessCallback(addr, data, flags, retVal);
+// }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Target programming
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Handle programming of target machine
-void McManager::handleTargetProgram(bool resetAfterProgramming, bool addWaitOnInstruction,
-            bool holdInPause, bool forceSetRegsByInjection)
+void McManager::handleTargetProgram(bool execAfterProgramming)
 {
     // Check there is something to write
     if (TargetState::numMemoryBlocks() == 0) 
@@ -506,91 +622,99 @@ void McManager::handleTargetProgram(bool resetAfterProgramming, bool addWaitOnIn
     } 
     else 
     {
-        // Let the TargetDebug module know that we are programming
-        TargetDebug::get()->targetProgrammingStarted();
-
         // BUSRQ is used even if memory is emulated because it holds the processor while changes are made
 
-        // Release bus if paused or controlled
-        BusAccess::controlRelease(false, false);
+        // Request target bus
+        BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_PROGRAMMING);
+        _busActionPendingProgramTarget = true;
+        _busActionPendingExecAfterProgram = execAfterProgramming;
 
-        // Handle programming in one BUSRQ/BUSACK pass
-        if (BusAccess::controlRequestAndTake() != BR_OK)
-        {
-            LogWrite(FromMcManager, LOG_DEBUG, "ProgramTarget - failed to capture bus");   
-            return;
-        }
+        // // Can only program if processor isn't held
+        // if (BusAccess::waitIsAsserted())
+        // {
+        //     // Release
+        //     BusAccess::waitRelease();
+        // }
 
-        // Write the blocks
-        bool blockWrittenAtResetEntryPoint = false;
-        for (int i = 0; i < TargetState::numMemoryBlocks(); i++) {
-            TargetState::TargetMemoryBlock* pBlock = TargetState::getMemoryBlock(i);
-            LogWrite(FromMcManager, LOG_VERBOSE,"ProgramTarget start %08x len %d", pBlock->start, pBlock->len);
-            McManager::blockWrite(pBlock->start, TargetState::getMemoryImagePtr() + pBlock->start, pBlock->len, false, false);
-            if (pBlock->start == Z80_PROGRAM_RESET_VECTOR)
-                blockWrittenAtResetEntryPoint = true;
-        }
+        // Programming will be done in the BUSRQ-ACK Callback
 
-        // Written
-        LogWrite(FromMcManager, LOG_VERBOSE, "ProgramTarget - written %d blocks", TargetState::numMemoryBlocks());
+        // // Handle programming in one BUSRQ/BUSACK pass
+        // if (BusAccess::controlRequestAndTake() != BR_OK)
+        // {
+        //     LogWrite(FromMcManager, LOG_DEBUG, "ProgramTarget - failed to capture bus");   
+        //     return;
+        // }
 
-        // Check for hold in pause
-        if (holdInPause)
-            TargetDebug::get()->pause();
+        // // Write the blocks
+        // bool blockWrittenAtResetEntryPoint = false;
+        // for (int i = 0; i < TargetState::numMemoryBlocks(); i++) {
+        //     TargetState::TargetMemoryBlock* pBlock = TargetState::getMemoryBlock(i);
+        //     LogWrite(FromMcManager, LOG_VERBOSE,"ProgramTarget start %08x len %d", pBlock->start, pBlock->len);
+        //     McManager::blockWrite(pBlock->start, TargetState::getMemoryImagePtr() + pBlock->start, pBlock->len, false, false);
+        //     if (pBlock->start == Z80_PROGRAM_RESET_VECTOR)
+        //         blockWrittenAtResetEntryPoint = true;
+        // }
 
-        // Check for reset too
-        if (resetAfterProgramming)
-        {
-            LogWrite(FromMcManager, LOG_DEBUG, "Starting target code");
-            bool performHardReset = true;
-            if (TargetState::areRegistersValid())
-            {
-                // Check how to set registers
-                if (getDescriptorTable()->setRegistersByInjection || forceSetRegsByInjection)
-                {
-                    // Use the BusAccess module to inject instructions to set registers
-                    // Z80Registers regs;
-                    // TargetState::getTargetRegs(regs);
-                    // TargetDebug::get()->startSetRegisterSequence(&regs);
-                    // performHardReset = false;
-                }
-                else
-                {
-                    // If the code doesn't start at 0, generate a code snippet to set registers and run
-                    if (!blockWrittenAtResetEntryPoint)
-                    {
-                        uint8_t regSetCode[MAX_REGISTER_SET_CODE_LEN];
-                        Z80Registers regs;
-                        TargetState::getTargetRegs(regs);
-                        char regsStr[500];
-                        regs.format(regsStr, 500);
-                        LogWrite(FromMcManager, LOG_DEBUG, "Regs: %s", regsStr);
-                        uint32_t codeDestAddr = getDescriptorTable()->setRegistersCodeAddr;
-                        int codeLen = TargetCPUZ80::getSnippetToSetRegs(codeDestAddr, regs, regSetCode, MAX_REGISTER_SET_CODE_LEN);
-                        if (codeLen != 0)
-                        {
-                            // Reg setting code
-                            LogWrite(FromMcManager, LOG_DEBUG,"Set regs snippet at %04x len %d", codeDestAddr, codeLen);
-                            McManager::blockWrite(codeDestAddr, regSetCode, codeLen, false, false);
+        // // Written
+        // LogWrite(FromMcManager, LOG_VERBOSE, "ProgramTarget - written %d blocks", TargetState::numMemoryBlocks());
+
+        // // Check for hold in pause
+        // if (holdInPause)
+        //     TargetDebug::get()->pause();
+
+        // // Check for reset too
+        // if (resetAfterProgramming)
+        // {
+        //     LogWrite(FromMcManager, LOG_DEBUG, "Starting target code");
+        //     bool performHardReset = true;
+        //     if (TargetState::areRegistersValid())
+        //     {
+        //         // Check how to set registers
+        //         if (getDescriptorTable()->setRegistersByInjection || forceSetRegsByInjection)
+        //         {
+        //             // Use the BusAccess module to inject instructions to set registers
+        //             // Z80Registers regs;
+        //             // TargetState::getTargetRegs(regs);
+        //             // TargetDebug::get()->startSetRegisterSequence(&regs);
+        //             // performHardReset = false;
+        //         }
+        //         else
+        //         {
+        //             // If the code doesn't start at 0, generate a code snippet to set registers and run
+        //             if (!blockWrittenAtResetEntryPoint)
+        //             {
+        //                 uint8_t regSetCode[MAX_REGISTER_SET_CODE_LEN];
+        //                 Z80Registers regs;
+        //                 TargetState::getTargetRegs(regs);
+        //                 char regsStr[500];
+        //                 regs.format(regsStr, 500);
+        //                 LogWrite(FromMcManager, LOG_DEBUG, "Regs: %s", regsStr);
+        //                 uint32_t codeDestAddr = getDescriptorTable()->setRegistersCodeAddr;
+        //                 int codeLen = TargetCPUZ80::getSnippetToSetRegs(codeDestAddr, regs, regSetCode, MAX_REGISTER_SET_CODE_LEN);
+        //                 if (codeLen != 0)
+        //                 {
+        //                     // Reg setting code
+        //                     LogWrite(FromMcManager, LOG_DEBUG,"Set regs snippet at %04x len %d", codeDestAddr, codeLen);
+        //                     McManager::blockWrite(codeDestAddr, regSetCode, codeLen, false, false);
                             
-                            // Reset vector
-                            uint8_t jumpCmd[3] = { 0xc3, uint8_t(codeDestAddr & 0xff), uint8_t((codeDestAddr >> 8) & 0xff) };
-                            McManager::blockWrite(0, jumpCmd, 3, false, false);
-                            LogDumpMemory(regSetCode, regSetCode + codeLen);
-                        }
-                    }
-                }
-            }
+        //                     // Reset vector
+        //                     uint8_t jumpCmd[3] = { 0xc3, uint8_t(codeDestAddr & 0xff), uint8_t((codeDestAddr >> 8) & 0xff) };
+        //                     McManager::blockWrite(0, jumpCmd, 3, false, false);
+        //                     LogDumpMemory(regSetCode, regSetCode + codeLen);
+        //                 }
+        //             }
+        //         }
+        //     }
 
-            // Release bus
-            LogWrite(FromMcManager, LOG_DEBUG, "controlRelease hardReset %s", performHardReset ? "Y" : "N");
-            BusAccess::controlRelease(performHardReset, addWaitOnInstruction);
-        }
-        else
-        {
-            // Release bus
-            BusAccess::controlRelease(false, addWaitOnInstruction);
-        }
+        //     // Release bus
+        //     LogWrite(FromMcManager, LOG_DEBUG, "controlRelease hardReset %s", performHardReset ? "Y" : "N");
+        //     BusAccess::controlRelease(performHardReset, addWaitOnInstruction);
+        // }
+        // else
+        // {
+        //     // Release bus
+        //     BusAccess::controlRelease(false, addWaitOnInstruction);
+        // }
     }
 }
 
@@ -598,26 +722,27 @@ void McManager::handleTargetProgram(bool resetAfterProgramming, bool addWaitOnIn
 // Target file handling
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void McManager::handleTargetFile(const char* rxFileInfo, const uint8_t* pData, int dataLen)
+bool McManager::handleTargetFile(const char* rxFileInfo, const uint8_t* pData, int dataLen)
 {
+    LogWrite(FromMcManager, LOG_DEBUG, "handleTargetFile");
     McBase* pMc = McManager::getMachine();
     if (pMc)
-        pMc->fileHandler(rxFileInfo, pData, dataLen);
+        return pMc->fileHandler(rxFileInfo, pData, dataLen);
+    return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Command handling
+// Received message handler
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void McManager::handleCommand(const char* pCmdJson, 
-                    [[maybe_unused]] const uint8_t* pParams, [[maybe_unused]] int paramsLen,
-                    char* pRespJson, int maxRespLen)
+bool McManager::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t* pParams, [[maybe_unused]]int paramsLen,
+                [[maybe_unused]]char* pRespJson, [[maybe_unused]]int maxRespLen)
 {
     // LogWrite(FromMcManager, LOG_DEBUG, "req %s", pCmdJson);
     #define MAX_CMD_NAME_STR 200
     char cmdName[MAX_CMD_NAME_STR+1];
     if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
-        return;
+        return false;
     pRespJson[0] = 0;
 
     if (strcasecmp(cmdName, "getStatus") == 0)
@@ -625,55 +750,70 @@ void McManager::handleCommand(const char* pCmdJson,
         const char* mcJSON = getMachineJSON();
         if (pRespJson)
             strlcat(pRespJson, mcJSON, maxRespLen);
+        return true;
     }
     else if (strcasecmp(cmdName, "ClearTarget") == 0)
     {
         // LogWrite(FromMcManager, LOG_VERBOSE, "ClearTarget");
         TargetState::clear();
+        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        return true;
     }
     else if (strcasecmp(cmdName, "ProgramTarget") == 0)
     {
-        McManager::handleTargetProgram(false, false, false, false);
+        McManager::handleTargetProgram(false);
+        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        return true;
     }
-    else if (strcasecmp(cmdName, "ProgramAndReset") == 0)
+    else if ((strcasecmp(cmdName, "ProgramAndReset") == 0) ||
+            (strcasecmp(cmdName, "ProgramAndExec") == 0))
     {
-        McManager::handleTargetProgram(true, false, false, false);
+        McManager::handleTargetProgram(true);
+        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        return true;
     }
     else if (strcasecmp(cmdName, "ResetTarget") == 0)
     {
         // LogWrite(FromMcManager, LOG_VERBOSE, "ResetTarget");
-        McManager::targetReset(true, false);
+        McManager::targetReset();
+        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        return true;
     }
-    else if (strcasecmp(cmdName, "PauseTarget") == 0)
-    {
-        // LogWrite(FromMcManager, LOG_VERBOSE, "PauseTarget");
-        McManager::targetPause();
-    }
-    else if (strcasecmp(cmdName, "ReleaseTarget") == 0)
-    {
-        // LogWrite(FromMcManager, LOG_VERBOSE, "ReleaseTarget");
-        McManager::targetRelease();
-    }
-    else if (strcasecmp(cmdName, "IOClrTarget") == 0)
-    {
-        LogWrite(FromMcManager, LOG_VERBOSE, "IO Clear Target");
-        McManager::targetClearAllIO();
-    }
+    // else if (strcasecmp(cmdName, "PauseTarget") == 0)
+    // {
+    //     // LogWrite(FromMcManager, LOG_VERBOSE, "PauseTarget");
+    //     McManager::targetPause();
+    //     return true;
+    // }
+    // else if (strcasecmp(cmdName, "ReleaseTarget") == 0)
+    // {
+    //     // LogWrite(FromMcManager, LOG_VERBOSE, "ReleaseTarget");
+    //     McManager::targetRelease();
+    //     return true;
+    // }
+    // else if (strcasecmp(cmdName, "IOClrTarget") == 0)
+    // {
+    //     LogWrite(FromMcManager, LOG_VERBOSE, "IO Clear Target");
+    //     McManager::targetClearAllIO();
+    //     return true;
+    // }
     else if ((strcasecmp(cmdName, "FileTarget") == 0) || ((strcasecmp(cmdName, "SRECTarget") == 0)))
     {
-        // LogWrite(FromMcManager, LOG_VERBOSE, "File to Target, len %d", paramsLen);
+        LogWrite(FromMcManager, LOG_DEBUG, "File to Target, len %d", paramsLen);
         McBase* pMc = McManager::getMachine();
         if (pMc)
             pMc->fileHandler(pCmdJson, pParams, paramsLen);
+        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        return true;
     }
-    else if (strcasecmp(cmdName, "SRECTarget") == 0)
-    {
-        // LogWrite(FromMcManager, LOG_VERBOSE, "SREC to Target, len %d", paramsLen);
-        McBase* pMc = McManager::getMachine();
-        if (pMc)
-            pMc->fileHandler(pCmdJson, pParams, paramsLen);
-
-    }
+    // else if (strcasecmp(cmdName, "SRECTarget") == 0)
+    // {
+    //     // LogWrite(FromMcManager, LOG_VERBOSE, "SREC to Target, len %d", paramsLen);
+    //     McBase* pMc = McManager::getMachine();
+    //     if (pMc)
+    //         pMc->fileHandler(pCmdJson, pParams, paramsLen);
+    //     return true;
+    // }
     else if (strncasecmp(cmdName, "SetMachine", strlen("SetMachine")) == 0)
     {
         // Get machine name
@@ -685,76 +825,176 @@ void McManager::handleCommand(const char* pCmdJson,
             setMachineByName(pMcName);
             LogWrite(FromMcManager, LOG_VERBOSE, "Set Machine to %s", pMcName);
         }
+        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        return true;
     }
-    else if (strncasecmp(cmdName, "mcoptions", strlen("mcoptions")) == 0)
+    else if (strcasecmp(cmdName, "SetMcJson") == 0)
     {
         // Get options
-        const char* pOptions = strstr(cmdName,"=");
-        if (pOptions)
-        {
-            // Move to first char of actual parameter
-            pOptions++;
-            LogWrite(FromMcManager, LOG_VERBOSE, "Set Machine options to %s", pOptions);
-            setMachineOpts(pOptions);
-        }
+        static const int MAX_MC_SET_JSON_LEN = 1000;
+        char mcJson[MAX_MC_SET_JSON_LEN];
+        if (!jsonGetValueForKey("mcJson", pCmdJson, mcJson, MAX_MC_SET_JSON_LEN))
+            return false;
+        LogWrite(FromMcManager, LOG_VERBOSE, "Set Machine options to %s", mcJson);
+        bool setupOk = setupMachine(mcJson);
+        if (setupOk)
+            strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        else
+            strlcpy(pRespJson, "\"err\":\"fail\"", maxRespLen);
+        return true;
     }
     else if (strcasecmp(cmdName, "RxHost") == 0)
     {
         // LogWrite(FromMcManager, LOG_VERBOSE, "RxFromHost, len %d", dataLen);
         handleRxCharFromTarget(pParams, paramsLen);
+        return true;
     }
-    else if (strcasecmp(cmdName, "rdp") == 0)
+    //TODO
+    // else if (strcasecmp(cmdName, "rdp") == 0)
+    // {
+    //     // Get message index value
+    //     static const int MAX_RDP_MSG_ID_LEN = 20;
+    //     char rdpMessageIdStr[MAX_RDP_MSG_ID_LEN+1];
+    //     strcpy(rdpMessageIdStr, "0");
+    //     if (!jsonGetValueForKey("index", pCmdJson, rdpMessageIdStr, MAX_RDP_MSG_ID_LEN))
+    //         LogWrite(FromMcManager, LOG_DEBUG, "RDP message no index value found");
+    //     // Send to remote debug handler
+    //     static const int MAX_CMD_STR_LEN = 200;
+    //     static char commandStr[MAX_CMD_STR_LEN+1];
+    //     if (paramsLen > MAX_CMD_STR_LEN)
+    //         paramsLen = MAX_CMD_STR_LEN;
+    //     memcpy(commandStr, pParams, paramsLen);
+    //     commandStr[paramsLen] = 0;
+    //     static const int MAX_RESPONSE_MSG_LEN = 2000;
+    //     static char responseMessage[MAX_RESPONSE_MSG_LEN+1];
+    //     responseMessage[0] = 0;
+    //     McManager::debuggerCommand(commandStr, responseMessage, MAX_RESPONSE_MSG_LEN);
+    //     // Send response back
+    //     sendRemoteDebugProtocolMsg(responseMessage, rdpMessageIdStr);
+    // }
+    //TODO
+    // else if (strcasecmp(cmdName, "steptesterstart") == 0)
+    // {
+    //     // Step validation
+    //     if (_pStepValidator)
+    //         _pStepValidator->start();
+    // }
+    // else if (strcasecmp(cmdName, "steptesterstop") == 0)
+    // {
+    //     // Step validation
+    //     if (_pStepValidator)
+    //         _pStepValidator->stop();
+    // }
+    return false;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Start target program - or reset
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void McManager::targetExec()
+{
+    LogWrite(FromMcManager, LOG_DEBUG, "Starting target code");
+    bool performHardReset = true;
+    if (TargetState::areRegistersValid())
     {
-        // Get message index value
-        static const int MAX_RDP_MSG_ID_LEN = 20;
-        char rdpMessageIdStr[MAX_RDP_MSG_ID_LEN+1];
-        strcpy(rdpMessageIdStr, "0");
-        if (!jsonGetValueForKey("index", pCmdJson, rdpMessageIdStr, MAX_RDP_MSG_ID_LEN))
-            LogWrite(FromMcManager, LOG_DEBUG, "RDP message no index value found");
-        // Send to remote debug handler
-        static const int MAX_CMD_STR_LEN = 200;
-        static char commandStr[MAX_CMD_STR_LEN+1];
-        if (paramsLen > MAX_CMD_STR_LEN)
-            paramsLen = MAX_CMD_STR_LEN;
-        memcpy(commandStr, pParams, paramsLen);
-        commandStr[paramsLen] = 0;
-        static const int MAX_RESPONSE_MSG_LEN = 2000;
-        static char responseMessage[MAX_RESPONSE_MSG_LEN+1];
-        responseMessage[0] = 0;
-        McManager::debuggerCommand(commandStr, responseMessage, MAX_RESPONSE_MSG_LEN);
-        // Send response back
-        sendRemoteDebugProtocolMsg(responseMessage, rdpMessageIdStr);
+        // Check how to set registers
+        if (HwManager::getOpcodeInjectEnable())
+        {
+            // Use the BusAccess module to inject instructions to set registers
+            // Z80Registers regs;
+            // TargetState::getTargetRegs(regs);
+            // TargetDebug::get()->startSetRegisterSequence(&regs);
+            // performHardReset = false;
+            
+                // Request reset opcode injection
+            // BusAccess::targetReqOpcodeInject(_busSocketId);
+        }
+        else
+        {
+            // If the code doesn't start at 0, generate a code snippet to set registers and run
+            if (!_busActionCodeWrittenAtResetVector)
+            {
+                uint8_t regSetCode[MAX_REGISTER_SET_CODE_LEN];
+                Z80Registers regs;
+                TargetState::getTargetRegs(regs);
+                static const int REGISTERS_STR_MAX_LEN = 500;
+                char regsStr[REGISTERS_STR_MAX_LEN];
+                regs.format(regsStr, REGISTERS_STR_MAX_LEN);
+                LogWrite(FromMcManager, LOG_DEBUG, "Regs: %s", regsStr);
+                uint32_t codeDestAddr = getDescriptorTable()->setRegistersCodeAddr;
+                int codeLen = TargetCPUZ80::getSnippetToSetRegs(codeDestAddr, regs, regSetCode, MAX_REGISTER_SET_CODE_LEN);
+                if (codeLen != 0)
+                {
+                    // Reg setting code
+                    LogWrite(FromMcManager, LOG_DEBUG,"Set regs snippet at %04x len %d", codeDestAddr, codeLen);
+                    HwManager::blockWrite(codeDestAddr, regSetCode, codeLen, false, false, false);
+                    
+                    // Reset vector
+                    uint8_t jumpCmd[3] = { 0xc3, uint8_t(codeDestAddr & 0xff), uint8_t((codeDestAddr >> 8) & 0xff) };
+                    HwManager::blockWrite(Z80_PROGRAM_RESET_VECTOR, jumpCmd, 3, false, false, false);
+                    LogDumpMemory(regSetCode, regSetCode + codeLen);
+                }
+            }
+        }
     }
-    else if (strcasecmp(cmdName, "steptesterstart") == 0)
+
+    // See if we need to do a hard reset
+    if (performHardReset)
     {
-        // Step validation
-        if (_pStepValidator)
-            _pStepValidator->start();
-    }
-    else if (strcasecmp(cmdName, "steptesterstop") == 0)
-    {
-        // Step validation
-        if (_pStepValidator)
-            _pStepValidator->stop();
-    }
-    else
-    {
-        LogWrite(FromMcManager, LOG_DEBUG, "Unknown command %s", cmdName);
+        // Request reset target
+        BusAccess::targetReqReset(_busSocketId);
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Log
+// Bus action callback
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void McManager::logDebugMessage(const char* pStr)
+void McManager::busActionCompleteStatic(BR_BUS_ACTION actionType, [[maybe_unused]] BR_BUS_ACTION_REASON reason)
 {
-    if (_pCommandHandler)
-        _pCommandHandler->logDebugMessage(pStr);
+    // We don't care what the reason for the BUSRQ is we will use it for what we need
+    if (actionType == BR_BUS_ACTION_BUSRQ)
+    {
+        // Program target pending?
+        if (_busActionPendingProgramTarget)
+        {
+            // Write the blocks
+            _busActionCodeWrittenAtResetVector = false;
+            for (int i = 0; i < TargetState::numMemoryBlocks(); i++) {
+                TargetState::TargetMemoryBlock* pBlock = TargetState::getMemoryBlock(i);
+                BR_RETURN_TYPE brResult = HwManager::blockWrite(pBlock->start, TargetState::getMemoryImagePtr() + pBlock->start, pBlock->len, false, false, false);
+                LogWrite(FromMcManager, LOG_DEBUG,"ProgramTarget done %08x len %d result %d micros %d", pBlock->start, pBlock->len, brResult, micros());
+                if (pBlock->start == Z80_PROGRAM_RESET_VECTOR)
+                    _busActionCodeWrittenAtResetVector = true;
+            }
+
+            // Check for exec
+            if (_busActionPendingExecAfterProgram)
+                targetExec();
+
+            // No longer pending
+            _busActionPendingProgramTarget = false;
+        }
+        
+        // Display refresh pending?
+        if (_busActionPendingDisplayRefresh)
+        {
+            // Call the machine to handle
+            if (_pCurMachine)
+                _pCurMachine->busActionCompleteCallback(actionType);
+            _busActionPendingDisplayRefresh = false;    
+        }
+    }
 }
 
-void McManager::logDebugJson(const char* pStr)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Handle wait interrupt
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void McManager::handleWaitInterruptStatic(uint32_t addr, uint32_t data, 
+        uint32_t flags, uint32_t& retVal)
 {
-    if (_pCommandHandler)
-        _pCommandHandler->logDebugJson(pStr);
+    if (_pCurMachine)
+        _pCurMachine->busAccessCallback(addr, data, flags, retVal);
 }

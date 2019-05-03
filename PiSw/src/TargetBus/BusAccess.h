@@ -58,7 +58,7 @@
 #define BR_HADDR_CK 7 // SPI0 CE1
 #define BR_LADDR_CK 16 // SPI1 CE2
 #define BR_DATA_DIR_IN 6
-#define BR_WAIT_BAR 5 // GPIO5
+#define BR_WAIT_BAR_PIN 5 // GPIO5
 #define BR_CLOCK_PIN 4 // GPIO4
 #define BR_PAGING_RAM_PIN 8 // CPI CE0
 
@@ -69,6 +69,9 @@
 #define BR_IORQ_BAR_MASK (1 << BR_IORQ_BAR)
 #define BR_WR_BAR_MASK (1 << BR_WR_BAR)
 #define BR_RD_BAR_MASK (1 << BR_RD_BAR)
+#define BR_BUSACK_BAR_MASK (1 << BR_BUSACK_BAR)
+#define BR_WAIT_BAR_MASK (1 << BR_WAIT_BAR_PIN)
+#define BR_M1_PIB_BAR_MASK (1 << BR_M1_PIB_BAR)
 #define BR_ANY_EDGE_MASK 0xffffffff
 
 // M1 piggy back onto PIB line
@@ -117,11 +120,136 @@
 
 // Callback types
 typedef void BusAccessCBFnType(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& curRetVal);
-typedef void BusActionCBFnType(BR_BUS_ACTION actionType);
-typedef void BusControlCBFnType();
+typedef void BusActionCBFnType(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Bus Socket Info - this is used to plug-in to the BusAccess layer
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class BusSocketInfo
+{
+public:
+    static const int MAX_WAIT_FOR_BUSACK_US = 100;
+
+    // Socket enablement
+    bool enabled;
+
+    // Callbacks
+    BusAccessCBFnType* busAccessCallback;
+    BusActionCBFnType* busActionCallback;
+
+    // Flags
+    bool waitOnMemory;
+    bool waitOnIO;
+
+    // Bus action and duration
+    volatile BR_BUS_ACTION busActionRequested;
+    volatile uint32_t busActionDurationUs;
+
+    // Bus master request and reason
+    volatile bool busMasterRequest;
+    volatile BR_BUS_ACTION_REASON busMasterReason;
+
+    // Bus hold in wait
+    volatile bool holdInWaitReq;
+
+    // Get type of bus action
+    BR_BUS_ACTION getType()
+    {
+        if (busMasterRequest)
+            return BR_BUS_ACTION_BUSRQ;
+        return busActionRequested;
+    }
+
+    void clear(BR_BUS_ACTION type)
+    {
+        if (type == BR_BUS_ACTION_BUSRQ)
+            busMasterRequest = false;
+        else
+            busActionRequested = BR_BUS_ACTION_NONE;
+    }
+
+    uint32_t getAssertUs()
+    {
+        if (busMasterRequest)
+            return MAX_WAIT_FOR_BUSACK_US;
+        return busActionDurationUs;
+    }
+};
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Status Info
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+class BusAccessStatusInfo
+{
+public:
+    BusAccessStatusInfo()
+    {
+        clear();
+    }
+    
+    void clear()
+    {
+        isrCount = 0;
+        isrAccumUs = 0;
+        isrAvgingCount = 0;
+        isrAvgNs = 0;
+        isrMaxUs = 0;
+        isrSpuriousBUSRQ = 0;
+        isrDuringBUSACK = 0;
+        isrWithoutWAIT = 0;
+        clrAccumUs = 0;
+        clrAvgingCount = 0;
+        clrAvgNs = 0;
+        clrMaxUs = 0;
+        busrqFailCount = 0;
+        busActionFailedDueToWait = 0;
+        isrMREQRD = 0;
+        isrMREQWR = 0;
+        isrIORQRD = 0;
+        isrIORQWR = 0;
+        isrIRQACK = 0;
+    }
+
+    static const int MAX_JSON_LEN = 30 * 20;
+    static char _jsonBuf[MAX_JSON_LEN];
+    const char* getJson();
+
+    // Overall ISR
+    uint32_t isrCount;
+
+    // ISR elapsed
+    uint32_t isrAccumUs;
+    int isrAvgingCount;
+    int isrAvgNs;
+    uint32_t isrMaxUs;
+
+    // Counts
+    uint32_t isrSpuriousBUSRQ;
+    uint32_t isrDuringBUSACK;
+    uint32_t isrWithoutWAIT;
+    uint32_t isrMREQRD;
+    uint32_t isrMREQWR;
+    uint32_t isrIORQRD;
+    uint32_t isrIORQWR;
+    uint32_t isrIRQACK;
+
+    // Clear pulse edge width
+    uint32_t clrAccumUs;
+    int clrAvgingCount;
+    int clrAvgNs;
+    uint32_t clrMaxUs;
+
+    // BUSRQ
+    uint32_t busrqFailCount;
+
+    // Bus actions
+    uint32_t busActionFailedDueToWait;
+};
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Bus Access
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class TargetClockGenerator;
@@ -131,51 +259,45 @@ class BusAccess
 public:
     // Initialise the bus raider
     static void init();
+    static void busAccessReset();
 
-    // Reset host - call pause release to release reset
-    static void targetReset(bool restoreWaitDefaults, bool holdInReset);
-    
-    // NMI host
-    static void targetNMI(int durationUs = -1);
+    // Bus Sockets - used to hook things like waitInterrupts, busControl, etc
+    static int busSocketAdd(BusSocketInfo& busSocketInfo);
+    static void busSocketEnable(int busSocket, bool enable);
+    static bool busSocketIsEnabled(int busSocket);
 
-    // IRQ host
-    static void targetIRQ(int durationUs = -1);
-        
+    // Wait state enablement
+    static void waitOnMemory(int busSocket, bool isOn);
+    static void waitOnIO(int busSocket, bool isOn);
+    static bool waitIsOnMemory();
+
+    // Min cycle Us when in waitOnMemory mode
+    static void waitSetCycleUs(uint32_t cycleUs);
+
+    // Reset, NMI and IRQ on target
+    static void targetReqReset(int busSocket, int durationUs = -1);
+    static void targetReqNMI(int busSocket, int durationUs = -1);
+    static void targetReqIRQ(int busSocket, int durationUs = -1);
+    static void targetReqBus(int busSocket, BR_BUS_ACTION_REASON busMasterReason);
+    static void targetPageForInjection(int busSocket, bool pageOut);
+
     // Bus control
     static void controlRequest();
     static BR_RETURN_TYPE controlRequestAndTake();
-    static void controlRelease(bool resetTargetOnRelease, bool addWaitOnInstruction);
+    static void controlRelease();
     static bool isUnderControl();
     
-    // Read and write bytes
-    static void byteWrite(uint32_t byte, int iorq);
-    static uint8_t byteRead(int iorq);
-
     // Read and write blocks
     static BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
     static BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
 
-    // Wait control
-    static void waitGet(bool& monitorIORQ, bool& monitorMREQ);
-    static void waitOnInstruction(bool waitOnInstruction);
-    static void waitRestoreDefaults();
-    static void waitSetup(bool enWaitOnIORQ, bool enWaitOnMREQ);
-    static void waitClear();
-
-    // Wait interrupt control
-    static void waitIntClear();
-    static void waitIntDisable();
-    static void waitIntEnable();
-
-    // Clear IO
-    static void clearAllIO();
+    // Wait hold and release
+    static void waitRelease();
+    static bool waitIsHeld();
+    static void waitHold(int busSocket, bool hold);
 
     // Service
     static void service();
-
-    // Set and remove callbacks on bus access
-    static void accessCallbackAdd(BusAccessCBFnType* pBusAccessCallback);
-    static void accessCallbackRemove();
 
     // Get return type string
     static const char* retcString(BR_RETURN_TYPE retc)
@@ -196,34 +318,74 @@ public:
     static void clockEnable(bool en);
     static uint32_t clockCurFreqHz();
 
+    // Status
+    static void getStatus(BusAccessStatusInfo& statusInfo);
+    static void clearStatus();
+
     // Debug
     static void isrAssert(int code);
     static void isrValue(int code, int val);
+    static void isrPeak(int code, int val);
     static int isrAssertGetCount(int code);
 
 private:
-    // Callback on bus access
-    static BusAccessCBFnType* _pBusAccessCallback;
+    // Bus Sockets
+    static const int MAX_BUS_SOCKETS = 10;
+    static BusSocketInfo _busSockets[MAX_BUS_SOCKETS];
+    static int _busSocketCount;
 
-    // Current wait state mask for restoring wait enablement after change
-    static uint32_t _waitStateEnMask;
+    // Current wait state flags
+    static bool _waitOnMemory;
+    static bool _waitOnIO;
 
-    // Default setting for wait state enablement
-    static uint32_t _waitStateEnMaskDefault;
+    // Wait currently asserted
+    static volatile bool _waitAsserted;
 
-    // Wait interrupt enablement cache (so it can be restored after disable)
-    static bool _waitIntEnabled;
+    // Outputs enabled to allow target read
+    static volatile bool _targetReadInProgress;
+
+    // Paging
+    static volatile bool _targetPageInOnNextWait;
+
+    // Rate at which wait is released when free-cycling
+    static volatile uint32_t _waitCycleLengthUs;
+    static volatile uint32_t _waitAssertedStartUs;
+
+    // Hold in wait state
+    static volatile bool _waitHold;
+
+    // Action requested for next wait and parameter
+    static volatile int _busActionSocket;
+    static volatile BR_BUS_ACTION _busActionType;
+    static volatile uint32_t _busActionInProgressStartUs;
+    static volatile uint32_t _busActionAssertedStartUs;
+    static volatile uint32_t _busActionAssertedMaxUs;
+    static volatile bool _busActionInProgress;
+    static volatile bool _busActionAsserted;
+    static volatile bool _busActionSyncWithWait;
+    static const int TIMER_ISR_PERIOD_US = 100;
 
     // Bus currently under BusRaider control
     static volatile bool _busIsUnderControl;
 
     // Debug
-    static int _isrAssertCounts[ISR_ASSERT_NUM_CODES];
+    static volatile int _isrAssertCounts[ISR_ASSERT_NUM_CODES];
 
     // Clock generator
     static TargetClockGenerator _clockGenerator;
-    
+
+    // Status info
+    static BusAccessStatusInfo _statusInfo; 
+
 private:
+    // Bus actions
+    static void busActionCheck();
+    static bool busActionsAssertStart();
+    static void busActionAssertActive();
+    static void busActionClearFlags();
+    static void busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REASON reason);
+    // static BR_BUS_ACTION busActionCheckNext(bool initiateAction);
+
     // Set address
     static void addrLowSet(uint32_t lowAddrByte);
     static void addrLowInc();
@@ -241,7 +403,8 @@ private:
     static void controlTake();
 
     // Interrupt service routine for wait states
-    static void waitStateISR(void* pData);
+    static void stepTimerISR(void* pParam);
+    static void serviceWaitActivity();
 
     // Pin IO
     static void setPinOut(int pinNumber, bool val);
@@ -250,14 +413,26 @@ private:
     static void muxSet(int muxVal);
     // Clear the MUX
     static void muxClear();
+    // Set signal (RESET/IRQ/NMI)
+    static void setSignal(BR_BUS_ACTION busAction, bool assert);
 
     // Wait control
-    static void clearWaitFF();
-    static void clearWaitDetected();
+    static void waitSetupMREQAndIORQEnables();
+    static void waitResetFlipFlops();
+    static void waitClearDetected();
+    static void waitHandleNew();
+    static void waitEnablementUpdate();
+
+    // Paging
+    static void pagingPageIn();
+
+    // Read and write bytes
+    static void byteWrite(uint32_t byte, int iorq);
+    static uint8_t byteRead(int iorq);
 
 private:
     // Timeouts
-    static const int MAX_WAIT_FOR_ACK_US = 250;
+    static const int MAX_WAIT_FOR_PENDING_ACTION_US = 2000;
     static const int MAX_WAIT_FOR_CTRL_LINES_COUNT = 10000;
 
     // Period target write control bus line is asserted during a write
@@ -273,12 +448,12 @@ private:
     static const int CYCLES_DELAY_FOR_CLEAR_LOW_ADDR = 20;
     static const int CYCLES_DELAY_FOR_LOW_ADDR_SET = 20;
     static const int CYCLES_DELAY_FOR_HIGH_ADDR_SET = 20;
-    static const int CYCLES_DELAY_FOR_WAIT_CLEAR = 25;
+    static const int CYCLES_DELAY_FOR_WAIT_CLEAR = 50;
     static const int CYCLES_DELAY_FOR_MREQ_FF_RESET = 20;
     static const int CYCLES_DELAY_FOR_DATA_DIRN = 20;
     static const int CYCLES_DELAY_FOR_TARGET_READ = 100;
 
     // Delay in machine cycles for M1 to settle
-    static const int CYCLES_DELAY_FOR_M1_SETTLING = 100;
+    static const int CYCLES_DELAY_FOR_M1_SETTLING = 500;
 };
 

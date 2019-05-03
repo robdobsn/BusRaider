@@ -35,6 +35,12 @@ extern void blinkLEDForever();
 
 extern void disable_mmu_and_cache();
 
+#define InvalidateInstructionCache()	\
+				asm volatile ("mcr p15, 0, %0, c7, c5,  0" : : "r" (0) : "memory")
+#define FlushPrefetchBuffer()	asm volatile ("mcr p15, 0, %0, c7, c5,  4" : : "r" (0) : "memory")
+#define FlushBranchTargetCache()	\
+				asm volatile ("mcr p15, 0, %0, c7, c5,  6" : : "r" (0) : "memory")
+                
 // Data memory barrier - no memory access after this can complete until all
 // prior memory accesses are complete
 #define lowlev_dmb() asm volatile("mcr p15, #0, %[zero], c7, c10, #5" \

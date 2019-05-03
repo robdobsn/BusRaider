@@ -3,62 +3,33 @@
 
 #pragma once
 
-#include "McBase.h"
-#include "../TargetBus/TargetDebug.h"
-#include "../System/logging.h"
-#include "../CommandInterface/CommandHandler.h"
-#include "../System/Display.h"
 #include <string.h> 
-#include "../TargetBus/StepTester.h"
-
-class StepValidator;
+#include "McBase.h"
+#include "../System/logging.h"
+#include "../System/DisplayBase.h"
+#include "../TargetBus/BusAccess.h"
+#include "../CommandInterface/CommandHandler.h"
 
 class McManager
 {
-private:
-    static McDescriptorTable defaultDescriptorTable;
-
-private:
-   
-    // Characters received from the host
-    static const int MAX_RX_HOST_CHARS = 2000;
-    static uint8_t _rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];
-    static int _rxHostCharsBufferLen;
-
-    // Command handler
-    static CommandHandler* _pCommandHandler;
-
-    // Display
-    static Display* _pDisplay;
-
-private:
-
-    static const int MAX_MACHINES = 10;
-    static const int MAX_MACHINE_NAME_LEN = 100;
-    static McBase* _pMachines[MAX_MACHINES];
-    static int _numMachines;
-    static int _curMachineIdx;
-    static int _curMachineSubType;
-    static McBase* _pCurMachine;
-
 public:
     // Init
-    static void init(CommandHandler* pCommandHandler, Display* pDisplay);
+    static void init(DisplayBase* pDisplay);
 
     // Service
     static void service();
 
     // Manage machines
     static void add(McBase* pMachine);
-    static bool setMachineIdx(int mcIdx, int mcSubType, bool forceUpdate);
+    static bool setupMachine(const char* mcJson);
     static bool setMachineByName(const char* mcName);
-    static bool setMachineOpts(const char* mcOpts);
 
     // Machine access
     static int getNumMachines();
     static McBase* getMachine();
     static const char* getMachineJSON();
     static int getMachineClock();
+    static const char* getMachineName();
 
     // Display updates
     static void displayRefresh();
@@ -72,48 +43,88 @@ public:
     static int getCharsReceivedFromHost(uint8_t* pBuf, int bufMaxLen);
     static void sendKeyCodeToTarget(int asciiCode);
 
-    // Debug message handling
-    static void sendRemoteDebugProtocolMsg(const char* pStr, const char* rdpMessageIdStr);
-    static bool debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen);
+    // // Debug message handling
+    // static void sendRemoteDebugProtocolMsg(const char* pStr, const char* rdpMessageIdStr);
+    // static bool debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen);
 
     // Target programming
-    static void handleTargetProgram(bool resetAfterProgramming, bool addWaitOnInstruction,
-                bool holdInPause, bool forceSetRegsByInjection);
+    static void handleTargetProgram(bool execAfterProgramming);
 
     // Target control
-    static void targetReset(bool restoreWaitDefaults, bool holdInReset);
-    static void targetPause();
-    static void targetRelease();
-    static void targetClearAllIO();
-    static void targetStep(bool stepOver);
+    // TODO
+    static void targetReset();
+    // static void targetPause();
+    // static void targetRelease();
+    // static void targetClearAllIO();
+    // static void targetStep(bool stepOver);
     static bool targetIsPaused();
     static bool targetBusUnderPiControl();
 
-    // Memory access
-    static bool blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq);
-    static bool blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq);
-
     // Handle target files
-    static void handleTargetFile(const char* rxFileInfo, const uint8_t* pData, int dataLen);
+    static bool handleTargetFile(const char* rxFileInfo, const uint8_t* pData, int dataLen);
 
     // Handle commands
-    static void handleCommand(const char* pCmdJson, 
-                    const uint8_t* pParams, int paramsLen,
-                    char* pRespJson, int maxRespLen);
+    // TODO
+    // static void handleCommand(const char* pCmdJson, 
+    //                 const uint8_t* pParams, int paramsLen,
+    //                 char* pRespJson, int maxRespLen);
 
     static void targetIrq(int durationUs = -1);
 
     // Debug
-    static void logDebugMessage(const char* pStr);
-    static void logDebugJson(const char* pStr);
+    // TODO
+    // static void logDebugMessage(const char* pStr);
+    // static void logDebugJson(const char* pStr);
 
 private:
-    static void targetIrqFromTimer(void* pParam);
+    static McDescriptorTable defaultDescriptorTable;
 
-    // Handle wait interrupt
-    static void busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
+    // Bus socket we're attached to and setup info
+    static int _busSocketId;
+    static BusSocketInfo _busSocketInfo;
 
-    // Step-tester
-    static StepTester _stepTester;
-    static StepValidator* _pStepValidator;
+    // Comms socket we're attached to and setup info
+    static int _commsSocketId;
+    static CommsSocketInfo _commsSocketInfo;
+
+    // Handle messages (telling us to start/stop)
+    static bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
+                    char* pRespJson, int maxRespLen);
+
+    // Exec program on target
+    static void targetExec();
+    
+    // Bus action complete callback
+    static void busActionCompleteStatic(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
+
+    // Wait interrupt handler
+    static void handleWaitInterruptStatic(uint32_t addr, uint32_t data, 
+            uint32_t flags, uint32_t& retVal);
+            
+    // Characters received from the host
+    static const int MAX_RX_HOST_CHARS = 2000;
+    static uint8_t _rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];
+    static int _rxHostCharsBufferLen;
+
+    // Display
+    static DisplayBase* _pDisplay;
+
+    // Machines
+    static const int MAX_MACHINES = 10;
+    static const int MAX_MACHINE_NAME_LEN = 100;
+    static McBase* _pMachines[MAX_MACHINES];
+    static int _numMachines;
+    static char _currentMachineName[MAX_MACHINE_NAME_LEN];
+    static McBase* _pCurMachine;
+
+    // Pending actions
+    static bool _busActionPendingProgramTarget;
+    static bool _busActionPendingExecAfterProgram;
+    static bool _busActionPendingDisplayRefresh;
+    static bool _busActionCodeWrittenAtResetVector;
+
+private:
+// TODO
+    // static void targetIrqFromTimer(void* pParam);
+
 };

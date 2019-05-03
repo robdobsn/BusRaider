@@ -1,49 +1,56 @@
 // Bus Raider Machine RobsZ80
 // Rob Dobson 2018
 
-#include "McRobsZ80.h"
-#include "usb_hid_keys.h"
-#include "../TargetBus/BusAccess.h"
-#include "../TargetBus/TargetState.h"
-#include "../System/rdutils.h"
-#include "../System/logging.h"
-#include "../TargetBus/TargetDebug.h"
-#include "../Machines/McManager.h"
 #include <stdlib.h>
 #include <string.h>
+#include "McRobsZ80.h"
+#include "usb_hid_keys.h"
+#include "../System/rdutils.h"
+#include "../System/logging.h"
+#include "../TargetBus/BusAccess.h"
+#include "../TargetBus/TargetState.h"
+#include "../Machines/McManager.h"
+#include "../Hardware/HwManager.h"
+#include "../Fonts/SystemFont.h"
 
 const char* McRobsZ80::_logPrefix = "RobsZ80";
 
-McDescriptorTable McRobsZ80::_descriptorTable = {
-    // Machine name
-    "Rob's Z80",
-    // Processor
-    McDescriptorTable::PROCESSOR_Z80,
-    // Required display refresh rate
-    .displayRefreshRatePerSec = 30,
-    .displayPixelsX = 512,
-    .displayPixelsY = 256,
-    .displayCellX = 8,
-    .displayCellY = 16,
-    .pixelScaleX = 2,
-    .pixelScaleY = 2,
-    .pFont = &__systemFont,
-    .displayForeground = DISPLAY_FX_WHITE,
-    .displayBackground = DISPLAY_FX_BLACK,
-    // Clock
-    .clockFrequencyHz = 12000000,
-    // Interrupt rate per second
-    .irqRate = 0,
-    // Bus monitor
-    .monitorIORQ = false,
-    .monitorMREQ = false,
-    .emulatedRAM = false,
-    .setRegistersByInjection = false,
-    .setRegistersCodeAddr = 0
+McDescriptorTable McRobsZ80::_defaultDescriptorTables[] = {
+    {
+        // Machine name
+        "Rob's Z80",
+        // Processor
+        McDescriptorTable::PROCESSOR_Z80,
+        // Required display refresh rate
+        .displayRefreshRatePerSec = 30,
+        .displayPixelsX = 512,
+        .displayPixelsY = 256,
+        .displayCellX = 8,
+        .displayCellY = 16,
+        .pixelScaleX = 2,
+        .pixelScaleY = 2,
+        .pFont = &__systemFont,
+        .displayForeground = DISPLAY_FX_WHITE,
+        .displayBackground = DISPLAY_FX_BLACK,
+        .displayMemoryMapped = true,
+        // Clock
+        .clockFrequencyHz = 12000000,
+        // Interrupt rate per second
+        .irqRate = 0,
+        // Bus monitor
+        .monitorIORQ = false,
+        .monitorMREQ = false,
+        .setRegistersCodeAddr = 0
+    }
 };
 
+McRobsZ80::McRobsZ80() : McBase(_defaultDescriptorTables, sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0]))
+{
+    _screenBufferValid = false;
+}
+
 // Enable machine
-void McRobsZ80::enable([[maybe_unused]]int subType)
+void McRobsZ80::enable()
 {
     _screenBufferValid = false;
     LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
@@ -56,16 +63,21 @@ void McRobsZ80::disable()
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-void McRobsZ80::displayRefresh(DisplayBase* pDisplay)
+void McRobsZ80::displayRefreshFromMirrorHw()
 {
-    // Read memory at the location of the memory mapped screen
-    unsigned char pScrnBuffer[ROBSZ80_DISP_RAM_SIZE];
-    bool dataValid = McManager::blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, 1, 0);
-    if (!dataValid)
+    // Read mirror memory at the location of the memory mapped screen
+    uint8_t pScrnBuffer[ROBSZ80_DISP_RAM_SIZE];
+    if (HwManager::blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, 1, 0, true) == BR_OK)
+        updateDisplayFromBuffer(pScrnBuffer, ROBSZ80_DISP_RAM_SIZE);
+}
+
+void McRobsZ80::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen)
+{
+    if (!_pDisplay || (bufLen < ROBSZ80_DISP_RAM_SIZE))
         return;
 
     // Write to the display on the Pi Zero
-    int bytesPerRow = _descriptorTable.displayPixelsX/8;
+    int bytesPerRow = _activeDescriptorTable.displayPixelsX/8;
     for (uint32_t bufIdx = 0; bufIdx < ROBSZ80_DISP_RAM_SIZE; bufIdx++)
     {
         if (!_screenBufferValid || (_screenBuffer[bufIdx] != pScrnBuffer[bufIdx]))
@@ -77,8 +89,7 @@ void McRobsZ80::displayRefresh(DisplayBase* pDisplay)
             {
                 int x = ((bufIdx % bytesPerRow) * 8) + i;
                 int y = bufIdx / bytesPerRow;
-                if (pDisplay)
-                    pDisplay->setPixel(x, y, (pScrnBuffer[bufIdx] & pixMask) ? 1 : 0, DISPLAY_FX_DEFAULT);
+                _pDisplay->setPixel(x, y, (pScrnBuffer[bufIdx] & pixMask) ? 1 : 0, DISPLAY_FX_DEFAULT);
                 pixMask = pixMask >> 1;
             }
         }
@@ -92,14 +103,14 @@ void McRobsZ80::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_u
 }
 
 // Handle a file
-void McRobsZ80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
+bool McRobsZ80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
 {
     // Get the file type (extension of file name)
     #define MAX_VALUE_STR 30
     #define MAX_FILE_NAME_STR 100
     char fileName[MAX_FILE_NAME_STR+1];
     if (!jsonGetValueForKey("fileName", pFileInfo, fileName, MAX_FILE_NAME_STR))
-        return;
+        return false;
 
     // Get type of file (assume extension is delimited by .)
     const char* pFileType = strstr(fileName, ".");
@@ -114,6 +125,7 @@ void McRobsZ80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int
         baseAddr = strtol(baseAddrStr, NULL, 16);
     LogWrite(_logPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
     TargetState::addMemoryBlock(baseAddr, pFileData, fileLen);
+    return true;
 }
 
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
@@ -124,3 +136,15 @@ uint32_t McRobsZ80::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_un
     return retVal;
 }
 
+// Bus action complete callback
+void McRobsZ80::busActionCompleteCallback(BR_BUS_ACTION actionType)
+{
+    // Check for BUSRQ
+    if (actionType == BR_BUS_ACTION_BUSRQ)
+    {
+        // Read memory at the location of the memory mapped screen
+        uint8_t pScrnBuffer[ROBSZ80_DISP_RAM_SIZE];
+        if (BusAccess::blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, false, 0) == BR_OK)
+            updateDisplayFromBuffer(pScrnBuffer, ROBSZ80_DISP_RAM_SIZE);
+    }
+}

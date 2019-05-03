@@ -1,5 +1,5 @@
 // Bus Raider
-// Rob Dobson 2018
+// Rob Dobson 2018-2019
 
 #include "BusAccess.h"
 #include "../System/piwiring.h"
@@ -7,33 +7,56 @@
 #include "../System/lowlev.h"
 #include "../System/lowlib.h"
 #include "../System/BCM2835.h"
-#include "../TargetBus/TargetClockGenerator.h"
+#include "../System/logging.h"
+#include "../System/Timers.h"
+#include "../System/ee_sprintf.h"
 
-// Uncomment the following line to use SPI0 CE0 of the Pi as a debug pin
-// #define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
+// Uncomment to drive wait states through timer - alternatively use service()
+// #define TIMER_BASED_WAIT_STATES 1
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Variables
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Callback on bus access
-BusAccessCBFnType* BusAccess::_pBusAccessCallback = NULL;
+// Bus sockets
+BusSocketInfo BusAccess::_busSockets[MAX_BUS_SOCKETS];
+int BusAccess::_busSocketCount = 0;
 
-// Current wait state mask for restoring wait enablement after change
-uint32_t BusAccess::_waitStateEnMask = 0;
-uint32_t BusAccess::_waitStateEnMaskDefault = 0;
+// Wait state enables
+bool BusAccess::_waitOnMemory = false;
+bool BusAccess::_waitOnIO = false;
 
-// Wait interrupt enablement cache (so it can be restored after disable)
-bool BusAccess::_waitIntEnabled = false;
+// Wait is asserted (processor held)
+bool volatile BusAccess::_waitAsserted = false;
 
-// Bus under BusRaider control
-volatile bool BusAccess::_busIsUnderControl = false;
+// Rate at which wait is released when free-cycling
+volatile uint32_t BusAccess::_waitCycleLengthUs = 1;
+volatile uint32_t BusAccess::_waitAssertedStartUs = 0;
 
-// Clock generator
-TargetClockGenerator BusAccess::_clockGenerator;
+// Held in wait state
+volatile bool BusAccess::_waitHold = false;
+
+// Bus action handling
+volatile int BusAccess::_busActionSocket = 0;
+volatile BR_BUS_ACTION BusAccess::_busActionType = BR_BUS_ACTION_NONE;
+volatile uint32_t BusAccess::_busActionInProgressStartUs = 0;
+volatile uint32_t BusAccess::_busActionAssertedStartUs = 0;
+volatile uint32_t BusAccess::_busActionAssertedMaxUs = 0;
+volatile bool BusAccess::_busActionInProgress = false;
+volatile bool BusAccess::_busActionAsserted = false;
+volatile bool BusAccess::_busActionSyncWithWait = false;
+
+// Status
+BusAccessStatusInfo BusAccess::_statusInfo;
+
+// Paging
+bool volatile BusAccess::_targetPageInOnNextWait = false;
 
 // Debug
-int BusAccess::_isrAssertCounts[ISR_ASSERT_NUM_CODES];
+int volatile BusAccess::_isrAssertCounts[ISR_ASSERT_NUM_CODES];
+
+// Target read in progress
+bool volatile BusAccess::_targetReadInProgress = false;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Initialisation
@@ -42,8 +65,10 @@ int BusAccess::_isrAssertCounts[ISR_ASSERT_NUM_CODES];
 // Initialise the bus raider
 void BusAccess::init()
 {
-    // Disable FIQ - used for wait state handling
-    waitIntDisable();
+    // Clock
+    clockSetup();
+    clockSetFreqHz(1000000);
+    clockEnable(true);
     
     // Pins that are not setup here as outputs will be inputs
     // This includes the "bus" used for address-low/high and data (referred to as the PIB)
@@ -55,13 +80,8 @@ void BusAccess::init()
     
     // Bus Request
     setPinOut(BR_BUSRQ_BAR, 1);
-    
-    // Clear wait states initially - leaving LOW disables wait state generation
-    setPinOut(BR_MREQ_WAIT_EN, 0);
-    setPinOut(BR_IORQ_WAIT_EN, 0);
-    _waitStateEnMask = 0;
-    _waitStateEnMaskDefault = 0;
-    
+    _busIsUnderControl = false;
+        
     // Address push
     setPinOut(BR_PUSH_ADDR_BAR, 1);
     
@@ -76,14 +96,130 @@ void BusAccess::init()
 
     // Paging initially inactive
     setPinOut(BR_PAGING_RAM_PIN, 0);
-    
-    // Remember wait interrupts currently disabled
-    _waitIntEnabled = false;
-    
-    // Debug
-#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-    setPinOut(BR_DEBUG_PI_SPI0_CE0, 0);
+
+    // Setup MREQ and IORQ enables
+    waitSetupMREQAndIORQEnables();
+    _waitAsserted = false;
+
+    // TODO maybe no longer needed ??? service or timer used instead of edge detection??
+    // Remove edge detection
+    // WR32(ARM_GPIO_GPREN0, 0);
+    // WR32(ARM_GPIO_GPAREN0, 0);
+    // WR32(ARM_GPIO_GPFEN0, 0);
+    // WR32(ARM_GPIO_GPAFEN0, 0); //RD32(ARM_GPIO_GPFEN0) & (~(1 << BR_WAIT_BAR)));
+
+    // // Clear any currently detected edge
+    // WR32(ARM_GPIO_GPEDS0, BR_ANY_EDGE_MASK);
+
+    // Heartbeat timer
+#ifdef TIMER_BASED_WAIT_STATES
+    Timers::set(TIMER_ISR_PERIOD_US, BusAccess::stepTimerISR, NULL);
+    Timers::start();
 #endif
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Bus Reset
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Reset the bus raider bus
+void BusAccess::busAccessReset()
+{
+    // Instruct hardware to page in
+    pagingPageIn();
+    
+    // Clear mux
+    muxClear();
+
+    // Wait cycle length
+    _waitCycleLengthUs = 0;
+
+    // Check for bus ack released
+    for (int i = 0; i < BusSocketInfo::MAX_WAIT_FOR_BUSACK_US; i++)
+    {
+        if (!controlBusAcknowledged())
+            break;
+        microsDelay(1);
+    }
+
+    // Clear any wait condition if necessary
+    uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
+    if ((busVals & BR_WAIT_BAR_MASK) == 0)
+        waitResetFlipFlops();
+
+    // Update wait state generation
+    waitEnablementUpdate();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Wait System
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusAccess::waitOnMemory(int busSocket, bool isOn)
+{
+    // Check validity
+    if ((busSocket < 0) || (busSocket >= _busSocketCount))
+        return;
+    _busSockets[busSocket].waitOnMemory = isOn;
+
+    // Update wait handling
+    waitEnablementUpdate();
+}
+
+void BusAccess::waitOnIO(int busSocket, bool isOn)
+{
+    // Check validity
+    if ((busSocket < 0) || (busSocket >= _busSocketCount))
+        return;
+    _busSockets[busSocket].waitOnIO = isOn;
+
+    // Update wait handling
+    waitEnablementUpdate();
+}
+
+bool BusAccess::waitIsOnMemory()
+{
+    return _waitOnMemory;
+}
+
+// Min cycle Us when in waitOnMemory mode
+void BusAccess::waitSetCycleUs(uint32_t cycleUs)
+{
+    _waitCycleLengthUs = cycleUs;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Pause & Single Step Handling
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusAccess::waitRelease()
+{
+    waitResetFlipFlops();
+}
+
+bool BusAccess::waitIsHeld()
+{
+    return _waitHold;
+}
+
+void BusAccess::waitHold(int busSocket, bool hold)
+{
+    // Check validity
+    if ((busSocket < 0) || (busSocket >= _busSocketCount))
+        return;
+    _busSockets[busSocket].holdInWaitReq = hold;
+    // Update flag
+    for (int i = 0; i < _busSocketCount; i++)
+    {
+        if (!_busSockets[i].enabled)
+            continue;
+        if (_busSockets[i].holdInWaitReq)
+        {
+            _waitHold = true;
+            return;
+        }
+    }
+    _waitHold = false;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,623 +227,320 @@ void BusAccess::init()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Reset the host
-void BusAccess::targetReset(bool restoreWaitDefaults, bool holdInReset)
+void BusAccess::targetReqReset(int busSocket, int durationUs)
 {
-    // Disable wait interrupts
-    waitIntDisable();
-
-    // Restore wait settings
-    if (restoreWaitDefaults)
-        waitRestoreDefaults();
-
-    // Reset by taking reset_bar low and then high
-    muxSet(BR_MUX_RESET_Z80_BAR_LOW);
-
-    // Check if reset should be released
-    if (holdInReset)
+    // Check validity
+    if ((busSocket < 0) || (busSocket >= _busSocketCount))
         return;
-
-    // Hold the reset line low
-    microsDelay(BR_RESET_PULSE_US);
-
-    // Clear WAIT flip-flop
-    clearWaitFF();
-
-    // Clear wait interrupt conditions and enable
-    waitIntClear();
-    if (_waitIntEnabled)
-        waitIntEnable();
-
-    // Clear wait detected
-    clearWaitDetected();
-
-    // Remove the reset condition
-    muxClear();
+    _busSockets[busSocket].busActionDurationUs = (durationUs <= 0) ? BR_RESET_PULSE_US : durationUs;
+    _busSockets[busSocket].busActionRequested = BR_BUS_ACTION_RESET;
 }
 
 // Non-maskable interrupt the host
-void BusAccess::targetNMI(int durationUs)
+void BusAccess::targetReqNMI(int busSocket, int durationUs)
 {
-    // NMI by taking nmi_bar line low and high
-    muxSet(BR_MUX_NMI_BAR_LOW);
-    microsDelay((durationUs <= 0) ? 10 : durationUs);
-    muxClear();
+    // Check validity
+    if ((busSocket < 0) || (busSocket >= _busSocketCount))
+        return;
+    _busSockets[busSocket].busActionDurationUs = (durationUs <= 0) ? BR_NMI_PULSE_US : durationUs;
+    _busSockets[busSocket].busActionRequested = BR_BUS_ACTION_NMI;
 }
 
 // Maskable interrupt the host
-void BusAccess::targetIRQ(int durationUs)
+void BusAccess::targetReqIRQ(int busSocket, int durationUs)
 {
-    // IRQ by taking irq_bar line low and high
-    muxSet(BR_MUX_IRQ_BAR_LOW);
-    microsDelay(((durationUs <= 0) || (durationUs > 1000)) ? 50 : durationUs);
-    muxClear();
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Bus Request / Acknowledge
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Is under control
-bool BusAccess::isUnderControl()
-{
-    return _busIsUnderControl;
-}
-
-// Request access to the bus
-void BusAccess::controlRequest()
-{
-    // Set the PIB to input
-    pibSetIn();
-    // Set data bus to input
-    WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
-    // Request the bus
-    digitalWrite(BR_BUSRQ_BAR, 0);
-}
-
-// Check if bus request has been acknowledged
-int BusAccess::controlBusAcknowledged()
-{
-    return (RD32(ARM_GPIO_GPLEV0) & (1 << BR_BUSACK_BAR)) == 0;
-}
-
-// Take control of bus
-void BusAccess::controlTake()
-{
-    // Disable interrupts
-    // TODO - required??
-    // waitIntDisable();
-
-    // Bus is under BusRaider control
-    _busIsUnderControl = true;
-
-    // Set the PIB to input
-    pibSetIn();
-    // Set data bus to input
-    WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
-
-    // Control bus
-    setPinOut(BR_WR_BAR, 1);
-    setPinOut(BR_RD_BAR, 1);
-    setPinOut(BR_MREQ_BAR, 1);
-    setPinOut(BR_IORQ_BAR, 1);
-
-    // Address bus enabled
-    digitalWrite(BR_PUSH_ADDR_BAR, 0);
-}
-
-// Release control of bus
-void BusAccess::controlRelease(bool resetTargetOnRelease, bool addWaitOnInstruction)
-{
-    // #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-    //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-    // #endif
-
-    // Prime flip-flop that skips refresh cycles
-    // So that the very first MREQ cycle after a BUSRQ/BUSACK causes a WAIT to be generated
-    // (if enabled)
-    pibSetOut();
-    pibSetValue(1 << BR_M1_PIB_DATA_LINE);
-
-    // Set data direction out so we can set the M1 value
-    WR32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
-
-//TODO optimize
-
-    // Pulse MREQ to prime the FF
-    microsDelay(2);
-    // lowlev_cycleDelay(CYCLES_DELAY_FOR_MREQ_FF_RESET);
-    digitalWrite(BR_MREQ_BAR, 0);
-    microsDelay(2);
-    // lowlev_cycleDelay(CYCLES_DELAY_FOR_MREQ_FF_RESET);
-    digitalWrite(BR_MREQ_BAR, 1);
-
-    // Go back to data inwards
-    WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
-    pibSetIn();
-    microsDelay(2);
-    // lowlev_cycleDelay(CYCLES_DELAY_FOR_DATA_DIRN);
-
-    // Clear the mux to deactivate output enables
-    muxClear();
-
-    // Clear wait detected in case we created some MREQ cycles that
-    // triggered wait
-    clearWaitFF();
-    clearWaitDetected();
-
-    // Control bus
-    pinMode(BR_WR_BAR, INPUT);
-    pinMode(BR_RD_BAR, INPUT);
-    pinMode(BR_MREQ_BAR, INPUT);
-    pinMode(BR_IORQ_BAR, INPUT);
-
-    // Address bus not enabled
-    digitalWrite(BR_PUSH_ADDR_BAR, 1);
-    
-    // Wait on instruction (MREQ) if required
-    if (addWaitOnInstruction)
-        waitOnInstruction(true);
-
-    // Check for reset
-    if (resetTargetOnRelease)
-    {
-        // Disable wait interrupts
-        // TODO ?? required
-        // waitIntDisable();
-
-        // Reset by taking reset_bar low and then high
-        muxSet(BR_MUX_RESET_Z80_BAR_LOW);
-
-        // No longer request bus
-        digitalWrite(BR_BUSRQ_BAR, 1);
-        microsDelay(BR_RESET_PULSE_US);
-    }
-    else
-    {
-        // No longer request bus
-        digitalWrite(BR_BUSRQ_BAR, 1);
-    }
-
-    // Re-enable interrupts if required
-    // TODO ??
-    // if (_waitIntEnabled)
-    //     waitIntEnable();    
-
-    // Clear mux to release reset, etc
-    muxClear();
-
-    // Bus no longer under BusRaider control
-    _busIsUnderControl = false;        
-
-
-    // #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-    //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-    // #endif
-}
-
-// Request bus, wait until available and take control
-BR_RETURN_TYPE BusAccess::controlRequestAndTake()
-{
-    // Request
-    controlRequest();
-
-    // Check for ack
-    for (int i = 0; i < MAX_WAIT_FOR_ACK_US; i++)
-    {
-        if (controlBusAcknowledged())
-            break;
-        microsDelay(1);
-    }
-    
-    // Check we really have the bus
-    if (!controlBusAcknowledged()) 
-    {
-        controlRelease(false, false);
-        return BR_NO_BUS_ACK;
-    }
-
-    // Take control
-    controlTake();
-    return BR_OK;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Address Bus Functions
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Set low address value by clearing and counting
-// Assumptions:
-// - some other code will set push-addr to enable onto the address bus
-void BusAccess::addrLowSet(uint32_t lowAddrByte)
-{
-    // Clear initially
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_CLEAR_LOW_ADDR);
-    muxSet(BR_MUX_LADDR_CLR_BAR_LOW);
-    // Delay a few cycles
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_CLEAR_LOW_ADDR);
-    muxClear();
-    // Clock the required value in - requires one more count than
-    // expected as the output register is one clock pulse behind the counter
-    for (uint32_t i = 0; i < (lowAddrByte & 0xff) + 1; i++) {
-        WR32(ARM_GPIO_GPSET0, 1 << BR_LADDR_CK);
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-        WR32(ARM_GPIO_GPCLR0, 1 << BR_LADDR_CK);
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-    }
-}
-
-// Increment low address value by clocking the counter
-// Assumptions:
-// - some other code will set push-addr to enable onto the address bus
-void BusAccess::addrLowInc()
-{
-    WR32(ARM_GPIO_GPSET0, 1 << BR_LADDR_CK);
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-    WR32(ARM_GPIO_GPCLR0, 1 << BR_LADDR_CK);
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-}
-
-// Set the high address value
-// Assumptions:
-// - some other code will set push-addr to enable onto the address bus
-void BusAccess::addrHighSet(uint32_t highAddrByte)
-{
-    // Shift the value into the register
-    // Takes one more shift than expected as output reg is one pulse behind shift
-    for (uint32_t i = 0; i < 9; i++) {
-        // Set or clear serial pin to shift register
-        if (highAddrByte & 0x80)
-            muxSet(BR_MUX_HADDR_SER_HIGH);
-        else
-            muxSet(BR_MUX_HADDR_SER_LOW);
-        // Delay to allow settling
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
-        // Shift the address value for next bit
-        highAddrByte = highAddrByte << 1;
-        // Clock the bit
-        WR32(ARM_GPIO_GPSET0, 1 << BR_HADDR_CK);
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
-        WR32(ARM_GPIO_GPCLR0, 1 << BR_HADDR_CK);
-    }
-    // Clear multiplexer
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
-    muxClear();
-}
-
-// Set the full address
-// Assumptions:
-// - some other code will set push-addr to enable onto the address bus
-void BusAccess::addrSet(unsigned int addr)
-{
-    addrHighSet(addr >> 8);
-    addrLowSet(addr & 0xff);
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Read and Write Host Memory
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Write a single byte to currently set address (or IO port)
-// Assumes:
-// - control of host bus has been requested and acknowledged
-// - address bus is already set and output enabled to host bus
-// - PIB is already set to output
-void BusAccess::byteWrite(uint32_t byte, int iorq)
-{
-    // Set the data onto the PIB
-    pibSetValue(byte);
-    // Perform the write
-    // Clear DIR_IN (so make direction out), enable data output onto data bus and MREQ_BAR active
-    WR32(ARM_GPIO_GPCLR0, (1 << BR_DATA_DIR_IN) | BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)));
-    WR32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
-    // Write the data by setting WR_BAR active
-    WR32(ARM_GPIO_GPCLR0, (1 << BR_WR_BAR));
-    // Target write delay
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_WRITE_TO_TARGET);
-    // Deactivate and leave data direction set to inwards
-    WR32(ARM_GPIO_GPSET0, (1 << BR_DATA_DIR_IN) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_WR_BAR));
-    muxClear();
-}
-
-// Read a single byte from currently set address (or IO port)
-// Assumes:
-// - control of host bus has been requested and acknowledged
-// - address bus is already set and output enabled to host bus
-// - PIB is already set to input
-// - data direction on data bus driver is set to input (default)
-uint8_t BusAccess::byteRead(int iorq)
-{
-    // Enable data output onto PIB (data-dir must be inwards already), MREQ_BAR and RD_BAR both active
-    WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
-    WR32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
-    // Delay to allow data to settle
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
-    // Get the data
-    uint8_t val = (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
-    // Deactivate leaving data-dir inwards
-    WR32(ARM_GPIO_GPSET0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
-    // Clear the MUX to a safe setting - sets HADDR_SER low
-    WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-    return val;
-}
-
-// Write a consecutive block of memory to host
-BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq)
-{
-    // Check if we need to request bus
-    if (busRqAndRelease) {
-        // Request bus and take control after ack
-        BR_RETURN_TYPE ret = controlRequestAndTake();
-        if (ret != BR_OK)
-            return ret;
-    }
-
-    // Set PIB to input
-    pibSetIn();
-
-    // Set the address to initial value
-    addrSet(addr);
-
-    // Set the PIB to output
-    pibSetOut();
-
-    // Iterate data
-    for (uint32_t i = 0; i < len; i++) {
-        // Write byte
-        byteWrite(*pData, iorq);
-
-        // Increment the lower address counter
-        addrLowInc();
-
-        // Increment addresses
-        pData++;
-        addr++;
-
-        // Check if we've rolled over the lowest 8 bits
-        if ((addr & 0xff) == 0) {
-            // Set the address again
-            addrSet(addr);
-        }
-    }
-
-    // Set the PIB back to INPUT
-    pibSetIn();
-
-    // Check if we need to release bus
-    if (busRqAndRelease) {
-        // release bus
-        controlRelease(false, false);
-    }
-    return BR_OK;
-}
-
-// Read a consecutive block of memory from host
-// Assumes:
-// - control of host bus has been requested and acknowledged
-// - data direction on data bus driver is set to input (default)
-BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq)
-{
-    // Check if we need to request bus
-    if (busRqAndRelease) {
-        // Request bus and take control after ack
-        BR_RETURN_TYPE ret = controlRequestAndTake();
-        if (ret != BR_OK)
-            return ret;
-    }
-
-    // Set PIB to input
-    pibSetIn();
-
-    // Set the address to initial value
-    addrSet(addr);
-
-    // Enable data onto to PIB
-    WR32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
-
-    // Iterate data
-    for (uint32_t i = 0; i < len; i++) {
-
-        // IORQ_BAR / MREQ_BAR and RD_BAR both active
-        WR32(ARM_GPIO_GPCLR0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
-        
-        // Delay to allow data bus to settle
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
-        
-        // Get the data
-        *pData = (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
-
-        // Deactivate IORQ/MREQ and RD and clock the low address
-        WR32(ARM_GPIO_GPSET0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR) | (1 << BR_LADDR_CK));
-
-        // Low address clock pulse period
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-
-        // Clock pulse high again
-        WR32(ARM_GPIO_GPCLR0, 1 << BR_LADDR_CK);
-
-        // Increment addresses
-        pData++;
-        addr++;
-
-        // Check if we've rolled over the lowest 8 bits
-        if ((addr & 0xff) == 0) {
-            // Set the address again
-            addrSet(addr);
-        }
-    }
-
-    // Data no longer enabled onto PIB
-    muxClear();
-
-    // Check if we need to release bus
-    if (busRqAndRelease) {
-        // release bus
-        controlRelease(false, false);
-    }
-    return BR_OK;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Utility Functions
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Clear all IO space
-void BusAccess::clearAllIO()
-{
-    // Fill IO "memory" with 0xff
-    uint8_t tmpBuf[0x100];
-    for (int kk = 0; kk < 0x100; kk++)
-        tmpBuf[kk] = 0xff;
-    blockWrite(0, tmpBuf, 0x100, 1, 1);  
-}
-
-// Setup clock generator
-void BusAccess::clockSetup()
-{
-    _clockGenerator.setOutputPin();
-}
-
-void BusAccess::clockSetFreqHz(uint32_t freqHz)
-{
-    _clockGenerator.setFrequency(freqHz);
-}
-
-void BusAccess::clockEnable(bool en)
-{
-    _clockGenerator.enable(en);
-}
-
-uint32_t BusAccess::clockCurFreqHz()
-{
-    return _clockGenerator.getFreqInHz();
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Callbacks on Bus Access
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Set the bus access interrupt callback
-void BusAccess::accessCallbackAdd(BusAccessCBFnType* pBusAccessCallback)
-{
-    _pBusAccessCallback = pBusAccessCallback;
-}
-
-void BusAccess::accessCallbackRemove()
-{
-    _pBusAccessCallback = NULL;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Wait State Enable
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void BusAccess::waitGet(bool& monitorIORQ, bool& monitorMREQ)
-{
-    monitorIORQ = (_waitStateEnMask & BR_IORQ_WAIT_EN_MASK) != 0;
-    monitorMREQ = (_waitStateEnMask & BR_MREQ_WAIT_EN_MASK) != 0;
-}
-
-void BusAccess::waitOnInstruction(bool waitOnInstruction)
-{
-    // Setup wait on instruction
-    if (waitOnInstruction)
-    {
-        WR32(ARM_GPIO_GPSET0, BR_MREQ_WAIT_EN_MASK);
-        _waitStateEnMask = _waitStateEnMask | BR_MREQ_WAIT_EN_MASK;
-        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) | (1 << BR_WAIT_BAR));
-    }
-    else
-    {
-        WR32(ARM_GPIO_GPCLR0, BR_MREQ_WAIT_EN_MASK);
-        _waitStateEnMask = _waitStateEnMask & (~BR_MREQ_WAIT_EN_MASK);
-        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) & (~(1 << BR_WAIT_BAR)));
-    }
-}
-
-// Restore wait state generation to default
-void BusAccess::waitRestoreDefaults()
-{
-    _waitStateEnMask = _waitStateEnMaskDefault;
-    WR32(ARM_GPIO_GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
-    WR32(ARM_GPIO_GPSET0, _waitStateEnMask);
-    if ((_waitStateEnMask & BR_MREQ_WAIT_EN_MASK) != 0)
-        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) | (1 << BR_WAIT_BAR));
-    else
-        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) & (~(1 << BR_WAIT_BAR)));
-}
-
-// Setup wait-states and FIQ
-void BusAccess::waitSetup(bool enWaitOnIORQ, bool enWaitOnMREQ)
-{
-    // Disable interrupts
-    waitIntDisable();
-
-    // Enable wait state generation
-    _waitStateEnMask = 0;
-    if (enWaitOnIORQ)
-        _waitStateEnMask = _waitStateEnMask | BR_IORQ_WAIT_EN_MASK;
-    if (enWaitOnMREQ)
-        _waitStateEnMask = _waitStateEnMask | BR_MREQ_WAIT_EN_MASK;
-    _waitStateEnMaskDefault = _waitStateEnMask;
-    WR32(ARM_GPIO_GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
-
-    // Set wait-state generation
-    WR32(ARM_GPIO_GPSET0, _waitStateEnMask);
-
-    // Set vector for WAIT state interrupt
-    CInterrupts::connectFIQ(0, waitStateISR, 0);
-
-    // Setup edge triggering on falling edge of IORQ and/or MREQ
-    // Clear any current detected edges
-    WR32(ARM_GPIO_GPEDS0, (1 << BR_IORQ_BAR) | (1 << BR_MREQ_BAR));
-    
-    // Set falling edge detect
-    if (enWaitOnIORQ)
-        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) | (1 << BR_IORQ_BAR));
-    else
-        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) & (~(1 << BR_IORQ_BAR)));
-    if (enWaitOnMREQ)
-        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) | (1 << BR_WAIT_BAR));
-    else
-        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) & (~(1 << BR_WAIT_BAR)));
-
-    // Enable FIQ interrupts on GPIO[3] which is any GPIO pin
-    WR32(ARM_IC_FIQ_CONTROL, (1 << 7) | 52);
-
-    // Enable Fast Interrupts
-    _waitIntEnabled = true;
-    waitIntEnable();
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Wait State Interrupt Service Routine
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Main Interrupt Service Routing for MREQ/IORQ based interrupts
-// The Bus Raider hardware creates WAIT states while this IRQ is running
-// These have to be cleared on exit and the interrupt source register also cleared
-void BusAccess::waitStateISR(void* pData)
-{
-#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-#endif
-
-    // Check if we are in a BUSAK
-    // TODO ?? needed
-    if ((RD32(ARM_GPIO_GPLEV0) & (1 << BR_BUSACK_BAR)) == 0)
-    {
-        // Clear the interrupt and return
-        clearWaitDetected();
-        clearWaitFF();
-
-        // TODO
-        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_B);
-
+    // Check validity
+    // LogWrite("BA", LOG_DEBUG, "ReqIRQ sock %d us %d", busSocket, _busSockets[busSocket].busActionDurationUs);
+    if ((busSocket < 0) || (busSocket >= _busSocketCount))
         return;
+    _busSockets[busSocket].busActionDurationUs = (durationUs <= 0) ? BR_IRQ_PULSE_US : durationUs;
+    _busSockets[busSocket].busActionRequested = BR_BUS_ACTION_IRQ;
+}
+
+// Bus request
+void BusAccess::targetReqBus(int busSocket, BR_BUS_ACTION_REASON busMasterReason)
+{
+    // Check validity
+    if ((busSocket < 0) || (busSocket >= _busSocketCount))
+        return;
+    _busSockets[busSocket].busMasterRequest = true;
+    _busSockets[busSocket].busMasterReason = busMasterReason;
+    // LogWrite("BusAccess", LOG_DEBUG, "reqBus sock %d enabled %d reason %d", busSocket, _busSockets[busSocket].enabled, busMasterReason);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Paging
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Paging for injection
+void BusAccess::targetPageForInjection([[maybe_unused]]int busSocket, bool pageOut)
+{
+    // Keep track of delayed paging requests
+    if (pageOut)
+    {
+        
+        // LogWrite("BA", LOG_DEBUG, "targetPageForInjection TRUE count %d en %s", _busSocketCount,
+        //             (_busSocketCount > 0) ? (_busSockets[0].enabled ? "Y" : "N") : "X");
+
+        // Tell all connected devices to page in/out
+        for (int i = 0; i < _busSocketCount; i++)
+        {
+            if (_busSockets[i].enabled)
+            {
+                _busSockets[i].busActionCallback(BR_BUS_ACTION_PAGE_OUT_FOR_INJECT, BR_BUS_ACTION_GENERAL);
+            }
+        }
+    }
+    else
+    {
+        _targetPageInOnNextWait = true;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Service
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusAccess::service()
+{
+#ifndef TIMER_BASED_WAIT_STATES
+    serviceWaitActivity();
+#endif
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Bus Actions
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusAccess::busActionCheck()
+{
+    // Should be idle
+    if (_busActionInProgress)
+        return;
+
+    // See if anything to do
+    int busSocket = -1;
+    for (int i = 0; i < _busSocketCount; i++)
+    {
+        if (_busSockets[i].enabled && (_busSockets[i].getType() != BR_BUS_ACTION_NONE))
+        {
+            busSocket = i;
+            break;
+        }
+    }
+    if (busSocket < 0)
+        return;
+
+    // Set this new action as in progress
+    _busActionSocket = busSocket;
+    _busActionType = _busSockets[busSocket].getType();
+    _busActionInProgress = true;
+    _busActionInProgressStartUs = micros();
+    _busActionAsserted = false;
+}
+
+bool BusAccess::busActionsAssertStart()
+{
+    // Check if a bus action has started but isn't yet asserted
+    if (!_busActionInProgress || _busActionAsserted)
+        return false;
+
+    // Initiate the action
+    setSignal(_busActionType, true);
+
+    // Set start timer
+    _busActionAssertedStartUs = micros();
+    _busActionAssertedMaxUs = _busSockets[_busActionSocket].getAssertUs();
+    _busActionAsserted = true;
+    return true;
+}
+
+void BusAccess::busActionAssertActive()
+{
+    // Handle active asserts
+    if (!_busActionInProgress || !_busActionAsserted)
+        return;
+
+    // Handle BUSRQ separately
+    if (_busActionType == BR_BUS_ACTION_BUSRQ)
+    {
+        // Check for BUSACK
+        if (controlBusAcknowledged())
+        {
+            // Take control of bus
+            controlTake();
+
+            // Clear the action now so that any new action raised by the callback
+            // such as a reset, etc can be asserted before BUSRQ is released
+            busActionClearFlags();
+
+            // Callback
+            busActionCallback(BR_BUS_ACTION_BUSRQ, _busSockets[_busActionSocket].busMasterReason);
+
+            // Release bus
+            controlRelease();
+        }
+        else
+        {
+            // Check for timeout on BUSACK
+            if (isTimeout(micros(), _busActionAssertedStartUs, _busActionAssertedMaxUs))
+            {
+                // For bus requests a timeout means failure
+                busActionCallback(BR_BUS_ACTION_BUSRQ_FAIL, _busSockets[_busActionSocket].busMasterReason);
+                setSignal(BR_BUS_ACTION_BUSRQ, false);
+                busActionClearFlags();
+            }
+        }
+
+    }
+    else
+    {
+        if (isTimeout(micros(), _busActionAssertedStartUs, _busActionAssertedMaxUs))
+        {
+            busActionCallback(_busActionType, BR_BUS_ACTION_GENERAL);
+            setSignal(_busActionType, false);
+            busActionClearFlags();
+        }
+    }
+}
+
+void BusAccess::busActionClearFlags()
+{
+    // Clear for all sockets
+    for (int i = 0; i < _busSocketCount; i++)
+        _busSockets[i].clear(_busActionType);
+    _busActionInProgress = false;
+}
+
+void BusAccess::busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REASON reason)
+{
+    for (int i = 0; i < _busSocketCount; i++)
+    {
+        if (!_busSockets[i].enabled)
+            continue;
+        // Inform all active sockets of the bus action completion
+        _busSockets[i].busActionCallback(busActionType, reason);
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Timer Interrupt Service Routine
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusAccess::stepTimerISR([[maybe_unused]] void* pParam)
+{
+#ifdef TIMER_BASED_WAIT_STATES
+    serviceWaitActivity();
+#endif
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Timer Interrupt Service Routine
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusAccess::serviceWaitActivity()
+{
+    // Read the control lines
+    uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
+
+    // Handle the end of a read cycle
+    if (_targetReadInProgress)
+    {
+        // Check if a neither IORQ or MREQ asserted
+        if (((busVals & BR_MREQ_BAR_MASK) != 0) && ((busVals & BR_IORQ_BAR_MASK) != 0))
+        {
+            pibSetIn();
+            // Set data bus direction out (not really necessary but helps with M1 settling)
+            WR32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
+            _targetReadInProgress = false;
+        }
     }
 
-    // pData unused
-    pData = pData;
+    // Check for timeouts on bus actions
+    if (_busActionInProgress)
+    {
+        // Check signal already asserted and handle
+        busActionAssertActive();
+
+        // Timeout on overall action
+        if (isTimeout(micros(), _busActionInProgressStartUs, MAX_WAIT_FOR_PENDING_ACTION_US))
+        {
+            // Cancel the request
+            busActionClearFlags();
+        }
+    }
+
+    // See if a new bus action is requested
+    busActionCheck();
+
+    // Handle wait
+    if (!_waitAsserted)
+    {
+        // Start any bus actions here
+        busActionsAssertStart();
+
+        // Check if we have a new wait (and we're not in BUSACK)
+        if (((busVals & BR_WAIT_BAR_MASK) == 0) && ((busVals & BR_BUSACK_BAR_MASK) != 0))
+        {
+            // Check if a bus action is happening which would be cleared too soon by the wait handler
+            if (_busActionInProgress && (_busActionType != BR_BUS_ACTION_BUSRQ))
+            {
+                // Don't handle the wait until the bus action has completed
+            }
+            else
+            {
+                _waitAssertedStartUs = micros();
+                _waitAsserted = true;
+
+                // Handle the wait
+                waitHandleNew();
+            }
+        }
+    }
+    else
+    {
+        // Check for IORQ
+        if ((busVals & BR_IORQ_BAR_MASK) == 0)
+        {
+            // Release the wait - also clears _waitAsserted flag
+            waitResetFlipFlops();
+        }
+        // Check if we're free running
+        else if (!_waitHold)
+        {
+            if (isTimeout(micros(), _waitAssertedStartUs, _waitCycleLengthUs))
+            {
+                // Check if we need to assert any new bus requests
+                busActionsAssertStart();
+
+                // Release the wait - also clears _waitAsserted flag
+                waitResetFlipFlops();
+            }
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// New Wait
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusAccess::waitHandleNew()
+{
+    // Time at start of ISR
+    uint32_t isrStartUs = micros();
+    
+    // Check if paging in/out is required
+    if (_targetPageInOnNextWait)
+    {
+        pagingPageIn();
+        _targetPageInOnNextWait = false;
+    }
+
+    // TODO DEBUG
+            pinMode(BR_WR_BAR, INPUT);
+            pinMode(BR_RD_BAR, INPUT);
+            pinMode(BR_MREQ_BAR, INPUT);
+            pinMode(BR_IORQ_BAR, INPUT);
 
     // Set PIB to input
     pibSetIn();
@@ -719,8 +552,7 @@ void BusAccess::waitStateISR(void* pData)
     muxClear();
 
     // Delay to allow M1 to settle
-    //TODO check this is the best timing
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
+    microsDelay(1);
 
     // Loop until control lines are valid
     // In a write cycle WR is asserted after MREQ so we need to wait until WR changes before
@@ -734,12 +566,12 @@ void BusAccess::waitStateISR(void* pData)
 
         // Get the appropriate bits for up-line communication
         ctrlBusVals = 
-                (((busVals & (1 << BR_RD_BAR)) == 0) ? BR_CTRL_BUS_RD_MASK : 0) |
-                (((busVals & (1 << BR_WR_BAR)) == 0) ? BR_CTRL_BUS_WR_MASK : 0) |
-                (((busVals & (1 << BR_MREQ_BAR)) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
-                (((busVals & (1 << BR_IORQ_BAR)) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
-                (((busVals & (1 << BR_WAIT_BAR)) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
-                (((busVals & (1 << BR_M1_PIB_BAR)) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
+                (((busVals & BR_RD_BAR_MASK) == 0) ? BR_CTRL_BUS_RD_MASK : 0) |
+                (((busVals & BR_WR_BAR_MASK) == 0) ? BR_CTRL_BUS_WR_MASK : 0) |
+                (((busVals & BR_MREQ_BAR_MASK) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
+                (((busVals & BR_IORQ_BAR_MASK) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
+                (((busVals & BR_WAIT_BAR_MASK) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
+                (((busVals & BR_M1_PIB_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
 
         // Check for (MREQ || IORQ) && (RD || WR)
         bool ctrlValid = ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) || (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)) && ((ctrlBusVals & BR_CTRL_BUS_RD_MASK) || (ctrlBusVals & BR_CTRL_BUS_WR_MASK));
@@ -751,7 +583,7 @@ void BusAccess::waitStateISR(void* pData)
         if (ctrlValid)
             break;
 
-        // An NMI ack cycle will time out
+        // Ensure we don't lock up on weird bus activity
         avoidLockupCtr++;
     }
 
@@ -796,19 +628,25 @@ void BusAccess::waitStateISR(void* pData)
     // Clear Mux
     muxClear();
 
-    // Send this to anything listening
+    // Send this to all bus sockets
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
-    if (_pBusAccessCallback)
-        _pBusAccessCallback(addr, dataBusVals, ctrlBusVals, retVal);
+    for (int sockIdx = 0; sockIdx < _busSocketCount; sockIdx++)
+    {
+        if (_busSockets[sockIdx].enabled && _busSockets[sockIdx].busAccessCallback)
+        {
+            _busSockets[sockIdx].busAccessCallback(addr, dataBusVals, ctrlBusVals, retVal);
+        }
+    }
 
     // If Z80 is reading from the data bus (inc reading an ISR vector)
     // and result is valid then put the returned data onto the bus
     bool isWriting = (ctrlBusVals & BR_CTRL_BUS_WR_MASK);
     if (!isWriting && ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0))
     {
+        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_I);
         // Now driving data onto the target data bus
         digitalWrite(BR_DATA_DIR_IN, 0);
-        // A flip-flop to handles data OE during the IORQ/MREQ cycle and 
+        // A flip-flop handles data OE during the IORQ/MREQ cycle and 
         // deactivates at the end of that cycle - so prime this flip-flop here
         muxSet(BR_MUX_DATA_OE_BAR_LOW);
         pibSetOut();
@@ -816,182 +654,60 @@ void BusAccess::waitStateISR(void* pData)
         lowlev_cycleDelay(CYCLES_DELAY_FOR_WAIT_CLEAR);
         muxClear();
         lowlev_cycleDelay(CYCLES_DELAY_FOR_TARGET_READ);
+        _targetReadInProgress = true;
     }
 
-    // Check if we should hold the target processor at this point
-    static const int BR_MEM_ACCESS_HOLD = 0x2000000;
-    if ((retVal & BR_MEM_ACCESS_HOLD) != 0)
+    // Elapsed and count
+    uint32_t isrElapsedUs = micros() - isrStartUs;
+    _statusInfo.isrCount++;
+
+    // Stats
+    if (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)
     {
-        // Clear wait detected
-        clearWaitDetected();
+        if (ctrlBusVals & BR_CTRL_BUS_RD_MASK)
+            _statusInfo.isrMREQRD++;
+        else if (ctrlBusVals & BR_CTRL_BUS_WR_MASK)
+            _statusInfo.isrMREQWR++;
     }
-    else
+    else if (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK)
     {
-        // No pause requested - clear the WAIT state so execution can continue
-#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-#endif
-        // Clear wait detected
-        clearWaitDetected();
-
-        // Clear the WAIT state flip-flop
-        clearWaitFF();
-#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-#endif
+        if (ctrlBusVals & BR_CTRL_BUS_RD_MASK)
+            _statusInfo.isrIORQRD++;
+        else if (ctrlBusVals & BR_CTRL_BUS_WR_MASK)
+            _statusInfo.isrIORQWR++;
+        else if (ctrlBusVals & BR_CTRL_BUS_M1_MASK)
+            _statusInfo.isrIRQACK++;
     }
 
-#ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-#endif
+    // Overflows
+    if (_statusInfo.isrAccumUs > 1000000000)
+    {
+        _statusInfo.isrAccumUs = 0;
+        _statusInfo.isrAvgingCount = 0;
+    }
+
+    // Averages
+    if (isrElapsedUs < 1000000)
+    {
+        _statusInfo.isrAccumUs += isrElapsedUs;
+        _statusInfo.isrAvgingCount++;
+        _statusInfo.isrAvgNs = _statusInfo.isrAccumUs * 1000 / _statusInfo.isrAvgingCount;
+    }
+
+    // Max
+    if (_statusInfo.isrMaxUs < isrElapsedUs)
+        _statusInfo.isrMaxUs = isrElapsedUs;
 
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Clear/Enable/Disable Wait Interrupts
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void BusAccess::waitIntClear()
+char BusAccessStatusInfo::_jsonBuf[MAX_JSON_LEN];
+const char* BusAccessStatusInfo::getJson()
 {
-    // Clear detected edge on any pin
-    WR32(ARM_GPIO_GPEDS0, 0xffffffff);
-}
-
-void BusAccess::waitIntDisable()
-{
-    // Disable Fast Interrupts
-    lowlev_disable_fiq();
-}
-
-void BusAccess::waitIntEnable()
-{
-    // Clear interrupts first
-    waitIntClear();
-
-    // Enable Fast Interrupts
-    lowlev_enable_fiq();
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Pause & Single Step Handling
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void BusAccess::waitClear()
-{
-    // Disable interrupts
-    lowlev_disable_fiq();
-
-    // Timing critical in here
-    lowlev_disable_irq();
-
-    // Clear the WAIT state flip-flop
-    clearWaitFF();
-
-    // Remove reset or other signal
-    muxClear();
-
-    // Clear wait detected
-    clearWaitDetected();
-
-    // Enable interrupts
-    lowlev_enable_fiq();
-    lowlev_enable_irq();
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Service
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void BusAccess::service()
-{
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Utility Functions
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Set a pin to be an output and set initial value for that pin
-void BusAccess::setPinOut(int pinNumber, bool val)
-{
-    digitalWrite(pinNumber, val);
-    pinMode(pinNumber, OUTPUT);
-    digitalWrite(pinNumber, val);
-}
-
-void BusAccess::muxClear()
-{
-    // Clear to a safe setting - sets HADDR_SER low
-    WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-}
-
-void BusAccess::muxSet(int muxVal)
-{
-    // Clear first as this is a safe setting - sets HADDR_SER low
-    WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-    // Now set bits required
-    WR32(ARM_GPIO_GPSET0, muxVal << BR_MUX_LOW_BIT_POS);
-}
-
-// Set the PIB (pins used for data bus access) to outputs (from Pi)
-void BusAccess::pibSetOut()
-{
-    WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_OUTPUT);
-}
-
-// Set the PIB (pins used for data bus access) to inputs (to Pi)
-void BusAccess::pibSetIn()
-{
-    WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_INPUT);
-}
-
-// Set a value onto the PIB (pins used for data bus access)
-void BusAccess::pibSetValue(uint8_t val)
-{
-    uint32_t setBits = ((uint32_t)val) << BR_DATA_BUS;
-    uint32_t clrBits = (~(((uint32_t)val) << BR_DATA_BUS)) & (~BR_PIB_MASK);
-    WR32(ARM_GPIO_GPSET0, setBits);
-    WR32(ARM_GPIO_GPCLR0, clrBits);
-}
-
-// Get a value from the PIB (pins used for data bus access)
-uint8_t BusAccess::pibGetValue()
-{
-    return (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
-}
-
-void BusAccess::clearWaitFF()
-{
-    // Clear the WAIT state flip-flop
-    WR32(ARM_GPIO_GPCLR0, BR_MREQ_WAIT_EN_MASK | BR_IORQ_WAIT_EN_MASK);
-
-    // Pulse needs to be wide enough to clear flip-flop reliably
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_WAIT_CLEAR);
-
-    // Re-enable the wait state generation as defined by the global mask
-    WR32(ARM_GPIO_GPSET0, _waitStateEnMask);
-}
-
-void BusAccess::clearWaitDetected()
-{
-    // Clear detected edge on any pin
-    WR32(ARM_GPIO_GPEDS0, 0xffffffff);
-}
-
-void BusAccess::isrAssert(int code)
-{
-    if (code < ISR_ASSERT_NUM_CODES)
-        _isrAssertCounts[code]++;
-}
-
-int  BusAccess::isrAssertGetCount(int code)
-{
-    if (code < ISR_ASSERT_NUM_CODES)
-        return _isrAssertCounts[code];
-    return 0;
-}
-
-void BusAccess::isrValue(int code, int val)
-{
-    if (code < ISR_ASSERT_NUM_CODES)
-        _isrAssertCounts[code] = val;
+    char tmpResp[MAX_JSON_LEN];
+    ee_sprintf(_jsonBuf, "\"err\":\"ok\",\"c\":%u,\"avgNs\":%u,\"maxUs\":%u,\"clrAvgNs\":%u,\"clrMaxUs\":%u,\"busRqFail\":%u,\"busActFailDueWait\":%u",
+                isrCount, isrAvgNs, isrMaxUs, clrAvgNs, clrMaxUs, busrqFailCount, busActionFailedDueToWait);
+    ee_sprintf(tmpResp, ",\"mreqRd\":%u,\"mreqWr\":%u,\"iorqRd\":%u,\"iorqWr\":%u,\"irqAck\":%u,\"isrBadBusrq\":%u,\"irqDuringBusAck\":%u,\"irqNoWait\":%u",
+                isrMREQRD, isrMREQWR, isrIORQRD, isrIORQWR, isrIRQACK, isrSpuriousBUSRQ, isrDuringBUSACK, isrWithoutWAIT);
+    strlcat(_jsonBuf, tmpResp, MAX_JSON_LEN);
+    return _jsonBuf;
 }

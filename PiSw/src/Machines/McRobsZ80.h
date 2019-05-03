@@ -12,37 +12,33 @@ private:
     uint8_t _screenBuffer[ROBSZ80_DISP_RAM_SIZE];
     bool _screenBufferValid;
 
-    static McDescriptorTable _descriptorTable;
+    static McDescriptorTable _defaultDescriptorTables[];
 
 public:
 
-    McRobsZ80() : McBase()
-    {
-        _screenBufferValid = false;
-    }
+    McRobsZ80();
 
     // Enable machine
-    virtual void enable(int subType);
+    virtual void enable();
 
     // Disable machine
     virtual void disable();
 
-    // Get descriptor table for the machine (-1 for current subType)
-    virtual McDescriptorTable* getDescriptorTable([[maybe_unused]] int subType = -1)
-    {
-        return &McRobsZ80::_descriptorTable;
-    }
-
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-    virtual void displayRefresh(DisplayBase* pDisplay);
+    virtual void displayRefreshFromMirrorHw();
 
     // Handle a key press
     virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]);
 
     // Handle a file
-    virtual void fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen);
+    virtual bool fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen);
 
     // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
     virtual uint32_t busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags, uint32_t retVal);
 
+    // Bus action complete callback
+    virtual void busActionCompleteCallback(BR_BUS_ACTION actionType);
+    
+private:
+    virtual void updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen);
 };

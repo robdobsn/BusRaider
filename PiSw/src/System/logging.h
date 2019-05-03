@@ -21,8 +21,11 @@ extern void LogWrite(const char* pSource, // short name of module
     unsigned Severity, // see above
     const char* pMessage, ...); // uses printf format options
 
-typedef void outChFnType(const char* pStr);
-extern void LogSetOutFn(outChFnType* pOutFn);
+typedef void LogOutChFnType(const char* pStr);
+extern void LogSetOutFn(LogOutChFnType* pOutFn);
+
+typedef void LogOutMsgFnType(const char* pSeverity, const char* pSource, const char* pMsg);
+extern void LogSetOutMsgFn(LogOutMsgFnType* pOutFn);
 
 extern void LogDumpMemory(unsigned char* start_addr, unsigned char* end_addr);
 

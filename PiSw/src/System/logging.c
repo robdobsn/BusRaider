@@ -7,20 +7,29 @@
 #include "../System/ee_sprintf.h"
 #include "../System/logging.h"
 
-outChFnType* __ee_pOutFunction = NULL;
-
-void LogSetOutFn(outChFnType* pOutFn)
+// Set output to be character based
+LogOutChFnType* __log_pOutChFunction = NULL;
+void LogSetOutFn(LogOutChFnType* pOutFn)
 {
-    __ee_pOutFunction = pOutFn;
+    __log_pOutChFunction = pOutFn;
 }
 
-#define DISP_WRITE_STRING(x) if(__ee_pOutFunction) (*__ee_pOutFunction)((const char*)x)
-#define LOG_WRITE_STRING(x) if(__ee_pOutFunction) (*__ee_pOutFunction)((const char*)x)
+// Set output to be message based
+LogOutMsgFnType* __log_pOutMsgFunction = NULL;
+void LogSetOutMsgFn(LogOutMsgFnType* pOutFn)
+{
+    __log_pOutMsgFunction = pOutFn;
+}
 
+// Macros for output
+#define DISP_WRITE_STRING(x) if(__log_pOutChFunction) (*__log_pOutChFunction)((const char*)x)
+#define LOG_WRITE_STRING(x) if(__log_pOutChFunction) (*__log_pOutChFunction)((const char*)x)
+
+// Log severity
 #define USPI_LOG_SEVERITY LOG_VERBOSE
-
 unsigned int __logSeverity = LOG_DEBUG;
 
+// Main logging function
 void LogWrite(const char* pSource,
     unsigned severity,
     const char* fmt, ...)
@@ -32,39 +41,60 @@ void LogWrite(const char* pSource,
     if (severity > __logSeverity)
         return;
 
-    char buf[15 * 80];
+    // Buffer
+    char buf[40 * 80];
     va_list args;
 
+    // Expand
     va_start(args, fmt);
     ee_vsprintf(buf, fmt, args);
     va_end(args);
 
-    LOG_WRITE_STRING("[");
-    switch (severity) {
-    case LOG_ERROR:
-        LOG_WRITE_STRING("ERROR  ");
-        break;
-    case LOG_WARNING:
-        LOG_WRITE_STRING("WARNING");
-        break;
-    case LOG_NOTICE:
-        LOG_WRITE_STRING("NOTICE ");
-        break;
-    case LOG_DEBUG:
-        LOG_WRITE_STRING("DEBUG  ");
-        break;
-    case LOG_VERBOSE:
-        LOG_WRITE_STRING("VERBOSE");
-        break;
-    default:
-        LOG_WRITE_STRING("??     ");
+    // Handle message based output
+    if (__log_pOutMsgFunction)
+    {
+        char severityStr[2] = "?";
+        switch (severity) 
+        {
+            case LOG_ERROR: severityStr[0] = 'E'; break;
+            case LOG_WARNING: severityStr[0] = 'W'; break;
+            case LOG_NOTICE: severityStr[0] = 'N'; break;
+            case LOG_DEBUG: severityStr[0] = 'D'; break;
+            case LOG_VERBOSE: severityStr[0] = 'V'; break;
+        }
+        __log_pOutMsgFunction(severityStr, pSource, buf);
     }
 
-    LOG_WRITE_STRING("] ");
-    LOG_WRITE_STRING(pSource);
-    LOG_WRITE_STRING(": ");
-    LOG_WRITE_STRING(buf);
-    LOG_WRITE_STRING("\n");
+    // Character based output
+    if (__log_pOutChFunction)
+    {
+        LOG_WRITE_STRING("[");
+        switch (severity) {
+        case LOG_ERROR:
+            LOG_WRITE_STRING("ERROR  ");
+            break;
+        case LOG_WARNING:
+            LOG_WRITE_STRING("WARNING");
+            break;
+        case LOG_NOTICE:
+            LOG_WRITE_STRING("NOTICE ");
+            break;
+        case LOG_DEBUG:
+            LOG_WRITE_STRING("DEBUG  ");
+            break;
+        case LOG_VERBOSE:
+            LOG_WRITE_STRING("VERBOSE");
+            break;
+        default:
+            LOG_WRITE_STRING("??     ");
+        }
+
+        LOG_WRITE_STRING("] ");
+        LOG_WRITE_STRING(pSource);
+        LOG_WRITE_STRING(": ");
+        LOG_WRITE_STRING(buf);
+        LOG_WRITE_STRING("\n");
+    }
 }
 
 void LogSetLevel(int severity)

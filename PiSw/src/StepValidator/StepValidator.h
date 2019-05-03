@@ -7,12 +7,37 @@
 #include <stddef.h>
 #include <string.h>
 #include <stdlib.h>
-
 #include "../System/RingBufferPosn.h"
 #include "../TargetBus/TargetRegisters.h"
-#include "../TargetBus/MemorySystem.h"
+#include "../TargetBus/BusAccess.h"
+#include "../CommandInterface/CommandHandler.h"
 #include "libz80/z80.h"
 
+// #define STEP_VAL_WITHOUT_HW_MANAGER 1
+#ifndef STEP_VAL_WITHOUT_HW_MANAGER
+#include "../Hardware/HwManager.h"
+#endif
+
+// Stats
+class StepValidatorStats
+{
+public:
+    StepValidatorStats()
+    {
+        clear();
+    }
+    void clear()
+    {
+        isrCalls = 0;
+        errors = 0;
+        instructionCount = 0;
+    }
+    uint32_t isrCalls;
+    uint32_t errors;
+    uint32_t instructionCount;
+};
+
+// Exceptions
 class StepValidatorException
 {
 public:
@@ -26,6 +51,7 @@ public:
     uint32_t stepCount;
 };
 
+// Cycle info
 class StepValidatorCycle
 {
 public:
@@ -34,31 +60,62 @@ public:
     uint32_t flags;
 };
 
+// Validator
 class StepValidator
 {
 public:
     StepValidator();
+    void init();
 
+    // Control
     void start();
     void stop();
-
+    void primeFromMem();
+    
+    // Service
     void service();
 
-    void writeTestCode();
-
-    uint32_t handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
-            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal);
-
+    // Stats
+    StepValidatorStats& getStats();
+    
 private:
 
     // Z80 CPU context
     Z80Context _cpu_z80;
 
     // Memory system
-    MemorySystem _emulatedMemory;
+#ifdef STEP_VAL_WITHOUT_HW_MANAGER
+    uint8_t* _pValidatorMemory;
+    uint32_t _validatorMemoryLen;
+#endif
 
     // Singleton instance
     static StepValidator* _pThisInstance;
+
+    // Bus socket we're attached to
+    static int _busSocketId;
+    static BusSocketInfo _busSocketInfo;
+
+    // Comms socket we're attached to
+    static int _commsSocketId;
+    static CommsSocketInfo _commsSocketInfo;
+
+    // Handle messages (telling us to start/stop)
+    static bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
+                    char* pRespJson, int maxRespLen);
+
+    // Get status
+    void getStatus(char* pRespJson, int maxRespLen, const char* statusIdxStr);
+
+    // Reset complete callback
+    static void busActionCompleteStatic(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
+    void resetComplete();
+
+    // Wait interrupt handler
+    static void handleWaitInterruptStatic(uint32_t addr, uint32_t data, 
+            uint32_t flags, uint32_t& retVal);
+    void handleWaitInterrupt(uint32_t addr, uint32_t data, 
+            uint32_t flags, uint32_t& retVal);
 
     // Memory and IO functions
     static byte mem_read(int param, ushort address);
@@ -76,13 +133,11 @@ private:
     static const int NUM_DEBUG_VALS = 200;
     volatile StepValidatorException _exceptions[NUM_DEBUG_VALS];
     RingBufferPosn _exceptionsPosn;
-    int _excpCount;
-    int _serviceCount;
     bool _isActive;
 
-    uint32_t volatile _debugCurChVal;
-    uint32_t volatile _debugStepCount;
+    // Stats
+    StepValidatorStats _stats;
 
-    // Test cases
-    void testCase1();
+    // Service count
+    int _serviceCount;
 };

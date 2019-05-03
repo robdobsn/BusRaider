@@ -3,11 +3,11 @@
 
 #pragma once
 
-#include "../System/logging.h"
 #include <string.h> 
-#include "../System/RingBufferPosn.h"
-#include "../CommandInterface/CommandHandler.h"
 #include "HwBase.h"
+#include "../System/logging.h"
+#include "../TargetBus/BusAccess.h"
+#include "../CommandInterface/CommandHandler.h"
 
 // #define DEBUG_IO_ACCESS 1
 
@@ -23,12 +23,83 @@ public:
 
 class HwManager
 {
+public:
+    // Init
+    static void init();
+
+    // Service
+    static void service();
+
+    // Manage hardware
+    static void add(HwBase* pHw);
+
+    // Memory emulation mode 
+    static void setMemoryEmulationMode(bool val);
+    static bool getMemoryEmulationMode()
+    {
+        return _memoryEmulationMode;
+    }
+
+    // Memory paging enable 
+    static void setMemoryPagingEnable(bool val);
+    static bool getMemoryPagingEnable()
+    {
+        return _memoryPagingEnable;
+    }
+
+    // Opcode inject enable 
+    static void setOpcodeInjectEnable(bool val);
+    static bool getOpcodeInjectEnable()
+    {
+        return _opcodeInjectEnable;
+    }
+
+    // Page out RAM/ROM for opcode injection
+    static void pageOutForInjection(bool pageOut);
+
+    // Block access to hardware
+    static BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
+    static BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
+
+    // Validator interface to hardware
+    static void validatorClone();
+    static void validatorHandleAccess(uint32_t addr, uint32_t data, 
+            uint32_t flags, uint32_t& retVal);
+
+    // Enable/Disable
+    static bool enableHw(const char* hwName, bool enable);
+    static void disableAll();
+
+    // Setup from Json
+    static void setupFromJson(const char* jsonKey, const char* hwJson);
+
 private:
 
+    // Hardware slots
     static const int MAX_HARDWARE = 10;
     static const int MAX_HARDWARE_NAME_LEN = 100;
     static HwBase* _pHw[MAX_HARDWARE];
     static int _numHardware;
+
+    // Bus socket we're attached to
+    static int _busSocketId;
+    static BusSocketInfo _busSocketInfo;
+
+    // Comms socket we're attached to and setup info
+    static int _commsSocketId;
+    static CommsSocketInfo _commsSocketInfo;
+
+    // Memory emulation mode
+    static bool _memoryEmulationMode;
+
+    // Paging mode
+    static bool _memoryPagingEnable;
+
+    // Opcode injection mode
+    static bool _opcodeInjectEnable;
+
+    // Default hardware list (to add if no hardware specified)
+    static const char* _pDefaultHardwareList;
 
 #ifdef DEBUG_IO_ACCESS
     // Debug collection of IO accesses
@@ -37,29 +108,14 @@ private:
     static RingBufferPosn _debugIOPortPosn;
 #endif
 
-public:
-    // Init
-    static void init();
+    // Handle messages (telling us to start/stop)
+    static bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
+                    char* pRespJson, int maxRespLen);
+                    
+    // Reset complete callback
+    static void busActionCompleteStatic(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
 
-    // Service
-    static void service();
-
-    // Manage machines
-    static void add(HwBase* pHw);
-
-    // Reset
-    static void reset();
-
-    // Page out RAM/ROM due to emulation
-    static void pageOutForEmulation(bool pageOut);
-
-    // Page out RAM/ROM for opcode injection
-    static void pageOutForInjection(bool pageOut);
-
-    // Check if paging requires bus access
-    static bool pagingRequiresBusAccess();
-
-    // Interrupt handler for MREQ/IORQ
-    static uint32_t handleWaitInterrupt(uint32_t addr, uint32_t data, uint32_t flags, uint32_t retVal);
-
+    // Wait interrupt handler
+    static void handleWaitInterruptStatic(uint32_t addr, uint32_t data, 
+            uint32_t flags, uint32_t& retVal);
 };

@@ -4,6 +4,7 @@
 #pragma once
 #include <stdint.h>
 #include "../System/DisplayBase.h"
+#include "../TargetBus/TargetCPU.h"
 
 static const int MC_WINDOW_NUMBER = 0;
 
@@ -30,6 +31,7 @@ public:
     WgfxFont* pFont;
     int displayForeground;
     int displayBackground;
+    bool displayMemoryMapped;
     // Clock
     uint32_t clockFrequencyHz;
     // Interrupt rate per second
@@ -37,8 +39,6 @@ public:
     // Bus monitor modes
     bool monitorIORQ;
     bool monitorMREQ;
-    bool emulatedRAM;
-    bool setRegistersByInjection;
     uint32_t setRegistersCodeAddr;
 };
 
@@ -46,42 +46,56 @@ class McBase
 {
 public:
 
-    McBase();
+    McBase(McDescriptorTable* pDefaultTables, int numTables);
+
+    // Check if name is a valid one for this machine
+    virtual bool isCalled(const char* mcName);
+
+    // Get current machine name
+    virtual const char* getMachineName();
+
+    // Get active machine name or comma separated list of all supported machine names
+    virtual void getMachineNames(char* mcNamesCommaSep, int maxLen);
+
+    // Setup machine from JSON
+    virtual bool setupMachine(const char* mcName, const char* mcJson);
+
+    // Get descriptor table for the machine (-1 for current subType)
+    virtual McDescriptorTable* getDescriptorTable();
 
     // Enable machine
-    virtual void enable(int subType) = 0;
+    virtual void enable() = 0;
 
     // Disable machine
     virtual void disable() = 0;
 
-    // Get number of descriptor tables for machine
-    virtual int getDescriptorTableCount()
-    {
-        return 1;
-    }
-
-    // Get descriptor table for the machine (-1 for current subType)
-    virtual McDescriptorTable* getDescriptorTable(int subType = -1) = 0;
+    // Setup display
+    virtual void setupDisplay(DisplayBase* pDisplay);
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-    virtual void displayRefresh(DisplayBase* pDisplay) = 0;
+    virtual void displayRefreshFromMirrorHw() = 0;
 
     // Handle reset for the machine - if false returned then the bus raider will issue a hardware reset
-    virtual bool reset([[maybe_unused]] bool restoreWaitDefaults, [[maybe_unused]] bool holdInReset)
-    {
-        return false;
-    }
+    virtual bool reset([[maybe_unused]] bool restoreWaitDefaults, [[maybe_unused]] bool holdInReset);
 
     // Handle a key press
     virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]) = 0;
 
     // Handle a file
-    virtual void fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen) = 0;
-
-    // Handle debugger command
-    virtual bool debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen);
+    virtual bool fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen) = 0;
 
     // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
     virtual uint32_t busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags, uint32_t retVal) = 0;
 
+    // Bus action complete callback
+    virtual void busActionCompleteCallback(BR_BUS_ACTION actionType) = 0;
+
+protected:
+    // Descriptor tables
+    McDescriptorTable _activeDescriptorTable;
+    McDescriptorTable* _pDefaultDescriptorTables;
+    int _defaultDescriptorTablesLen;
+
+    // Display
+    DisplayBase* _pDisplay;
 };

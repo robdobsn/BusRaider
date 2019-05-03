@@ -10,6 +10,7 @@
 #include <string.h>
 
 const char* Hw512KRamRom::_logPrefix = "RC2014_512K_RAM_ROM";
+const char* Hw512KRamRom::_baseName = "512KRAMROM";
 
 static const int Hw512KRamRom_BASE_ADDR = 0x78;
 static const int Hw512KRamRom_PAGE_ENABLE = 0x7c;
@@ -27,22 +28,14 @@ uint8_t Hw512KRamRom::_pageOutAllBanks[] = {
 
 Hw512KRamRom::Hw512KRamRom() : HwBase()
 {
-    reset();
-}
-
-// Reset has occurred
-void Hw512KRamRom::reset()
-{
-    _pageOutForEmulation = false;
-    _pagingEnabled = true;
-    for (int i = 0; i < NUM_BANKS; i++)
-        _bankRegisters[i] = 0;
+    hwReset();
+    strlcat(_name, _baseName, MAX_HW_NAME_LEN);
 }
 
 // Page out RAM/ROM due to emulation
-void Hw512KRamRom::pageOutForEmulation(bool pageOut)
+void Hw512KRamRom::setMemoryEmulationMode(bool pageOut)
 {
-    _pageOutForEmulation = pageOut;
+    _memoryEmulationMode = pageOut;
 }
 
 // Page out RAM/ROM for opcode injection
@@ -67,15 +60,50 @@ void Hw512KRamRom::pageOutForInjection(bool pageOut)
     }
 }
 
-// Check if paging requires bus access
-bool Hw512KRamRom::pagingRequiresBusAccess()
+// Hardware reset has occurred
+void Hw512KRamRom::hwReset()
 {
-    return _pagingEnabled;
+    _memoryEmulationMode = false;
+    _pagingEnabled = true;
+    for (int i = 0; i < NUM_BANKS; i++)
+        _bankRegisters[i] = 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Callbacks/Hooks
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Handle a completed bus action
+void Hw512KRamRom::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType, [[maybe_unused]] BR_BUS_ACTION_REASON reason)
+{
+    switch(actionType)
+    {
+        case BR_BUS_ACTION_RESET:
+            hwReset();
+            break;
+        case BR_BUS_ACTION_PAGE_OUT_FOR_INJECT:
+            pageOutForInjection(true);
+            break;
+        case BR_BUS_ACTION_PAGE_IN_FOR_INJECT:
+            pageOutForInjection(false);
+            break;
+        case BR_BUS_ACTION_BUSRQ:
+            if (reason == BR_BUS_ACTION_MIRROR)
+            {
+                // TODO
+                // Make a copy of the enire memory while we have the chance
+                // int blockReadResult = BusAccess::blockRead(0, getMirrorMemory(), _mirrorMemoryLen, false, false);
+                // LogWrite(_logPrefix, LOG_DEBUG, "mirror memory blockRead %s", (blockReadResult == BR_OK) ? "OK" : "FAIL");
+            }
+            break;
+        default:
+            break;
+    }
 }
 
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-uint32_t Hw512KRamRom::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
-            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
+void Hw512KRamRom::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t& retVal)
 {
     // Check for address range used by this card
     if (_pagingEnabled && ((addr & 0xff) >= Hw512KRamRom_BASE_ADDR) && ((addr & 0xff) < Hw512KRamRom_BASE_ADDR + NUM_BANKS))
@@ -94,6 +122,4 @@ uint32_t Hw512KRamRom::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_
             _pagingEnabled = ((data & 0x01) != 0);
         }
     }
-
-    return retVal;
 }

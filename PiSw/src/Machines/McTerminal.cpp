@@ -1,19 +1,20 @@
 // Bus Raider Machine Serial Terminal
 // Rob Dobson 2018
 
+#include <stdlib.h>
 #include "McTerminal.h"
 #include "usb_hid_keys.h"
-#include "../TargetBus/BusAccess.h"
-#include "../TargetBus/TargetState.h"
 #include "../System/rdutils.h"
-#include <stdlib.h>
 #include "../System/nmalloc.h" //TODO
 #include "../System/lowlib.h"
+#include "../TargetBus/BusAccess.h"
+#include "../TargetBus/TargetState.h"
 #include "../Hardware/HwManager.h"
+#include "../Fonts/SystemFont.h"
 
 const char* McTerminal::_logPrefix = "McTerm";
 
-McDescriptorTable McTerminal::_descriptorTables[] = {
+McDescriptorTable McTerminal::_defaultDescriptorTables[] = {
     {
         // Machine name
         "Serial Terminal",
@@ -30,6 +31,7 @@ McDescriptorTable McTerminal::_descriptorTables[] = {
         .pFont = &__systemFont,
         .displayForeground = DISPLAY_FX_WHITE,
         .displayBackground = DISPLAY_FX_BLACK,
+        .displayMemoryMapped = false,
         // Clock
         .clockFrequencyHz = 7000000,
         // Interrupt rate per second
@@ -37,8 +39,6 @@ McDescriptorTable McTerminal::_descriptorTables[] = {
         // Bus monitor
         .monitorIORQ = false,
         .monitorMREQ = false,
-        .emulatedRAM = false,
-        .setRegistersByInjection = false,
         .setRegistersCodeAddr = 0
     },
     {
@@ -57,6 +57,7 @@ McDescriptorTable McTerminal::_descriptorTables[] = {
         .pFont = &__systemFont,
         .displayForeground = DISPLAY_FX_WHITE,
         .displayBackground = DISPLAY_FX_BLACK,
+        .displayMemoryMapped = false,
         // Clock
         .clockFrequencyHz = 7000000,
         // Interrupt rate per second
@@ -64,8 +65,6 @@ McDescriptorTable McTerminal::_descriptorTables[] = {
         // Bus monitor
         .monitorIORQ = true,
         .monitorMREQ = false,
-        .emulatedRAM = false,
-        .setRegistersByInjection = false,
         .setRegistersCodeAddr = 0
     }
 };
@@ -73,10 +72,9 @@ McDescriptorTable McTerminal::_descriptorTables[] = {
 int McTerminal::_shiftDigitKeyMap[SHIFT_DIGIT_KEY_MAP_LEN] =
     { '!', '"', '#', '$', '%', '^', '&', '*', '(', ')' };
 
-int McTerminal::_machineSubType = MC_SUB_TYPE_STD;
-
-McTerminal::McTerminal() : McBase()
+McTerminal::McTerminal() : McBase(_defaultDescriptorTables, sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0]))
 {
+    // Copy descriptor table
     _termCols = DEFAULT_TERM_COLS;
     _termRows = DEFAULT_TERM_ROWS;
     _screenBufferValid = false;
@@ -89,41 +87,24 @@ McTerminal::McTerminal() : McBase()
     clearScreen();
 }
 
-// Get number of descriptor tables for machine
-int McTerminal::getDescriptorTableCount()
-{
-    return sizeof(_descriptorTables)/sizeof(_descriptorTables[0]);
-}
-
-// Get descriptor table for the machine (-1 for current subType)
-McDescriptorTable* McTerminal::getDescriptorTable([[maybe_unused]] int subType)
-{
-    if ((subType < 0) || (subType >= getDescriptorTableCount()))
-        return &_descriptorTables[_machineSubType];
-    return &_descriptorTables[subType];
-}
-
 // Enable machine
-void McTerminal::enable([[maybe_unused]]int subType)
+void McTerminal::enable()
 {
-    // Check valid type
-    _machineSubType = subType;
-    if ((subType < 0) || (subType >= getDescriptorTableCount()))
-        _machineSubType = MC_SUB_TYPE_STD;
     // Invalidate screen buffer
     _screenBufferValid = false;
-    LogWrite(_logPrefix, LOG_DEBUG, "Enabling %s", _descriptorTables[subType].machineName);
 }
 
 // Disable machine
 void McTerminal::disable()
 {
-    LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-void McTerminal::displayRefresh(DisplayBase* pDisplay)
+void McTerminal::displayRefreshFromMirrorHw()
 {
+    if (!_pDisplay)
+        return;
+
     // Use this to get keys from host and display
     bool screenChanged = false;
     int numCharsAvailable = McManager::getNumCharsReceivedFromHost();
@@ -141,11 +122,12 @@ void McTerminal::displayRefresh(DisplayBase* pDisplay)
             for (int i = 0; i < gotChars; i++)
             {
                 // Send to terminal window
-                dispChar(pCharBuf[i], pDisplay);
+                dispChar(pCharBuf[i], _pDisplay);
             }
 
             // Release chars
             nmalloc_free((void**)(&pCharBuf));
+
         }
 
     }
@@ -160,8 +142,7 @@ void McTerminal::displayRefresh(DisplayBase* pDisplay)
                 int cellIdx = k * _termCols + i;
                 if (!_screenBufferValid || (_screenBuffer[cellIdx] != _screenChars[cellIdx]))
                 {
-                    if (pDisplay)
-                        pDisplay->write(i, k, _screenChars[cellIdx]);
+                    _pDisplay->write(i, k, _screenChars[cellIdx]);
                     _screenBuffer[cellIdx] = _screenChars[cellIdx];
                 }
             }
@@ -177,13 +158,11 @@ void McTerminal::displayRefresh(DisplayBase* pDisplay)
             if (_cursorIsOn)
             {
                 int cellIdx = _curPosY * _termCols + _curPosX;
-                if (pDisplay)
-                    pDisplay->write(_curPosX, _curPosY, _screenChars[cellIdx]);
+                _pDisplay->write(_curPosX, _curPosY, _screenChars[cellIdx]);
             }
             else
             {
-                if (pDisplay)
-                    pDisplay->write(_curPosX, _curPosY, _cursorChar);
+                _pDisplay->write(_curPosX, _curPosY, _cursorChar);
             }
             _cursorIsOn = !_cursorIsOn;
             _cursorBlinkLastUs = micros();
@@ -274,14 +253,14 @@ void McTerminal::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_
 }
 
 // Handle a file
-void McTerminal::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
+bool McTerminal::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
 {
     // Get the file type (extension of file name)
     #define MAX_VALUE_STR 30
     #define MAX_FILE_NAME_STR 100
     char fileName[MAX_FILE_NAME_STR+1];
     if (!jsonGetValueForKey("fileName", pFileInfo, fileName, MAX_FILE_NAME_STR))
-        return;
+        return false;
 
     // Get type of file (assume extension is delimited by .)
     const char* pFileType = strstr(fileName, ".");
@@ -296,6 +275,7 @@ void McTerminal::fileHandler(const char* pFileInfo, const uint8_t* pFileData, in
         baseAddr = strtol(baseAddrStr, NULL, 16);
     LogWrite(_logPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
     TargetState::addMemoryBlock(baseAddr, pFileData, fileLen);
+    return true;
 }
 
 void McTerminal::clearScreen()
@@ -410,3 +390,7 @@ uint32_t McTerminal::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_u
     return retVal;
 }
 
+// Bus action complete callback
+void McTerminal::busActionCompleteCallback([[maybe_unused]] BR_BUS_ACTION actionType)
+{
+}

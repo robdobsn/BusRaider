@@ -471,7 +471,11 @@ def test_stepSingle():
             logger.debug(msgContent)
         elif "SetMachine=" in msgContent['cmdName'] or \
                     msgContent['cmdName'] == 'ClearTargetResp' or \
-                    msgContent['cmdName'] == 'FileTargetResp':
+                    msgContent['cmdName'] == 'targetResetResp' or \
+                    msgContent['cmdName'] == 'targetTrackerOnResp' or \
+                    msgContent['cmdName'] == 'stepIntoResp' or \
+                    msgContent['cmdName'] == 'targetTrackerOffResp':
+                    
             assert(msgContent['err'] == 'ok')
         elif msgContent['cmdName'] == 'ProgramAndResetResp' or \
                     msgContent['cmdName'] == "ProgramAndExecResp":
@@ -491,6 +495,9 @@ def test_stepSingle():
         elif msgContent['cmdName'] == "busStatusClearResp" or \
                     msgContent['cmdName'] == "busResetResp":
             pass
+        elif msgContent['cmdName'] == "getRegsResp":
+            testStats["AFOK"] = ("AF=0b" in msgContent['regs'])
+            testStats["regsOk"] = True
         else:
             testStats["unknownMsgCount"] += 1
             logger.info(f"Unknown message {msgContent}")
@@ -499,43 +506,152 @@ def test_stepSingle():
     logger.setLevel(logging.DEBUG)
     setupTests("StepSingle")
     commonTest.setup(useIP, serialPort, serialSpeed, None, logMsgDataFileName, logTextFileName, frameCallback)
+    # Test data - load A,6; inc A * 3 and jump to 0002
+    testWriteData = b"\x3e\x06\x3c\x3c\x3c\xc3\x02\x00"
+    testWriteLen = bytes(str(len(testWriteData)),'utf-8')
     testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRspCount":0,
-            "iorqRd":0, "iorqWr":0, "mreqRd":0, "mreqWr":0}
+            "iorqRd":0, "iorqWr":0, "mreqRd":0, "mreqWr":0, "AFOK": False, "regsOk": False}
 
-    # Reset bus
-    commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
-
-    mc = "TRS80"
-    TRS80ScreenAddr = 0x3c00 + 64
+    mc = "Serial Terminal"
     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\"}\0")
     time.sleep(1)
 
+    # Send program
+    commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
+    commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"len\":" + testWriteLen  + b",\"isIo\":0}\0" + testWriteData)
+
     # Setup Test
-    
-    commonTest.sendFrame("waitCycleUs", b"{\"cmdName\":\"waitCycleUs\",\"cycleUs\":50000}\0")
+    commonTest.sendFrame("targetReset", b"{\"cmdName\":\"targetReset\"}\0")
     commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\"}\0")
-    time.sleep(5)
-
-    # commonTest.sendFrame("waitMemoryOn", b"{\"cmdName\":\"waitMemoryOn\"}\0")
-    # commonTest.sendFrame("waitHoldOn", b"{\"cmdName\":\"waitHoldOn\"}\0")
-    # commonTest.sendFrame("busStatusClear", b"{\"cmdName\":\"busStatusClear\"}\0")   
-
-    # # Make steps
-    # for i in range(100):
-    #     commonTest.sendFrame("waitHoldRelease", b"{\"cmdName\":\"waitHoldRelease\"}\0")
-    #     time.sleep(0.1)
-
+    time.sleep(.2)
+    commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
+    time.sleep(.2)
+    commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
+    time.sleep(.2)
+    commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
+    time.sleep(.2)
+    commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
+    time.sleep(.2)
+    commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
+    time.sleep(.2)
+    commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
     time.sleep(1)
-    commonTest.sendFrame("busStatus", b"{\"cmdName\":\"busStatus\"}\0")   
-    time.sleep(5)
+
+    # Check status
+    commonTest.sendFrame("busStatus", b"{\"cmdName\":\"busStatus\"}\0")
+    commonTest.sendFrame("getRegs", b"{\"cmdName\":\"getRegs\"}\0")
+    time.sleep(2)
 
     # Clear Test
-    # commonTest.sendFrame("waitMemoryOff", b"{\"cmdName\":\"waitMemoryOff\"}\0")
-    # commonTest.sendFrame("waitHoldOff", b"{\"cmdName\":\"waitHoldOff\"}\0")
     commonTest.sendFrame("targetTrackerOff", b"{\"cmdName\":\"targetTrackerOff\"}\0")
-    # commonTest.sendFrame("waitCycleUs", b"{\"cmdName\":\"waitCycleUs\",\"cycleUs\":0}\0")
 
     # Wait for test end and cleardown
     commonTest.cleardown(useIP)
     assert(testStats["unknownMsgCount"] == 0)
-    assert(testStats["iorqWr"] > 0)
+    assert(testStats["AFOK"])
+    assert(testStats["regsOk"])
+
+def test_regGetTest():
+
+    def frameCallback(msgContent):
+        if msgContent['cmdName'] == "busStatusResp":
+            testStats['clrMaxUs'] = max(testStats['clrMaxUs'], msgContent['clrMaxUs'])
+            testStats['iorqWr'] = msgContent['iorqWr']
+            testStats['iorqRd'] = msgContent['iorqRd']
+            testStats['mreqWr'] = msgContent['mreqWr']
+            testStats['mreqRd'] = msgContent['mreqRd']
+            logger.debug(msgContent)
+        elif "SetMachine=" in msgContent['cmdName'] or \
+                    msgContent['cmdName'] == 'ClearTargetResp' or \
+                    msgContent['cmdName'] == 'targetResetResp' or \
+                    msgContent['cmdName'] == 'targetTrackerOnResp' or \
+                    msgContent['cmdName'] == 'stepIntoResp' or \
+                    msgContent['cmdName'] == 'targetTrackerOffResp':
+                    
+            assert(msgContent['err'] == 'ok')
+        elif msgContent['cmdName'] == 'ProgramAndResetResp' or \
+                    msgContent['cmdName'] == "ProgramAndExecResp":
+            assert(msgContent['err'] == 'ok')
+            testStats['programAndResetCount'] += 1
+        elif msgContent['cmdName'] == "clockSetHzResp":
+            pass
+        elif msgContent['cmdName'] == "WrRsp":
+            pass
+        elif msgContent['cmdName'] == "RdRsp":
+            requiredResp = ''.join(('%02x' % readDataExpected[i]) for i in range(len(readDataExpected)))
+            respOk = requiredResp == msgContent['data']
+            testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
+            testStats["msgRdRspCount"] += 1
+            if not respOk:
+                logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
+        elif msgContent['cmdName'] == "busStatusClearResp" or \
+                    msgContent['cmdName'] == "busResetResp":
+            pass
+        elif msgContent['cmdName'] == "getRegsResp":
+            testStats["regsOk"] = (expectedRegs in msgContent['regs'])
+            logger.debug(f"REGS {msgContent['regs']}")
+            logger.debug(f"EXPECTED {expectedRegs}")
+        else:
+            testStats["unknownMsgCount"] += 1
+            logger.info(f"Unknown message {msgContent}")
+
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    setupTests("regGetTest")
+    commonTest.setup(useIP, serialPort, serialSpeed, None, logMsgDataFileName, logTextFileName, frameCallback)
+    # Test data - sets all registers to known values
+    # jump to 0002
+    expectedRegs = "PC=002e SP=9b61 BC=3a2b AF=0330 HL=7a4e DE=5542 IX=9187 IY=f122 AF'=6123 BC'=83b2 HL'=2334 DE'=a202 I=03 R=75  F=---H---- F'=-------NC"
+    testWriteData = b"\x3e\x25" \
+                    b"\x01\xb2\x83" \
+                    b"\x11\x02\xa2" \
+                    b"\x21\x34\x23" \
+                    b"\x92" \
+                    b"\x08" \
+                    b"\xd9" \
+                    b"\x3e\xb1" \
+                    b"\x01\x2b\x3a" \
+                    b"\x11\x42\x55" \
+                    b"\x21\x4e\x7a" \
+                    b"\x31\x61\x9b" \
+                    b"\x93" \
+                    b"\x3c" \
+                    b"\xdd\x21\x87\x91" \
+                    b"\xfd\x21\x22\xf1" \
+                    b"\xed\x4f" \
+                    b"\x3e\x03" \
+                    b"\xed\x47" \
+                    b"\xed\x5e" \
+                    b"\xc3\x02\x00"
+    testWriteLen = bytes(str(len(testWriteData)),'utf-8')
+    testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRspCount":0,
+            "iorqRd":0, "iorqWr":0, "mreqRd":0, "mreqWr":0, "regsOk": False}
+
+    mc = "Serial Terminal"
+    commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\"}\0")
+    time.sleep(1)
+
+    # Send program
+    commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
+    commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"len\":" + testWriteLen  + b",\"isIo\":0}\0" + testWriteData)
+
+    # Setup Test
+    commonTest.sendFrame("targetReset", b"{\"cmdName\":\"targetReset\"}\0")
+    commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\"}\0")
+    time.sleep(.2)
+    for i in range(35):
+        commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
+        time.sleep(.2)
+
+    # Check status
+    commonTest.sendFrame("busStatus", b"{\"cmdName\":\"busStatus\"}\0")
+    commonTest.sendFrame("getRegs", b"{\"cmdName\":\"getRegs\"}\0")
+    time.sleep(2)
+
+    # Clear Test
+    commonTest.sendFrame("targetTrackerOff", b"{\"cmdName\":\"targetTrackerOff\"}\0")
+
+    # Wait for test end and cleardown
+    commonTest.cleardown(useIP)
+    assert(testStats["unknownMsgCount"] == 0)
+    assert(testStats["regsOk"])

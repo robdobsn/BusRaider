@@ -19,11 +19,12 @@
 // Module name
 static const char FromCmdHandler[] = "CommandHandler";
 
+// Comms sockets
+CommsSocketInfo CommandHandler::_commsSockets[MAX_COMMS_SOCKETS];
+int CommandHandler::_commsSocketCount = 0;
+
 // Callbacks
-CmdHandlerPutToSerialFnType* CommandHandler::_pPutToSerialFunction = NULL;
-CmdHandlerMachineCommandFnType* CommandHandler::_pMachineCommandFunction = NULL;
-CmdHandlerOTAUpdateFnType* CommandHandler::_pOTAUpdateFunction = NULL;
-CmdHandlerTargetFileFnType* CommandHandler::_pTargetFileFunction = NULL;
+CmdHandlerPutToSerialFnType* CommandHandler::_pPutToHDLCSerialFunction = NULL;
 
 // Singleton command handler
 CommandHandler* CommandHandler::_pSingletonCommandHandler = NULL;
@@ -34,7 +35,7 @@ CommandHandler* CommandHandler::_pSingletonCommandHandler = NULL;
 
 // Constructor
 CommandHandler::CommandHandler() :
-    _miniHDLC(static_hdlcPutCh, static_hdlcFrameRx)
+    _miniHDLC(hdlcPutChStatic, hdlcFrameRxStatic)
 {   
     // Singleton
     _pSingletonCommandHandler = this;
@@ -61,37 +62,63 @@ CommandHandler::~CommandHandler()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Comms Sockets
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Add a comms socket
+int CommandHandler::commsSocketAdd(CommsSocketInfo& commsSocketInfo)
+{
+    // Check if all used
+    if (_commsSocketCount >= MAX_COMMS_SOCKETS)
+        return -1;
+
+    // Add in available space
+    _commsSockets[_commsSocketCount] = commsSocketInfo;
+    int tmpCount = _commsSocketCount++;
+
+    return tmpCount;
+}
+
+void CommandHandler::commsSocketEnable(int busSocket, bool enable)
+{
+    // Check validity
+    if ((busSocket < 0) || (busSocket >= _commsSocketCount))
+        return;
+    _commsSockets[busSocket].enabled = enable;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // HDLC interface functions
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void CommandHandler::handleSerialReceivedChars(const uint8_t* pBytes, int numBytes)
+void CommandHandler::handleHDLCReceivedChars(const uint8_t* pBytes, int numBytes)
 {
     if (_pSingletonCommandHandler)
         _pSingletonCommandHandler->_miniHDLC.handleBuffer(pBytes, numBytes);
 }
 
-void CommandHandler::static_hdlcFrameRx(const uint8_t *frameBuffer, int frameLength)
+void CommandHandler::hdlcPutCh(uint8_t ch)
+{
+    if (_pPutToHDLCSerialFunction)
+    {
+        uint8_t buf[1];
+        buf[0] = ch;
+        _pPutToHDLCSerialFunction(buf, 1);
+    }
+}
+
+void CommandHandler::hdlcFrameRxStatic(const uint8_t *frameBuffer, int frameLength)
 {
     if (_pSingletonCommandHandler)
         _pSingletonCommandHandler->hdlcFrameRx(frameBuffer, frameLength);
 }
 
-void CommandHandler::static_hdlcPutCh(uint8_t ch)
+void CommandHandler::hdlcPutChStatic(uint8_t ch)
 {
-    // LogWrite(FromCmdHandler, LOG_VERBOSE, "static_hdlcPutCh");
+    // LogWrite(FromCmdHandler, LOG_VERBOSE, "hdlcPutChStatic");
 
     if (_pSingletonCommandHandler)
         _pSingletonCommandHandler->hdlcPutCh(ch);
-}
-
-void CommandHandler::hdlcPutCh(uint8_t ch)
-{
-    if (_pPutToSerialFunction)
-    {
-        uint8_t buf[1];
-        buf[0] = ch;
-        _pPutToSerialFunction(buf, 1);
-    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -130,10 +157,8 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
         return;
 
-    // LogWrite(FromCmdHandler, LOG_DEBUG, "processCommand JSON %s cmdName %s", pCmdJson, cmdName); 
-    // char logStr[1000];
-    // ee_sprintf(logStr, "processCommand JSON %s cmdName %s", pCmdJson, cmdName);
-    // sendLogMessage(logStr);
+    // Debug
+    // LogWrite(FromCmdHandler, LOG_DEBUG, "processCommand JSON %s cmdName %s paramsLen %d", pCmdJson, cmdName, paramsLen); 
 
     // Handle commands
     if (strcasecmp(cmdName, "ufStart") == 0)
@@ -161,9 +186,11 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
             strlcpy(mcCmd, "{\"cmdName\":\"", MAX_ESP_CMD_OPT_STR);
             strlcat(mcCmd, mcCmdOrOpts, MAX_ESP_CMD_OPT_STR);
             strlcat(mcCmd, "\"}", MAX_ESP_CMD_OPT_STR);
-            if (_pMachineCommandFunction)
-                (*_pMachineCommandFunction)(mcCmd, pParams, paramsLen, NULL, 0);
-            // LogWrite(FromCmdHandler, LOG_DEBUG, "mcCmd %s", pCmdJson);
+            // Now we have stripped the respMsg part it should look like a regular message
+            static const int MAX_RESP_MSG_LEN = 200;
+            char respJson[MAX_RESP_MSG_LEN];
+            respJson[0] = 0;
+            commsSocketHandleRxMsg(mcCmd, pParams, paramsLen, respJson, MAX_RESP_MSG_LEN);
         }
         else
         {
@@ -173,8 +200,76 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     }
     else
     {
-        if (_pMachineCommandFunction)
-            (*_pMachineCommandFunction)(pCmdJson, pParams, paramsLen, NULL, 0);
+        // Offer to comms sockets
+        static const int MAX_RESP_MSG_LEN = 2000;
+        char respJson[MAX_RESP_MSG_LEN];
+        respJson[0] = 0;
+        commsSocketHandleRxMsg(pCmdJson, pParams, paramsLen, respJson, MAX_RESP_MSG_LEN);
+        if (strlen(respJson) > 0)
+        {
+            static const int MAX_CMD_NAME_RESP_LEN = 100;
+            char cmdNameResp[MAX_CMD_NAME_RESP_LEN];
+            strlcpy(cmdNameResp, cmdName, MAX_CMD_NAME_RESP_LEN);
+            strlcat(cmdNameResp, "Resp", MAX_CMD_NAME_RESP_LEN);
+            sendWithJSON(cmdNameResp, respJson);
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Comms socket handlers
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void CommandHandler::commsSocketHandleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
+                    char* pRespJson, int maxRespLen)
+{
+    if (_commsSocketCount == 0)
+        LogWrite(FromCmdHandler, LOG_DEBUG, "RxMsg no sockets");
+    bool messageHandled = false;
+    // Iterate the comms sockets
+    for (int i = 0; i < _commsSocketCount; i++)
+    {
+        if (!_commsSockets[i].enabled)
+        {
+            LogWrite(FromCmdHandler, LOG_DEBUG, "RxMsg sock disabled %d", i);
+            continue;
+        }
+        if (_commsSockets[i].handleRxMsg)
+        {
+            messageHandled = _commsSockets[i].handleRxMsg(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+        }
+        else
+        {
+            if (i != 0)
+               LogWrite(FromCmdHandler, LOG_DEBUG, "RxMsg sock null %d", i);
+        }
+        
+        if (messageHandled)
+            break;
+    }
+}
+
+void CommandHandler::commsSocketHandleReceivedFile(const char* fileStartInfo, uint8_t* rxData, int rxBytes, bool isFirmware)
+{
+    bool messageHandled = false;
+    // Iterate the comms sockets
+    for (int i = 0; i < _commsSocketCount; i++)
+    {
+        if (!_commsSockets[i].enabled)
+            continue;
+        if (isFirmware)
+        {
+            if(_commsSockets[i].otaUpdateFn)
+                messageHandled = _commsSockets[i].otaUpdateFn(rxData, rxBytes);                
+        }
+        else
+        {
+            // LogWrite(FromCmdHandler, LOG_DEBUG, "CommsSocket %d rxFile %d", i, _commsSockets[i].receivedFileFn);
+            if (_commsSockets[i].receivedFileFn)
+                messageHandled = _commsSockets[i].receivedFileFn(fileStartInfo, rxData, rxBytes);
+        }
+        if (messageHandled)
+            break;
     }
 }
 
@@ -220,6 +315,7 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
     if (_pReceivedFileDataPtr != NULL)
         nmalloc_free((void**)(&_pReceivedFileDataPtr));
     _pReceivedFileDataPtr = (uint8_t*)nmalloc_malloc(fileLen);
+
     _receivedFileBytesRx = 0;
     _receivedBlockCount = 0;
     if (_pReceivedFileDataPtr)
@@ -257,6 +353,10 @@ void CommandHandler::handleFileBlock(const char* pCmdJson, const uint8_t* pData,
     if (blockStart < 0)
         return;
 
+    // LogWrite(FromCmdHandler, LOG_DEBUG, "efBlock, len %d, blocks %d %s", 
+    //            _receivedFileBytesRx, _receivedBlockCount,
+    //            (blockStart + dataLen > _receivedFileBufSize) ? "TOO LONG" : "");
+
     // Check if outside bounds of file length buffer
     if (blockStart + dataLen > _receivedFileBufSize)
         return;
@@ -267,8 +367,6 @@ void CommandHandler::handleFileBlock(const char* pCmdJson, const uint8_t* pData,
 
     // Add to count of blocks
     _receivedBlockCount++;
-    // LogWrite(FromCmdHandler, LOG_VERBOSE, "efBlock, len %d, blocks %d", 
-    //             _receivedFileBytesRx, _receivedBlockCount);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -300,25 +398,19 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
         sendWithJSON("ufEndAck", ackMsgJson);
     }
 
-    // Check file type
-    if (strcasecmp(_pReceivedFileType, "firmware") == 0)
+    // See if any sockets want to handle this
+    bool isFirmware = strcasecmp(_pReceivedFileType, "firmware") == 0;
+    if (isFirmware)
     {
+        // Short delay to allow comms completion 
+        microsDelay(100000);
         LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd IMG firmware update File %s, len %d", _receivedFileName, _receivedFileBytesRx);
-        if (_pOTAUpdateFunction)
-        {
-            // Short delay to allow comms completion 
-            microsDelay(100000);
-            (*_pOTAUpdateFunction)(_pReceivedFileDataPtr, _receivedFileBytesRx);
-    }
     }
     else
     {
-        // Offer to the machine specific handler
-        // appendJson(_receivedFileStartInfo, pCmdJson);
-        LogWrite(FromCmdHandler, LOG_VERBOSE, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
-        if (_pTargetFileFunction)
-            (*_pTargetFileFunction)(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx);
+        // LogWrite(FromCmdHandler, LOG_VERBOSE, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
     }
+    commsSocketHandleReceivedFile(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx, isFirmware);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -356,7 +448,8 @@ void CommandHandler::sendKeyCodeToTarget(int keyCode)
     strlcpy(keyStr, "{\"cmdName\":\"keyCode\",\"key\":", MAX_KEY_CMD_STR_LEN);
     rditoa(keyCode, (uint8_t*)(keyStr+strlen(keyStr)), 10, 10);
     strlcpy(keyStr+strlen(keyStr), "}", MAX_KEY_CMD_STR_LEN);
-    _miniHDLC.sendFrame((const uint8_t*)keyStr, strlen(keyStr)+1);
+    if (_pSingletonCommandHandler)
+        _pSingletonCommandHandler->_miniHDLC.sendFrame((const uint8_t*)keyStr, strlen(keyStr)+1);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -373,7 +466,8 @@ void CommandHandler::sendWithJSON(const char* cmdName, const char* cmdJson)
     strlcpy(cmdStr+strlen(cmdStr), "\",", MAX_CMD_STR_LEN);
     strlcpy(cmdStr+strlen(cmdStr), cmdJson, MAX_CMD_STR_LEN);
     strlcpy(cmdStr+strlen(cmdStr), "}", MAX_CMD_STR_LEN);
-    _miniHDLC.sendFrame((const uint8_t*)cmdStr, strlen(cmdStr)+1);
+    if (_pSingletonCommandHandler)
+        _pSingletonCommandHandler->_miniHDLC.sendFrame((const uint8_t*)cmdStr, strlen(cmdStr)+1);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -403,10 +497,8 @@ void CommandHandler::sendRegularStatusUpdate()
         return;
 
     // Send update
-    if (!_pMachineCommandFunction)
-        return;
     char respBuffer[MAX_MC_STATUS_MSG_LEN+1];
-    (*_pMachineCommandFunction)("\"cmdName\":\"getStatus\"", NULL, 0, respBuffer, MAX_MC_STATUS_MSG_LEN);
+    commsSocketHandleRxMsg("\"cmdName\":\"getStatus\"", NULL, 0, respBuffer, MAX_MC_STATUS_MSG_LEN);
     sendWithJSON("statusUpdate", respBuffer);
     // Request update
     sendAPIReq("queryESPHealth");    
@@ -460,6 +552,28 @@ void CommandHandler::logDebugMessage(const char* pStr)
 void CommandHandler::logDebugJson(const char* pStr)
 {
     sendWithJSON("log", pStr);
+}
+
+void CommandHandler::logDebug(const char* pSeverity, const char* pSource, const char* pMsg)
+{
+    // Escape the message since it will be sent inside JSON
+    static const int MAX_LOG_MSG_LEN = 5000;
+    char escapedMsg[MAX_LOG_MSG_LEN];
+    jsonEscape(pMsg, escapedMsg, MAX_LOG_MSG_LEN);
+
+    // Form the message
+    char logJson[MAX_LOG_MSG_LEN+1];
+    strlcpy(logJson, "\"msg\":\"", MAX_LOG_MSG_LEN);
+    strlcat(logJson, escapedMsg, MAX_LOG_MSG_LEN);
+    strlcat(logJson, "\",", MAX_LOG_MSG_LEN);
+    strlcat(logJson, "\"lev\":\"", MAX_LOG_MSG_LEN);
+    strlcat(logJson, pSeverity, MAX_LOG_MSG_LEN);
+    strlcat(logJson, "\",", MAX_LOG_MSG_LEN);
+    strlcat(logJson, "\"src\":\"", MAX_LOG_MSG_LEN);
+    strlcat(logJson, pSource, MAX_LOG_MSG_LEN);
+    strlcat(logJson, "\"", MAX_LOG_MSG_LEN);
+    if (_pSingletonCommandHandler)
+        _pSingletonCommandHandler->logDebugJson(logJson);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

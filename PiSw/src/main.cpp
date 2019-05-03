@@ -1,28 +1,24 @@
 // Bus Raider
-// Rob Dobson 2018
+// Rob Dobson 2018-2019
 
-#include <stdlib.h>
 #include "System/lowlev.h"
 #include "System/lowlib.h"
 #include "System/piwiring.h"
 #include "System/UartMaxi.h"
 #include "System/ee_sprintf.h"
 #include "System/timer.h"
-#include "System/OTAUpdate.h"
 #include "System/rdutils.h"
+#include "System/logging.h"
+#include "System/OTAUpdate.h"
 #include "System/Display.h"
 #include "TargetBus/BusAccess.h"
-#include "TargetBus/TargetState.h"
+#include "TargetBus/TargetTracker.h"
 #include "CommandInterface/CommandHandler.h"
-
 #include "Hardware/HwManager.h"
-#include "Hardware/Hw512KRamRom.h"
-#include "Hardware/Hw64KPagedRAM.h"
-#include "Machines/usb_hid_keys.h"
+#include "BusController/BusController.h"
+#include "StepValidator/StepValidator.h"
 #include "Machines/McManager.h"
-#include "Machines/McTRS80.h"
-#include "Machines/McRobsZ80.h"
-#include "Machines/McZXSpectrum.h"
+#include "Machines/usb_hid_keys.h"
 #include "Machines/McTerminal.h"
 
 typedef unsigned char		u8;
@@ -33,7 +29,7 @@ typedef unsigned char		u8;
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Program details
-static const char* PROG_VERSION = "Bus Raider V1.7.081 (C) Rob Dobson 2018-2019";
+static const char* PROG_VERSION = "Bus Raider V1.7.103 (C) Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "https://robdobson.com/tag/raider";
 
 // Log string
@@ -46,8 +42,20 @@ Display display;
 #define MAIN_UART_BAUD_RATE 921600
 UartMaxi mainUart;
 
-// CommandHandler
+// CommandHandler, StepValidator, BusController
 CommandHandler commandHandler;
+StepValidator stepValidator;
+BusController busController;
+McManager mcManager;
+
+// Main comms socket - to wire up OTA updates
+CommsSocketInfo mainCommsSocketInfo =
+{
+    true,
+    NULL,
+    OTAUpdate::performUpdate,
+    NULL
+};
 
 // Immediate mode
 #define IMM_MODE_LINE_MAXLEN 100
@@ -55,22 +63,12 @@ bool _immediateMode = false;
 char _immediateModeLine[IMM_MODE_LINE_MAXLEN+1];
 int _immediateModeLineLen = 0;
 
+// Debug LED
+static const int PI_ZERO_LED = 47;
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Callbacks
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void uartWriteString(const char* pStr)
-{
-    while (*pStr)
-    {
-        mainUart.write(*pStr++);
-    }
-}
-
-void consolePutString(const char* pStr)
-{
-    display.consolePut(pStr);
-}
 
 // Function to send to uart from command handler
 void handlePutToSerialForCmdHandler(const uint8_t* pBuf, int len)
@@ -79,17 +77,8 @@ void handlePutToSerialForCmdHandler(const uint8_t* pBuf, int len)
         mainUart.write(pBuf[i]);
 }
 
-int errorCounts[UartMaxi::UART_ERROR_FULL+1];
-
 void serviceGetFromSerial()
 {
-    UartMaxi::UART_ERROR_CODES errCode = mainUart.getStatus();
-    if (errCode != UartMaxi::UART_ERROR_NONE)
-    {
-        if (errCode <= UartMaxi::UART_ERROR_FULL)
-            errorCounts[errCode]++;
-    }
-    
     // Handle serial communication
     for (int rxCtr = 0; rxCtr < 10000; rxCtr++) {
         if (!mainUart.poll())
@@ -98,14 +87,8 @@ void serviceGetFromSerial()
         int ch = mainUart.read();
         uint8_t buf[2];
         buf[0] = ch;
-        CommandHandler::handleSerialReceivedChars(buf, 1);
+        CommandHandler::handleHDLCReceivedChars(buf, 1);
     }    
-}
-
-extern "C" void setMachineOptions(const char* mcOpts)
-{
-    // Set the machine
-    McManager::setMachineOpts(mcOpts);
 }
 
 static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char rawKeys[6])
@@ -167,7 +150,7 @@ static void _keypress_raw_handler(unsigned char ucModifiers, const unsigned char
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Refresh rate
-#define REFRESH_RATE_WINDOW_SIZE_MS 2000
+#define REFRESH_RATE_WINDOW_SIZE_MS 1000
 static int refreshCount = 0;
 static unsigned long curRateSampleWindowStart = micros();
 static unsigned long lastDisplayUpdateUs = 0;
@@ -226,8 +209,8 @@ void statusDisplayUpdate()
 
         // Machine name
         strlcpy(statusStr, "M/C: ", MAX_STATUS_STR_LEN);
-        strlcat(statusStr, McManager::getDescriptorTable()->machineName, MAX_STATUS_STR_LEN);
-        strlcat(statusStr, "              ", MAX_STATUS_STR_LEN);
+        strlcat(statusStr, McManager::getMachineName(), MAX_STATUS_STR_LEN);
+        strlcat(statusStr, "                       ", MAX_STATUS_STR_LEN);
         display.statusPut(Display::STATUS_FIELD_CUR_MACHINE, Display::STATUS_NORMAL, statusStr);
 
         // Speed
@@ -294,6 +277,21 @@ void statusDisplayUpdate()
 
 extern "C" int main()
 {
+    // Debug
+    pinMode(PI_ZERO_LED, OUTPUT);
+
+    // Initialise UART
+    if (!mainUart.setup(MAIN_UART_BAUD_RATE, 1000000, 100000))
+    {
+        // display.statusPut(Display::STATUS_FIELD_ESP_VERSION, Display::STATUS_FAIL, "ESP32: Not Connected, UART Fail");
+        microsDelay(5000000);
+    }
+
+    // Logging
+    LogSetLevel(LOG_DEBUG);
+    LogSetOutMsgFn(CommandHandler::logDebug);
+    LogWrite(FromMain, LOG_NOTICE, "Startup ...");
+
     // Init timers
     timers_init();
 
@@ -305,62 +303,29 @@ extern "C" int main()
     display.statusPut(Display::STATUS_FIELD_ESP_VERSION, Display::STATUS_FAIL, "ESP32 Not Connected");
     display.statusPut(Display::STATUS_FIELD_LINKS, Display::STATUS_NORMAL, PROG_LINKS_1);
 
-    // Initialise UART
-    if (!mainUart.setup(MAIN_UART_BAUD_RATE, 100000, 1000))
-    {
-        display.statusPut(Display::STATUS_FIELD_ESP_VERSION, Display::STATUS_FAIL, "ESP32: Not Connected, UART Fail");
-        microsDelay(5000000);
-    }
-
-    // Logging
-    LogSetLevel(LOG_DEBUG);
-    LogSetOutFn(consolePutString);
-
     // Command Handler
-    commandHandler.setMachineCommandCallback(McManager::handleCommand);
     commandHandler.setPutToSerialCallback(handlePutToSerialForCmdHandler);
-    commandHandler.setOTAUpdateCallback(OTAUpdate::performUpdate);
-    commandHandler.setTargetFileCallback(McManager::handleTargetFile);
-
-    // Target machine memory
-    TargetState::clear();
-
-    // Init hardware manager
-    HwManager::init();
-
-    // Add hardware
-    new Hw512KRamRom();
-    new Hw64KPagedRam();
-
-    // Init machine manager
-    McManager::init(&commandHandler, &display);
-
-    // Add machines
-    new McTerminal();
-    new McTRS80();
-    new McRobsZ80();
-    new McZXSpectrum();
-
-    // Number of machines
-    // static const int MAX_STATUS_STR_LEN = 200;
-    // char statusStr[MAX_STATUS_STR_LEN];
-    // ee_sprintf(statusStr, "Machines Supported: %d", McManager::getNumMachines());
-    // display.statusPut(Display::STATUS_FIELD_MACHINES, Display::STATUS_NORMAL, statusStr);
+    commandHandler.commsSocketAdd(mainCommsSocketInfo);
 
     // Bus raider setup
     BusAccess::init();
 
-    // Enable first machine
-    McManager::setMachineIdx(1, 0, true);
+    // Hardware manager
+    HwManager::init();
 
-    // Get current machine to check things are working
-    static const int MAX_STATUS_STR_LEN = 200;
-    char statusStr[MAX_STATUS_STR_LEN];
-    if (!McManager::getMachine())
-    {
-        strlcat(statusStr, ", Failed to Start Default", MAX_STATUS_STR_LEN);
-        display.statusPut(Display::STATUS_FIELD_MACHINES, Display::STATUS_FAIL, statusStr);
-    }
+    // Target tracker
+    TargetTracker::init();
+
+    // BusController, StepValidator
+    busController.init();
+    stepValidator.init();
+
+    // Init machine manager
+    mcManager.init(&display);
+    mcManager.setMachineByName("TRS80");
+
+    // Request machine info from ESP32
+    CommandHandler::sendAPIReq("querycurmc");
 
     // USB
     if (USPiInitialize()) 
@@ -381,13 +346,38 @@ extern "C" int main()
         display.statusPut(Display::STATUS_FIELD_KEYBOARD, Display::STATUS_NORMAL, "USB Init Fail - No Keyboard");
     }
 
-    // Request machine info from ESP32
-    CommandHandler::sendAPIReq("querycurmc");
-    CommandHandler::sendAPIReq("querycuropts");
-
     // Loop forever
-    while (1) 
+volatile int a = 0;
+    int ii = 0;
+    while(1)
     {
+        a++;
+        if (a > 1000000)
+        {
+            a = 0;
+            digitalWrite(PI_ZERO_LED, !digitalRead(PI_ZERO_LED));
+            char buf[200];
+            buf[0] = 0;
+            for (int i = 0; i < ISR_ASSERT_NUM_CODES; i++)
+            {
+                if (BusAccess::isrAssertGetCount(i) != 0)
+                {
+                    ee_sprintf(buf+strlen(buf), "[%d]=%d,", i, BusAccess::isrAssertGetCount(i));
+                }
+            }
+            char tmpBuf[300];
+            int framingErrCount = 0;
+            int overrunErrCount = 0;
+            int serialBreakCount = 0;
+            int txFullCount = 0;
+            int rxFullCount = 0;
+            mainUart.getStatusCounts(txFullCount, framingErrCount, overrunErrCount, serialBreakCount, rxFullCount);
+            ee_sprintf(tmpBuf, "BR %d (%uuS) Assert %s txFull %d rxFull %d frameErr %d overrunErr %d breaks %d HDLCRx %d HDLCCRC %d HDLCLong %d", 
+                    ii++, micros(), buf, txFullCount, rxFullCount, framingErrCount, overrunErrCount, serialBreakCount,
+                            commandHandler.getHDLCStats()->_rxFrameCount, commandHandler.getHDLCStats()->_frameCRCErrCount,
+                            commandHandler.getHDLCStats()->_frameTooLongCount);
+            LogWrite(FromMain, LOG_DEBUG, tmpBuf);
+        }
 
         // Handle target machine display updates
         McDescriptorTable* pMcDescr = McManager::getDescriptorTable();
@@ -422,16 +412,20 @@ extern "C" int main()
         // Timer polling
         timer_poll();
 
-        // Service bus raider
+        // Service bus access
         BusAccess::service();
 
         // Service hardware manager
         HwManager::service();
 
+        // Target tracker
+        TargetTracker::service();
+
         // Service machine manager
         McManager::service();
 
-        // Service target debugger
-        TargetDebug::get()->service();
+        // BusController, StepValidator
+        busController.service();
+        stepValidator.service();
     }
 }

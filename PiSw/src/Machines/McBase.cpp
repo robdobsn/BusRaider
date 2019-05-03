@@ -3,14 +3,123 @@
 
 #include "McBase.h"
 #include "McManager.h"
+#include "../hardware/HwManager.h"
 
-McBase::McBase()
+McBase::McBase(McDescriptorTable* pDefaultTables, int numTables)
 {
+    // Copy descriptor table info
+    _pDefaultDescriptorTables = pDefaultTables;
+    _defaultDescriptorTablesLen = numTables;
+    _activeDescriptorTable = pDefaultTables[0];
+    _pDisplay = NULL;
+
+    // Add to machine manager
     McManager::add(this);
 }
 
-bool McBase::debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen)
+// Get descriptor table for the machine (-1 for current subType)
+McDescriptorTable* McBase::getDescriptorTable()
 {
-    TargetDebug::get()->handleDebuggerCommand(pCommand, pResponse, maxResponseLen);
+    return &_activeDescriptorTable;
+}
+
+// Handle reset for the machine - if false returned then the bus raider will issue a hardware reset
+bool McBase::reset([[maybe_unused]] bool restoreWaitDefaults, [[maybe_unused]] bool holdInReset)
+{
     return false;
+}
+
+// Check if name is a valid one for this machine
+bool McBase::isCalled(const char* mcName)
+{
+    for (int i = 0; i < _defaultDescriptorTablesLen; i++)
+        // Check against supported names
+        if (strcasecmp(_pDefaultDescriptorTables[i].machineName, mcName) == 0)
+            return true;
+    return false;
+}
+
+// Get current machine name
+const char* McBase::getMachineName()
+{
+    return _activeDescriptorTable.machineName;
+}
+
+// Get comma separated list of machine names
+void McBase::getMachineNames(char* mcNameStr, int maxLen)
+{
+    mcNameStr[0] = 0;
+    bool firstItem = true;
+    for (int j = 0; j < _defaultDescriptorTablesLen; j++)
+    {
+        if (!firstItem)
+            strlcat(mcNameStr,",", maxLen);
+        firstItem = false;
+        strlcat(mcNameStr,"\"", maxLen);
+        strlcat(mcNameStr, _pDefaultDescriptorTables[j].machineName, maxLen);
+        strlcat(mcNameStr,"\"", maxLen);
+    }
+}
+
+// Setup machine from JSON
+bool McBase::setupMachine(const char* mcName, const char* mcJson)
+{
+    // Disable machine first
+    disable();
+
+    // Get machine sub type
+    int mcSubType = -1;
+    for (int i = 0; i < _defaultDescriptorTablesLen; i++)
+    {
+        // Check against supported names
+        if (strcasecmp(_pDefaultDescriptorTables[i].machineName, mcName) == 0)
+        {
+            mcSubType = 0;
+            break;
+        }
+    }
+    if (mcSubType < 0)
+        return false;
+
+    // Copy descriptor
+    _activeDescriptorTable = _pDefaultDescriptorTables[mcSubType];
+
+    // Setup hardware
+    HwManager::disableAll();
+    HwManager::setupFromJson("hw", mcJson);
+
+    // Setup clock
+    uint32_t clockFreqHz = _activeDescriptorTable.clockFrequencyHz;
+    if (clockFreqHz != 0)
+    {
+        BusAccess::clockSetup();
+        BusAccess::clockSetFreqHz(clockFreqHz);
+        BusAccess::clockEnable(true);
+    }
+    else
+    {
+        BusAccess::clockEnable(false);
+    }
+
+    // Enable machine
+    enable();
+    LogWrite("McBase", LOG_DEBUG, "Enabling %s", mcName);
+    return true;
+}
+
+// Setup display
+void McBase::setupDisplay(DisplayBase* pDisplay)
+{
+    _pDisplay = pDisplay;
+    LogWrite("McBase", LOG_DEBUG, "setupDisplay %d pixelsx %d pixelsy %d", pDisplay,
+                _activeDescriptorTable.displayPixelsX, _activeDescriptorTable.displayPixelsY);
+    if (!pDisplay)
+        return;
+    // Layout display for machine
+    pDisplay->targetLayout(
+        _activeDescriptorTable.displayPixelsX, _activeDescriptorTable.displayPixelsY,
+        _activeDescriptorTable.displayCellX, _activeDescriptorTable.displayCellY,
+        _activeDescriptorTable.pixelScaleX, _activeDescriptorTable.pixelScaleY,
+        _activeDescriptorTable.pFont, 
+        _activeDescriptorTable.displayForeground, _activeDescriptorTable.displayBackground);
 }

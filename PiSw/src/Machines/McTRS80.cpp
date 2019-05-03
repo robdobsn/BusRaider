@@ -1,51 +1,68 @@
 // Bus Raider Machine TRS80
 // Rob Dobson 2018
 
+#include <stdlib.h>
 #include "McTRS80.h"
 #include "usb_hid_keys.h"
+#include "../System/rdutils.h"
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetState.h"
-#include "../System/rdutils.h"
-#include <stdlib.h>
-#include "../FileFormats/McTRS80CmdFormat.h"
-#include "../TargetBus/TargetDebug.h"
 #include "../Machines/McManager.h"
+#include "../FileFormats/McTRS80CmdFormat.h"
+#include "../Hardware/HwManager.h"
 
 const char* McTRS80::_logPrefix = "TRS80";
 
 extern WgfxFont __TRS80Level3Font;
 
-McDescriptorTable McTRS80::_descriptorTable = {
-    // Machine name
-    "TRS80",
-    // Processor
-    McDescriptorTable::PROCESSOR_Z80,
-    // Required display refresh rate
-    .displayRefreshRatePerSec = 30,
-    .displayPixelsX = 8 * 64,
-    .displayPixelsY = 24 * 16,
-    .displayCellX = 8,
-    .displayCellY = 24,
-    .pixelScaleX = 2,
-    .pixelScaleY = 2,
-    .pFont = &__TRS80Level3Font,
-    .displayForeground = DISPLAY_FX_GREEN,
-    .displayBackground = DISPLAY_FX_BLACK,
-    // Clock
-    .clockFrequencyHz = 1770000,
-    // Interrupt rate per second
-    .irqRate = 0,
-    // Bus monitor
-    .monitorIORQ = true,
-    .monitorMREQ = false,
-    .emulatedRAM = false,
-    .setRegistersByInjection = false,
-    .setRegistersCodeAddr = TRS80_DISP_RAM_ADDR
+McDescriptorTable McTRS80::_defaultDescriptorTables[] = {
+    {
+        // Machine name
+        "TRS80",
+        // Processor
+        McDescriptorTable::PROCESSOR_Z80,
+        // Required display refresh rate
+        .displayRefreshRatePerSec = 30,
+        .displayPixelsX = 8 * 64,
+        .displayPixelsY = 24 * 16,
+        .displayCellX = 8,
+        .displayCellY = 24,
+        .pixelScaleX = 2,
+        .pixelScaleY = 2,
+        .pFont = &__TRS80Level3Font,
+        .displayForeground = DISPLAY_FX_GREEN,
+        .displayBackground = DISPLAY_FX_BLACK,
+        .displayMemoryMapped = true,
+        // Clock
+        .clockFrequencyHz = 1770000,
+        // Interrupt rate per second
+        .irqRate = 0,
+        // Bus monitor
+        .monitorIORQ = true,
+        .monitorMREQ = false,
+        .setRegistersCodeAddr = TRS80_DISP_RAM_ADDR
+    }
 };
 
-// Enable machine
-void McTRS80::enable([[maybe_unused]]int subType)
+McTRS80::McTRS80() : McBase(_defaultDescriptorTables, sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0]))
 {
+    // Clear keyboard buffer
+    for (uint32_t i = 0; i < TRS80_KEYBOARD_RAM_SIZE; i++)
+        _keyBuffer[i] = 0;
+
+    // Ensure keyboard is cleared initially
+    _keyBufferDirty = true;
+
+    // Screen buffer invalid
+    _screenBufferValid = false;
+}
+
+// Enable machine
+void McTRS80::enable()
+{
+    // TODO have a standard json hw list in descriptor and override if hw section in opts json
+    HwManager::enableHw("64KRAM", true);
+
     // Invalidate screen buffer
     _screenBufferValid = false;
     _keyBufferDirty = false;
@@ -67,17 +84,30 @@ void McTRS80::disable()
 // }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-void McTRS80::displayRefresh(DisplayBase* pDisplay)
+void McTRS80::displayRefreshFromMirrorHw()
 {
-    // Read memory of RC2014 at the location of the TRS80 memory mapped screen
+    // Read mirror memory of RC2014 at the location of the TRS80 memory mapped screen
     unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
-    bool dataValid = McManager::blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, 1, 0);
-    if (!dataValid)
+    if (HwManager::blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, false, 0, true) == BR_OK)
+        updateDisplayFromBuffer(pScrnBuffer, TRS80_DISP_RAM_SIZE);
+
+    // Check for key presses and send to the TRS80 if necessary
+    // Only send to mirror if we are in emulation mode, otherwise store up changes for later
+    if (_keyBufferDirty && HwManager::getMemoryEmulationMode())
+    {
+        HwManager::blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, false, 0, true);
+        _keyBufferDirty = false;
+    }
+}
+
+void McTRS80::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen)
+{
+    if (!_pDisplay || (bufLen < TRS80_DISP_RAM_SIZE))
         return;
 
     // Write to the display on the Pi Zero
-    int cols = _descriptorTable.displayPixelsX / _descriptorTable.displayCellX;
-    int rows = _descriptorTable.displayPixelsY / _descriptorTable.displayCellY;
+    int cols = _activeDescriptorTable.displayPixelsX / _activeDescriptorTable.displayCellX; 
+    int rows = _activeDescriptorTable.displayPixelsY / _activeDescriptorTable.displayCellY;
     for (int k = 0; k < rows; k++) 
     {
         for (int i = 0; i < cols; i++)
@@ -85,20 +115,12 @@ void McTRS80::displayRefresh(DisplayBase* pDisplay)
             int cellIdx = k * cols + i;
             if (!_screenBufferValid || (_screenBuffer[cellIdx] != pScrnBuffer[cellIdx]))
             {
-                if (pDisplay)
-                    pDisplay->write(i, k, (char)pScrnBuffer[cellIdx]);
+                _pDisplay->write(i, k, (char)pScrnBuffer[cellIdx]);
                 _screenBuffer[cellIdx] = pScrnBuffer[cellIdx];
             }
         }
     }
     _screenBufferValid = true;
-
-    // Check for key presses and send to the TRS80 if necessary
-    if (_keyBufferDirty)
-    {
-        McManager::blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, 1, 0);
-        _keyBufferDirty = false;
-    }
 }
 
 // Handle a key press
@@ -274,14 +296,16 @@ void McTRS80::keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[
 }
 
 // Handle a file
-void McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
+bool McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
 {
+    LogWrite(_logPrefix, LOG_DEBUG, "fileHandler %s", pFileInfo);
+
     // Get the file type (extension of file name)
     #define MAX_VALUE_STR 30
     #define MAX_FILE_NAME_STR 100
     char fileName[MAX_FILE_NAME_STR+1];
     if (!jsonGetValueForKey("fileName", pFileInfo, fileName, MAX_FILE_NAME_STR))
-        return;
+        return false;
     // Check type of file (assume extension is delimited by .)
     const char* pFileType = strstr(fileName, ".");
     const char* pEmpty = "";
@@ -304,6 +328,7 @@ void McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
         LogWrite(_logPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
         TargetState::addMemoryBlock(baseAddr, pFileData, fileLen);
     }
+    return true;
 }
 
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
@@ -322,4 +347,24 @@ uint32_t McTRS80::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unus
     }
     
     return retVal;
+}
+
+// Bus action complete callback
+void McTRS80::busActionCompleteCallback(BR_BUS_ACTION actionType)
+{
+    // Check for BUSRQ
+    if (actionType == BR_BUS_ACTION_BUSRQ)
+    {
+        // Read memory of RC2014 at the location of the TRS80 memory mapped screen
+        unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
+        if (BusAccess::blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, false, 0) == BR_OK)
+            updateDisplayFromBuffer(pScrnBuffer, TRS80_DISP_RAM_SIZE);
+
+        // Check for key presses and send to the TRS80 if necessary
+        if (_keyBufferDirty)
+        {
+            BusAccess::blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, false, 0);
+            _keyBufferDirty = false;
+        }
+    }
 }
