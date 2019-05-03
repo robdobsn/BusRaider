@@ -235,9 +235,9 @@ void CommandSerial::sendTargetData(const String& cmdName, const uint8_t* pData, 
 void CommandSerial::uploadCommonBlockHandler(const char* fileType, const String& req, 
             const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock)
 {
-    Log.verbose("%sblk filetype %s name %s, total %d, idx %d, len %d, final %d, fs %s api %s\n", MODULE_PREFIX, 
-                fileType, filename.c_str(), fileLength, index, len, finalBlock, 
-                (_uploadFromFSInProgress ? "yes" : "no"), (_uploadFromAPIInProgress ? "yes" : "no"));
+    // Log.trace("%sblk filetype %s name %s, total %d, idx %d, len %d, final %d, fs %s api %s\n", MODULE_PREFIX, 
+    //             fileType, filename.c_str(), fileLength, index, len, finalBlock, 
+    //             (_uploadFromFSInProgress ? "yes" : "no"), (_uploadFromAPIInProgress ? "yes" : "no"));
 
     // For timeouts        
     _uploadLastBlockMs = millis();
@@ -252,19 +252,19 @@ void CommandSerial::uploadCommonBlockHandler(const char* fileType, const String&
 
     // Send the block
     sendFileBlock(index, data, len);
-    Log.verbose("%sblock sent\n", MODULE_PREFIX);
+    // Log.trace("%sblock sent\n", MODULE_PREFIX);
     _blockCount++;
 
     // Check if that was the final block
     if (finalBlock)
     {
         sendFileEndRecord(_blockCount, NULL);
-        Log.verbose("%sfile end sent\n", MODULE_PREFIX);
+       // Log.trace("%sfile end sent\n", MODULE_PREFIX);
         if (_uploadTargetCommandWhenComplete.length() != 0)
         {
             sendTargetCommand(_uploadTargetCommandWhenComplete);
-            Log.verbose("%spost-upload target command sent %s\n", MODULE_PREFIX,
-                    _uploadTargetCommandWhenComplete.c_str());
+            // Log.trace("%spost-upload target command sent %s\n", MODULE_PREFIX,
+            //         _uploadTargetCommandWhenComplete.c_str());
         }
         _uploadTargetCommandWhenComplete = "";
         _uploadFromFSInProgress = false;

@@ -58,7 +58,7 @@ def sendFileSerialHDLC(ser):
     uploadAck = False
 
     # Send new firmware in the bin folder using the CommandHandler protocol
-    imageFileName = "/kernel.img"
+    imageFileName = "/bin/kernel.img"
     with open(baseFolder + imageFileName, "rb") as f:
 
         # Read firmware

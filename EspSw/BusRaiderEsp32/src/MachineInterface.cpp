@@ -310,6 +310,7 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *framebuffer, int frame
     {
         // Cache the status frame
         _cachedStatusJSON = pRxStr;
+        // Log.trace("Received status update %s\n", MODULE_PREFIX, _cachedStatusJSON);
     }
     else if (cmdName.equalsIgnoreCase("keyCode"))
     {

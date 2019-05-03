@@ -83,7 +83,7 @@ typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
 // Program details
-static const char* PROG_VERSION = "Bus Raider V1.7.076 (C) Rob Dobson 2018-2019";
+static const char* PROG_VERSION = "Bus Raider V1.7.080 (C) Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "https://robdobson.com/tag/raider";
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +97,7 @@ const char* FromMain = "Main";
 Display display;
 
 // Baud rate
-#define MAIN_UART_BAUD_RATE 460800
+#define MAIN_UART_BAUD_RATE 921600
 UartMaxi mainUart;
 
 // CommandHandler
