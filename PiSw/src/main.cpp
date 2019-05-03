@@ -28,13 +28,13 @@
 typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
-// Program details
-static const char* PROG_VERSION = "Bus Raider V1.7.080 (C) Rob Dobson 2018-2019";
-static const char* PROG_LINKS_1 = "https://robdobson.com/tag/raider";
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Globals
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Program details
+static const char* PROG_VERSION = "Bus Raider V1.7.081 (C) Rob Dobson 2018-2019";
+static const char* PROG_LINKS_1 = "https://robdobson.com/tag/raider";
 
 // Log string
 const char* FromMain = "Main";

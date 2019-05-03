@@ -3,8 +3,8 @@
 
 #include "piwiring.h"
 #include "BCM2835.h"
-#include "lowlev.h"
-#include "lowlib.h"
+#include "LowLev.h"
+#include "LowLib.h"
 
 uint8_t convModeToVal(uint8_t mode)
 {

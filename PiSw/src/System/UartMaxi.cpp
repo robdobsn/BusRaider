@@ -12,10 +12,6 @@
 #include <stddef.h>
 #include <string.h>
 
-
-// TODO
-#include "../TargetBus/BusAccess.h"
-
 // Statics
 static const char FromUartMaxi[] = "UartMaxi";
 

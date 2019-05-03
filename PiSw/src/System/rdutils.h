@@ -14,6 +14,9 @@ extern void rdstrrev(unsigned char *str);
 extern int rditoa(int num, unsigned char* str, int len, int base);
 
 extern bool jsonGetValueForKey(const char* srchKey, const char* jsonStr, char* pOutStr, int outStrMaxLen);
+extern int jsonGetArrayLen(const char* jsonStr);
+extern bool jsonGetArrayElem(uint32_t arrayIdx, const char* jsonStr, char* pOutStr, int outStrMaxLen);
+extern void jsonEscape(const char* inStr, char* outStr, int maxLen);
 
 #ifdef __cplusplus
 }

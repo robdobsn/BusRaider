@@ -4,10 +4,10 @@
 // Rob Dobson 2019
 
 #include "lowlib.h"
-#include "nmalloc.h"
 #include "CInterrupts.h"
 #include <limits.h>
 #include "memorymap.h"
+#include "nmalloc.h"
 
 #ifdef __cplusplus
 extern "C" {
