@@ -4,6 +4,7 @@ sourceme.bash
 thumbs.db
 Find Results
 build
-
+.pytest_cache
+__pycache__
 
 

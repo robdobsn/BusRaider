@@ -443,23 +443,10 @@ void BusAccess::serviceWaitActivity()
     // Read the control lines
     uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
 
-    // Handle the end of a read cycle
-    if (_targetReadInProgress)
-    {
-        // Check if a neither IORQ or MREQ asserted
-        if (((busVals & BR_MREQ_BAR_MASK) != 0) && ((busVals & BR_IORQ_BAR_MASK) != 0))
-        {
-            pibSetIn();
-            // Set data bus direction out (not really necessary but helps with M1 settling)
-            WR32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
-            _targetReadInProgress = false;
-        }
-    }
-
     // Check for timeouts on bus actions
     if (_busActionInProgress)
     {
-        // Check signal already asserted and handle
+        // Handle signals that have already started
         busActionAssertActive();
 
         // Timeout on overall action
@@ -482,13 +469,15 @@ void BusAccess::serviceWaitActivity()
         // Check if we have a new wait (and we're not in BUSACK)
         if (((busVals & BR_WAIT_BAR_MASK) == 0) && ((busVals & BR_BUSACK_BAR_MASK) != 0))
         {
-            // Check if a bus action is happening which would be cleared too soon by the wait handler
+            // Check if a bus action (other than BUSRQ) is happening which would 
+            // be cleared too soon by the wait handler as MUX hardware is shared
             if (_busActionInProgress && (_busActionType != BR_BUS_ACTION_BUSRQ))
             {
                 // Don't handle the wait until the bus action has completed
             }
             else
             {
+                // In case we are held in the wait
                 _waitAssertedStartUs = micros();
                 _waitAsserted = true;
 
@@ -497,17 +486,22 @@ void BusAccess::serviceWaitActivity()
             }
         }
     }
-    else
+
+    // Check if wait is asserted
+    if (_waitAsserted)
     {
-        // Check for IORQ
+        // Read the control lines
+        busVals = RD32(ARM_GPIO_GPLEV0);
+
+        // IORQ waits can be released as we don't hold at an IORQ
         if ((busVals & BR_IORQ_BAR_MASK) == 0)
         {
             // Release the wait - also clears _waitAsserted flag
             waitResetFlipFlops();
         }
-        // Check if we're free running
         else if (!_waitHold)
         {
+            // If we are not held then check for timeouts
             if (isTimeout(micros(), _waitAssertedStartUs, _waitCycleLengthUs))
             {
                 // Check if we need to assert any new bus requests
@@ -515,6 +509,27 @@ void BusAccess::serviceWaitActivity()
 
                 // Release the wait - also clears _waitAsserted flag
                 waitResetFlipFlops();
+            }
+        }
+    }
+
+    // Handle the end of a read cycle
+    if (!_waitAsserted && _targetReadInProgress)
+    {
+        // Stay here until read cycle is complete
+        uint32_t waitForReadCompleteStartUs = micros();
+        while(!isTimeout(micros(), waitForReadCompleteStartUs, MAX_WAIT_FOR_END_OF_READ_US))
+        {
+            // Read the control lines
+            busVals = RD32(ARM_GPIO_GPLEV0);
+
+            // Check if a neither IORQ or MREQ asserted
+            if (((busVals & BR_MREQ_BAR_MASK) != 0) && ((busVals & BR_IORQ_BAR_MASK) != 0))
+            {
+                // Set data bus direction in
+                pibSetIn();
+                WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
+                _targetReadInProgress = false;
             }
         }
     }
@@ -635,6 +650,12 @@ void BusAccess::waitHandleNew()
         if (_busSockets[sockIdx].enabled && _busSockets[sockIdx].busAccessCallback)
         {
             _busSockets[sockIdx].busAccessCallback(addr, dataBusVals, ctrlBusVals, retVal);
+            // TODO
+            // if (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK)
+            //     LogWrite("BA", LOG_DEBUG, "%d IORQ %s from %04x %02x", sockIdx,
+            //             (ctrlBusVals & BR_CTRL_BUS_RD_MASK) ? "RD" : ((ctrlBusVals & BR_CTRL_BUS_WR_MASK) ? "WR" : "??"),
+            //             addr, 
+            //             (ctrlBusVals & BR_CTRL_BUS_WR_MASK) ? dataBusVals : retVal);
         }
     }
 

@@ -384,10 +384,9 @@ void McTerminal::moveAndCheckCurPos(int absX, int absY, int relX, int relY, Disp
 }
 
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-uint32_t McTerminal::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
-            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
+void McTerminal::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t& retVal)
 {
-    return retVal;
 }
 
 // Bus action complete callback

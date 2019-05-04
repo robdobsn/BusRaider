@@ -371,8 +371,8 @@ bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
 }
 
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-uint32_t McZXSpectrum::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
-            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
+void McZXSpectrum::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t& retVal)
 {
     
     #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
@@ -406,8 +406,6 @@ uint32_t McZXSpectrum::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe
     #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
     #endif
-
-    return retVal;
 }
 
 // Bus action complete callback

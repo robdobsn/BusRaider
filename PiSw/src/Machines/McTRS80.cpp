@@ -332,9 +332,14 @@ bool McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
 }
 
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-uint32_t McTRS80::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
-            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
+void McTRS80::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t& retVal)
 {
+    // if (flags & BR_CTRL_BUS_IORQ_MASK)
+    //     LogWrite(_logPrefix, LOG_DEBUG, "IORQ %s from %04x %02x", 
+    //             (flags & BR_CTRL_BUS_RD_MASK) ? "RD" : ((flags & BR_CTRL_BUS_WR_MASK) ? "WR" : "??"),
+    //             addr, 
+    //             (flags & BR_CTRL_BUS_WR_MASK) ? data : retVal);
     // Check for read from IO
     if ((flags & BR_CTRL_BUS_RD_MASK) && (flags & BR_CTRL_BUS_IORQ_MASK))
     {
@@ -345,8 +350,6 @@ uint32_t McTRS80::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unus
             retVal = 0xff;
         }
     }
-    
-    return retVal;
 }
 
 // Bus action complete callback
@@ -363,7 +366,11 @@ void McTRS80::busActionCompleteCallback(BR_BUS_ACTION actionType)
         // Check for key presses and send to the TRS80 if necessary
         if (_keyBufferDirty)
         {
-            BusAccess::blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, false, 0);
+            if (_keyBufferDirty)
+                LogWrite(_logPrefix, LOG_DEBUG, "KB Dirty %02x %02x %02x %02x %02x %02x %02x %02x",
+                    _keyBuffer[0], _keyBuffer[1], _keyBuffer[2], _keyBuffer[4], 
+                    _keyBuffer[8], _keyBuffer[16], _keyBuffer[32], _keyBuffer[64], _keyBuffer[128]);
+            BusAccess::blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, false, false);
             _keyBufferDirty = false;
         }
     }

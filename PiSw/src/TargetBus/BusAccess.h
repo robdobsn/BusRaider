@@ -288,8 +288,8 @@ public:
     static bool isUnderControl();
     
     // Read and write blocks
-    static BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
-    static BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq);
+    static BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, bool busRqAndRelease, bool iorq);
+    static BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pData, uint32_t len, bool busRqAndRelease, bool iorq);
 
     // Wait hold and release
     static void waitRelease();
@@ -444,6 +444,9 @@ private:
     // Period target read control bus line is asserted during a read from the PIB (any bus element)
     static const int CYCLES_DELAY_FOR_READ_FROM_PIB = 25;
 
+    // Max wait for end of read cycle
+    static const int MAX_WAIT_FOR_END_OF_READ_US = 10;
+
     // Delay in machine cycles for setting the pulse width when clearing/incrementing the address counter/shift-reg
     static const int CYCLES_DELAY_FOR_CLEAR_LOW_ADDR = 20;
     static const int CYCLES_DELAY_FOR_LOW_ADDR_SET = 20;
@@ -452,6 +455,7 @@ private:
     static const int CYCLES_DELAY_FOR_MREQ_FF_RESET = 20;
     static const int CYCLES_DELAY_FOR_DATA_DIRN = 20;
     static const int CYCLES_DELAY_FOR_TARGET_READ = 100;
+    static const int CYCLES_DELAY_FOR_OUT_FF_SET = 10;
 
     // Delay in machine cycles for M1 to settle
     static const int CYCLES_DELAY_FOR_M1_SETTLING = 500;

@@ -6,6 +6,7 @@ from SimpleHDLC import HDLC
 import logging
 import json
 import os
+import requests
 
 def commandLineTestStart():
     # Get args passed from build/test script
@@ -29,8 +30,9 @@ def commandLineTestStart():
 
 class CommonTest:
 
-    def setup(self, useIP, serialPort, serialBaud, ipAddrOrHost, dumpBinFileName, dumpTextFileName, frameCallback, logSends=False):
+    def setup(self, useIP, serialPort, serialBaud, ipAddrOrHostName, dumpBinFileName, dumpTextFileName, frameCallback, logSends=False):
         
+        self.useIP = useIP
         # Logging
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
@@ -47,7 +49,8 @@ class CommonTest:
 
         # Check for using IP address
         if useIP:
-            logger.info("UnitTest BusRaider IP not yet supported")
+            self.pathToHostAPI = "http://" + ipAddrOrHostName + "/targetcmd/"
+            self.logger.info(f"UnitTest BusRaider using {self.pathToHostAPI}")
         else:
             # Open the serial connection to the BusRaider
             try:
@@ -90,22 +93,30 @@ class CommonTest:
                 except Exception as excp:
                     self.logger.error(f"Failed to parse Json from {fr}, {excp}")
 
-
             # Setup HDLC sender
             self.hdlcHandler = HDLC(self.ser, self.dumpBinFile)
             self.hdlcHandler.startReader(onFrame)
 
     def sendFrame(self, comment, content):
-        frame = bytearray(content)
-        # for b in frame:
-        #     print(hex(b)+" ",end='')
-        # print()
-        try:
-            self.hdlcHandler.sendFrame(frame)
-            if self.logSends and len(comment) > 0: 
-                self.logger.debug(f"Sent {comment}")
-        except Exception as excp:
-            self.logger.error(f"Failed to send frame {comment}, {excp}")
+        if self.useIP:
+            if b"\0" in content:
+                cmd = content[:content.index(b"\0")]
+                params = bytearray(content[content.index(b"\0")+1:])
+                req = requests.post(self.pathToHostAPI + str(cmd), params)
+            else:
+                req = requests.get(self.pathToHostAPI + content)
+            self.logger.debug(str(req))
+        else:
+            frame = bytearray(content)
+            # for b in frame:
+            #     print(hex(b)+" ",end='')
+            # print()
+            try:
+                self.hdlcHandler.sendFrame(frame)
+                if self.logSends and len(comment) > 0: 
+                    self.logger.debug(f"Sent {comment}")
+            except Exception as excp:
+                self.logger.error(f"Failed to send frame {comment}, {excp}")
 
     def cleardown(self, useIP):
         # A little time for test to end

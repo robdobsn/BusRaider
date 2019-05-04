@@ -129,11 +129,9 @@ bool McRobsZ80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int
 }
 
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-uint32_t McRobsZ80::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
-        [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t retVal)
+void McRobsZ80::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+        [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t& retVal)
 {
-    // Not decoded
-    return retVal;
 }
 
 // Bus action complete callback

@@ -12,11 +12,12 @@ import logging
 
 def setupTests(testName):
     global useIP, serialPort, serialSpeed, baseFolder
-    global logTextFileName, logMsgDataFileName
+    global logTextFileName, logMsgDataFileName, ipAddrOrHostName
     global commonTest
-    useIP = False
+    useIP = True
     serialPort = "COM7"
     serialSpeed = 921600
+    ipAddrOrHostName = "192.168.86.192"
     baseFolder = "."
     logTextFileName = testName + ".log"
     logMsgDataFileName = testName + ".bin"
@@ -34,7 +35,7 @@ def test_Comms():
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
     setupTests("Comms")
-    commonTest.setup(useIP, serialPort, serialSpeed, None, logMsgDataFileName, logTextFileName, frameCallback)
+    commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
     msgIdx = 0
     testRepeatCount = 1000
     testStats = {"framesRx": 0, "msgRx":[False]*testRepeatCount}

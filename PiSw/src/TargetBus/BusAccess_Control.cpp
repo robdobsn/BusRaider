@@ -326,7 +326,7 @@ uint8_t BusAccess::byteRead(int iorq)
 }
 
 // Write a consecutive block of memory to host
-BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq)
+BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, bool busRqAndRelease, bool iorq)
 {
     // Check if we need to request bus
     if (busRqAndRelease) {
@@ -379,7 +379,7 @@ BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32
 // Assumes:
 // - control of host bus has been requested and acknowledged
 // - data direction on data bus driver is set to input (default)
-BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len, int busRqAndRelease, int iorq)
+BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len, bool busRqAndRelease, bool iorq)
 {
     // Check if we need to request bus
     if (busRqAndRelease) {
