@@ -22,7 +22,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Program details
-static const char* PROG_VERSION = "Bus Raider V1.7.103 (C) Rob Dobson 2018-2019";
+static const char* PROG_VERSION = "Bus Raider V1.7.104 (C) Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "https://robdobson.com/tag/raider";
 
 // Log string
@@ -73,9 +73,6 @@ extern "C" int main()
     display.statusPut(Display::STATUS_FIELD_ESP_VERSION, Display::STATUS_FAIL, "ESP32 Not Connected");
     display.statusPut(Display::STATUS_FIELD_LINKS, Display::STATUS_NORMAL, PROG_LINKS_1);
 
-    // Bus raider app
-    busRaiderApp.init();
-
     // Bus raider setup
     BusAccess::init();
 
@@ -91,10 +88,12 @@ extern "C" int main()
 
     // Init machine manager
     mcManager.init(&display);
-    mcManager.setMachineByName("TRS80");
 
     // USB and status
     busRaiderApp.initUSB();
+
+    // Bus raider app
+    busRaiderApp.init();
 
     // Loop forever
     while(1)

@@ -75,10 +75,10 @@ public:
     static void sendKeyCodeToTarget(int keyCode);
     static void sendWithJSON(const char* cmdName, const char* cmdJson);
     static void sendAPIReq(const char* reqLine);
+    static void sendData(const char* cmdName, const uint8_t* pData, uint32_t len, uint32_t index);
     void getStatusResponse(bool* pIPAddressValid, char** pIPAddress, char** pWifiConnStr, 
                 char** pWifiSSID, char** pEsp32Version);
     void sendRegularStatusUpdate();
-    void sendRemoteDebugProtocolMsg(const char* pStr, const char* rdpMessageIdStr);
     void logDebugMessage(const char* pStr);
     void logDebugJson(const char* pStr);
     static void logDebug(const char* pSeverity, const char* pSource, const char* pMsg);
@@ -133,8 +133,8 @@ private:
     int _receivedFileBytesRx;
     int _receivedBlockCount;
 
-    // Last RDP message index value string
-    static const int MAX_RDP_INDEX_VAL_LEN = 20;
-    char _lastRDPIndexValStr[MAX_RDP_INDEX_VAL_LEN];
+    // // Last RDP message index value string
+    // static const int MAX_RDP_INDEX_VAL_LEN = 20;
+    // char _lastRDPIndexValStr[MAX_RDP_INDEX_VAL_LEN];
     
 };

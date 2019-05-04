@@ -40,7 +40,7 @@ RemoteDebugProtocolSession::RemoteDebugProtocolSession(RemoteDebugProtocolServer
 
     // Send welcome message
     if (strlen(RemoteDebugProtocolWelcomeMessage) > 0)
-        sendChars(RemoteDebugProtocolWelcomeMessage, strlen(RemoteDebugProtocolWelcomeMessage));
+        sendChars((const uint8_t*)RemoteDebugProtocolWelcomeMessage, strlen(RemoteDebugProtocolWelcomeMessage));
 }
 
 RemoteDebugProtocolSession::~RemoteDebugProtocolSession()
@@ -78,11 +78,11 @@ void RemoteDebugProtocolSession::_onTimeout(uint32_t time)
 
 void RemoteDebugProtocolSession::_onData(void *buf, size_t len)
 {
-    char debugStr[100+1];
-    strlcpy(debugStr, (char*)buf, len);
+    // char debugStr[100+1];
+    // strlcpy(debugStr, (char*)buf, len);
     // Log.debug("%s-> %s\n", SESSION_PREFIX, debugStr);
     if (_pServer)
-        _pServer->_handleData((const char*)buf, len);
+        _pServer->_handleData((const uint8_t*)buf, len);
 }
 
 void RemoteDebugProtocolSession::_onPoll()
@@ -99,12 +99,12 @@ void RemoteDebugProtocolSession::forceClose()
     }
 }
 
-void RemoteDebugProtocolSession::sendChars(const char* pChars, int numChars)
+void RemoteDebugProtocolSession::sendChars(const uint8_t* pData, int dataLen)
 {
     // Check if session open
     if (_pClient && _pClient->connected() && _pClient->canSend())
     {
-        _pClient->write(pChars, numChars);
+        _pClient->write((const char*) pData, dataLen);
     }
 }
 
@@ -204,14 +204,14 @@ void RemoteDebugProtocolServer::_handleDisconnect(RemoteDebugProtocolSession *pS
     }
 }
 
-void RemoteDebugProtocolServer::_handleData(const char* pData, int numChars)
+void RemoteDebugProtocolServer::_handleData(const uint8_t* pData, int dataLen)
 {
-    // Log.trace("%sdata rx %d\n", MODULE_PREFIX, numChars);
+    // Log.trace("%sdata rx %d\n", MODULE_PREFIX, dataLen);
 
     // Check if a callback is set
     if (_rxDataCallback)
     {
-        _rxDataCallback(_rxDataCallbackArg, pData, numChars);
+        _rxDataCallback(_rxDataCallbackArg, pData, dataLen);
     }
 }
 
@@ -220,14 +220,14 @@ void RemoteDebugProtocolServer::begin()
     _server.begin();
 }
 
-void RemoteDebugProtocolServer::sendChars(const char* pChars, int numChars)
+void RemoteDebugProtocolServer::sendChars(const uint8_t* pData, int dataLen)
 {
     // For each currently active connection
     for (int i = 0; i < MAX_SESSIONS; i++)
     {
         if (_sessions[i])
         {
-            _sessions[i]->sendChars(pChars, numChars);
+            _sessions[i]->sendChars(pData, dataLen);
         }
     }    
 }

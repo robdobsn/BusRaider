@@ -7,7 +7,7 @@
 #include "AsyncTcp.h"
 #include <vector>
 
-typedef std::function<void(void* cbArg, const char *pData, size_t numChars)> RemoteDebugProtocolDataHandler;
+typedef std::function<void(void* cbArg, const uint8_t *pData, size_t dataLen)> RemoteDebugProtocolDataHandler;
 
 class RemoteDebugProtocolServer;
 
@@ -28,7 +28,7 @@ public:
     RemoteDebugProtocolSession(RemoteDebugProtocolServer *pServer, AsyncClient *pClient);
     ~RemoteDebugProtocolSession();
     void forceClose();
-    void sendChars(const char* pChars, int numChars);
+    void sendChars(const uint8_t* pData, int dataLen);
 };
 
 class RemoteDebugProtocolServer
@@ -40,7 +40,7 @@ protected:
 
     // Called by RemoteDebugProtocolSession on events
     void _handleDisconnect(RemoteDebugProtocolSession *pSess);
-    void _handleData(const char* pData, int numChars);
+    void _handleData(const uint8_t* pData, int dataLen);
 
     // Callback and argument for callback set in onData()
     RemoteDebugProtocolDataHandler _rxDataCallback;
@@ -60,7 +60,7 @@ public:
     void onData(RemoteDebugProtocolDataHandler cb, void* arg = 0);
 
     // Send chars to all active sessions
-    void sendChars(const char* pChars, int numChars);
+    void sendChars(const uint8_t* pData, int dataLen);
 
     friend class RemoteDebugProtocolSession;
 };

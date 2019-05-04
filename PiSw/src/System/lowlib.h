@@ -33,6 +33,7 @@ extern void heapInit();
 extern size_t strlcpy(char * dst, const char * src, size_t dsize);
 extern size_t strlcat(char * dst, const char * src, size_t maxlen);
 extern int strcasecmp (const char *s1, const char *s2);
+extern int strncasecmp (const char *s1, const char *s2, size_t maxlen);
 
 #ifdef __cplusplus
 }

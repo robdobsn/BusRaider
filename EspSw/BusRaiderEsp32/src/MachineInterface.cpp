@@ -76,27 +76,30 @@ void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandS
     // Set the remote data callback
     if (_pRemoteDebugServer)
     {
-        _pRemoteDebugServer->onData([this](void* cbArg, const char* pData, int numChars) 
+        _pRemoteDebugServer->onData([this](void* cbArg, const uint8_t* pData, int dataLen) 
         {
             (void)cbArg;
 
-            // Ensure terminated
-            if ((numChars < 0) || (numChars > MAX_COMMAND_LEN))
-                return;
+            if (_pCommandSerial)
+                _pCommandSerial->sendTargetData("rdp", pData, dataLen, _rdpCommandIndex++);
 
-            // Ensure string is terminated
-            char* pStr = new char[numChars+1];
-            memcpy(pStr, pData, numChars);
-            pStr[numChars] = 0;
-            String str = pStr;
-            // Clean up
-            delete [] pStr;
+            // // Check valid
+            // if ((numChars < 0) || (numChars > MAX_COMMAND_LEN))
+            //     return;
+
+            // // Ensure string is terminated
+            // char* pStr = new char[numChars+1];
+            // memcpy(pStr, pData, numChars);
+            // pStr[numChars] = 0;
+            // String str = pStr;
+            // // Clean up
+            // delete [] pStr;
 
             // Send target command to Pi
             // Log.trace("%s-> %s", MODULE_PREFIX, str.c_str());
-            if (_pCommandSerial)
-                _pCommandSerial->sendTargetData("rdp", (const uint8_t*)str.c_str(), 
-                        str.length(), _rdpCommandIndex++);
+            // if (_pCommandSerial)
+            //     _pCommandSerial->sendTargetData("rdp", (const uint8_t*)str.c_str(), 
+            //             str.length(), _rdpCommandIndex++);
 
         }, this);
     }
@@ -104,8 +107,8 @@ void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandS
     // Set callback on frame received from Pi
     if (_pCommandSerial)
     {
-        _pCommandSerial->setCallbackOnRxFrame([this](const uint8_t *framebuffer, int framelength) {
-            handleFrameRxFromPi(framebuffer, framelength);
+        _pCommandSerial->setCallbackOnRxFrame([this](const uint8_t *frameBuffer, int frameLength) {
+            handleFrameRxFromPi(frameBuffer, frameLength);
         });
     }
 
@@ -293,14 +296,14 @@ void MachineInterface::service()
 }
 
 // Handle a frame received from the Pi
-void MachineInterface::handleFrameRxFromPi(const uint8_t *framebuffer, int framelength)
+void MachineInterface::handleFrameRxFromPi(const uint8_t *frameBuffer, int frameLength)
 {
     // Extract frame type
-    if ((framelength < 0) || (framelength > MAX_COMMAND_LEN))
+    if ((frameLength < 0) || (frameLength > MAX_COMMAND_LEN))
         return;
 
     // Buffer is null terminated in the HDLC receiver
-    const char* pRxStr = (const char*)framebuffer;
+    const char* pRxStr = (const char*)frameBuffer;
 
     // Log.trace("%s<- %s\n", MODULE_PREFIX, pRxStr);
 
@@ -330,16 +333,24 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *framebuffer, int frame
             if (_pCommandSerial)
             {
                 _pCommandSerial->responseMessage(requestStr, respStr);
-                // Log.trace("%ssending to Pi %s\n", MODULE_PREFIX, respStr.c_str());
+                // Log.trace("%sresponding to Pi %s\n", MODULE_PREFIX, respStr.c_str());
             }
         }
     }
     else if (cmdName.equalsIgnoreCase("rdp"))
     {
         // Log.verbose("%srdp <- %s\n", MODULE_PREFIX, pRxStr);
-        String contentStr = RdJson::getString("content", "", pRxStr);
+        // Payload is after a string terminator
+        int headerJsonEndPos = strlen(pRxStr);
+        int payloadStartPos = 0;
+        int payloadLen = 0;
+        if (headerJsonEndPos+1 < frameLength)
+        {
+            payloadStartPos = headerJsonEndPos+1;
+            payloadLen = frameLength - headerJsonEndPos - 1;
+        }
         if (_pRemoteDebugServer)
-            _pRemoteDebugServer->sendChars(contentStr.c_str(), contentStr.length());
+            _pRemoteDebugServer->sendChars(frameBuffer+payloadStartPos, payloadLen);
     }
     else if (cmdName.equalsIgnoreCase("log"))
     {

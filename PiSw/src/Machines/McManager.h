@@ -44,38 +44,18 @@ public:
     static int getCharsReceivedFromHost(uint8_t* pBuf, int bufMaxLen);
     static void sendKeyCodeToTarget(int asciiCode);
 
-    // // Debug message handling
-    // static void sendRemoteDebugProtocolMsg(const char* pStr, const char* rdpMessageIdStr);
-    // static bool debuggerCommand(char* pCommand, char* pResponse, int maxResponseLen);
-
     // Target programming
     static void handleTargetProgram(bool execAfterProgramming);
 
     // Target control
-    // TODO
     static void targetReset();
-    // static void targetPause();
-    // static void targetRelease();
-    // static void targetClearAllIO();
-    // static void targetStep(bool stepOver);
     static bool targetIsPaused();
     static bool targetBusUnderPiControl();
 
     // Handle target files
     static bool handleTargetFile(const char* rxFileInfo, const uint8_t* pData, int dataLen);
 
-    // Handle commands
-    // TODO
-    // static void handleCommand(const char* pCmdJson, 
-    //                 const uint8_t* pParams, int paramsLen,
-    //                 char* pRespJson, int maxRespLen);
-
     static void targetIrq(int durationUs = -1);
-
-    // Debug
-    // TODO
-    // static void logDebugMessage(const char* pStr);
-    // static void logDebugJson(const char* pStr);
 
 private:
     static McDescriptorTable defaultDescriptorTable;
@@ -130,9 +110,5 @@ private:
     static int _refreshRate;
     static uint32_t _refreshLastUpdateUs;
     static uint32_t _refreshLastCountResetUs;
-
-private:
-// TODO
-    // static void targetIrqFromTimer(void* pParam);
 
 };

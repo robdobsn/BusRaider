@@ -3,10 +3,11 @@ import sys
 import time
 import math
 from SimpleHDLC import HDLC
+from SimpleTCP import SimpleTCP
 import logging
 import json
 import os
-import requests
+import asyncio
 
 def commandLineTestStart():
     # Get args passed from build/test script
@@ -47,10 +48,37 @@ class CommonTest:
             self.logger.addHandler(fileLogger)
         self.logSends = logSends
 
+        # Open dump file
+        try:
+            self.dumpBinFile = None
+            if dumpBinFileName is not None and len(dumpBinFileName) > 0:
+                self.dumpBinFile = open(os.path.join("./test/logs/", dumpBinFileName), "wb")
+        except Exception(excp):
+            self.logger.warning("Can't open dump binary file " + os.path.join("./test/logs/", dumpBinFileName))
+
         # Check for using IP address
         if useIP:
-            self.pathToHostAPI = "http://" + ipAddrOrHostName + "/targetcmd/"
-            self.logger.info(f"UnitTest BusRaider using {self.pathToHostAPI}")
+            self.rdpPort = 10000
+
+            # Frame handler
+            def onFrame(fr):
+                msgContent = {'cmdName':''}
+                try:
+                    msgContent = json.loads(fr)
+                    if msgContent['cmdName'] == "log":
+                        try:
+                            self.logger.info(f"{msgContent['lev']} : {msgContent['src']} {msgContent['msg']}")
+                        except Exception as excp:
+                            self.logger.error(f"LOG CONTENT NOT FOUND IN FRAME {fr}, {excp}")
+                    else:
+                        frameCallback(msgContent)
+                except Exception as excp:
+                    self.logger.error(f"Failed to parse Json from {fr}, {excp}")
+
+            # Reader
+            self.rdpTCP = SimpleTCP(ipAddrOrHostName, self.rdpPort, self.dumpBinFile)
+            self.rdpTCP.startReader(onFrame)
+
         else:
             # Open the serial connection to the BusRaider
             try:
@@ -68,12 +96,6 @@ class CommonTest:
                 self.ser.set_buffer_size(20000, None)
             except Exception:
                 self.logger.error("Failed to set serial buffer size")
-            try:
-                self.dumpBinFile = None
-                if dumpBinFileName is not None and len(dumpBinFileName) > 0:
-                    self.dumpBinFile = open(os.path.join("./test/logs/", dumpBinFileName), "wb")
-            except Exception(excp):
-                self.logger.warning("Can't open dump binary file " + os.path.join("./test/logs/", dumpBinFileName))
 
             self.logger.info(f"UnitTest BusRaider port {serialPort} baudrate {serialBaud}")
             sys.stdout.flush()
@@ -99,13 +121,8 @@ class CommonTest:
 
     def sendFrame(self, comment, content):
         if self.useIP:
-            if b"\0" in content:
-                cmd = content[:content.index(b"\0")]
-                params = bytearray(content[content.index(b"\0")+1:])
-                req = requests.post(self.pathToHostAPI + str(cmd), params)
-            else:
-                req = requests.get(self.pathToHostAPI + content)
-            self.logger.debug(str(req))
+            frame = bytearray(content)
+            self.rdpTCP.send(frame)
         else:
             frame = bytearray(content)
             # for b in frame:
@@ -119,17 +136,17 @@ class CommonTest:
                 self.logger.error(f"Failed to send frame {comment}, {excp}")
 
     def cleardown(self, useIP):
-        # A little time for test to end
-        time.sleep(1.0)
+        # Remain running for a little while to hoover up diagnostics, etc
+        prevTime = time.time()
+        while True:
+            if time.time() - prevTime > 1:
+                break
+        # Close down
         if useIP:
-            self.logger.info("UnitTest BusRaider IP not yet supported")
+            self.logger.info("UnitTest closing socket")
+            self.rdpTCP.stopReader()
         else:
-            # Remain running for a little while to hoover up diagnostics, etc
             try:
-                prevTime = time.time()
-                while True:
-                    if time.time() - prevTime > 1:
-                        break
                 self.hdlcHandler.stopReader()
             except Exception as excp:
                 self.logger.error(f"Serial port? {excp}")

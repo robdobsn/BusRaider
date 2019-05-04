@@ -109,7 +109,7 @@ void BusRaiderApp::service()
     // Handle status update to ESP32
     if (isTimeout(micros(), _esp32StatusUpdateStartUs, PI_TO_ESP32_STATUS_UPDATE_RATE_MS * 1000)) 
     {
-        // Send and request status update
+        // Send status update
         if (!_commandHandler.isFileTransferInProgress())
         {
             // Get Pi status
@@ -132,9 +132,12 @@ void BusRaiderApp::service()
     // Handle status update from ESP32
     if (isTimeout(micros(), _esp32StatusLastRxUs, ESP32_TO_PI_STATUS_UPDATE_MAX_MS * 1000))
     {
-        // Request update
-        _commandHandler.sendAPIReq("queryESPHealth");
-        LogWrite(FromBusRaiderApp, LOG_DEBUG, "Req ESP32 status as not received recently");
+        // Request status update
+        if (!_commandHandler.isFileTransferInProgress())
+        {
+            _commandHandler.sendAPIReq("queryESPHealth");
+            // LogWrite(FromBusRaiderApp, LOG_DEBUG, "Req ESP32 status as not received recently");
+        }
         _esp32StatusLastRxUs = micros();
     }
 

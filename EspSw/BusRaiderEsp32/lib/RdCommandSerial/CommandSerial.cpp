@@ -96,7 +96,7 @@ void CommandSerial::eventMessage(String& msgJson)
 // Event message
 void CommandSerial::responseMessage(String& reqStr, String& msgJson)
 {
-    Serial.printf("CommandSerial: req %s ... response Msg %s\n", reqStr.c_str(), msgJson.c_str());
+    // Serial.printf("CommandSerial: req %s ... response Msg %s\n", reqStr.c_str(), msgJson.c_str());
 
     String frame = "{\"cmdName\":\"" + reqStr + "Resp\",";
     frame += msgJson;
