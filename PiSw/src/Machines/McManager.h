@@ -30,6 +30,7 @@ public:
     static const char* getMachineJSON();
     static int getMachineClock();
     static const char* getMachineName();
+    static int getDisplayRefreshRate();
 
     // Display updates
     static void displayRefresh();
@@ -122,6 +123,13 @@ private:
     static bool _busActionPendingExecAfterProgram;
     static bool _busActionPendingDisplayRefresh;
     static bool _busActionCodeWrittenAtResetVector;
+
+    // Display refresh
+    #define REFRESH_RATE_WINDOW_SIZE_MS 1000
+    static uint32_t _refreshCount;
+    static int _refreshRate;
+    static uint32_t _refreshLastUpdateUs;
+    static uint32_t _refreshLastCountResetUs;
 
 private:
 // TODO

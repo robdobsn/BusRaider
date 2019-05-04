@@ -672,7 +672,7 @@ void BusAccess::waitHandleNew()
         muxSet(BR_MUX_DATA_OE_BAR_LOW);
         pibSetOut();
         pibSetValue(retVal & 0xff);
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_WAIT_CLEAR);
+        // lowlev_cycleDelay(CYCLES_DELAY_FOR_WAIT_CLEAR);
         muxClear();
         lowlev_cycleDelay(CYCLES_DELAY_FOR_TARGET_READ);
         _targetReadInProgress = true;

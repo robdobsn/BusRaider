@@ -107,6 +107,10 @@ McDescriptorTable McManager::defaultDescriptorTable = {
 
 uint8_t McManager::_rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];
 int McManager::_rxHostCharsBufferLen = 0;
+uint32_t McManager::_refreshCount = 0;
+uint32_t McManager::_refreshLastUpdateUs = 0;
+uint32_t McManager::_refreshLastCountResetUs = 0;
+int McManager::_refreshRate = 0;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Init
@@ -130,6 +134,10 @@ void McManager::init(DisplayBase* pDisplay)
     new McTRS80();
     new McRobsZ80();
     new McZXSpectrum();
+
+    // Refresh init
+    _refreshCount = 0;
+    _refreshLastUpdateUs = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -456,21 +464,42 @@ bool McManager::setupMachine(const char* mcJson)
 
 void McManager::displayRefresh()
 {
-    // Determine whether display is memory mapped
-    bool isMemoryMapped = getDescriptorTable()->displayMemoryMapped;
-    bool useDirectBusAccess = isMemoryMapped && TargetTracker::busAccessAvailable();
-    if (useDirectBusAccess)
+    unsigned long reqUpdateUs = 1000000 / getDescriptorTable()->displayRefreshRatePerSec;
+    if (isTimeout(micros(), _refreshLastUpdateUs, reqUpdateUs)) 
     {
-        // Asynch display refresh - start bus access request here
-        BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_DISPLAY);
-        _busActionPendingDisplayRefresh = true;
+        // Update timings
+        _refreshLastUpdateUs = micros();
+        _refreshCount++;
+
+        // Determine whether display is memory mapped
+        bool isMemoryMapped = getDescriptorTable()->displayMemoryMapped;
+        bool useDirectBusAccess = isMemoryMapped && TargetTracker::busAccessAvailable();
+        if (useDirectBusAccess)
+        {
+            // Asynch display refresh - start bus access request here
+            BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_DISPLAY);
+            _busActionPendingDisplayRefresh = true;
+        }
+        else
+        {
+            // Synchronous display update (from local memory copy)
+            if (_pCurMachine)
+                _pCurMachine->displayRefreshFromMirrorHw();
+        }
     }
-    else
+
+    // Check for reset of rate
+    if (isTimeout(micros(), _refreshLastCountResetUs, REFRESH_RATE_WINDOW_SIZE_MS * 1000))
     {
-        // Synchronous display update (from local memory copy)
-        if (_pCurMachine)
-            _pCurMachine->displayRefreshFromMirrorHw();
-    }
+        _refreshRate = _refreshCount * 1000 / REFRESH_RATE_WINDOW_SIZE_MS;
+        _refreshCount = 0;
+        _refreshLastCountResetUs = micros();
+    } 
+}
+
+int McManager::getDisplayRefreshRate()
+{
+    return _refreshRate;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -745,14 +774,7 @@ bool McManager::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t*
         return false;
     pRespJson[0] = 0;
 
-    if (strcasecmp(cmdName, "getStatus") == 0)
-    {
-        const char* mcJSON = getMachineJSON();
-        if (pRespJson)
-            strlcat(pRespJson, mcJSON, maxRespLen);
-        return true;
-    }
-    else if (strcasecmp(cmdName, "ClearTarget") == 0)
+    if (strcasecmp(cmdName, "ClearTarget") == 0)
     {
         // LogWrite(FromMcManager, LOG_VERBOSE, "ClearTarget");
         TargetState::clear();
@@ -831,9 +853,8 @@ bool McManager::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t*
     else if (strcasecmp(cmdName, "SetMcJson") == 0)
     {
         // Get options
-        static const int MAX_MC_SET_JSON_LEN = 1000;
-        char mcJson[MAX_MC_SET_JSON_LEN];
-        if (!jsonGetValueForKey("mcJson", pCmdJson, mcJson, MAX_MC_SET_JSON_LEN))
+        char mcJson[CommandHandler::MAX_MC_SET_JSON_LEN];
+        if (!jsonGetValueForKey("mcJson", pCmdJson, mcJson, CommandHandler::MAX_MC_SET_JSON_LEN))
             return false;
         LogWrite(FromMcManager, LOG_VERBOSE, "Set Machine options to %s", mcJson);
         bool setupOk = setupMachine(mcJson);

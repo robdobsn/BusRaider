@@ -57,7 +57,7 @@ public:
     void eventMessage(String& msgJson);
 
     // Event message
-    void responseMessage(String& msgJson);
+    void responseMessage(String& reqStr, String& msgJson);
 
     // Upload in progress
     bool uploadInProgress();

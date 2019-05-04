@@ -48,13 +48,6 @@ CommandHandler::CommandHandler() :
     _receivedFileBufSize = 0;
     _receivedFileBytesRx = 0;
     _receivedBlockCount = 0;
-
-    // Status information for ESP32
-    _statusIPAddress[0] = 0;
-    _statusWifiConnStr[0] = 0;
-    _statusWifiSSID[0] = 0;
-    _statusESP32Version[0] = 0;
-    _statusIPAddressValid = false;
 }
 
 CommandHandler::~CommandHandler()
@@ -173,30 +166,6 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     else if (strcasecmp(cmdName, "ufEnd") == 0)
     {
         handleFileEnd(pCmdJson);
-    }
-    else if (strcasecmp(cmdName, "respMsg") == 0)
-    {
-        // Check for machine settings responses
-        static const int MAX_ESP_CMD_OPT_STR = 100;
-        char mcCmdOrOpts[MAX_ESP_CMD_OPT_STR];
-        if (jsonGetValueForKey("mcCmd", pCmdJson, mcCmdOrOpts, MAX_ESP_CMD_OPT_STR) ||
-                jsonGetValueForKey("mcOpts", pCmdJson, mcCmdOrOpts, MAX_ESP_CMD_OPT_STR))
-        {
-            char mcCmd[MAX_ESP_CMD_OPT_STR];
-            strlcpy(mcCmd, "{\"cmdName\":\"", MAX_ESP_CMD_OPT_STR);
-            strlcat(mcCmd, mcCmdOrOpts, MAX_ESP_CMD_OPT_STR);
-            strlcat(mcCmd, "\"}", MAX_ESP_CMD_OPT_STR);
-            // Now we have stripped the respMsg part it should look like a regular message
-            static const int MAX_RESP_MSG_LEN = 200;
-            char respJson[MAX_RESP_MSG_LEN];
-            respJson[0] = 0;
-            commsSocketHandleRxMsg(mcCmd, pParams, paramsLen, respJson, MAX_RESP_MSG_LEN);
-        }
-        else
-        {
-            // Handle status response message
-            handleStatusResponse(pCmdJson);
-        }
     }
     else
     {
@@ -414,29 +383,6 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Address callback
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void CommandHandler::handleStatusResponse(const char* pCmdJson)
-{
-    // LogWrite(FromCmdHandler, LOG_VERBOSE, "RxFrame RespMsg %s", pCmdJson);
-    // Get espHealth field
-    char espHealthJson[MAX_ESP_HEALTH_STR];
-    if (!jsonGetValueForKey("espHealth", pCmdJson, espHealthJson, MAX_ESP_HEALTH_STR))
-        return;
-    if (!jsonGetValueForKey("wifiIP", espHealthJson, _statusIPAddress, MAX_IP_ADDR_STR))
-        return;
-    _statusIPAddressValid = (strcmp(_statusIPAddress, "0.0.0.0") != 0);
-    if (!jsonGetValueForKey("wifiConn", espHealthJson, _statusWifiConnStr, MAX_WIFI_CONN_STR))
-        return;
-    if (!jsonGetValueForKey("ssid", espHealthJson, _statusWifiSSID, MAX_WIFI_SSID_STR))
-        return;
-    if (!jsonGetValueForKey("espV", espHealthJson, _statusESP32Version, MAX_ESP_VERSION_STR))
-        return;
-    // LogWrite(FromCmdHandler, LOG_VERBOSE, "Ip Address %s", _espIPAddress);
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Send key code to target
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -484,38 +430,6 @@ void CommandHandler::sendAPIReq(const char* reqLine)
     strlcpy(reqStr+strlen(reqStr), "\"", MAX_REQ_STR_LEN);
     if (_pSingletonCommandHandler)
         _pSingletonCommandHandler->sendWithJSON("apiReq", reqStr);
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Get status response
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void CommandHandler::sendRegularStatusUpdate()
-{
-    // Check if file transfer in progress
-    if (_pReceivedFileDataPtr)
-        return;
-
-    // Send update
-    char respBuffer[MAX_MC_STATUS_MSG_LEN+1];
-    commsSocketHandleRxMsg("\"cmdName\":\"getStatus\"", NULL, 0, respBuffer, MAX_MC_STATUS_MSG_LEN);
-    sendWithJSON("statusUpdate", respBuffer);
-    // Request update
-    sendAPIReq("queryESPHealth");    
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Get status response
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void CommandHandler::getStatusResponse(bool* pIPAddressValid, char** pIPAddress, char** pWifiConnStr, 
-        char** pWifiSSID, char** pEsp32Version)
-{
-    *pIPAddressValid = _statusIPAddressValid;
-    *pIPAddress = _statusIPAddress;
-    *pWifiConnStr = _statusWifiConnStr;
-    *pWifiSSID = _statusWifiSSID;
-    *pEsp32Version = _statusESP32Version;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

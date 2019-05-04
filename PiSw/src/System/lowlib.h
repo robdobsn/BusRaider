@@ -5,6 +5,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <stddef.h>
 #include "lowlev.h"
 
 #ifdef __cplusplus
@@ -28,6 +29,10 @@ extern void heapInit();
 #define NOOPT		__attribute__ ((optimize (0)))
 #define MAXOPT		__attribute__ ((optimize (3)))
 #define WEAK		__attribute__ ((weak))
+
+extern size_t strlcpy(char * dst, const char * src, size_t dsize);
+extern size_t strlcat(char * dst, const char * src, size_t maxlen);
+extern int strcasecmp (const char *s1, const char *s2);
 
 #ifdef __cplusplus
 }

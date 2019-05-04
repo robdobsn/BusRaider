@@ -5,6 +5,7 @@
 #include "McZXSpectrum.h"
 #include "usb_hid_keys.h"
 #include "../System/rdutils.h"
+#include "../System/lowlib.h"
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetState.h"
 #include "../Machines/McManager.h"

@@ -62,7 +62,15 @@ public:
         return _miniHDLC.getStats();
     }
 
-public:
+    // File transfer
+    bool isFileTransferInProgress()
+    {
+        return _pReceivedFileDataPtr != NULL;
+    }
+
+    // Max length of machine set command
+    static const int MAX_MC_SET_JSON_LEN = 10000;
+
     // Send key code to target
     static void sendKeyCodeToTarget(int keyCode);
     static void sendWithJSON(const char* cmdName, const char* cmdJson);
@@ -109,7 +117,6 @@ private:
 
 private:
     // String lengths
-    static const int MAX_MC_STATUS_MSG_LEN = 1000;
     static const int CMD_HANDLER_MAX_CMD_STR_LEN = 200;
     static const int MAX_INT_ARG_STR_LEN = 10;
     static const int MAX_FILE_NAME_STR = 100;
@@ -125,18 +132,6 @@ private:
     int _receivedFileBufSize;
     int _receivedFileBytesRx;
     int _receivedBlockCount;
-
-    // Status Command cache
-    static const int MAX_ESP_HEALTH_STR = 1000;
-    static const int MAX_IP_ADDR_STR = 30;
-    static const int MAX_WIFI_CONN_STR = 30;
-    static const int MAX_WIFI_SSID_STR = 100;
-    static const int MAX_ESP_VERSION_STR = 100;
-    char _statusIPAddress[MAX_IP_ADDR_STR];
-    char _statusWifiConnStr[MAX_WIFI_CONN_STR];
-    char _statusWifiSSID[MAX_WIFI_SSID_STR];
-    char _statusESP32Version[MAX_ESP_VERSION_STR];
-    bool _statusIPAddressValid;
 
     // Last RDP message index value string
     static const int MAX_RDP_INDEX_VAL_LEN = 20;

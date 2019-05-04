@@ -2,6 +2,7 @@
 // Rob Dobson 2018
 
 #include "CommandSerial.h"
+#include "RdJson.h"
 
 static const char* MODULE_PREFIX = "CommandSerial: ";
 
@@ -93,19 +94,13 @@ void CommandSerial::eventMessage(String& msgJson)
 }
 
 // Event message
-void CommandSerial::responseMessage(String& msgJson)
+void CommandSerial::responseMessage(String& reqStr, String& msgJson)
 {
-    // Serial.printf("CommandSerial: response Msg %s\n", msgJson.c_str());
+    Serial.printf("CommandSerial: req %s ... response Msg %s\n", reqStr.c_str(), msgJson.c_str());
 
-    String frame;
-    if (msgJson.startsWith("{"))
-    {
-        frame = "{\"cmdName\":\"respMsg\",\"msg\":" + msgJson + "}\0";
-    }
-    else
-    {
-        frame = "{\"cmdName\":\"respMsg\"," + msgJson + "}\0";
-    }
+    String frame = "{\"cmdName\":\"" + reqStr + "Resp\",";
+    frame += msgJson;
+    frame += "}";
     _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
 }
 
