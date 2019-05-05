@@ -90,13 +90,13 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
         bool isIo = false;
         if (!getArgsRdAndWr(pCmdJson, addr, dataLen, isIo))
         {
-            CommandHandler::sendWithJSON("RdRsp", "\"err\":\"InvArgs\"");
+            strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
             return true;
         }
         // Get data using bus access
         if ((dataLen <= 0) || (dataLen >= MAX_MEM_BLOCK_READ_WRITE))
         {
-            CommandHandler::sendWithJSON("RdRsp", "\"err\":\"LenTooLong\"");
+            strlcpy(pRespJson, "\"err\":\"LenTooLong\"", maxRespLen);
             return true;
         }
         uint8_t dataBuf[MAX_MEM_BLOCK_READ_WRITE];
@@ -112,7 +112,7 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
             pos+=2;
         }
         strlcat(jsonResp, "\"", MAX_MEM_READ_RESP);
-        CommandHandler::sendWithJSON("RdRsp", jsonResp);
+        strlcpy(pRespJson, jsonResp, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "Wr") == 0)
@@ -123,17 +123,17 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
         bool isIo = false;
         if (!getArgsRdAndWr(pCmdJson, addr, dataLen, isIo))
         {
-            CommandHandler::sendWithJSON("WrRsp", "\"err\":\"InvArgs\"");
+            strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
             return true;
         }
         // Get data using bus access
         if ((dataLen <= 0) || (dataLen >= MAX_MEM_BLOCK_READ_WRITE) || (dataLen > paramsLen))
         {
-            CommandHandler::sendWithJSON("WrRsp", "\"err\":\"LenTooLong\"");
+            strlcpy(pRespJson, "\"err\":\"LenTooLong\"", maxRespLen);
             return true;
         }
         BusAccess::blockWrite(addr, pParams, dataLen, true, isIo);
-        CommandHandler::sendWithJSON("WrRsp", "\"err\":\"ok\"");
+        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "busStatus") == 0)

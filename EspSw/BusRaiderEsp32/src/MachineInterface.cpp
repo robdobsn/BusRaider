@@ -145,6 +145,7 @@ void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandS
             Log.trace("%sportNum %d, baudRate %d, rxPin, txPin\n",
                         MODULE_PREFIX, _targetSerialPortNum, _targetSerialBaudRate, 3, 1);
         }
+        _pTargetSerial->setRxBufferSize(10000);
     }
 
     // Get demo button
@@ -339,7 +340,6 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *frameBuffer, int frame
     }
     else if (cmdName.equalsIgnoreCase("rdp"))
     {
-        // Log.verbose("%srdp <- %s\n", MODULE_PREFIX, pRxStr);
         // Payload is after a string terminator
         int headerJsonEndPos = strlen(pRxStr);
         int payloadStartPos = 0;
@@ -349,8 +349,14 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *frameBuffer, int frame
             payloadStartPos = headerJsonEndPos+1;
             payloadLen = frameLength - headerJsonEndPos - 1;
         }
-        if (_pRemoteDebugServer)
+        // Log.trace("%srdp <- %s server %d payloadLen %d payload %s\n", 
+        //             MODULE_PREFIX, pRxStr, _pRemoteDebugServer, payloadLen,
+        //             frameBuffer+payloadStartPos);
+        if (_pRemoteDebugServer && (payloadLen > 0))
+        {
+            // Log.trace("%srdp <- %s\n", MODULE_PREFIX, frameBuffer+payloadStartPos);
             _pRemoteDebugServer->sendChars(frameBuffer+payloadStartPos, payloadLen);
+        }
     }
     else if (cmdName.equalsIgnoreCase("log"))
     {

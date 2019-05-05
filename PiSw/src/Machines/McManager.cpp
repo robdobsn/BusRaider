@@ -274,9 +274,6 @@ bool McManager::setupMachine(const char* mcJson)
     BusAccess::waitOnIO(_busSocketId, false);
     BusAccess::waitOnMemory(_busSocketId, false);
 
-    // Disable current machine
-    _pCurMachine->disable();
-
     // Store new name
     strlcpy(_currentMachineName, mcName, MAX_MACHINE_NAME_LEN);
 
@@ -285,9 +282,6 @@ bool McManager::setupMachine(const char* mcJson)
 
     // Setup the machine
     pMc->setupMachine(mcName, mcJson);
-
-    // Enable
-    _pCurMachine->enable();
 
     // Enable wait generation as required
     BusAccess::waitOnIO(_busSocketId, _pCurMachine->getDescriptorTable()->monitorIORQ);
@@ -484,7 +478,7 @@ bool McManager::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t*
     }
     else if ((strcasecmp(cmdName, "FileTarget") == 0) || ((strcasecmp(cmdName, "SRECTarget") == 0)))
     {
-        LogWrite(FromMcManager, LOG_DEBUG, "File to Target, len %d", paramsLen);
+        LogWrite(FromMcManager, LOG_DEBUG, "File to Target, len %d, json %s", paramsLen, pCmdJson);
         McBase* pMc = McManager::getMachine();
         if (pMc)
             pMc->fileHandler(pCmdJson, pParams, paramsLen);

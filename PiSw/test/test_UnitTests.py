@@ -37,15 +37,15 @@ def test_Comms():
     setupTests("Comms")
     commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
     msgIdx = 0
-    testRepeatCount = 1000
+    testRepeatCount = 100
     testStats = {"framesRx": 0, "msgRx":[False]*testRepeatCount}
     for i in range(testRepeatCount):
-        commonTest.sendFrame("statusReq", b"{\"cmdName\":\"validatorStatusReq\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
+        commonTest.sendFrame("statusReq", b"{\"cmdName\":\"validatorStatus\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
         msgIdx += 1
-        time.sleep(0.001)
+        time.sleep(0.1)
     
     # Wait for test end and cleardown
-    commonTest.cleardown(useIP)
+    commonTest.cleardown()
     assert(testStats["framesRx"] == testRepeatCount)
     for i in range(testRepeatCount):
         assert(testStats["msgRx"][i] == True)
@@ -53,22 +53,23 @@ def test_Comms():
 def test_MemRW():
 
     def frameCallback(msgContent):
-        if msgContent['cmdName'] == "RdRsp":
+        logger.info(f"Frame::::{msgContent}")
+        if msgContent['cmdName'] == "RdResp":
             requiredResp = ''.join(('%02x' % testWriteData[i]) for i in range(len(testWriteData)))
             respOk = requiredResp == msgContent['data']
             testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
-            testStats["msgRdRspCount"] += 1
+            testStats["msgRdRespCount"] += 1
             if not respOk:
                 logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
-        elif msgContent['cmdName'] == "WrRsp":
-            testStats["msgWrRspCount"] += 1
+        elif msgContent['cmdName'] == "WrResp":
+            testStats["msgWrRespCount"] += 1
             try:
                 if msgContent['err'] != 'ok':
-                    testStats["msgWrRspErrCount"] += 1
-                    logger.error(f"WrRsp err not ok {msgContent}")
+                    testStats["msgWrRespErrCount"] += 1
+                    logger.error(f"WrResp err not ok {msgContent}")
             except:
-                logger.error(f"WrRsp doesn't contain err {msgContent}")
-                testStats["msgWrRspErrMissingCount"] += 1
+                logger.error(f"WrResp doesn't contain err {msgContent}")
+                testStats["msgWrRespErrMissingCount"] += 1
         elif msgContent['cmdName'] == "busResetResp":
             pass
         elif msgContent['cmdName'][:10] == "SetMachine":
@@ -81,11 +82,11 @@ def test_MemRW():
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
     setupTests("MemRW")
-    commonTest.setup(useIP, serialPort, serialSpeed, None, logMsgDataFileName, logTextFileName, frameCallback)
-    testRepeatCount = 25
+    commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
+    testRepeatCount = 1
     # Test data
     testWriteData = b"\xaa\x55\xaa\x55\xaa\x55\xaa\x55\xaa\x55"
-    testStats = {"msgRdOk": True, "msgRdRspCount":0, "msgWrRspCount": 0, "msgWrRspErrCount":0, "msgWrRspErrMissingCount":0, "unknownMsgCount":0, "clockSetOk":False}
+    testStats = {"msgRdOk": True, "msgRdRespCount":0, "msgWrRespCount": 0, "msgWrRespErrCount":0, "msgWrRespErrMissingCount":0, "unknownMsgCount":0, "clockSetOk":False}
     # Set serial terminal machine - to avoid conflicts with display updates, etc
     mc = "Serial Terminal"
     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
@@ -95,18 +96,21 @@ def test_MemRW():
     time.sleep(1)
     for i in range(testRepeatCount):
         commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
-        commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":32768,\"len\":10,\"isIo\":0}\0" + testWriteData)
-        commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":32768,\"len\":10,\"isIo\":0}\0")
-        commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
         time.sleep(0.1)
+        commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":32768,\"len\":10,\"isIo\":0}\0" + testWriteData)
+        time.sleep(0.1)
+        commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":32768,\"len\":10,\"isIo\":0}\0")
+        time.sleep(0.1)
+        commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
+        time.sleep(0.5)
     
     # Wait for test end and cleardown
-    commonTest.cleardown(useIP)
+    commonTest.cleardown()
     assert(testStats["msgRdOk"] == True)
-    assert(testStats["msgRdRspCount"] == testRepeatCount)
-    assert(testStats["msgWrRspCount"] == testRepeatCount)
-    assert(testStats["msgWrRspErrCount"] == 0)
-    assert(testStats["msgWrRspErrMissingCount"] == 0)
+    assert(testStats["msgRdRespCount"] == testRepeatCount)
+    assert(testStats["msgWrRespCount"] == testRepeatCount)
+    assert(testStats["msgWrRespErrCount"] == 0)
+    assert(testStats["msgWrRespErrMissingCount"] == 0)
     assert(testStats["unknownMsgCount"] == 0)
     assert(testStats["clockSetOk"] == True)
 
@@ -129,7 +133,7 @@ def test_SetMc():
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
     setupTests("SetMc")
-    commonTest.setup(useIP, serialPort, serialSpeed, None, logMsgDataFileName, logTextFileName, frameCallback)
+    commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
     testRepeatCount = 2
     testStats = {"unknownMsgCount":0, "clrMaxUs":0, "mcList":[], "mcCount":0}
 
@@ -149,29 +153,29 @@ def test_SetMc():
             time.sleep(1)
     
     # Wait for test end and cleardown
-    commonTest.cleardown(useIP)
+    commonTest.cleardown()
     assert(testStats["unknownMsgCount"] == 0)
     assert(testStats["mcCount"] >= 4)
 
 def test_StepValidateJMP000():
 
     def frameCallback(msgContent):
-        if msgContent['cmdName'] == "RdRsp":
+        if msgContent['cmdName'] == "RdResp":
             requiredResp = ''.join(('%02x' % testWriteData[i]) for i in range(len(testWriteData)))
             respOk = requiredResp == msgContent['data']
             testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
-            testStats["msgRdRspCount"] += 1
+            testStats["msgRdRespCount"] += 1
             if not respOk:
                 logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
-        elif msgContent['cmdName'] == "WrRsp":
-            testStats["msgWrRspCount"] += 1
+        elif msgContent['cmdName'] == "WrResp":
+            testStats["msgWrRespCount"] += 1
             try:
                 if msgContent['err'] != 'ok':
-                    testStats["msgWrRspErrCount"] += 1
-                    logger.error(f"WrRsp err not ok {msgContent}")
+                    testStats["msgWrRespErrCount"] += 1
+                    logger.error(f"WrResp err not ok {msgContent}")
             except:
-                logger.error(f"WrRsp doesn't contain err {msgContent}")
-                testStats["msgWrRspErrMissingCount"] += 1
+                logger.error(f"WrResp doesn't contain err {msgContent}")
+                testStats["msgWrRespErrMissingCount"] += 1
         elif msgContent['cmdName'] == "busResetResp":
             pass
         elif msgContent['cmdName'][:10] == "SetMachine":
@@ -203,10 +207,10 @@ def test_StepValidateJMP000():
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
     setupTests("StepValidateJMP000")
-    commonTest.setup(useIP, serialPort, serialSpeed, None, logMsgDataFileName, logTextFileName, frameCallback)
+    commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
     # Test data - jump to 0000
     testWriteData = b"\xc3\x00\x00"
-    testStats = {"msgRdOk": True, "msgRdRspCount":0, "msgWrRspCount": 0, "msgWrRspErrCount":0, "msgWrRspErrMissingCount":0,
+    testStats = {"msgRdOk": True, "msgRdRespCount":0, "msgWrRespCount": 0, "msgWrRespErrCount":0, "msgWrRespErrMissingCount":0,
                  "unknownMsgCount":0, "isrCount":0, "stepValErrCount":0, "clrMaxUs":0, "stepValRespCount":0}
     # Set serial terminal machine - to avoid conflicts with display updates, etc
     mc = "Serial Terminal"
@@ -223,13 +227,15 @@ def test_StepValidateJMP000():
     # Repeat tests
     testRepeatCount = 10
     testValStatusCount = 10
+    # Bus reset
+    commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
     for i in range(testRepeatCount):
 
         # Send program
-        commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
+        time.sleep(0.1)
         commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"len\":3,\"isIo\":0}\0" + testWriteData)
+        time.sleep(0.1)
         # Start validator
-        commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
         commonTest.sendFrame("valStop", b"{\"cmdName\":\"validatorStop\"}\0")
         commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":0,\"len\":3,\"isIo\":0}\0")
         time.sleep(0.5)
@@ -239,22 +245,23 @@ def test_StepValidateJMP000():
 
         msgIdx = 0
         for j in range(10):
-            commonTest.sendFrame("statusReq", b"{\"cmdName\":\"validatorStatusReq\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
+            commonTest.sendFrame("statusReq", b"{\"cmdName\":\"validatorStatus\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
             msgIdx += 1
             commonTest.sendFrame("busStatus", b"{\"cmdName\":\"busStatus\"}\0")
             time.sleep(0.2)
     
         # Send messages to stop
         commonTest.sendFrame("valStop", b"{\"cmdName\":\"validatorStop\"}\0")
-        commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
+    # Bus reset
+    commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
 
     # Wait for test end and cleardown
-    commonTest.cleardown(useIP)
+    commonTest.cleardown()
     assert(testStats["msgRdOk"] == True)
-    assert(testStats["msgWrRspCount"] == testRepeatCount)
-    assert(testStats["msgRdRspCount"] == testRepeatCount)
-    assert(testStats["msgWrRspErrCount"] == 0)
-    assert(testStats["msgWrRspErrMissingCount"] == 0)
+    assert(testStats["msgWrRespCount"] == testRepeatCount)
+    assert(testStats["msgRdRespCount"] == testRepeatCount)
+    assert(testStats["msgWrRespErrCount"] == 0)
+    assert(testStats["msgWrRespErrMissingCount"] == 0)
     assert(testStats["unknownMsgCount"] == 0)
     assert(testStats["clockSetOk"] == True)
     assert(testStats["isrCount"] > 0)
@@ -275,13 +282,13 @@ def test_TRS80Level1RomExec():
             testStats['programAndResetCount'] += 1
         elif msgContent['cmdName'] == "clockSetHzResp":
             pass
-        elif msgContent['cmdName'] == "WrRsp":
+        elif msgContent['cmdName'] == "WrResp":
             pass
-        elif msgContent['cmdName'] == "RdRsp":
+        elif msgContent['cmdName'] == "RdResp":
             requiredResp = ''.join(('%02x' % readDataExpected[i]) for i in range(len(readDataExpected)))
             respOk = requiredResp == msgContent['data']
             testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
-            testStats["msgRdRspCount"] += 1
+            testStats["msgRdRespCount"] += 1
             if not respOk:
                 logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
         elif msgContent['cmdName'] == "busResetResp":
@@ -293,8 +300,8 @@ def test_TRS80Level1RomExec():
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
     setupTests("TRS80Level1RomExec")
-    commonTest.setup(useIP, serialPort, serialSpeed, None, logMsgDataFileName, logTextFileName, frameCallback)
-    testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRspCount":0}
+    commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
+    testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRespCount":0}
 
     # Reset bus
     commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
@@ -341,11 +348,11 @@ def test_TRS80Level1RomExec():
             time.sleep(0.2)
 
     # Wait for test end and cleardown
-    commonTest.cleardown(useIP)
+    commonTest.cleardown()
     assert(testStats["unknownMsgCount"] == 0)
     assert(testStats["programAndResetCount"] == testRepeatCount)
     assert(testStats["msgRdOk"] == True)
-    assert(testStats["msgRdRspCount"] == testRepeatCount)
+    assert(testStats["msgRdRespCount"] == testRepeatCount)
 
 def test_GalaxiansExec():
 
@@ -364,13 +371,13 @@ def test_GalaxiansExec():
             testStats['programAndResetCount'] += 1
         elif msgContent['cmdName'] == "clockSetHzResp":
             pass
-        elif msgContent['cmdName'] == "WrRsp":
+        elif msgContent['cmdName'] == "WrResp":
             pass
-        elif msgContent['cmdName'] == "RdRsp":
+        elif msgContent['cmdName'] == "RdResp":
             requiredResp = ''.join(('%02x' % readDataExpected[i]) for i in range(len(readDataExpected)))
             respOk = requiredResp == msgContent['data']
             testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
-            testStats["msgRdRspCount"] += 1
+            testStats["msgRdRespCount"] += 1
             if not respOk:
                 logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
         elif msgContent['cmdName'] == "busStatusClearResp" or \
@@ -383,8 +390,8 @@ def test_GalaxiansExec():
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
     setupTests("GalaxiansExec")
-    commonTest.setup(useIP, serialPort, serialSpeed, None, logMsgDataFileName, logTextFileName, frameCallback)
-    testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRspCount":0,
+    commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
+    testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRespCount":0,
             "iorqWr":0}
 
     # Reset bus
@@ -454,7 +461,7 @@ def test_GalaxiansExec():
             # time.sleep(0.2)
 
     # Wait for test end and cleardown
-    commonTest.cleardown(useIP)
+    commonTest.cleardown()
     assert(testStats["unknownMsgCount"] == 0)
     assert(testStats["programAndResetCount"] == testRepeatCount * 2)
     assert(testStats["msgRdOk"] == True)
@@ -484,13 +491,13 @@ def test_stepSingle():
             testStats['programAndResetCount'] += 1
         elif msgContent['cmdName'] == "clockSetHzResp":
             pass
-        elif msgContent['cmdName'] == "WrRsp":
+        elif msgContent['cmdName'] == "WrResp":
             pass
-        elif msgContent['cmdName'] == "RdRsp":
+        elif msgContent['cmdName'] == "RdResp":
             requiredResp = ''.join(('%02x' % readDataExpected[i]) for i in range(len(readDataExpected)))
             respOk = requiredResp == msgContent['data']
             testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
-            testStats["msgRdRspCount"] += 1
+            testStats["msgRdRespCount"] += 1
             if not respOk:
                 logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
         elif msgContent['cmdName'] == "busStatusClearResp" or \
@@ -506,11 +513,11 @@ def test_stepSingle():
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
     setupTests("StepSingle")
-    commonTest.setup(useIP, serialPort, serialSpeed, None, logMsgDataFileName, logTextFileName, frameCallback)
+    commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
     # Test data - load A,6; inc A * 3 and jump to 0002
     testWriteData = b"\x3e\x06\x3c\x3c\x3c\xc3\x02\x00"
     testWriteLen = bytes(str(len(testWriteData)),'utf-8')
-    testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRspCount":0,
+    testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRespCount":0,
             "iorqRd":0, "iorqWr":0, "mreqRd":0, "mreqWr":0, "AFOK": False, "regsOk": False}
 
     mc = "Serial Terminal"
@@ -547,7 +554,7 @@ def test_stepSingle():
     commonTest.sendFrame("targetTrackerOff", b"{\"cmdName\":\"targetTrackerOff\"}\0")
 
     # Wait for test end and cleardown
-    commonTest.cleardown(useIP)
+    commonTest.cleardown()
     assert(testStats["unknownMsgCount"] == 0)
     assert(testStats["AFOK"])
     assert(testStats["regsOk"])
@@ -576,13 +583,13 @@ def test_regGetTest():
             testStats['programAndResetCount'] += 1
         elif msgContent['cmdName'] == "clockSetHzResp":
             pass
-        elif msgContent['cmdName'] == "WrRsp":
+        elif msgContent['cmdName'] == "WrResp":
             pass
-        elif msgContent['cmdName'] == "RdRsp":
+        elif msgContent['cmdName'] == "RdResp":
             requiredResp = ''.join(('%02x' % readDataExpected[i]) for i in range(len(readDataExpected)))
             respOk = requiredResp == msgContent['data']
             testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
-            testStats["msgRdRspCount"] += 1
+            testStats["msgRdRespCount"] += 1
             if not respOk:
                 logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
         elif msgContent['cmdName'] == "busStatusClearResp" or \
@@ -599,7 +606,7 @@ def test_regGetTest():
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
     setupTests("regGetTest")
-    commonTest.setup(useIP, serialPort, serialSpeed, None, logMsgDataFileName, logTextFileName, frameCallback)
+    commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
     # Test data - sets all registers to known values
     # jump to 0002
     expectedRegs = "PC=002e SP=9b61 BC=3a2b AF=0330 HL=7a4e DE=5542 IX=9187 IY=f122 AF'=6123 BC'=83b2 HL'=2334 DE'=a202 I=03 R=75  F=---H---- F'=-------NC"
@@ -625,7 +632,7 @@ def test_regGetTest():
                     b"\xed\x5e" \
                     b"\xc3\x02\x00"
     testWriteLen = bytes(str(len(testWriteData)),'utf-8')
-    testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRspCount":0,
+    testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRespCount":0,
             "iorqRd":0, "iorqWr":0, "mreqRd":0, "mreqWr":0, "regsOk": False}
 
     mc = "Serial Terminal"
@@ -653,6 +660,6 @@ def test_regGetTest():
     commonTest.sendFrame("targetTrackerOff", b"{\"cmdName\":\"targetTrackerOff\"}\0")
 
     # Wait for test end and cleardown
-    commonTest.cleardown(useIP)
+    commonTest.cleardown()
     assert(testStats["unknownMsgCount"] == 0)
     assert(testStats["regsOk"])

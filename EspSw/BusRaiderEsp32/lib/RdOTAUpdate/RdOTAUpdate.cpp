@@ -495,7 +495,7 @@ void RdOTAUpdate::directFirmwareUpdatePart(String &filename, size_t contentLen, 
         Log.warning("%sapiESPFirmwarePart OTA Direct Disabled\n", MODULE_PREFIX);
         return;
     }
-    Log.trace("%sapiESPFirmwarePart %d, %d, %d, %d\n", MODULE_PREFIX, contentLen, index, len, finalBlock);
+    // Log.trace("%sapiESPFirmwarePart %d, %d, %d, %d\n", MODULE_PREFIX, contentLen, index, len, finalBlock);
     const esp_partition_t* update_partition = esp_ota_get_next_update_partition(NULL);
     // Check if first part
     if (index == 0)

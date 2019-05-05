@@ -1,7 +1,7 @@
 from PyCRC.CRCCCITT import CRCCCITT
 import struct
 
-dumpFileName = "./test/logs/StepSingle.bin"
+dumpFileName = "./test/logs/StepValidateJMP000.bin"
 
 framePos = 0
 rxCRC = 0

@@ -63,17 +63,23 @@ class CommonTest:
             # Frame handler
             def onFrame(fr):
                 msgContent = {'cmdName':''}
-                try:
-                    msgContent = json.loads(fr)
-                    if msgContent['cmdName'] == "log":
+                frameStr = fr.decode()
+                # Split on nulls
+                msgList = frameStr.split('\0')
+                for msg in msgList:
+                    jsonStr = msg.rstrip(' \t\r\n\0')
+                    if len(jsonStr) > 0:
                         try:
-                            self.logger.info(f"{msgContent['lev']} : {msgContent['src']} {msgContent['msg']}")
+                            msgContent = json.loads(jsonStr)
                         except Exception as excp:
-                            self.logger.error(f"LOG CONTENT NOT FOUND IN FRAME {fr}, {excp}")
-                    else:
-                        frameCallback(msgContent)
-                except Exception as excp:
-                    self.logger.error(f"Failed to parse Json from {fr}, {excp}")
+                            self.logger.error(f"Failed to parse Json from {jsonStr}, {excp}")
+                        if msgContent['cmdName'] == "log":
+                            try:
+                                self.logger.info(f"{msgContent['lev']} : {msgContent['src']} {msgContent['msg']}")
+                            except Exception as excp:
+                                self.logger.error(f"LOG CONTENT NOT FOUND IN FRAME {fr}, {excp}")
+                        else:
+                            frameCallback(msgContent)
 
             # Reader
             self.rdpTCP = SimpleTCP(ipAddrOrHostName, self.rdpPort, self.dumpBinFile)
@@ -122,7 +128,7 @@ class CommonTest:
     def sendFrame(self, comment, content):
         if self.useIP:
             frame = bytearray(content)
-            self.rdpTCP.send(frame)
+            self.rdpTCP.sendFrame(frame)
         else:
             frame = bytearray(content)
             # for b in frame:
@@ -135,26 +141,28 @@ class CommonTest:
             except Exception as excp:
                 self.logger.error(f"Failed to send frame {comment}, {excp}")
 
-    def cleardown(self, useIP):
+    def cleardown(self):
         # Remain running for a little while to hoover up diagnostics, etc
         prevTime = time.time()
         while True:
             if time.time() - prevTime > 1:
                 break
         # Close down
-        if useIP:
+        if self.dumpBinFile is not None:
+            self.dumpBinFile.close()
+        if self.useIP:
             self.logger.info("UnitTest closing socket")
-            self.rdpTCP.stopReader()
+            try:
+                self.rdpTCP.stopReader()
+            except Exception as excp:
+                self.logger.error(f"{excp}")
         else:
             try:
                 self.hdlcHandler.stopReader()
             except Exception as excp:
                 self.logger.error(f"Serial port? {excp}")
-                self.hdlcHandler.stopReader()
 
             self.ser.close()
-            if self.dumpBinFile is not None:
-                self.dumpBinFile.close()
 
         # Results
         # testOk = (errCount == 0 and loopCount != 0)

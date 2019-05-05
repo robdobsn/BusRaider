@@ -49,8 +49,8 @@ class TargetClockGenerator
     void setFrequency(uint32_t newFreq)
     {
         bool isEnabled = _enabled;
-        LogWrite("ClockGen", LOG_VERBOSE, "setFrequency %d curEnabled %d",
-                newFreq, isEnabled);
+        // LogWrite("ClockGen", LOG_VERBOSE, "setFrequency %d curEnabled %d",
+        //         newFreq, isEnabled);
 
         if (_enabled)
             enable(false);
@@ -74,7 +74,7 @@ class TargetClockGenerator
         if (!en)
         {
             _enabled = false;
-            LogWrite("ClockGen", LOG_VERBOSE, "Disabled");
+            // LogWrite("ClockGen", LOG_VERBOSE, "Disabled");
             return;
         }
 
@@ -82,7 +82,7 @@ class TargetClockGenerator
         if (_outputPin == -1 || _altMode == INPUT)
         {
             _enabled = false;
-            LogWrite("ClockGen", LOG_VERBOSE, "Invalid settings pin %d mode %d",
+            LogWrite("ClockGen", LOG_ERROR, "Invalid settings pin %d mode %d",
                             _outputPin, _altMode);
             return;
         }
@@ -90,14 +90,14 @@ class TargetClockGenerator
         // Wait a little if busy
         int busyCount = 0;
         static const int MAX_BUSY_WAIT_COUNT = 100;
-        uint32_t lastBusy = 0;
+        // uint32_t lastBusy = 0;
         for (int i = 0; i < MAX_BUSY_WAIT_COUNT; i++)
         {
             if ((RD32(ARM_CM_GP0CTL) & ARM_CM_CTL_BUSY) == 0)
                 break;
             microsDelay(1);
             busyCount++;
-            lastBusy = RD32(ARM_CM_PWMCTL);
+            // lastBusy = RD32(ARM_CM_PWMCTL);
         }
 
         // Set the output pin
@@ -115,9 +115,9 @@ class TargetClockGenerator
         _enabled = true;
 
         // Debug
-        uint32_t freqGenerated = ARM_CM_CTL_PLLD_FREQ / divisor;
-        LogWrite("ClockGen", LOG_NOTICE, "Freq %d (req %d div %d) pin %d mode %d busyCount %d lastBusy %08x",
-                        freqGenerated, _freqReqd, divisor, _outputPin, _altMode, busyCount, lastBusy);
+        // uint32_t freqGenerated = ARM_CM_CTL_PLLD_FREQ / divisor;
+        // LogWrite("ClockGen", LOG_NOTICE, "Freq %d (req %d div %d) pin %d mode %d busyCount %d lastBusy %08x",
+        //                 freqGenerated, _freqReqd, divisor, _outputPin, _altMode, busyCount, lastBusy);
     }
 
     uint32_t getFreqInHz()

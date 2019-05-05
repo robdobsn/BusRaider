@@ -65,6 +65,7 @@ void McBase::getMachineNames(char* mcNameStr, int maxLen)
 bool McBase::setupMachine(const char* mcName, const char* mcJson)
 {
     // Disable machine first
+    LogWrite("McBase", LOG_DEBUG, "Disabling %s", mcName);
     disable();
 
     // Get machine sub type
@@ -79,7 +80,10 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
         }
     }
     if (mcSubType < 0)
+    {
+        LogWrite("McBase", LOG_DEBUG, "Subtype invalid %d", mcSubType);
         return false;
+    }
 
     // Copy descriptor
     _activeDescriptorTable = _pDefaultDescriptorTables[mcSubType];
@@ -111,7 +115,7 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
 void McBase::setupDisplay(DisplayBase* pDisplay)
 {
     _pDisplay = pDisplay;
-    LogWrite("McBase", LOG_DEBUG, "setupDisplay %d pixelsx %d pixelsy %d", pDisplay,
+    LogWrite("McBase", LOG_DEBUG, "setupDisplay ResX %d ResY %d",
                 _activeDescriptorTable.displayPixelsX, _activeDescriptorTable.displayPixelsY);
     if (!pDisplay)
         return;

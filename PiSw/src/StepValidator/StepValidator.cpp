@@ -66,6 +66,7 @@ StepValidator::StepValidator() :
     _stepCycleCount = 0;
     _stepCyclePos = 0;
     _pThisInstance = this;
+    _logging = false;
 
     // Validator memory as required
 #ifdef STEP_VAL_WITHOUT_HW_MANAGER
@@ -113,8 +114,14 @@ bool StepValidator::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
     // Check for validator start
     if (strcasecmp(cmdName, "validatorStart") == 0)
     {
+        char loggingStr[MAX_CMD_NAME_STR];
+        loggingStr[0] = 0;
+        bool logging = false;
+        jsonGetValueForKey("logging", pCmdJson, loggingStr, MAX_CMD_NAME_STR);
+        if ((strlen(loggingStr) != 0) && (loggingStr[0] == '1'))
+            logging = true;
         if (_pThisInstance)
-            _pThisInstance->start();
+            _pThisInstance->start(logging);
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
@@ -125,7 +132,7 @@ bool StepValidator::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
-    else if (strcasecmp(cmdName, "validatorStatusReq") == 0)
+    else if (strcasecmp(cmdName, "validatorStatus") == 0)
     {
         static const int MAX_STATUS_INDEX_LEN = 20;
         char statusIdxStr[MAX_STATUS_INDEX_LEN];
@@ -133,10 +140,10 @@ bool StepValidator::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
         jsonGetValueForKey("msgIdx", pCmdJson, statusIdxStr, MAX_STATUS_INDEX_LEN);
         static const int MAX_STATUS_RESP_LEN = 1000;
         char statusStr[MAX_STATUS_RESP_LEN];
-        strcpy(statusStr, "{}");
+        strcpy(statusStr, "");
         if (_pThisInstance)
             _pThisInstance->getStatus(statusStr, MAX_STATUS_RESP_LEN, statusIdxStr);
-        CommandHandler::sendWithJSON("validatorStatusResp", statusStr);
+        strlcpy(pRespJson, statusStr, maxRespLen);
         // LogWrite(FromStepValidator, LOG_DEBUG, "StepValStatus %s", statusStr);
         return true;
     }
@@ -155,10 +162,12 @@ bool StepValidator::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
 // Start/Stop
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void StepValidator::start()
+void StepValidator::start(bool logging)
 {
     // Debug
-    LogWrite(FromStepValidator, LOG_DEBUG, "StepValStart");
+    _logging = logging;
+    if (_logging)
+        LogWrite(FromStepValidator, LOG_DEBUG, "StepValStart");
 
     // Change CPU clock
     BusAccess::clockSetFreqHz(250000);
@@ -174,7 +183,8 @@ void StepValidator::start()
 
 void StepValidator::stop()
 {
-    LogWrite(FromStepValidator, LOG_DEBUG, "StepValStop");
+    if (_logging)
+        LogWrite(FromStepValidator, LOG_DEBUG, "StepValStop");
 
     // Turn off the bus socket    
     BusAccess::busSocketEnable(_busSocketId, false);
@@ -221,7 +231,8 @@ void StepValidator::resetComplete()
     _stepCyclePos = 0;
     _isActive = true;
 
-    LogWrite(FromStepValidator, LOG_DEBUG, "RESET");
+    if (_logging)
+        LogWrite(FromStepValidator, LOG_DEBUG, "Reset");
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
     microsDelay(10);
@@ -312,24 +323,28 @@ void StepValidator::service()
     debugMsg[0] = 0;
     if (_exceptionsPosn.canGet())
     {
-        // Exception
-        int pos = _exceptionsPosn.posToGet();
-        int flags = _exceptions[pos].flags;
-        int expFlags = _exceptions[pos].expectedFlags;
-        ee_sprintf(debugMsg+strlen(debugMsg), "%07d got %04x %02x %c%c%c%c%c%c%c%c%c exp %04x %02x %c%c%c%c%c%c%c%c%c ToZ80 %02x",
-                    _exceptions[pos].stepCount,
-                    _exceptions[pos].addr, 
-                    _exceptions[pos].dataFromZ80, 
-                    flags & 0x01 ? 'R': ' ', flags & 0x02 ? 'W': ' ', flags & 0x04 ? 'M': ' ',
-                    flags & 0x08 ? 'I': ' ', flags & 0x10 ? '1': ' ', flags & 0x20 ? 'T': ' ',
-                    flags & 0x40 ? 'X': ' ', flags & 0x80 ? 'Q': ' ', flags & 0x100 ? 'N': ' ',
-                    _exceptions[pos].expectedAddr, 
-                    _exceptions[pos].expectedData == 0xffff ? 0 : _exceptions[pos].expectedData, 
-                    expFlags & 0x01 ? 'R': ' ', expFlags & 0x02 ? 'W': ' ', expFlags & 0x04 ? 'M': ' ',
-                    expFlags & 0x08 ? 'I': ' ', expFlags & 0x10 ? '1': ' ', expFlags & 0x20 ? 'T': ' ',
-                    expFlags & 0x40 ? 'X': ' ', expFlags & 0x80 ? 'Q': ' ', expFlags & 0x100 ? 'N': ' ',
-                    _exceptions[pos].dataToZ80);
-        LogWrite(FromStepValidator, LOG_DEBUG, debugMsg);
+        // Check if logging enabled
+        if (_logging)
+        {
+            // Exception
+            int pos = _exceptionsPosn.posToGet();
+            int flags = _exceptions[pos].flags;
+            int expFlags = _exceptions[pos].expectedFlags;
+            ee_sprintf(debugMsg+strlen(debugMsg), "%07d got %04x %02x %c%c%c%c%c%c%c%c%c exp %04x %02x %c%c%c%c%c%c%c%c%c ToZ80 %02x",
+                        _exceptions[pos].stepCount,
+                        _exceptions[pos].addr, 
+                        _exceptions[pos].dataFromZ80, 
+                        flags & 0x01 ? 'R': ' ', flags & 0x02 ? 'W': ' ', flags & 0x04 ? 'M': ' ',
+                        flags & 0x08 ? 'I': ' ', flags & 0x10 ? '1': ' ', flags & 0x20 ? 'T': ' ',
+                        flags & 0x40 ? 'X': ' ', flags & 0x80 ? 'Q': ' ', flags & 0x100 ? 'N': ' ',
+                        _exceptions[pos].expectedAddr, 
+                        _exceptions[pos].expectedData == 0xffff ? 0 : _exceptions[pos].expectedData, 
+                        expFlags & 0x01 ? 'R': ' ', expFlags & 0x02 ? 'W': ' ', expFlags & 0x04 ? 'M': ' ',
+                        expFlags & 0x08 ? 'I': ' ', expFlags & 0x10 ? '1': ' ', expFlags & 0x20 ? 'T': ' ',
+                        expFlags & 0x40 ? 'X': ' ', expFlags & 0x80 ? 'Q': ' ', expFlags & 0x100 ? 'N': ' ',
+                        _exceptions[pos].dataToZ80);
+            LogWrite(FromStepValidator, LOG_DEBUG, debugMsg);
+        }
 
         // No longer need exception
         _exceptionsPosn.hasGot();

@@ -60,9 +60,6 @@ McTRS80::McTRS80() : McBase(_defaultDescriptorTables, sizeof(_defaultDescriptorT
 // Enable machine
 void McTRS80::enable()
 {
-    // TODO have a standard json hw list in descriptor and override if hw section in opts json
-    HwManager::enableHw("64KRAM", true);
-
     // Invalidate screen buffer
     _screenBufferValid = false;
     _keyBufferDirty = false;
@@ -71,7 +68,6 @@ void McTRS80::enable()
 // Disable machine
 void McTRS80::disable()
 {
-    LogWrite(_logPrefix, LOG_DEBUG, "Disabling TRS80");
 }
 
 // void McTRS80::handleRegisters(Z80Registers& regs)
@@ -305,7 +301,10 @@ bool McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
     #define MAX_FILE_NAME_STR 100
     char fileName[MAX_FILE_NAME_STR+1];
     if (!jsonGetValueForKey("fileName", pFileInfo, fileName, MAX_FILE_NAME_STR))
+    {
+        LogWrite(_logPrefix, LOG_DEBUG, "failed to get key fileName");
         return false;
+    }
     // Check type of file (assume extension is delimited by .)
     const char* pFileType = strstr(fileName, ".");
     const char* pEmpty = "";

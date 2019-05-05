@@ -145,10 +145,14 @@ void CommandHandler::hdlcFrameRx(const uint8_t *pFrame, int frameLength)
 void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams, int paramsLen)
 {
     // Get the command string from JSON
+    static const int MAX_MSGIDX_STR_LEN = 20;
     static const int MAX_CMD_NAME_STR = 200;
     char cmdName[MAX_CMD_NAME_STR+1];
     if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
         return;
+    char msgIdxStr[MAX_MSGIDX_STR_LEN];
+    msgIdxStr[0] = 0;
+    jsonGetValueForKey("msgIdx", pCmdJson, msgIdxStr, MAX_MSGIDX_STR_LEN);
 
     // Debug
     // LogWrite(FromCmdHandler, LOG_DEBUG, "processCommand JSON %s cmdName %s paramsLen %d", pCmdJson, cmdName, paramsLen); 
@@ -180,12 +184,8 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     {
         // LogWrite(FromCmdHandler, LOG_DEBUG, "RDP message rx cmd %s cmdLen %d paramsStr %s paramslen %d", 
         //             pCmdJson, strlen(pCmdJson), pParams, paramsLen);
-        static const int MAX_RDP_IDX_STR_LEN = 20;
-        char rdpIdxStr[MAX_RDP_IDX_STR_LEN];
-        if (jsonGetValueForKey("index", pCmdJson, rdpIdxStr, MAX_RDP_IDX_STR_LEN))
-        {
-            rdpIndex = strtol(rdpIdxStr, NULL, 10);
-        }
+        // Rdp msg idx is the outer msgIdx
+        rdpIndex = strtol(msgIdxStr, NULL, 10);
 
         // Handle the rdp frame - extract command string
         strlcpy(pCommandString, (const char*)pParams, CMD_HANDLER_MAX_CMD_STR_LEN);
@@ -197,7 +197,12 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
         if (paramsLen > 0)
             pParams++;
         pCmdJson = pCommandString;
+        jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR);
+        jsonGetValueForKey("msgIdx", pCmdJson, msgIdxStr, MAX_MSGIDX_STR_LEN);
         rdpMessage = true;
+
+        // LogWrite(FromCmdHandler, LOG_DEBUG, "RDPRX cmd %s cmdLen %d paramsStr %s paramslen %d", 
+        //             pCmdJson, strlen(pCmdJson), pParams, paramsLen);
     }
               
     // Offer to comms sockets
@@ -206,25 +211,42 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     respJson[0] = 0;
     commsSocketHandleRxMsg(pCmdJson, pParams, paramsLen, respJson, MAX_RESP_MSG_LEN);
 
-        // LogWrite(FromCmdHandler, LOG_DEBUG, "CMDMSG rx cmd %s cmdLen %d paramsStr %s paramslen %d respJson %s", 
-        //         pCmdJson, strlen(pCmdJson), pParams, paramsLen, respJson);
+    // if (rdpMessage)
+    //     LogWrite(FromCmdHandler, LOG_DEBUG, "CMDMSG rx cmd %s cmdLen %d paramsStr %s paramslen %d respJson %s", 
+    //             pCmdJson, strlen(pCmdJson), pParams, paramsLen, respJson);
 
-    // Handle response
-    if (strlen(respJson) > 0)
+    // Form response cmdName
+    char cmdNameResp[MAX_CMD_NAME_STR];
+    strlcpy(cmdNameResp, cmdName, MAX_CMD_NAME_STR);
+    strlcat(cmdNameResp, "Resp", MAX_CMD_NAME_STR);
+
+    if (rdpMessage)
     {
-        if (rdpMessage)
+        // Wrap up the JSON
+        static const int JSON_RESP_MAX_LEN = 10000;
+        static char jsonFrame[JSON_RESP_MAX_LEN];
+        strlcpy(jsonFrame, "{\"cmdName\":\"", JSON_RESP_MAX_LEN);
+        strlcat(jsonFrame, cmdNameResp, JSON_RESP_MAX_LEN);
+        strlcat(jsonFrame, "\"", JSON_RESP_MAX_LEN);
+        if (strlen(respJson) > 0)
         {
-            // Send response back
-            sendData("rdp", (const uint8_t*)respJson, strlen(respJson), rdpIndex);
+            strlcat(jsonFrame, ",", JSON_RESP_MAX_LEN);
+            strlcat(jsonFrame, respJson, JSON_RESP_MAX_LEN);
         }
-        else
+        if (strlen(msgIdxStr) > 0)
         {
-            static const int MAX_CMD_NAME_RESP_LEN = 100;
-            char cmdNameResp[MAX_CMD_NAME_RESP_LEN];
-            strlcpy(cmdNameResp, cmdName, MAX_CMD_NAME_RESP_LEN);
-            strlcat(cmdNameResp, "Resp", MAX_CMD_NAME_RESP_LEN);
+            strlcat(jsonFrame, ",\"msgIdx\":", JSON_RESP_MAX_LEN);
+            strlcat(jsonFrame, msgIdxStr, JSON_RESP_MAX_LEN);
+        }
+        strlcat(jsonFrame, ",\"dataLen\":0}", JSON_RESP_MAX_LEN);
+
+        // Send response back
+        sendWithJSON("rdp", "", rdpIndex, (const uint8_t*)jsonFrame, strlen(jsonFrame));
+    }
+    else
+    {
+        if (strlen(respJson) > 0)
             sendWithJSON(cmdNameResp, respJson);
-        }
     }
 }
 
@@ -445,18 +467,51 @@ void CommandHandler::sendKeyCodeToTarget(int keyCode)
 // Send with JSON payload
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void CommandHandler::sendWithJSON(const char* cmdName, const char* cmdJson)
+void CommandHandler::sendWithJSON(const char* cmdName, const char* cmdJson, uint32_t msgIdx, 
+            const uint8_t* pData, uint32_t dataLen)
 {
     // Form and send command
-    static const int MAX_CMD_STR_LEN = 1500;
-    static char cmdStr[MAX_CMD_STR_LEN+1];
-    strlcpy(cmdStr, "{\"cmdName\":\"", MAX_CMD_STR_LEN);
-    strlcpy(cmdStr+strlen(cmdStr), cmdName, MAX_CMD_STR_LEN);
-    strlcpy(cmdStr+strlen(cmdStr), "\",", MAX_CMD_STR_LEN);
-    strlcpy(cmdStr+strlen(cmdStr), cmdJson, MAX_CMD_STR_LEN);
-    strlcpy(cmdStr+strlen(cmdStr), "}", MAX_CMD_STR_LEN);
+    // This takes the form of a binary buffer, the first part is a JSON string null terminated
+    // This JSON contains a dataLen value which determines the length of the binary part that follows
+    // The binary part immediately follows the null terminator of the JSON
+    // It is also null terminated and the null terminator is not included in the dataLan value
+    static const int MAX_DATAFRAME_LEN = 10000;
+    static char dataFrame[MAX_DATAFRAME_LEN];
+    static char indexStr[10];
+    itoa(msgIdx, indexStr, 10);
+    static char lenStr[10];
+    itoa(dataLen, lenStr, 10);
+    strlcpy(dataFrame, "{\"cmdName\":\"", MAX_DATAFRAME_LEN);
+    strlcat(dataFrame, cmdName, MAX_DATAFRAME_LEN);
+    strlcat(dataFrame, "\"", MAX_DATAFRAME_LEN);
+    if (strlen(cmdJson) > 0)
+    {
+        strlcat(dataFrame, ",", MAX_DATAFRAME_LEN);
+        strlcat(dataFrame, cmdJson, MAX_DATAFRAME_LEN);
+    }
+    strlcat(dataFrame, ",\"msgIdx\":", MAX_DATAFRAME_LEN);
+    strlcat(dataFrame, indexStr, MAX_DATAFRAME_LEN);
+    strlcat(dataFrame, ",\"dataLen\":", MAX_DATAFRAME_LEN);
+    strlcat(dataFrame, lenStr, MAX_DATAFRAME_LEN);
+    strlcat(dataFrame, "}", MAX_DATAFRAME_LEN);
+    // Allow for two terminators (one after JSON and one at end of binary section)
+    uint32_t dataFrameBinaryPos = strlen(dataFrame)+1;
+    uint32_t dataFrameTotalLen = dataFrameBinaryPos+dataLen+1; 
+    // LogWrite(FromCmdHandler, LOG_DEBUG, "SEND DATA cmd %s dataFr %s dataFrameLen %d tooLong %d msg %s",
+    //             cmdName, dataFrame, dataFrameLen, dataFrameLen >= MAX_DATAFRAME_LEN, (pData ? pData : ""));
+    if (dataFrameTotalLen >= MAX_DATAFRAME_LEN)
+        return;
+    if (dataLen > 0)
+    {
+        if (pData)
+            memcpy(dataFrame+dataFrameBinaryPos, pData, dataLen);
+        else
+            return;
+    }
+    // Terminate the binary portion two (belt-and-braces!)
+    dataFrame[dataFrameTotalLen-1] = 0;
     if (_pSingletonCommandHandler)
-        _pSingletonCommandHandler->_miniHDLC.sendFrame((const uint8_t*)cmdStr, strlen(cmdStr)+1);
+        _pSingletonCommandHandler->_miniHDLC.sendFrame((const uint8_t*)dataFrame, dataFrameTotalLen);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -476,45 +531,16 @@ void CommandHandler::sendAPIReq(const char* reqLine)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Send RDP message
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void CommandHandler::sendData(const char* cmdName, const uint8_t* pData, uint32_t len, uint32_t index)
-{
-    // LogWrite(FromCmdHandler, LOG_VERBOSE, "RDP replying with %s", pStr);
-    static const int MAX_RESPONSE_MSG_LEN = 2000;
-    static char dataFrame[MAX_RESPONSE_MSG_LEN+1];
-    static char indexStr[10];
-    itoa(index, indexStr, 10);
-    static char lenStr[10];
-    itoa(len, lenStr, 10);
-    strlcpy(dataFrame, "{\"cmdName\":\"", MAX_RESPONSE_MSG_LEN);
-    strlcat(dataFrame, cmdName, MAX_RESPONSE_MSG_LEN);
-    strlcat(dataFrame, "\",\"index\":\"", MAX_RESPONSE_MSG_LEN);
-    strlcat(dataFrame, indexStr, MAX_RESPONSE_MSG_LEN);
-    strlcat(dataFrame, "\",\"len\":\"", MAX_RESPONSE_MSG_LEN);
-    strlcat(dataFrame, lenStr, MAX_RESPONSE_MSG_LEN);
-    strlcat(dataFrame, "\"}", MAX_RESPONSE_MSG_LEN);
-    uint32_t dataFrameLen = strlen(dataFrame)+1+len+1;    
-    if (dataFrameLen >= MAX_RESPONSE_MSG_LEN)
-        return;
-    memcpy(dataFrame+strlen(dataFrame)+1, pData, len);
-    dataFrame[dataFrameLen] = 0;
-    if (_pSingletonCommandHandler)
-        _pSingletonCommandHandler->_miniHDLC.sendFrame((const uint8_t*)dataFrame, dataFrameLen);
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Log debug message
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void CommandHandler::logDebugMessage(const char* pStr)
 {
-    static const int MAX_RESPONSE_MSG_LEN = 2000;
-    char responseJson[MAX_RESPONSE_MSG_LEN+1];
-    strlcpy(responseJson, "\"msg\":\"", MAX_RESPONSE_MSG_LEN);
-    strlcat(responseJson, pStr, MAX_RESPONSE_MSG_LEN);
-    strlcat(responseJson, "\"", MAX_RESPONSE_MSG_LEN);
+    static const int MAX_DATAFRAME_LEN = 2000;
+    char responseJson[MAX_DATAFRAME_LEN+1];
+    strlcpy(responseJson, "\"msg\":\"", MAX_DATAFRAME_LEN);
+    strlcat(responseJson, pStr, MAX_DATAFRAME_LEN);
+    strlcat(responseJson, "\"", MAX_DATAFRAME_LEN);
     sendWithJSON("log", responseJson);
 }
 

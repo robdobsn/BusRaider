@@ -68,7 +68,7 @@ public:
     void init();
 
     // Control
-    void start();
+    void start(bool logging);
     void stop();
     void primeFromMem();
     
@@ -82,6 +82,9 @@ private:
 
     // Z80 CPU context
     Z80Context _cpu_z80;
+
+    // Logging enabled
+    bool _logging;
 
     // Memory system
 #ifdef STEP_VAL_WITHOUT_HW_MANAGER

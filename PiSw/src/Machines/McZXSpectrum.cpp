@@ -64,13 +64,11 @@ McZXSpectrum::McZXSpectrum() : McBase(_defaultDescriptorTables, sizeof(_defaultD
 void McZXSpectrum::enable()
 {
     _screenCacheValid = false;
-    LogWrite(_logPrefix, LOG_VERBOSE, "Enabling");
 }
 
 // Disable machine
 void McZXSpectrum::disable()
 {
-    LogWrite(_logPrefix, LOG_VERBOSE, "Disabling");
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)

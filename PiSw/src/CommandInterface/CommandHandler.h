@@ -73,9 +73,9 @@ public:
 
     // Send key code to target
     static void sendKeyCodeToTarget(int keyCode);
-    static void sendWithJSON(const char* cmdName, const char* cmdJson);
+    static void sendWithJSON(const char* cmdName, const char* cmdJson, uint32_t msgIdx = 0, 
+            const uint8_t* pData = NULL, uint32_t dataLen = 0);
     static void sendAPIReq(const char* reqLine);
-    static void sendData(const char* cmdName, const uint8_t* pData, uint32_t len, uint32_t index);
     void getStatusResponse(bool* pIPAddressValid, char** pIPAddress, char** pWifiConnStr, 
                 char** pWifiSSID, char** pEsp32Version);
     void sendRegularStatusUpdate();

@@ -163,8 +163,8 @@ void Hw64KRam::validatorClone()
     else
     {
         int blockReadResult = BusAccess::blockRead(0, pValMemory, _validatorMemoryLen, true, false);
-        LogWrite(_logPrefix, LOG_DEBUG, "validatorClone blockRead %s", (blockReadResult == BR_OK) ? "OK" : "FAIL");
-        LogWrite(_logPrefix, LOG_DEBUG, "validatorClone blockRead %02x %02x %02x", pValMemory[0], pValMemory[1], pValMemory[2]);
+        // LogWrite(_logPrefix, LOG_DEBUG, "validatorClone blockRead %s", (blockReadResult == BR_OK) ? "OK" : "FAIL");
+        // LogWrite(_logPrefix, LOG_DEBUG, "validatorClone blockRead %02x %02x %02x", pValMemory[0], pValMemory[1], pValMemory[2]);
     }
 }
 

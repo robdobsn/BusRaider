@@ -4,7 +4,7 @@
 #include "RemoteDebugProtocol.h"
 #include "ArduinoLog.h"
 
-static const char* RemoteDebugProtocolWelcomeMessage = "Welcome to BusRaider\ncommand> ";
+static const char* RemoteDebugProtocolWelcomeMessage = "";
 static const char* SESSION_PREFIX = "RemoteDebugProtocolSession: ";
 static const char* MODULE_PREFIX = "RemoteDebugProtocolServer: ";
 

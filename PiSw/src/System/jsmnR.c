@@ -58,7 +58,8 @@ static int JSMNR_parse_primitive(JSMNR_parser *parser, const char *js,
 				goto found;
 		}
 		if (js[parser->pos] < 32 || js[parser->pos] >= 127) {
-            LogWrite(FromJSMNR, LOG_DEBUG, "JSMNR_ERROR_INVAL ch bounds %d pos %d", js[parser->pos], parser->pos);
+            LogWrite(FromJSMNR, LOG_DEBUG, "JSMNR_ERROR_INVAL chVal %d chPos %d json %s", 
+					js[parser->pos], parser->pos, ((strlen(js) < 200) ? js : "TOO LONG TO SHOW"));
             parser->pos = start;
 			return JSMNR_ERROR_INVAL;
 		}

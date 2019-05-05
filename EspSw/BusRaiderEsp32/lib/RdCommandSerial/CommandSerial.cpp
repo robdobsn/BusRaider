@@ -217,7 +217,7 @@ void CommandSerial::sendTargetCommand(const String& targetCmd)
 
 void CommandSerial::sendTargetData(const String& cmdName, const uint8_t* pData, int len, int index)
 {
-    String header = "{\"cmdName\":\"" + cmdName + "\",\"index\":" + String(index) + ",\"len\":" + String(len) + "}";
+    String header = "{\"cmdName\":\"" + cmdName + "\",\"msgIdx\":" + String(index) + ",\"dataLen\":" + String(len) + "}";
     int headerLen = header.length();
     uint8_t* pFrameBuf = new uint8_t[headerLen + len + 1];
     memcpy(pFrameBuf, header.c_str(), headerLen);

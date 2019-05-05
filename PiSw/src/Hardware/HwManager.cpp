@@ -400,7 +400,7 @@ void HwManager::setupFromJson(const char* jsonKey, const char* hwJson)
         pJsonHwListToUse = _pDefaultHardwareList;
 
     int hwListLen = jsonGetArrayLen(pJsonHwListToUse);
-    LogWrite(FromHwManager, LOG_DEBUG, "Hardware list len %d", hwListLen);
+    // LogWrite(FromHwManager, LOG_DEBUG, "Hardware list len %d", hwListLen);
 
     // Iterate through hardware
     for (int hwIdx = 0; hwIdx < hwListLen; hwIdx++)
@@ -418,7 +418,7 @@ void HwManager::setupFromJson(const char* jsonKey, const char* hwJson)
         char hwName[HW_NAME_MAXLEN];
         if (!jsonGetValueForKey("name", hwDefJson, hwName, HW_NAME_MAXLEN))
             continue;
-        LogWrite(FromHwManager, LOG_DEBUG, "Hardware %d Name %s", hwIdx, hwName);
+        // LogWrite(FromHwManager, LOG_DEBUG, "Hardware %d Name %s", hwIdx, hwName);
 
         // Get enable
         static const int HW_ENABLE_MAXLEN = 100;
@@ -435,7 +435,7 @@ void HwManager::setupFromJson(const char* jsonKey, const char* hwJson)
         // Enable/Disable
         enableHw(hwName, en);
 
-        LogWrite(FromHwManager, LOG_DEBUG, "Hardware %d Name %s Enable %d", hwIdx, hwName, en);
+        // LogWrite(FromHwManager, LOG_DEBUG, "Hardware %d Name %s Enable %d", hwIdx, hwName, en);
 
         // Configure each piece of hardware with this information
         // only the named one will actually use the configuration

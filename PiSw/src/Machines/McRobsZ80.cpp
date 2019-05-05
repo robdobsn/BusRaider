@@ -53,13 +53,11 @@ McRobsZ80::McRobsZ80() : McBase(_defaultDescriptorTables, sizeof(_defaultDescrip
 void McRobsZ80::enable()
 {
     _screenBufferValid = false;
-    LogWrite(_logPrefix, LOG_DEBUG, "Enabling");
 }
 
 // Disable machine
 void McRobsZ80::disable()
 {
-    LogWrite(_logPrefix, LOG_DEBUG, "Disabling");
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
