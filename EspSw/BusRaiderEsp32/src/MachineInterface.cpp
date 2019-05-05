@@ -19,7 +19,10 @@ static const char* MODULE_PREFIX = "MachineInterface: ";
 static const char* demoModeControlFileName = "demo.json";
 static const int demoModeControlFileMaxlen = 2000;
 
-MachineInterface::MachineInterface()
+MachineInterface::MachineInterface() : 
+        _miniHDLCForRDPTCP(std::bind(&MachineInterface::hdlcTxCharTCP, this, std::placeholders::_1), 
+            std::bind(&MachineInterface::hdlcRxFrameTCP, this, std::placeholders::_1, std::placeholders::_2),
+            true, false)
 {
     _cachedStatusJSON = "{}";
     _pTargetSerial = NULL;
@@ -80,26 +83,9 @@ void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandS
         {
             (void)cbArg;
 
-            if (_pCommandSerial)
-                _pCommandSerial->sendTargetData("rdp", pData, dataLen, _rdpCommandIndex++);
-
-            // // Check valid
-            // if ((numChars < 0) || (numChars > MAX_COMMAND_LEN))
-            //     return;
-
-            // // Ensure string is terminated
-            // char* pStr = new char[numChars+1];
-            // memcpy(pStr, pData, numChars);
-            // pStr[numChars] = 0;
-            // String str = pStr;
-            // // Clean up
-            // delete [] pStr;
-
-            // Send target command to Pi
-            // Log.trace("%s-> %s", MODULE_PREFIX, str.c_str());
-            // if (_pCommandSerial)
-            //     _pCommandSerial->sendTargetData("rdp", (const uint8_t*)str.c_str(), 
-            //             str.length(), _rdpCommandIndex++);
+            // Process chars through HDLC
+            for (int rxCtr = 0; rxCtr < dataLen; rxCtr++)
+                _miniHDLCForRDPTCP.handleChar(pData[rxCtr]);
 
         }, this);
     }
@@ -107,7 +93,9 @@ void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandS
     // Set callback on frame received from Pi
     if (_pCommandSerial)
     {
-        _pCommandSerial->setCallbackOnRxFrame([this](const uint8_t *frameBuffer, int frameLength) {
+        _pCommandSerial->setCallbackOnRxFrame([this](const uint8_t *frameBuffer, int frameLength) 
+        {
+            // Log.trace("onDataFromPi len %s %d\n", frameBuffer, frameLength);
             handleFrameRxFromPi(frameBuffer, frameLength);
         });
     }
@@ -352,11 +340,7 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *frameBuffer, int frame
         // Log.trace("%srdp <- %s server %d payloadLen %d payload %s\n", 
         //             MODULE_PREFIX, pRxStr, _pRemoteDebugServer, payloadLen,
         //             frameBuffer+payloadStartPos);
-        if (_pRemoteDebugServer && (payloadLen > 0))
-        {
-            // Log.trace("%srdp <- %s\n", MODULE_PREFIX, frameBuffer+payloadStartPos);
-            _pRemoteDebugServer->sendChars(frameBuffer+payloadStartPos, payloadLen);
-        }
+        _miniHDLCForRDPTCP.sendFrame(frameBuffer+payloadStartPos, payloadLen);
     }
     else if (cmdName.equalsIgnoreCase("log"))
     {
@@ -633,3 +617,20 @@ void wsEventHandler(AsyncWebSocket *server,
 }
 #endif
 
+void MachineInterface::hdlcRxFrameTCP(const uint8_t *framebuffer, int framelength)
+{
+    // Send it to Pi
+    if (_pCommandSerial)
+        _pCommandSerial->sendTargetData("rdp",
+                framebuffer, framelength, _rdpCommandIndex++);
+
+    // Log.trace("hdlcRxFrameTCP len%d\n", framelength);
+}
+
+void MachineInterface::hdlcTxCharTCP(uint8_t ch)
+{
+    if (_pRemoteDebugServer)
+    {
+        _pRemoteDebugServer->sendChars(&ch, 1);
+    }
+}

@@ -20,7 +20,7 @@ class SimpleTCP(object):
 
     def sendFrame(self, data):
         res = self.rdpSocket.send(data)
-        time.sleep(0.05)
+        # time.sleep(0.05)
         # logger.info("Send %s bytes", res)
 
     def _receiveLoop(self):

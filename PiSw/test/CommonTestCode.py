@@ -56,34 +56,40 @@ class CommonTest:
         except Exception(excp):
             self.logger.warning("Can't open dump binary file " + os.path.join("./test/logs/", dumpBinFileName))
 
+        # HDLC Frame handler
+        def onHDLCFrame(fr):
+            msgContent = {'cmdName':''}
+            try:
+                msgContent = json.loads(fr)
+                if msgContent['cmdName'] == "log":
+                    try:
+                        self.logger.info(f"{msgContent['lev']} : {msgContent['src']} {msgContent['msg']}")
+                    except Exception as excp:
+                        self.logger.error(f"LOG CONTENT NOT FOUND IN FRAME {fr}, {excp}")
+                else:
+                    frameCallback(msgContent)
+            except Exception as excp:
+                self.logger.error(f"Failed to parse Json from {fr}, {excp}")
+
         # Check for using IP address
         if useIP:
             self.rdpPort = 10000
 
-            # Frame handler
-            def onFrame(fr):
-                msgContent = {'cmdName':''}
-                frameStr = fr.decode()
-                # Split on nulls
-                msgList = frameStr.split('\0')
-                for msg in msgList:
-                    jsonStr = msg.rstrip(' \t\r\n\0')
-                    if len(jsonStr) > 0:
-                        try:
-                            msgContent = json.loads(jsonStr)
-                        except Exception as excp:
-                            self.logger.error(f"Failed to parse Json from {jsonStr}, {excp}")
-                        if msgContent['cmdName'] == "log":
-                            try:
-                                self.logger.info(f"{msgContent['lev']} : {msgContent['src']} {msgContent['msg']}")
-                            except Exception as excp:
-                                self.logger.error(f"LOG CONTENT NOT FOUND IN FRAME {fr}, {excp}")
-                        else:
-                            frameCallback(msgContent)
+            def sendDataToTCP(dataToSend):
+                self.rdpTCP.sendFrame(dataToSend)
 
-            # Reader
-            self.rdpTCP = SimpleTCP(ipAddrOrHostName, self.rdpPort, self.dumpBinFile)
-            self.rdpTCP.startReader(onFrame)
+            # Frame handler
+            def onTCPFrame(fr):
+                # Send to HDLC
+                self.hdlcHandler.processBytes(fr)
+
+            # TCP Reader
+            self.rdpTCP = SimpleTCP(ipAddrOrHostName, self.rdpPort)
+            self.rdpTCP.startReader(onTCPFrame)
+
+            # Setup HDLC
+            self.hdlcHandler = HDLC(None, sendDataToTCP, self.dumpBinFile)
+            self.hdlcHandler.setCallbacks(onHDLCFrame)
 
         else:
             # Open the serial connection to the BusRaider
@@ -106,40 +112,21 @@ class CommonTest:
             self.logger.info(f"UnitTest BusRaider port {serialPort} baudrate {serialBaud}")
             sys.stdout.flush()
 
-            # Frame handler
-            def onFrame(fr):
-                msgContent = {'cmdName':''}
-                try:
-                    msgContent = json.loads(fr)
-                    if msgContent['cmdName'] == "log":
-                        try:
-                            self.logger.info(f"{msgContent['lev']} : {msgContent['src']} {msgContent['msg']}")
-                        except Exception as excp:
-                            self.logger.error(f"LOG CONTENT NOT FOUND IN FRAME {fr}, {excp}")
-                    else:
-                        frameCallback(msgContent)
-                except Exception as excp:
-                    self.logger.error(f"Failed to parse Json from {fr}, {excp}")
-
             # Setup HDLC sender
             self.hdlcHandler = HDLC(self.ser, self.dumpBinFile)
-            self.hdlcHandler.startReader(onFrame)
+            self.hdlcHandler.startReader(onHDLCFrame)
 
     def sendFrame(self, comment, content):
-        if self.useIP:
-            frame = bytearray(content)
-            self.rdpTCP.sendFrame(frame)
-        else:
-            frame = bytearray(content)
-            # for b in frame:
-            #     print(hex(b)+" ",end='')
-            # print()
-            try:
-                self.hdlcHandler.sendFrame(frame)
-                if self.logSends and len(comment) > 0: 
-                    self.logger.debug(f"Sent {comment}")
-            except Exception as excp:
-                self.logger.error(f"Failed to send frame {comment}, {excp}")
+        frame = bytearray(content)
+        # for b in frame:
+        #     print(hex(b)+" ",end='')
+        # print()
+        try:
+            self.hdlcHandler.sendFrame(frame)
+            if self.logSends and len(comment) > 0: 
+                self.logger.debug(f"Sent {comment}")
+        except Exception as excp:
+            self.logger.error(f"Failed to send frame {comment}, {excp}")
 
     def cleardown(self):
         # Remain running for a little while to hoover up diagnostics, etc

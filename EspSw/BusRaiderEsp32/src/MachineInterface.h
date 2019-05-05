@@ -53,6 +53,8 @@ private:
     // Remote debug server
     RemoteDebugProtocolServer* _pRemoteDebugServer;
     int _rdpCommandIndex;
+    // HDLC processor for RDP
+    MiniHDLC _miniHDLCForRDPTCP;
 
     // REST API
     RestAPIEndpoints* _pRestAPIEndpoints;
@@ -74,6 +76,10 @@ private:
     String _demoPreloadFilesJson;
     String _demoFileToRun;
     int _demoProgramIdx;
+
+    // Frame handlers for RDP
+    void hdlcRxFrameTCP(const uint8_t *framebuffer, int framelength);
+    void hdlcTxCharTCP(uint8_t ch);
 
 public:
     MachineInterface();

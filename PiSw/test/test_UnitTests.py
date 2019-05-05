@@ -42,7 +42,7 @@ def test_Comms():
     for i in range(testRepeatCount):
         commonTest.sendFrame("statusReq", b"{\"cmdName\":\"validatorStatus\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
         msgIdx += 1
-        time.sleep(0.1)
+        time.sleep(0.2)
     
     # Wait for test end and cleardown
     commonTest.cleardown()

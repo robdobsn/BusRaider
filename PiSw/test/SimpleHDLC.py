@@ -59,8 +59,9 @@ class Frame(object):
         return self.data.decode('utf-8').rstrip('\0')
 
 class HDLC(object):
-    def __init__(self, serial, dumpFile=None):
+    def __init__(self, serial, dataSendFn, dumpFile=None):
         self.serial = serial
+        self.dataSendFn = dataSendFn
         self.current_frame = None
         self.last_frame = None
         self.frame_callback = None
@@ -75,7 +76,10 @@ class HDLC(object):
     def sendFrame(self, data):
         bs = self._encode(self.toBytes(data))
         # logger.info("Sending Frame: %d", len(data))
-        res = self.serial.write(bs)
+        if self.serial is not None:
+            res = self.serial.write(bs)
+        else:
+            self.dataSendFn(bs)
         # logger.info("Send %s bytes", res)
 
     def _onFrame(self, frame):
@@ -97,9 +101,13 @@ class HDLC(object):
         if self.dumpFile is not None:
             self.dumpFile.write(b)
         for i in range(len(b)):
-            self._readByteAndProc(b[i])
+            self.processByte(b[i])
 
-    def _readByteAndProc(self, b):
+    def processBytes(self, bs):
+        for b in bs:
+            self.processByte(b)
+            
+    def processByte(self, b):
         assert 0 <= b <= 255
         if b == 0x7E:
             # Start or End
@@ -177,6 +185,10 @@ class HDLC(object):
                 # sys.stdout.flush()
                 continue
             self._readBytesAndProc(i)
+
+    def setCallbacks(self, onFrame, onError=None):
+        self.frame_callback = onFrame
+        self.error_callback = onError
 
     def startReader(self, onFrame, onError=None):
         if self.running:
