@@ -408,7 +408,7 @@ def test_GalaxiansExec():
     time.sleep(1)
 
     # Processor clock
-    commonTest.sendFrame("clockSetHz", b"{\"cmdName\":\"clockSetHz\",\"clockHz\":250000}\0")
+    commonTest.sendFrame("clockSetHz", b"{\"cmdName\":\"clockSetHz\",\"clockHz\":3000000}\0")
 
     # Loop through tests
     testRepeatCount = 1
@@ -612,7 +612,7 @@ def test_regGetTest():
     commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
     # Test data - sets all registers to known values
     # jump to 0002
-    expectedRegs = "PC=002e SP=9b61 BC=3a2b AF=0330 HL=7a4e DE=5542 IX=9187 IY=f122 AF'=6123 BC'=83b2 HL'=2334 DE'=a202 I=03 R=75  F=---H---- F'=-------NC"
+    expectedRegs = "PC=0002 SP=9b61 BC=3a2b AF=0330 HL=7a4e DE=5542 IX=9187 IY=f122 AF'=8387 BC'=83b2 HL'=2334 DE'=a202 I=03 R=76  F=---H---- F'=S-----PNC"
     testWriteData = b"\x3e\x25" \
                     b"\x01\xb2\x83" \
                     b"\x11\x02\xa2" \
@@ -650,9 +650,9 @@ def test_regGetTest():
     commonTest.sendFrame("targetReset", b"{\"cmdName\":\"targetReset\"}\0")
     commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\"}\0")
     time.sleep(.2)
-    for i in range(35):
-        commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
-        time.sleep(.2)
+    for i in range(20):
+        commonTest.sendFrame("stepInto", b"{\"cmdName\":\"stepInto\"}\0")
+        time.sleep(.05)
 
     # Check status
     commonTest.sendFrame("busStatus", b"{\"cmdName\":\"busStatus\"}\0")
