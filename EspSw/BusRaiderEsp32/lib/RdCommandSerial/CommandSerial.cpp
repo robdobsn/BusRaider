@@ -59,6 +59,7 @@ void CommandSerial::setup(ConfigBase& config)
             Log.notice("%sportNum %d, baudRate %d, rxPin %d, txPin %d\n", MODULE_PREFIX,
                             _serialPortNum, _baudRate, 3, 1);
         }
+        _pSerial->setRxBufferSize(16384);
     }
     else
     {

@@ -81,6 +81,10 @@ private:
     void hdlcRxFrameTCP(const uint8_t *framebuffer, int framelength);
     void hdlcTxCharTCP(uint8_t ch);
 
+    // TODO
+    int _rdpValStatCount;
+    uint32_t _rdpLastOutMs;
+
 public:
     MachineInterface();
 

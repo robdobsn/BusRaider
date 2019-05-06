@@ -40,6 +40,10 @@ MachineInterface::MachineInterface() :
     _demoPreloadFileIdx = 0;
     _demoProgramIdx = 0;
     _rdpCommandIndex = 0;
+
+    // TODO
+    _rdpValStatCount = 0;
+    _rdpLastOutMs = 0;
 }
 
 // Setup
@@ -133,7 +137,7 @@ void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandS
             Log.trace("%sportNum %d, baudRate %d, rxPin, txPin\n",
                         MODULE_PREFIX, _targetSerialPortNum, _targetSerialBaudRate, 3, 1);
         }
-        _pTargetSerial->setRxBufferSize(10000);
+        _pTargetSerial->setRxBufferSize(4096);
     }
 
     // Get demo button
@@ -180,6 +184,12 @@ void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandS
 
 void MachineInterface::service()
 {
+    if (Utils::isTimeout(millis(), _rdpLastOutMs, 2000))
+    {
+        Log.trace("_rdpValStatCount %d\n", _rdpValStatCount);
+        _rdpLastOutMs = millis();
+    }
+
     // Check for serial chars received from target
     if (_pTargetSerial)
     {
@@ -337,6 +347,11 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *frameBuffer, int frame
             payloadStartPos = headerJsonEndPos+1;
             payloadLen = frameLength - headerJsonEndPos - 1;
         }
+
+        // TODO
+        String inStr = (const char*)(frameBuffer+payloadStartPos);
+        if (inStr.indexOf("validatorStatus") > 0)
+            _rdpValStatCount++;
         // Log.trace("%srdp <- %s server %d payloadLen %d payload %s\n", 
         //             MODULE_PREFIX, pRxStr, _pRemoteDebugServer, payloadLen,
         //             frameBuffer+payloadStartPos);

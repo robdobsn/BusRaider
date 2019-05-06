@@ -156,6 +156,9 @@ void BusRaiderApp::service()
 
     // Display status update
     statusDisplayUpdate();
+
+    // Service commmand handler
+    _commandHandler.service();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

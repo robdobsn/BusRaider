@@ -136,5 +136,9 @@ private:
     // // Last RDP message index value string
     // static const int MAX_RDP_INDEX_VAL_LEN = 20;
     // char _lastRDPIndexValStr[MAX_RDP_INDEX_VAL_LEN];
-    
+
+    // TODO
+    int _rdpMsgCountIn;
+    int _rdpMsgCountOut;
+    uint32_t _rdpTimeUs; 
 };

@@ -48,6 +48,11 @@ CommandHandler::CommandHandler() :
     _receivedFileBufSize = 0;
     _receivedFileBytesRx = 0;
     _receivedBlockCount = 0;
+
+    // TODO
+    _rdpMsgCountIn = 0;
+    _rdpMsgCountOut = 0;
+    _rdpTimeUs = 0;
 }
 
 CommandHandler::~CommandHandler()
@@ -201,8 +206,11 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
         jsonGetValueForKey("msgIdx", pCmdJson, msgIdxStr, MAX_MSGIDX_STR_LEN);
         rdpMessage = true;
 
-        // LogWrite(FromCmdHandler, LOG_DEBUG, "RDPRX cmd %s cmdLen %d paramsStr %s paramslen %d", 
-        //             pCmdJson, strlen(pCmdJson), pParams, paramsLen);
+        // TODO
+        if (strcasecmp(cmdName, "validatorStatus") == 0)
+            _rdpMsgCountIn++;
+        // LogWrite(FromCmdHandler, LOG_DEBUG, "RDPRX cmd %s cmdLen %d paramsStr %s paramslen %d rdCountIn %d this %d", 
+        //             pCmdJson, strlen(pCmdJson), pParams, paramsLen, _rdpMsgCountIn, this);
     }
               
     // Offer to comms sockets
@@ -577,4 +585,10 @@ void CommandHandler::logDebug(const char* pSeverity, const char* pSource, const 
 
 void CommandHandler::service()
 {
+    // TODO
+    if (isTimeout(micros(), _rdpTimeUs, 5000000))
+    {
+        LogWrite("pingo", LOG_DEBUG, "rdpmsgstevalcount %d", _rdpMsgCountIn);
+        _rdpTimeUs = micros();
+    }
 }

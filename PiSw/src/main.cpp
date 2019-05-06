@@ -36,7 +36,6 @@ Display display;
 UartMaxi mainUart;
 
 // CommandHandler, StepValidator, BusController
-CommandHandler commandHandler;
 StepValidator stepValidator;
 BusController busController;
 McManager mcManager;
@@ -103,9 +102,6 @@ extern "C" int main()
 
         // Service the comms channels and display updates
         busRaiderApp.service();
-
-        // Service command handler
-        commandHandler.service();
 
         // Timer polling
         timer_poll();

@@ -42,7 +42,8 @@ def test_Comms():
     for i in range(testRepeatCount):
         commonTest.sendFrame("statusReq", b"{\"cmdName\":\"validatorStatus\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
         msgIdx += 1
-        time.sleep(0.2)
+        # time.sleep(0.001)
+    time.sleep(1)
     
     # Wait for test end and cleardown
     commonTest.cleardown()
@@ -148,10 +149,11 @@ def test_SetMc():
             curMachine = mc
             logger.debug(f"Setting machine {mc}")
             commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
-            time.sleep(3)
-            commonTest.sendFrame("getStatus", b"{\"cmdName\":\"getStatus\"}\0")
             time.sleep(1)
-    
+            commonTest.sendFrame("getStatus", b"{\"cmdName\":\"getStatus\"}\0")
+            time.sleep(.1)
+    time.sleep(1)
+
     # Wait for test end and cleardown
     commonTest.cleardown()
     assert(testStats["unknownMsgCount"] == 0)
@@ -218,11 +220,11 @@ def test_StepValidateJMP000():
     time.sleep(1)
     # Processor clock
     commonTest.sendFrame("clockSetHz", b"{\"cmdName\":\"clockSetHz\",\"clockHz\":250000}\0")
-    time.sleep(1)
+    time.sleep(0.1)
     # Check hardware list and set 64K RAM
     commonTest.sendFrame("hwList", b"{\"cmdName\":\"hwList\"}\0")
     commonTest.sendFrame("hwEnable", b"{\"cmdName\":\"hwEnable\",\"hwName\":\"64KRAM\",\"enable\":1}\0")
-    time.sleep(1)
+    time.sleep(0.1)
 
     # Repeat tests
     testRepeatCount = 10
@@ -238,7 +240,7 @@ def test_StepValidateJMP000():
         # Start validator
         commonTest.sendFrame("valStop", b"{\"cmdName\":\"validatorStop\"}\0")
         commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":0,\"len\":3,\"isIo\":0}\0")
-        time.sleep(0.5)
+        time.sleep(0.1)
         commonTest.sendFrame("valPrime", b"{\"cmdName\":\"validatorPrimeFromMem\"}\0")   
         commonTest.sendFrame("valStart", b"{\"cmdName\":\"validatorStart\"}\0")   
         commonTest.sendFrame("busStatusClear", b"{\"cmdName\":\"busStatusClear\"}\0")   
@@ -254,7 +256,8 @@ def test_StepValidateJMP000():
         commonTest.sendFrame("valStop", b"{\"cmdName\":\"validatorStop\"}\0")
     # Bus reset
     commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
-
+    time.sleep(1)
+    
     # Wait for test end and cleardown
     commonTest.cleardown()
     assert(testStats["msgRdOk"] == True)
