@@ -6,6 +6,7 @@
 #include "../TargetBus/TargetState.h"
 #include "../System/rdutils.h"
 #include "../System/piwiring.h"
+#include "../System/lowlib.h"
 #include "../System/logging.h"
 #include <stdlib.h>
 #include <string.h>
@@ -162,7 +163,8 @@ void Hw64KRam::validatorClone()
     }
     else
     {
-        int blockReadResult = BusAccess::blockRead(0, pValMemory, _validatorMemoryLen, true, false);
+        // int blockReadResult = 
+        BusAccess::blockRead(0, pValMemory, _validatorMemoryLen, true, false);
         // LogWrite(_logPrefix, LOG_DEBUG, "validatorClone blockRead %s", (blockReadResult == BR_OK) ? "OK" : "FAIL");
         // LogWrite(_logPrefix, LOG_DEBUG, "validatorClone blockRead %02x %02x %02x", pValMemory[0], pValMemory[1], pValMemory[2]);
     }
@@ -219,6 +221,17 @@ void Hw64KRam::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType,
                 // Make a copy of the enire memory while we have the chance
                 // int blockReadResult = 
                 BusAccess::blockRead(0, getMirrorMemory(), _mirrorMemoryLen, false, false);
+
+                    // // TODO
+                    // digitalWrite(BR_PAGING_RAM_PIN, 1);
+                    // microsDelay(3);
+                    // digitalWrite(BR_PAGING_RAM_PIN, 0);
+                    // microsDelay(1);
+                    // digitalWrite(BR_PAGING_RAM_PIN, 1);
+                    // microsDelay(3);
+                    // digitalWrite(BR_PAGING_RAM_PIN, 0);
+                    // microsDelay(1);
+
                 // LogWrite(_logPrefix, LOG_DEBUG, "mirror memory blockRead %s", (blockReadResult == BR_OK) ? "OK" : "FAIL");
             }
             break;

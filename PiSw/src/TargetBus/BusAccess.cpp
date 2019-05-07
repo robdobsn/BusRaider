@@ -50,7 +50,7 @@ volatile bool BusAccess::_busActionSyncWithWait = false;
 BusAccessStatusInfo BusAccess::_statusInfo;
 
 // Paging
-bool volatile BusAccess::_targetPageInOnNextWait = false;
+bool volatile BusAccess::_targetPageInOnReadComplete = false;
 
 // Debug
 int volatile BusAccess::_isrAssertCounts[ISR_ASSERT_NUM_CODES];
@@ -265,6 +265,10 @@ void BusAccess::targetReqBus(int busSocket, BR_BUS_ACTION_REASON busMasterReason
         return;
     _busSockets[busSocket].busMasterRequest = true;
     _busSockets[busSocket].busMasterReason = busMasterReason;
+
+    // Bus request can be handled immediately
+    busActionCheck();
+    busActionAssertActive();
     // LogWrite("BusAccess", LOG_DEBUG, "reqBus sock %d enabled %d reason %d", busSocket, _busSockets[busSocket].enabled, busMasterReason);
 }
 
@@ -293,7 +297,7 @@ void BusAccess::targetPageForInjection([[maybe_unused]]int busSocket, bool pageO
     }
     else
     {
-        _targetPageInOnNextWait = true;
+        _targetPageInOnReadComplete = true;
     }
 }
 
@@ -398,6 +402,15 @@ void BusAccess::busActionAssertActive()
         if (isTimeout(micros(), _busActionAssertedStartUs, _busActionAssertedMaxUs))
         {
             busActionCallback(_busActionType, BR_BUS_ACTION_GENERAL);
+                    //TODO
+        bool linVal = digitalRead(8);
+        for (int i = 0; i < 10; i++)
+        {
+            digitalWrite(8, !linVal);
+            microsDelay(1);
+            digitalWrite(8, linVal);
+            microsDelay(1);
+        }
             setSignal(_busActionType, false);
             busActionClearFlags();
         }
@@ -530,6 +543,14 @@ void BusAccess::serviceWaitActivity()
                 pibSetIn();
                 WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
                 _targetReadInProgress = false;
+                // Check if paging in/out is required
+                if (_targetPageInOnReadComplete)
+                {
+                    pagingPageIn();
+                    _targetPageInOnReadComplete = false;
+                }
+                // Done now
+                break;
             }
         }
     }
@@ -545,10 +566,10 @@ void BusAccess::waitHandleNew()
     uint32_t isrStartUs = micros();
     
     // Check if paging in/out is required
-    if (_targetPageInOnNextWait)
+    if (_targetPageInOnReadComplete)
     {
         pagingPageIn();
-        _targetPageInOnNextWait = false;
+        _targetPageInOnReadComplete = false;
     }
 
     // TODO DEBUG

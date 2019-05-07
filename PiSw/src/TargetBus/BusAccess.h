@@ -345,7 +345,7 @@ private:
     static volatile bool _targetReadInProgress;
 
     // Paging
-    static volatile bool _targetPageInOnNextWait;
+    static volatile bool _targetPageInOnReadComplete;
 
     // Rate at which wait is released when free-cycling
     static volatile uint32_t _waitCycleLengthUs;

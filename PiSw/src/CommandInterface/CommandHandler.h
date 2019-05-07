@@ -138,7 +138,7 @@ private:
     // char _lastRDPIndexValStr[MAX_RDP_INDEX_VAL_LEN];
 
     // TODO
-    int _rdpMsgCountIn;
-    int _rdpMsgCountOut;
-    uint32_t _rdpTimeUs; 
+    // int _rdpMsgCountIn;
+    // int _rdpMsgCountOut;
+    // uint32_t _rdpTimeUs; 
 };

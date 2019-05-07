@@ -49,10 +49,10 @@ CommandHandler::CommandHandler() :
     _receivedFileBytesRx = 0;
     _receivedBlockCount = 0;
 
-    // TODO
-    _rdpMsgCountIn = 0;
-    _rdpMsgCountOut = 0;
-    _rdpTimeUs = 0;
+    // // TODO
+    // _rdpMsgCountIn = 0;
+    // _rdpMsgCountOut = 0;
+    // _rdpTimeUs = 0;
 }
 
 CommandHandler::~CommandHandler()
@@ -150,11 +150,11 @@ void CommandHandler::hdlcFrameRx(const uint8_t *pFrame, int frameLength)
 void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams, int paramsLen)
 {
     // Get the command string from JSON
-    static const int MAX_MSGIDX_STR_LEN = 20;
     static const int MAX_CMD_NAME_STR = 200;
     char cmdName[MAX_CMD_NAME_STR+1];
     if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
         return;
+    static const int MAX_MSGIDX_STR_LEN = 20;
     char msgIdxStr[MAX_MSGIDX_STR_LEN];
     msgIdxStr[0] = 0;
     jsonGetValueForKey("msgIdx", pCmdJson, msgIdxStr, MAX_MSGIDX_STR_LEN);
@@ -207,8 +207,8 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
         rdpMessage = true;
 
         // TODO
-        if (strcasecmp(cmdName, "validatorStatus") == 0)
-            _rdpMsgCountIn++;
+        // if (strcasecmp(cmdName, "validatorStatus") == 0)
+        //     _rdpMsgCountIn++;
         // LogWrite(FromCmdHandler, LOG_DEBUG, "RDPRX cmd %s cmdLen %d paramsStr %s paramslen %d rdCountIn %d this %d", 
         //             pCmdJson, strlen(pCmdJson), pParams, paramsLen, _rdpMsgCountIn, this);
     }
@@ -586,9 +586,9 @@ void CommandHandler::logDebug(const char* pSeverity, const char* pSource, const 
 void CommandHandler::service()
 {
     // TODO
-    if (isTimeout(micros(), _rdpTimeUs, 5000000))
-    {
-        LogWrite("pingo", LOG_DEBUG, "rdpmsgstevalcount %d", _rdpMsgCountIn);
-        _rdpTimeUs = micros();
-    }
+    // if (isTimeout(micros(), _rdpTimeUs, 5000000))
+    // {
+    //     LogWrite("pingo", LOG_DEBUG, "rdpmsgstevalcount %d", _rdpMsgCountIn);
+    //     _rdpTimeUs = micros();
+    // }
 }

@@ -198,34 +198,45 @@ void HwManager::setOpcodeInjectEnable(bool val)
 // Access to memory / io blocks
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+uint32_t HwManager::getMaxAddress()
+{
+    return STD_TARGET_MEMORY_LEN-1;
+}
+
 BR_RETURN_TYPE HwManager::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq, bool forceMirrorAccess)
 {
-    BR_RETURN_TYPE retVal = BR_OK;
     // Check if bus access is available
     if (TargetTracker::busAccessAvailable() && !forceMirrorAccess)
         return BusAccess::blockWrite(addr, pBuf, len, busRqAndRelease, iorq);
 
     // Iterate hardware
+    BR_RETURN_TYPE retVal = BR_OK;
     for (int i = 0; i < _numHardware; i++)
     {
         if (_pHw[i] && _pHw[i]->isEnabled())
-            _pHw[i]->blockWrite(addr, pBuf, len, busRqAndRelease, iorq);
+        {
+            BR_RETURN_TYPE newRet = _pHw[i]->blockWrite(addr, pBuf, len, busRqAndRelease, iorq);
+            retVal = (newRet == BR_OK || newRet == BR_NOT_HANDLED) ? retVal : newRet;
+        }
     }
     return retVal;
 }
 
 BR_RETURN_TYPE HwManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq, bool forceMirrorAccess)
 {
-    BR_RETURN_TYPE retVal = BR_OK;
     // Check if bus access is available
     if (TargetTracker::busAccessAvailable() && !forceMirrorAccess)
         return BusAccess::blockRead(addr, pBuf, len, busRqAndRelease, iorq);
 
     // Iterate hardware
+    BR_RETURN_TYPE retVal = BR_OK;
     for (int i = 0; i < _numHardware; i++)
     {
         if (_pHw[i] && _pHw[i]->isEnabled())
-            _pHw[i]->blockRead(addr, pBuf, len, busRqAndRelease, iorq);
+        {
+            BR_RETURN_TYPE newRet = _pHw[i]->blockRead(addr, pBuf, len, busRqAndRelease, iorq);
+            retVal = (newRet == BR_OK || newRet == BR_NOT_HANDLED) ? retVal : newRet;
+        }
     }
     return retVal;
 }

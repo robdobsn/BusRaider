@@ -73,7 +73,7 @@ class CommonTest:
 
         # Check for using IP address
         if useIP:
-            self.rdpPort = 10000
+            self.tcpHdlcPort = 10001
 
             def sendDataToTCP(dataToSend):
                 self.rdpTCP.sendFrame(dataToSend)
@@ -84,7 +84,7 @@ class CommonTest:
                 self.hdlcHandler.processBytes(fr)
 
             # TCP Reader
-            self.rdpTCP = SimpleTCP(ipAddrOrHostName, self.rdpPort)
+            self.rdpTCP = SimpleTCP(ipAddrOrHostName, self.tcpHdlcPort)
             self.rdpTCP.startReader(onTCPFrame)
 
             # Setup HDLC

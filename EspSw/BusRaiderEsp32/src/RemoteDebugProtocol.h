@@ -46,11 +46,14 @@ protected:
     RemoteDebugProtocolDataHandler _rxDataCallback;
     void* _rxDataCallbackArg;
 
+    // Pointer to welcome message
+    const char* _pWelcomeMessage;
+
 public:
     static const int MAX_SESSIONS = 3;
 
     // Construction/Destruction
-    RemoteDebugProtocolServer(int port);
+    RemoteDebugProtocolServer(int port, const char* pWelcomeMessageMustBeStatic);
     ~RemoteDebugProtocolServer();
 
     // Begin listening for sessions

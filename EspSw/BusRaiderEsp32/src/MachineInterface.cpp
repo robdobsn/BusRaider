@@ -34,22 +34,29 @@ MachineInterface::MachineInterface() :
     _pWebSocket = NULL;
 #endif
     _pTelnetServer = NULL;
-    _pRemoteDebugServer = NULL;
+    _pTCPHDLCServer = NULL;
+    _pZEsarUXTCPServer = NULL;
     _pRestAPIEndpoints = NULL;
     _demoState = DEMO_STATE_IDLE;
     _demoPreloadFileIdx = 0;
     _demoProgramIdx = 0;
     _rdpCommandIndex = 0;
+    _zesaruxCommandIndex = 0;
 
     // TODO
-    _rdpValStatCount = 0;
-    _rdpLastOutMs = 0;
+    // _rdpValStatCount = 0;
+    // _rdpLastOutMs = 0;
 }
 
 // Setup
-void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandSerial* pCommandSerial,
-            AsyncTelnetServer* pTelnetServer, RemoteDebugProtocolServer* pRemoteDebugProtocolServer, 
-            RestAPIEndpoints* pRestAPIEndpoints, FileManager* pFileManager)
+void MachineInterface::setup(ConfigBase &config, 
+            WebServer *pWebServer, 
+            CommandSerial* pCommandSerial,
+            AsyncTelnetServer* pTelnetServer, 
+            RemoteDebugProtocolServer* pZEsarUXTCPServer, 
+            RemoteDebugProtocolServer* pTCPHDLCServer, 
+            RestAPIEndpoints* pRestAPIEndpoints, 
+            FileManager* pFileManager)
 {
     // Get config
     ConfigBase csConfig(config.getString("machineIF", "").c_str());
@@ -59,7 +66,8 @@ void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandS
     _pWebServer = pWebServer;
     _pCommandSerial = pCommandSerial;
     _pTelnetServer = pTelnetServer;
-    _pRemoteDebugServer = pRemoteDebugProtocolServer;
+    _pZEsarUXTCPServer = pZEsarUXTCPServer;
+    _pTCPHDLCServer = pTCPHDLCServer;
     _pRestAPIEndpoints = pRestAPIEndpoints;
     _pFileManager = pFileManager;
 
@@ -80,10 +88,10 @@ void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandS
         }, this);
     }
 
-    // Set the remote data callback
-    if (_pRemoteDebugServer)
+    // Callback for TCP-HDLC server
+    if (_pTCPHDLCServer)
     {
-        _pRemoteDebugServer->onData([this](void* cbArg, const uint8_t* pData, int dataLen) 
+        _pTCPHDLCServer->onData([this](void* cbArg, const uint8_t* pData, int dataLen) 
         {
             (void)cbArg;
 
@@ -91,6 +99,19 @@ void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandS
             for (int rxCtr = 0; rxCtr < dataLen; rxCtr++)
                 _miniHDLCForRDPTCP.handleChar(pData[rxCtr]);
 
+        }, this);
+    }
+
+    // Callback for TCP-HDLC server
+    if (_pZEsarUXTCPServer)
+    {
+        _pZEsarUXTCPServer->onData([this](void* cbArg, const uint8_t* pData, int dataLen) 
+        {
+            (void)cbArg;
+
+            if (_pCommandSerial)
+                _pCommandSerial->sendTargetData("zesarux", pData, dataLen, 
+                            _zesaruxCommandIndex++);
         }, this);
     }
 
@@ -184,11 +205,12 @@ void MachineInterface::setup(ConfigBase &config, WebServer *pWebServer, CommandS
 
 void MachineInterface::service()
 {
-    if (Utils::isTimeout(millis(), _rdpLastOutMs, 2000))
-    {
-        Log.trace("_rdpValStatCount %d\n", _rdpValStatCount);
-        _rdpLastOutMs = millis();
-    }
+    // TODO
+    // if (Utils::isTimeout(millis(), _rdpLastOutMs, 2000))
+    // {
+    //     Log.trace("_rdpValStatCount %d\n", _rdpValStatCount);
+    //     _rdpLastOutMs = millis();
+    // }
 
     // Check for serial chars received from target
     if (_pTargetSerial)
@@ -336,7 +358,7 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *frameBuffer, int frame
             }
         }
     }
-    else if (cmdName.equalsIgnoreCase("rdp"))
+    else if ((cmdName.equalsIgnoreCase("rdp")) || (cmdName.equalsIgnoreCase("zesarux")))
     {
         // Payload is after a string terminator
         int headerJsonEndPos = strlen(pRxStr);
@@ -347,19 +369,36 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *frameBuffer, int frame
             payloadStartPos = headerJsonEndPos+1;
             payloadLen = frameLength - headerJsonEndPos - 1;
         }
+        uint32_t dataLen = RdJson::getLong("dataLen", payloadLen, pRxStr);
 
         // TODO
-        String inStr = (const char*)(frameBuffer+payloadStartPos);
-        if (inStr.indexOf("validatorStatus") > 0)
-            _rdpValStatCount++;
-        // Log.trace("%srdp <- %s server %d payloadLen %d payload %s\n", 
-        //             MODULE_PREFIX, pRxStr, _pRemoteDebugServer, payloadLen,
-        //             frameBuffer+payloadStartPos);
-        _miniHDLCForRDPTCP.sendFrame(frameBuffer+payloadStartPos, payloadLen);
+        // String inStr = (const char*)(frameBuffer+payloadStartPos);
+        // if (inStr.indexOf("validatorStatus") > 0)
+        //     _rdpValStatCount++;
+        String payloadStr = (((const char*)frameBuffer)+payloadStartPos);
+        payloadStr.replace("\n", "\\n");
+        if ((cmdName.equalsIgnoreCase("rdp")))
+        {
+            // Log.trace("%srdp <- %s payloadLen %d payload ¬¬%s¬¬\n", 
+            //             MODULE_PREFIX, pRxStr, payloadLen,
+            //             payloadStr.c_str());
+            _miniHDLCForRDPTCP.sendFrame(frameBuffer+payloadStartPos, dataLen);
+        }
+        else
+        {
+            Log.trace("%szesarux <- %s payloadLen %d payload ¬¬%s¬¬\n", 
+                        MODULE_PREFIX, pRxStr, payloadLen,
+                        payloadStr.c_str());
+            _pZEsarUXTCPServer->sendChars(frameBuffer+payloadStartPos, dataLen);
+        }
     }
     else if (cmdName.equalsIgnoreCase("log"))
     {
-        Log.trace("%slog <- %s\n", MODULE_PREFIX, pRxStr);
+        // Extract msg
+        String logMsg = RdJson::getString("msg", "", pRxStr);
+        String msgSrc = RdJson::getString("src", "", pRxStr);
+        String msgLev = RdJson::getString("lev", "", pRxStr);
+        Log.trace("%s: %s: %s\n", msgLev.c_str(), msgSrc.c_str(), logMsg.c_str());
     }
 
 }
@@ -644,8 +683,8 @@ void MachineInterface::hdlcRxFrameTCP(const uint8_t *framebuffer, int framelengt
 
 void MachineInterface::hdlcTxCharTCP(uint8_t ch)
 {
-    if (_pRemoteDebugServer)
+    if (_pTCPHDLCServer)
     {
-        _pRemoteDebugServer->sendChars(&ch, 1);
+        _pTCPHDLCServer->sendChars(&ch, 1);
     }
 }

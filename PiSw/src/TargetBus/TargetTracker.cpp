@@ -103,6 +103,13 @@ bool TargetTracker::busAccessAvailable()
     return !(BusAccess::waitIsHeld() || HwManager::getMemoryEmulationMode() || BusAccess::busSocketIsEnabled(_busSocketId));
 }
 
+bool TargetTracker::isPaused()
+{
+    if (!BusAccess::busSocketIsEnabled(_busSocketId))
+        return false;
+    return _stepMode == STEP_MODE_STEP_INTO;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Control
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -435,6 +442,20 @@ void TargetTracker::stepRun()
 void TargetTracker::getRegsFormatted(char* pBuf, int len)
 {
     _z80Registers.format(pBuf, len);
+
+    // TODO
+    if (strstr(pBuf, "PC=0002") == NULL)
+    {
+        //TODO
+        bool linVal = digitalRead(8);
+        for (int i = 0; i < 10; i++)
+        {
+            digitalWrite(8, !linVal);
+            microsDelay(1);
+            digitalWrite(8, linVal);
+            microsDelay(1);
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -631,19 +652,27 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
                     BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_MIRROR);
                 }
 
+                // bool linVal = digitalRead(8);
+                // for (int i = 0; i < 10; i++)
+                // {
+                //     digitalWrite(8, !linVal);
+                //     microsDelay(1);
+                //     digitalWrite(8, linVal);
+                //     microsDelay(1);
+                // }
                 // LogWrite("FromTargetTracker", LOG_DEBUG, "INJECTING FINISHED 0x%04x 0x%02x %s%s",
                 //             addr, ((flags & BR_CTRL_BUS_RD_MASK) & ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0)) ? (retVal & 0xff) : data,  
                 //             (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "");
 
                 // TODO
-                char regBuf[1000];
-                _z80Registers.format(regBuf, 1000);
-                char tmpBuf[10];
-                for (uint32_t i = 0; i < _debugInstrBytePos; i++)
-                {    
-                    ee_sprintf(tmpBuf, " %02x", _debugInstrBytes[i]);
-                    strlcat(regBuf, tmpBuf, 1000);
-                }
+                // char regBuf[1000];
+                // _z80Registers.format(regBuf, 1000);
+                // char tmpBuf[10];
+                // for (uint32_t i = 0; i < _debugInstrBytePos; i++)
+                // {    
+                //     ee_sprintf(tmpBuf, " %02x", _debugInstrBytes[i]);
+                //     strlcat(regBuf, tmpBuf, 1000);
+                // }
                 // LogWrite("FromTargetTracker", LOG_DEBUG, "%s", regBuf);
 
                 // TODO may need to call back to whoever requested this

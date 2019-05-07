@@ -4,11 +4,11 @@
 #include "RemoteDebugProtocol.h"
 #include "ArduinoLog.h"
 
-static const char* RemoteDebugProtocolWelcomeMessage = "";
-static const char* SESSION_PREFIX = "RemoteDebugProtocolSession: ";
-static const char* MODULE_PREFIX = "RemoteDebugProtocolServer: ";
+static const char* SESSION_PREFIX = "RDPSession: ";
+static const char* MODULE_PREFIX = "RDPServer: ";
 
-RemoteDebugProtocolSession::RemoteDebugProtocolSession(RemoteDebugProtocolServer *pServer, AsyncClient *pClient)
+RemoteDebugProtocolSession::RemoteDebugProtocolSession(RemoteDebugProtocolServer *pServer,
+                AsyncClient *pClient)
 {
     _pServer = pServer;
     _pClient = pClient;
@@ -39,8 +39,8 @@ RemoteDebugProtocolSession::RemoteDebugProtocolSession(RemoteDebugProtocolServer
     }, this);
 
     // Send welcome message
-    if (strlen(RemoteDebugProtocolWelcomeMessage) > 0)
-        sendChars((const uint8_t*)RemoteDebugProtocolWelcomeMessage, strlen(RemoteDebugProtocolWelcomeMessage));
+    if (pServer->_pWelcomeMessage && (strlen(pServer->_pWelcomeMessage) > 0))
+        sendChars((const uint8_t*)pServer->_pWelcomeMessage, strlen(pServer->_pWelcomeMessage));
 }
 
 RemoteDebugProtocolSession::~RemoteDebugProtocolSession()
@@ -108,11 +108,13 @@ void RemoteDebugProtocolSession::sendChars(const uint8_t* pData, int dataLen)
     }
 }
 
-RemoteDebugProtocolServer::RemoteDebugProtocolServer(int port) : _server(port)
+RemoteDebugProtocolServer::RemoteDebugProtocolServer(int port,
+                    const char* pWelcomeMessageMustBeStatic) : _server(port)
 {
     // Init
     _rxDataCallback = NULL;
     _rxDataCallbackArg = NULL;
+    _pWelcomeMessage = pWelcomeMessageMustBeStatic;
 
     // Create sessions list
     _sessions.resize(MAX_SESSIONS);
@@ -136,7 +138,8 @@ RemoteDebugProtocolServer::RemoteDebugProtocolServer(int port) : _server(port)
 
 
         // Wrap up the client in the session
-        RemoteDebugProtocolSession *pRemoteDebugProtocolSession = new RemoteDebugProtocolSession((RemoteDebugProtocolServer *)s, c);
+        RemoteDebugProtocolSession *pRemoteDebugProtocolSession = 
+                new RemoteDebugProtocolSession((RemoteDebugProtocolServer *)s, c);
 
         heap_caps_check_integrity_all(true);
 

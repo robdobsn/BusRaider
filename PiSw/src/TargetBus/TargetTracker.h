@@ -33,6 +33,9 @@ public:
     // Check if bus can be accessed directly
     static bool busAccessAvailable();
 
+    // Get mode
+    static bool isPaused(); 
+
     // Register injection and code snippet generation
     static void startSetRegisterSequence(Z80Registers* pRegs = NULL);
     // static void startGetRegisterSequence();

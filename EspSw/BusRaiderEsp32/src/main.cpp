@@ -36,7 +36,7 @@
 const char* systemType = "BusRaiderESP32";
 
 // System version
-const char* systemVersion = "1.7.105";
+const char* systemVersion = "1.7.107";
 
 // Build date
 const char* buildDate = __DATE__;
@@ -97,10 +97,14 @@ RdOTAUpdate otaUpdate;
 const int TELNET_PORT = 23;
 AsyncTelnetServer telnetServer(TELNET_PORT);
 
-// Remote debug
+// TCP access to BusRaider
 #include "RemoteDebugProtocol.h"
-const int REMOTE_DEBUG_PORT = 10000;
-RemoteDebugProtocolServer remoteDebugProtocolServer(REMOTE_DEBUG_PORT);
+const int ZEsarUX_TCP_PORT = 10000;
+static const char* _ZEsarUXWelcomeMessage = "Welcome to BusRaider\ncommand> ";
+RemoteDebugProtocolServer _ZEsarUXTCPServer(ZEsarUX_TCP_PORT, _ZEsarUXWelcomeMessage);
+const int HDLC_TCP_PORT = 10001;
+static const char* _TCPHDLCWelcomeMessage = "";
+RemoteDebugProtocolServer _TCPHDLCServer(HDLC_TCP_PORT, _TCPHDLCWelcomeMessage);
 
 // Hardware config
 static const char *hwConfigJSON = {
@@ -242,12 +246,19 @@ void setup()
     // Telnet server
     telnetServer.begin();
 
-    // Remote debug server
-    remoteDebugProtocolServer.begin();
+    // TCP IF servers
+    _ZEsarUXTCPServer.begin();
+    _TCPHDLCServer.begin();
 
     // Machine interface
-    machineInterface.setup(hwConfig, &webServer, &commandSerial, 
-                &telnetServer, &remoteDebugProtocolServer, &restAPIEndpoints, &fileManager);
+    machineInterface.setup(hwConfig, 
+                &webServer, 
+                &commandSerial, 
+                &telnetServer, 
+                &_ZEsarUXTCPServer, 
+                &_TCPHDLCServer, 
+                &restAPIEndpoints, 
+                &fileManager);
 
     // Add debug blocks
     debugLoopTimer.blockAdd(0, "LoopTimer");

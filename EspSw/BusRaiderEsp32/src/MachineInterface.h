@@ -50,9 +50,11 @@ private:
     // Telnet server
     AsyncTelnetServer* _pTelnetServer;
 
-    // Remote debug server
-    RemoteDebugProtocolServer* _pRemoteDebugServer;
-    int _rdpCommandIndex;
+    // TCP interfaces for ZEsarUX and TCP-HDLC
+    RemoteDebugProtocolServer* _pZEsarUXTCPServer;
+    uint32_t _zesaruxCommandIndex;
+    RemoteDebugProtocolServer* _pTCPHDLCServer;
+    uint32_t _rdpCommandIndex;
     // HDLC processor for RDP
     MiniHDLC _miniHDLCForRDPTCP;
 
@@ -82,16 +84,21 @@ private:
     void hdlcTxCharTCP(uint8_t ch);
 
     // TODO
-    int _rdpValStatCount;
-    uint32_t _rdpLastOutMs;
+    // int _rdpValStatCount;
+    // uint32_t _rdpLastOutMs;
 
 public:
     MachineInterface();
 
     // Setup
-    void setup(ConfigBase &config, WebServer *pWebServer, CommandSerial* pCommandSerial,
-                AsyncTelnetServer* pTelnetServer, RemoteDebugProtocolServer* pRemoteDebugProtocolServer,
-                RestAPIEndpoints* pRestAPIEndpoints, FileManager* pFileManager);
+    void setup(ConfigBase &config, 
+                WebServer *pWebServer, 
+                CommandSerial* pCommandSerial,
+                AsyncTelnetServer* pTelnetServer, 
+                RemoteDebugProtocolServer* pZEsarUXTCPServer, 
+                RemoteDebugProtocolServer* pTCPHDLCServer, 
+                RestAPIEndpoints* pRestAPIEndpoints, 
+                FileManager* pFileManager);
                 
     void service();
 

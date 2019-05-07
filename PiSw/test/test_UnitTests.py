@@ -529,23 +529,17 @@ def test_stepSingle():
 
     # Send program
     commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
+    time.sleep(.1)
     commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"len\":" + testWriteLen  + b",\"isIo\":0}\0" + testWriteData)
+    time.sleep(1)
 
     # Setup Test
     commonTest.sendFrame("targetReset", b"{\"cmdName\":\"targetReset\"}\0")
     commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\"}\0")
     time.sleep(.2)
-    commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
-    time.sleep(.2)
-    commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
-    time.sleep(.2)
-    commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
-    time.sleep(.2)
-    commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
-    time.sleep(.2)
-    commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
-    time.sleep(.2)
-    commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
+    for i in range(6):
+        commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
+        time.sleep(.5)
     time.sleep(1)
 
     # Check status
@@ -651,8 +645,9 @@ def test_regGetTest():
     commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\"}\0")
     time.sleep(.2)
     for i in range(20):
+        # logger.debug(f"i={i}")
         commonTest.sendFrame("stepInto", b"{\"cmdName\":\"stepInto\"}\0")
-        time.sleep(.05)
+        time.sleep(.2)
 
     # Check status
     commonTest.sendFrame("busStatus", b"{\"cmdName\":\"busStatus\"}\0")

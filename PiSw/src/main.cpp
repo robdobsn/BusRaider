@@ -14,6 +14,7 @@
 #include "Hardware/HwManager.h"
 #include "Machines/McManager.h"
 #include "BusController/BusController.h"
+#include "ZEsarUXInterface/ZEsarUXInterface.h"
 #include "StepValidator/StepValidator.h"
 #include "BusRaiderApp.h"
 
@@ -22,7 +23,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Program details
-static const char* PROG_VERSION = "Bus Raider V1.7.105 (C) Rob Dobson 2018-2019";
+static const char* PROG_VERSION = "Bus Raider V1.7.1067 (C) Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "https://robdobson.com/tag/raider";
 
 // Log string
@@ -38,6 +39,7 @@ UartMaxi mainUart;
 // CommandHandler, StepValidator, BusController
 StepValidator stepValidator;
 BusController busController;
+ZEsarUXInterface _ZEsarUXInterface;
 McManager mcManager;
 
 // Bus Raider app
@@ -84,6 +86,7 @@ extern "C" int main()
     // BusController, StepValidator
     busController.init();
     stepValidator.init();
+    _ZEsarUXInterface.init();
 
     // Init machine manager
     mcManager.init(&display);
@@ -121,5 +124,6 @@ extern "C" int main()
         // BusController, StepValidator
         busController.service();
         stepValidator.service();
+        _ZEsarUXInterface.service();
     }
 }
