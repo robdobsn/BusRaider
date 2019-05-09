@@ -116,7 +116,7 @@ BR_RETURN_TYPE Hw64KRam::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t
         len = _mirrorMemoryLen-addr;
     // Write
     if (len > 0)
-        memcpy(pMirrorMemory, pBuf, len);
+        memcpy(pMirrorMemory+addr, pBuf, len);
     return BR_OK;
 }
 
@@ -137,7 +137,7 @@ BR_RETURN_TYPE Hw64KRam::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len,
         len = _mirrorMemoryLen-addr;
     // Write
     if (len > 0)
-        memcpy(pBuf, pMirrorMemory, len);
+        memcpy(pBuf, pMirrorMemory+addr, len);
     return BR_OK;
 }
 

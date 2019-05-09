@@ -394,7 +394,12 @@ bool HwManager::enableHw(const char* hwName, bool enable)
 // Disable
 void HwManager::disableAll()
 {
-
+    for (int i = 0; i < _numHardware; i++)
+    {
+        if (!_pHw[i])
+            continue;
+        _pHw[i]->enable(false);
+    }
 }
 
 // Setup from Json
@@ -411,7 +416,7 @@ void HwManager::setupFromJson(const char* jsonKey, const char* hwJson)
         pJsonHwListToUse = _pDefaultHardwareList;
 
     int hwListLen = jsonGetArrayLen(pJsonHwListToUse);
-    // LogWrite(FromHwManager, LOG_DEBUG, "Hardware list len %d", hwListLen);
+    LogWrite(FromHwManager, LOG_DEBUG, "Hardware list len %d", hwListLen);
 
     // Iterate through hardware
     for (int hwIdx = 0; hwIdx < hwListLen; hwIdx++)
@@ -420,7 +425,7 @@ void HwManager::setupFromJson(const char* jsonKey, const char* hwJson)
         static const int HW_DEF_MAXLEN = 1000;
         char hwDefJson[HW_DEF_MAXLEN];
         bool valid = jsonGetArrayElem(hwIdx, pJsonHwListToUse, hwDefJson, HW_DEF_MAXLEN);
-        // LogWrite(FromHwManager, LOG_DEBUG, "Hardware item valid %d elem %s", valid, hwDefJson);
+        LogWrite(FromHwManager, LOG_DEBUG, "Hardware item valid %d elem %s", valid, hwDefJson);
         if (!valid)
             continue;
 
@@ -429,7 +434,7 @@ void HwManager::setupFromJson(const char* jsonKey, const char* hwJson)
         char hwName[HW_NAME_MAXLEN];
         if (!jsonGetValueForKey("name", hwDefJson, hwName, HW_NAME_MAXLEN))
             continue;
-        // LogWrite(FromHwManager, LOG_DEBUG, "Hardware %d Name %s", hwIdx, hwName);
+        LogWrite(FromHwManager, LOG_DEBUG, "Hardware %d Name %s", hwIdx, hwName);
 
         // Get enable
         static const int HW_ENABLE_MAXLEN = 100;
@@ -446,7 +451,7 @@ void HwManager::setupFromJson(const char* jsonKey, const char* hwJson)
         // Enable/Disable
         enableHw(hwName, en);
 
-        // LogWrite(FromHwManager, LOG_DEBUG, "Hardware %d Name %s Enable %d", hwIdx, hwName, en);
+        LogWrite(FromHwManager, LOG_DEBUG, "Hardware %d Name %s Enable %d", hwIdx, hwName, en);
 
         // Configure each piece of hardware with this information
         // only the named one will actually use the configuration
