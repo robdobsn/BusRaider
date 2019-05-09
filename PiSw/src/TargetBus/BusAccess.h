@@ -380,7 +380,7 @@ private:
 private:
     // Bus actions
     static void busActionCheck();
-    static bool busActionsAssertStart();
+    static bool busActionAssertStart();
     static void busActionAssertActive();
     static void busActionClearFlags();
     static void busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REASON reason);
@@ -422,6 +422,7 @@ private:
     static void waitClearDetected();
     static void waitHandleNew();
     static void waitEnablementUpdate();
+    static void waitGenerationDisable();
 
     // Paging
     static void pagingPageIn();

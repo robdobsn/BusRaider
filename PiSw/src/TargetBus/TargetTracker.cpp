@@ -520,7 +520,7 @@ bool TargetTracker::handlePendingDisable()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Callbacks/Hooks
+// Handle bus actions
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void TargetTracker::busActionCompleteStatic([[maybe_unused]]BR_BUS_ACTION actionType, [[maybe_unused]] BR_BUS_ACTION_REASON reason)
@@ -533,6 +533,10 @@ void TargetTracker::busActionCompleteStatic([[maybe_unused]]BR_BUS_ACTION action
         _targetStateAcqMode = TARGET_STATE_ACQ_INSTR_FIRST_BYTE_GOT;        
     }
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Handle wait callbacks
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data, 
         uint32_t flags, uint32_t& retVal)
@@ -652,14 +656,16 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
                     BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_MIRROR);
                 }
 
-                // bool linVal = digitalRead(8);
-                // for (int i = 0; i < 10; i++)
-                // {
-                //     digitalWrite(8, !linVal);
-                //     microsDelay(1);
-                //     digitalWrite(8, linVal);
-                //     microsDelay(1);
-                // }
+                // TODO
+                bool linVal = digitalRead(8);
+                for (int i = 0; i < 10; i++)
+                {
+                    digitalWrite(8, !linVal);
+                    microsDelay(1);
+                    digitalWrite(8, linVal);
+                    microsDelay(1);
+                }
+
                 // LogWrite("FromTargetTracker", LOG_DEBUG, "INJECTING FINISHED 0x%04x 0x%02x %s%s",
                 //             addr, ((flags & BR_CTRL_BUS_RD_MASK) & ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0)) ? (retVal & 0xff) : data,  
                 //             (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "");

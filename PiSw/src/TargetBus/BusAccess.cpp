@@ -268,7 +268,7 @@ void BusAccess::targetReqBus(int busSocket, BR_BUS_ACTION_REASON busMasterReason
 
     // Bus request can be handled immediately
     busActionCheck();
-    busActionAssertActive();
+    busActionAssertStart();
     // LogWrite("BusAccess", LOG_DEBUG, "reqBus sock %d enabled %d reason %d", busSocket, _busSockets[busSocket].enabled, busMasterReason);
 }
 
@@ -343,7 +343,7 @@ void BusAccess::busActionCheck()
     _busActionAsserted = false;
 }
 
-bool BusAccess::busActionsAssertStart()
+bool BusAccess::busActionAssertStart()
 {
     // Check if a bus action has started but isn't yet asserted
     if (!_busActionInProgress || _busActionAsserted)
@@ -402,15 +402,7 @@ void BusAccess::busActionAssertActive()
         if (isTimeout(micros(), _busActionAssertedStartUs, _busActionAssertedMaxUs))
         {
             busActionCallback(_busActionType, BR_BUS_ACTION_GENERAL);
-                    //TODO
-        bool linVal = digitalRead(8);
-        for (int i = 0; i < 10; i++)
-        {
-            digitalWrite(8, !linVal);
-            microsDelay(1);
-            digitalWrite(8, linVal);
-            microsDelay(1);
-        }
+            
             setSignal(_busActionType, false);
             busActionClearFlags();
         }
@@ -477,7 +469,7 @@ void BusAccess::serviceWaitActivity()
     if (!_waitAsserted)
     {
         // Start any bus actions here
-        busActionsAssertStart();
+        busActionAssertStart();
 
         // Check if we have a new wait (and we're not in BUSACK)
         if (((busVals & BR_WAIT_BAR_MASK) == 0) && ((busVals & BR_BUSACK_BAR_MASK) != 0))
@@ -518,7 +510,7 @@ void BusAccess::serviceWaitActivity()
             if (isTimeout(micros(), _waitAssertedStartUs, _waitCycleLengthUs))
             {
                 // Check if we need to assert any new bus requests
-                busActionsAssertStart();
+                busActionAssertStart();
 
                 // Release the wait - also clears _waitAsserted flag
                 waitResetFlipFlops();
@@ -562,6 +554,16 @@ void BusAccess::serviceWaitActivity()
 
 void BusAccess::waitHandleNew()
 {
+                        //TODO
+                bool linVal = digitalRead(8);
+                for (int i = 0; i < 2; i++)
+                {
+                    digitalWrite(8, !linVal);
+                    microsDelay(1);
+                    digitalWrite(8, linVal);
+                    microsDelay(1);
+                }
+
     // Time at start of ISR
     uint32_t isrStartUs = micros();
     
@@ -623,8 +625,28 @@ void BusAccess::waitHandleNew()
         avoidLockupCtr++;
     }
 
+                    //TODO
+                 linVal = digitalRead(8);
+                for (int i = 0; i < 3; i++)
+                {
+                    digitalWrite(8, !linVal);
+                    microsDelay(1);
+                    digitalWrite(8, linVal);
+                    microsDelay(1);
+                }
+
     // Enable the high address onto the PIB
     muxSet(BR_MUX_HADDR_OE_BAR);
+
+                    //TODO
+                 linVal = digitalRead(8);
+                for (int i = 0; i < 5; i++)
+                {
+                    digitalWrite(8, !linVal);
+                    microsDelay(1);
+                    digitalWrite(8, linVal);
+                    microsDelay(1);
+                }
 
     // Delay to allow data to settle
     lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_READ);
@@ -634,6 +656,16 @@ void BusAccess::waitHandleNew()
 
     // Enable the low address onto the PIB
     muxSet(BR_MUX_LADDR_OE_BAR);
+
+                    //TODO
+                 linVal = digitalRead(8);
+                for (int i = 0; i < 5; i++)
+                {
+                    digitalWrite(8, !linVal);
+                    microsDelay(1);
+                    digitalWrite(8, linVal);
+                    microsDelay(1);
+                }
 
     // Delay to allow data to settle
     lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
@@ -664,6 +696,16 @@ void BusAccess::waitHandleNew()
     // Clear Mux
     muxClear();
 
+                    //TODO
+                 linVal = digitalRead(8);
+                for (int i = 0; i < 2; i++)
+                {
+                    digitalWrite(8, !linVal);
+                    microsDelay(3);
+                    digitalWrite(8, linVal);
+                    microsDelay(1);
+                }
+
     // Send this to all bus sockets
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
     for (int sockIdx = 0; sockIdx < _busSocketCount; sockIdx++)
@@ -679,6 +721,16 @@ void BusAccess::waitHandleNew()
             //             (ctrlBusVals & BR_CTRL_BUS_WR_MASK) ? dataBusVals : retVal);
         }
     }
+
+                    //TODO
+                 linVal = digitalRead(8);
+                for (int i = 0; i < 2; i++)
+                {
+                    digitalWrite(8, !linVal);
+                    microsDelay(3);
+                    digitalWrite(8, linVal);
+                    microsDelay(1);
+                }
 
     // If Z80 is reading from the data bus (inc reading an ISR vector)
     // and result is valid then put the returned data onto the bus
@@ -699,6 +751,15 @@ void BusAccess::waitHandleNew()
         _targetReadInProgress = true;
     }
 
+                    //TODO
+                 linVal = digitalRead(8);
+                for (int i = 0; i < 3; i++)
+                {
+                    digitalWrite(8, !linVal);
+                    microsDelay(3);
+                    digitalWrite(8, linVal);
+                    microsDelay(1);
+                }
     // Elapsed and count
     uint32_t isrElapsedUs = micros() - isrStartUs;
     _statusInfo.isrCount++;

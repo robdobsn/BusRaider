@@ -108,6 +108,9 @@ void BusAccess::controlTake()
     // Bus is under BusRaider control
     _busIsUnderControl = true;
 
+    // Disable wait generation while in control of bus
+    waitGenerationDisable();
+
     // Set the PIB to input
     pibSetIn();
     // Set data bus to input
@@ -130,7 +133,7 @@ void BusAccess::controlRelease()
     // So that the very first MREQ cycle after a BUSRQ/BUSACK causes a WAIT to be generated
     // (if enabled)
 
-    // Set M1 high (inactive)
+    // Set M1 high (inactive) - M1 is on bit 0 of PIB with resistor
     pibSetOut();
     pibSetValue(1 << BR_M1_PIB_DATA_LINE);
 
@@ -150,6 +153,9 @@ void BusAccess::controlRelease()
     // Clear the mux to deactivate output enables
     muxClear();
 
+    // Address bus not enabled
+    digitalWrite(BR_PUSH_ADDR_BAR, 1);
+
     // Clear wait detected in case we created some MREQ cycles that
     // triggered wait
     uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
@@ -157,14 +163,14 @@ void BusAccess::controlRelease()
         waitResetFlipFlops();
     waitClearDetected();
 
-    // Address bus not enabled
-    digitalWrite(BR_PUSH_ADDR_BAR, 1);
+    // Re-establish wait generation
+    waitEnablementUpdate();
 
     // Check if any bus action is pending
     busActionCheck();
 
     // Check if we need to assert any new bus requests
-    busActionsAssertStart();
+    busActionAssertStart();
 
     // No longer request bus
     digitalWrite(BR_BUSRQ_BAR, 1);
@@ -501,6 +507,14 @@ void BusAccess::waitEnablementUpdate()
     WR32(ARM_PWM_CTL, pwmCtrl);
 }
 
+void BusAccess::waitGenerationDisable()
+{
+    // Set PWM idle state to disable waits
+    uint32_t pwmCtrl = RD32(ARM_PWM_CTL);
+    pwmCtrl &= ~(ARM_PWM_CTL_SBIT1 | ARM_PWM_CTL_SBIT2);
+    WR32(ARM_PWM_CTL, pwmCtrl);
+}
+
 void BusAccess::waitSetupMREQAndIORQEnables()
 {
     // Use PWM to generate pulses as the behaviour of the processor is non-deterministic in terms
@@ -566,13 +580,17 @@ void BusAccess::waitSetupMREQAndIORQEnables()
 
 void BusAccess::waitResetFlipFlops()
 {
+    //TODO
     ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_E);
     ISR_VALUE(ISR_ASSERT_CODE_DEBUG_F, RD32(ARM_PWM_STA));
 
     // Since the FIFO is shared the data output to MREQ/IORQ enable pins will be interleaved so we need to write data for both
     if ((RD32(ARM_PWM_STA) & 1) == 0)
     {
+        //TODO
         ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_C);
+
+        // Write to FIFO
         WR32(ARM_PWM_FIF1, 0x00ffffff);
         WR32(ARM_PWM_FIF1, 0x00ffffff);
     }
