@@ -369,8 +369,7 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "cpu-step"))
     {
-        // Format registers to return
-        // _z80Registers.format(pResponse, maxResponseLen);
+        TargetTracker::stepInto();
     }
     else if (commandMatch(cmdStr, "run"))
     {

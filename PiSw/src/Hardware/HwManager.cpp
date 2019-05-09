@@ -7,6 +7,7 @@
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetTracker.h"
 #include "../System/rdutils.h"
+#include "../System/lowlib.h"
 #include "../System/ee_sprintf.h"
 #include "../System/piwiring.h"
 #include "Hw64KRAM.h"
@@ -224,9 +225,14 @@ BR_RETURN_TYPE HwManager::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_
 
 BR_RETURN_TYPE HwManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq, bool forceMirrorAccess)
 {
+    // LogWrite(FromHwManager, LOG_DEBUG, "blockRead");
+
     // Check if bus access is available
     if (TargetTracker::busAccessAvailable() && !forceMirrorAccess)
+    {
+        // LogWrite(FromHwManager, LOG_DEBUG, "blockRead busaccess");
         return BusAccess::blockRead(addr, pBuf, len, busRqAndRelease, iorq);
+    }
 
     // Iterate hardware
     BR_RETURN_TYPE retVal = BR_OK;
@@ -374,6 +380,10 @@ void HwManager::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
     }
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Hardware enable/disable
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 // Enable
 bool HwManager::enableHw(const char* hwName, bool enable)
 {
@@ -401,6 +411,10 @@ void HwManager::disableAll()
         _pHw[i]->enable(false);
     }
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Setup from JSON
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Setup from Json
 void HwManager::setupFromJson(const char* jsonKey, const char* hwJson)

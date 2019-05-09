@@ -644,7 +644,7 @@ def test_regGetTest():
     commonTest.sendFrame("targetReset", b"{\"cmdName\":\"targetReset\"}\0")
     commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\"}\0")
     time.sleep(.2)
-    for i in range(20):
+    for i in range(21):
         # logger.debug(f"i={i}")
         commonTest.sendFrame("stepInto", b"{\"cmdName\":\"stepInto\"}\0")
         time.sleep(.2)

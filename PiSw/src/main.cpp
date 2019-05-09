@@ -97,6 +97,9 @@ extern "C" int main()
     // Bus raider app
     busRaiderApp.init();
 
+    // Select Serial Terminal machine - overridden with info from ESP32
+    mcManager.setMachineByName("Serial Terminal");
+
     // Loop forever
     while(1)
     {

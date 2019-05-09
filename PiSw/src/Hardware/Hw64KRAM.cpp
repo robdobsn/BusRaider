@@ -102,6 +102,7 @@ uint8_t* Hw64KRam::getMirrorMemory()
 BR_RETURN_TYPE Hw64KRam::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len,
             [[maybe_unused]] bool busRqAndRelease, bool iorq)
 {
+    //     LogWrite(_logPrefix, LOG_DEBUG, "Hw64KRam::blockWrite");
     // Check for memory request
     if (iorq)
         return BR_NOT_HANDLED;
@@ -116,7 +117,11 @@ BR_RETURN_TYPE Hw64KRam::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t
         len = _mirrorMemoryLen-addr;
     // Write
     if (len > 0)
+    {
+        // LogWrite(_logPrefix, LOG_DEBUG, "Hw64KRam::blockWrite %04x %d [0] %02x [1] %02x [2] %02x [3] %02x",
+        //         addr, len, pBuf[0], pBuf[1], pBuf[2], pBuf[3]);
         memcpy(pMirrorMemory+addr, pBuf, len);
+    }
     return BR_OK;
 }
 
@@ -137,7 +142,11 @@ BR_RETURN_TYPE Hw64KRam::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len,
         len = _mirrorMemoryLen-addr;
     // Write
     if (len > 0)
+    {
         memcpy(pBuf, pMirrorMemory+addr, len);
+        // LogWrite(_logPrefix, LOG_DEBUG, "Hw64KRam::blockRead %04x %d [0] %02x [1] %02x [2] %02x [3] %02x",
+        //         addr, len, pBuf[0], pBuf[1], pBuf[2], pBuf[3]);
+    }
     return BR_OK;
 }
 
@@ -221,18 +230,13 @@ void Hw64KRam::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType,
                 // Make a copy of the enire memory while we have the chance
                 // int blockReadResult = 
                 BusAccess::blockRead(0, getMirrorMemory(), _mirrorMemoryLen, false, false);
-
-                    // // TODO
-                    // digitalWrite(BR_PAGING_RAM_PIN, 1);
-                    // microsDelay(3);
-                    // digitalWrite(BR_PAGING_RAM_PIN, 0);
-                    // microsDelay(1);
-                    // digitalWrite(BR_PAGING_RAM_PIN, 1);
-                    // microsDelay(3);
-                    // digitalWrite(BR_PAGING_RAM_PIN, 0);
-                    // microsDelay(1);
-
-                // LogWrite(_logPrefix, LOG_DEBUG, "mirror memory blockRead %s", (blockReadResult == BR_OK) ? "OK" : "FAIL");
+                // LogWrite(_logPrefix, LOG_DEBUG, "mirror memory blockRead %s addr %04x %d [0] %02x [1] %02x [2] %02x [3] %02x",
+                //              (blockReadResult == BR_OK) ? "OK" : "FAIL",
+                //              0, _mirrorMemoryLen,
+                //              getMirrorMemory()[0],
+                //              getMirrorMemory()[1],
+                //              getMirrorMemory()[2],
+                //              getMirrorMemory()[3]);
             }
             break;
         default:
