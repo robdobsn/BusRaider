@@ -91,6 +91,8 @@ class CommonTest:
             self.hdlcHandler = HDLC(None, sendDataToTCP, self.dumpBinFile)
             self.hdlcHandler.setCallbacks(onHDLCFrame)
 
+            self.logger.info(f"UnitTest BusRaider IP {ipAddrOrHostName} port {self.tcpHdlcPort}")
+
         else:
             # Open the serial connection to the BusRaider
             try:

@@ -484,10 +484,10 @@ def test_stepSingle():
                     msgContent['cmdName'] == 'ClearTargetResp' or \
                     msgContent['cmdName'] == 'targetResetResp' or \
                     msgContent['cmdName'] == 'targetTrackerOnResp' or \
-                    msgContent['cmdName'] == 'stepIntoResp' or \
-                    msgContent['cmdName'] == 'targetTrackerOffResp':
-                    
+                    msgContent['cmdName'] == 'targetTrackerOffResp':                    
             assert(msgContent['err'] == 'ok')
+        elif msgContent['cmdName'] == 'stepIntoResp':
+            testStats['stepCount'] += 1
         elif msgContent['cmdName'] == 'ProgramAndResetResp' or \
                     msgContent['cmdName'] == "ProgramAndExecResp":
             assert(msgContent['err'] == 'ok')
@@ -507,7 +507,9 @@ def test_stepSingle():
                     msgContent['cmdName'] == "busResetResp":
             pass
         elif msgContent['cmdName'] == "getRegsResp":
-            testStats["AFOK"] = ("AF=0b" in msgContent['regs'])
+            testStats["AFOK"] = ("AF=ba" in msgContent['regs'])
+            if not testStats["AFOK"]:
+                logger.debug(f"{msgContent}")
             testStats["regsOk"] = True
         else:
             testStats["unknownMsgCount"] += 1
@@ -521,31 +523,31 @@ def test_stepSingle():
     testWriteData = b"\x3e\x06\x3c\x3c\x3c\xc3\x02\x00"
     testWriteLen = bytes(str(len(testWriteData)),'utf-8')
     testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRespCount":0,
-            "iorqRd":0, "iorqWr":0, "mreqRd":0, "mreqWr":0, "AFOK": False, "regsOk": False}
+            "iorqRd":0, "iorqWr":0, "mreqRd":0, "mreqWr":0, "AFOK": False, "regsOk": False, "stepCount":0}
 
     mc = "Serial Terminal"
     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\"}\0")
-    time.sleep(1)
+    time.sleep(.2)
 
     # Send program
     commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
     time.sleep(.1)
     commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"len\":" + testWriteLen  + b",\"isIo\":0}\0" + testWriteData)
-    time.sleep(1)
+    time.sleep(.1)
 
     # Setup Test
-    commonTest.sendFrame("targetReset", b"{\"cmdName\":\"targetReset\"}\0")
-    commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\"}\0")
-    time.sleep(.2)
-    for i in range(6):
+    commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\",\"reset\":1}\0")
+    time.sleep(.1)
+    numTestLoops = 60
+    for i in range(4*numTestLoops):
         commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
-        time.sleep(.5)
-    time.sleep(1)
+        time.sleep(.2)
+    time.sleep(.1)
 
     # Check status
     commonTest.sendFrame("busStatus", b"{\"cmdName\":\"busStatus\"}\0")
     commonTest.sendFrame("getRegs", b"{\"cmdName\":\"getRegs\"}\0")
-    time.sleep(2)
+    time.sleep(.2)
 
     # Clear Test
     commonTest.sendFrame("targetTrackerOff", b"{\"cmdName\":\"targetTrackerOff\"}\0")
@@ -553,6 +555,8 @@ def test_stepSingle():
     # Wait for test end and cleardown
     commonTest.cleardown()
     assert(testStats["unknownMsgCount"] == 0)
+    assert(testStats["stepCount"] == 4 * numTestLoops)
+    logger.debug(f"StepCount {testStats['stepCount']}")
     assert(testStats["AFOK"])
     assert(testStats["regsOk"])
 
@@ -641,10 +645,9 @@ def test_regGetTest():
     commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"len\":" + testWriteLen  + b",\"isIo\":0}\0" + testWriteData)
 
     # Setup Test
-    commonTest.sendFrame("targetReset", b"{\"cmdName\":\"targetReset\"}\0")
-    commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\"}\0")
+    commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\",\"reset\":1}\0")
     time.sleep(.2)
-    for i in range(44):
+    for i in range(43):
         # logger.debug(f"i={i}")
         commonTest.sendFrame("stepInto", b"{\"cmdName\":\"stepInto\"}\0")
         time.sleep(.2)

@@ -235,8 +235,16 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
     }
     else if (strcasecmp(cmdName, "targetTrackerOn") == 0)
     {
+        // Get clock rate required
+        static const int MAX_CMD_PARAM_STR = 50;
+        char paramVal[MAX_CMD_PARAM_STR+1];
+        if (!jsonGetValueForKey("reset", pCmdJson, paramVal, MAX_CMD_PARAM_STR))
+            return false;
+        bool reset = strtol(paramVal, NULL, 10) != 0;
         // Turn target tracker on
         TargetTracker::enable(true);
+        if (reset)
+            BusAccess::targetReqReset(_busSocketId);
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
@@ -252,7 +260,7 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
     {
         // Turn target tracker on
         TargetTracker::stepInto();
-        LogWrite(FromBusController, LOG_DEBUG, "TargettrackerStep");
+        // LogWrite(FromBusController, LOG_DEBUG, "TargettrackerStep");
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }

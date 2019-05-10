@@ -564,20 +564,56 @@ void BusAccess::waitHandleNew()
     uint32_t dataBusVals = 0;
     uint32_t ctrlBusVals = 0;
 
+    // Check if paging in/out is required
+    if (_targetPageInOnReadComplete)
+    {
+        pagingPageIn();
+        _targetPageInOnReadComplete = false;
+    }
+
+    // Loop until control lines are valid
+    // In a write cycle WR is asserted after MREQ so we need to wait until WR changes before
+    // we can determine what kind of operation is in progress 
+    int avoidLockupCtr = 0;
+    ctrlBusVals = 0;
+    while(avoidLockupCtr < MAX_WAIT_FOR_CTRL_LINES_COUNT)
+    {
+        // Read the control lines
+        uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
+
+        // Get the appropriate bits for up-line communication
+        ctrlBusVals = 
+                (((busVals & BR_RD_BAR_MASK) == 0) ? BR_CTRL_BUS_RD_MASK : 0) |
+                (((busVals & BR_WR_BAR_MASK) == 0) ? BR_CTRL_BUS_WR_MASK : 0) |
+                (((busVals & BR_MREQ_BAR_MASK) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
+                (((busVals & BR_IORQ_BAR_MASK) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
+                (((busVals & BR_WAIT_BAR_MASK) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0);
+
+        // Check for (MREQ || IORQ) && (RD || WR)
+        bool ctrlValid = ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) || (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)) && ((ctrlBusVals & BR_CTRL_BUS_RD_MASK) || (ctrlBusVals & BR_CTRL_BUS_WR_MASK));
+        
+        // Also valid if IORQ && M1 as this is used for interrupt ack
+        // TODO - this isn't valid as M1 can't be relied upon
+        // ctrlValid = ctrlValid || (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) & (ctrlBusVals & BR_CTRL_BUS_M1_MASK);
+
+        // If ctrl is already valid then continue
+        if (ctrlValid)
+            break;
+
+        // Delay
+        microsDelay(1);
+
+        // Ensure we don't lock up on weird bus activity
+        avoidLockupCtr++;
+    }
+    
     // Check if bus detail is suspended for one cycle
     if (_waitSuspendBusDetailOneCycle)
     {
-        ctrlBusVals = BR_CTRL_BUS_RD_MASK | BR_CTRL_BUS_MREQ_MASK | BR_CTRL_BUS_M1_MASK | BR_CTRL_BUS_WAIT_MASK;
         _waitSuspendBusDetailOneCycle = false;
     }
     else
     {
-        // Check if paging in/out is required
-        if (_targetPageInOnReadComplete)
-        {
-            pagingPageIn();
-            _targetPageInOnReadComplete = false;
-        }
 
     // TODO DEBUG
             // pinMode(BR_WR_BAR, INPUT);
@@ -585,50 +621,22 @@ void BusAccess::waitHandleNew()
             // pinMode(BR_MREQ_BAR, INPUT);
             // pinMode(BR_IORQ_BAR, INPUT);
 
+        // Clear the mux to deactivate output enables
+        muxClear();
+
         // Set PIB to input
         pibSetIn();
 
         // Set data bus direction out so we can read the M1 value
         WR32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
 
-        // Clear the mux to deactivate output enables
-        muxClear();
-
-        // Delay to allow M1 to settle
+        // Read M1
         microsDelay(1);
 
-        // Loop until control lines are valid
-        // In a write cycle WR is asserted after MREQ so we need to wait until WR changes before
-        // we can determine what kind of operation is in progress 
-        int avoidLockupCtr = 0;
-        ctrlBusVals = 0;
-        while(avoidLockupCtr < MAX_WAIT_FOR_CTRL_LINES_COUNT)
-        {
-            // Read the control lines
-            uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
+        // Read the control lines and set M1
+        uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
+        ctrlBusVals |= (((busVals & BR_M1_PIB_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
 
-            // Get the appropriate bits for up-line communication
-            ctrlBusVals = 
-                    (((busVals & BR_RD_BAR_MASK) == 0) ? BR_CTRL_BUS_RD_MASK : 0) |
-                    (((busVals & BR_WR_BAR_MASK) == 0) ? BR_CTRL_BUS_WR_MASK : 0) |
-                    (((busVals & BR_MREQ_BAR_MASK) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
-                    (((busVals & BR_IORQ_BAR_MASK) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
-                    (((busVals & BR_WAIT_BAR_MASK) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
-                    (((busVals & BR_M1_PIB_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
-
-            // Check for (MREQ || IORQ) && (RD || WR)
-            bool ctrlValid = ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) || (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)) && ((ctrlBusVals & BR_CTRL_BUS_RD_MASK) || (ctrlBusVals & BR_CTRL_BUS_WR_MASK));
-            
-            // Also valid if IORQ && M1 as this is used for interrupt ack
-            ctrlValid = ctrlValid || (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) & (ctrlBusVals & BR_CTRL_BUS_M1_MASK);
-
-            // If ctrl is already valid then continue
-            if (ctrlValid)
-                break;
-
-            // Ensure we don't lock up on weird bus activity
-            avoidLockupCtr++;
-        }
         // Enable the high address onto the PIB
         muxSet(BR_MUX_HADDR_OE_BAR);
 
@@ -656,6 +664,10 @@ void BusAccess::waitHandleNew()
         // Read the data bus
         // If the target machine is writing then this will be the data it wants to write
         // If reading then the memory/IO system may have placed its data onto the data bus 
+
+        // Due to hardware limitations reading from the data bus MUST be done last as the
+        // output of the data bus is latched onto the PIB (or out onto the data bus in the case
+        // where the ISR provides data for the processor to read)
 
         // Enable data bus onto PIB
         digitalWrite(BR_DATA_DIR_IN, 1);

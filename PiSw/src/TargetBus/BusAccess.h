@@ -106,9 +106,9 @@
 #define ISR_ASSERT_NUM_CODES 12
 
 // Width of a reset, NMI, IRQ pulses
-#define BR_RESET_PULSE_US 100
-#define BR_NMI_PULSE_US 20
-#define BR_IRQ_PULSE_US 20
+#define BR_RESET_PULSE_US 1000
+#define BR_NMI_PULSE_US 50
+#define BR_IRQ_PULSE_US 50
 #define BR_BUSRQ_MAX_US 100
 
 // Clock frequency for debug
@@ -440,7 +440,7 @@ private:
 private:
     // Timeouts
     static const int MAX_WAIT_FOR_PENDING_ACTION_US = 2000;
-    static const int MAX_WAIT_FOR_CTRL_LINES_COUNT = 10000;
+    static const int MAX_WAIT_FOR_CTRL_LINES_COUNT = 10;
 
     // Period target write control bus line is asserted during a write
     static const int CYCLES_DELAY_FOR_WRITE_TO_TARGET = 250;

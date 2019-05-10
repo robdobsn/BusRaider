@@ -266,6 +266,15 @@ TargetTracker::OPCODE_INJECT_PROGRESS TargetTracker::handleRegisterGet(uint32_t 
     const int RegisterAFUpdatePos = 32;
     const int RelJumpBackStartPos = 34;
 
+    // LogWrite(FromTargetTracker, LOG_DEBUG, "INJ %d %c %c %c %c %c %02x", 
+    //             _snippetPos,
+    //             (flags & BR_CTRL_BUS_M1_MASK) ? '1' : ' ',
+    //             (flags & BR_CTRL_BUS_RD_MASK) ? 'R' : ' ',
+    //             (flags & BR_CTRL_BUS_WR_MASK) ? 'W' : ' ',
+    //             (flags & BR_CTRL_BUS_MREQ_MASK) ? 'M' : ' ',
+    //             (flags & BR_CTRL_BUS_IORQ_MASK) ? 'I' : ' ',
+    //             flags);
+
     // Check if writing
     if (flags & BR_CTRL_BUS_WR_MASK)
     {

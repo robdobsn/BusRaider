@@ -104,6 +104,8 @@ class HDLC(object):
             self.processByte(b[i])
 
     def processBytes(self, bs):
+        if self.dumpFile is not None:
+            self.dumpFile.write(bs)
         for b in bs:
             self.processByte(b)
             
