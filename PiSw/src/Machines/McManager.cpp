@@ -414,7 +414,9 @@ void McManager::handleTargetProgram(bool execAfterProgramming)
     else 
     {
         // BUSRQ is used even if memory is emulated because it holds the processor while changes are made
-
+        // TODO make sure this works in all cases - there are problems in BusAccess with BUSRQ cycles
+        // followed by WAIT handling (due to non-resettability of FF_DATA_OE_BAR flag) so make sure this is ok
+         
         // Request target bus
         BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_PROGRAMMING);
         _busActionPendingProgramTarget = true;

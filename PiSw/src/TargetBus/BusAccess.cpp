@@ -36,6 +36,9 @@ volatile uint32_t BusAccess::_waitAssertedStartUs = 0;
 // Held in wait state
 volatile bool BusAccess::_waitHold = false;
 
+// Wait suspend bus detail for one cycle
+volatile bool BusAccess::_waitSuspendBusDetailOneCycle = false;
+
 // Bus action handling
 volatile int BusAccess::_busActionSocket = 0;
 volatile BR_BUS_ACTION BusAccess::_busActionType = BR_BUS_ACTION_NONE;
@@ -554,157 +557,119 @@ void BusAccess::serviceWaitActivity()
 
 void BusAccess::waitHandleNew()
 {
-                        //TODO
-                bool linVal = digitalRead(8);
-                for (int i = 0; i < 2; i++)
-                {
-                    digitalWrite(8, !linVal);
-                    microsDelay(1);
-                    digitalWrite(8, linVal);
-                    microsDelay(1);
-                }
-
     // Time at start of ISR
     uint32_t isrStartUs = micros();
-    
-    // Check if paging in/out is required
-    if (_targetPageInOnReadComplete)
+
+    uint32_t addr = 0;
+    uint32_t dataBusVals = 0;
+    uint32_t ctrlBusVals = 0;
+
+    // Check if bus detail is suspended for one cycle
+    if (_waitSuspendBusDetailOneCycle)
     {
-        pagingPageIn();
-        _targetPageInOnReadComplete = false;
+        ctrlBusVals = BR_CTRL_BUS_RD_MASK | BR_CTRL_BUS_MREQ_MASK | BR_CTRL_BUS_M1_MASK | BR_CTRL_BUS_WAIT_MASK;
+        _waitSuspendBusDetailOneCycle = false;
     }
+    else
+    {
+        // Check if paging in/out is required
+        if (_targetPageInOnReadComplete)
+        {
+            pagingPageIn();
+            _targetPageInOnReadComplete = false;
+        }
 
     // TODO DEBUG
-            pinMode(BR_WR_BAR, INPUT);
-            pinMode(BR_RD_BAR, INPUT);
-            pinMode(BR_MREQ_BAR, INPUT);
-            pinMode(BR_IORQ_BAR, INPUT);
+            // pinMode(BR_WR_BAR, INPUT);
+            // pinMode(BR_RD_BAR, INPUT);
+            // pinMode(BR_MREQ_BAR, INPUT);
+            // pinMode(BR_IORQ_BAR, INPUT);
 
-    // Set PIB to input
-    pibSetIn();
+        // Set PIB to input
+        pibSetIn();
 
-    // Set data bus direction out so we can read the M1 value
-    WR32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
+        // Set data bus direction out so we can read the M1 value
+        WR32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
 
-    // Clear the mux to deactivate output enables
-    muxClear();
+        // Clear the mux to deactivate output enables
+        muxClear();
 
-    // Delay to allow M1 to settle
-    microsDelay(1);
+        // Delay to allow M1 to settle
+        microsDelay(1);
 
-    // Loop until control lines are valid
-    // In a write cycle WR is asserted after MREQ so we need to wait until WR changes before
-    // we can determine what kind of operation is in progress 
-    int avoidLockupCtr = 0;
-    uint32_t ctrlBusVals = 0;
-    while(avoidLockupCtr < MAX_WAIT_FOR_CTRL_LINES_COUNT)
-    {
-        // Read the control lines
-        uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
+        // Loop until control lines are valid
+        // In a write cycle WR is asserted after MREQ so we need to wait until WR changes before
+        // we can determine what kind of operation is in progress 
+        int avoidLockupCtr = 0;
+        ctrlBusVals = 0;
+        while(avoidLockupCtr < MAX_WAIT_FOR_CTRL_LINES_COUNT)
+        {
+            // Read the control lines
+            uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
 
-        // Get the appropriate bits for up-line communication
-        ctrlBusVals = 
-                (((busVals & BR_RD_BAR_MASK) == 0) ? BR_CTRL_BUS_RD_MASK : 0) |
-                (((busVals & BR_WR_BAR_MASK) == 0) ? BR_CTRL_BUS_WR_MASK : 0) |
-                (((busVals & BR_MREQ_BAR_MASK) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
-                (((busVals & BR_IORQ_BAR_MASK) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
-                (((busVals & BR_WAIT_BAR_MASK) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
-                (((busVals & BR_M1_PIB_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
+            // Get the appropriate bits for up-line communication
+            ctrlBusVals = 
+                    (((busVals & BR_RD_BAR_MASK) == 0) ? BR_CTRL_BUS_RD_MASK : 0) |
+                    (((busVals & BR_WR_BAR_MASK) == 0) ? BR_CTRL_BUS_WR_MASK : 0) |
+                    (((busVals & BR_MREQ_BAR_MASK) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
+                    (((busVals & BR_IORQ_BAR_MASK) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
+                    (((busVals & BR_WAIT_BAR_MASK) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
+                    (((busVals & BR_M1_PIB_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
 
-        // Check for (MREQ || IORQ) && (RD || WR)
-        bool ctrlValid = ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) || (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)) && ((ctrlBusVals & BR_CTRL_BUS_RD_MASK) || (ctrlBusVals & BR_CTRL_BUS_WR_MASK));
-        
-        // Also valid if IORQ && M1 as this is used for interrupt ack
-        ctrlValid = ctrlValid || (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) & (ctrlBusVals & BR_CTRL_BUS_M1_MASK);
+            // Check for (MREQ || IORQ) && (RD || WR)
+            bool ctrlValid = ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) || (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)) && ((ctrlBusVals & BR_CTRL_BUS_RD_MASK) || (ctrlBusVals & BR_CTRL_BUS_WR_MASK));
+            
+            // Also valid if IORQ && M1 as this is used for interrupt ack
+            ctrlValid = ctrlValid || (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) & (ctrlBusVals & BR_CTRL_BUS_M1_MASK);
 
-        // If ctrl is already valid then continue
-        if (ctrlValid)
-            break;
+            // If ctrl is already valid then continue
+            if (ctrlValid)
+                break;
 
-        // Ensure we don't lock up on weird bus activity
-        avoidLockupCtr++;
+            // Ensure we don't lock up on weird bus activity
+            avoidLockupCtr++;
+        }
+        // Enable the high address onto the PIB
+        muxSet(BR_MUX_HADDR_OE_BAR);
+
+        // Delay to allow data to settle
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_READ);
+
+        // Or in the high address
+        addr = (pibGetValue() & 0xff) << 8;
+
+        // Enable the low address onto the PIB
+        muxSet(BR_MUX_LADDR_OE_BAR);
+
+        // Delay to allow data to settle
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
+
+        // Get low address value
+        addr |= pibGetValue() & 0xff;
+
+        // Clear the mux to deactivate output enables
+        muxClear();
+
+        // Delay to allow data to settle
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
+
+        // Read the data bus
+        // If the target machine is writing then this will be the data it wants to write
+        // If reading then the memory/IO system may have placed its data onto the data bus 
+
+        // Enable data bus onto PIB
+        digitalWrite(BR_DATA_DIR_IN, 1);
+        muxSet(BR_MUX_DATA_OE_BAR_LOW);
+
+        // Delay to allow data to settle
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
+
+        // Read the data bus values
+        dataBusVals = pibGetValue() & 0xff;
+
+        // Clear Mux
+        muxClear();
     }
-
-                    //TODO
-                 linVal = digitalRead(8);
-                for (int i = 0; i < 3; i++)
-                {
-                    digitalWrite(8, !linVal);
-                    microsDelay(1);
-                    digitalWrite(8, linVal);
-                    microsDelay(1);
-                }
-
-    // Enable the high address onto the PIB
-    muxSet(BR_MUX_HADDR_OE_BAR);
-
-                    //TODO
-                 linVal = digitalRead(8);
-                for (int i = 0; i < 5; i++)
-                {
-                    digitalWrite(8, !linVal);
-                    microsDelay(1);
-                    digitalWrite(8, linVal);
-                    microsDelay(1);
-                }
-
-    // Delay to allow data to settle
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_READ);
-
-    // Or in the high address
-    uint32_t addr = (pibGetValue() & 0xff) << 8;
-
-    // Enable the low address onto the PIB
-    muxSet(BR_MUX_LADDR_OE_BAR);
-
-                    //TODO
-                 linVal = digitalRead(8);
-                for (int i = 0; i < 5; i++)
-                {
-                    digitalWrite(8, !linVal);
-                    microsDelay(1);
-                    digitalWrite(8, linVal);
-                    microsDelay(1);
-                }
-
-    // Delay to allow data to settle
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
-
-    // Get low address value
-    addr |= pibGetValue() & 0xff;
-
-    // Clear the mux to deactivate output enables
-    muxClear();
-
-    // Delay to allow data to settle
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
-
-    // Read the data bus
-    // If the target machine is writing then this will be the data it wants to write
-    // If reading then the memory/IO system may have placed its data onto the data bus 
-
-    // Enable data bus onto PIB
-    digitalWrite(BR_DATA_DIR_IN, 1);
-    muxSet(BR_MUX_DATA_OE_BAR_LOW);
-
-    // Delay to allow data to settle
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
-
-    // Read the data bus values
-    uint32_t dataBusVals = pibGetValue() & 0xff;
-
-    // Clear Mux
-    muxClear();
-
-                    //TODO
-                 linVal = digitalRead(8);
-                for (int i = 0; i < 2; i++)
-                {
-                    digitalWrite(8, !linVal);
-                    microsDelay(3);
-                    digitalWrite(8, linVal);
-                    microsDelay(1);
-                }
 
     // Send this to all bus sockets
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
@@ -721,16 +686,6 @@ void BusAccess::waitHandleNew()
             //             (ctrlBusVals & BR_CTRL_BUS_WR_MASK) ? dataBusVals : retVal);
         }
     }
-
-                    //TODO
-                 linVal = digitalRead(8);
-                for (int i = 0; i < 2; i++)
-                {
-                    digitalWrite(8, !linVal);
-                    microsDelay(3);
-                    digitalWrite(8, linVal);
-                    microsDelay(1);
-                }
 
     // If Z80 is reading from the data bus (inc reading an ISR vector)
     // and result is valid then put the returned data onto the bus
@@ -751,15 +706,6 @@ void BusAccess::waitHandleNew()
         _targetReadInProgress = true;
     }
 
-                    //TODO
-                 linVal = digitalRead(8);
-                for (int i = 0; i < 3; i++)
-                {
-                    digitalWrite(8, !linVal);
-                    microsDelay(3);
-                    digitalWrite(8, linVal);
-                    microsDelay(1);
-                }
     // Elapsed and count
     uint32_t isrElapsedUs = micros() - isrStartUs;
     _statusInfo.isrCount++;

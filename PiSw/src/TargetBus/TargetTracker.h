@@ -70,9 +70,17 @@ private:
     // Registers
     static Z80Registers _z80Registers;
 
+    // Register get/set
+    enum OPCODE_INJECT_PROGRESS
+    {
+        OPCODE_INJECT_GENERAL,
+        OPCODE_INJECT_GRAB_MEMORY,
+        OPCODE_INJECT_DONE
+    };
+    static OPCODE_INJECT_PROGRESS handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
+    static OPCODE_INJECT_PROGRESS handleRegisterSet(uint32_t& retVal);
+
     // Utils
-    static bool handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
-    static bool handleRegisterSet(uint32_t& retVal);
     static bool isPrefixInstruction(uint32_t instr);
     static bool trackPrefixedInstructions(uint32_t flags, uint32_t codeVal);
     static void store16BitVal(uint8_t arry[], int offset, uint16_t val);

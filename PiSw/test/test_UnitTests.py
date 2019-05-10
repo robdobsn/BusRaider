@@ -605,8 +605,8 @@ def test_regGetTest():
     setupTests("regGetTest")
     commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
     # Test data - sets all registers to known values
-    # jump to 0002
-    expectedRegs = "PC=0002 SP=9b61 BC=3a2b AF=0330 HL=7a4e DE=5542 IX=9187 IY=f122 AF'=8387 BC'=83b2 HL'=2334 DE'=a202 I=03 R=76  F=---H---- F'=S-----PNC"
+    # jump to 0000
+    expectedRegs = "PC=0002 SP=9b61 BC=3a2b AF=2530 HL=7a4e DE=5542 IX=9187 IY=f122 AF'=8387 BC'=83b2 HL'=2334 DE'=a202 I=03 R=77  F=---H---- F'=S-----PNC"
     testWriteData = b"\x3e\x25" \
                     b"\x01\xb2\x83" \
                     b"\x11\x02\xa2" \
@@ -627,7 +627,7 @@ def test_regGetTest():
                     b"\x3e\x03" \
                     b"\xed\x47" \
                     b"\xed\x5e" \
-                    b"\xc3\x02\x00"
+                    b"\xc3\x00\x00"
     testWriteLen = bytes(str(len(testWriteData)),'utf-8')
     testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRespCount":0,
             "iorqRd":0, "iorqWr":0, "mreqRd":0, "mreqWr":0, "regsOk": False}
@@ -644,7 +644,7 @@ def test_regGetTest():
     commonTest.sendFrame("targetReset", b"{\"cmdName\":\"targetReset\"}\0")
     commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\"}\0")
     time.sleep(.2)
-    for i in range(21):
+    for i in range(44):
         # logger.debug(f"i={i}")
         commonTest.sendFrame("stepInto", b"{\"cmdName\":\"stepInto\"}\0")
         time.sleep(.2)

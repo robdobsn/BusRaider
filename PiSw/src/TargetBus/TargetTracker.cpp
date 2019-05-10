@@ -227,7 +227,7 @@ int TargetTracker::getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBu
 // Interrupt extension for debugger - handle register GET
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool TargetTracker::handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal)
+TargetTracker::OPCODE_INJECT_PROGRESS TargetTracker::handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal)
 {
     // Instructions to get register values
     static uint8_t regQueryInstructions[] = 
@@ -264,6 +264,7 @@ bool TargetTracker::handleRegisterGet(uint32_t addr, uint32_t data, uint32_t fla
     };
     const int RegisterRUpdatePos = 28;
     const int RegisterAFUpdatePos = 32;
+    const int RelJumpBackStartPos = 34;
 
     // Check if writing
     if (flags & BR_CTRL_BUS_WR_MASK)
@@ -381,16 +382,20 @@ bool TargetTracker::handleRegisterGet(uint32_t addr, uint32_t data, uint32_t fla
     if (_snippetPos >= sizeof(regQueryInstructions))
     {
         _snippetPos = 0;
-        return true;
+        return OPCODE_INJECT_DONE;
     }
-    return false;
+    else if (_snippetPos == RelJumpBackStartPos)
+    {
+        return OPCODE_INJECT_GRAB_MEMORY;
+    }
+    return OPCODE_INJECT_GENERAL;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Interrupt extension for debugger - handle register SET
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool TargetTracker::handleRegisterSet(uint32_t& retVal)
+TargetTracker::OPCODE_INJECT_PROGRESS TargetTracker::handleRegisterSet(uint32_t& retVal)
 {
     // Fill in the register values
     if (_snippetPos == 0)
@@ -399,7 +404,7 @@ bool TargetTracker::handleRegisterSet(uint32_t& retVal)
         if (_snippetLen == 0)
         {
             // Nothing to do
-            return true;
+            return OPCODE_INJECT_DONE;
         }
     }
 
@@ -408,8 +413,8 @@ bool TargetTracker::handleRegisterSet(uint32_t& retVal)
 
     // Check if complete
     if (_snippetPos >= _snippetLen)
-        return true;
-    return false;
+        return OPCODE_INJECT_DONE;
+    return OPCODE_INJECT_GENERAL;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -442,20 +447,6 @@ void TargetTracker::stepRun()
 void TargetTracker::getRegsFormatted(char* pBuf, int len)
 {
     _z80Registers.format(pBuf, len);
-
-    // TODO
-    if (strstr(pBuf, "PC=0002") == NULL)
-    {
-        //TODO
-        bool linVal = digitalRead(8);
-        for (int i = 0; i < 10; i++)
-        {
-            digitalWrite(8, !linVal);
-            microsDelay(1);
-            digitalWrite(8, linVal);
-            microsDelay(1);
-        }
-    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -530,7 +521,7 @@ void TargetTracker::busActionCompleteStatic([[maybe_unused]]BR_BUS_ACTION action
         _prefixTracker[0] = _prefixTracker[1] = false;
 
         // Since we're receiving a reset we know that we're at the start of an instruction
-        _targetStateAcqMode = TARGET_STATE_ACQ_INSTR_FIRST_BYTE_GOT;        
+        _targetStateAcqMode = TARGET_STATE_ACQ_INSTR_FIRST_BYTE_GOT;
     }
 }
 
@@ -630,14 +621,32 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
         case TARGET_STATE_ACQ_INJECTING:
         {
             // Handle get or set
-            bool injectFinished = false;
+            OPCODE_INJECT_PROGRESS injectProgress = OPCODE_INJECT_GENERAL;
             if (_setRegs)
-                injectFinished = handleRegisterSet(retVal);
+                injectProgress = handleRegisterSet(retVal);
             else
-                injectFinished = handleRegisterGet(addr, data, flags, retVal);
+                injectProgress = handleRegisterGet(addr, data, flags, retVal);
 
-            // Check if finished
-            if (injectFinished)
+            // Check if time for memory grab
+            if (injectProgress == OPCODE_INJECT_GRAB_MEMORY)
+            {
+                // Check if post-inject memory mirroring required
+                if (_postInjectMemoryMirror)
+                {
+
+                    // Suspend bus detail after a BUSRQ as there is a hardware problem with FF_DATA_OE_BAR remaining
+                    // enabled after a BUSRQ which causes contention issues on the PIB. The way around this is to
+                    // ensure BUSRQ is handled synchronously with the TargetTracker operation when MREQ waits are
+                    // enabled so that the cycle immediately following a BUSRQ in this case will be part of the 
+                    // opcode injection cycle and the bus detail will not be required
+                    BusAccess::waitSuspendBusDetailOneCycle();
+
+                    // Request bus
+                    // LogWrite("FromTargetTracker", LOG_DEBUG, "Request bus for mirror");
+                    BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_MIRROR);
+                }
+            }
+            else if (injectProgress == OPCODE_INJECT_DONE)
             {
                 // Default back to getting
                 _setRegs = false;
@@ -647,24 +656,6 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
 
                 // Use the bus socket to request page-in delayed to next wait event
                 BusAccess::targetPageForInjection(_busSocketId, false);
-
-                // Check if post-inject memory mirroring required
-                if (_postInjectMemoryMirror)
-                {
-                    // Request
-                    // LogWrite("FromTargetTracker", LOG_DEBUG, "Request bus for mirror");
-                    BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_MIRROR);
-                }
-
-                // TODO
-                bool linVal = digitalRead(8);
-                for (int i = 0; i < 10; i++)
-                {
-                    digitalWrite(8, !linVal);
-                    microsDelay(1);
-                    digitalWrite(8, linVal);
-                    microsDelay(1);
-                }
 
                 // LogWrite("FromTargetTracker", LOG_DEBUG, "INJECTING FINISHED 0x%04x 0x%02x %s%s",
                 //             addr, ((flags & BR_CTRL_BUS_RD_MASK) & ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0)) ? (retVal & 0xff) : data,  

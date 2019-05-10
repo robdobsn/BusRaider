@@ -282,9 +282,6 @@ public:
     static void targetPageForInjection(int busSocket, bool pageOut);
 
     // Bus control
-    static void controlRequest();
-    static BR_RETURN_TYPE controlRequestAndTake();
-    static void controlRelease();
     static bool isUnderControl();
     
     // Read and write blocks
@@ -295,6 +292,9 @@ public:
     static void waitRelease();
     static bool waitIsHeld();
     static void waitHold(int busSocket, bool hold);
+
+    // Suspend bus detail for one cycle - used to fix a PIB contention issue
+    static void waitSuspendBusDetailOneCycle();
 
     // Service
     static void service();
@@ -354,6 +354,9 @@ private:
     // Hold in wait state
     static volatile bool _waitHold;
 
+    // Suspend bus detail for one cycle
+    static volatile bool _waitSuspendBusDetailOneCycle;
+
     // Action requested for next wait and parameter
     static volatile int _busActionSocket;
     static volatile BR_BUS_ACTION _busActionType;
@@ -399,6 +402,9 @@ private:
     static uint8_t pibGetValue();
 
     // Bus request/ack
+    static void controlRequest();
+    static BR_RETURN_TYPE controlRequestAndTake();
+    static void controlRelease();
     static int controlBusAcknowledged();
     static void controlTake();
 
