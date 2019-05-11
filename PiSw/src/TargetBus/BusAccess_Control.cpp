@@ -35,6 +35,7 @@ int BusAccess::busSocketAdd(BusSocketInfo& busSocketInfo)
     int tmpCount = _busSocketCount++;
 
     // Update wait state generation
+    // LogWrite("BusAccess", LOG_DEBUG, "busSocketAdd");
     waitEnablementUpdate();
 
     return tmpCount;
@@ -50,6 +51,7 @@ void BusAccess::busSocketEnable(int busSocket, bool enable)
     _busSockets[busSocket].enabled = enable;
 
     // Update wait state generation
+    // LogWrite("BusAccess", LOG_DEBUG, "busSocketEnable");
     waitEnablementUpdate();
 }
 
@@ -164,6 +166,7 @@ void BusAccess::controlRelease()
     waitClearDetected();
 
     // Re-establish wait generation
+    // LogWrite("BusAccess", LOG_DEBUG, "controlRelease");
     waitEnablementUpdate();
 
     // Check if any bus action is pending
@@ -505,10 +508,16 @@ void BusAccess::waitEnablementUpdate()
     if (_waitOnMemory)
         pwmCtrl |= ARM_PWM_CTL_SBIT2;
     WR32(ARM_PWM_CTL, pwmCtrl);
+
+    // Debug
+    // LogWrite("BusAccess", LOG_DEBUG, "WAIT UPDATE mem %d io %d", _waitOnMemory, _waitOnIO);
+
 }
 
 void BusAccess::waitGenerationDisable()
 {
+    // Debug
+    // LogWrite("BusAccess", LOG_DEBUG, "WAIT DISABLE");
     // Set PWM idle state to disable waits
     uint32_t pwmCtrl = RD32(ARM_PWM_CTL);
     pwmCtrl &= ~(ARM_PWM_CTL_SBIT1 | ARM_PWM_CTL_SBIT2);
@@ -580,15 +589,15 @@ void BusAccess::waitSetupMREQAndIORQEnables()
 
 void BusAccess::waitResetFlipFlops()
 {
-    //TODO
-    ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_E);
-    ISR_VALUE(ISR_ASSERT_CODE_DEBUG_F, RD32(ARM_PWM_STA));
+    // Debug
+    // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_E);
+    // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_F, RD32(ARM_PWM_STA));
 
     // Since the FIFO is shared the data output to MREQ/IORQ enable pins will be interleaved so we need to write data for both
     if ((RD32(ARM_PWM_STA) & 1) == 0)
     {
-        //TODO
-        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_C);
+        // Debug
+        // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_C);
 
         // Write to FIFO
         WR32(ARM_PWM_FIF1, 0x00ffffff);

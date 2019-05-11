@@ -230,6 +230,7 @@ void Hw64KRam::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType,
                 // Make a copy of the enire memory while we have the chance
                 // int blockReadResult = 
                 BusAccess::blockRead(0, getMirrorMemory(), _mirrorMemoryLen, false, false);
+                // Debug
                 // LogWrite(_logPrefix, LOG_DEBUG, "mirror memory blockRead %s addr %04x %d [0] %02x [1] %02x [2] %02x [3] %02x",
                 //              (blockReadResult == BR_OK) ? "OK" : "FAIL",
                 //              0, _mirrorMemoryLen,

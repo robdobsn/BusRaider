@@ -160,8 +160,7 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
     }
     else if (strcasecmp(cmdName, "targetReset") == 0)
     {
-        // TODO
-        LogWrite(FromBusController, LOG_DEBUG, "TARGET RESET");
+        LogWrite(FromBusController, LOG_DEBUG, "Target Reset");
         // Get bus status
         BusAccess::targetReqReset(_busSocketId);
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);

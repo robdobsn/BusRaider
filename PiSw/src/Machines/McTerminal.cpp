@@ -5,7 +5,7 @@
 #include "McTerminal.h"
 #include "usb_hid_keys.h"
 #include "../System/rdutils.h"
-#include "../System/nmalloc.h" //TODO
+#include "../System/nmalloc.h"
 #include "../System/lowlib.h"
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetState.h"

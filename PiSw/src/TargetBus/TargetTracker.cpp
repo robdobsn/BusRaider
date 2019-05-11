@@ -48,6 +48,9 @@ bool TargetTracker::_postInjectMemoryMirror = true;
 // Disable pending
 bool TargetTracker::_disablePending = false;
 
+// Page out for injection active
+bool TargetTracker::_pageOutForInjectionActive = false;
+
 // Registers
 Z80Registers TargetTracker::_z80Registers;
 
@@ -93,7 +96,18 @@ void TargetTracker::enable(bool en)
     {
         // Remove any hold
         BusAccess::waitHold(_busSocketId, false);
-        _disablePending = true;
+        if (_targetStateAcqMode != TARGET_STATE_ACQ_INJECTING)
+        {
+            // Disable
+            BusAccess::busSocketEnable(_busSocketId, en);
+            // Remove paging for injection
+            BusAccess::targetPageForInjection(_busSocketId, false);
+            _pageOutForInjectionActive = false;
+        }
+        else
+        {
+            _disablePending = true;
+        }
     }
 }
 
@@ -105,6 +119,8 @@ bool TargetTracker::busAccessAvailable()
 
 bool TargetTracker::isPaused()
 {
+    // LogWrite(FromTargetTracker, LOG_DEBUG, "busSocketIsEnabled %d %d", 
+    //             BusAccess::busSocketIsEnabled(_busSocketId), _stepMode);
     if (!BusAccess::busSocketIsEnabled(_busSocketId))
         return false;
     return _stepMode == STEP_MODE_STEP_INTO;
@@ -134,6 +150,7 @@ void TargetTracker::startSetRegisterSequence(Z80Registers* pRegs)
     // as there is a nop at the start of the sequence
     // Use the bus socket to request page out
     BusAccess::targetPageForInjection(_busSocketId, true);
+    _pageOutForInjectionActive = true;
 
     // Start sequence of setting registers
     _setRegs = true;
@@ -514,6 +531,7 @@ bool TargetTracker::handlePendingDisable()
 
         // Remove paging for injection
         BusAccess::targetPageForInjection(_busSocketId, false);
+        _pageOutForInjectionActive = false;
         return true;
     }
     return false;
@@ -616,12 +634,13 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
                         _debugInstrBytes[_debugInstrBytePos++] = codeByteValue;
                     return;
                 }
-                // Use the bus socket to request page out
-                // LogWrite("FromTargetTracker", LOG_DEBUG, "targetPageForInjection TRUE");
-                BusAccess::targetPageForInjection(_busSocketId, true);
 
                 // Bump state
                 _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
+            }
+            else
+            {
+                return;
             }
             // NOTE: this falls through to the next case statement intentionally
             [[fallthrough]];
@@ -629,6 +648,14 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
         // fall through
         case TARGET_STATE_ACQ_INJECTING:
         {
+            // Use the bus socket to request page out if required
+            if (!_pageOutForInjectionActive)
+            {
+                // LogWrite("FromTargetTracker", LOG_DEBUG, "targetPageForInjection TRUE");
+                BusAccess::targetPageForInjection(_busSocketId, true);
+                _pageOutForInjectionActive = true;
+            }
+            
             // Handle get or set
             OPCODE_INJECT_PROGRESS injectProgress = OPCODE_INJECT_GENERAL;
             if (_setRegs)
@@ -650,6 +677,10 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
                     // opcode injection cycle and the bus detail will not be required
                     BusAccess::waitSuspendBusDetailOneCycle();
 
+                    // Use the bus socket to request page-in
+                    BusAccess::targetPageForInjection(_busSocketId, false);
+                    _pageOutForInjectionActive = false;
+
                     // Request bus
                     // LogWrite("FromTargetTracker", LOG_DEBUG, "Request bus for mirror");
                     BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_MIRROR);
@@ -665,6 +696,7 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
 
                 // Use the bus socket to request page-in delayed to next wait event
                 BusAccess::targetPageForInjection(_busSocketId, false);
+                _pageOutForInjectionActive = false;
 
                 // LogWrite("FromTargetTracker", LOG_DEBUG, "INJECTING FINISHED 0x%04x 0x%02x %s%s",
                 //             addr, ((flags & BR_CTRL_BUS_RD_MASK) & ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0)) ? (retVal & 0xff) : data,  

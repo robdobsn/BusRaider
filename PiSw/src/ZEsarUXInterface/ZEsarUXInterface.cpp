@@ -222,7 +222,6 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "read-memory"))
     {
-        // LogWrite(FromDebugger, LOG_VERBOSE, "read mem %s %s", argStr, argStr2);
         // Check for extended args
         int memAddn = 0;
         if (strlen(argStr) > 5)
@@ -322,7 +321,7 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
         // TODO
         // TargetTracker::setWatchpoint();
     }
-     else if (commandMatch(cmdStr, "hard-reset-cpu"))
+    else if (commandMatch(cmdStr, "hard-reset-cpu"))
     {
         // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Reset machine");
         // TODO
@@ -358,6 +357,8 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "enter-cpu-step"))
     {
+        // Reset bus
+        BusAccess::busAccessReset();
         // Target tracker on
         LogWrite(FromZEsarUXInterface, LOG_DEBUG, "TargetTracker ON");
         TargetTracker::enable(true);

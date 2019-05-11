@@ -151,6 +151,8 @@ void BusAccess::busAccessReset()
         waitResetFlipFlops();
 
     // Update wait state generation
+    // Debug
+    // LogWrite("BusAccess", LOG_DEBUG, "busAccessReset");
     waitEnablementUpdate();
 }
 
@@ -166,6 +168,8 @@ void BusAccess::waitOnMemory(int busSocket, bool isOn)
     _busSockets[busSocket].waitOnMemory = isOn;
 
     // Update wait handling
+    // Debug
+    // LogWrite("BusAccess", LOG_DEBUG, "waitonMem");
     waitEnablementUpdate();
 }
 
@@ -177,6 +181,8 @@ void BusAccess::waitOnIO(int busSocket, bool isOn)
     _busSockets[busSocket].waitOnIO = isOn;
 
     // Update wait handling
+    // Debug
+    // LogWrite("BusAccess", LOG_DEBUG, "waitOnIO");
     waitEnablementUpdate();
 }
 
@@ -704,7 +710,8 @@ void BusAccess::waitHandleNew()
     bool isWriting = (ctrlBusVals & BR_CTRL_BUS_WR_MASK);
     if (!isWriting && ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0))
     {
-        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_I);
+        // Debug
+        // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_I);
         // Now driving data onto the target data bus
         digitalWrite(BR_DATA_DIR_IN, 0);
         // A flip-flop handles data OE during the IORQ/MREQ cycle and 

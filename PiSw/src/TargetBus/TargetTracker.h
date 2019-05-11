@@ -47,6 +47,9 @@ private:
     // Can't turn off mid-injection so store flag to indicate disable pending
     static bool _disablePending;
 
+    // Page out for injection active
+    static bool _pageOutForInjectionActive;
+
     // Step mode
     enum STEP_MODE_TYPE
     {
