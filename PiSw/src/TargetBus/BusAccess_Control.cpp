@@ -632,47 +632,6 @@ void BusAccess::setPinOut(int pinNumber, bool val)
     digitalWrite(pinNumber, val);
 }
 
-void BusAccess::muxClear()
-{
-    // Clear to a safe setting - sets HADDR_SER low
-    WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-}
-
-void BusAccess::muxSet(int muxVal)
-{
-    // Clear first as this is a safe setting - sets HADDR_SER low
-    WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-    // Now set bits required
-    WR32(ARM_GPIO_GPSET0, muxVal << BR_MUX_LOW_BIT_POS);
-}
-
-// Set the PIB (pins used for data bus access) to outputs (from Pi)
-void BusAccess::pibSetOut()
-{
-    WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_OUTPUT);
-}
-
-// Set the PIB (pins used for data bus access) to inputs (to Pi)
-void BusAccess::pibSetIn()
-{
-    WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_INPUT);
-}
-
-// Set a value onto the PIB (pins used for data bus access)
-void BusAccess::pibSetValue(uint8_t val)
-{
-    uint32_t setBits = ((uint32_t)val) << BR_DATA_BUS;
-    uint32_t clrBits = (~(((uint32_t)val) << BR_DATA_BUS)) & (~BR_PIB_MASK);
-    WR32(ARM_GPIO_GPSET0, setBits);
-    WR32(ARM_GPIO_GPCLR0, clrBits);
-}
-
-// Get a value from the PIB (pins used for data bus access)
-uint8_t BusAccess::pibGetValue()
-{
-    return (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
-}
-
 void BusAccess::isrAssert(int code)
 {
     if (code < ISR_ASSERT_NUM_CODES)

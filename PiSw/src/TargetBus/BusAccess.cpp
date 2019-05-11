@@ -563,8 +563,8 @@ void BusAccess::serviceWaitActivity()
 
 void BusAccess::waitHandleNew()
 {
-    // Time at start of ISR
-    uint32_t isrStartUs = micros();
+    // // Time at start of ISR
+    // uint32_t isrStartUs = micros();
 
     uint32_t addr = 0;
     uint32_t dataBusVals = 0;
@@ -602,9 +602,13 @@ void BusAccess::waitHandleNew()
         // TODO - this isn't valid as M1 can't be relied upon
         // ctrlValid = ctrlValid || (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) & (ctrlBusVals & BR_CTRL_BUS_M1_MASK);
 
+        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_A);
+
         // If ctrl is already valid then continue
         if (ctrlValid)
             break;
+
+        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_B);
 
         // Delay
         microsDelay(1);
@@ -627,17 +631,18 @@ void BusAccess::waitHandleNew()
             // pinMode(BR_MREQ_BAR, INPUT);
             // pinMode(BR_IORQ_BAR, INPUT);
 
-        // Clear the mux to deactivate output enables
-        muxClear();
-
         // Set PIB to input
         pibSetIn();
 
         // Set data bus direction out so we can read the M1 value
         WR32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
 
+        // Clear the mux to deactivate output enables
+        muxClear();
+
         // Read M1
-        microsDelay(1);
+        // Delay to allow data to settle
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
 
         // Read the control lines and set M1
         uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
@@ -676,7 +681,7 @@ void BusAccess::waitHandleNew()
         // where the ISR provides data for the processor to read)
 
         // Enable data bus onto PIB
-        digitalWrite(BR_DATA_DIR_IN, 1);
+        WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
         muxSet(BR_MUX_DATA_OE_BAR_LOW);
 
         // Delay to allow data to settle
@@ -713,7 +718,7 @@ void BusAccess::waitHandleNew()
         // Debug
         // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_I);
         // Now driving data onto the target data bus
-        digitalWrite(BR_DATA_DIR_IN, 0);
+        WR32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
         // A flip-flop handles data OE during the IORQ/MREQ cycle and 
         // deactivates at the end of that cycle - so prime this flip-flop here
         muxSet(BR_MUX_DATA_OE_BAR_LOW);
@@ -725,46 +730,46 @@ void BusAccess::waitHandleNew()
         _targetReadInProgress = true;
     }
 
-    // Elapsed and count
-    uint32_t isrElapsedUs = micros() - isrStartUs;
-    _statusInfo.isrCount++;
+    // // Elapsed and count
+    // uint32_t isrElapsedUs = micros() - isrStartUs;
+    // _statusInfo.isrCount++;
 
-    // Stats
-    if (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)
-    {
-        if (ctrlBusVals & BR_CTRL_BUS_RD_MASK)
-            _statusInfo.isrMREQRD++;
-        else if (ctrlBusVals & BR_CTRL_BUS_WR_MASK)
-            _statusInfo.isrMREQWR++;
-    }
-    else if (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK)
-    {
-        if (ctrlBusVals & BR_CTRL_BUS_RD_MASK)
-            _statusInfo.isrIORQRD++;
-        else if (ctrlBusVals & BR_CTRL_BUS_WR_MASK)
-            _statusInfo.isrIORQWR++;
-        else if (ctrlBusVals & BR_CTRL_BUS_M1_MASK)
-            _statusInfo.isrIRQACK++;
-    }
+    // // Stats
+    // if (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)
+    // {
+    //     if (ctrlBusVals & BR_CTRL_BUS_RD_MASK)
+    //         _statusInfo.isrMREQRD++;
+    //     else if (ctrlBusVals & BR_CTRL_BUS_WR_MASK)
+    //         _statusInfo.isrMREQWR++;
+    // }
+    // else if (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK)
+    // {
+    //     if (ctrlBusVals & BR_CTRL_BUS_RD_MASK)
+    //         _statusInfo.isrIORQRD++;
+    //     else if (ctrlBusVals & BR_CTRL_BUS_WR_MASK)
+    //         _statusInfo.isrIORQWR++;
+    //     else if (ctrlBusVals & BR_CTRL_BUS_M1_MASK)
+    //         _statusInfo.isrIRQACK++;
+    // }
 
-    // Overflows
-    if (_statusInfo.isrAccumUs > 1000000000)
-    {
-        _statusInfo.isrAccumUs = 0;
-        _statusInfo.isrAvgingCount = 0;
-    }
+    // // Overflows
+    // if (_statusInfo.isrAccumUs > 1000000000)
+    // {
+    //     _statusInfo.isrAccumUs = 0;
+    //     _statusInfo.isrAvgingCount = 0;
+    // }
 
-    // Averages
-    if (isrElapsedUs < 1000000)
-    {
-        _statusInfo.isrAccumUs += isrElapsedUs;
-        _statusInfo.isrAvgingCount++;
-        _statusInfo.isrAvgNs = _statusInfo.isrAccumUs * 1000 / _statusInfo.isrAvgingCount;
-    }
+    // // Averages
+    // if (isrElapsedUs < 1000000)
+    // {
+    //     _statusInfo.isrAccumUs += isrElapsedUs;
+    //     _statusInfo.isrAvgingCount++;
+    //     _statusInfo.isrAvgNs = _statusInfo.isrAccumUs * 1000 / _statusInfo.isrAvgingCount;
+    // }
 
-    // Max
-    if (_statusInfo.isrMaxUs < isrElapsedUs)
-        _statusInfo.isrMaxUs = isrElapsedUs;
+    // // Max
+    // if (_statusInfo.isrMaxUs < isrElapsedUs)
+    //     _statusInfo.isrMaxUs = isrElapsedUs;
 
 }
 

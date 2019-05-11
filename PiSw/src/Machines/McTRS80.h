@@ -49,4 +49,5 @@ public:
 
 private:
     void updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen);
+    void handleWD1771DiskController(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
 };

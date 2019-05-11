@@ -7,6 +7,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "TargetCPU.h"
+#include "../System/BCM2835.h"
+#include "../System/lowlib.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Defs
@@ -396,10 +398,29 @@ private:
     static void addrSet(unsigned int addr);
 
     // Control the PIB (bus used to transfer data to/from Pi)
-    static void pibSetOut();
-    static void pibSetIn();
-    static void pibSetValue(uint8_t val);
-    static uint8_t pibGetValue();
+    static inline void pibSetOut()
+    {
+        WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_OUTPUT);
+    }
+
+    static inline void pibSetIn()
+    {
+        WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_INPUT);
+    }
+
+    static inline void pibSetValue(uint8_t val)
+    {
+        uint32_t setBits = ((uint32_t)val) << BR_DATA_BUS;
+        uint32_t clrBits = (~(((uint32_t)val) << BR_DATA_BUS)) & (~BR_PIB_MASK);
+        WR32(ARM_GPIO_GPSET0, setBits);
+        WR32(ARM_GPIO_GPCLR0, clrBits);
+    }
+ 
+    // Get a value from the PIB (pins used for data/address bus access)
+    static inline uint8_t pibGetValue()
+    {
+        return (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
+    }
 
     // Bus request/ack
     static void controlRequest();
@@ -415,10 +436,23 @@ private:
     // Pin IO
     static void setPinOut(int pinNumber, bool val);
     static void setPinIn(int pinNumber);
+
     // Set the MUX
-    static void muxSet(int muxVal);
+    static inline void muxSet(int muxVal)
+    {
+        // Clear first as this is a safe setting - sets HADDR_SER low
+        WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+        // Now set bits required
+        WR32(ARM_GPIO_GPSET0, muxVal << BR_MUX_LOW_BIT_POS);
+    }
+
     // Clear the MUX
-    static void muxClear();
+    static inline void muxClear()
+    {
+        // Clear to a safe setting - sets HADDR_SER low
+        WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+    }
+
     // Set signal (RESET/IRQ/NMI)
     static void setSignal(BR_BUS_ACTION busAction, bool assert);
 
@@ -446,7 +480,7 @@ private:
     static const int CYCLES_DELAY_FOR_WRITE_TO_TARGET = 250;
 
     // Delay for settling of high address lines on PIB read
-    static const int CYCLES_DELAY_FOR_HIGH_ADDR_READ = 500;
+    static const int CYCLES_DELAY_FOR_HIGH_ADDR_READ = 100;
 
     // Period target read control bus line is asserted during a read from the PIB (any bus element)
     static const int CYCLES_DELAY_FOR_READ_FROM_PIB = 25;
@@ -465,6 +499,6 @@ private:
     static const int CYCLES_DELAY_FOR_OUT_FF_SET = 10;
 
     // Delay in machine cycles for M1 to settle
-    static const int CYCLES_DELAY_FOR_M1_SETTLING = 500;
+    static const int CYCLES_DELAY_FOR_M1_SETTLING = 50;
 };
 

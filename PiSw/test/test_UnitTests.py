@@ -246,7 +246,7 @@ def test_StepValidateJMP000():
         commonTest.sendFrame("busStatusClear", b"{\"cmdName\":\"busStatusClear\"}\0")   
 
         msgIdx = 0
-        for j in range(10):
+        for j in range(testValStatusCount):
             commonTest.sendFrame("statusReq", b"{\"cmdName\":\"validatorStatus\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
             msgIdx += 1
             commonTest.sendFrame("busStatus", b"{\"cmdName\":\"busStatus\"}\0")
@@ -507,7 +507,7 @@ def test_stepSingle():
                     msgContent['cmdName'] == "busResetResp":
             pass
         elif msgContent['cmdName'] == "getRegsResp":
-            testStats["AFOK"] = ("AF=ba" in msgContent['regs'])
+            testStats["AFOK"] |= ("AF=ba" in msgContent['regs'])
             if not testStats["AFOK"]:
                 logger.debug(f"{msgContent}")
             testStats["regsOk"] = True
@@ -523,7 +523,7 @@ def test_stepSingle():
     testWriteData = b"\x3e\x06\x3c\x3c\x3c\xc3\x02\x00"
     testWriteLen = bytes(str(len(testWriteData)),'utf-8')
     testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRespCount":0,
-            "iorqRd":0, "iorqWr":0, "mreqRd":0, "mreqWr":0, "AFOK": False, "regsOk": False, "stepCount":0}
+            "iorqRd":0, "iorqWr":0, "mreqRd":0, "mreqWr":0, "PCAFOK": False, "PCAFERRStep":0, "regsOk": False, "stepCount":0}
 
     mc = "Serial Terminal"
     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\"}\0")

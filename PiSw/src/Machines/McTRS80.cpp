@@ -349,6 +349,14 @@ void McTRS80::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]]
             retVal = 0xff;
         }
     }
+    // Check for read from IO
+    else if ((flags & BR_CTRL_BUS_RD_MASK) && (flags & BR_CTRL_BUS_IORQ_MASK))
+    {
+        if ((addr >= 0x37ec) && (addr < 0x37ef))
+        {
+            handleWD1771DiskController(addr-0x37ec, data, flags, retVal);
+        }
+    }
 }
 
 // Bus action complete callback
@@ -373,4 +381,10 @@ void McTRS80::busActionCompleteCallback(BR_BUS_ACTION actionType)
             _keyBufferDirty = false;
         }
     }
+}
+
+// Handle WD1771 access
+void McTRS80::handleWD1771DiskController([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+            [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t& retVal)
+{
 }
