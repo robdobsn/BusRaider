@@ -453,6 +453,9 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
         // LogWrite(FromCmdHandler, LOG_VERBOSE, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
     }
     commsSocketHandleReceivedFile(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx, isFirmware);
+    
+    // File handling completed
+    _pReceivedFileDataPtr = NULL;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

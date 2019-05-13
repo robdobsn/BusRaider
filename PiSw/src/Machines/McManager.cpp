@@ -167,6 +167,21 @@ const char* McManager::getMachineName()
     return _currentMachineName;
 }
 
+const char* McManager::getMachineForFileType(const char* fileType)
+{
+    for (int i = 0; i < _numMachines; i++)
+    {
+        if (_pMachines[i])
+        {
+            if (_pMachines[i]->canProcFileType(fileType))
+            {
+                return _pMachines[i]->getMachineName();
+            }
+        }
+    }
+    return NULL;
+}
+
 McDescriptorTable* McManager::getDescriptorTable()
 {
     if (_pCurMachine)

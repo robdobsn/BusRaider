@@ -63,9 +63,9 @@ public:
     }
 
     // File transfer
-    bool isFileTransferInProgress()
+    static bool isFileTransferInProgress()
     {
-        return _pReceivedFileDataPtr != NULL;
+        return _pSingletonCommandHandler->_pReceivedFileDataPtr != NULL;
     }
 
     // Max length of machine set command

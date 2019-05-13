@@ -6,8 +6,10 @@
 #include "../System/logging.h"
 #include "../System/rdutils.h"
 #include "../System/lowlib.h"
+#include "../System/piwiring.h"
 #include "../TargetBus/TargetTracker.h"
 #include "../Hardware/HwManager.h"
+#include "../Machines/McManager.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Variables
@@ -39,6 +41,12 @@ ZEsarUXInterface* ZEsarUXInterface::_pThisInstance = NULL;
 ZEsarUXInterface::ZEsarUXInterface()
 {
     _pThisInstance = this;
+    _smartloadInProgress = false;
+    _smartloadStartDetected = false;
+    _smartloadMsgIdx = 0;
+    _smartloadStartUs = 0;
+    _resetPending = 0;
+    _resetPendingTimeUs = 0;
 }
 
 void ZEsarUXInterface::init()
@@ -50,6 +58,63 @@ void ZEsarUXInterface::init()
 
 void ZEsarUXInterface::service()
 {
+    // Check for smartload completion and timeouts
+    if (_smartloadInProgress)
+    {
+        char respMsg[ZEsarUX_RESP_MAX_LEN];
+        if (_smartloadStartDetected)
+        {
+            if (!CommandHandler::isFileTransferInProgress())
+            {
+                LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Smartload completed");
+                _smartloadInProgress = false;
+                strlcpy(respMsg, "Smartload OK", ZEsarUX_RESP_MAX_LEN);
+                addPromptMsg(respMsg, ZEsarUX_RESP_MAX_LEN);
+                CommandHandler::sendWithJSON("zesarux", "", _smartloadMsgIdx, 
+                                (const uint8_t*)respMsg, strlen(respMsg));
+                // Reset and request bus for programming
+                // TODO
+                for (int i = 0; i < 5; i++)
+                {
+                    digitalWrite(8,1);
+                    microsDelay(1);
+                    digitalWrite(8,0);
+                    microsDelay(1);
+                }
+                // Start programming process
+                McManager::handleTargetProgram(true);
+
+                // Step to initiate programming and reset
+                TargetTracker::stepInto();
+            }
+            else if (isTimeout(micros(), _smartloadStartUs, MAX_SMART_LOAD_TIME_US))
+            {
+                LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Smartload timed-out");
+                _smartloadInProgress = false;
+                strlcpy(respMsg, "Smartload failed to complete in time", ZEsarUX_RESP_MAX_LEN);
+                addPromptMsg(respMsg, ZEsarUX_RESP_MAX_LEN);
+                CommandHandler::sendWithJSON("zesarux", "", _smartloadMsgIdx, 
+                            (const uint8_t*)respMsg, strlen(respMsg));
+            }
+        }
+        else
+        {
+            if (CommandHandler::isFileTransferInProgress())
+            {
+                LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Smartload start detected");
+                _smartloadStartDetected = true;
+            }
+            else if (isTimeout(micros(), _smartloadStartUs, MAX_TIME_BEFORE_START_DETECT_US))
+            {
+                LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Smartload start not detected");
+                _smartloadInProgress = false;
+                strlcpy(respMsg, "Smartload start not detected", ZEsarUX_RESP_MAX_LEN);
+                addPromptMsg(respMsg, ZEsarUX_RESP_MAX_LEN);
+                CommandHandler::sendWithJSON("zesarux", "", _smartloadMsgIdx, 
+                                (const uint8_t*)respMsg, strlen(respMsg));
+            }
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -100,6 +165,11 @@ bool ZEsarUXInterface::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const u
 // ZEsarUX Messages
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void ZEsarUXInterface::addPromptMsg(char* pResponse, int maxResponseLen)
+{
+    strlcat(pResponse, (TargetTracker::isPaused() ? "\ncommand@cpu-step> " : "\ncommand> "), maxResponseLen);
+}
+
 void ZEsarUXInterface::handleMessage([[maybe_unused]] const char* pJsonCmd, const char* pZesaruxMsg, uint32_t zesaruxIndex)
 {
     // Need to modify line in-place so make a copy
@@ -135,7 +205,7 @@ void ZEsarUXInterface::handleMessage([[maybe_unused]] const char* pJsonCmd, cons
         static const int MAX_RESP_MSG_LEN = 2000;
         char respMsg[MAX_RESP_MSG_LEN];
         respMsg[0] = 0;
-        handleLine(pCmdCur, respMsg, MAX_RESP_MSG_LEN);
+        handleLine(pCmdCur, respMsg, MAX_RESP_MSG_LEN, zesaruxIndex);
 
         // Send response
         CommandHandler::sendWithJSON("zesarux", "", zesaruxIndex, (const uint8_t*)respMsg, strlen(respMsg));
@@ -145,7 +215,7 @@ void ZEsarUXInterface::handleMessage([[maybe_unused]] const char* pJsonCmd, cons
     }
 }
 
-bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLen)
+bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLen, uint32_t zesaruxMsgIndex)
 {
 
     // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "ZESARUX handle line %s", pCmd);
@@ -204,6 +274,52 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     else if (commandMatch(cmdStr, "smartload"))
     {
         LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Smartload");
+
+        // Extract the file name only
+        char* fileNamePtr = argStr+strlen(argStr);
+        const char* fileTypePtr = "";
+        for (uint32_t i = 0; i < strlen(argStr); i++)
+        {
+            if (*fileNamePtr == '.')
+                fileTypePtr = fileNamePtr+1;
+            if ((*fileNamePtr == '\\') || (*fileNamePtr == '/'))
+            {
+                fileNamePtr++;
+                break;
+            }
+            fileNamePtr--;
+        }
+        // Check valid
+        if (strlen(fileNamePtr) > 0)
+        {
+            // Check for machine to process file
+            const char* pMcName = McManager::getMachineForFileType(fileTypePtr);
+            if (pMcName)
+            {
+                McManager::setMachineByName(pMcName);
+                LogWrite(FromZEsarUXInterface, LOG_DEBUG, "fileType %s setMachine %s", fileTypePtr, pMcName);
+            }
+            // Request the file from the ESP32
+            static const int MAX_API_REQ_LEN = 200;
+            char apiReqStr[MAX_API_REQ_LEN];
+            strlcpy(apiReqStr, "sendfiletotargetbuffer//", MAX_API_REQ_LEN);
+            strlcat(apiReqStr, fileNamePtr, MAX_API_REQ_LEN);
+            LogWrite(FromZEsarUXInterface, LOG_DEBUG, "sendFileReq %s", apiReqStr);
+            // Send command to ESP32
+            CommandHandler::sendAPIReq(apiReqStr);
+            _smartloadStartUs = micros();
+            _smartloadInProgress = true;
+            _smartloadMsgIdx = zesaruxMsgIndex;
+            _smartloadStartDetected = false;
+            // Don't reply now to give time for smartload to occur
+            return true;
+        }
+        else
+        {
+            LogWrite(FromZEsarUXInterface, LOG_NOTICE, "Failed to smartload file");
+            strlcat(pResponse, "Failed to smartload file", maxResponseLen);
+        }
+
         // TODO
         // McManager::targetReset(false, false);
         // targetStateAcqClear();
@@ -327,6 +443,8 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
         // TODO
         // McManager::targetReset(false, false);
         // targetStateAcqClear();
+        _resetPending = true;
+        _resetPendingTimeUs = micros();
     }
     else if (commandMatch(cmdStr, "reset-tstates-partial"))
     {
@@ -361,6 +479,12 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
         BusAccess::busAccessReset();
         // Target tracker on
         LogWrite(FromZEsarUXInterface, LOG_DEBUG, "TargetTracker ON");
+        if (_resetPending)
+        {
+            if (!isTimeout(micros(), _resetPendingTimeUs, MAX_TIME_RESET_PENDING_US))
+                McManager::targetReset();
+            _resetPending = false;
+        }
         TargetTracker::enable(true);
     }
     else if (commandMatch(cmdStr, "cpu-step-over"))
@@ -386,7 +510,9 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
         //     targetStateAcqStart(true);
         // }
     }
-    strlcat(pResponse, (TargetTracker::isPaused() ? "\ncommand@cpu-step> " : "\ncommand> "), maxResponseLen);
+
+    // Add the prompt used by debugger to detect state
+    addPromptMsg(pResponse, maxResponseLen);
 
     return false;
 }

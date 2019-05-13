@@ -31,6 +31,7 @@ public:
     static int getMachineClock();
     static const char* getMachineName();
     static int getDisplayRefreshRate();
+    static const char* getMachineForFileType(const char* fileType);
 
     // Display updates
     static void displayRefresh();

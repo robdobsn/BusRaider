@@ -51,6 +51,9 @@ public:
     // Check if name is a valid one for this machine
     virtual bool isCalled(const char* mcName);
 
+    // Check if machine can process a file type
+    virtual bool canProcFileType(const char* fileType);
+
     // Get current machine name
     virtual const char* getMachineName();
 

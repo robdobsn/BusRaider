@@ -39,6 +39,12 @@ bool McBase::isCalled(const char* mcName)
     return false;
 }
 
+// Check if machine can process a file type
+bool McBase::canProcFileType(const char* fileType)
+{
+    return false;
+}
+
 // Get current machine name
 const char* McBase::getMachineName()
 {

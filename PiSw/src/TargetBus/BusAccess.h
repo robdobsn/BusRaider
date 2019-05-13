@@ -499,6 +499,6 @@ private:
     static const int CYCLES_DELAY_FOR_OUT_FF_SET = 10;
 
     // Delay in machine cycles for M1 to settle
-    static const int CYCLES_DELAY_FOR_M1_SETTLING = 50;
+    static const int CYCLES_DELAY_FOR_M1_SETTLING = 100;
 };
 

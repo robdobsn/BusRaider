@@ -316,6 +316,18 @@ void McZXSpectrum::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[mayb
 
 }
 
+// Check if machine can process a file type
+bool McZXSpectrum::canProcFileType(const char* pFileType)
+{
+    if (strcasecmp(pFileType, "tzx") == 0)
+        return true;
+    if (strcasecmp(pFileType, "z80") == 0)
+        return true;
+    if (strcasecmp(pFileType, "sna") == 0)
+        return true;
+    return false;
+}
+
 // Handle a file
 bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
 {
@@ -378,7 +390,7 @@ void McZXSpectrum::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unu
         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
     #endif
 
-    if (flags & BR_CTRL_BUS_RD_MASK)
+    if ((flags & BR_CTRL_BUS_RD_MASK) && (flags & BR_CTRL_BUS_IORQ_MASK))
     {
         // Check for a keyboard address range - any even port number
         if ((addr & 0x01) == 0)

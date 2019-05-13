@@ -43,6 +43,9 @@ public:
     // Handle a key press
     virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]);
 
+    // Check if machine can process a file type
+    virtual bool canProcFileType(const char* fileType);
+
     // Handle a file
     virtual bool fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen);
 
