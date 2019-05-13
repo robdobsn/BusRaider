@@ -86,5 +86,4 @@ private:
     static bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
                 char* pRespJson, int maxRespLen);
     void storeESP32StatusInfo(const char* pCmdJson);
-    void storeESP32CurMachineInfo(const char* pCmdJson);
 };

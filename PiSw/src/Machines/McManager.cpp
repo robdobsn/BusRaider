@@ -518,11 +518,13 @@ bool McManager::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t*
     }
     else if (strcasecmp(cmdName, "SetMcJson") == 0)
     {
-        // Get options
+        // Get mcJson
         char mcJson[CommandHandler::MAX_MC_SET_JSON_LEN];
-        if (!jsonGetValueForKey("mcJson", pCmdJson, mcJson, CommandHandler::MAX_MC_SET_JSON_LEN))
-            return false;
-        LogWrite(FromMcManager, LOG_VERBOSE, "Set Machine options to %s", mcJson);
+        size_t toCopy = paramsLen+1;
+        if (toCopy > CommandHandler::MAX_MC_SET_JSON_LEN)
+            toCopy = CommandHandler::MAX_MC_SET_JSON_LEN;
+        strlcpy(mcJson, (const char*)pParams, toCopy);
+        LogWrite(FromMcManager, LOG_DEBUG, "Set Machine json to %s", mcJson);
         bool setupOk = setupMachine(mcJson);
         if (setupOk)
             strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);

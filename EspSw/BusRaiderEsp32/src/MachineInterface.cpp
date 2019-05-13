@@ -42,6 +42,7 @@ MachineInterface::MachineInterface() :
     _demoProgramIdx = 0;
     _rdpCommandIndex = 0;
     _zesaruxCommandIndex = 0;
+    _cachedStatusRequestMs = 0;
 
     // TODO
     // _rdpValStatCount = 0;
@@ -212,6 +213,18 @@ void MachineInterface::service()
     //     _rdpLastOutMs = millis();
     // }
 
+    // Check cached status is ok
+    if (_cachedStatusJSON.length() <= 2)
+    {
+        if (Utils::isTimeout(millis(), _cachedStatusRequestMs, TIME_BETWEEN_STATUS_REQS_MS))
+        {
+            // Request status
+            if (_pCommandSerial)
+                _pCommandSerial->sendTargetCommand("getStatus");
+            _cachedStatusRequestMs = millis();
+        }
+    }
+
     // Check for serial chars received from target
     if (_pTargetSerial)
     {
@@ -330,7 +343,7 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *frameBuffer, int frame
 
     // Get command
     String cmdName = RdJson::getString("cmdName", "", pRxStr);
-    if (cmdName.equalsIgnoreCase("statusUpdate"))
+    if (cmdName.equalsIgnoreCase("getStatusResp"))
     {
         // Cache the status frame
         _cachedStatusJSON = pRxStr;

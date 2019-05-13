@@ -28,11 +28,6 @@ void RestAPIBusRaider::service()
     }
 }
 
-String RestAPIBusRaider::getMcConfigStr()
-{
-    return "\"setmachine\":\"" + _lastSetMachineCommand + "\",\"mcOptions\":\"" + _lastMachineOptionsCommand + "\"";
-}
-
 void RestAPIBusRaider::apiTargetCommand(String &reqStr, String &respStr)
 {
     bool rslt = true;
@@ -41,20 +36,6 @@ void RestAPIBusRaider::apiTargetCommand(String &reqStr, String &respStr)
     Log.trace("%sCommand %s\n", MODULE_PREFIX, targetCmd.c_str());
     _commandSerial.sendTargetCommand(targetCmd);
     Utils::setJsonBoolResult(respStr, rslt);
-
-    // Cache last machine and options
-    if (targetCmd.startsWith("setmachine"))
-    {
-        _lastSetMachineCommand = targetCmd;
-        _machineConfig.setConfigData(getMcConfigStr().c_str());
-        _machineConfig.writeConfig();
-    }
-    else if (targetCmd.startsWith("mcOptions"))
-    {
-        _lastMachineOptionsCommand = targetCmd;
-        _machineConfig.setConfigData(getMcConfigStr().c_str());
-        _machineConfig.writeConfig();
-    }
 }
 
 #ifdef SUPPORT_WEB_TERMINAL_REST
@@ -170,14 +151,33 @@ void RestAPIBusRaider::apiQueryStatus(const String &reqStr, String &respStr)
 
 void RestAPIBusRaider::apiQueryCurMc(const String &reqStr, String &respStr)
 {
-    Log.verbose("%sapiQueryCurMc %s\n", MODULE_PREFIX, reqStr.c_str());
-    respStr = "\"mcCmd\":\"" + _lastSetMachineCommand + "\"";
+    respStr = _machineConfig.getConfigString();
+    Log.trace("%sapiQueryCurMc %s returning %s\n", MODULE_PREFIX, 
+            reqStr.c_str(), respStr.c_str());
 }
 
-void RestAPIBusRaider::apiQueryCurOpts(const String &reqStr, String &respStr)
+void RestAPIBusRaider::apiSetMcJson(const String &reqStr, String &respStr)
 {
-    Log.verbose("%sapiQueryCurOpts %s\n", MODULE_PREFIX, reqStr.c_str());
-    respStr = "\"mcOpts\":\"" + _lastMachineOptionsCommand + "\"";
+    Log.trace("%sapiSetMcJson %s\n", MODULE_PREFIX, reqStr.c_str());
+}
+
+void RestAPIBusRaider::apiSetMcJsonContent(const String &reqStr, uint8_t *pData, size_t len, size_t index, size_t total)
+{
+    // Extract JSON
+    static const int MAX_JSON_DATA_LEN = 1000;
+    char jsonData[MAX_JSON_DATA_LEN];
+    size_t toCopy = len+1;
+    if (len > MAX_JSON_DATA_LEN)
+        toCopy = MAX_JSON_DATA_LEN;
+    strlcpy(jsonData, (const char*) pData, toCopy);
+    // Debug
+    Log.trace("%sapiSetMcJsonContent %s json %s\n", MODULE_PREFIX, 
+            reqStr.c_str(), jsonData);
+    // Store in non-volatile so we can pick back up with same machine
+    _machineConfig.setConfigData(jsonData);
+    _machineConfig.writeConfig();
+    // Send to the Pi
+    _commandSerial.sendTargetData("setmcjson", pData, len, 0);
 }
 
 void RestAPIBusRaider::apiQueryESPHealth(const String &reqStr, String &respStr)
@@ -244,10 +244,6 @@ void RestAPIBusRaider::setup(RestAPIEndpoints &endpoints)
 {
     // Get initial config
     _machineConfig.setup();
-    _lastSetMachineCommand = _machineConfig.getString("setmachine", "");
-    _lastMachineOptionsCommand = _machineConfig.getString("mcOptions", "");
-    Log.trace("%ssetup curMc %s curOpts %s\n", _lastSetMachineCommand, _lastMachineOptionsCommand);
-
     endpoints.addEndpoint("targetcmd", 
                         RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                         RestAPIEndpointDef::ENDPOINT_GET, 
@@ -358,12 +354,20 @@ void RestAPIBusRaider::setup(RestAPIEndpoints &endpoints)
                         std::bind(&RestAPIBusRaider::apiQueryCurMc, this,
                                 std::placeholders::_1, std::placeholders::_2),
                         "Query machine");
-    endpoints.addEndpoint("querycuropts", 
+    endpoints.addEndpoint("setmcjson", 
                         RestAPIEndpointDef::ENDPOINT_CALLBACK, 
-                        RestAPIEndpointDef::ENDPOINT_GET, 
-                        std::bind(&RestAPIBusRaider::apiQueryCurOpts, this,
+                        RestAPIEndpointDef::ENDPOINT_POST,
+                        std::bind(&RestAPIBusRaider::apiSetMcJson, this, 
                                 std::placeholders::_1, std::placeholders::_2),
-                        "Query options");
+                        "Set machine JSON", "application/json", 
+                        NULL, 
+                        true, 
+                        NULL,
+                        std::bind(&RestAPIBusRaider::apiSetMcJsonContent, this, 
+                                std::placeholders::_1, std::placeholders::_2, 
+                                std::placeholders::_3, std::placeholders::_4,
+                                std::placeholders::_5),
+                        NULL);
     endpoints.addEndpoint("queryESPHealth", 
                         RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                         RestAPIEndpointDef::ENDPOINT_GET, 

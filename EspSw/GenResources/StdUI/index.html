@@ -89,15 +89,17 @@
         function populateMcList(jsonResp) {
             let status = JSON.parse(jsonResp);
             window.pageState.machineList = status.machineList;
+            if (window.pageState.machineList === undefined)
+                window.pageState.machineList = [];
             // Clear list and fill
             let mcListSelect = document.getElementById("machine-select");
-            if (mcListSelect && status.machineList) {
+            if (mcListSelect && window.pageState.machineList) {
                 for (let i = 0; i < mcListSelect.options.length; i++)
                     mcListSelect.remove(i);
-                for (let i = 0; i < status.machineList.length; i++) {
+                for (let i = 0; i < window.pageState.machineList.length; i++) {
                     let option = document.createElement('option');
-                    option.text = status.machineList[i];
-                    option.value = status.machineList[i];
+                    option.text = window.pageState.machineList[i];
+                    option.value = window.pageState.machineList[i];
                     mcListSelect.add(option);
                 }
                 // Set current machine

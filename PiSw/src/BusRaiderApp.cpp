@@ -121,7 +121,7 @@ void BusRaiderApp::service()
             {
                 strlcpy(_piStatusCached, respBuffer, MAX_PI_STATUS_MSG_LEN);
                 // Send update
-                _commandHandler.sendWithJSON("statusUpdate", respBuffer);
+                _commandHandler.sendWithJSON("getStatusResp", respBuffer);
             }
 
             // Time of last check
@@ -186,12 +186,6 @@ bool BusRaiderApp::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8
     {
         // Store ESP32 status info
         _pApp->storeESP32StatusInfo(pCmdJson);
-        return true;
-    }
-    else if (strcasecmp(cmdName, "esp32CurMachine") == 0)
-    {
-        // Store current machine info
-        _pApp->storeESP32CurMachineInfo(pCmdJson);
         return true;
     }
     return false;
@@ -424,41 +418,3 @@ void BusRaiderApp::storeESP32StatusInfo(const char* pCmdJson)
     // LogWrite(FromBusRaiderApp, LOG_DEBUG, "Ip Address %s", _esp32IPAddress);
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Address callback
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void BusRaiderApp::storeESP32CurMachineInfo(const char* pCmdJson)
-{
-    // Got info (no point re-requesting it if invalid)
-    _esp32LastMachineValid = true;
-
-    // Check for machine settings responses
-    static const int MAX_ESP_CMD_OPT_STR = 100;
-    char lastMcCmd[MAX_ESP_CMD_OPT_STR];
-    if (!jsonGetValueForKey("mcCmd", pCmdJson, lastMcCmd, MAX_ESP_CMD_OPT_STR))
-        return;
-
-    // Check message type
-    if (strcasecmp(lastMcCmd, "setmachine=") == 0)
-    {
-        // This is a legacy message - should be using setMcJson
-        // Get machine name and store
-        const char* pMcName = strstr(lastMcCmd,"=");
-        if (pMcName)
-        {
-            // Move to first char of actual name
-            pMcName++;
-            // Form Json
-            strlcpy(_esp32LastMachineCmd, "{\"name\":\"", CommandHandler::MAX_MC_SET_JSON_LEN);
-            strlcat(_esp32LastMachineCmd, pMcName, CommandHandler::MAX_MC_SET_JSON_LEN);
-            strlcat(_esp32LastMachineCmd, "\"}", CommandHandler::MAX_MC_SET_JSON_LEN);
-            LogWrite(FromBusRaiderApp, LOG_DEBUG, "Storing ESP32 last machine info %s", _esp32LastMachineCmd);
-        }
-    }
-    else if (strcasecmp(lastMcCmd, "setMcJson") == 0)
-    {
-        strlcpy(_esp32LastMachineCmd, lastMcCmd, CommandHandler::MAX_MC_SET_JSON_LEN);
-        LogWrite(FromBusRaiderApp, LOG_DEBUG, "Storing ESP32 last machine info %s", _esp32LastMachineCmd);
-    }
-}

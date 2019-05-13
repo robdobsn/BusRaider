@@ -67,6 +67,10 @@ private:
     // Max buffer sizes
     static const int MAX_COMMAND_LEN = 1500;
 
+    // Status request
+    uint32_t _cachedStatusRequestMs;
+    static const int TIME_BETWEEN_STATUS_REQS_MS = 10000;
+
     // Demo handling
     DebounceButton _debounceButton;
     int _demoState;

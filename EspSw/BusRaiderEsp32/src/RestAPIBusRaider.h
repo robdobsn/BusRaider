@@ -22,13 +22,8 @@ private:
     uint32_t _restartPendingStartMs;
     bool _restartPending;
 
-    String _lastSetMachineCommand;
-    String _lastMachineOptionsCommand;
-
     // Config for machines
     ConfigNVS _machineConfig;
-
-    String getMcConfigStr();
 
 public:
     RestAPIBusRaider(CommandSerial &commandSerial, MachineInterface &machineInterface, 
@@ -64,7 +59,8 @@ public:
     void runFileOnTarget(const String &reqStr, String &respStr);
     void apiQueryStatus(const String &reqStr, String &respStr);
     void apiQueryCurMc(const String &reqStr, String &respStr);
-    void apiQueryCurOpts(const String &reqStr, String &respStr);
+    void apiSetMcJson(const String &reqStr, String &respStr);
+    void apiSetMcJsonContent(const String &reqStr, uint8_t *pData, size_t len, size_t index, size_t total);
     void apiQueryESPHealth(const String &reqStr, String &respStr);
     void apiESPFirmwarePart(String& req, String& filename, size_t contentLen, size_t index, 
                     uint8_t *data, size_t len, bool finalBlock);
