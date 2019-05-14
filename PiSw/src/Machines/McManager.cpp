@@ -476,6 +476,7 @@ bool McManager::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t*
     else if (strcasecmp(cmdName, "ProgramTarget") == 0)
     {
         McManager::handleTargetProgram(false);
+
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }

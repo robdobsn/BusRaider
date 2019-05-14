@@ -216,7 +216,7 @@ void MachineInterface::service()
     // Check cached status is ok
     if (_cachedStatusJSON.length() <= 2)
     {
-        if (Utils::isTimeout(millis(), _cachedStatusRequestMs, TIME_BETWEEN_STATUS_REQS_MS))
+        if ((_cachedStatusRequestMs == 0) || (Utils::isTimeout(millis(), _cachedStatusRequestMs, TIME_BETWEEN_STATUS_REQS_MS)))
         {
             // Request status
             if (_pCommandSerial)
@@ -310,7 +310,7 @@ void MachineInterface::service()
             // Log.notice("WOULD UPLOAD %s\n", preloadName.c_str());
             
             // Send
-            _pCommandSerial->startUploadFromFileSystem("SPIFFS", "", preloadName, "");
+            _pCommandSerial->startUploadFromFileSystem("spiffs", "", preloadName, "");
             break;
         }
         case DEMO_STATE_LOAD:
@@ -322,7 +322,7 @@ void MachineInterface::service()
             // Log.notice("WOULD UPLOAD %s\n", _demoFileToRun.c_str());
 
             // Send and run
-            _pCommandSerial->startUploadFromFileSystem("SPIFFS", "", _demoFileToRun, "ProgramAndReset");
+            _pCommandSerial->startUploadFromFileSystem("spiffs", "", _demoFileToRun, "ProgramAndReset");
             _demoState = DEMO_STATE_IDLE;
             break;
         }
@@ -439,7 +439,7 @@ void MachineInterface::handleDemoModeButtonPress(int buttonValue)
         return;
 
     // Get the demo mode control file contents
-    String demoJson = _pFileManager->getFileContents("SPIFFS",
+    String demoJson = _pFileManager->getFileContents("spiffs",
                         String("/") + demoModeControlFileName, demoModeControlFileMaxlen);
     if (demoJson.length() <= 0)
         return;

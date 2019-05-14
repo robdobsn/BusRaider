@@ -3,7 +3,9 @@
 
 #include "McBase.h"
 #include "McManager.h"
+#include "../System/rdutils.h"
 #include "../hardware/HwManager.h"
+#include <stdlib.h>
 
 McBase::McBase(McDescriptorTable* pDefaultTables, int numTables)
 {
@@ -40,7 +42,7 @@ bool McBase::isCalled(const char* mcName)
 }
 
 // Check if machine can process a file type
-bool McBase::canProcFileType(const char* fileType)
+bool McBase::canProcFileType([[maybe_unused]] const char* fileType)
 {
     return false;
 }
@@ -81,7 +83,7 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
         // Check against supported names
         if (strcasecmp(_pDefaultDescriptorTables[i].machineName, mcName) == 0)
         {
-            mcSubType = 0;
+            mcSubType = i;
             break;
         }
     }
@@ -94,13 +96,29 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
     // Copy descriptor
     _activeDescriptorTable = _pDefaultDescriptorTables[mcSubType];
 
-    // Setup hardware
+    // Disable initially
     HwManager::disableAll();
+
+    // Debug
+    LogWrite("McBase", LOG_DEBUG, "Subtype invalid %d", mcSubType);
+
+    // Setup hardware
     HwManager::setupFromJson("hw", mcJson);
 
     // Setup clock
     uint32_t clockFreqHz = _activeDescriptorTable.clockFrequencyHz;
-    if (clockFreqHz != 0)
+
+    // Check if clock specified in json
+    static const int MAX_CLOCK_SET_STR = 100;
+    char clockSpeedStr[MAX_CLOCK_SET_STR];
+    bool clockValid = jsonGetValueForKey("clockHz", mcJson, clockSpeedStr, MAX_CLOCK_SET_STR);
+    if (clockValid)
+    {
+        uint32_t clockHz = strtol(clockSpeedStr, NULL, 10);
+        if ((clockHz > BusAccess::clockGetMinFreqHz()) && (clockHz < BusAccess::clockGetMaxFreqHz()))
+            clockFreqHz = clockHz;
+    }
+    if ((clockFreqHz > BusAccess::clockGetMinFreqHz()) && (clockFreqHz < BusAccess::clockGetMaxFreqHz()))
     {
         BusAccess::clockSetup();
         BusAccess::clockSetFreqHz(clockFreqHz);

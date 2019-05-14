@@ -319,6 +319,8 @@ public:
     static void clockSetFreqHz(uint32_t freqHz);
     static void clockEnable(bool en);
     static uint32_t clockCurFreqHz();
+    static uint32_t clockGetMinFreqHz();
+    static uint32_t clockGetMaxFreqHz();
 
     // Status
     static void getStatus(BusAccessStatusInfo& statusInfo);

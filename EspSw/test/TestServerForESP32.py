@@ -13,20 +13,6 @@ curState = {
             "machineList": ["Serial Terminal", "Rob's Z80", "TRS80", "ZX Spectrum"],
             "machineCur": "TRS80"
         }
-        # ,
-        # "files":
-        # {
-        #     "SPIFFS":
-        #     {
-        #         "rslt":"ok","fsName":"spiffs",pip"fsBase":"spiffs","diskSize":"123456","diskUsed":"123124","folder":"/",
-        #         "files": [ 
-        #             {"name":"testFile1.bin","size":"1234","content":""},
-        #             {"name":"testFile2.bin","size":"2345","content":""},
-        #             {"name":"Serial Terminal.json","size":"2345","content":""},
-
-        #         ]
-        #     }
-        # }
     }
 
 stFileInfo = {
@@ -73,10 +59,10 @@ def apiQueryStatus():
 def staticSd(path):
     return(send_from_directory("./testfiles/sd", path))
 
-@app.route('/files/SPIFFS/<path:path>', methods=['GET'])
+@app.route('/files/spiffs/<path:path>', methods=['GET'])
 def staticSpiffs(path):
-    print("Sending file from SPIFFS", path)
-    return(send_from_directory("./testfiles/SPIFFS", path, cache_timeout=-1))
+    print("Sending file from spiffs", path)
+    return(send_from_directory("./testfiles/spiffs", path, cache_timeout=-1))
 
 @app.after_request
 def add_header(r):
@@ -98,11 +84,11 @@ def filelistSd():
     stFileInfo["files"] = [{"name":f,"size":1234} for f in os.listdir(testFilePath) if isfile(join(testFilePath, f))]
     return jsonify(stFileInfo)
 
-@app.route('/filelist/SPIFFS', methods=['GET'])
+@app.route('/filelist/spiffs', methods=['GET'])
 def filelistSpiffs():
     baseFolder = os.path.dirname(os.path.realpath(__file__))
     print(baseFolder)
-    testFilePath = os.path.join(baseFolder, "testfiles/SPIFFS/")
+    testFilePath = os.path.join(baseFolder, "testfiles/spiffs/")
     stFileInfo["files"] = [{"name":f,"size":1234} for f in os.listdir(testFilePath) if isfile(join(testFilePath, f))]
     return jsonify(stFileInfo)
 
@@ -111,7 +97,7 @@ def apiUploadToFileMan():
     print('uploadToFileMan', request.files['file'])
     f = request.files['file']
     baseFolder = os.path.dirname(os.path.realpath(__file__))
-    f.save(os.path.join(baseFolder, "testfiles/SPIFFS/", f.filename))
+    f.save(os.path.join(baseFolder, "testfiles/spiffs/", f.filename))
     return jsonify({"rslt":"ok"})
 
 @app.route('/setmcjson', methods=['POST'])

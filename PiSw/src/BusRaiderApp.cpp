@@ -188,6 +188,15 @@ bool BusRaiderApp::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8
         _pApp->storeESP32StatusInfo(pCmdJson);
         return true;
     }
+    else if (strcasecmp(cmdName, "queryCurMcResp") == 0)
+    {
+        // Set machine
+        LogWrite(FromBusRaiderApp, LOG_DEBUG, "queryCurMcResp %s", pCmdJson);
+        McManager::setupMachine(pCmdJson);
+        // Got ok - no need to re-request
+        _pApp->_esp32LastMachineValid = true;
+        return true;
+    }
     return false;
 }
 

@@ -1,0 +1,36 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_OUTPUT_MODE	u-ctags	/u-ctags or e-ctags/
+!_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
+!_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
+!_TAG_PROGRAM_URL	https://ctags.io/	/official site/
+!_TAG_PROGRAM_VERSION	0.0.0	/6418097e/
+GenResources.py	..\\GenResources\\GenResources.py	1;"	kind:file	line:1
+RdGenResources.py	..\\GenResources\\RdGenResources\\RdGenResources.py	1;"	kind:file	line:1
+TestServerForESP32.py	..\\test\\TestServerForESP32.py	1;"	kind:file	line:1
+add_header	..\\test\\TestServerForESP32.py	/^def add_header(r):$/;"	kind:function	line:68
+apiFavicon	..\\test\\TestServerForESP32.py	/^def apiFavicon():$/;"	kind:function	line:40
+apiHome	..\\test\\TestServerForESP32.py	/^def apiHome():$/;"	kind:function	line:36
+apiQueryStatus	..\\test\\TestServerForESP32.py	/^def apiQueryStatus():$/;"	kind:function	line:49
+apiSetMcJson	..\\test\\TestServerForESP32.py	/^def apiSetMcJson():$/;"	kind:function	line:104
+apiTargetCmd	..\\test\\TestServerForESP32.py	/^def apiTargetCmd(path):$/;"	kind:function	line:109
+apiUploadToFileMan	..\\test\\TestServerForESP32.py	/^def apiUploadToFileMan():$/;"	kind:function	line:96
+app	..\\test\\TestServerForESP32.py	/^app = flask.Flask(__name__)$/;"	kind:variable	line:6
+args	..\\BusRaiderEsp32\\.piolibdeps\\AsyncMqttClient_ID346\\scripts\\get-fingerprint\\get-fingerprint.py	/^args = parser.parse_args()$/;"	kind:variable	line:11
+cert_der	..\\BusRaiderEsp32\\.piolibdeps\\AsyncMqttClient_ID346\\scripts\\get-fingerprint\\get-fingerprint.py	/^cert_der = ssl.PEM_cert_to_DER_cert(cert_pem)$/;"	kind:variable	line:15
+cert_pem	..\\BusRaiderEsp32\\.piolibdeps\\AsyncMqttClient_ID346\\scripts\\get-fingerprint\\get-fingerprint.py	/^cert_pem = ssl.get_server_certificate((args.host, args.port))$/;"	kind:variable	line:14
+curState	..\\test\\TestServerForESP32.py	/^curState = {$/;"	kind:variable	line:10
+filelistSd	..\\test\\TestServerForESP32.py	/^def filelistSd():$/;"	kind:function	line:80
+filelistSpiffs	..\\test\\TestServerForESP32.py	/^def filelistSpiffs():$/;"	kind:function	line:88
+generateResourceFile	..\\GenResources\\RdGenResources\\RdGenResources.py	/^def generateResourceFile(settings = None):$/;"	kind:function	line:77
+get-fingerprint.py	..\\BusRaiderEsp32\\.piolibdeps\\AsyncMqttClient_ID346\\scripts\\get-fingerprint\\get-fingerprint.py	1;"	kind:file	line:1
+getMimeTypeFromFileExt	..\\GenResources\\RdGenResources\\RdGenResources.py	/^def getMimeTypeFromFileExt(fileExt):$/;"	kind:function	line:13
+log	..\\GenResources\\RdGenResources\\RdGenResources.py	/^import logging as log$/;"	kind:namespace	line:5
+md5	..\\BusRaiderEsp32\\.piolibdeps\\AsyncMqttClient_ID346\\scripts\\get-fingerprint\\get-fingerprint.py	/^md5 = hashlib.md5(cert_der).hexdigest()$/;"	kind:variable	line:17
+parser	..\\BusRaiderEsp32\\.piolibdeps\\AsyncMqttClient_ID346\\scripts\\get-fingerprint\\get-fingerprint.py	/^parser = argparse.ArgumentParser(description='Compute SSL\/TLS fingerprints.')$/;"	kind:variable	line:7
+sha1	..\\BusRaiderEsp32\\.piolibdeps\\AsyncMqttClient_ID346\\scripts\\get-fingerprint\\get-fingerprint.py	/^sha1 = hashlib.sha1(cert_der).hexdigest()$/;"	kind:variable	line:18
+sha256	..\\BusRaiderEsp32\\.piolibdeps\\AsyncMqttClient_ID346\\scripts\\get-fingerprint\\get-fingerprint.py	/^sha256 = hashlib.sha256(cert_der).hexdigest()$/;"	kind:variable	line:19
+stFileInfo	..\\test\\TestServerForESP32.py	/^stFileInfo = {$/;"	kind:variable	line:18
+staticSd	..\\test\\TestServerForESP32.py	/^def staticSd(path):$/;"	kind:function	line:59
+staticSpiffs	..\\test\\TestServerForESP32.py	/^def staticSpiffs(path):$/;"	kind:function	line:63
+writeFileContentsAsHex	..\\GenResources\\RdGenResources\\RdGenResources.py	/^def writeFileContentsAsHex(filePath, outFile, minifyHtml, lineHexIndentChars, lineHexBytesLen):$/;"	kind:function	line:35

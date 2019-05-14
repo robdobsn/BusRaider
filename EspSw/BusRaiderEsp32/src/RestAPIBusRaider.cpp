@@ -63,7 +63,7 @@ void RestAPIBusRaider::apiUploadToFileManPart(String& req, String& filename, siz
 {
     Log.verbose("%sapiUpToFileMan %d, %d, %d, %d\n", MODULE_PREFIX, contentLen, index, len, finalBlock);
     if (contentLen > 0)
-        _fileManager.uploadAPIBlockHandler("SPIFFS", req, filename, contentLen, index, data, len, finalBlock);
+        _fileManager.uploadAPIBlockHandler("spiffs", req, filename, contentLen, index, data, len, finalBlock);
 }
 
 void RestAPIBusRaider::apiUploadPiSwComplete(String &reqStr, String &respStr)

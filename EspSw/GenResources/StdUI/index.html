@@ -19,7 +19,7 @@
             }
 
             // Select
-            this.setupSelectMachine(this.mcDropDownActive, this.setMachine);
+            this.setupSelectMachine(this.mcDropDownActive, this.mcDropDownClose);
 
             // Insert tabs when tab pressed in machine popup
             enableTabInsertion('popup-machine-text');
@@ -106,7 +106,7 @@
                 mcListSelect.value = status.machineCur;
             }
             // Re-setup select
-            this.setupSelectMachine(this.mcDropDownActive, this.setMachine);
+            this.setupSelectMachine(this.mcDropDownActive, this.mcDropDownClose);
             // Setup machine config files for each machine
             window.pageState.machineConfigs = [];
             for (let i = 0; i < window.pageState.machineList.length; i++) {
@@ -127,7 +127,7 @@
                 return;
             let fileName = window.pageState.machineList[fileIdx]
             window.pageState.machineConfigCurIdx = fileIdx;
-            callAjax("/files/SPIFFS/" + fileName + ".json", machineConfigGot, machineConfigGetFailed);
+            callAjax("/files/spiffs/" + fileName + ".json", machineConfigGot, machineConfigGetFailed);
         }
 
         function machineConfigGot(jsonResp) {
@@ -150,17 +150,19 @@
             console.log("File not found");
             let fileIdx = window.pageState.machineConfigCurIdx;
             let fileName = window.pageState.machineList[fileIdx]
-            let fileContent = { name: fileName };
+            let fileContent = { name: fileName, hw: [] };
             window.pageState.machineConfigs[fileIdx] = fileContent;
             // Get next config if there is one
             machineConfigReq(false);
         }
 
         function machineConfigCancel() {
+            event.preventDefault();
             machinePopupClose(false);
         }
 
         function machineConfigOk() {
+            event.preventDefault();
             let mcName = window.pageState.machineList[window.pageState.machinePopupIdx];
             // Get Json from form
             let formJson = document.getElementById('popup-machine-text').value;
@@ -170,21 +172,15 @@
                 machinePopupClose(false);
                 return;
             }
-            // Check Json is valid
-            let jsonValid = true;
-            try
-            {
-                let unJson = JSON.parse(formJson);
-                unJson["name"] = mcName;
-                window.pageState.machineConfigBeingWritten = unJson;
-                formJson = JSON.stringify(unJson, null, 2);
-            }
-            catch (e)
-            {
-                jsonValid = false;
-            }
-            if (!jsonValid)
+            if (!machineConfigValidateForm())
                 return;
+            // Format Json and ensure machine name is right
+            let unJson = JSON.parse(formJson);
+            unJson["name"] = mcName;
+            window.pageState.machineConfigBeingWritten = unJson;
+            formJson = JSON.stringify(unJson, null, 2);
+            // Set machine
+            sendSelectMachine();
             // Upload file
             let formData = new FormData();
             let contentBlob = new Blob([formJson], {type: 'plain/text'});
@@ -195,7 +191,6 @@
                 if (xmlhttp.readyState === 4) {
                     if (xmlhttp.status === 200) {
                         console.log("Save response " + xmlhttp.responseText);
-                        // userActionSaveFileOk();
                         machinePopupClose(false);
                         // Update 
                         window.pageState.machineConfigs[window.pageState.machinePopupIdx] = window.pageState.machineConfigBeingWritten;
@@ -203,7 +198,6 @@
                     else {
                         console.log("Save failed " + xmlhttp.responseText);
                         alert("Save config failed");
-                        // userActionSaveFileFail();
                     }
                 }
             };
@@ -212,6 +206,7 @@
         }
 
         function machinePopupToggle() {
+            event.preventDefault();
             let pop = document.getElementById('popup-machine');
             if (pop.classList.contains('popup-hidden'))
                 machinePopupShow();
@@ -228,16 +223,51 @@
             window.pageState.machinePopupIdx = selIdx;
             let popText = document.getElementById('popup-machine-text');
             popText.value = JSON.stringify(window.pageState.machineConfigs[selIdx], null, 2)
+            machineConfigValidateForm();
         }
 
         function machinePopupClose(doSave) {
             let pop = document.getElementById('popup-machine');
             if (pop.classList.contains('popup-hidden'))
-                return;
+                return false;
             
             pop.classList.add('popup-hidden');
             if (doSave)
+            {
                 machineConfigOk();
+                return true;
+            }
+            return false;
+        }
+
+        function machineConfigValidateForm()
+        {
+            let valid = false;
+            let errorText = ""
+            let formJson = document.getElementById('popup-machine-text').value;
+            try
+            {
+                let unJson = JSON.parse(formJson);
+                valid = true;
+            }
+            catch (e)
+            {
+                errorText = e.text;
+            }
+            let confStatus = document.getElementById('popup-machine-status');
+            if (valid)
+            {
+                confStatus.innerHTML = "Valid";
+                confStatus.classList.add('data-valid')
+                confStatus.classList.remove('data-invalid')
+            }
+            else
+            {
+                confStatus.innerHTML = "Invalid JSON " + errorText;
+                confStatus.classList.add('data-invalid')
+                confStatus.classList.remove('data-valid')
+            }
+            return valid;
         }
 
         function preventDefaults(e) {
@@ -334,18 +364,23 @@
             xhr.send();
         }
 
-        function setMachine() {
+        function mcDropDownClose() {
             machinePopupClose(true);
+            sendSelectMachine();
+        }
+
+        function mcDropDownActive() {
+            // Close popup and set machine if it was active and changed
+            machinePopupClose(true);
+        }
+
+        function sendSelectMachine() {
             let mcIdx = document.getElementById("machine-select").selectedIndex;
             let mcJson = JSON.stringify(window.pageState.machineConfigs[mcIdx]);
             var xhr = new XMLHttpRequest();
             xhr.open('POST', "/setmcjson", true);
             xhr.setRequestHeader("Content-Type", "application/json");
             xhr.send(mcJson);
-        }
-
-        function mcDropDownActive() {
-            machinePopupClose(true);
         }
 
         function callAjax(url, okCallback, failCallback) {
@@ -447,7 +482,7 @@
         }
 
         function fileListUpdate() {
-            callAjax("/filelist/SPIFFS", fileListUpdateOk, fileListUpdateFail);
+            callAjax("/filelist/spiffs", fileListUpdateOk, fileListUpdateFail);
         }
 
         function fileListUpdateFail() {
@@ -517,34 +552,39 @@
         }
 
         function deleteFile(filename) {
-            callAjax("/deleteFile/SPIFFS/" + filename);
+            callAjax("/deleteFile/spiffs/" + filename);
             fileListUpdate();
         }
 
         function sendFileToTargetBuffer(filename) {
-            callAjax("/sendfiletotargetbuffer/SPIFFS/" + filename);
+            callAjax("/sendfiletotargetbuffer/spiffs/" + filename);
         }
 
         function appendFileToTargetBuffer(filename) {
-            callAjax("/appendfiletotargetbuffer/SPIFFS/" + filename);
+            callAjax("/appendfiletotargetbuffer/spiffs/" + filename);
         }
 
         function runFileOnTarget(filename) {
-            callAjax("/runfileontarget/SPIFFS/" + filename);
+            callAjax("/runfileontarget/spiffs/" + filename);
         }
 
         function enableTabInsertion(elementId) {
             let el = document.getElementById(elementId);
             el.onkeydown = function(e) {
+                let handled = false;
                 if (e.keyCode === 9) {
                     let val = this.value;
                     let selStart = this.selectionStart;
                     let selEnd = this.selectionEnd;
                     this.value = val.substring(0, selStart) + '\t' + val.substring(selEnd);
                     this.selectionStart = this.selectionEnd = selStart + 1;
-                    return false;
+                    handled = true;
                 }
-                return true;
+                return !handled;
+            }
+            el.onkeyup = function(e) {
+                // Validate json
+                machineConfigValidateForm();
             }
         }
     </script>
@@ -1039,6 +1079,16 @@
         .popup-hidden {
             display: none;
         }
+        .data-invalid {
+            color: red;
+            font-weight: bold;
+            margin-left: 20px;
+        }
+        .data-valid {
+            color: green;
+            font-weight: normal;
+            margin-left: 20px;
+        }
 
     </style>
 </head>
@@ -1071,9 +1121,9 @@
                     <div id="popup-machine" class="popup-machine popup-hidden">
                         <textarea id='popup-machine-text'>{}</textarea>
                         <div>
-                            <button class="button btn-ok" onclick="machineConfigOk();">Ok</button>
+                            <button id='popup-machine-ok' class="button btn-ok" onclick="machineConfigOk();">Ok</button>
                             <button class="button btn-cancel" onclick="machineConfigCancel();">Cancel</button>
-                            <label class="popup-machine-status"></label>
+                            <label id="popup-machine-status"></label>
                         </div>
                     </div>
                 </form>

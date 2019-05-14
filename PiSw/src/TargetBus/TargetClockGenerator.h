@@ -46,11 +46,21 @@ class TargetClockGenerator
         return true;
     }
 
+    uint32_t getMinFreqHz()
+    {
+        return 200000;
+    }
+
+    uint32_t getMaxFreqHz()
+    {
+        return 20000000;
+    }
+
     void setFrequency(uint32_t newFreq)
     {
         bool isEnabled = _enabled;
-        // LogWrite("ClockGen", LOG_VERBOSE, "setFrequency %d curEnabled %d",
-        //         newFreq, isEnabled);
+        LogWrite("ClockGen", LOG_DEBUG, "setFrequency %d curEnabled %d",
+                newFreq, isEnabled);
 
         if (_enabled)
             enable(false);
