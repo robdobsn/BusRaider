@@ -552,22 +552,18 @@ bool McManager::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t*
 
 void McManager::targetExec()
 {
-    LogWrite(FromMcManager, LOG_DEBUG, "Starting target code");
+    LogWrite(FromMcManager, LOG_DEBUG, "Starting target code, cpu is held %c", BusAccess::waitIsHeld() ? 'Y' : 'N');
     bool performHardReset = true;
     if (TargetState::areRegistersValid())
     {
         // Check how to set registers
-        if (HwManager::getOpcodeInjectEnable())
+        if (HwManager::getOpcodeInjectEnable() || BusAccess::waitIsHeld())
         {
-            // TODO
             // Use the BusAccess module to inject instructions to set registers
-            // Z80Registers regs;
-            // TargetState::getTargetRegs(regs);
-            // TargetDebug::get()->startSetRegisterSequence(&regs);
-            // performHardReset = false;
-            
-                // Request reset opcode injection
-            // BusAccess::targetReqOpcodeInject(_busSocketId);
+            Z80Registers regs;
+            TargetState::getTargetRegs(regs);
+            TargetTracker::startSetRegisterSequence(&regs);
+            performHardReset = false;
         }
         else
         {

@@ -130,16 +130,6 @@ bool TargetTracker::isPaused()
 // Control
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// void TargetTracker::startGetRegisterSequence()
-// {
-//     // Start sequence of getting registers
-//     _injectionEnabled = true;
-//     _gettingRegs = true;
-//     _snippetWriteIdx = 0;
-//     _snippetPos = 0;
-//     _pagingPending = true;
-// }
-
 void TargetTracker::startSetRegisterSequence(Z80Registers* pRegs)
 {
     // Set regs
@@ -148,9 +138,21 @@ void TargetTracker::startSetRegisterSequence(Z80Registers* pRegs)
 
     // TODO probably don't need synch with instruction to ensure we are at starting M1 cycle
     // as there is a nop at the start of the sequence
-    // Use the bus socket to request page out
-    BusAccess::targetPageForInjection(_busSocketId, true);
-    _pageOutForInjectionActive = true;
+
+    // Check we can inject
+    if (_targetStateAcqMode == TARGET_STATE_ACQ_INJECTING)
+    {
+        LogWrite(FromTargetTracker, LOG_DEBUG, "Can't inject as Injector is busy - state = %d", _targetStateAcqMode);
+        return;
+    }
+
+    // Set state machine to inject
+    _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
+
+    // Remove any hold to allow execution / injection
+    BusAccess::waitHold(_busSocketId, false);
+
+    LogWrite(FromTargetTracker, LOG_DEBUG, "Wait release for injection");
 
     // Start sequence of setting registers
     _setRegs = true;
