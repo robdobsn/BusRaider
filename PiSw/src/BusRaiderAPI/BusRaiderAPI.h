@@ -12,12 +12,12 @@
 #include "../CommandInterface/CommandHandler.h"
 
 // Validator
-class BusController
+class BusRaiderAPI
 {
 public:
     static const int MAX_MEM_BLOCK_READ_WRITE = 1024;
 
-    BusController();
+    BusRaiderAPI();
     void init();
 
     // Service
@@ -26,7 +26,7 @@ public:
 private:
 
     // Singleton instance
-    static BusController* _pThisInstance;
+    static BusRaiderAPI* _pThisInstance;
 
     // Bus socket we're attached to and setup info
     static int _busSocketId;

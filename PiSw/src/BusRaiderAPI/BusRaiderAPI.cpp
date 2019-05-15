@@ -1,7 +1,7 @@
 // Bus Raider
 // Rob Dobson 2019
 
-#include "BusController.h"
+#include "BusRaiderAPI.h"
 #include "../System/piwiring.h"
 #include "../System/lowlib.h"
 #include "../System/ee_sprintf.h"
@@ -14,27 +14,27 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Module name
-static const char FromBusController[] = "BusController";
+static const char FromBusRaiderAPI[] = "BusRaiderAPI";
 
 // Sockets
-int BusController::_busSocketId = -1;
-int BusController::_commsSocketId = -1;
+int BusRaiderAPI::_busSocketId = -1;
+int BusRaiderAPI::_commsSocketId = -1;
 
 // Main comms socket - to wire up command handler
-CommsSocketInfo BusController::_commsSocketInfo =
+CommsSocketInfo BusRaiderAPI::_commsSocketInfo =
 {
     true,
-    BusController::handleRxMsg,
+    BusRaiderAPI::handleRxMsg,
     NULL,
     NULL
 };
 
 // Bus socket
-BusSocketInfo BusController::_busSocketInfo = 
+BusSocketInfo BusRaiderAPI::_busSocketInfo = 
 {
     true,
-    BusController::handleWaitInterruptStatic,
-    BusController::busActionCompleteStatic,
+    NULL,
+    NULL,
     false,
     false,
     BR_BUS_ACTION_NONE,
@@ -45,19 +45,19 @@ BusSocketInfo BusController::_busSocketInfo =
 };
 
 // This instance
-BusController* BusController::_pThisInstance = NULL;
+BusRaiderAPI* BusRaiderAPI::_pThisInstance = NULL;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Construction
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Constructor
-BusController::BusController()
+BusRaiderAPI::BusRaiderAPI()
 {
     _pThisInstance = this;
 }
 
-void BusController::init()
+void BusRaiderAPI::init()
 {
     // Connect to the bus socket
     if (_busSocketId < 0)
@@ -72,9 +72,11 @@ void BusController::init()
 // Received message handler
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t* pParams, [[maybe_unused]]int paramsLen,
+bool BusRaiderAPI::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t* pParams, [[maybe_unused]]int paramsLen,
                 [[maybe_unused]]char* pRespJson, [[maybe_unused]]int maxRespLen)
 {
+    LogWrite(FromBusRaiderAPI, LOG_DEBUG, "handleRxMsg");
+    
     // Get the command string from JSON
     static const int MAX_CMD_NAME_STR = 50;
     char cmdName[MAX_CMD_NAME_STR+1];
@@ -160,7 +162,7 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
     }
     else if (strcasecmp(cmdName, "targetReset") == 0)
     {
-        LogWrite(FromBusController, LOG_DEBUG, "Target Reset");
+        LogWrite(FromBusRaiderAPI, LOG_DEBUG, "Target Reset");
         // Get bus status
         BusAccess::targetReqReset(_busSocketId);
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
@@ -251,7 +253,7 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
     {
         // Turn target tracker on
         TargetTracker::enable(false);
-        LogWrite(FromBusController, LOG_DEBUG, "TargettrackerOff");
+        LogWrite(FromBusRaiderAPI, LOG_DEBUG, "TargettrackerOff");
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
@@ -259,7 +261,7 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
     {
         // Turn target tracker on
         TargetTracker::stepInto();
-        // LogWrite(FromBusController, LOG_DEBUG, "TargettrackerStep");
+        // LogWrite(FromBusRaiderAPI, LOG_DEBUG, "TargettrackerStep");
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
@@ -267,7 +269,7 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
     {
         // Turn target tracker on
         TargetTracker::stepRun();
-        LogWrite(FromBusController, LOG_DEBUG, "TargettrackerRun");
+        LogWrite(FromBusRaiderAPI, LOG_DEBUG, "TargettrackerRun");
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
@@ -289,7 +291,7 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
             return false;
         // Turn target tracker on
         BusAccess::waitSetCycleUs(strtoul(paramVal, NULL, 10));
-        // LogWrite(FromBusController, LOG_DEBUG, "Wait cycle set to %d", strtoul(paramVal, NULL, 10));
+        // LogWrite(FromBusRaiderAPI, LOG_DEBUG, "Wait cycle set to %d", strtoul(paramVal, NULL, 10));
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
@@ -297,7 +299,7 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
     return false;
 }
 
-bool BusController::getArgsRdAndWr(const char* pCmdJson, uint32_t& addr, int& dataLen, bool& isIo)
+bool BusRaiderAPI::getArgsRdAndWr(const char* pCmdJson, uint32_t& addr, int& dataLen, bool& isIo)
 {
     // Get params
     static const int MAX_CMD_PARAM_STR = 50;
@@ -318,22 +320,22 @@ bool BusController::getArgsRdAndWr(const char* pCmdJson, uint32_t& addr, int& da
 // Callbacks/Hooks
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void BusController::busActionCompleteStatic([[maybe_unused]]BR_BUS_ACTION actionType, [[maybe_unused]] BR_BUS_ACTION_REASON reason)
+void BusRaiderAPI::busActionCompleteStatic([[maybe_unused]]BR_BUS_ACTION actionType, [[maybe_unused]] BR_BUS_ACTION_REASON reason)
 {
 }
 
-void BusController::handleWaitInterruptStatic(uint32_t addr, uint32_t data, 
+void BusRaiderAPI::handleWaitInterruptStatic(uint32_t addr, uint32_t data, 
         uint32_t flags, uint32_t& retVal)
 {
     if (_pThisInstance)
         _pThisInstance->handleWaitInterrupt(addr, data, flags, retVal);
 }
 
-void BusController::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+void BusRaiderAPI::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
         [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t& retVal)
 {
 }
 
-void BusController::service()
+void BusRaiderAPI::service()
 {
 }
