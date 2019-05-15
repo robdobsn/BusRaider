@@ -400,9 +400,9 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *frameBuffer, int frame
         }
         else
         {
-            Log.trace("%szesarux <- %s payloadLen %d payload ¬¬%s¬¬\n", 
-                        MODULE_PREFIX, pRxStr, payloadLen,
-                        payloadStr.c_str());
+            // Log.trace("%szesarux <- %s payloadLen %d payload ¬¬%s¬¬\n", 
+            //             MODULE_PREFIX, pRxStr, payloadLen,
+            //             payloadStr.c_str());
             _pZEsarUXTCPServer->sendChars(frameBuffer+payloadStartPos, dataLen);
         }
     }

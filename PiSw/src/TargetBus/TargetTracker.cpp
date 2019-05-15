@@ -568,8 +568,10 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
     // Value read/written
     uint32_t codeByteValue = ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) ? data : retVal) & 0xff;
 
-    // LogWrite(FromTargetTracker, LOG_DEBUG, "M1 %d Prev %d Now %d Dat %02x 1st %d flags %08x", 
-    //             flags & BR_CTRL_BUS_M1_MASK, _prefixTracker[0], _prefixTracker[1], data, firstByteOfInstr, flags);
+    // LogWrite(FromTargetTracker, LOG_DEBUG, "addr %04x data %02x M1 %d Prev %d Now %d InData %02x RetVal %02x flags %08x", 
+    //             addr, codeByteValue, 
+    //             flags & BR_CTRL_BUS_M1_MASK, _prefixTracker[0], _prefixTracker[1], 
+    //             data, flags);
 
     // digitalWrite(BR_PAGING_RAM_PIN, firstByteOfInstr);
     // microsDelay(1);
@@ -690,6 +692,12 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
             }
             else if (injectProgress == OPCODE_INJECT_DONE)
             {
+                // If we were setting then clear the prefix tracker
+                if (_setRegs)
+                {
+                    _prefixTracker[0] = _prefixTracker[1] = false;
+                }
+
                 // Default back to getting
                 _setRegs = false;
 
@@ -757,6 +765,20 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
             break;
         }
     }
+
+    LogWrite(FromTargetTracker, LOG_DEBUG, "addr %04x RetVal %02x(%c) Held %c InData %02x flags %08x %c%c%c%c%c Pfx1 %d Pfx2 %d", 
+                addr, retVal & 0xff, 
+                (retVal & BR_MEM_ACCESS_INSTR_INJECT) ? 'I' : ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) ? 'X' : 'D'),
+                BusAccess::waitIsHeld() ? 'Y' : 'N',
+                data,
+                flags, 
+                (flags & BR_CTRL_BUS_M1_MASK) ? '1' : ' ', 
+                (flags & BR_CTRL_BUS_WR_MASK) ? 'W' : ' ', 
+                (flags & BR_CTRL_BUS_RD_MASK) ? 'R' : ' ', 
+                (flags & BR_CTRL_BUS_MREQ_MASK) ? 'M' : ' ', 
+                (flags & BR_CTRL_BUS_IORQ_MASK) ? 'I' : ' ', 
+                _prefixTracker[0], _prefixTracker[1]);
+
         // LogWrite("FromTargetTracker", LOG_DEBUG, "INJECTING %s %04x %02x %s%s %d %d", (_targetStateAcqMode = TARGET_STATE_ACQ_NONE) ? "FINISHED" : "",
         //     addr, retVal & 0xff, (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "");
 

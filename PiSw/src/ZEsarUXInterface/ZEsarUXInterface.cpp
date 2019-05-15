@@ -150,8 +150,8 @@ bool ZEsarUXInterface::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const u
             memcpy(pCommandString, (const char*)pParams, maxContentLen);
         pCommandString[maxContentLen] = 0;
 
-        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "ZESARUX cmd %s cmdLen %d contentStr %s zesaruxIdx %d", 
-                    pCmdJson, strlen(pCmdJson), pCommandString, zesaruxIndex);
+        // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "ZESARUX cmd %s cmdLen %d contentStr %s zesaruxIdx %d", 
+        //             pCmdJson, strlen(pCmdJson), pCommandString, zesaruxIndex);
 
         _pThisInstance->handleMessage(pCmdJson, pCommandString, zesaruxIndex);
 
@@ -236,6 +236,8 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
 
     char* argStr = strtok(NULL, " ");
     char* argStr2 = strtok(NULL, " ");
+    if (cmdStr == NULL)
+        cmdStr = "\n";
     // char* argRest = strtok(NULL, "");
 
     // Handle messages
@@ -360,8 +362,8 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
         {
             uint8_t dataBlock[MAX_BYTES_TO_RETURN];
             HwManager::blockRead(startAddr, dataBlock, blockLength, false, false, false);
-            LogWrite(FromZEsarUXInterface, LOG_DEBUG, "dataBlock %04x %02x %02x %02x %02x", 
-                            startAddr, dataBlock[0], dataBlock[1], dataBlock[2], dataBlock[3]);
+            // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "dataBlock %04x %02x %02x %02x %02x", 
+            //                 startAddr, dataBlock[0], dataBlock[1], dataBlock[2], dataBlock[3]);
             for (uint32_t i = 0; i < blockLength; i++)
             {
                 char chBuf[10];
@@ -489,8 +491,6 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "cpu-step-over"))
     {
-        // Format registers to return
-        // _z80Registers.format(pResponse, maxResponseLen);
     }
     else if (commandMatch(cmdStr, "cpu-step"))
     {
@@ -498,17 +498,22 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "run"))
     {
-        // Format registers to return
-        // _z80Registers.format(pResponse, maxResponseLen);
+        // Release target to run (still in debug mode as breakpoint maybe hit)
+        TargetTracker::stepRun();
+
+        // Reply without sending a prompt
+        strlcat(pResponse, "Running until a breakpoint, key press or data sent, menu opening or other event\n", 
+                    maxResponseLen);
+        return true;    
     }
-    else if (commandMatch(cmdStr, ""))
+    else if (commandMatch(cmdStr, "\n"))
     {
         LogWrite(FromZEsarUXInterface, LOG_DEBUG, "blank (step)");
-        // if (_debugMode != DEBUG_MODE_NONE)
-        // {
-        //     // Blank is used for pause
-        //     targetStateAcqStart(true);
-        // }
+        TargetTracker::stepInto();
+    }
+    else
+    {
+        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "cmdStr %s %02x %02x %02x", cmdStr, cmdStr[0], cmdStr[1], cmdStr[2]);
     }
 
     // Add the prompt used by debugger to detect state
@@ -525,7 +530,7 @@ bool ZEsarUXInterface::commandMatch(const char* s1, const char* s2)
 {
     const char* p1 = s1;
     const char* p2 = s2;
-    // Skip whitespace at start of received string
+    // Skip blanks at start of received string
     while (*p1 == ' ')
         p1++;
     // Check match from start of received string
