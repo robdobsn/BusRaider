@@ -337,3 +337,6 @@ Blog/Thumbs.db
 EspSw/BusRaiderEsp32/.vscode/.BROWSE.C_CPP.2.DB
 EspSw/BusRaiderEsp32/.vscode/.BROWSE.C_CPP.2.DB-wal
 EspSw/BusRaiderEsp32/.vscode/.BROWSE.C_CPP.2.DB-shm
+EspSw/.pytest_cache
+
+PiSw/test/logs

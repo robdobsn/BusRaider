@@ -50,6 +50,9 @@
             // Populate machine list
             callAjax("/querystatus", populateMcList);
 
+            // Get the clock speed
+            callAjax("/getclockhz", clockHzGot);
+
             // Request file list to display
             fileListUpdate();
 
@@ -170,17 +173,15 @@
             if (formJson == JSON.stringify(window.pageState.machineConfigs[window.pageState.machinePopupIdx], null, 2))
             {
                 machinePopupClose(false);
-                return;
+                return false;
             }
             if (!machineConfigValidateForm())
-                return;
+                return false;
             // Format Json and ensure machine name is right
             let unJson = JSON.parse(formJson);
             unJson["name"] = mcName;
             window.pageState.machineConfigBeingWritten = unJson;
             formJson = JSON.stringify(unJson, null, 2);
-            // Set machine
-            sendSelectMachine();
             // Upload file
             let formData = new FormData();
             let contentBlob = new Blob([formJson], {type: 'plain/text'});
@@ -194,6 +195,8 @@
                         machinePopupClose(false);
                         // Update 
                         window.pageState.machineConfigs[window.pageState.machinePopupIdx] = window.pageState.machineConfigBeingWritten;
+                        // Set machine
+                        sendSelectMachine();
                     }
                     else {
                         console.log("Save failed " + xmlhttp.responseText);
@@ -203,6 +206,7 @@
             };
             xmlhttp.open('POST', "/uploadtofileman");
             xmlhttp.send(formData);
+            return true;
         }
 
         function machinePopupToggle() {
@@ -234,8 +238,7 @@
             pop.classList.add('popup-hidden');
             if (doSave)
             {
-                machineConfigOk();
-                return true;
+                return machineConfigOk();
             }
             return false;
         }
@@ -268,6 +271,39 @@
                 confStatus.classList.remove('data-valid')
             }
             return valid;
+        }
+
+        function clockHzGot(jsonResp) {
+            try
+            {
+                let clockHzInfo = JSON.parse(jsonResp);
+                let clockHz = clockHzInfo.clockHz;
+                if ((clockHz > 0) && (clockHz < 1000000000))
+                {
+                    let clockDisp = document.getElementById('clock-freq-hz');
+                    clockDisp.value = clockHz / 1000000;
+                }
+            }
+            catch (e)
+            {
+
+            }        
+        }
+
+        function clockHzSet() {
+            try
+            {
+                let clockDisp = document.getElementById('clock-freq-hz');
+                let clockHz = clockDisp.value;
+                if ((clockHz > 0) && (clockHz < 1000000000))
+                {
+                    callAjax('setclockhz')
+                }
+            }
+            catch (e)
+            {
+
+            }        
         }
 
         function preventDefaults(e) {
@@ -365,8 +401,8 @@
         }
 
         function mcDropDownClose() {
-            machinePopupClose(true);
-            sendSelectMachine();
+            if (!machinePopupClose(true))
+                sendSelectMachine();
         }
 
         function mcDropDownActive() {
@@ -400,6 +436,26 @@
 
             xmlhttp.open("GET", url, true);
             xmlhttp.send();
+        }
+
+        function postAjax(url, jsonInfo, okCallback, failCallback) {
+            let xmlhttp = new XMLHttpRequest();
+            xmlhttp.onreadystatechange = function () {
+                if (xmlhttp.readyState === 4) {
+                    if (xmlhttp.status === 200) {
+                        if ((okCallback !== undefined) && (typeof okCallback !== 'undefined'))
+                            okCallback(xmlhttp.responseText);
+                    }
+                    else {
+                        if ((failCallback !== undefined) && (typeof failCallback !== 'undefined'))
+                            failCallback(xmlhttp);
+                    }
+                }
+            };
+
+            xmlhttp.open("POST", url, true);
+            xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+            xmlhttp.send(JSON.stringify(jsonInfo));
         }
 
         function setupSelectMachine(callbackOpen, callbackSet) {
@@ -1089,6 +1145,21 @@
             font-weight: normal;
             margin-left: 20px;
         }
+        .clock-setting {
+            float: right;
+            display: inline-block;
+            padding: 5px 10px;
+            background: #444;
+            border-radius: 5px;
+            border: 1px solid #666;
+        }
+        .clock-setting input {
+            background: #444;
+            /* border: 1px solid grey; */
+            border: none;
+            font-size: 1rem;
+            color: white;
+        }
 
     </style>
 </head>
@@ -1135,6 +1206,11 @@
                 <span class="button" onclick="sendCmdToTarget('programandexec')">Program and execute</span>
                 <!-- <span class="button" onclick="sendCmdToTarget('pausetarget')">Pause</span>
                 <span class="button" onclick="sendCmdToTarget('releasetarget')">Release</span> -->
+                <div class="clock-setting">
+                    <label>Clock</label>
+                    <input id="clock-freq-hz" type="number" max=50.0 min=0.2 value=1.0 step=0.1 class="clock-freq" onchange="clockHzSet();">
+                    <label>MHz</label>
+                </div>
             </div>
         </div>
         <div id="upload-and-run" class="layout-region drop-zone">

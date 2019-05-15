@@ -12,7 +12,8 @@ curState = {
         {
             "machineList": ["Serial Terminal", "Rob's Z80", "TRS80", "ZX Spectrum"],
             "machineCur": "TRS80"
-        }
+        },
+        "clockHz": 1100000
     }
 
 stFileInfo = {
@@ -28,8 +29,7 @@ stFileInfo = {
             # {"name": "/pattern.param", "size": 200},
             # {"name": "/robot.json", "size": 47}
         ]
-
-        }
+    }
 
 
 @app.route('/', methods=['GET'])
@@ -108,6 +108,17 @@ def apiSetMcJson():
 @app.route('/targetcmd/<path:path>', methods=['GET'])
 def apiTargetCmd(path):
     print('targetCmd', path)
+    return jsonify({"rslt":"ok"})
+
+@app.route('/getclockhz', methods=['GET'])
+def apiGetClockHz():
+    print('getClockHz')
+    return jsonify({"rslt":"ok", "clockHz":curState['clockHz']})
+
+@app.route('/setclockhz', methods=['GET','POST'])
+def apiSetClockHz():
+    print('setClockHz', request.get_json())
+    curState['clockHz'] = JSON.parse(request.get_json())["clockHz"]
     return jsonify({"rslt":"ok"})
 
 # @app.route('/api/', methods=['GET'])

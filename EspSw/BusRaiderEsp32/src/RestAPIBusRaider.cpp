@@ -158,7 +158,7 @@ void RestAPIBusRaider::apiQueryCurMc(const String &reqStr, String &respStr)
 
 void RestAPIBusRaider::apiSetMcJson(const String &reqStr, String &respStr)
 {
-    Log.trace("%sapiSetMcJson %s\n", MODULE_PREFIX, reqStr.c_str());
+    // Log.trace("%sapiSetMcJson %s\n", MODULE_PREFIX, reqStr.c_str());
 }
 
 void RestAPIBusRaider::apiSetMcJsonContent(const String &reqStr, uint8_t *pData, size_t len, size_t index, size_t total)
