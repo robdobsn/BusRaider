@@ -496,6 +496,12 @@ void TargetTracker::completeTargetProgram()
     }
 }
 
+void TargetTracker::requestStateGrab()
+{
+    if (_stepMode == STEP_MODE_RUN)
+        _stepMode = STEP_MODE_RUN_GRAB;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Status
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -667,7 +673,6 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
                     // Debug
                     if (_debugInstrBytePos < MAX_BYTES_IN_INSTR)
                         _debugInstrBytes[_debugInstrBytePos++] = codeByteValue;
-                    break;
                 }
                 else
                 {
@@ -676,13 +681,16 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
                     //         (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", 
                     //         (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "",
                     //         _prefixTracker[0], _prefixTracker[1]);
+                    // Bump state if in step mode or a grab is needed
+                    if ((_stepMode == STEP_MODE_STEP_INTO) || (_stepMode == STEP_MODE_RUN_GRAB))
+                    {
+                        _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
+                        handleInjection(addr, data, flags, retVal);
+                        // Revert to run after a run&grab
+                        if (_stepMode == STEP_MODE_RUN_GRAB)
+                            _stepMode = STEP_MODE_RUN;
+                    }
                 }
-
-                // BusAccess::waitHold(_busSocketId, true);
-
-                // Bump state
-                _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
-                handleInjection(addr, data, flags, retVal);
             }
             break;
         }
