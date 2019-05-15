@@ -298,7 +298,7 @@ void BusAccess::targetPageForInjection([[maybe_unused]]int busSocket, bool pageO
         // Tell all connected devices to page in/out
         for (int i = 0; i < _busSocketCount; i++)
         {
-            if (_busSockets[i].enabled && _busSockets[i].busActionCallback)
+            if (_busSockets[i].enabled)
             {
                 _busSockets[i].busActionCallback(BR_BUS_ACTION_PAGE_OUT_FOR_INJECT, BR_BUS_ACTION_GENERAL);
             }
@@ -430,7 +430,7 @@ void BusAccess::busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REA
 {
     for (int i = 0; i < _busSocketCount; i++)
     {
-        if (!_busSockets[i].enabled && _busSockets[i].busActionCallback)
+        if (!_busSockets[i].enabled)
             continue;
         // Inform all active sockets of the bus action completion
         _busSockets[i].busActionCallback(busActionType, reason);
