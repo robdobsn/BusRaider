@@ -105,20 +105,20 @@ def apiSetMcJson():
     print('setMcJson', request.get_json())
     return jsonify({"rslt":"ok"})
 
-@app.route('/targetcmd/<path:path>', methods=['GET'])
-def apiTargetCmd(path):
-    print('targetCmd', path)
-    return jsonify({"rslt":"ok"})
-
-@app.route('/getclockhz', methods=['GET'])
+@app.route('/targetcmd/getclockhz', methods=['GET'])
 def apiGetClockHz():
     print('getClockHz')
     return jsonify({"rslt":"ok", "clockHz":curState['clockHz']})
 
-@app.route('/setclockhz', methods=['GET','POST'])
+@app.route('/targetcmd/setclockhz', methods=['GET','POST'])
 def apiSetClockHz():
     print('setClockHz', request.get_json())
     curState['clockHz'] = JSON.parse(request.get_json())["clockHz"]
+    return jsonify({"rslt":"ok"})
+
+@app.route('/targetcmd/<path:path>', methods=['GET'])
+def apiTargetCmd(path):
+    print('targetCmd', path)
     return jsonify({"rslt":"ok"})
 
 # @app.route('/api/', methods=['GET'])

@@ -265,8 +265,8 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
 void CommandHandler::commsSocketHandleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
                     char* pRespJson, int maxRespLen)
 {
-    if (_commsSocketCount == 0)
-        LogWrite(FromCmdHandler, LOG_DEBUG, "RxMsg no sockets");
+    if (_commsSocketCount < 3)
+        LogWrite(FromCmdHandler, LOG_DEBUG, "RxMsg fewer sockets than expected %d", _commsSocketCount);
     bool messageHandled = false;
     // Iterate the comms sockets
     for (int i = 0; i < _commsSocketCount; i++)

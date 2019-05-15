@@ -219,6 +219,10 @@ const char* McManager::getMachineJSON()
     strlcat(mcString, _currentMachineName, MAX_MC_JSON_LEN);
     strlcat(mcString, "\"", MAX_MC_JSON_LEN);
 
+    // Clock info
+    uint32_t actualHz = BusAccess::clockCurFreqHz();
+    ee_sprintf(mcString+strlen(mcString), ",\"clockHz\":\"%d\"", actualHz);
+
     // Ret
     return mcString;
 }
@@ -520,7 +524,7 @@ bool McManager::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t*
     else if (strcasecmp(cmdName, "SetMcJson") == 0)
     {
         // Get mcJson
-        char mcJson[CommandHandler::MAX_MC_SET_JSON_LEN];
+        static char mcJson[CommandHandler::MAX_MC_SET_JSON_LEN];
         size_t toCopy = paramsLen+1;
         if (toCopy > CommandHandler::MAX_MC_SET_JSON_LEN)
             toCopy = CommandHandler::MAX_MC_SET_JSON_LEN;

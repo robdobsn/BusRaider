@@ -31,6 +31,8 @@ public:
 
     void service();
     void apiTargetCommand(String &reqStr, String &respStr);
+    void apiTargetCommandPost(String &reqStr, String &respStr);
+    void apiTargetCommandPostContent(const String &reqStr, uint8_t *pData, size_t len, size_t index, size_t total);
 
 #ifdef SUPPORT_WEB_TERMINAL_REST
     void apiPostCharsDone(String &reqStr, String &respStr);

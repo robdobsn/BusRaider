@@ -50,9 +50,6 @@
             // Populate machine list
             callAjax("/querystatus", populateMcList);
 
-            // Get the clock speed
-            callAjax("/getclockhz", clockHzGot);
-
             // Request file list to display
             fileListUpdate();
 
@@ -117,8 +114,38 @@
                 let configContent = {}; 
                 window.pageState.machineConfigs.push(configContent);
             }
+            // Show frequency
+            showFrequency(status);
             // Start getting first machine's config
             machineConfigReq(true);
+        }
+
+        function queryStatusUpdate()
+        {
+            callAjax("/querystatus", updateMachineInfo);
+        }
+
+        function updateMachineInfo(jsonResp)
+        {
+            let status = JSON.parse(jsonResp);
+            // Show frequency
+            showFrequency(status);
+        }
+
+        function showFrequency(status)
+        {
+            try
+            {
+                let clockHz = status.clockHz;
+                if ((clockHz > 0) && (clockHz < 1000000000))
+                {
+                    let clockDisp = document.getElementById('clock-freq-hz');
+                    clockDisp.value = clockHz / 1000000;
+                }
+            }
+            catch(e)
+            {
+            }
         }
 
         function machineConfigReq(first)
@@ -273,31 +300,15 @@
             return valid;
         }
 
-        function clockHzGot(jsonResp) {
-            try
-            {
-                let clockHzInfo = JSON.parse(jsonResp);
-                let clockHz = clockHzInfo.clockHz;
-                if ((clockHz > 0) && (clockHz < 1000000000))
-                {
-                    let clockDisp = document.getElementById('clock-freq-hz');
-                    clockDisp.value = clockHz / 1000000;
-                }
-            }
-            catch (e)
-            {
-
-            }        
-        }
-
         function clockHzSet() {
             try
             {
                 let clockDisp = document.getElementById('clock-freq-hz');
-                let clockHz = clockDisp.value;
+                let clockHz = Math.floor(clockDisp.value * 1000000);
                 if ((clockHz > 0) && (clockHz < 1000000000))
                 {
-                    callAjax('setclockhz')
+                    let clockHzJson = {clockHz:clockHz};
+                    postAjax('/targetcmd/clockhzset', clockHzJson)
                 }
             }
             catch (e)
@@ -417,6 +428,8 @@
             xhr.open('POST', "/setmcjson", true);
             xhr.setRequestHeader("Content-Type", "application/json");
             xhr.send(mcJson);
+            // Update details
+            setTimeout(queryStatusUpdate, 1100);
         }
 
         function callAjax(url, okCallback, failCallback) {

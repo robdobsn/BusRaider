@@ -33,9 +33,31 @@ void RestAPIBusRaider::apiTargetCommand(String &reqStr, String &respStr)
     bool rslt = true;
     // Get command
     String targetCmd = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 1);
-    Log.trace("%sCommand %s\n", MODULE_PREFIX, targetCmd.c_str());
+    // Log.trace("%sapiTargetCommand %s\n", MODULE_PREFIX, targetCmd.c_str());
     _commandSerial.sendTargetCommand(targetCmd);
     Utils::setJsonBoolResult(respStr, rslt);
+}
+
+void RestAPIBusRaider::apiTargetCommandPost(String &reqStr, String &respStr)
+{
+}
+
+void RestAPIBusRaider::apiTargetCommandPostContent(const String &reqStr, uint8_t *pData, size_t len, size_t index, size_t total)
+{
+    // Get command
+    String targetCmd = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 1);
+    // Extract JSON
+    static const int MAX_JSON_DATA_LEN = 1000;
+    char jsonData[MAX_JSON_DATA_LEN];
+    size_t toCopy = len+1;
+    if (len > MAX_JSON_DATA_LEN)
+        toCopy = MAX_JSON_DATA_LEN;
+    strlcpy(jsonData, (const char*) pData, toCopy);
+    // Debug
+    // Log.trace("%sapiTargetCommandPostContent %s json %s\n", MODULE_PREFIX, 
+    //         reqStr.c_str(), jsonData);
+    // Send to the Pi
+    _commandSerial.sendTargetData(targetCmd.c_str(), pData, len, 0);
 }
 
 #ifdef SUPPORT_WEB_TERMINAL_REST
@@ -145,8 +167,9 @@ void RestAPIBusRaider::runFileOnTarget(const String &reqStr, String &respStr)
 
 void RestAPIBusRaider::apiQueryStatus(const String &reqStr, String &respStr)
 {
-    Log.verbose("%sapiQueryStatus %s\n", MODULE_PREFIX, reqStr.c_str());
     respStr = _machineInterface.getStatus();
+    // Log.trace("%sapiQueryStatus %s resp %s\n", MODULE_PREFIX, 
+    //             reqStr.c_str(), respStr.c_str());
 }
 
 void RestAPIBusRaider::apiQueryCurMc(const String &reqStr, String &respStr)
@@ -250,6 +273,20 @@ void RestAPIBusRaider::setup(RestAPIEndpoints &endpoints)
                         std::bind(&RestAPIBusRaider::apiTargetCommand, this,
                                 std::placeholders::_1, std::placeholders::_2),
                         "Target command");
+    endpoints.addEndpoint("targetcmd", 
+                        RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                        RestAPIEndpointDef::ENDPOINT_POST,
+                        std::bind(&RestAPIBusRaider::apiTargetCommandPost, this, 
+                                std::placeholders::_1, std::placeholders::_2),
+                        "Set clock speed", "application/json", 
+                        NULL, 
+                        true, 
+                        NULL,
+                        std::bind(&RestAPIBusRaider::apiTargetCommandPostContent, this, 
+                                std::placeholders::_1, std::placeholders::_2, 
+                                std::placeholders::_3, std::placeholders::_4,
+                                std::placeholders::_5),
+                        NULL);
     endpoints.addEndpoint("sendfiletotargetbuffer", 
                         RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                         RestAPIEndpointDef::ENDPOINT_GET, 

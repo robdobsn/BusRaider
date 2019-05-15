@@ -221,6 +221,7 @@ void MachineInterface::service()
             // Request status
             if (_pCommandSerial)
                 _pCommandSerial->sendTargetCommand("getStatus");
+            // Log.trace("%sQuery status\n", MODULE_PREFIX);
             _cachedStatusRequestMs = millis();
         }
     }

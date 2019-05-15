@@ -36,7 +36,7 @@
 const char* systemType = "BusRaiderESP32";
 
 // System version
-const char* systemVersion = "1.7.107";
+const char* systemVersion = "1.7.108";
 
 // Build date
 const char* buildDate = __DATE__;

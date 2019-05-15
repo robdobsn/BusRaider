@@ -166,14 +166,24 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
-    else if (strcasecmp(cmdName, "clockSetHz") == 0)
+    else if (strcasecmp(cmdName, "clockHzGet") == 0)
     {
+        // Get clock
+        uint32_t actualHz = BusAccess::clockCurFreqHz();
+        ee_sprintf(pRespJson, "\"err\":\"ok\",\"clockHz\":\"%d\"", actualHz);
+        // LogWrite(FromBusController, LOG_DEBUG, "clockHzGet %s", pRespJson);
+        return true;
+    }
+    else if (strcasecmp(cmdName, "clockHzSet") == 0)
+    {
+        // LogWrite(FromBusController, LOG_DEBUG, "clockHzSet %s %02x %02x %02x %02x", pParams, pParams[0], pParams[1], pParams[2], pParams[3]);
         // Get clock rate required
         static const int MAX_CMD_PARAM_STR = 50;
         char paramVal[MAX_CMD_PARAM_STR+1];
-        if (!jsonGetValueForKey("clockHz", pCmdJson, paramVal, MAX_CMD_PARAM_STR))
+        if (!jsonGetValueForKey("clockHz", (const char*)pParams, paramVal, MAX_CMD_PARAM_STR))
             return false;
         uint32_t clockRateHz = strtoul(paramVal, NULL, 10);
+        // LogWrite(FromBusController, LOG_DEBUG, "clockHzSet %d", clockRateHz);
 
         // Set clock
         BusAccess::clockSetFreqHz(clockRateHz);
