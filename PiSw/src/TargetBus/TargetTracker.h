@@ -108,7 +108,6 @@ private:
         TARGET_STATE_ACQ_NONE,
         TARGET_STATE_ACQ_INSTR_FIRST_BYTE_GOT,
         TARGET_STATE_ACQ_INJECTING,
-        TARGET_STATE_ACQ_POST_INJECT,
     };
     static TARGET_STATE_ACQ _targetStateAcqMode;
 

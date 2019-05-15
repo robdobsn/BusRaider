@@ -115,10 +115,10 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
     if (clockValid)
     {
         uint32_t clockHz = strtol(clockSpeedStr, NULL, 10);
-        if ((clockHz > BusAccess::clockGetMinFreqHz()) && (clockHz < BusAccess::clockGetMaxFreqHz()))
+        if ((clockHz >= BusAccess::clockGetMinFreqHz()) && (clockHz <= BusAccess::clockGetMaxFreqHz()))
             clockFreqHz = clockHz;
     }
-    if ((clockFreqHz > BusAccess::clockGetMinFreqHz()) && (clockFreqHz < BusAccess::clockGetMaxFreqHz()))
+    if ((clockFreqHz >= BusAccess::clockGetMinFreqHz()) && (clockFreqHz <= BusAccess::clockGetMaxFreqHz()))
     {
         BusAccess::clockSetup();
         BusAccess::clockSetFreqHz(clockFreqHz);

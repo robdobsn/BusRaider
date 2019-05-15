@@ -701,12 +701,19 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
                 // Default back to getting
                 _setRegs = false;
 
-                // Next state
-                _targetStateAcqMode = TARGET_STATE_ACQ_POST_INJECT;
+                // Go back to allowing a single instruction to run before reg get
+                _targetStateAcqMode = TARGET_STATE_ACQ_NONE;
 
                 // Use the bus socket to request page-in delayed to next wait event
                 BusAccess::targetPageForInjection(_busSocketId, false);
                 _pageOutForInjectionActive = false;
+
+                // Check for hold required
+                if (_stepMode == STEP_MODE_STEP_INTO)
+                {
+                    // Tell bus to hold at this point
+                    BusAccess::waitHold(_busSocketId, true);
+                }
 
                 // LogWrite("FromTargetTracker", LOG_DEBUG, "INJECTING FINISHED 0x%04x 0x%02x %s%s",
                 //             addr, ((flags & BR_CTRL_BUS_RD_MASK) & ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0)) ? (retVal & 0xff) : data,  
@@ -732,36 +739,6 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
                 //             (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "");
 
             }
-            break;
-        }
-        case TARGET_STATE_ACQ_POST_INJECT:
-        {
-            // Tracking back on
-            trackPrefixedInstructions(flags, codeByteValue);
-
-            // If pending disable then go to disabled
-            if (handlePendingDisable())
-            {
-                // LogWrite("FromTargetTracker", LOG_DEBUG, "Removed");
-                _targetStateAcqMode = TARGET_STATE_ACQ_NONE;
-                return;
-            }
-
-            // Check for hold required
-            if (_stepMode == STEP_MODE_STEP_INTO)
-            {
-                // Tell bus to hold at this point
-                BusAccess::waitHold(_busSocketId, true);
-            }
-
-            // Go back to first byte got
-            _targetStateAcqMode = TARGET_STATE_ACQ_INSTR_FIRST_BYTE_GOT;
-
-            // Debug
-            // LogWrite("FromTargetTracker", LOG_DEBUG, "POST-INJECT %04x %02x %s%s",
-            //             addr, ((flags & BR_CTRL_BUS_RD_MASK) & ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0)) ? (retVal & 0xff) : data, 
-            //             (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "");
-
             break;
         }
     }

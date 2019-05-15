@@ -53,7 +53,7 @@ class TargetClockGenerator
 
     uint32_t getMaxFreqHz()
     {
-        return 20000000;
+        return 25000000;
     }
 
     void setFrequency(uint32_t newFreq)
