@@ -50,8 +50,6 @@ public:
 
     // Target control
     static void targetReset();
-    static bool targetIsPaused();
-    static bool targetBusUnderPiControl();
 
     // Handle target files
     static bool handleTargetFile(const char* rxFileInfo, const uint8_t* pData, int dataLen);

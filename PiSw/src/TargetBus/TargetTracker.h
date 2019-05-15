@@ -27,6 +27,9 @@ public:
     static void stepInto();
     static void stepRun();
 
+    // Request state grab
+    static void requestStateGrab();
+
     // Status
     static void getRegsFormatted(char* pBuf, int len);
     
@@ -35,6 +38,10 @@ public:
 
     // Get mode
     static bool isPaused(); 
+    static bool isTrackingActive();
+
+    // Complete the process of programming the target
+    static void completeTargetProgram();
 
     // Register injection and code snippet generation
     static void startSetRegisterSequence(Z80Registers* pRegs = NULL);
@@ -54,7 +61,8 @@ private:
     enum STEP_MODE_TYPE
     {
         STEP_MODE_STEP_INTO,
-        STEP_MODE_STEP_RUN
+        STEP_MODE_RUN,
+        STEP_MODE_RUN_GRAB
     };
     static STEP_MODE_TYPE _stepMode;
 
@@ -82,6 +90,8 @@ private:
     };
     static OPCODE_INJECT_PROGRESS handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
     static OPCODE_INJECT_PROGRESS handleRegisterSet(uint32_t& retVal);
+
+    static void handleInjection(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
 
     // Utils
     static bool isPrefixInstruction(uint32_t instr);

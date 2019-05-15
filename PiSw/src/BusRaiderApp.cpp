@@ -11,6 +11,7 @@
 #include "Machines/McManager.h"
 #include "Machines/usb_hid_keys.h"
 #include "Machines/McTerminal.h"
+#include "TargetBus/TargetTracker.h"
 typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
 
@@ -266,11 +267,13 @@ void BusRaiderApp::statusDisplayUpdate()
         // BusAccess status
         statusStr[0] = 0;
         strlcpy(statusStr, "Bus: ", MAX_STATUS_STR_LEN);
-        if (McManager::targetIsPaused())
+        if (TargetTracker::isTrackingActive())
+            strlcat(statusStr, "Debug       ", MAX_STATUS_STR_LEN);
+        else if (BusAccess::waitIsHeld())
             strlcat(statusStr, "Paused      ", MAX_STATUS_STR_LEN);
         else
             strlcat(statusStr, "Free Running", MAX_STATUS_STR_LEN);
-        if (McManager::targetBusUnderPiControl())
+        if (BusAccess::isUnderControl())
             strlcat(statusStr, "PiControl   ", MAX_STATUS_STR_LEN);
         _display.statusPut(Display::STATUS_FIELD_BUS_ACCESS, Display::STATUS_NORMAL, statusStr);
 

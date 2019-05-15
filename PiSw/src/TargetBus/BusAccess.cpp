@@ -454,8 +454,64 @@ void BusAccess::stepTimerISR([[maybe_unused]] void* pParam)
 
 void BusAccess::serviceWaitActivity()
 {
+        // Handle the end of a read cycle
+                //                                   // TODO
+                // int val = digitalRead(8);
+                // for (int i = 0; i < 5; i++)
+                // {
+                //     digitalWrite(8,!val);
+                //     microsDelay(1);
+                //     digitalWrite(8,val);
+                //     microsDelay(1);
+                // }
     // Read the control lines
     uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
+
+    if (!_waitAsserted && _targetReadInProgress)
+    {
+                //                                   // TODO
+                // int val = digitalRead(8);
+                // for (int i = 0; i < 5; i++)
+                // {
+                //     digitalWrite(8,!val);
+                //     microsDelay(1);
+                //     digitalWrite(8,val);
+                //     microsDelay(10);
+                // }
+        // Stay here until read cycle is complete
+        uint32_t waitForReadCompleteStartUs = micros();
+        while(!isTimeout(micros(), waitForReadCompleteStartUs, MAX_WAIT_FOR_END_OF_READ_US))
+        {
+            // Check if a neither IORQ or MREQ asserted
+            if (((busVals & BR_MREQ_BAR_MASK) != 0) && ((busVals & BR_IORQ_BAR_MASK) != 0))
+            {
+                // Set data bus direction in
+                pibSetIn();
+                WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
+                _targetReadInProgress = false;
+                // Check if paging in/out is required
+                if (_targetPageInOnReadComplete)
+                {
+                //                      // TODO
+                // int val = digitalRead(8);
+                // for (int i = 0; i < 5; i++)
+                // {
+                //     digitalWrite(8,!val);
+                //     microsDelay(10);
+                //     digitalWrite(8,val);
+                //     microsDelay(10);
+                // }
+                    pagingPageIn();
+                    _targetPageInOnReadComplete = false;
+                }
+                // Done now
+                break;
+            }
+        }
+    }
+
+    // Read the control lines
+    busVals = RD32(ARM_GPIO_GPLEV0);
 
     // Check for timeouts on bus actions
     if (_busActionInProgress)
@@ -527,34 +583,6 @@ void BusAccess::serviceWaitActivity()
         }
     }
 
-    // Handle the end of a read cycle
-    if (!_waitAsserted && _targetReadInProgress)
-    {
-        // Stay here until read cycle is complete
-        uint32_t waitForReadCompleteStartUs = micros();
-        while(!isTimeout(micros(), waitForReadCompleteStartUs, MAX_WAIT_FOR_END_OF_READ_US))
-        {
-            // Read the control lines
-            busVals = RD32(ARM_GPIO_GPLEV0);
-
-            // Check if a neither IORQ or MREQ asserted
-            if (((busVals & BR_MREQ_BAR_MASK) != 0) && ((busVals & BR_IORQ_BAR_MASK) != 0))
-            {
-                // Set data bus direction in
-                pibSetIn();
-                WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
-                _targetReadInProgress = false;
-                // Check if paging in/out is required
-                if (_targetPageInOnReadComplete)
-                {
-                    pagingPageIn();
-                    _targetPageInOnReadComplete = false;
-                }
-                // Done now
-                break;
-            }
-        }
-    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

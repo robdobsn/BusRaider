@@ -75,8 +75,8 @@ def test_MemRW():
             pass
         elif msgContent['cmdName'][:10] == "SetMachine":
             pass
-        elif msgContent['cmdName'] == "clockSetHzResp":
-            testStats["clockSetOk"] = msgContent['err'] == "ok"
+        elif msgContent['cmdName'] == "clockHzSetResp":
+            testStats["clockSetOk"] = True
         else:
             testStats["unknownMsgCount"] += 1
 
@@ -93,7 +93,7 @@ def test_MemRW():
     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
     time.sleep(1)
     # Processor clock
-    commonTest.sendFrame("clockSetHz", b"{\"cmdName\":\"clockSetHz\",\"clockHz\":250000}\0")
+    commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":250000}\0")
     time.sleep(1)
     for i in range(testRepeatCount):
         commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
@@ -182,8 +182,8 @@ def test_StepValidateJMP000():
             pass
         elif msgContent['cmdName'][:10] == "SetMachine":
             pass
-        elif msgContent['cmdName'] == "clockSetHzResp":
-            testStats["clockSetOk"] = msgContent['err'] == "ok"
+        elif msgContent['cmdName'] == "clockHzSetResp":
+            testStats["clockSetOk"] = True
         elif msgContent['cmdName'] == "validatorPrimeFromMemResp" or \
                 msgContent['cmdName'] == "validatorStopResp" or \
                 msgContent['cmdName'] == "validatorStartResp":
@@ -219,7 +219,7 @@ def test_StepValidateJMP000():
     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
     time.sleep(1)
     # Processor clock
-    commonTest.sendFrame("clockSetHz", b"{\"cmdName\":\"clockSetHz\",\"clockHz\":250000}\0")
+    commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":250000}\0")
     time.sleep(0.1)
     # Check hardware list and set 64K RAM
     commonTest.sendFrame("hwList", b"{\"cmdName\":\"hwList\"}\0")
@@ -283,7 +283,7 @@ def test_TRS80Level1RomExec():
         elif msgContent['cmdName'] == 'ProgramAndResetResp':
             assert(msgContent['err'] == 'ok')
             testStats['programAndResetCount'] += 1
-        elif msgContent['cmdName'] == "clockSetHzResp":
+        elif msgContent['cmdName'] == "clockHzSetResp":
             pass
         elif msgContent['cmdName'] == "WrResp":
             pass
@@ -316,7 +316,7 @@ def test_TRS80Level1RomExec():
     time.sleep(1)
 
     # Processor clock
-    commonTest.sendFrame("clockSetHz", b"{\"cmdName\":\"clockSetHz\",\"clockHz\":250000}\0")
+    commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":250000}\0")
 
     # Loop through tests
     testRepeatCount = 5
@@ -372,7 +372,7 @@ def test_GalaxiansExec():
                     msgContent['cmdName'] == "ProgramAndExecResp":
             assert(msgContent['err'] == 'ok')
             testStats['programAndResetCount'] += 1
-        elif msgContent['cmdName'] == "clockSetHzResp":
+        elif msgContent['cmdName'] == "clockHzSetResp":
             pass
         elif msgContent['cmdName'] == "WrResp":
             pass
@@ -408,7 +408,7 @@ def test_GalaxiansExec():
     time.sleep(1)
 
     # Processor clock
-    commonTest.sendFrame("clockSetHz", b"{\"cmdName\":\"clockSetHz\",\"clockHz\":3000000}\0")
+    commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":3000000}\0")
 
     # Loop through tests
     testRepeatCount = 1
@@ -492,7 +492,7 @@ def test_stepSingle():
                     msgContent['cmdName'] == "ProgramAndExecResp":
             assert(msgContent['err'] == 'ok')
             testStats['programAndResetCount'] += 1
-        elif msgContent['cmdName'] == "clockSetHzResp":
+        elif msgContent['cmdName'] == "clockHzSetResp":
             pass
         elif msgContent['cmdName'] == "WrResp":
             pass
@@ -582,7 +582,7 @@ def test_regGetTest():
                     msgContent['cmdName'] == "ProgramAndExecResp":
             assert(msgContent['err'] == 'ok')
             testStats['programAndResetCount'] += 1
-        elif msgContent['cmdName'] == "clockSetHzResp":
+        elif msgContent['cmdName'] == "clockHzSetResp":
             pass
         elif msgContent['cmdName'] == "WrResp":
             pass
@@ -647,7 +647,7 @@ def test_regGetTest():
     # Setup Test
     commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\",\"reset\":1}\0")
     time.sleep(.2)
-    for i in range(43):
+    for i in range(22):
         # logger.debug(f"i={i}")
         commonTest.sendFrame("stepInto", b"{\"cmdName\":\"stepInto\"}\0")
         time.sleep(.2)

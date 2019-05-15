@@ -242,6 +242,7 @@ BR_RETURN_TYPE HwManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, 
         {
             BR_RETURN_TYPE newRet = _pHw[i]->blockRead(addr, pBuf, len, busRqAndRelease, iorq);
             retVal = (newRet == BR_OK || newRet == BR_NOT_HANDLED) ? retVal : newRet;
+            // LogWrite(FromHwManager, LOG_DEBUG, "blkrd %d %d", i, retVal);
         }
     }
     return retVal;

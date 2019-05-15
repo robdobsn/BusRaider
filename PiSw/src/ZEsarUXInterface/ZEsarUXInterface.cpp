@@ -74,18 +74,18 @@ void ZEsarUXInterface::service()
                                 (const uint8_t*)respMsg, strlen(respMsg));
                 // Reset and request bus for programming
                 // TODO
-                for (int i = 0; i < 5; i++)
-                {
-                    digitalWrite(8,1);
-                    microsDelay(1);
-                    digitalWrite(8,0);
-                    microsDelay(1);
-                }
+                // for (int i = 0; i < 5; i++)
+                // {
+                //     digitalWrite(8,1);
+                //     microsDelay(1);
+                //     digitalWrite(8,0);
+                //     microsDelay(1);
+                // }
                 // Start programming process
                 McManager::handleTargetProgram(true);
 
                 // Step to initiate programming and reset
-                TargetTracker::stepInto();
+                TargetTracker::completeTargetProgram();
             }
             else if (isTimeout(micros(), _smartloadStartUs, MAX_SMART_LOAD_TIME_US))
             {

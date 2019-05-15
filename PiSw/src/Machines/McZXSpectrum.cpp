@@ -76,8 +76,16 @@ void McZXSpectrum::displayRefreshFromMirrorHw()
 {
     // Read mirror memory at the location of the memory mapped screen
     unsigned char pScrnBuffer[ZXSPECTRUM_DISP_RAM_SIZE];
+        // static int maxddd = 0;
+        // if (maxddd++ == 100)
+        // {
+        //     maxddd = 0;
     if (HwManager::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, pScrnBuffer, ZXSPECTRUM_DISP_RAM_SIZE, 1, 0, true) == BR_OK)
+    {
+            // LogWrite(_logPrefix, LOG_DEBUG, "DISP REF %d %02x %02x", pScrnBuffer, pScrnBuffer[0x1800], pScrnBuffer[0x1801]);
         updateDisplayFromBuffer(pScrnBuffer, ZXSPECTRUM_DISP_RAM_SIZE);
+    }
+        // }
 }
 
 void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen)

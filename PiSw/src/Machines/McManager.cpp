@@ -407,16 +407,6 @@ void McManager::targetReset()
     BusAccess::targetReqReset(_busSocketId);
 }
 
-bool McManager::targetIsPaused()
-{
-    return BusAccess::waitIsHeld();
-}
-
-bool McManager::targetBusUnderPiControl()
-{
-    return BusAccess::isUnderControl();
-}
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Target programming
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -552,12 +542,12 @@ bool McManager::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t*
 
 void McManager::targetExec()
 {
-    LogWrite(FromMcManager, LOG_DEBUG, "Starting target code, cpu is held %c", BusAccess::waitIsHeld() ? 'Y' : 'N');
+    LogWrite(FromMcManager, LOG_DEBUG, "Starting target code, debugActive %c", TargetTracker::isTrackingActive() ? 'Y' : 'N');
     bool performHardReset = true;
     if (TargetState::areRegistersValid())
     {
         // Check how to set registers
-        if (HwManager::getOpcodeInjectEnable() || BusAccess::waitIsHeld())
+        if (HwManager::getOpcodeInjectEnable() || TargetTracker::isTrackingActive())
         {
             // Use the BusAccess module to inject instructions to set registers
             Z80Registers regs;
@@ -619,10 +609,31 @@ void McManager::busActionCompleteStatic(BR_BUS_ACTION actionType, [[maybe_unused
             for (int i = 0; i < TargetState::numMemoryBlocks(); i++) {
                 TargetState::TargetMemoryBlock* pBlock = TargetState::getMemoryBlock(i);
                 BR_RETURN_TYPE brResult = BusAccess::blockWrite(pBlock->start, TargetState::getMemoryImagePtr() + pBlock->start, pBlock->len, false, false);
-                LogWrite(FromMcManager, LOG_DEBUG,"ProgramTarget done %08x len %d result %d micros %d", pBlock->start, pBlock->len, brResult, micros());
+                LogWrite(FromMcManager, LOG_DEBUG,"ProgramTarget done %08x len %d result %d micros %u", pBlock->start, pBlock->len, brResult, micros());
                 if (pBlock->start == Z80_PROGRAM_RESET_VECTOR)
                     _busActionCodeWrittenAtResetVector = true;
             }
+
+            // // Debug
+            // uint8_t testBlock[0x100];
+            // uint32_t baseAddr = 0x6000;
+            // uint32_t blockLen = 0x100;
+            // BusAccess::blockRead(baseAddr, testBlock, blockLen, false, false);
+            // char buf2[100];
+            // buf2[0] = 0;
+            // uint32_t lineStart = 0;
+            // for (uint32_t i = 0; i < blockLen; i++)
+            // {
+            //     char buf1[10];
+            //     ee_sprintf(buf1, "%02x ", testBlock[i]);
+            //     strlcat(buf2, buf1, 100);
+            //     if (i % 0x10 == 0x0f)
+            //     {
+            //         LogWrite(FromMcManager, LOG_DEBUG, "%04x %s", baseAddr+lineStart, buf2);
+            //         buf2[0] = 0;
+            //         lineStart = i+1;
+            //     }
+            // }
 
             // Check for exec
             if (_busActionPendingExecAfterProgram)
