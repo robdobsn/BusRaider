@@ -30,6 +30,9 @@ public:
     virtual BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq);
     virtual BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq);
 
+    // Get mirror memory for address
+    virtual uint8_t* getMirrorMemForAddr(uint32_t addr);
+
     // Validator interface to hardware
     virtual void validatorClone();
     virtual void validatorHandleAccess(uint32_t addr, uint32_t data, 

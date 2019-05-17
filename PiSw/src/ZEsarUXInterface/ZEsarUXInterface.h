@@ -55,5 +55,8 @@ private:
     bool _resetPending;
     uint32_t _resetPendingTimeUs;
     static const int MAX_TIME_RESET_PENDING_US = 100000;
+
+    // Event pending
+    bool _stepOverPending;
 };
 

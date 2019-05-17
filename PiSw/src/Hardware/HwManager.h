@@ -71,6 +71,9 @@ public:
     static bool enableHw(const char* hwName, bool enable);
     static void disableAll();
 
+    // Get mirror memory for address
+    static uint8_t* getMirrorMemForAddr(uint32_t addr);
+
     // Setup from Json
     static void setupFromJson(const char* jsonKey, const char* hwJson);
 

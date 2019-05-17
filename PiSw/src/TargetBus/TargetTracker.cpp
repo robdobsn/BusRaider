@@ -7,6 +7,7 @@
 #include "../System/ee_sprintf.h"
 #include "../System/logging.h"
 #include "../Hardware/HwManager.h"
+#include "../Disassembler/src/mdZ80.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Variables
@@ -15,6 +16,12 @@
 // The code to get registers can pause on the last RD of the get-regs injected code
 // or it can pause on the get of the actual current instruction addr (after get-regs)
 // has completed.
+// Reason for wanting it the old way might be that you can't (easily) change the instruction 
+// at the current address as the processor will read it as soon as the wait is released and 
+// the target-tracker's instruction prefix tracking might also get out-of-kilter if a prefixed 
+// instruction was changed for a non-prefix one etc
+// Reason for wanting the new way is the things that look at the bus while held will get the
+// right value now
 #define PAUSE_GET_REGS_AT_CUR_ADDR 1
 
 // Module name
@@ -43,6 +50,9 @@ uint32_t TargetTracker::_snippetLen = 0;
 uint32_t TargetTracker::_snippetPos = 0;
 uint8_t TargetTracker::_snippetBuf[MAX_CODE_SNIPPET_LEN];
 uint32_t TargetTracker::_snippetWriteIdx = 0;
+
+// Step over
+uint32_t TargetTracker::_stepOverPCValue = 0;
 
 // Injection type
 bool TargetTracker::_setRegs = false;
@@ -473,6 +483,30 @@ void TargetTracker::stepInto()
     }
 }
 
+void TargetTracker::stepOver()
+{
+    // Get address to run to by disassembling code at current location
+    uint8_t* pMirrorMemory = HwManager::getMirrorMemForAddr(0);
+    if (!pMirrorMemory)
+        return;
+    uint32_t curAddr = _z80Registers.PC;
+    char pDisassembly[MAX_Z80_DISASSEMBLY_LINE_LEN];
+    int instrLen = disasmZ80(pMirrorMemory, 0, curAddr, pDisassembly, INTEL, false, true);
+    _stepOverPCValue = curAddr + instrLen;
+    LogWrite(FromTargetTracker, LOG_DEBUG, "cpu-step-over PCnow %04x StepToPC %04x", _z80Registers.PC, _stepOverPCValue);
+
+    // Set flag to indicate mode
+    _stepMode = STEP_MODE_STEP_OVER;
+
+    // Release bus hold if held
+    if (BusAccess::waitIsHeld())
+    {
+        // Remove any hold to allow execution / injection
+        BusAccess::waitHold(_busSocketId, false);
+        BusAccess::waitRelease();
+    }
+}
+
 void TargetTracker::stepRun()
 {
     // Set flag to indicate mode
@@ -644,6 +678,9 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
                 BusAccess::waitHold(_busSocketId, true);
             }
 
+            // Check for step-over, breakpoints, etc
+            handleStepOverBkpts(addr, data, flags, retVal);
+
             // Look for start of instruction
             handleTrackerIdle(addr, data, flags, retVal);
 
@@ -654,6 +691,9 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
             // Check for disable
             if (handlePendingDisable())
                 break;
+
+            // Check for step-over, breakpoints, etc
+            handleStepOverBkpts(addr, data, flags, retVal);
 
             // // Remove any hold to allow execution / injection
             // BusAccess::waitHold(_busSocketId, false);
@@ -778,6 +818,30 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
     //     // TODO may need to call back to whoever requested this
     // }
     
+}
+
+void TargetTracker::handleStepOverBkpts([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+        uint32_t flags, [[maybe_unused]] uint32_t& retVal)
+{
+        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_C);
+    // Step-over handling: enabled and M1 cycle
+    if ((_stepMode == STEP_MODE_STEP_OVER) && (flags & BR_CTRL_BUS_M1_MASK))
+    {
+        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_D);
+        if (_stepOverPCValue == 0x6017)
+            ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_E);
+
+        if (addr == 0x6017)
+            ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_F);
+
+        // Check stepover
+        if (_stepOverPCValue == addr)
+        {
+            _stepMode = STEP_MODE_STEP_INTO;
+            // Tell bus to hold at this point
+            BusAccess::waitHold(_busSocketId, true);
+        }
+    }
 }
 
 void TargetTracker::handleTrackerIdle([[maybe_unused]] uint32_t addr, uint32_t data, 

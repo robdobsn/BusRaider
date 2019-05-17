@@ -26,11 +26,16 @@ public:
     // Step
     static void stepInto();
     static void stepRun();
+    static void stepOver();
 
     // Request state grab
     static void requestDisplayGrab();
 
-    // Status
+    // Regs
+    static Z80Registers& getRegs()
+    {
+        return _z80Registers;
+    };
     static void getRegsFormatted(char* pBuf, int len);
     
     // Check if bus can be accessed directly
@@ -49,6 +54,22 @@ public:
     static const int MAX_CODE_SNIPPET_LEN = 100;
     static int getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBuffer, uint32_t codeMaxlen);
 
+    // Disassembly
+    static const int MAX_Z80_DISASSEMBLY_LINE_LEN = 300;
+
+    // Step mode
+    enum STEP_MODE_TYPE
+    {
+        STEP_MODE_STEP_INTO,
+        STEP_MODE_STEP_OVER,
+        STEP_MODE_RUN,
+        STEP_MODE_RUN_GRAB_DISPLAY
+    };
+    static STEP_MODE_TYPE getStepMode()
+    {
+        return _stepMode;
+    }
+
 private:
 
     // Can't turn off mid-injection so store flag to indicate disable pending
@@ -58,13 +79,10 @@ private:
     static bool _pageOutForInjectionActive;
 
     // Step mode
-    enum STEP_MODE_TYPE
-    {
-        STEP_MODE_STEP_INTO,
-        STEP_MODE_RUN,
-        STEP_MODE_RUN_GRAB_DISPLAY
-    };
     static STEP_MODE_TYPE _stepMode;
+
+    // Step over
+    static uint32_t _stepOverPCValue;
 
     // Code snippet
     static uint32_t _snippetLen;
@@ -91,6 +109,7 @@ private:
     static OPCODE_INJECT_PROGRESS handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
     static OPCODE_INJECT_PROGRESS handleRegisterSet(uint32_t& retVal);
 
+    static void handleStepOverBkpts(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
     static void handleTrackerIdle(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
     static void handleInjection(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
 

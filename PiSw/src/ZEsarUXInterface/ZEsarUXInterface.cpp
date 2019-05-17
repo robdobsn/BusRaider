@@ -10,6 +10,7 @@
 #include "../TargetBus/TargetTracker.h"
 #include "../Hardware/HwManager.h"
 #include "../Machines/McManager.h"
+#include "../Disassembler/src/mdZ80.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Variables
@@ -47,6 +48,7 @@ ZEsarUXInterface::ZEsarUXInterface()
     _smartloadStartUs = 0;
     _resetPending = 0;
     _resetPendingTimeUs = 0;
+    _stepOverPending = false;
 }
 
 void ZEsarUXInterface::init()
@@ -59,9 +61,9 @@ void ZEsarUXInterface::init()
 void ZEsarUXInterface::service()
 {
     // Check for smartload completion and timeouts
+    char respMsg[ZEsarUX_RESP_MAX_LEN];
     if (_smartloadInProgress)
     {
-        char respMsg[ZEsarUX_RESP_MAX_LEN];
         if (_smartloadStartDetected)
         {
             if (!CommandHandler::isFileTransferInProgress())
@@ -114,6 +116,25 @@ void ZEsarUXInterface::service()
                                 (const uint8_t*)respMsg, strlen(respMsg));
             }
         }
+    }
+
+    // Check for step-over complete
+    if (_stepOverPending)
+    {
+        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_I);
+        // Check state of target tracker
+        if (TargetTracker::getStepMode() != TargetTracker::STEP_MODE_STEP_OVER)
+        {
+            ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_J);
+            strlcpy(respMsg, "", ZEsarUX_RESP_MAX_LEN);
+            addPromptMsg(respMsg, ZEsarUX_RESP_MAX_LEN);
+            CommandHandler::sendWithJSON("zesarux", "", _smartloadMsgIdx, 
+                            (const uint8_t*)respMsg, strlen(respMsg));
+            _stepOverPending = false;
+        }
+        //     //     strlcat(respBuf, "\ncommand@cpu-step> ", MAX_DISASSEMBLY_LINE_LEN);
+//     //     if (_pSendRemoteDebugProtocolMsgCallback)
+//     //         (*_pSendRemoteDbugProtocolMsgCallback)(respBuf, "0");
     }
 }
 
@@ -383,6 +404,14 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "disassemble"))
     {
+        // Disassemble code at current location
+        uint8_t* pMirrorMemory = HwManager::getMirrorMemForAddr(0);
+        if (pMirrorMemory)
+        {
+            uint32_t addr = strtol(argStr, NULL, 10);
+            disasmZ80(pMirrorMemory, 0, addr, pResponse, INTEL, false, true);
+        }
+        // LogWrite(FromDebugger, LOG_VERBOSE, "disassemble %s %s %s %d %s", argStr, argStr2, argRest, addr, pResponse);
     }
     else if (commandMatch(cmdStr, "enable-breakpoints"))
     {
@@ -491,10 +520,28 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "cpu-step-over"))
     {
+        TargetTracker::stepOver();
+        // Disassembly
+        uint8_t* pMirrorMemory = HwManager::getMirrorMemForAddr(0);
+        if (pMirrorMemory)
+        {
+            uint32_t curAddr = TargetTracker::getRegs().PC;
+            disasmZ80(pMirrorMemory, 0, curAddr, pResponse, INTEL, false, true);
+        }
+        _stepOverPending = true;
+        // Return immediately (no prompt)
+        return true;
     }
     else if (commandMatch(cmdStr, "cpu-step"))
     {
         TargetTracker::stepInto();
+        // Disassembly
+        uint8_t* pMirrorMemory = HwManager::getMirrorMemForAddr(0);
+        if (pMirrorMemory)
+        {
+            uint32_t curAddr = TargetTracker::getRegs().PC;
+            disasmZ80(pMirrorMemory, 0, curAddr, pResponse, INTEL, false, true);
+        }
     }
     else if (commandMatch(cmdStr, "run"))
     {

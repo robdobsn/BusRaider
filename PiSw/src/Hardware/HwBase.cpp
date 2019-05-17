@@ -51,6 +51,12 @@ BR_RETURN_TYPE HwBase::blockRead([[maybe_unused]] uint32_t addr, [[maybe_unused]
     return BR_NOT_HANDLED;
 }
 
+// Get mirror memory for address
+uint8_t* HwBase::getMirrorMemForAddr([[maybe_unused]]uint32_t addr)
+{
+    return NULL;
+}
+
 // Validator interface to hardware
 void HwBase::validatorClone()
 {
