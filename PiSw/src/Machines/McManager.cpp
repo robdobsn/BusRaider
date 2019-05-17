@@ -316,6 +316,9 @@ bool McManager::setupMachine(const char* mcJson)
 void McManager::displayRefresh()
 {
     unsigned long reqUpdateUs = 1000000 / getDescriptorTable()->displayRefreshRatePerSec;
+    // Drop rate to one tenth if TargetTracker is running
+    if (TargetTracker::isTrackingActive())
+        reqUpdateUs = 10 * reqUpdateUs;
     if (isTimeout(micros(), _refreshLastUpdateUs, reqUpdateUs)) 
     {
         // Update timings
