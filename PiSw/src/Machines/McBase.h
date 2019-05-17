@@ -75,6 +75,9 @@ public:
     // Setup display
     virtual void setupDisplay(DisplayBase* pDisplay);
 
+    // Heartbeat
+    virtual void machineHeartbeat();
+
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
     virtual void displayRefreshFromMirrorHw() = 0;
 

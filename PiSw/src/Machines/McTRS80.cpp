@@ -367,7 +367,7 @@ void McTRS80::busActionCompleteCallback(BR_BUS_ACTION actionType)
     {
         // Read memory of RC2014 at the location of the TRS80 memory mapped screen
         unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
-        if (BusAccess::blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, false, 0) == BR_OK)
+        if (BusAccess::blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, false, false) == BR_OK)
             updateDisplayFromBuffer(pScrnBuffer, TRS80_DISP_RAM_SIZE);
 
         // Check for key presses and send to the TRS80 if necessary

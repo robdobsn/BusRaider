@@ -37,6 +37,9 @@ public:
     // Disable machine
     virtual void disable();
 
+    // Machine heartbeat
+    virtual void machineHeartbeat();
+
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
     virtual void displayRefreshFromMirrorHw();
 

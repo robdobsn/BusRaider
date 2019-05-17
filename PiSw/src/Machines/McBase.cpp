@@ -151,3 +151,8 @@ void McBase::setupDisplay(DisplayBase* pDisplay)
         _activeDescriptorTable.pFont, 
         _activeDescriptorTable.displayForeground, _activeDescriptorTable.displayBackground);
 }
+
+// Machine heartbeat
+void McBase::machineHeartbeat()
+{
+}

@@ -599,16 +599,9 @@ void BusAccess::waitSetupMREQAndIORQEnables()
 
 void BusAccess::waitResetFlipFlops()
 {
-    // Debug
-    // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_E);
-    // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_F, RD32(ARM_PWM_STA));
-
     // Since the FIFO is shared the data output to MREQ/IORQ enable pins will be interleaved so we need to write data for both
     if ((RD32(ARM_PWM_STA) & 1) == 0)
     {
-        // Debug
-        // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_C);
-
         // Write to FIFO
         WR32(ARM_PWM_FIF1, 0x00ffffff);
         WR32(ARM_PWM_FIF1, 0x00ffffff);

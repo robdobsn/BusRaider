@@ -386,10 +386,8 @@ void BusAccess::busActionAssertActive()
             // Clear the action now so that any new action raised by the callback
             // such as a reset, etc can be asserted before BUSRQ is released
             busActionClearFlags();
-
             // Callback
             busActionCallback(BR_BUS_ACTION_BUSRQ, _busSockets[_busActionSocket].busMasterReason);
-
             // Release bus
             controlRelease();
         }
@@ -433,7 +431,28 @@ void BusAccess::busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REA
         if (!_busSockets[i].enabled)
             continue;
         // Inform all active sockets of the bus action completion
+                //                                           // TODO
+                // int val = digitalRead(8);
+                // for (int i = 0; i < 3; i++)
+                // {
+                //     digitalWrite(8,!val);
+                //     microsDelay(1);
+                //     digitalWrite(8,val);
+                //     microsDelay(1);
+                // }
+
         _busSockets[i].busActionCallback(busActionType, reason);
+
+                //                                           // TODO
+                // val = digitalRead(8);
+                // for (int i = 0; i < 2; i++)
+                // {
+                //     digitalWrite(8,!val);
+                //     microsDelay(1);
+                //     digitalWrite(8,val);
+                //     microsDelay(1);
+                // }
+
     }
 }
 
@@ -630,13 +649,9 @@ void BusAccess::waitHandleNew()
         // TODO - this isn't valid as M1 can't be relied upon
         // ctrlValid = ctrlValid || (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) & (ctrlBusVals & BR_CTRL_BUS_M1_MASK);
 
-        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_A);
-
         // If ctrl is already valid then continue
         if (ctrlValid)
             break;
-
-        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_B);
 
         // Delay
         microsDelay(1);
@@ -743,8 +758,6 @@ void BusAccess::waitHandleNew()
     bool isWriting = (ctrlBusVals & BR_CTRL_BUS_WR_MASK);
     if (!isWriting && ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0))
     {
-        // Debug
-        // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_I);
         // Now driving data onto the target data bus
         WR32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
         // A flip-flop handles data OE during the IORQ/MREQ cycle and 

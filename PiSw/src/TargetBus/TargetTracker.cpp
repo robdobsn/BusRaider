@@ -496,10 +496,12 @@ void TargetTracker::completeTargetProgram()
     }
 }
 
-void TargetTracker::requestStateGrab()
+void TargetTracker::requestDisplayGrab()
 {
     if (_stepMode == STEP_MODE_RUN)
-        _stepMode = STEP_MODE_RUN_GRAB;
+    {
+        _stepMode = STEP_MODE_RUN_GRAB_DISPLAY;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -682,13 +684,10 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
                     //         (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "",
                     //         _prefixTracker[0], _prefixTracker[1]);
                     // Bump state if in step mode or a grab is needed
-                    if ((_stepMode == STEP_MODE_STEP_INTO) || (_stepMode == STEP_MODE_RUN_GRAB))
+                    if ((_stepMode == STEP_MODE_STEP_INTO) || (_stepMode == STEP_MODE_RUN_GRAB_DISPLAY))
                     {
                         _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
                         handleInjection(addr, data, flags, retVal);
-                        // Revert to run after a run&grab
-                        if (_stepMode == STEP_MODE_RUN_GRAB)
-                            _stepMode = STEP_MODE_RUN;
                     }
                 }
             }
@@ -821,7 +820,10 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
 
             // Request bus
             // LogWrite(FromTargetTracker, LOG_DEBUG, "Request bus for mirror");
-            BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_MIRROR);
+            BR_BUS_ACTION_REASON busAction = BR_BUS_ACTION_MIRROR;
+            if (_stepMode == STEP_MODE_RUN_GRAB_DISPLAY)
+                busAction = BR_BUS_ACTION_DISPLAY;
+            BusAccess::targetReqBus(_busSocketId, busAction);
         }
     }
     else if (injectProgress == OPCODE_INJECT_DONE)
@@ -841,14 +843,14 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
         _pageOutForInjectionActive = false;
 
                                                         // TODO
-                int val = digitalRead(8);
-                for (int i = 0; i < 5; i++)
-                {
-                    digitalWrite(8,!val);
-                    microsDelay(10);
-                    digitalWrite(8,val);
-                    microsDelay(10);
-                }
+                // int val = digitalRead(8);
+                // for (int i = 0; i < 5; i++)
+                // {
+                //     digitalWrite(8,!val);
+                //     microsDelay(10);
+                //     digitalWrite(8,val);
+                //     microsDelay(10);
+                // }
 
         // Check for hold required
         if (_stepMode == STEP_MODE_STEP_INTO)
@@ -856,6 +858,12 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
             // Tell bus to hold at this point
             BusAccess::waitHold(_busSocketId, true);
         }
+        else if (_stepMode == STEP_MODE_RUN_GRAB_DISPLAY)
+        {
+            // Revert to run after a run&grab
+            _stepMode = STEP_MODE_RUN;
+        }
+
 
         // LogWrite(FromTargetTracker, LOG_DEBUG, "INJECTING FINISHED 0x%04x 0x%02x %s%s",
         //             addr, ((flags & BR_CTRL_BUS_RD_MASK) & ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0)) ? (retVal & 0xff) : data,  

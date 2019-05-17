@@ -28,7 +28,7 @@ public:
     static void stepRun();
 
     // Request state grab
-    static void requestStateGrab();
+    static void requestDisplayGrab();
 
     // Status
     static void getRegsFormatted(char* pBuf, int len);
@@ -62,7 +62,7 @@ private:
     {
         STEP_MODE_STEP_INTO,
         STEP_MODE_RUN,
-        STEP_MODE_RUN_GRAB
+        STEP_MODE_RUN_GRAB_DISPLAY
     };
     static STEP_MODE_TYPE _stepMode;
 
