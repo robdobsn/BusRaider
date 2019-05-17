@@ -12,6 +12,11 @@
 // Variables
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// The code to get registers can pause on the last RD of the get-regs injected code
+// or it can pause on the get of the actual current instruction addr (after get-regs)
+// has completed.
+#define PAUSE_GET_REGS_AT_CUR_ADDR 1
+
 // Module name
 static const char FromTargetTracker[] = "TargetTracker";
 
@@ -529,8 +534,11 @@ bool TargetTracker::isPrefixInstruction(uint32_t instr)
     return false;
 }
 
-bool TargetTracker::trackPrefixedInstructions(uint32_t flags, uint32_t codeVal)
+bool TargetTracker::trackPrefixedInstructions(uint32_t flags, uint32_t data, uint32_t retVal)
 {
+    // Value read/written
+    uint32_t codeVal = ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) ? data : retVal) & 0xff;
+
     // Track M1 cycles to ensure we know when we're at the start of a new instruction
     // and not in the middle of a prefixed instruction sequence
     bool firstByteOfInstr = false;
@@ -601,9 +609,6 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
     if ((flags & BR_CTRL_BUS_MREQ_MASK) == 0)
         return;
 
-    // Value read/written
-    uint32_t codeByteValue = ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) ? data : retVal) & 0xff;
-
     // LogWrite(FromTargetTracker, LOG_DEBUG, "addr %04x data %02x M1 %d Prev %d Now %d InData %02x RetVal %02x flags %08x", 
     //             addr, codeByteValue, 
     //             flags & BR_CTRL_BUS_M1_MASK, _prefixTracker[0], _prefixTracker[1], 
@@ -630,25 +635,18 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
     switch (_targetStateAcqMode)
     {
         case TARGET_STATE_ACQ_NONE:
+        case TARGET_STATE_ACQ_POST_INJECT:
         {
-            // Check for disable
-            if (handlePendingDisable())
-                break;
+            // Check for post inject hold
+            if ((_targetStateAcqMode == TARGET_STATE_ACQ_POST_INJECT) && (_stepMode == STEP_MODE_STEP_INTO))
+            {
+                // Tell bus to hold at this point
+                BusAccess::waitHold(_busSocketId, true);
+            }
 
-            // If we detect the first byte of an instruction then move state
-            bool firstNonPrefixedByteOfInstr = trackPrefixedInstructions(flags, codeByteValue);
-            if (firstNonPrefixedByteOfInstr)
-                _targetStateAcqMode = TARGET_STATE_ACQ_INSTR_FIRST_BYTE_GOT;
-            // LogWrite(FromTargetTracker, LOG_DEBUG, "NONE %s %04x %02x %s%s %d %d", 
-            //                 firstNonPrefixedByteOfInstr ? "FIRSTNONPFX" : "",
-            //                 addr, codeByteValue, 
-            //                 (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "",
-            //                 _prefixTracker[0], _prefixTracker[1]);
+            // Look for start of instruction
+            handleTrackerIdle(addr, data, flags, retVal);
 
-            // Debug
-            if (firstNonPrefixedByteOfInstr || (_debugInstrBytePos >= MAX_BYTES_IN_INSTR))
-                _debugInstrBytePos = 0;
-            _debugInstrBytes[_debugInstrBytePos++] = codeByteValue;
             break;
         }
         case TARGET_STATE_ACQ_INSTR_FIRST_BYTE_GOT:
@@ -664,7 +662,7 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
             if (_targetStateAcqMode == TARGET_STATE_ACQ_INSTR_FIRST_BYTE_GOT)
             {
                 // If we get another first byte then start injecting
-                bool firstNonPrefixedByteOfInstr = trackPrefixedInstructions(flags, codeByteValue);
+                bool firstNonPrefixedByteOfInstr = trackPrefixedInstructions(flags, data, retVal);
                 if (!firstNonPrefixedByteOfInstr)
                 {
                     // LogWrite(FromTargetTracker, LOG_DEBUG, "WAITFIRST %04x %02x %s%s %d %d", 
@@ -674,7 +672,7 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
                     //         _prefixTracker[0], _prefixTracker[1]);
                     // Debug
                     if (_debugInstrBytePos < MAX_BYTES_IN_INSTR)
-                        _debugInstrBytes[_debugInstrBytePos++] = codeByteValue;
+                        _debugInstrBytes[_debugInstrBytePos++] = data;
                 }
                 else
                 {
@@ -782,6 +780,29 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
     
 }
 
+void TargetTracker::handleTrackerIdle([[maybe_unused]] uint32_t addr, uint32_t data, 
+        uint32_t flags, uint32_t& retVal)
+{
+    // Check for disable
+    if (handlePendingDisable())
+        return;
+
+    // If we detect the first byte of an instruction then move state
+    bool firstNonPrefixedByteOfInstr = trackPrefixedInstructions(flags, data, retVal);
+    if (firstNonPrefixedByteOfInstr)
+        _targetStateAcqMode = TARGET_STATE_ACQ_INSTR_FIRST_BYTE_GOT;
+    // LogWrite(FromTargetTracker, LOG_DEBUG, "NONE %s %04x %02x %s%s %d %d", 
+    //                 firstNonPrefixedByteOfInstr ? "FIRSTNONPFX" : "",
+    //                 addr, codeByteValue, 
+    //                 (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "",
+    //                 _prefixTracker[0], _prefixTracker[1]);
+
+    // Debug
+    if (firstNonPrefixedByteOfInstr || (_debugInstrBytePos >= MAX_BYTES_IN_INSTR))
+        _debugInstrBytePos = 0;
+    _debugInstrBytes[_debugInstrBytePos++] = data;
+}
+
 void TargetTracker::handleInjection(uint32_t addr, uint32_t data, 
         uint32_t flags, uint32_t& retVal)
 {
@@ -835,9 +856,6 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
         _setRegs = false;
         _snippetPos = 0;
 
-        // Go back to allowing a single instruction to run before reg get
-        _targetStateAcqMode = TARGET_STATE_ACQ_NONE;
-
         // Use the bus socket to request page-in delayed to next wait event
         BusAccess::targetPageForInjection(_busSocketId, false);
         _pageOutForInjectionActive = false;
@@ -852,13 +870,19 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
                 //     microsDelay(10);
                 // }
 
+        // Go back to allowing a single instruction to run before reg get
+#ifdef PAUSE_GET_REGS_AT_CUR_ADDR
+        _targetStateAcqMode = TARGET_STATE_ACQ_POST_INJECT;
+#else
+        _targetStateAcqMode = TARGET_STATE_ACQ_NONE;
         // Check for hold required
         if (_stepMode == STEP_MODE_STEP_INTO)
         {
             // Tell bus to hold at this point
             BusAccess::waitHold(_busSocketId, true);
         }
-        else if (_stepMode == STEP_MODE_RUN_GRAB_DISPLAY)
+#endif
+        if (_stepMode == STEP_MODE_RUN_GRAB_DISPLAY)
         {
             // Revert to run after a run&grab
             _stepMode = STEP_MODE_RUN;

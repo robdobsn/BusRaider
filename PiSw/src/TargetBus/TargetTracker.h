@@ -91,11 +91,12 @@ private:
     static OPCODE_INJECT_PROGRESS handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
     static OPCODE_INJECT_PROGRESS handleRegisterSet(uint32_t& retVal);
 
+    static void handleTrackerIdle(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
     static void handleInjection(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
 
     // Utils
     static bool isPrefixInstruction(uint32_t instr);
-    static bool trackPrefixedInstructions(uint32_t flags, uint32_t codeVal);
+    static bool trackPrefixedInstructions(uint32_t flags, uint32_t data, uint32_t retVal);
     static void store16BitVal(uint8_t arry[], int offset, uint16_t val);
     static bool handlePendingDisable();
 
@@ -118,6 +119,7 @@ private:
         TARGET_STATE_ACQ_NONE,
         TARGET_STATE_ACQ_INSTR_FIRST_BYTE_GOT,
         TARGET_STATE_ACQ_INJECTING,
+        TARGET_STATE_ACQ_POST_INJECT,
     };
     static TARGET_STATE_ACQ _targetStateAcqMode;
 
