@@ -136,6 +136,49 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
+    else if (strcasecmp(cmdName, "testRdWr") == 0)
+    {
+        int errs = 0;
+        char errStr[200];
+        errStr[0] = 0;
+        for (int i = 0; i < 1000; i++)
+        {
+            static const uint8_t testData[] = { 0x54, 0x45, 0x53, 0x54, 0x20, 0x44, 0x41, 0x54, 0x41, 0xaa, 0x55, 0xaa, 0x55};
+            uint8_t writeBuf[MAX_MEM_BLOCK_READ_WRITE];
+            memset(writeBuf, 0, MAX_MEM_BLOCK_READ_WRITE);
+            memcpy(writeBuf, testData, sizeof(testData));
+            BusAccess::blockWrite(0x3c00, writeBuf, MAX_MEM_BLOCK_READ_WRITE, true, false);
+
+            uint8_t readBuf[MAX_MEM_BLOCK_READ_WRITE];
+            BusAccess::blockRead(0x3c00, readBuf, MAX_MEM_BLOCK_READ_WRITE, true, false);
+
+            if (memcmp(writeBuf, readBuf, MAX_MEM_BLOCK_READ_WRITE) != 0)
+            {
+                if (errs == 0)
+                {
+                    int errPos = 0;
+                    for (int k = 0; k < MAX_MEM_BLOCK_READ_WRITE; k++)
+                    {
+                        if (writeBuf[k] != readBuf[k])
+                        {
+                            errPos = k;
+                            break;
+                        }
+                    }
+                    // digitalWrite(8, 1);
+                    // microsDelay(100);
+                    // digitalWrite(8, 0);
+                    ee_sprintf(errStr, "POS %d WR %02x %02x %02x %02x RD %02x %02x %02x %02x", 
+                                errPos,
+                                writeBuf[errPos], writeBuf[errPos+1], writeBuf[errPos+2], writeBuf[errPos+3],
+                                readBuf[errPos+0], readBuf[errPos+1], readBuf[errPos+2], readBuf[errPos+3]);
+                }
+                errs++;
+            }
+        }
+        LogWrite(FromBusController, LOG_DEBUG, "{\"err\":\"ok\",\"errs\":%d,\"errStr\":\"%s\"}", errs, errStr);
+        return true;
+    }
     else if (strcasecmp(cmdName, "busStatus") == 0)
     {
         // Get bus status
@@ -176,12 +219,13 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
     }
     else if (strcasecmp(cmdName, "clockHzSet") == 0)
     {
-        // LogWrite(FromBusController, LOG_DEBUG, "clockHzSet %s %02x %02x %02x %02x", pParams, pParams[0], pParams[1], pParams[2], pParams[3]);
-        // Get clock rate required
+        // LogWrite(FromBusController, LOG_DEBUG, "clockHzSet cmd %s params %s %02x %02x %02x %02x", pCmdJson, pParams, pParams[0], pParams[1], pParams[2], pParams[3]);
+        // Get clock rate required (may be in cmdJson or paramsJson)
         static const int MAX_CMD_PARAM_STR = 50;
         char paramVal[MAX_CMD_PARAM_STR+1];
-        if (!jsonGetValueForKey("clockHz", (const char*)pParams, paramVal, MAX_CMD_PARAM_STR))
-            return false;
+        if (!jsonGetValueForKey("clockHz", pCmdJson, paramVal, MAX_CMD_PARAM_STR))
+            if (!jsonGetValueForKey("clockHz", (const char*)pParams, paramVal, MAX_CMD_PARAM_STR))
+                return false;
         uint32_t clockRateHz = strtoul(paramVal, NULL, 10);
         // LogWrite(FromBusController, LOG_DEBUG, "clockHzSet %d", clockRateHz);
 

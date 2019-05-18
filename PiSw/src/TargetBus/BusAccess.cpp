@@ -473,65 +473,6 @@ void BusAccess::stepTimerISR([[maybe_unused]] void* pParam)
 
 void BusAccess::serviceWaitActivity()
 {
-        // Handle the end of a read cycle
-                //                                   // TODO
-                // int val = digitalRead(8);
-                // for (int i = 0; i < 5; i++)
-                // {
-                //     digitalWrite(8,!val);
-                //     microsDelay(1);
-                //     digitalWrite(8,val);
-                //     microsDelay(1);
-                // }
-    // Read the control lines
-    uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
-
-    if (!_waitAsserted && _targetReadInProgress)
-    {
-                //                                   // TODO
-                // int val = digitalRead(8);
-                // for (int i = 0; i < 5; i++)
-                // {
-                //     digitalWrite(8,!val);
-                //     microsDelay(1);
-                //     digitalWrite(8,val);
-                //     microsDelay(10);
-                // }
-        // Stay here until read cycle is complete
-        uint32_t waitForReadCompleteStartUs = micros();
-        while(!isTimeout(micros(), waitForReadCompleteStartUs, MAX_WAIT_FOR_END_OF_READ_US))
-        {
-            // Check if a neither IORQ or MREQ asserted
-            if (((busVals & BR_MREQ_BAR_MASK) != 0) && ((busVals & BR_IORQ_BAR_MASK) != 0))
-            {
-                // Set data bus direction in
-                pibSetIn();
-                WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
-                _targetReadInProgress = false;
-                // Check if paging in/out is required
-                if (_targetPageInOnReadComplete)
-                {
-                //                      // TODO
-                // int val = digitalRead(8);
-                // for (int i = 0; i < 5; i++)
-                // {
-                //     digitalWrite(8,!val);
-                //     microsDelay(10);
-                //     digitalWrite(8,val);
-                //     microsDelay(10);
-                // }
-                    pagingPageIn();
-                    _targetPageInOnReadComplete = false;
-                }
-                // Done now
-                break;
-            }
-        }
-    }
-
-    // Read the control lines
-    busVals = RD32(ARM_GPIO_GPLEV0);
-
     // Check for timeouts on bus actions
     if (_busActionInProgress)
     {
@@ -554,6 +495,9 @@ void BusAccess::serviceWaitActivity()
     {
         // Start any bus actions here
         busActionAssertStart();
+
+        // Read the control lines
+        uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
 
         // Check if we have a new wait (and we're not in BUSACK)
         if (((busVals & BR_WAIT_BAR_MASK) == 0) && ((busVals & BR_BUSACK_BAR_MASK) != 0))
@@ -580,6 +524,9 @@ void BusAccess::serviceWaitActivity()
     if (_waitAsserted)
     {
         // Read the control lines
+        uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
+
+        // Read the control lines
         busVals = RD32(ARM_GPIO_GPLEV0);
 
         // IORQ waits can be released as we don't hold at an IORQ
@@ -601,7 +548,38 @@ void BusAccess::serviceWaitActivity()
             }
         }
     }
+}
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Read release
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusAccess::waitHandleReadRelease()
+{
+    // Stay here until read cycle is complete
+    uint32_t waitForReadCompleteStartUs = micros();
+    while(!isTimeout(micros(), waitForReadCompleteStartUs, MAX_WAIT_FOR_END_OF_READ_US))
+    {
+        // Read the control lines
+        uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
+
+        // Check if a neither IORQ or MREQ asserted
+        if (((busVals & BR_MREQ_BAR_MASK) != 0) && ((busVals & BR_IORQ_BAR_MASK) != 0))
+        {
+            // Set data bus direction in
+            pibSetIn();
+            WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
+            // Check if paging in/out is required
+            if (_targetPageInOnReadComplete)
+            {
+                pagingPageIn();
+                _targetPageInOnReadComplete = false;
+            }
+            // Done now
+            return;
+        }
+    }
+    _targetReadInProgress = false;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -610,8 +588,8 @@ void BusAccess::serviceWaitActivity()
 
 void BusAccess::waitHandleNew()
 {
-    // // Time at start of ISR
-    // uint32_t isrStartUs = micros();
+    // Time at start of ISR
+    uint32_t isrStartUs = micros();
 
     uint32_t addr = 0;
     uint32_t dataBusVals = 0;
@@ -682,8 +660,7 @@ void BusAccess::waitHandleNew()
 
         // Clear the mux to deactivate output enables
         muxClear();
-
-        // Read M1
+        
         // Delay to allow data to settle
         lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
 
@@ -771,46 +748,46 @@ void BusAccess::waitHandleNew()
         _targetReadInProgress = true;
     }
 
-    // // Elapsed and count
-    // uint32_t isrElapsedUs = micros() - isrStartUs;
-    // _statusInfo.isrCount++;
+    // Elapsed and count
+    uint32_t isrElapsedUs = micros() - isrStartUs;
+    _statusInfo.isrCount++;
 
-    // // Stats
-    // if (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)
-    // {
-    //     if (ctrlBusVals & BR_CTRL_BUS_RD_MASK)
-    //         _statusInfo.isrMREQRD++;
-    //     else if (ctrlBusVals & BR_CTRL_BUS_WR_MASK)
-    //         _statusInfo.isrMREQWR++;
-    // }
-    // else if (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK)
-    // {
-    //     if (ctrlBusVals & BR_CTRL_BUS_RD_MASK)
-    //         _statusInfo.isrIORQRD++;
-    //     else if (ctrlBusVals & BR_CTRL_BUS_WR_MASK)
-    //         _statusInfo.isrIORQWR++;
-    //     else if (ctrlBusVals & BR_CTRL_BUS_M1_MASK)
-    //         _statusInfo.isrIRQACK++;
-    // }
+    // Stats
+    if (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)
+    {
+        if (ctrlBusVals & BR_CTRL_BUS_RD_MASK)
+            _statusInfo.isrMREQRD++;
+        else if (ctrlBusVals & BR_CTRL_BUS_WR_MASK)
+            _statusInfo.isrMREQWR++;
+    }
+    else if (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK)
+    {
+        if (ctrlBusVals & BR_CTRL_BUS_RD_MASK)
+            _statusInfo.isrIORQRD++;
+        else if (ctrlBusVals & BR_CTRL_BUS_WR_MASK)
+            _statusInfo.isrIORQWR++;
+        else if (ctrlBusVals & BR_CTRL_BUS_M1_MASK)
+            _statusInfo.isrIRQACK++;
+    }
 
-    // // Overflows
-    // if (_statusInfo.isrAccumUs > 1000000000)
-    // {
-    //     _statusInfo.isrAccumUs = 0;
-    //     _statusInfo.isrAvgingCount = 0;
-    // }
+    // Overflows
+    if (_statusInfo.isrAccumUs > 1000000000)
+    {
+        _statusInfo.isrAccumUs = 0;
+        _statusInfo.isrAvgingCount = 0;
+    }
 
-    // // Averages
-    // if (isrElapsedUs < 1000000)
-    // {
-    //     _statusInfo.isrAccumUs += isrElapsedUs;
-    //     _statusInfo.isrAvgingCount++;
-    //     _statusInfo.isrAvgNs = _statusInfo.isrAccumUs * 1000 / _statusInfo.isrAvgingCount;
-    // }
+    // Averages
+    if (isrElapsedUs < 1000000)
+    {
+        _statusInfo.isrAccumUs += isrElapsedUs;
+        _statusInfo.isrAvgingCount++;
+        _statusInfo.isrAvgNs = _statusInfo.isrAccumUs * 1000 / _statusInfo.isrAvgingCount;
+    }
 
-    // // Max
-    // if (_statusInfo.isrMaxUs < isrElapsedUs)
-    //     _statusInfo.isrMaxUs = isrElapsedUs;
+    // Max
+    if (_statusInfo.isrMaxUs < isrElapsedUs)
+        _statusInfo.isrMaxUs = isrElapsedUs;
 
 }
 

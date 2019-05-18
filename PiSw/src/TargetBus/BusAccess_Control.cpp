@@ -609,6 +609,10 @@ void BusAccess::waitResetFlipFlops()
 
     // Clear flag
     _waitAsserted = false;
+
+    // Handle release after a read
+    if (_targetReadInProgress)
+        waitHandleReadRelease();
 }
 
 void BusAccess::waitClearDetected()

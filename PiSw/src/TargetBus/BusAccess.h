@@ -465,6 +465,7 @@ private:
     static void waitHandleNew();
     static void waitEnablementUpdate();
     static void waitGenerationDisable();
+    static void waitHandleReadRelease();
 
     // Paging
     static void pagingPageIn();

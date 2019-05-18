@@ -319,13 +319,17 @@ def test_TRS80Level1RomExec():
     commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":250000}\0")
 
     # Loop through tests
-    testRepeatCount = 5
+    testRepeatCount = 25
     for i in range(testRepeatCount):
 
         # Remove test valid check text
         testWriteData = b"TESTING IN PROGRESS"
+        readDataExpected = testWriteData
         commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":" + bytes(str(TRS80ScreenAddr),'utf-8') + b",\"len\":19,\"isIo\":0}\0" + testWriteData)
         time.sleep(0.2)
+        rdLen = len(readDataExpected)
+        commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":" + bytes(str(TRS80ScreenAddr),'utf-8') + b",\"len\":" + bytes(str(rdLen),'utf-8') + b",\"isIo\":0}\0")
+        time.sleep(0.5)
 
         # Clear target
         commonTest.sendFrame("ClearTarget", b"{\"cmdName\":\"ClearTarget\"}\0")
@@ -342,7 +346,7 @@ def test_TRS80Level1RomExec():
 
             # Program and reset
             commonTest.sendFrame("ProgramAndReset", b"{\"cmdName\":\"ProgramAndReset\"}\0")
-            time.sleep(2)
+            time.sleep(1)
 
             # Test memory at screen location
             readDataExpected = b"READY"
@@ -355,7 +359,7 @@ def test_TRS80Level1RomExec():
     assert(testStats["unknownMsgCount"] == 0)
     assert(testStats["programAndResetCount"] == testRepeatCount)
     assert(testStats["msgRdOk"] == True)
-    assert(testStats["msgRdRespCount"] == testRepeatCount)
+    assert(testStats["msgRdRespCount"] == testRepeatCount * 2)
 
 def test_GalaxiansExec():
 
@@ -408,7 +412,7 @@ def test_GalaxiansExec():
     time.sleep(1)
 
     # Processor clock
-    commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":3000000}\0")
+    commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":5000000}\0")
 
     # Loop through tests
     testRepeatCount = 1
