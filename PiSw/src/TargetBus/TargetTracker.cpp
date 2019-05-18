@@ -672,8 +672,11 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
         case TARGET_STATE_ACQ_POST_INJECT:
         {
             // Check for post inject hold
-            if ((_targetStateAcqMode == TARGET_STATE_ACQ_POST_INJECT) && (_stepMode == STEP_MODE_STEP_INTO))
+            if ((_targetStateAcqMode == TARGET_STATE_ACQ_POST_INJECT) && 
+                ((_stepMode == STEP_MODE_STEP_INTO) || (_stepMode == STEP_MODE_STEP_OVER)))
             {
+                // Now back in step-into mode
+                _stepMode = STEP_MODE_STEP_INTO;
                 // Tell bus to hold at this point
                 BusAccess::waitHold(_busSocketId, true);
             }
@@ -698,37 +701,41 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
             // // Remove any hold to allow execution / injection
             // BusAccess::waitHold(_busSocketId, false);
 
-            // If we're waiting for the instruction to finish then make sure this is a first byte
-            if (_targetStateAcqMode == TARGET_STATE_ACQ_INSTR_FIRST_BYTE_GOT)
+            // If we get another first byte then start injecting
+            bool firstNonPrefixedByteOfInstr = trackPrefixedInstructions(flags, data, retVal);
+            if (!firstNonPrefixedByteOfInstr)
             {
-                // If we get another first byte then start injecting
-                bool firstNonPrefixedByteOfInstr = trackPrefixedInstructions(flags, data, retVal);
-                if (!firstNonPrefixedByteOfInstr)
+                // LogWrite(FromTargetTracker, LOG_DEBUG, "WAITFIRST %04x %02x %s%s %d %d", 
+                //         addr, codeByteValue, 
+                //         (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", 
+                //         (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "",
+                //         _prefixTracker[0], _prefixTracker[1]);
+                // Debug
+                if (_debugInstrBytePos < MAX_BYTES_IN_INSTR)
+                    _debugInstrBytes[_debugInstrBytePos++] = data;
+            }
+            else
+            {
+                // LogWrite(FromTargetTracker, LOG_DEBUG, "GOTFIRST %04x %02x %s%s %d %d", 
+                //         addr, codeByteValue, 
+                //         (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", 
+                //         (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "",
+                //         _prefixTracker[0], _prefixTracker[1]);
+                // Bump state if in step mode or a grab is needed
+                if ((_stepMode == STEP_MODE_STEP_INTO) || (_stepMode == STEP_MODE_RUN_GRAB_DISPLAY))
                 {
-                    // LogWrite(FromTargetTracker, LOG_DEBUG, "WAITFIRST %04x %02x %s%s %d %d", 
-                    //         addr, codeByteValue, 
-                    //         (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", 
-                    //         (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "",
-                    //         _prefixTracker[0], _prefixTracker[1]);
-                    // Debug
-                    if (_debugInstrBytePos < MAX_BYTES_IN_INSTR)
-                        _debugInstrBytes[_debugInstrBytePos++] = data;
-                }
-                else
-                {
-                    // LogWrite(FromTargetTracker, LOG_DEBUG, "GOTFIRST %04x %02x %s%s %d %d", 
-                    //         addr, codeByteValue, 
-                    //         (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", 
-                    //         (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "",
-                    //         _prefixTracker[0], _prefixTracker[1]);
-                    // Bump state if in step mode or a grab is needed
-                    if ((_stepMode == STEP_MODE_STEP_INTO) || (_stepMode == STEP_MODE_RUN_GRAB_DISPLAY))
-                    {
-                        _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
-                        handleInjection(addr, data, flags, retVal);
-                    }
+                    _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
                 }
             }
+
+            // Check for move to injection state and start now
+            if (_targetStateAcqMode == TARGET_STATE_ACQ_INJECTING)
+            {
+                _setRegs = false;
+                _snippetPos = 0;
+                handleInjection(addr, data, flags, retVal);
+            }
+
             break;
         }
         case TARGET_STATE_ACQ_INJECTING:
@@ -837,9 +844,8 @@ void TargetTracker::handleStepOverBkpts([[maybe_unused]] uint32_t addr, [[maybe_
         // Check stepover
         if (_stepOverPCValue == addr)
         {
-            _stepMode = STEP_MODE_STEP_INTO;
-            // Tell bus to hold at this point
-            BusAccess::waitHold(_busSocketId, true);
+            _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
+            LogWrite(FromTargetTracker, LOG_DEBUG, "Hit required PC value %04x", _stepOverPCValue);
         }
     }
 }

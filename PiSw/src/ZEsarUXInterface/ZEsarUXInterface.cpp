@@ -520,28 +520,30 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "cpu-step-over"))
     {
+        // Step over
         TargetTracker::stepOver();
         // Disassembly
+        uint32_t curAddr = TargetTracker::getRegs().PC;
         uint8_t* pMirrorMemory = HwManager::getMirrorMemForAddr(0);
         if (pMirrorMemory)
-        {
-            uint32_t curAddr = TargetTracker::getRegs().PC;
             disasmZ80(pMirrorMemory, 0, curAddr, pResponse, INTEL, false, true);
-        }
         _stepOverPending = true;
+        // Debug
+        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "stepOver done cur addr %04x resp %s", curAddr, pResponse);
         // Return immediately (no prompt)
         return true;
     }
     else if (commandMatch(cmdStr, "cpu-step"))
     {
+        // Step into
         TargetTracker::stepInto();
         // Disassembly
+        uint32_t curAddr = TargetTracker::getRegs().PC;
         uint8_t* pMirrorMemory = HwManager::getMirrorMemForAddr(0);
         if (pMirrorMemory)
-        {
-            uint32_t curAddr = TargetTracker::getRegs().PC;
             disasmZ80(pMirrorMemory, 0, curAddr, pResponse, INTEL, false, true);
-        }
+        // Debug
+        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "stepInto done cur addr %04x resp %s", curAddr, pResponse);
     }
     else if (commandMatch(cmdStr, "run"))
     {
