@@ -648,23 +648,6 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
     //             flags & BR_CTRL_BUS_M1_MASK, _prefixTracker[0], _prefixTracker[1], 
     //             data, flags);
 
-    // digitalWrite(BR_PAGING_RAM_PIN, firstByteOfInstr);
-    // microsDelay(1);
-    // digitalWrite(BR_PAGING_RAM_PIN, 0);
-
-    // // Debug
-    // if (!_injectionAwaitFirst || !firstByteOfInstr)
-    // {
-    //     if (firstByteOfInstr || (_debugInstrBytePos >= MAX_BYTES_IN_INSTR))
-    //         _debugInstrBytePos = 0;
-    //     _debugInstrBytes[_debugInstrBytePos++] = codeByteValue;
-    // }
-
-    // digitalWrite(BR_PAGING_RAM_PIN, 1);
-    // microsDelay(1);
-    // digitalWrite(BR_PAGING_RAM_PIN, 0);
-    // microsDelay(1);
-
     // Handle state machine
     switch (_targetStateAcqMode)
     {
@@ -759,72 +742,6 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
     //             (flags & BR_CTRL_BUS_IORQ_MASK) ? 'I' : ' ', 
     //             _prefixTracker[0], _prefixTracker[1],
     //             _targetStateAcqMode);
-
-        // LogWrite(FromTargetTracker, LOG_DEBUG, "INJECTING %s %04x %02x %s%s %d %d", (_targetStateAcqMode = TARGET_STATE_ACQ_NONE) ? "FINISHED" : "",
-        //     addr, retVal & 0xff, (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "");
-
-    // // Await first byte of instruction fetch
-    // if ((_injectionAwaitFirst && !firstByteOfInstr))
-    // {
-    //     LogWrite(FromTargetTracker, LOG_DEBUG, "ACT AWAIT %s %04x %02x %s%s %d %d", firstByteOfInstr ? "FIRST" : "",
-    //             addr, codeByteValue, (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "", _prefixTracker[0], _prefixTracker[1]);
-    //     return;
-    // }
-    // _injectionAwaitFirst = false;
-
-    // TODO
-    // Start of paging
-    // if (_pagingPending)
-    // {
-    //     // Use the bus socket to request page out
-    //     BusAccess::targetPageForInjection(_busSocketId, true, false);
-    //     _pagingPending = false;
-    // }
-
-    // digitalWrite(BR_PAGING_RAM_PIN, 1);
-    // microsDelay(5);
-    // digitalWrite(BR_PAGING_RAM_PIN, 0);
-    // microsDelay(5);
-
-    // Handle get
-    // if (_gettingRegs)
-    //     handleRegisterGet(addr, data, flags, retVal);
-    // else
-    //     handleRegisterSet(retVal);
-
-    // LogWrite(FromTargetTracker, LOG_DEBUG, "ACT %s %s %04x %02x %s%s %d %d", firstByteOfInstr ? "FIRST" : "", !_injectionActive ? "GOINACT" : "",
-    //     addr, retVal & 0xff, (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "", _prefixTracker[0], _prefixTracker[1]);
-
-    // // Check if still active
-    // if (!_injectionActive)
-    // {
-    //     // TODO
-    //     // Use the bus socket to request page-in delayed to next wait event
-    //     // BusAccess::targetPageForInjection(_busSocketId, false, true);
-
-    //     // TODO
-    //     char regBuf[1000];
-    //     _z80Registers.format(regBuf, 1000);
-
-    //     char tmpBuf[10];
-    //     for (uint32_t i = 0; i < _debugInstrBytePos; i++)
-    //     {    
-    //         ee_sprintf(tmpBuf, " %02x", _debugInstrBytes[i]);
-    //         strlcat(regBuf, tmpBuf, 1000);
-    //     }
-    //     LogWrite(FromTargetTracker, LOG_DEBUG, "%s", regBuf);
-
-    //     // Default back to getting
-    //     _gettingRegs = true;
-
-    //     // If pending disable then go to disabled
-    //     if (_disablePending)
-    //         BusAccess::busSocketEnable(_busSocketId, false);
-    //     _disablePending = false;
-
-    //     // TODO may need to call back to whoever requested this
-    // }
-    
 }
 
 void TargetTracker::handleStepOverBkpts([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
@@ -957,7 +874,6 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
             // Revert to run after a run&grab
             _stepMode = STEP_MODE_RUN;
         }
-
 
         // LogWrite(FromTargetTracker, LOG_DEBUG, "INJECTING FINISHED 0x%04x 0x%02x %s%s",
         //             addr, ((flags & BR_CTRL_BUS_RD_MASK) & ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0)) ? (retVal & 0xff) : data,  

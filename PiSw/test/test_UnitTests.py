@@ -146,10 +146,10 @@ def test_SetMc():
     # Set machines alternately
     for i in range(testRepeatCount):
         for mc in testStats['mcList']:
-            curMachine = mc
             logger.debug(f"Setting machine {mc}")
             commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
-            time.sleep(1)
+            time.sleep(2)
+            curMachine = mc
             commonTest.sendFrame("getStatus", b"{\"cmdName\":\"getStatus\"}\0")
             time.sleep(.1)
     time.sleep(1)

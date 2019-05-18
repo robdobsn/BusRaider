@@ -74,15 +74,7 @@ void ZEsarUXInterface::service()
                 addPromptMsg(respMsg, ZEsarUX_RESP_MAX_LEN);
                 CommandHandler::sendWithJSON("zesarux", "", _smartloadMsgIdx, 
                                 (const uint8_t*)respMsg, strlen(respMsg));
-                // Reset and request bus for programming
-                // TODO
-                // for (int i = 0; i < 5; i++)
-                // {
-                //     digitalWrite(8,1);
-                //     microsDelay(1);
-                //     digitalWrite(8,0);
-                //     microsDelay(1);
-                // }
+
                 // Start programming process
                 McManager::handleTargetProgram(true);
 
@@ -132,9 +124,6 @@ void ZEsarUXInterface::service()
                             (const uint8_t*)respMsg, strlen(respMsg));
             _stepOverPending = false;
         }
-        //     //     strlcat(respBuf, "\ncommand@cpu-step> ", MAX_DISASSEMBLY_LINE_LEN);
-//     //     if (_pSendRemoteDebugProtocolMsgCallback)
-//     //         (*_pSendRemoteDbugProtocolMsgCallback)(respBuf, "0");
     }
 }
 
@@ -243,23 +232,10 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
 
     // Split
     const char* cmdStr = strtok(pCmd, " ");
-    // // Trim command string
-    // int j = 0;
-    // for (size_t i = 0; i < strlen(cmdStr); i++)
-    // {
-    //     if (!rdisspace(cmdStr[i]))
-    //     {
-    //         cmdStr[j++] = cmdStr[i];
-    //     }
-    // }
-    // cmdStr[j] = 0;
-    // McManager::logDebugMessage(pCmd);
-
     char* argStr = strtok(NULL, " ");
     char* argStr2 = strtok(NULL, " ");
     if (cmdStr == NULL)
         cmdStr = "\n";
-    // char* argRest = strtok(NULL, "");
 
     // Handle messages
     if (commandMatch(cmdStr, "about"))
@@ -274,9 +250,8 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     {
         strlcat(pResponse, "Extensions available.", maxResponseLen);
     }
-    // TODO
-    // else if (commandMatch(cmdStr, "get-current-machine"))
-    // {
+    else if (commandMatch(cmdStr, "get-current-machine"))
+    {
         		// 		if(machine == 'zx-80')
 				// 	this.machineType = MachineType.ZX80;
 				// else if(machine == 'zx-81')
@@ -289,8 +264,13 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
 				// 	this.machineType = MachineType.SPECTRUM128K;
 				// else if(machine == 'tbblue')
 				// 	this.machineType = MachineType.TBBLUE;
-    //     strlcat(pResponse, McManager::getDescriptorTable()->machineName, maxResponseLen);
-    // }
+        static const int MAX_MACHINE_NAME_LEN = 200;
+        char machineNameMunged[MAX_MACHINE_NAME_LEN];
+        strlcpy(machineNameMunged, McManager::getDescriptorTable()->machineName, MAX_MACHINE_NAME_LEN);
+        if (strcasecmp(machineNameMunged, "ZX Spectrum") == 0)
+            strlcpy(machineNameMunged, "spectrum 48k", MAX_MACHINE_NAME_LEN);
+        strlcat(pResponse, machineNameMunged, maxResponseLen);
+    }
     else if (commandMatch(cmdStr, "set-debug-settings"))
     {
     }
@@ -342,16 +322,11 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
             LogWrite(FromZEsarUXInterface, LOG_NOTICE, "Failed to smartload file");
             strlcat(pResponse, "Failed to smartload file", maxResponseLen);
         }
-
-        // TODO
-        // McManager::targetReset(false, false);
-        // targetStateAcqClear();
     }
     else if (commandMatch(cmdStr, "get-registers"))
     {
         // Format registers to return
         TargetTracker::getRegsFormatted(pResponse, maxResponseLen);
-        // _z80Registers.format(pResponse, maxResponseLen);
     }
     else if (commandMatch(cmdStr, "set-register"))
     {
@@ -471,32 +446,20 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     else if (commandMatch(cmdStr, "hard-reset-cpu"))
     {
         // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Reset machine");
-        // TODO
-        // McManager::targetReset(false, false);
-        // targetStateAcqClear();
         _resetPending = true;
         _resetPendingTimeUs = micros();
     }
     else if (commandMatch(cmdStr, "reset-tstates-partial"))
     {
         // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Reset tstates partial");
-        // TODO
-        // McManager::targetReset(false, false);
-        // targetStateAcqClear();
     }
     else if (commandMatch(cmdStr, "get-tstates-partial"))
     {
         // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Get tstates partial");
-        // TODO
-        // McManager::targetReset(false, false);
-        // targetStateAcqClear();
     }
     else if (commandMatch(cmdStr, "get-cpu-frequency"))
     {
-        // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Get tstates partial");
-        // TODO
-        // McManager::targetReset(false, false);
-        // targetStateAcqClear();
+        // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Get CPU frequency");
     }
     else if (commandMatch(cmdStr, "quit"))
     {
