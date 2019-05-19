@@ -7,6 +7,8 @@ extern "C" {
 
 extern char rdtolower(char c);
 extern char rdisupper (unsigned char c);
+extern char rdtoupper(char c);
+extern char rdislower (unsigned char c);
 extern int rdisdigit(int c);
 extern char rdisspace (unsigned char c);
 extern int rdisalpha(int c);

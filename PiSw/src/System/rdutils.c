@@ -162,11 +162,28 @@ char rdisupper (unsigned char c)
     return 0;
 }
 
+char rdislower (unsigned char c)
+{
+    if ( c >= UC('a') && c <= UC('z') )
+        return 1;
+    return 0;
+}
+
+
 char rdtolower(char c)
 {
     if (rdisupper(c))
     {
         return c + ('a' - 'A');
+    }
+    return c;
+}
+
+char rdtoupper(char c)
+{
+    if (rdislower(c))
+    {
+        return c - ('a' - 'A');
     }
     return c;
 }
