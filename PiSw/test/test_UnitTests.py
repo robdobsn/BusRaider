@@ -1,6 +1,7 @@
 from CommonTestCode import CommonTest
 import time
 import logging
+import random
 
 # This is a program for testing the BusRaider firmware
 # It requires either:
@@ -54,14 +55,16 @@ def test_Comms():
 def test_MemRW():
 
     def frameCallback(msgContent):
-        logger.info(f"Frame::::{msgContent}")
+        logger.info(f"FrameRx:{msgContent}")
         if msgContent['cmdName'] == "RdResp":
-            requiredResp = ''.join(('%02x' % testWriteData[i]) for i in range(len(testWriteData)))
+            curReadPos = len(readData)
+            requiredResp = ''.join(('%02x' % writtenData[curReadPos][i]) for i in range(len(writtenData[curReadPos])))
+            readData.append(msgContent['data'])
             respOk = requiredResp == msgContent['data']
             testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
             testStats["msgRdRespCount"] += 1
             if not respOk:
-                logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
+                logger.error(f"Read {msgContent['data']} != expected {requiredResp}")
         elif msgContent['cmdName'] == "WrResp":
             testStats["msgWrRespCount"] += 1
             try:
@@ -84,9 +87,11 @@ def test_MemRW():
     logger.setLevel(logging.DEBUG)
     setupTests("MemRW")
     commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
-    testRepeatCount = 1
+    testRepeatCount = 100
     # Test data
-    testWriteData = b"\xaa\x55\xaa\x55\xaa\x55\xaa\x55\xaa\x55"
+    writtenData = []
+    readData = []
+    testWriteData = bytearray(b"\xaa\x55\xaa\x55\xaa\x55\xaa\x55\xaa\x55")
     testStats = {"msgRdOk": True, "msgRdRespCount":0, "msgWrRespCount": 0, "msgWrRespErrCount":0, "msgWrRespErrMissingCount":0, "unknownMsgCount":0, "clockSetOk":False}
     # Set serial terminal machine - to avoid conflicts with display updates, etc
     mc = "Serial Terminal"
@@ -97,13 +102,17 @@ def test_MemRW():
     time.sleep(1)
     for i in range(testRepeatCount):
         commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
-        time.sleep(0.1)
+        time.sleep(0.01)
         commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":32768,\"len\":10,\"isIo\":0}\0" + testWriteData)
-        time.sleep(0.1)
+        writtenData.append(testWriteData)
+        time.sleep(0.01)
         commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":32768,\"len\":10,\"isIo\":0}\0")
-        time.sleep(0.1)
+        time.sleep(0.01)
         commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
-        time.sleep(0.5)
+        time.sleep(0.05)
+        testWriteData = bytearray(len(testWriteData))
+        for i in range(len(testWriteData)):
+            testWriteData[i] = random.randint(0,255)
     
     # Wait for test end and cleardown
     commonTest.cleardown()
@@ -293,7 +302,7 @@ def test_TRS80Level1RomExec():
             testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
             testStats["msgRdRespCount"] += 1
             if not respOk:
-                logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
+                logger.error(f"Read {msgContent['data']} != expected {requiredResp}")
         elif msgContent['cmdName'] == "busResetResp":
             pass
         else:
@@ -319,7 +328,7 @@ def test_TRS80Level1RomExec():
     commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":250000}\0")
 
     # Loop through tests
-    testRepeatCount = 25
+    testRepeatCount = 10
     for i in range(testRepeatCount):
 
         # Remove test valid check text
@@ -346,7 +355,7 @@ def test_TRS80Level1RomExec():
 
             # Program and reset
             commonTest.sendFrame("ProgramAndReset", b"{\"cmdName\":\"ProgramAndReset\"}\0")
-            time.sleep(1)
+            time.sleep(1.5)
 
             # Test memory at screen location
             readDataExpected = b"READY"
@@ -506,14 +515,14 @@ def test_stepSingle():
             testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
             testStats["msgRdRespCount"] += 1
             if not respOk:
-                logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
+                logger.error(f"Read {msgContent['data']} != expected {requiredResp}")
         elif msgContent['cmdName'] == "busStatusClearResp" or \
                     msgContent['cmdName'] == "busResetResp":
             pass
         elif msgContent['cmdName'] == "getRegsResp":
             testStats["AFOK"] = ("AF=ba" in msgContent['regs'])
             if not testStats["AFOK"]:
-                logger.debug(f"{msgContent}")
+                logger.error(f"AFOK not ok! {msgContent}")
             testStats["regsOk"] = True
         else:
             testStats["unknownMsgCount"] += 1
@@ -601,9 +610,12 @@ def test_regGetTest():
                     msgContent['cmdName'] == "busResetResp":
             pass
         elif msgContent['cmdName'] == "getRegsResp":
-            testStats["regsOk"] = (expectedRegs in msgContent['regs'])
-            logger.debug(f"REGS {msgContent['regs']}")
-            logger.debug(f"EXPECTED {expectedRegs}")
+            regsCount = len(regsGot)
+            regsGot.append(msgContent['regs'])
+            newRegsOk = (regsExpected[regsCount] in msgContent['regs'])
+            if not newRegsOk:
+                logger.error(f"Regs not as expected at pos {regsCount} {regsExpected[regsCount]} != {msgContent['regs']}")
+            testStats["regsOk"] = testStats["regsOk"] and newRegsOk
         else:
             testStats["unknownMsgCount"] += 1
             logger.info(f"Unknown message {msgContent}")
@@ -636,9 +648,10 @@ def test_regGetTest():
                     b"\xed\x47" \
                     b"\xed\x5e" \
                     b"\xc3\x00\x00"
+    testInstrLens = [2,3,3,3,1,1,1,2,3,3,3,3,1,1,4,4,2,2,2,2,3]
     testWriteLen = bytes(str(len(testWriteData)),'utf-8')
     testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRespCount":0,
-            "iorqRd":0, "iorqWr":0, "mreqRd":0, "mreqWr":0, "regsOk": False}
+            "iorqRd":0, "iorqWr":0, "mreqRd":0, "mreqWr":0, "regsOk": True}
 
     mc = "Serial Terminal"
     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\"}\0")
@@ -651,14 +664,23 @@ def test_regGetTest():
     # Setup Test
     commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\",\"reset\":1}\0")
     time.sleep(.2)
+    regsExpected = []
+    regsGot = []
+    addr = 0
     for i in range(22):
         # logger.debug(f"i={i}")
         commonTest.sendFrame("stepInto", b"{\"cmdName\":\"stepInto\"}\0")
         time.sleep(.2)
+        addr += testInstrLens[i % len(testInstrLens)]
+        if i % len(testInstrLens) == len(testInstrLens) - 1:
+            addr = 0
+        regsStr = f"PC={addr:04x}"
+        regsExpected.append(regsStr)
+        commonTest.sendFrame("getRegs", b"{\"cmdName\":\"getRegs\"}\0")
+        time.sleep(.2)
 
     # Check status
     commonTest.sendFrame("busStatus", b"{\"cmdName\":\"busStatus\"}\0")
-    commonTest.sendFrame("getRegs", b"{\"cmdName\":\"getRegs\"}\0")
     time.sleep(2)
 
     # Clear Test

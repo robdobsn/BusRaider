@@ -46,8 +46,12 @@ BusSocketInfo McManager::_busSocketInfo =
     McManager::busActionCompleteStatic,
     false,
     false,
-    BR_BUS_ACTION_NONE,
-    1,
+    false,
+    0,
+    false,
+    0,
+    false,
+    0,
     false,
     BR_BUS_ACTION_DISPLAY,
     false
@@ -359,7 +363,10 @@ void McManager::displayRefresh()
 
     // Heartbeat
     if (_pCurMachine)
-        _pCurMachine->machineHeartbeat();
+    {
+        if (!TargetTracker::isTrackingActive())
+            _pCurMachine->machineHeartbeat();
+    }
 }
 
 int McManager::getDisplayRefreshRate()

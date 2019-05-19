@@ -48,6 +48,9 @@ public:
     // Complete the process of programming the target
     static void completeTargetProgram();
 
+    // Reset target
+    static void targetReset();
+
     // Register injection and code snippet generation
     static void startSetRegisterSequence(Z80Registers* pRegs = NULL);
     // static void startGetRegisterSequence();
@@ -60,20 +63,28 @@ public:
     // Step mode
     enum STEP_MODE_TYPE
     {
+        STEP_MODE_STEP_PAUSED,
         STEP_MODE_STEP_INTO,
         STEP_MODE_STEP_OVER,
-        STEP_MODE_RUN,
-        STEP_MODE_RUN_GRAB_DISPLAY
+        STEP_MODE_RUN
     };
     static STEP_MODE_TYPE getStepMode()
     {
         return _stepMode;
     }
 
+    static bool isStepPaused()
+    {
+        return (_stepMode == STEP_MODE_STEP_PAUSED);
+    }
+
 private:
 
     // Can't turn off mid-injection so store flag to indicate disable pending
     static bool _disablePending;
+
+    // Target reset pending
+    static bool _targetResetPending;
 
     // Page out for injection active
     static bool _pageOutForInjectionActive;
@@ -95,6 +106,9 @@ private:
 
     // Mirror memory requirements
     static bool _postInjectMemoryMirror;
+
+    // Request grab display
+    static bool _requestDisplayWhileStepping;
 
     // Registers
     static Z80Registers _z80Registers;

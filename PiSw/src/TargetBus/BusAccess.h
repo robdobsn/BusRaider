@@ -144,9 +144,13 @@ public:
     bool waitOnMemory;
     bool waitOnIO;
 
-    // Bus action and duration
-    volatile BR_BUS_ACTION busActionRequested;
-    volatile uint32_t busActionDurationUs;
+    // Bus actions and duration
+    volatile bool resetPending;
+    volatile uint32_t resetDurationUs;
+    volatile bool nmiPending;
+    volatile uint32_t nmiDurationUs;
+    volatile bool irqPending;
+    volatile uint32_t irqDurationUs;
 
     // Bus master request and reason
     volatile bool busMasterRequest;
@@ -160,22 +164,38 @@ public:
     {
         if (busMasterRequest)
             return BR_BUS_ACTION_BUSRQ;
-        return busActionRequested;
+        if (resetPending)
+            return BR_BUS_ACTION_RESET;
+        if (nmiPending)
+            return BR_BUS_ACTION_NMI;
+        if (irqPending)
+            return BR_BUS_ACTION_IRQ;
+        return BR_BUS_ACTION_NONE;
     }
 
-    void clear(BR_BUS_ACTION type)
+    void clearDown(BR_BUS_ACTION type)
     {
         if (type == BR_BUS_ACTION_BUSRQ)
             busMasterRequest = false;
-        else
-            busActionRequested = BR_BUS_ACTION_NONE;
+        else if (type == BR_BUS_ACTION_RESET)
+            resetPending = false;
+        else if (type == BR_BUS_ACTION_NMI)
+            nmiPending = false;
+        else if (type == BR_BUS_ACTION_IRQ)
+            irqPending = false;
     }
 
-    uint32_t getAssertUs()
+    uint32_t getAssertUs(BR_BUS_ACTION type)
     {
-        if (busMasterRequest)
+        if (type == BR_BUS_ACTION_BUSRQ)
             return MAX_WAIT_FOR_BUSACK_US;
-        return busActionDurationUs;
+        else if (type == BR_BUS_ACTION_RESET)
+            return resetDurationUs;
+        else if (type == BR_BUS_ACTION_NMI)
+            return nmiDurationUs;
+        else if (type == BR_BUS_ACTION_IRQ)
+            return irqDurationUs;
+        return 0;
     }
 };
 

@@ -39,6 +39,7 @@ private:
     bool handleLine(char* pCmd, char* pResponse, int maxResponseLen, uint32_t zesaruxMsgIndex);
     bool commandMatch(const char* s1, const char* s2); 
     void addPromptMsg(char* pResponse, int maxResponseLen);
+    void mungeDisassembly(char* pText);
 
     static const int ZEsarUX_CMD_MAX_LEN = 1000;
     static const int ZEsarUX_RESP_MAX_LEN = 1000;
@@ -57,6 +58,6 @@ private:
     static const int MAX_TIME_RESET_PENDING_US = 100000;
 
     // Event pending
-    bool _stepOverPending;
+    bool _stepCompletionPending;
 };
 

@@ -18,6 +18,9 @@
 // Variables
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// Module name
+static const char FromBusAccess[] = "BusAccess";
+
 // Bus sockets
 BusSocketInfo BusAccess::_busSockets[MAX_BUS_SOCKETS];
 int BusAccess::_busSocketCount = 0;
@@ -241,8 +244,9 @@ void BusAccess::targetReqReset(int busSocket, int durationUs)
     // Check validity
     if ((busSocket < 0) || (busSocket >= _busSocketCount))
         return;
-    _busSockets[busSocket].busActionDurationUs = (durationUs <= 0) ? BR_RESET_PULSE_US : durationUs;
-    _busSockets[busSocket].busActionRequested = BR_BUS_ACTION_RESET;
+    _busSockets[busSocket].resetDurationUs = (durationUs <= 0) ? BR_RESET_PULSE_US : durationUs;
+    _busSockets[busSocket].resetPending = true;
+    LogWrite("BusAccess", LOG_DEBUG, "targetReqReset");
 }
 
 // Non-maskable interrupt the host
@@ -251,8 +255,9 @@ void BusAccess::targetReqNMI(int busSocket, int durationUs)
     // Check validity
     if ((busSocket < 0) || (busSocket >= _busSocketCount))
         return;
-    _busSockets[busSocket].busActionDurationUs = (durationUs <= 0) ? BR_NMI_PULSE_US : durationUs;
-    _busSockets[busSocket].busActionRequested = BR_BUS_ACTION_NMI;
+    // Request NMI
+    _busSockets[busSocket].nmiDurationUs = (durationUs <= 0) ? BR_NMI_PULSE_US : durationUs;
+    _busSockets[busSocket].nmiPending = true;
 }
 
 // Maskable interrupt the host
@@ -262,8 +267,9 @@ void BusAccess::targetReqIRQ(int busSocket, int durationUs)
     // LogWrite("BA", LOG_DEBUG, "ReqIRQ sock %d us %d", busSocket, _busSockets[busSocket].busActionDurationUs);
     if ((busSocket < 0) || (busSocket >= _busSocketCount))
         return;
-    _busSockets[busSocket].busActionDurationUs = (durationUs <= 0) ? BR_IRQ_PULSE_US : durationUs;
-    _busSockets[busSocket].busActionRequested = BR_BUS_ACTION_IRQ;
+    // Request NMI
+    _busSockets[busSocket].irqDurationUs = (durationUs <= 0) ? BR_IRQ_PULSE_US : durationUs;
+    _busSockets[busSocket].irqPending = true;
 }
 
 // Bus request
@@ -360,10 +366,12 @@ bool BusAccess::busActionAssertStart()
 
     // Initiate the action
     setSignal(_busActionType, true);
+    // if (_busActionType == BR_BUS_ACTION_RESET)
+    //     LogWrite(FromBusAccess, LOG_DEBUG, "RESET SET %u", micros());
 
     // Set start timer
     _busActionAssertedStartUs = micros();
-    _busActionAssertedMaxUs = _busSockets[_busActionSocket].getAssertUs();
+    _busActionAssertedMaxUs = _busSockets[_busActionSocket].getAssertUs(_busActionType);
     _busActionAsserted = true;
     return true;
 }
@@ -409,7 +417,8 @@ void BusAccess::busActionAssertActive()
         if (isTimeout(micros(), _busActionAssertedStartUs, _busActionAssertedMaxUs))
         {
             busActionCallback(_busActionType, BR_BUS_ACTION_GENERAL);
-            
+            // if (_busActionType == BR_BUS_ACTION_RESET)
+            //     LogWrite(FromBusAccess, LOG_DEBUG, "RESET CLEARED %u", micros());
             setSignal(_busActionType, false);
             busActionClearFlags();
         }
@@ -420,7 +429,7 @@ void BusAccess::busActionClearFlags()
 {
     // Clear for all sockets
     for (int i = 0; i < _busSocketCount; i++)
-        _busSockets[i].clear(_busActionType);
+        _busSockets[i].clearDown(_busActionType);
     _busActionInProgress = false;
 }
 

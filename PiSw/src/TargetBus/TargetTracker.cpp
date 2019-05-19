@@ -38,10 +38,14 @@ BusSocketInfo TargetTracker::_busSocketInfo =
     TargetTracker::busActionCompleteStatic,
     .waitOnMemory=true,
     .waitOnIO=false,
-    BR_BUS_ACTION_NONE,
-    1,
+    false,
+    0,
+    false,
+    0,
+    false,
+    0,
     .busMasterRequest=false,
-    .busMasterReason=BR_BUS_ACTION_DISPLAY,
+    .busMasterReason=BR_BUS_ACTION_GENERAL,
     .holdInWaitReq=false
 };
 
@@ -60,6 +64,12 @@ bool TargetTracker::_setRegs = false;
 // Mirror memory requirements
 bool TargetTracker::_postInjectMemoryMirror = true;
 
+// Request grab display while stepping
+bool TargetTracker::_requestDisplayWhileStepping = false;
+
+// Reset pending
+bool TargetTracker::_targetResetPending = false;
+
 // Disable pending
 bool TargetTracker::_disablePending = false;
 
@@ -76,7 +86,7 @@ bool TargetTracker::_prefixTracker[2] = {false,false};
 TargetTracker::TARGET_STATE_ACQ TargetTracker::_targetStateAcqMode = TARGET_STATE_ACQ_NONE;
 
 // Hold at next instruction
-TargetTracker::STEP_MODE_TYPE TargetTracker::_stepMode = STEP_MODE_STEP_INTO;
+TargetTracker::STEP_MODE_TYPE TargetTracker::_stepMode = STEP_MODE_STEP_PAUSED;
 
 // Debug
 uint8_t TargetTracker::_debugInstrBytes[TargetTracker::MAX_BYTES_IN_INSTR];
@@ -102,7 +112,7 @@ void TargetTracker::service()
 //Enable
 void TargetTracker::enable(bool en)
 {
-    _stepMode = STEP_MODE_STEP_INTO;
+    _stepMode = STEP_MODE_STEP_PAUSED;
     if (en)
     {
         BusAccess::busSocketEnable(_busSocketId, en);
@@ -138,12 +148,18 @@ bool TargetTracker::isPaused()
     //             BusAccess::busSocketIsEnabled(_busSocketId), _stepMode);
     if (!BusAccess::busSocketIsEnabled(_busSocketId))
         return false;
-    return _stepMode == STEP_MODE_STEP_INTO;
+    return _stepMode == STEP_MODE_STEP_PAUSED;
 }
 
 bool TargetTracker::isTrackingActive()
 {
     return BusAccess::busSocketIsEnabled(_busSocketId);
+}
+
+void TargetTracker::targetReset()
+{
+    _targetResetPending = true;
+    BusAccess::targetReqReset(_busSocketId);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -468,6 +484,7 @@ TargetTracker::OPCODE_INJECT_PROGRESS TargetTracker::handleRegisterSet(uint32_t&
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Pause at next instruction start
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void TargetTracker::stepInto()
 {
     // Set flag to indicate mode
@@ -479,7 +496,7 @@ void TargetTracker::stepInto()
         // Remove any hold to allow execution / injection
         BusAccess::waitHold(_busSocketId, false);
         BusAccess::waitRelease();
-        LogWrite(FromTargetTracker, LOG_DEBUG, "WaitReleased");
+        // LogWrite(FromTargetTracker, LOG_DEBUG, "WaitReleased");
     }
 }
 
@@ -524,7 +541,7 @@ void TargetTracker::stepRun()
 void TargetTracker::completeTargetProgram()
 {
     // Set flag to indicate mode
-    _stepMode = STEP_MODE_STEP_INTO;
+    _stepMode = STEP_MODE_STEP_PAUSED;
 
     // Release bus hold if held
     if (BusAccess::waitIsHeld())
@@ -537,10 +554,7 @@ void TargetTracker::completeTargetProgram()
 
 void TargetTracker::requestDisplayGrab()
 {
-    if (_stepMode == STEP_MODE_RUN)
-    {
-        _stepMode = STEP_MODE_RUN_GRAB_DISPLAY;
-    }
+    _requestDisplayWhileStepping = true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -629,6 +643,14 @@ void TargetTracker::busActionCompleteStatic([[maybe_unused]]BR_BUS_ACTION action
 
         // Since we're receiving a reset we know that we're at the start of an instruction
         _targetStateAcqMode = TARGET_STATE_ACQ_INSTR_FIRST_BYTE_GOT;
+
+        // Check for reset pending
+        if (_targetResetPending)
+        {
+            // Go straight into injecting mode
+            _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
+            _targetResetPending = false;
+        }
     }
 }
 
@@ -655,11 +677,8 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
         case TARGET_STATE_ACQ_POST_INJECT:
         {
             // Check for post inject hold
-            if ((_targetStateAcqMode == TARGET_STATE_ACQ_POST_INJECT) && 
-                ((_stepMode == STEP_MODE_STEP_INTO) || (_stepMode == STEP_MODE_STEP_OVER)))
+            if ((_targetStateAcqMode == TARGET_STATE_ACQ_POST_INJECT) && (_stepMode == STEP_MODE_STEP_PAUSED))
             {
-                // Now back in step-into mode
-                _stepMode = STEP_MODE_STEP_INTO;
                 // Tell bus to hold at this point
                 BusAccess::waitHold(_busSocketId, true);
             }
@@ -689,7 +708,7 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
             if (!firstNonPrefixedByteOfInstr)
             {
                 // LogWrite(FromTargetTracker, LOG_DEBUG, "WAITFIRST %04x %02x %s%s %d %d", 
-                //         addr, codeByteValue, 
+                //         addr, data, 
                 //         (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", 
                 //         (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "",
                 //         _prefixTracker[0], _prefixTracker[1]);
@@ -700,12 +719,12 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
             else
             {
                 // LogWrite(FromTargetTracker, LOG_DEBUG, "GOTFIRST %04x %02x %s%s %d %d", 
-                //         addr, codeByteValue, 
+                //         addr, data, 
                 //         (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", 
                 //         (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "",
                 //         _prefixTracker[0], _prefixTracker[1]);
                 // Bump state if in step mode or a grab is needed
-                if ((_stepMode == STEP_MODE_STEP_INTO) || (_stepMode == STEP_MODE_RUN_GRAB_DISPLAY))
+                if ((_stepMode == STEP_MODE_STEP_INTO) || _requestDisplayWhileStepping)
                 {
                     _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
                 }
@@ -747,21 +766,14 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
 void TargetTracker::handleStepOverBkpts([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
         uint32_t flags, [[maybe_unused]] uint32_t& retVal)
 {
-        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_C);
     // Step-over handling: enabled and M1 cycle
     if ((_stepMode == STEP_MODE_STEP_OVER) && (flags & BR_CTRL_BUS_M1_MASK))
     {
-        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_D);
-        if (_stepOverPCValue == 0x6017)
-            ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_E);
-
-        if (addr == 0x6017)
-            ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_F);
-
         // Check stepover
         if (_stepOverPCValue == addr)
         {
             _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
+            _stepMode = STEP_MODE_STEP_PAUSED;
             LogWrite(FromTargetTracker, LOG_DEBUG, "Hit required PC value %04x", _stepOverPCValue);
         }
     }
@@ -812,7 +824,7 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
     if (injectProgress == OPCODE_INJECT_GRAB_MEMORY)
     {
         // Check if post-inject memory mirroring required
-        if (_postInjectMemoryMirror)
+        if (_postInjectMemoryMirror || _requestDisplayWhileStepping)
         {
 
             // Suspend bus detail after a BUSRQ as there is a hardware problem with FF_DATA_OE_BAR remaining
@@ -829,8 +841,9 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
             // Request bus
             // LogWrite(FromTargetTracker, LOG_DEBUG, "Request bus for mirror");
             BR_BUS_ACTION_REASON busAction = BR_BUS_ACTION_MIRROR;
-            if (_stepMode == STEP_MODE_RUN_GRAB_DISPLAY)
+            if (_requestDisplayWhileStepping)
                 busAction = BR_BUS_ACTION_DISPLAY;
+            _requestDisplayWhileStepping = false;
             BusAccess::targetReqBus(_busSocketId, busAction);
         }
     }
@@ -860,6 +873,10 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
         // Go back to allowing a single instruction to run before reg get
 #ifdef PAUSE_GET_REGS_AT_CUR_ADDR
         _targetStateAcqMode = TARGET_STATE_ACQ_POST_INJECT;
+        if (_stepMode == STEP_MODE_STEP_INTO)
+        {
+            _stepMode = STEP_MODE_STEP_PAUSED;
+        }
 #else
         _targetStateAcqMode = TARGET_STATE_ACQ_NONE;
         // Check for hold required
@@ -869,11 +886,6 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
             BusAccess::waitHold(_busSocketId, true);
         }
 #endif
-        if (_stepMode == STEP_MODE_RUN_GRAB_DISPLAY)
-        {
-            // Revert to run after a run&grab
-            _stepMode = STEP_MODE_RUN;
-        }
 
         // LogWrite(FromTargetTracker, LOG_DEBUG, "INJECTING FINISHED 0x%04x 0x%02x %s%s",
         //             addr, ((flags & BR_CTRL_BUS_RD_MASK) & ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0)) ? (retVal & 0xff) : data,  

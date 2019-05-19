@@ -48,7 +48,7 @@ ZEsarUXInterface::ZEsarUXInterface()
     _smartloadStartUs = 0;
     _resetPending = 0;
     _resetPendingTimeUs = 0;
-    _stepOverPending = false;
+    _stepCompletionPending = false;
 }
 
 void ZEsarUXInterface::init()
@@ -111,18 +111,24 @@ void ZEsarUXInterface::service()
     }
 
     // Check for step-over complete
-    if (_stepOverPending)
+    if (_stepCompletionPending)
     {
-        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_I);
         // Check state of target tracker
-        if (TargetTracker::getStepMode() != TargetTracker::STEP_MODE_STEP_OVER)
+        if (TargetTracker::isStepPaused())
         {
-            ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_J);
+            // Disassembly
+            uint32_t curAddr = TargetTracker::getRegs().PC;
+            uint8_t* pMirrorMemory = HwManager::getMirrorMemForAddr(0);
             strlcpy(respMsg, "", ZEsarUX_RESP_MAX_LEN);
+            if (pMirrorMemory)
+            {
+                disasmZ80(pMirrorMemory, 0, curAddr, respMsg, INTEL, false, true);
+                mungeDisassembly(respMsg);
+            }
             addPromptMsg(respMsg, ZEsarUX_RESP_MAX_LEN);
             CommandHandler::sendWithJSON("zesarux", "", _smartloadMsgIdx, 
                             (const uint8_t*)respMsg, strlen(respMsg));
-            _stepOverPending = false;
+            _stepCompletionPending = false;
         }
     }
 }
@@ -268,7 +274,7 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
         char machineNameMunged[MAX_MACHINE_NAME_LEN];
         strlcpy(machineNameMunged, McManager::getDescriptorTable()->machineName, MAX_MACHINE_NAME_LEN);
         if (strcasecmp(machineNameMunged, "ZX Spectrum") == 0)
-            strlcpy(machineNameMunged, "spectrum 48k", MAX_MACHINE_NAME_LEN);
+            strlcpy(machineNameMunged, "Spectrum 48k", MAX_MACHINE_NAME_LEN);
         strlcat(pResponse, machineNameMunged, maxResponseLen);
     }
     else if (commandMatch(cmdStr, "set-debug-settings"))
@@ -353,8 +359,8 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
         }
         uint32_t startAddr = strtol(argStr, NULL, 10) + memAddn;
         uint32_t blockLength = strtol(argStr2, NULL, 10);
-        static const uint32_t MAX_BYTES_TO_RETURN = 500;
-        if ((startAddr <= HwManager::getMaxAddress()) && (blockLength < MAX_BYTES_TO_RETURN))
+        static const uint32_t MAX_BYTES_TO_RETURN = 1024;
+        if ((startAddr <= HwManager::getMaxAddress()) && (blockLength <= MAX_BYTES_TO_RETURN))
         {
             uint8_t dataBlock[MAX_BYTES_TO_RETURN];
             HwManager::blockRead(startAddr, dataBlock, blockLength, false, false, false);
@@ -363,7 +369,7 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
             for (uint32_t i = 0; i < blockLength; i++)
             {
                 char chBuf[10];
-                ee_sprintf(chBuf, "%02x", dataBlock[i]);
+                ee_sprintf(chBuf, "%02X", dataBlock[i]);
                 strlcat(pResponse, chBuf, maxResponseLen);
             }
         }
@@ -379,12 +385,13 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "disassemble"))
     {
-        // Disassemble code at current location
+        // Disassemble code at specified location
         uint8_t* pMirrorMemory = HwManager::getMirrorMemForAddr(0);
         if (pMirrorMemory)
         {
             uint32_t addr = strtol(argStr, NULL, 10);
             disasmZ80(pMirrorMemory, 0, addr, pResponse, INTEL, false, true);
+            mungeDisassembly(pResponse);
         }
         // LogWrite(FromDebugger, LOG_VERBOSE, "disassemble %s %s %s %d %s", argStr, argStr2, argRest, addr, pResponse);
     }
@@ -445,7 +452,9 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "hard-reset-cpu"))
     {
-        // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Reset machine");
+        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Reset machine");
+        BusAccess::busAccessReset();
+        McManager::targetReset();
         _resetPending = true;
         _resetPendingTimeUs = micros();
     }
@@ -485,14 +494,9 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     {
         // Step over
         TargetTracker::stepOver();
-        // Disassembly
-        uint32_t curAddr = TargetTracker::getRegs().PC;
-        uint8_t* pMirrorMemory = HwManager::getMirrorMemForAddr(0);
-        if (pMirrorMemory)
-            disasmZ80(pMirrorMemory, 0, curAddr, pResponse, INTEL, false, true);
-        _stepOverPending = true;
+        _stepCompletionPending = true;
         // Debug
-        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "stepOver done cur addr %04x resp %s", curAddr, pResponse);
+        // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "stepOver");
         // Return immediately (no prompt)
         return true;
     }
@@ -500,13 +504,11 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     {
         // Step into
         TargetTracker::stepInto();
-        // Disassembly
-        uint32_t curAddr = TargetTracker::getRegs().PC;
-        uint8_t* pMirrorMemory = HwManager::getMirrorMemForAddr(0);
-        if (pMirrorMemory)
-            disasmZ80(pMirrorMemory, 0, curAddr, pResponse, INTEL, false, true);
+        _stepCompletionPending = true;
         // Debug
-        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "stepInto done cur addr %04x resp %s", curAddr, pResponse);
+        // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "stepInto");
+        // Return immediately (no prompt)
+        return true;
     }
     else if (commandMatch(cmdStr, "run"))
     {
@@ -537,6 +539,23 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Utility functions
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void ZEsarUXInterface::mungeDisassembly(char* pText)
+{
+    // Make upper case
+    int txtLen = strlen(pText);
+    for (int i = 0; i < txtLen; i++)
+        pText[i] = rdtoupper(pText[i]);
+
+    // Remove comment and whitespace at end of line
+    for (int i = txtLen-1; i > 0; i--)
+    {
+        if (rdisspace(pText[i]) || (pText[i] == ';'))
+            pText[i] = 0;
+        else
+            break;
+    }
+}
 
 bool ZEsarUXInterface::commandMatch(const char* s1, const char* s2)
 {

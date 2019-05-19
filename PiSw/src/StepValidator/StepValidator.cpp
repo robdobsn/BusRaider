@@ -43,10 +43,14 @@ BusSocketInfo StepValidator::_busSocketInfo =
     StepValidator::busActionCompleteStatic,
     true,
     true,
-    BR_BUS_ACTION_NONE,
-    1,
     false,
-    BR_BUS_ACTION_DISPLAY,
+    0,
+    false,
+    0,
+    false,
+    0,
+    false,
+    BR_BUS_ACTION_GENERAL,
     false
 };
 

@@ -37,10 +37,14 @@ BusSocketInfo BusController::_busSocketInfo =
     BusController::busActionCompleteStatic,
     false,
     false,
-    BR_BUS_ACTION_NONE,
-    1,
     false,
-    BR_BUS_ACTION_DISPLAY,
+    0,
+    false,
+    0,
+    false,
+    0,
+    false,
+    BR_BUS_ACTION_GENERAL,
     false
 };
 
@@ -189,7 +193,7 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
     }
     else if (strcasecmp(cmdName, "busStatusClear") == 0)
     {
-        // Get bus status
+        // Clear bus status
         BusAccess::clearStatus();
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
@@ -297,7 +301,7 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
         // Turn target tracker on
         TargetTracker::enable(true);
         if (reset)
-            BusAccess::targetReqReset(_busSocketId);
+            TargetTracker::targetReset();
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
