@@ -51,7 +51,7 @@ public:
         ee_sprintf(tmpStr, " AF'=%04x BC'=%04x HL'=%04x DE'=%04x I=%02x R=%02x",
                 AFDASH, BCDASH, HLDASH, DEDASH, I, R);
         strlcat(pResponse, tmpStr, maxLen);
-        ee_sprintf(tmpStr, "  F=%c%c-%c-%c%c%c F'=%c%c--%c-%c%c%c MEMPTR=%04x IM%d INTEN%02x VPS: %d",
+        ee_sprintf(tmpStr, "  F=%c%c-%c-%c%c%c F'=%c%c--%c-%c%c%c MEMPTR=%04x IM%d IFF%c%c VPS: %d",
                 (AF & 0x80) ? 'S' : '-',
                 (AF & 0x40) ? 'Z' : '-',
                 (AF & 0x10) ? 'H' : '-',
@@ -64,7 +64,10 @@ public:
                 (AFDASH & 0x04) ? 'P' : '-',
                 (AFDASH & 0x02) ? 'N' : '-',
                 (AFDASH & 0x01) ? 'C' : '-',
-                MEMPTR, INTMODE, INTENABLED, VPS );
+                MEMPTR, INTMODE, 
+                INTENABLED ? '1' : ' ', 
+                INTENABLED ? '2' : ' ', 
+                VPS );
         strlcat(pResponse, tmpStr, maxLen);
     }
 };
