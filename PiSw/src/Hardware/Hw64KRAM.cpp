@@ -138,14 +138,27 @@ BR_RETURN_TYPE Hw64KRam::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len,
         return BR_ERR;
 
     // Valid address and length
+    if (len > _mirrorMemoryLen)
+        len = _mirrorMemoryLen;
+    // First part len - in case of wrap
+    size_t firstPartLen = len;
     if (addr + len > _mirrorMemoryLen)
-        len = _mirrorMemoryLen-addr;
-    // Write
-    if (len > 0)
     {
-        memcpy(pBuf, pMirrorMemory+addr, len);
-        // LogWrite(_logPrefix, LOG_DEBUG, "Hw64KRam::blockRead %04x %d [0] %02x [1] %02x [2] %02x [3] %02x",
-        //         addr, len, pBuf[0], pBuf[1], pBuf[2], pBuf[3]);
+        // First part len
+        firstPartLen = _mirrorMemoryLen-addr;
+    }
+    if (firstPartLen > 0)
+    {
+        memcpy(pBuf, pMirrorMemory+addr, firstPartLen);
+        LogWrite(_logPrefix, LOG_DEBUG, "Hw64KRam::blockRead %04x %d [0] %02x [1] %02x [2] %02x [3] %02x",
+                addr, firstPartLen, pBuf[0], pBuf[1], pBuf[2], pBuf[3]);
+    }
+    // Check for wrap to get second section
+    if (len > firstPartLen)
+    {
+        memcpy(pBuf+firstPartLen, pMirrorMemory, len-firstPartLen);
+        LogWrite(_logPrefix, LOG_DEBUG, "Hw64KRam::blockRead wrap %04x %d [0] %02x [1] %02x [2] %02x [3] %02x",
+                addr, len, pBuf[firstPartLen], pBuf[firstPartLen+1], pBuf[firstPartLen+2], pBuf[firstPartLen+3]);
     }
     return BR_OK;
 }
