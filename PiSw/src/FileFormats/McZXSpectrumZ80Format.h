@@ -58,6 +58,8 @@ class McZXSpectrumZ80Format
 					*pOut++ = b;					
 			}
 		}
+		// LogWrite("Z80 Format", LOG_DEBUG, "Addr %02x %02x %02x %02x %02x %02x %02x %02x",
+		// 			pDest[0], pDest[1], pDest[2], pDest[3], pDest[4], pDest[5], pDest[6], pDest[7]);
 		return pOut-pDest;
 	}
 
@@ -104,6 +106,7 @@ class McZXSpectrumZ80Format
 		int totalLenDecoded = 0;
 		if (versionNum == 1)
 		{
+			// LogWrite(_logPrefix, LOG_DEBUG, "Version 1 Z80 file headerDataStartPos %d, compressed %c", ramDumpOffset, isCompressed ? 'Y' : 'N');
 			totalLenDecoded = decompress(sna->extraData + ramDumpOffset, ram, 49152, isCompressed); 
 			pDataCallback(16384, ram, 49152);
 		}
@@ -115,7 +118,7 @@ class McZXSpectrumZ80Format
 				int compressedBlockLen = (sna->extraData[curPos]) + sna->extraData[curPos+1] * 256;
 				int blockBase = -1;
 				int blockPage = sna->extraData[curPos+2];
-				LogWrite(_logPrefix, LOG_VERBOSE, "Decoding block curPos %d blockLen %d page %d", curPos, compressedBlockLen, blockPage);
+				// LogWrite(_logPrefix, LOG_DEBUG, "Decoding block curPos %d blockLen %d page %d", curPos, compressedBlockLen, blockPage);
 				switch(blockPage)
 				{
 					case 4: blockBase = 0x8000; break;
@@ -162,11 +165,11 @@ class McZXSpectrumZ80Format
 		pRegsCallback(regs);
 
 		// Done
-		LogWrite(_logPrefix, LOG_VERBOSE, "OK format (v%d hdrLen %d compr %s) input len %d -> len %d run from %04x",
-					versionNum, extraHeaderLen, isCompressed ? "Y" : "N", dataLen, totalLenDecoded, regs.PC);
-		char regsStr[500];
-		regs.format(regsStr, 500);
-		LogWrite(_logPrefix, LOG_VERBOSE, "Regs: %s", regsStr);
+		// LogWrite(_logPrefix, LOG_DEBUG, "OK format (v%d hdrLen %d compr %s) input len %d -> len %d run from %04x",
+		// 			versionNum, extraHeaderLen, isCompressed ? "Y" : "N", dataLen, totalLenDecoded, regs.PC);
+		// char regsStr[500];
+		// regs.format(regsStr, 500);
+		// LogWrite(_logPrefix, LOG_DEBUG, "Regs: %s", regsStr);
 		return true;
 	}
 };
