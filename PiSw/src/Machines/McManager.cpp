@@ -351,6 +351,11 @@ void McManager::displayRefresh()
                     _pCurMachine->displayRefreshFromMirrorHw();
             }
         }
+
+        // Heartbeat
+        if (!TargetTracker::isTrackingActive())
+            machineHeartbeat();
+
     }
 
     // Check for reset of rate
@@ -360,13 +365,12 @@ void McManager::displayRefresh()
         _refreshCount = 0;
         _refreshLastCountResetUs = micros();
     }
+}
 
-    // Heartbeat
+void McManager::machineHeartbeat()
+{
     if (_pCurMachine)
-    {
-        if (!TargetTracker::isTrackingActive())
-            _pCurMachine->machineHeartbeat();
-    }
+        _pCurMachine->machineHeartbeat();
 }
 
 int McManager::getDisplayRefreshRate()

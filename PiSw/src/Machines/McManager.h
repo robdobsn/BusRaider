@@ -36,6 +36,9 @@ public:
     // Display updates
     static void displayRefresh();
 
+    // Heartbeat
+    static void machineHeartbeat();
+
     // Current machine descriptor table
     static McDescriptorTable* getDescriptorTable();
 
