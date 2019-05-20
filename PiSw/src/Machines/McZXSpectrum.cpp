@@ -165,24 +165,44 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
         int SPECTRUM_LINE_STRIDE = _activeDescriptorTable.displayCellY * _activeDescriptorTable.displayPixelsX / _activeDescriptorTable.displayCellX;
 
         // Iterate down cells
-        for (int cellY = 0; cellY < _activeDescriptorTable.displayPixelsY/_activeDescriptorTable.displayCellY; cellY++)
+        int pfbStrideY = _activeDescriptorTable.displayCellY * scaleY * pitch;
+        int pfbLineStartIdx = 0;
+        int cellsY = _activeDescriptorTable.displayPixelsY/_activeDescriptorTable.displayCellY;
+        int cellsX = _activeDescriptorTable.displayPixelsX/_activeDescriptorTable.displayCellX;
+        for (int cellY = 0; cellY < cellsY; cellY++)
         {
             // Framebuffer for this row of cells
-            int pfbIdx = cellY * _activeDescriptorTable.displayCellY * scaleY * pitch;
+            int pfbIdx = pfbLineStartIdx;
             
             // Iterate cells across
-            for (int cellX = 0; cellX < _activeDescriptorTable.displayPixelsX/_activeDescriptorTable.displayCellX; cellX++)
+            for (int cellX = 0; cellX < cellsX; cellX++)
             {
                 // Colours are the same for all pixels in cell
                 int cellColourData = pScrnBuffer[colrIdx];
                 DISPLAY_FX_COLOUR paperColour = colourLUT[((cellColourData & 0x38) >> 3) | ((cellColourData & 0x40) >> 3)];
                 DISPLAY_FX_COLOUR inkColour = colourLUT[(cellColourData & 0x07) | ((cellColourData & 0x40) >> 3)];
+                bool cellInvalid = cellColourData != _screenCache[colrIdx];
 
                 // Lines of cell
                 int pixByteIdx = cellX + (cellY & 0x07) * SPECTRUM_CELL_STRIDE + (cellY & 0x18) * SPECTRUM_LINE_STRIDE;
-                for (int cellPixY = 0; cellPixY < _activeDescriptorTable.displayCellY; cellPixY++)
+
+                // Check for cell change
+                if (!cellInvalid)
                 {
-                    if ((_screenCache[colrIdx] != pScrnBuffer[colrIdx]) || (_screenCache[pixByteIdx] != pScrnBuffer[pixByteIdx]))
+                    int pixByteCheckIdx = pixByteIdx;
+                    for (int cellPixY = 0; cellPixY < _activeDescriptorTable.displayCellY; cellPixY++)
+                    {
+                        cellInvalid = _screenCache[pixByteCheckIdx] != pScrnBuffer[pixByteCheckIdx];
+                        pixByteCheckIdx += SPECTRUM_LINE_STRIDE;
+                        if (cellInvalid)
+                            break;
+                    }
+                }
+
+                // If anything invalid
+                if (cellInvalid)
+                {
+                    for (int cellPixY = 0; cellPixY < _activeDescriptorTable.displayCellY; cellPixY++)
                     {
                         // Pixels
                         int pixMask = 0x80;
@@ -207,18 +227,20 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
 
                         // Update pixel cache
                         _screenCache[pixByteIdx] = pScrnBuffer[pixByteIdx];
+                        // Update colour cache
+                        _screenCache[colrIdx] = pScrnBuffer[colrIdx];
                     }
                 }
 
                 // Framebuffer position update - start of next cell
                 pfbIdx += _activeDescriptorTable.displayCellX * scaleX;
 
-                // Update colour cache
-                _screenCache[colrIdx] = pScrnBuffer[colrIdx];
-
                 // Update colour idx
                 colrIdx++;
             }
+
+            // Next line
+            pfbLineStartIdx += pfbStrideY;
         }
     }
     else
