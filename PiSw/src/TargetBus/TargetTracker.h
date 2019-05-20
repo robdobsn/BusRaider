@@ -179,7 +179,7 @@ private:
     // Target state acquisition
     enum TARGET_STATE_ACQ {
         TARGET_STATE_ACQ_NONE,
-        TARGET_STATE_ACQ_INSTR_FIRST_BYTE_GOT,
+        TARGET_STATE_ACQ_INJECT_IF_NEW_INSTR,
         TARGET_STATE_ACQ_INJECTING,
         TARGET_STATE_ACQ_POST_INJECT,
     };
@@ -187,6 +187,9 @@ private:
 
     // Breakpoints
     static TargetBreakpoints _breakpoints;
+
+    // Machine heartbeat cycle counter
+    static uint32_t _machineHeartbeatCounter;
 
     // Debug
     static const int MAX_BYTES_IN_INSTR = 10;

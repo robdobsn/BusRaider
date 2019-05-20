@@ -7,6 +7,7 @@
 #include "../System/ee_sprintf.h"
 #include "../System/logging.h"
 #include "../Hardware/HwManager.h"
+#include "../Machines/McManager.h"
 #include "../Disassembler/src/mdZ80.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,6 +92,9 @@ TargetTracker::STEP_MODE_TYPE TargetTracker::_stepMode = STEP_MODE_STEP_PAUSED;
 // Breakpoints
 TargetBreakpoints TargetTracker::_breakpoints;
 
+// Machine heartbeat
+uint32_t TargetTracker::_machineHeartbeatCounter = 0;
+
 // Debug
 uint8_t TargetTracker::_debugInstrBytes[TargetTracker::MAX_BYTES_IN_INSTR];
 uint32_t TargetTracker::_debugInstrBytePos = 0;
@@ -119,9 +123,12 @@ void TargetTracker::enable(bool en)
     if (en)
     {
         BusAccess::busSocketEnable(_busSocketId, en);
+        // HwManager::setMirrorMode(true);
     }
     else
     {
+        // Turn off mirror mode
+        // HwManager::setMirrorMode(false);
         // Remove any hold
         BusAccess::waitHold(_busSocketId, false);
         if (_targetStateAcqMode != TARGET_STATE_ACQ_INJECTING)
@@ -162,7 +169,7 @@ bool TargetTracker::isTrackingActive()
 void TargetTracker::targetReset()
 {
     _targetResetPending = true;
-    BusAccess::targetReqReset(_busSocketId);
+    McManager::targetReset();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -559,7 +566,7 @@ void TargetTracker::completeTargetProgram()
 
 void TargetTracker::requestDisplayGrab()
 {
-    _requestDisplayWhileStepping = true;
+    // _requestDisplayWhileStepping = true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -646,12 +653,15 @@ void TargetTracker::busActionCompleteStatic([[maybe_unused]]BR_BUS_ACTION action
     {
         _prefixTracker[0] = _prefixTracker[1] = false;
 
-        // Since we're receiving a reset we know that we're at the start of an instruction
-        _targetStateAcqMode = TARGET_STATE_ACQ_INSTR_FIRST_BYTE_GOT;
+        // Since we're receiving a reset we are at the start of the program and want to hold
+        // immediately
+        LogWrite(FromTargetTracker, LOG_DEBUG, "busActionComplete Reset");
+        _targetStateAcqMode = TARGET_STATE_ACQ_INJECT_IF_NEW_INSTR;
 
         // Check for reset pending
         if (_targetResetPending)
         {
+            LogWrite(FromTargetTracker, LOG_DEBUG, "busActionComplete Reset pending - go straight to inject");
             // Go straight into injecting mode
             _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
             _targetResetPending = false;
@@ -681,6 +691,15 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
         case TARGET_STATE_ACQ_NONE:
         case TARGET_STATE_ACQ_POST_INJECT:
         {
+            // Machine heartbeat handler
+            _machineHeartbeatCounter++;
+            if (_machineHeartbeatCounter > 100000)
+            {
+                // McManager::machineHeartbeat();
+                _machineHeartbeatCounter = 0;
+                LogWrite(FromTargetTracker, LOG_DEBUG, "INT");
+            }
+
             // Check for post inject hold
             if ((_targetStateAcqMode == TARGET_STATE_ACQ_POST_INJECT) && (_stepMode == STEP_MODE_STEP_PAUSED))
             {
@@ -696,7 +715,7 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
 
             break;
         }
-        case TARGET_STATE_ACQ_INSTR_FIRST_BYTE_GOT:
+        case TARGET_STATE_ACQ_INJECT_IF_NEW_INSTR:
         {
             // Check for disable
             if (handlePendingDisable())
@@ -709,8 +728,8 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
             // BusAccess::waitHold(_busSocketId, false);
 
             // If we get another first byte then start injecting
-            bool firstNonPrefixedByteOfInstr = trackPrefixedInstructions(flags, data, retVal);
-            if (!firstNonPrefixedByteOfInstr)
+            bool firstByteOfInstr = trackPrefixedInstructions(flags, data, retVal);
+            if (!firstByteOfInstr)
             {
                 // LogWrite(FromTargetTracker, LOG_DEBUG, "WAITFIRST %04x %02x %s%s %d %d", 
                 //         addr, data, 
@@ -803,17 +822,17 @@ void TargetTracker::handleTrackerIdle([[maybe_unused]] uint32_t addr, uint32_t d
         return;
 
     // If we detect the first byte of an instruction then move state
-    bool firstNonPrefixedByteOfInstr = trackPrefixedInstructions(flags, data, retVal);
-    if (firstNonPrefixedByteOfInstr)
-        _targetStateAcqMode = TARGET_STATE_ACQ_INSTR_FIRST_BYTE_GOT;
+    bool firstByteOfInstr = trackPrefixedInstructions(flags, data, retVal);
+    if (firstByteOfInstr)
+        _targetStateAcqMode = TARGET_STATE_ACQ_INJECT_IF_NEW_INSTR;
     // LogWrite(FromTargetTracker, LOG_DEBUG, "NONE %s %04x %02x %s%s %d %d", 
-    //                 firstNonPrefixedByteOfInstr ? "FIRSTNONPFX" : "",
+    //                 firstByteOfInstr ? "FIRSTNONPFX" : "",
     //                 addr, codeByteValue, 
     //                 (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "",
     //                 _prefixTracker[0], _prefixTracker[1]);
 
     // Debug
-    if (firstNonPrefixedByteOfInstr || (_debugInstrBytePos >= MAX_BYTES_IN_INSTR))
+    if (firstByteOfInstr || (_debugInstrBytePos >= MAX_BYTES_IN_INSTR))
         _debugInstrBytePos = 0;
     _debugInstrBytes[_debugInstrBytePos++] = data;
 }

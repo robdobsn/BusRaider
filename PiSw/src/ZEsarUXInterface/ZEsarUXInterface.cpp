@@ -485,7 +485,7 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     {
         LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Reset machine");
         BusAccess::busAccessReset();
-        McManager::targetReset();
+        TargetTracker::targetReset();
         _resetPending = true;
         _resetPendingTimeUs = micros();
     }

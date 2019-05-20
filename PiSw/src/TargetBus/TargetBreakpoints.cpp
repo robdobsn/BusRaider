@@ -69,8 +69,8 @@ void TargetBreakpoints::setBreakpointPCAddr(int idx, uint32_t pcVal)
 bool TargetBreakpoints::checkForBreak([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
         uint32_t flags, [[maybe_unused]] uint32_t& retVal)
 {
-    LogWrite(FromTargetBreakpoints, LOG_DEBUG, "checkForBreak %04x, fast %d", 
-            addr, _fastBreakpointsNumEnabled);
+    // LogWrite(FromTargetBreakpoints, LOG_DEBUG, "checkForBreak %04x, fast %d", 
+    //         addr, _fastBreakpointsNumEnabled);
     // See if fast-breakpoints enabled and M1 cycle
     if ((_fastBreakpointsNumEnabled > 0) && (flags & BR_CTRL_BUS_M1_MASK) && (flags & BR_CTRL_BUS_RD_MASK))
     {
