@@ -407,8 +407,8 @@ private:
 private:
     // Bus actions
     static void busActionCheck();
-    static bool busActionAssertStart();
-    static void busActionAssertActive();
+    static bool busActionHandleStart();
+    static void busActionHandleActive();
     static void busActionClearFlags();
     static void busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REASON reason);
     // static BR_BUS_ACTION busActionCheckNext(bool initiateAction);

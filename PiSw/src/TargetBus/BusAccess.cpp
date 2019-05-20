@@ -283,7 +283,7 @@ void BusAccess::targetReqBus(int busSocket, BR_BUS_ACTION_REASON busMasterReason
 
     // Bus request can be handled immediately
     busActionCheck();
-    busActionAssertStart();
+    busActionHandleStart();
     // LogWrite("BusAccess", LOG_DEBUG, "reqBus sock %d enabled %d reason %d", busSocket, _busSockets[busSocket].enabled, busMasterReason);
 }
 
@@ -358,7 +358,7 @@ void BusAccess::busActionCheck()
     _busActionAsserted = false;
 }
 
-bool BusAccess::busActionAssertStart()
+bool BusAccess::busActionHandleStart()
 {
     // Check if a bus action has started but isn't yet asserted
     if (!_busActionInProgress || _busActionAsserted)
@@ -376,7 +376,7 @@ bool BusAccess::busActionAssertStart()
     return true;
 }
 
-void BusAccess::busActionAssertActive()
+void BusAccess::busActionHandleActive()
 {
     // Handle active asserts
     if (!_busActionInProgress || !_busActionAsserted)
@@ -463,6 +463,17 @@ void BusAccess::busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REA
                 // }
 
     }
+
+    // If we just programmed then call again for mirroring
+    if (reason == BR_BUS_ACTION_PROGRAMMING)
+    {
+        for (int i = 0; i < _busSocketCount; i++)
+        {
+            if (!_busSockets[i].enabled)
+                continue;
+            _busSockets[i].busActionCallback(busActionType, BR_BUS_ACTION_MIRROR);
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -486,14 +497,14 @@ void BusAccess::serviceWaitActivity()
     if (_busActionInProgress)
     {
         // Handle signals that have already started
-        busActionAssertActive();
+        busActionHandleActive();
 
         // Timeout on overall action
-        if (isTimeout(micros(), _busActionInProgressStartUs, MAX_WAIT_FOR_PENDING_ACTION_US))
-        {
-            // Cancel the request
-            busActionClearFlags();
-        }
+        // if (!_waitAsserted && isTimeout(micros(), _busActionInProgressStartUs, MAX_WAIT_FOR_PENDING_ACTION_US))
+        // {
+        //     // Cancel the request
+        //     busActionClearFlags();
+        // }
     }
 
     // See if a new bus action is requested
@@ -503,7 +514,7 @@ void BusAccess::serviceWaitActivity()
     if (!_waitAsserted)
     {
         // Start any bus actions here
-        busActionAssertStart();
+        busActionHandleStart();
 
         // Read the control lines
         uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
@@ -550,7 +561,7 @@ void BusAccess::serviceWaitActivity()
             if (isTimeout(micros(), _waitAssertedStartUs, _waitCycleLengthUs))
             {
                 // Check if we need to assert any new bus requests
-                busActionAssertStart();
+                busActionHandleStart();
 
                 // Release the wait - also clears _waitAsserted flag
                 waitResetFlipFlops();
