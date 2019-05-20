@@ -57,7 +57,7 @@ public:
     // Name
     virtual const char* name()
     {
-        return _name;
+        return _pName;
     }
 
     // Configure
@@ -65,6 +65,5 @@ public:
 
 protected:
     bool _enabled;
-    static const int MAX_HW_NAME_LEN = 100;
-    char _name[MAX_HW_NAME_LEN];
+    const char* _pName;
 };

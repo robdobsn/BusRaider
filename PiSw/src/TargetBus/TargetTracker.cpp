@@ -509,7 +509,7 @@ void TargetTracker::stepInto()
         // LogWrite(FromTargetTracker, LOG_DEBUG, "WaitReleased");
     }
 
-    LogWrite(FromTargetTracker, LOG_DEBUG, "Breakpoints en %d num %d", _breakpoints.isEnabled(), _breakpoints.getNumEnabled());
+    // LogWrite(FromTargetTracker, LOG_DEBUG, "Breakpoints en %d num %d", _breakpoints.isEnabled(), _breakpoints.getNumEnabled());
 }
 
 void TargetTracker::stepOver()

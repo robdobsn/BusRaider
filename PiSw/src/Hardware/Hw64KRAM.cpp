@@ -20,7 +20,7 @@ Hw64KRam::Hw64KRam() : HwBase()
     _pMirrorMemory = NULL;
     _validatorMemoryLen = _mirrorMemoryLen;
     _pValidatorMemory = NULL;
-    strlcpy(_name, _baseName, MAX_HW_NAME_LEN);
+    _pName = _baseName;
     hwReset();
 }
 
@@ -206,6 +206,9 @@ uint8_t* Hw64KRam::getMirrorMemForAddr(uint32_t addr)
 
 void Hw64KRam::validatorClone()
 {
+    LogWrite(_logPrefix, LOG_DEBUG, "validatorClone emulated %d mem %d", 
+            _memoryEmulationMode, getValidatorMemory());
+
     // Validator memory
     uint8_t* pValMemory = getValidatorMemory();
     if (!pValMemory)
@@ -222,10 +225,10 @@ void Hw64KRam::validatorClone()
     }
     else
     {
-        // int blockReadResult = 
+        int blockReadResult = 
         BusAccess::blockRead(0, pValMemory, _validatorMemoryLen, true, false);
-        // LogWrite(_logPrefix, LOG_DEBUG, "validatorClone blockRead %s", (blockReadResult == BR_OK) ? "OK" : "FAIL");
-        // LogWrite(_logPrefix, LOG_DEBUG, "validatorClone blockRead %02x %02x %02x", pValMemory[0], pValMemory[1], pValMemory[2]);
+        LogWrite(_logPrefix, LOG_DEBUG, "validatorClone blockRead %s", (blockReadResult == BR_OK) ? "OK" : "FAIL");
+        LogWrite(_logPrefix, LOG_DEBUG, "validatorClone blockRead %02x %02x %02x", pValMemory[0], pValMemory[1], pValMemory[2]);
     }
 }
 
@@ -291,7 +294,7 @@ void Hw64KRam::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType,
                              getMirrorMemory()[2],
                              getMirrorMemory()[3],
                              _mirrorMode,
-                             _name);
+                             _pName);
             }
             break;
         default:

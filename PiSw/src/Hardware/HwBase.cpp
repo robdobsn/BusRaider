@@ -5,11 +5,13 @@
 #include "HwManager.h"
 #include "../TargetBus/BusAccess.h"
 
+static const char* _baseName = "UNDEFINED";
+
 HwBase::HwBase()
 {
     HwManager::add(this);
     _enabled = false;
-    _name[0] = 0;
+    _pName = _baseName;
 }
 
 // Page out RAM/ROM due to emulation
