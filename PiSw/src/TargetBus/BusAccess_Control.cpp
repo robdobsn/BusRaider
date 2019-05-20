@@ -173,7 +173,7 @@ void BusAccess::controlRelease()
     busActionCheck();
 
     // Check if we need to assert any new bus requests
-    busActionAssertStart();
+    busActionHandleStart();
 
     // No longer request bus
     digitalWrite(BR_BUSRQ_BAR, 1);
