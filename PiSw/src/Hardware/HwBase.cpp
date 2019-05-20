@@ -27,6 +27,17 @@ void HwBase::setMemoryPagingEnable([[maybe_unused]] bool val)
 {
 }
 
+// Set mirror mode
+void HwBase::setMirrorMode([[maybe_unused]] bool val)
+{
+}
+
+// Mirror clone
+void HwBase::mirrorClone()
+{
+
+}
+
 // Handle a completed bus action
 void HwBase::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType, [[maybe_unused]] BR_BUS_ACTION_REASON reason)
 {

@@ -17,6 +17,10 @@ public:
         _pagingEnabled = val;
     }
 
+    // Mirror mode
+    virtual void setMirrorMode(bool val);
+    virtual void mirrorClone();
+    
     // Page out RAM/ROM for opcode injection
     virtual void pageOutForInjection(bool pageOut);
 
@@ -45,6 +49,9 @@ private:
     bool _memoryEmulationMode;
     bool _pagingEnabled;
     bool _currentlyPagedOut;
+
+    // Mirror mode
+    bool _mirrorMode;
 
     // Mirrored memory (used for debugging and memory-emulation modes)
     uint8_t* _pMirrorMemory;

@@ -57,6 +57,10 @@ public:
     // Page out RAM/ROM for opcode injection
     static void pageOutForInjection(bool pageOut);
 
+    // Mirror memory mode - read/write to hardware enacts on mirror
+    static void setMirrorMode(bool val);
+    static void mirrorClone();
+
     // Block access to hardware
     static uint32_t getMaxAddress();
     static BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
@@ -95,6 +99,9 @@ private:
 
     // Memory emulation mode
     static bool _memoryEmulationMode;
+
+    // Mirror memory mode
+    static bool _mirrorMode;
 
     // Paging mode
     static bool _memoryPagingEnable;

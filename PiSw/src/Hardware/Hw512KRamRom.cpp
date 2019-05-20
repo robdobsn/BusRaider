@@ -29,7 +29,7 @@ uint8_t Hw512KRamRom::_pageOutAllBanks[] = {
 Hw512KRamRom::Hw512KRamRom() : HwBase()
 {
     hwReset();
-    strlcat(_name, _baseName, MAX_HW_NAME_LEN);
+    strlcpy(_name, _baseName, MAX_HW_NAME_LEN);
 }
 
 // Page out RAM/ROM due to emulation

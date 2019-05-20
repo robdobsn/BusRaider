@@ -59,6 +59,9 @@ bool HwManager::_memoryPagingEnable = false;
 // Opcode injection mode
 bool HwManager::_opcodeInjectEnable = false;
 
+// Mirror mode
+bool HwManager::_mirrorMode = false;
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Statics
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -199,6 +202,20 @@ void HwManager::setOpcodeInjectEnable(bool val)
     _opcodeInjectEnable = val;
 }
 
+// 
+void HwManager::setMirrorMode(bool val)
+{
+    // Iterate hardware
+    for (int i = 0; i < _numHardware; i++)
+    {
+        if (_pHw[i] && _pHw[i]->isEnabled())
+            _pHw[i]->setMirrorMode(val);
+    }
+
+    // Set
+    _mirrorMode = val;
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Access to memory / io blocks
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -271,6 +288,16 @@ uint8_t* HwManager::getMirrorMemForAddr(uint32_t addr)
         }
     }
     return pMirrorMemPtr;
+}
+
+void HwManager::mirrorClone()
+{
+    // Iterate hardware
+    for (int i = 0; i < _numHardware; i++)
+    {
+        if (_pHw[i] && _pHw[i]->isEnabled())
+            _pHw[i]->mirrorClone();
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

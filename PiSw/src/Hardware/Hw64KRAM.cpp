@@ -20,8 +20,8 @@ Hw64KRam::Hw64KRam() : HwBase()
     _pMirrorMemory = NULL;
     _validatorMemoryLen = _mirrorMemoryLen;
     _pValidatorMemory = NULL;
+    strlcpy(_name, _baseName, MAX_HW_NAME_LEN);
     hwReset();
-    strlcat(_name, _baseName, MAX_HW_NAME_LEN);
 }
 
 // Set memory emulation mode - page out real RAM/ROM and use mirror memory
@@ -81,7 +81,14 @@ void Hw64KRam::hwReset()
     _memoryEmulationMode = false;
     _pagingEnabled = true;
     _currentlyPagedOut = false;
+    _mirrorMode = false;
     digitalWrite(BR_PAGING_RAM_PIN, 0);
+}
+
+// Mirror mode
+void Hw64KRam::setMirrorMode(bool val)
+{
+    _mirrorMode = val;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -93,6 +100,23 @@ uint8_t* Hw64KRam::getMirrorMemory()
     if (!_pMirrorMemory)
         _pMirrorMemory = new uint8_t[_mirrorMemoryLen];
     return _pMirrorMemory;
+}
+
+void Hw64KRam::mirrorClone()
+{
+    // No point doing this in emulator mode as mirror and emulator memory is shared
+    if (_memoryEmulationMode)
+        return;
+
+    // Dest memory
+    uint8_t* pDestMemory = getMirrorMemory();
+    if (!pDestMemory)
+        return;
+
+    // int blockReadResult = 
+    BusAccess::blockRead(0, pDestMemory, _mirrorMemoryLen, false, false);
+    // LogWrite(_logPrefix, LOG_DEBUG, "mirrorClone blockRead %s", (blockReadResult == BR_OK) ? "OK" : "FAIL");
+    // LogWrite(_logPrefix, LOG_DEBUG, "mirrorClone blockRead %02x %02x %02x", pValMemory[0], pValMemory[1], pValMemory[2]);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -253,17 +277,21 @@ void Hw64KRam::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType,
         case BR_BUS_ACTION_BUSRQ:
             if (reason == BR_BUS_ACTION_MIRROR)
             {
+                if (!_mirrorMode)
+                    break;
                 // Make a copy of the enire memory while we have the chance
-                // int blockReadResult = 
+                int blockReadResult = 
                 BusAccess::blockRead(0, getMirrorMemory(), _mirrorMemoryLen, false, false);
                 // Debug
-                // LogWrite(_logPrefix, LOG_DEBUG, "mirror memory blockRead %s addr %04x %d [0] %02x [1] %02x [2] %02x [3] %02x",
-                //              (blockReadResult == BR_OK) ? "OK" : "FAIL",
-                //              0, _mirrorMemoryLen,
-                //              getMirrorMemory()[0],
-                //              getMirrorMemory()[1],
-                //              getMirrorMemory()[2],
-                //              getMirrorMemory()[3]);
+                LogWrite(_logPrefix, LOG_DEBUG, "mirror memory blockRead %s addr %04x %d [0] %02x [1] %02x [2] %02x [3] %02x mirror %d %s",
+                             (blockReadResult == BR_OK) ? "OK" : "FAIL",
+                             0, _mirrorMemoryLen,
+                             getMirrorMemory()[0],
+                             getMirrorMemory()[1],
+                             getMirrorMemory()[2],
+                             getMirrorMemory()[3],
+                             _mirrorMode,
+                             _name);
             }
             break;
         default:
@@ -276,7 +304,7 @@ void Hw64KRam::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]]
         [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t& retVal)
 {
     // Check emulation mode
-    if (_memoryEmulationMode)
+    if (_memoryEmulationMode || _mirrorMode)
     {
         // Check mirror memory ok
         uint8_t* pMemory = getMirrorMemory();
