@@ -7,8 +7,9 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "TargetCPU.h"
-#include "../TargetBus/BusAccess.h"
-#include "../TargetBus/TargetRegisters.h"
+#include "BusAccess.h"
+#include "TargetRegisters.h"
+#include "TargetBreakpoints.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Defs
@@ -68,6 +69,8 @@ public:
         STEP_MODE_STEP_OVER,
         STEP_MODE_RUN
     };
+
+    // Step modes
     static STEP_MODE_TYPE getStepMode()
     {
         return _stepMode;
@@ -76,6 +79,32 @@ public:
     static bool isStepPaused()
     {
         return (_stepMode == STEP_MODE_STEP_PAUSED);
+    }
+
+    // Breakpoints
+    static void enableBreakpoints(bool en)
+    {
+        _breakpoints.enableBreakpoints(en);
+    }
+    static void enableBreakpoint(int idx, bool enabled)
+    {
+        _breakpoints.enableBreakpoint(idx, enabled);
+    }
+    static void setBreakpointMessage(int idx, const char* hitMessage)
+    {
+        _breakpoints.setBreakpointMessage(idx, hitMessage);
+    }
+    static void setBreakpointPCAddr(int idx, uint32_t pcVal)
+    {
+        _breakpoints.setBreakpointPCAddr(idx, pcVal);
+    }
+    static void setFastBreakpoint(uint32_t addr, bool en)
+    {
+        _breakpoints.setFastBreakpoint(addr, en);
+    }
+    static void clearFastBreakpoints()
+    {
+        _breakpoints.clearFastBreakpoints();
     }
 
 private:
@@ -155,6 +184,9 @@ private:
         TARGET_STATE_ACQ_POST_INJECT,
     };
     static TARGET_STATE_ACQ _targetStateAcqMode;
+
+    // Breakpoints
+    static TargetBreakpoints _breakpoints;
 
     // Debug
     static const int MAX_BYTES_IN_INSTR = 10;

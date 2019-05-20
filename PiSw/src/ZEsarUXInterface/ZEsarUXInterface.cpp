@@ -240,6 +240,7 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     const char* cmdStr = strtok(pCmd, " ");
     char* argStr = strtok(NULL, " ");
     char* argStr2 = strtok(NULL, " ");
+    char* argRest = strtok(NULL, "");
     if (cmdStr == NULL)
         cmdStr = "\n";
 
@@ -397,28 +398,59 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "enable-breakpoints"))
     {
-        // TODO
-        // TargetTracker::enableBreakpoints();
+        TargetTracker::enableBreakpoints(true);
+    }
+    else if (commandMatch(cmdStr, "disable-breakpoints"))
+    {
+        TargetTracker::enableBreakpoints(false);
     }
     else if (commandMatch(cmdStr, "set-breakpoint"))
     {
-        // TODO
-        // TargetTracker::enableBreakpoints();
+        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "set breakpoint %s %s", argStr, argStr2);
+
+        // Set breakpoint
+        int breakpointIdx = strtol(argStr, NULL, 10) - 1;
+        if ((argStr2[0] != 'P') || (argStr2[1] != 'C') || (argStr2[2] != '='))
+        {
+            LogWrite(FromZEsarUXInterface, LOG_DEBUG, "breakpoint format must be PC= argstr2 %02x %02x %02x", 
+                        argStr2[0], argStr2[1], argStr2[2]);
+        }
+        else
+        {
+            int addr = strtol(argStr2+3, NULL, 16);
+            TargetTracker::setBreakpointPCAddr(breakpointIdx, addr);
+        }        
     }
     else if (commandMatch(cmdStr, "set-breakpointaction"))
     {
-        // TODO
-        // TargetTracker::enableBreakpoints();
+        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "set breakpoint action %s %s %s", argStr, argStr2, argRest);
+
+        // Set action on breakpoint
+        int breakpointIdx = strtol(argStr, NULL, 10) - 1;
+        if (!commandMatch(argStr2, "prints"))
+        {
+            LogWrite(FromZEsarUXInterface, LOG_DEBUG, "breakpoint doesn't have message");
+        }
+        else
+        {        
+            TargetTracker::setBreakpointMessage(breakpointIdx, argRest);
+        }
     }
     else if (commandMatch(cmdStr, "enable-breakpoint"))
     {
-        // TODO
-        // TargetTracker::setMemBreakpoint();
+        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "enable breakpoint %s", argStr);
+
+        // Get breakpoint to enable
+        int breakpointIdx = strtol(argStr, NULL, 10) - 1;
+        TargetTracker::enableBreakpoint(breakpointIdx, true);    
     }
     else if (commandMatch(cmdStr, "disable-breakpoint"))
     {
-        // TODO
-        // TargetTracker::setMemBreakpoint();
+        // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "disable breakpoint %s", argStr);
+
+        // Breakpoint number
+        int breakpointIdx = strtol(argStr, NULL, 10) - 1;
+        TargetTracker::enableBreakpoint(breakpointIdx, false);    
     }
     else if (commandMatch(cmdStr, "clear-membreakpoints"))
     {
@@ -432,18 +464,17 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "clear-fast-breakpoint"))
     {
-        // TODO
-        // TargetTracker::clearBreakpoint();
+        int breakpointAddr = strtol(argStr, NULL, 10);
+        TargetTracker::setFastBreakpoint(breakpointAddr, false);
     }
     else if (commandMatch(cmdStr, "set-fast-breakpoint"))
     {
-        // TODO
-        // TargetTracker::setBreakpoint();
+        int breakpointAddr = strtol(argStr, NULL, 10);
+        TargetTracker::setFastBreakpoint(breakpointAddr, true);
     }
     else if (commandMatch(cmdStr, "clear-all-fast-breakpoints"))
     {
-        // TODO
-        // TargetTracker::clearBreakpoints();
+        TargetTracker::clearFastBreakpoints();
     }
     else if (commandMatch(cmdStr, "set-fast-watchpoint"))
     {
@@ -514,6 +545,7 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     {
         // Release target to run (still in debug mode as breakpoint maybe hit)
         TargetTracker::stepRun();
+        _stepCompletionPending = true;
 
         // Reply without sending a prompt
         strlcat(pResponse, "Running until a breakpoint, key press or data sent, menu opening or other event\n", 

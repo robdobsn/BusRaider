@@ -88,6 +88,9 @@ TargetTracker::TARGET_STATE_ACQ TargetTracker::_targetStateAcqMode = TARGET_STAT
 // Hold at next instruction
 TargetTracker::STEP_MODE_TYPE TargetTracker::_stepMode = STEP_MODE_STEP_PAUSED;
 
+// Breakpoints
+TargetBreakpoints TargetTracker::_breakpoints;
+
 // Debug
 uint8_t TargetTracker::_debugInstrBytes[TargetTracker::MAX_BYTES_IN_INSTR];
 uint32_t TargetTracker::_debugInstrBytePos = 0;
@@ -498,6 +501,8 @@ void TargetTracker::stepInto()
         BusAccess::waitRelease();
         // LogWrite(FromTargetTracker, LOG_DEBUG, "WaitReleased");
     }
+
+    LogWrite(FromTargetTracker, LOG_DEBUG, "Breakpoints en %d num %d", _breakpoints.isEnabled(), _breakpoints.getNumEnabled());
 }
 
 void TargetTracker::stepOver()
@@ -763,19 +768,30 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
     //             _targetStateAcqMode);
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// State helpers
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void TargetTracker::handleStepOverBkpts([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
         uint32_t flags, [[maybe_unused]] uint32_t& retVal)
 {
+    // Ignore if injecting
+    if ((_targetStateAcqMode == TARGET_STATE_ACQ_INJECTING) || 
+                (_targetStateAcqMode == TARGET_STATE_ACQ_POST_INJECT))
+        return;
+
     // Step-over handling: enabled and M1 cycle
-    if ((_stepMode == STEP_MODE_STEP_OVER) && (flags & BR_CTRL_BUS_M1_MASK))
+    if ((_stepMode == STEP_MODE_STEP_OVER) && (flags & BR_CTRL_BUS_M1_MASK) && (_stepOverPCValue == addr))
     {
-        // Check stepover
-        if (_stepOverPCValue == addr)
-        {
-            _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
-            _stepMode = STEP_MODE_STEP_PAUSED;
-            LogWrite(FromTargetTracker, LOG_DEBUG, "Hit required PC value %04x", _stepOverPCValue);
-        }
+        _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
+        _stepMode = STEP_MODE_STEP_PAUSED;
+        LogWrite(FromTargetTracker, LOG_DEBUG, "Hit step-over PC value %04x", _stepOverPCValue);
+    }
+    else if (_breakpoints.checkForBreak(addr, data, flags, retVal))
+    {
+        _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
+        _stepMode = STEP_MODE_STEP_PAUSED;
+        LogWrite(FromTargetTracker, LOG_DEBUG, "Hit Breakpoint %04x", addr);
     }
 }
 
