@@ -407,11 +407,14 @@ BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
     // Enable data onto to PIB
     WR32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
 
+    // Calculate bit patterns outside loop
+    uint32_t reqLinePlusReadPlusCk = (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR) | (1 << BR_LADDR_CK);
+
     // Iterate data
     for (uint32_t i = 0; i < len; i++) {
 
         // IORQ_BAR / MREQ_BAR and RD_BAR both active
-        WR32(ARM_GPIO_GPCLR0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR));
+        WR32(ARM_GPIO_GPCLR0, reqLinePlusReadPlusCk);
         
         // Delay to allow data bus to settle
         lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
@@ -420,13 +423,10 @@ BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
         *pData = (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
 
         // Deactivate IORQ/MREQ and RD and clock the low address
-        WR32(ARM_GPIO_GPSET0, (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_RD_BAR) | (1 << BR_LADDR_CK));
+        WR32(ARM_GPIO_GPSET0, reqLinePlusReadPlusCk);
 
         // Low address clock pulse period
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-
-        // Clock pulse low again
-        WR32(ARM_GPIO_GPCLR0, 1 << BR_LADDR_CK);
+        // lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
 
         // Increment addresses
         pData++;
@@ -434,7 +434,10 @@ BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
 
         // Check if we've rolled over the lowest 8 bits
         if ((addr & 0xff) == 0) {
-            // Set the address again
+            // Clock pulse low again
+            WR32(ARM_GPIO_GPCLR0, 1 << BR_LADDR_CK);
+
+           // Set the address again
             addrSet(addr);
         }
     }
