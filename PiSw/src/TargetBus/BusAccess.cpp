@@ -394,8 +394,10 @@ void BusAccess::busActionHandleActive()
             // Clear the action now so that any new action raised by the callback
             // such as a reset, etc can be asserted before BUSRQ is released
             busActionClearFlags();
+
             // Callback
             busActionCallback(BR_BUS_ACTION_BUSRQ, _busSockets[_busActionSocket].busMasterReason);
+
             // Release bus
             controlRelease();
         }
@@ -440,21 +442,21 @@ void BusAccess::busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REA
         if (!_busSockets[i].enabled)
             continue;
         // Inform all active sockets of the bus action completion
-                //                                           // TODO
+                                                          // TODO
                 // int val = digitalRead(8);
-                // for (int i = 0; i < 3; i++)
+                // for (int i = 0; i < 1; i++)
                 // {
                 //     digitalWrite(8,!val);
-                //     microsDelay(1);
+                //     microsDelay(3);
                 //     digitalWrite(8,val);
                 //     microsDelay(1);
                 // }
 
         _busSockets[i].busActionCallback(busActionType, reason);
 
-                //                                           // TODO
+                                                          // TODO
                 // val = digitalRead(8);
-                // for (int i = 0; i < 2; i++)
+                // for (int i = 0; i < 1; i++)
                 // {
                 //     digitalWrite(8,!val);
                 //     microsDelay(1);

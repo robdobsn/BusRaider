@@ -319,6 +319,10 @@ bool McManager::setupMachine(const char* mcJson)
 
 void McManager::displayRefresh()
 {
+    // Check valid
+    if (!_pCurMachine)
+        return;
+
     unsigned long reqUpdateUs = 1000000 / getDescriptorTable()->displayRefreshRatePerSec;
     // Drop rate to one tenth if TargetTracker is running
     if (TargetTracker::isTrackingActive())
@@ -347,16 +351,17 @@ void McManager::displayRefresh()
             else
             {
                 // Synchronous display update (from local memory copy)
-                if (_pCurMachine)
-                    _pCurMachine->displayRefreshFromMirrorHw();
+                _pCurMachine->displayRefreshFromMirrorHw();
             }
         }
 
         // Heartbeat
         if (!TargetTracker::isTrackingActive())
             machineHeartbeat();
-
     }
+
+    // Service machine
+    _pCurMachine->service();
 
     // Check for reset of rate
     if (isTimeout(micros(), _refreshLastCountResetUs, REFRESH_RATE_WINDOW_SIZE_MS * 1000))

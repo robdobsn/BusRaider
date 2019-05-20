@@ -247,7 +247,7 @@ void BusAccess::addrLowInc()
     WR32(ARM_GPIO_GPSET0, 1 << BR_LADDR_CK);
     lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
     WR32(ARM_GPIO_GPCLR0, 1 << BR_LADDR_CK);
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
+    // lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
 }
 
 // Set the high address value
@@ -425,7 +425,7 @@ BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
         // Low address clock pulse period
         lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
 
-        // Clock pulse high again
+        // Clock pulse low again
         WR32(ARM_GPIO_GPCLR0, 1 << BR_LADDR_CK);
 
         // Increment addresses

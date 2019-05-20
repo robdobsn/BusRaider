@@ -72,6 +72,11 @@ public:
     // Disable machine
     virtual void disable() = 0;
 
+    // Service
+    virtual void service()
+    {
+    }
+
     // Setup display
     virtual void setupDisplay(DisplayBase* pDisplay);
 

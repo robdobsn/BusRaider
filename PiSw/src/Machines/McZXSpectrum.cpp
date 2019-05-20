@@ -61,6 +61,7 @@ McDescriptorTable McZXSpectrum::_defaultDescriptorTables[] = {
 McZXSpectrum::McZXSpectrum() : McBase(_defaultDescriptorTables, sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0]))
 {
     // Screen needs redrawing
+    _screenBufferValid = false;
     _screenCacheValid = false;
 
     // Clear key bitmap
@@ -75,6 +76,7 @@ McZXSpectrum::McZXSpectrum() : McBase(_defaultDescriptorTables, sizeof(_defaultD
 // Enable machine
 void McZXSpectrum::enable()
 {
+    _screenBufferValid = false;
     _screenCacheValid = false;
 }
 
@@ -84,13 +86,23 @@ void McZXSpectrum::disable()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Display Refresh
+// Heartbeat/service
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void McZXSpectrum::machineHeartbeat()
 {
     // Generate a maskable interrupt to trigger Spectrum's ISR
     McManager::targetIrq();
+}
+
+void McZXSpectrum::service()
+{
+    // Check if display data valid
+    if (_screenBufferValid)
+    {
+        updateDisplayFromBuffer(_screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE);
+        _screenBufferValid = false;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -101,17 +113,12 @@ void McZXSpectrum::machineHeartbeat()
 void McZXSpectrum::displayRefreshFromMirrorHw()
 {
     // Read mirror memory at the location of the memory mapped screen
-    unsigned char pScrnBuffer[ZXSPECTRUM_DISP_RAM_SIZE];
-        // static int maxddd = 0;
-        // if (maxddd++ == 100)
-        // {
-        //     maxddd = 0;
-    if (HwManager::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, pScrnBuffer, ZXSPECTRUM_DISP_RAM_SIZE, 1, 0, true) == BR_OK)
+    if (HwManager::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, 1, 0, true) == BR_OK)
     {
-            // LogWrite(_logPrefix, LOG_DEBUG, "DISP REF %d %02x %02x", pScrnBuffer, pScrnBuffer[0x1800], pScrnBuffer[0x1801]);
-        updateDisplayFromBuffer(pScrnBuffer, ZXSPECTRUM_DISP_RAM_SIZE);
+        _screenBufferValid = true;
+        // LogWrite(_logPrefix, LOG_DEBUG, "DISP REF %d %02x %02x", pScrnBuffer, pScrnBuffer[0x1800], pScrnBuffer[0x1801]);
+        updateDisplayFromBuffer(_screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE);
     }
-        // }
 }
 
 void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen)
@@ -476,8 +483,7 @@ void McZXSpectrum::busActionCompleteCallback(BR_BUS_ACTION actionType)
     if (actionType == BR_BUS_ACTION_BUSRQ)
     {
         // Read memory at the location of the memory mapped screen
-        unsigned char pScrnBuffer[ZXSPECTRUM_DISP_RAM_SIZE];
-        if (BusAccess::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, pScrnBuffer, ZXSPECTRUM_DISP_RAM_SIZE, false, false) == BR_OK)
-            updateDisplayFromBuffer(pScrnBuffer, ZXSPECTRUM_DISP_RAM_SIZE);
+        if (BusAccess::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, false, false) == BR_OK)
+            _screenBufferValid = true;
     }
 }
