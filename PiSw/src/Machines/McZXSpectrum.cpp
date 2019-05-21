@@ -19,6 +19,8 @@
 // Vars
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+extern WgfxFont __pZXSpectrumFont;
+
 // Uncomment the following line to use SPI0 CE0 of the Pi as a debug pin
 // #define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
 
@@ -39,7 +41,7 @@ McDescriptorTable McZXSpectrum::_defaultDescriptorTables[] = {
         .displayCellY = 8,
         .pixelScaleX = 4,
         .pixelScaleY = 4,
-        .pFont = &__systemFont,
+        .pFont = &__pZXSpectrumFont,
         .displayForeground = DISPLAY_FX_WHITE,
         .displayBackground = DISPLAY_FX_BLACK,
         .displayMemoryMapped = true,
@@ -524,5 +526,31 @@ void McZXSpectrum::busActionCompleteCallback(BR_BUS_ACTION actionType)
         // Read memory at the location of the memory mapped screen
         if (BusAccess::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, false, false) == BR_OK)
             _screenBufferValid = true;
+
+        // TODO
+        // Read vars
+        static const int VARS_BUF_LEN = 0x3;
+        uint8_t varsBuf[VARS_BUF_LEN];
+        if (BusAccess::blockRead(0x5c78, varsBuf, VARS_BUF_LEN, false, false) == BR_OK)
+        {
+            char buf2[100];
+            buf2[0] = 0;
+            int lineIdx = 0;
+            for (uint32_t i = 0; i < VARS_BUF_LEN; i++)
+            {
+                char buf1[10];
+                ee_sprintf(buf1, "%02x ", varsBuf[i]);
+                strlcat(buf2, buf1, 100);
+                if (i % 0x10 == 0x0f)
+                {
+                    _pDisplay->write(0, lineIdx, buf2);
+                    lineIdx++;
+                    buf2[0] = 0;
+                }
+            }
+            if (strlen(buf2) > 0)
+                _pDisplay->write(0, lineIdx, buf2);
+        }
+
     }
 }
