@@ -123,12 +123,12 @@ void TargetTracker::enable(bool en)
     if (en)
     {
         BusAccess::busSocketEnable(_busSocketId, en);
-        // HwManager::setMirrorMode(true);
+        HwManager::setMirrorMode(true);
     }
     else
     {
         // Turn off mirror mode
-        // HwManager::setMirrorMode(false);
+        HwManager::setMirrorMode(false);
         // Remove any hold
         BusAccess::waitHold(_busSocketId, false);
         if (_targetStateAcqMode != TARGET_STATE_ACQ_INJECTING)
@@ -691,15 +691,6 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
         case TARGET_STATE_ACQ_NONE:
         case TARGET_STATE_ACQ_POST_INJECT:
         {
-            // Machine heartbeat handler
-            _machineHeartbeatCounter++;
-            if (_machineHeartbeatCounter > 100000)
-            {
-                // McManager::machineHeartbeat();
-                _machineHeartbeatCounter = 0;
-                LogWrite(FromTargetTracker, LOG_DEBUG, "INT");
-            }
-
             // Check for post inject hold
             if ((_targetStateAcqMode == TARGET_STATE_ACQ_POST_INJECT) && (_stepMode == STEP_MODE_STEP_PAUSED))
             {
@@ -717,6 +708,18 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
         }
         case TARGET_STATE_ACQ_INJECT_IF_NEW_INSTR:
         {
+            // Machine heartbeat handler
+            if (flags & BR_CTRL_BUS_M1_MASK)
+            {
+                _machineHeartbeatCounter++;
+                if (_machineHeartbeatCounter > 1000)
+                {
+                    McManager::machineHeartbeat();
+                    _machineHeartbeatCounter = 0;
+                    // LogWrite(FromTargetTracker, LOG_DEBUG, "INT");
+                }
+            }
+
             // Check for disable
             if (handlePendingDisable())
                 break;
