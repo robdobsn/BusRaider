@@ -132,7 +132,7 @@ void McZXSpectrum::service()
 void McZXSpectrum::displayRefreshFromMirrorHw()
 {
     // Read mirror memory at the location of the memory mapped screen
-    if (HwManager::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, 1, 0, true) == BR_OK)
+    if (HwManager::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, false, false, true) == BR_OK)
     {
         _screenBufferValid = true;
         // LogWrite(_logPrefix, LOG_DEBUG, "DISP REF %d %02x %02x", pScrnBuffer, pScrnBuffer[0x1800], pScrnBuffer[0x1801]);
@@ -527,30 +527,30 @@ void McZXSpectrum::busActionCompleteCallback(BR_BUS_ACTION actionType)
         if (BusAccess::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, false, false) == BR_OK)
             _screenBufferValid = true;
 
-        // TODO
-        // Read vars
-        static const int VARS_BUF_LEN = 0x3;
-        uint8_t varsBuf[VARS_BUF_LEN];
-        if (BusAccess::blockRead(0x5c78, varsBuf, VARS_BUF_LEN, false, false) == BR_OK)
-        {
-            char buf2[100];
-            buf2[0] = 0;
-            int lineIdx = 0;
-            for (uint32_t i = 0; i < VARS_BUF_LEN; i++)
-            {
-                char buf1[10];
-                ee_sprintf(buf1, "%02x ", varsBuf[i]);
-                strlcat(buf2, buf1, 100);
-                if (i % 0x10 == 0x0f)
-                {
-                    _pDisplay->write(0, lineIdx, buf2);
-                    lineIdx++;
-                    buf2[0] = 0;
-                }
-            }
-            if (strlen(buf2) > 0)
-                _pDisplay->write(0, lineIdx, buf2);
-        }
+        // // TODO
+        // // Read FRAMES1, FRAMES2 & FRAMES3 ZX Spectrum variables and display on screen
+        // static const int VARS_BUF_LEN = 0x3;
+        // uint8_t varsBuf[VARS_BUF_LEN];
+        // if (BusAccess::blockRead(0x5c78, varsBuf, VARS_BUF_LEN, false, false) == BR_OK)
+        // {
+        //     char buf2[100];
+        //     buf2[0] = 0;
+        //     int lineIdx = 0;
+        //     for (uint32_t i = 0; i < VARS_BUF_LEN; i++)
+        //     {
+        //         char buf1[10];
+        //         ee_sprintf(buf1, "%02x ", varsBuf[i]);
+        //         strlcat(buf2, buf1, 100);
+        //         if (i % 0x10 == 0x0f)
+        //         {
+        //             _pDisplay->write(0, lineIdx, buf2);
+        //             lineIdx++;
+        //             buf2[0] = 0;
+        //         }
+        //     }
+        //     if (strlen(buf2) > 0)
+        //         _pDisplay->write(0, lineIdx, buf2);
+        // }
 
     }
 }

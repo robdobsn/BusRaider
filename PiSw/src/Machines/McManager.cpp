@@ -344,9 +344,9 @@ void McManager::displayRefresh()
             }
             else if (TargetTracker::isTrackingActive())
             {
-                // Request to grab display memory
-                TargetTracker::requestDisplayGrab();
+                // Refresh from mirror hardware
                 _busActionPendingDisplayRefresh = true;
+                _pCurMachine->displayRefreshFromMirrorHw();
             }
             else
             {

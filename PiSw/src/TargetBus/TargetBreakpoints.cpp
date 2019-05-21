@@ -77,7 +77,7 @@ bool TargetBreakpoints::checkForBreak([[maybe_unused]] uint32_t addr, [[maybe_un
         // Check breakpoints
         for (int i = 0; i < _fastBreakpointsNumEnabled; i++)
         {
-            if (_fastBreakpoints[i].pcValue == addr)
+            if (_fastBreakpoints[i].enabled && (_fastBreakpoints[i].pcValue == addr))
             {
                 _fastBreakpointHitIdx = i;
                 return true;
@@ -108,6 +108,7 @@ void TargetBreakpoints::setFastBreakpoint(uint32_t addr, bool en)
     {
         if (_fastBreakpoints[i].pcValue == addr)
         {
+            // LogWrite(FromTargetBreakpoints, LOG_DEBUG, "Fast breakpoint addr %04x now %d", addr, en);
             _fastBreakpoints[i].enabled = en;
             return;
         }

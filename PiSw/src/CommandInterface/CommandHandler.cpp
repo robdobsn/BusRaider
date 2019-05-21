@@ -49,7 +49,7 @@ CommandHandler::CommandHandler() :
     _receivedFileBytesRx = 0;
     _receivedBlockCount = 0;
 
-    // // TODO
+    // TODO
     // _rdpMsgCountIn = 0;
     // _rdpMsgCountOut = 0;
     // _rdpTimeUs = 0;

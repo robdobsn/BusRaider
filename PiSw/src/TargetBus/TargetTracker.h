@@ -29,9 +29,6 @@ public:
     static void stepRun();
     static void stepOver();
 
-    // Request state grab
-    static void requestDisplayGrab();
-
     // Regs
     static Z80Registers& getRegs()
     {

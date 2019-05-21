@@ -78,16 +78,15 @@ void Hw64KRam::pageOutForInjection(bool pageOut)
 // Hardware reset has occurred
 void Hw64KRam::hwReset()
 {
-    _memoryEmulationMode = false;
     _pagingEnabled = true;
     _currentlyPagedOut = false;
-    _mirrorMode = false;
     digitalWrite(BR_PAGING_RAM_PIN, 0);
 }
 
 // Mirror mode
 void Hw64KRam::setMirrorMode(bool val)
 {
+    // LogWrite(_logPrefix, LOG_DEBUG, "Mirror mode %d", val);
     _mirrorMode = val;
 }
 
