@@ -63,6 +63,12 @@ McZXSpectrum::McZXSpectrum() : McBase(_defaultDescriptorTables, sizeof(_defaultD
     // Screen needs redrawing
     _screenBufferValid = false;
     _screenCacheValid = false;
+    _screenBufferRefreshY = 0;
+    _screenBufferRefreshX = 0;
+    _screenBufferRefreshCount = 0;
+    _pFrameBuffer = NULL;
+    _cellsY = _defaultDescriptorTables[0].displayPixelsY/_defaultDescriptorTables[0].displayPixelsY;
+    _cellsX = _defaultDescriptorTables[0].displayPixelsX/_defaultDescriptorTables[0].displayPixelsX;
 
     // Clear key bitmap
     for (int i = 0; i < ZXSPECTRUM_KEYBOARD_NUM_ROWS; i++)
@@ -78,6 +84,10 @@ void McZXSpectrum::enable()
 {
     _screenBufferValid = false;
     _screenCacheValid = false;
+    _screenBufferRefreshY = 0;
+    _screenBufferRefreshX = 0;
+    _screenBufferRefreshCount = 0;
+    _pFrameBuffer = NULL;
 }
 
 // Disable machine
@@ -100,8 +110,15 @@ void McZXSpectrum::service()
     // Check if display data valid
     if (_screenBufferValid)
     {
-        updateDisplayFromBuffer(_screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE);
+        _screenBufferRefreshCount = 0;
         _screenBufferValid = false;
+    }
+
+    // Check if refresh completed
+    if (_screenBufferRefreshCount != _cellsY * _cellsX)
+    {
+        updateDisplayFromBuffer(_screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE);
+        _screenBufferRefreshCount++;
     }
 }
 
@@ -117,7 +134,6 @@ void McZXSpectrum::displayRefreshFromMirrorHw()
     {
         _screenBufferValid = true;
         // LogWrite(_logPrefix, LOG_DEBUG, "DISP REF %d %02x %02x", pScrnBuffer, pScrnBuffer[0x1800], pScrnBuffer[0x1801]);
-        updateDisplayFromBuffer(_screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE);
     }
 }
 
@@ -128,7 +144,7 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
 
     // Colour lookup table
     static const int NUM_SPECTRUM_COLOURS = 16;
-    static DISPLAY_FX_COLOUR colourLUT[NUM_SPECTRUM_COLOURS] = {
+    static const DISPLAY_FX_COLOUR colourLUT[NUM_SPECTRUM_COLOURS] = {
             DISPLAY_FX_BLACK,
             DISPLAY_FX_DARK_BLUE,
             DISPLAY_FX_DARK_RED,
@@ -150,97 +166,98 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
     // Check for X scale == 4 (fast implementation if so)
     if (_activeDescriptorTable.pixelScaleX == 4)
     {
-        // Get the raw screen access
-        FrameBufferInfo fbi;
-        _pDisplay->getFramebuffer(fbi);
+        // Check valid frame buffer
+        if (!_pFrameBuffer)
+        {
+            // Get the raw screen access
+            FrameBufferInfo fbi;
+            _pDisplay->getFramebuffer(fbi);
+            _pFrameBuffer = fbi.pFBWindow;
+            _framePitch = fbi.pitch;
+            _framePitchDiv4 = fbi.pitch / 4;
+            _scaleX = _activeDescriptorTable.pixelScaleX;
+            _scaleY = _activeDescriptorTable.pixelScaleY;
+            _lineStride = _activeDescriptorTable.displayCellY * _activeDescriptorTable.displayPixelsX / _activeDescriptorTable.displayCellX;
+            _cellSizeY = _activeDescriptorTable.displayCellY;
+            _cellSizeX = _activeDescriptorTable.displayCellX;
+            _scaledStrideY = _activeDescriptorTable.displayCellY * _scaleY * _framePitch;
+            _scaledStrideX = _cellSizeX * _scaleX;
+            _cellsX = _activeDescriptorTable.displayPixelsX / _activeDescriptorTable.displayCellX;
+            _cellsY = _activeDescriptorTable.displayPixelsY / _activeDescriptorTable.displayCellY;
+        }
+
+        // Cell index
+        uint32_t cellX = _screenBufferRefreshX++;
+        uint32_t cellY = _screenBufferRefreshY;
+        if (_screenBufferRefreshX >= _cellsX)
+        {
+            _screenBufferRefreshX = 0;
+            _screenBufferRefreshY++;
+            if (_screenBufferRefreshY >= _cellsY)
+            {
+                _screenBufferRefreshY = 0;
+                _screenCacheValid = true;
+            }
+        }
 
         // Work through pixel and colour data together
-        int colrIdx = ZXSPECTRUM_PIXEL_RAM_SIZE;
-        uint8_t* pFB = fbi.pFBWindow;
-        int pitch = fbi.pitch;
-        int pitchDiv4 = fbi.pitch / 4;
-        int scaleX = _activeDescriptorTable.pixelScaleX;
-        int scaleY = _activeDescriptorTable.pixelScaleY;
-        int SPECTRUM_CELL_STRIDE = _activeDescriptorTable.displayPixelsX / _activeDescriptorTable.displayCellX;
-        int SPECTRUM_LINE_STRIDE = _activeDescriptorTable.displayCellY * _activeDescriptorTable.displayPixelsX / _activeDescriptorTable.displayCellX;
+        uint32_t colrIdx = ZXSPECTRUM_PIXEL_RAM_SIZE + cellY * _cellsX + cellX;
 
-        // Iterate down cells
-        int pfbStrideY = _activeDescriptorTable.displayCellY * scaleY * pitch;
-        int pfbLineStartIdx = 0;
-        int cellsY = _activeDescriptorTable.displayPixelsY/_activeDescriptorTable.displayCellY;
-        int cellsX = _activeDescriptorTable.displayPixelsX/_activeDescriptorTable.displayCellX;
-        for (int cellY = 0; cellY < cellsY; cellY++)
+        // Framebuffer for this row of cells
+        uint32_t pfbIdx = cellY * _scaledStrideY + cellX * _scaledStrideX;
+
+        // Colours are the same for all pixels in cell
+        int cellColourData = pScrnBuffer[colrIdx];
+        bool cellInvalid = !_screenCacheValid || (cellColourData != _screenCache[colrIdx]);
+        if (cellInvalid)
         {
-            // Framebuffer for this row of cells
-            int pfbIdx = pfbLineStartIdx;
-            
-            // Iterate cells across
-            for (int cellX = 0; cellX < cellsX; cellX++)
+            // Update colour cache
+            _screenCache[colrIdx] = pScrnBuffer[colrIdx];
+        }
+
+        // Lines of cell
+        uint32_t pixByteIdx = cellX + (cellY & 0x07) * _cellsX + (cellY & 0x18) * _lineStride;
+
+        // Check for cell pixel change
+        uint32_t pixByteCheckIdx = pixByteIdx;
+        for (uint32_t cellPixY = 0; cellPixY < _cellSizeY; cellPixY++)
+        {
+            if (_screenCache[pixByteCheckIdx] != pScrnBuffer[pixByteCheckIdx])
             {
-                // Colours are the same for all pixels in cell
-                int cellColourData = pScrnBuffer[colrIdx];
-                DISPLAY_FX_COLOUR paperColour = colourLUT[((cellColourData & 0x38) >> 3) | ((cellColourData & 0x40) >> 3)];
-                DISPLAY_FX_COLOUR inkColour = colourLUT[(cellColourData & 0x07) | ((cellColourData & 0x40) >> 3)];
-                bool cellInvalid = cellColourData != _screenCache[colrIdx];
-
-                // Lines of cell
-                int pixByteIdx = cellX + (cellY & 0x07) * SPECTRUM_CELL_STRIDE + (cellY & 0x18) * SPECTRUM_LINE_STRIDE;
-
-                // Check for cell change
-                if (!cellInvalid)
-                {
-                    int pixByteCheckIdx = pixByteIdx;
-                    for (int cellPixY = 0; cellPixY < _activeDescriptorTable.displayCellY; cellPixY++)
-                    {
-                        cellInvalid = _screenCache[pixByteCheckIdx] != pScrnBuffer[pixByteCheckIdx];
-                        pixByteCheckIdx += SPECTRUM_LINE_STRIDE;
-                        if (cellInvalid)
-                            break;
-                    }
-                }
-
-                // If anything invalid
-                if (cellInvalid)
-                {
-                    for (int cellPixY = 0; cellPixY < _activeDescriptorTable.displayCellY; cellPixY++)
-                    {
-                        // Pixels
-                        int pixMask = 0x80;
-                        uint32_t* pBufCell = (uint32_t*) (pFB + pfbIdx + (cellPixY * scaleY) * pitch);
-                        for (int pixIdx = 0; pixIdx < 8; pixIdx++)
-                        {
-                            bool pixVal = pScrnBuffer[pixByteIdx] & pixMask;
-                            int pixColour = pixVal ? inkColour : paperColour;
-                            uint32_t pixColourL = (pixColour << 24) + (pixColour << 16) + (pixColour << 8) + pixColour;
-                            uint32_t* pBufL = pBufCell + pixIdx;
-                            for (int iy = 0; iy < scaleY; iy++)
-                            {
-                                *pBufL = pixColourL;
-                                pBufL += pitchDiv4;
-                            }
-                            // Bump the pixel mask
-                            pixMask = pixMask >> 1;
-                        }
-
-                        // Bump pixel position
-                        pixByteIdx += SPECTRUM_LINE_STRIDE;
-
-                        // Update pixel cache
-                        _screenCache[pixByteIdx] = pScrnBuffer[pixByteIdx];
-                        // Update colour cache
-                        _screenCache[colrIdx] = pScrnBuffer[colrIdx];
-                    }
-                }
-
-                // Framebuffer position update - start of next cell
-                pfbIdx += _activeDescriptorTable.displayCellX * scaleX;
-
-                // Update colour idx
-                colrIdx++;
+                _screenCache[pixByteCheckIdx] = pScrnBuffer[pixByteCheckIdx];
+                cellInvalid = true;
             }
+            pixByteCheckIdx += _lineStride;
+        }
 
-            // Next line
-            pfbLineStartIdx += pfbStrideY;
+        // If anything invalid
+        if (cellInvalid)
+        {
+            DISPLAY_FX_COLOUR paperColour = colourLUT[((cellColourData & 0x38) >> 3) | ((cellColourData & 0x40) >> 3)];
+            DISPLAY_FX_COLOUR inkColour = colourLUT[(cellColourData & 0x07) | ((cellColourData & 0x40) >> 3)];
+            for (uint32_t cellPixY = 0; cellPixY < _cellSizeY; cellPixY++)
+            {
+                // Pixels
+                uint32_t pixMask = 0x80;
+                uint32_t* pBufCell = (uint32_t*) (_pFrameBuffer + pfbIdx + (cellPixY * _scaleY) * _framePitch);
+                for (uint32_t pixIdx = 0; pixIdx < 8; pixIdx++)
+                {
+                    bool pixVal = pScrnBuffer[pixByteIdx] & pixMask;
+                    uint32_t pixColour = pixVal ? inkColour : paperColour;
+                    uint32_t pixColourL = (pixColour << 24) + (pixColour << 16) + (pixColour << 8) + pixColour;
+                    uint32_t* pBufL = pBufCell + pixIdx;
+                    for (uint32_t iy = 0; iy < _scaleY; iy++)
+                    {
+                        *pBufL = pixColourL;
+                        pBufL += _framePitchDiv4;
+                    }
+                    // Bump the pixel mask
+                    pixMask = pixMask >> 1;
+                }
+
+                // Bump pixel position
+                pixByteIdx += _lineStride;
+            }
         }
     }
     else

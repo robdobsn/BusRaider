@@ -12,8 +12,25 @@ private:
     static constexpr uint32_t ZXSPECTRUM_DISP_RAM_SIZE = 0x1b00;
     uint8_t _screenBuffer[ZXSPECTRUM_DISP_RAM_SIZE];
     bool _screenBufferValid;
+    uint32_t _screenBufferRefreshY;
+    uint32_t _screenBufferRefreshX;
+    uint32_t _screenBufferRefreshCount;
     uint8_t _screenCache[ZXSPECTRUM_DISP_RAM_SIZE];
     bool _screenCacheValid;
+
+    uint8_t* _pFrameBuffer;
+    uint32_t _framePitch;
+    uint32_t _framePitchDiv4;
+    uint32_t _scaleX;
+    uint32_t _scaleY;
+    uint32_t _lineStride;
+    uint32_t _scaledStrideY;
+    uint32_t _scaledStrideX;
+    uint32_t _cellsX;
+    uint32_t _cellsY;
+    uint32_t _cellSizeY;
+    uint32_t _cellSizeX;
+
     static constexpr uint32_t ZXSPECTRUM_PIXEL_RAM_SIZE = 0x1800;
     static constexpr uint32_t ZXSPECTRUM_COLOUR_OFFSET = 0x1800;
     static constexpr uint32_t ZXSPECTRUM_COLOUR_DATA_SIZE = 0x300;
