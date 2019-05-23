@@ -378,7 +378,8 @@
         }
 
         function uploadAndRunFile(file, i) {
-            uploadFileSpecUrl("/uploadandrun", 'progress-bar-run', file, i)
+            sendCmdToTarget("cleartarget");
+            uploadFileSpecUrl("/uploadandrun", 'progress-bar-run', file, i);
         }
 
         function uploadFileSpecUrl(url, progressBarName, file, i) {

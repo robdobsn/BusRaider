@@ -234,7 +234,7 @@ void ZEsarUXInterface::handleMessage([[maybe_unused]] const char* pJsonCmd, cons
 bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLen, uint32_t zesaruxMsgIndex)
 {
 
-    LogWrite(FromZEsarUXInterface, LOG_DEBUG, "ZESARUX handle line %s", pCmd);
+    // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "ZESARUX handle line %s", pCmd);
 
     // Split
     const char* cmdStr = strtok(pCmd, " ");
@@ -307,8 +307,6 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
             }
             fileNamePtr--;
         }
-        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "argstr %s argstr2 %s argrest %s FileName %s FileType %s",
-                    argStr, argStr2, argRest, fileNamePtr, fileTypePtr);
         // Check valid
         if (strlen(fileNamePtr) > 0)
         {
