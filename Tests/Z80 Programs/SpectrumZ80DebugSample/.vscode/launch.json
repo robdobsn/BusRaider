@@ -12,14 +12,24 @@
             // "zhostname": "localhost",
             "zport": 10000,
             "listFiles": [
-                // "../../SpectrumROMListing/Spectrum48KRom.list"
-                //,        { "path": "z80-sample-program.list", "useFiles": true }
+                { 
+                    "path": "Spectrum48KRom.list",
+                    "asm": "z80asm",
+                    "mainFile": "Spectrum48KRom.asm",
+                    "srcDirs": [""] 
+                },
+                { 
+                    "path": "z80-sample-program.list", 
+                    "asm": "z80asm",
+                    "mainFile": "main.asm",
+                    "srcDirs": [""]
+                }
             ],
             "labelsFiles": [
                 //"rom48.labels",
                 // "z80-sample-program.labels"
              ],
-            "startAutomatically": true,
+            "startAutomatically": false,
             "skipInterrupt": true,
             "commandsAfterLaunch": [
                 //"-sprites",
