@@ -10,6 +10,7 @@ const char* FromTermH19 = "TermH19";
 void TermH19::init(uint32_t cols, uint32_t rows)
 {
     TermEmu::init(cols, rows);
+    reset();
 }
 
 void TermH19::reset()
@@ -506,6 +507,7 @@ TermH19::processCR()
 void
 TermH19::processLF()
 {
+    // LogWrite(FromTermH19, LOG_DEBUG, "processLF row %d col %d rowsMain %d", _cursor._row, _cursor._col, _rowsMain);
     if (onLine25())
     {
         // On line 25, don't do anything

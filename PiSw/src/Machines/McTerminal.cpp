@@ -23,7 +23,7 @@ McDescriptorTable McTerminal::_defaultDescriptorTables[] = {
         // Required display refresh rate
         .displayRefreshRatePerSec = 30,
         .displayPixelsX = 80*8,
-        .displayPixelsY = 30*16,
+        .displayPixelsY = 25*16,
         .displayCellX = 8,
         .displayCellY = 16,
         .pixelScaleX = 1,
@@ -49,7 +49,7 @@ McDescriptorTable McTerminal::_defaultDescriptorTables[] = {
         // Required display refresh rate
         .displayRefreshRatePerSec = 30,
         .displayPixelsX = 80*8,
-        .displayPixelsY = 30*16,
+        .displayPixelsY = 25*16,
         .displayCellX = 8,
         .displayCellY = 16,
         .pixelScaleX = 1,
@@ -111,7 +111,7 @@ void McTerminal::displayRefreshFromMirrorHw()
         return;
 
     // Use this to get keys from host and display
-    bool screenChanged = false;
+    // bool screenChanged = false;
     int numCharsAvailable = McManager::hostSerialNumChAvailable();
     if (numCharsAvailable != 0)
     {
@@ -120,7 +120,7 @@ void McTerminal::displayRefreshFromMirrorHw()
         uint8_t charBuf[MAX_CHARS_AT_A_TIME];
         if (numCharsAvailable > MAX_CHARS_AT_A_TIME)
             numCharsAvailable = MAX_CHARS_AT_A_TIME;
-        screenChanged = true;
+        // screenChanged = true;
         uint32_t gotChars = McManager::hostSerialReadChars(charBuf, numCharsAvailable);
         // LogWrite(_logPrefix, LOG_DEBUG, "Got Rx Chars act len = %d\n", gotChars);
         
@@ -155,35 +155,35 @@ void McTerminal::displayRefreshFromMirrorHw()
     {
         if (_pTerminalEmulation->hasChanged())
         {
-            for (int k = 0; k < _pTerminalEmulation->_rows; k++) 
+            for (uint32_t k = 0; k < _pTerminalEmulation->_rows; k++) 
             {
-                for (int i = 0; i < _pTerminalEmulation->_cols; i++)
+                for (uint32_t i = 0; i < _pTerminalEmulation->_cols; i++)
                 {
-                    int cellIdx = k * _pTerminalEmulation->_cols + i;
+                    uint32_t cellIdx = k * _pTerminalEmulation->_cols + i;
                     _pDisplay->write(i, k, _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode);
                 }
             }
         }
-    }
 
-    // Show the cursor as required
-    // if (_cursorShow)
-    // {
-    //     if (isTimeout(micros(), _cursorBlinkLastUs, _cursorBlinkRateMs*1000))
-    //     {
-    //         if (_cursorIsOn)
-    //         {
-    //             int cellIdx = _curPosY * _termCols + _curPosX;
-    //             _pDisplay->write(_curPosX, _curPosY, _screenChars[cellIdx]);
-    //         }
-    //         else
-    //         {
-    //             _pDisplay->write(_curPosX, _curPosY, _cursorChar);
-    //         }
-    //         _cursorIsOn = !_cursorIsOn;
-    //         _cursorBlinkLastUs = micros();
-    //     }
-    // }
+        // Show the cursor as required
+        if (!_pTerminalEmulation->_cursor._off)
+        {
+            if (isTimeout(micros(), _cursorBlinkLastUs, _cursorBlinkRateMs*1000))
+            {
+                if (_cursorIsOn)
+                {
+                    int cellIdx = _pTerminalEmulation->_cursor._row * _pTerminalEmulation->_cols + _pTerminalEmulation->_cursor._col;
+                    _pDisplay->write(_pTerminalEmulation->_cursor._col, _pTerminalEmulation->_cursor._row, _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode);
+                }
+                else
+                {
+                    _pDisplay->write(_pTerminalEmulation->_cursor._col, _pTerminalEmulation->_cursor._row, _cursorChar);
+                }
+                _cursorIsOn = !_cursorIsOn;
+                _cursorBlinkLastUs = micros();
+            }
+        }
+    }
 }
 
 int McTerminal::convertRawToAscii(unsigned char ucModifiers, const unsigned char rawKeys[6])
