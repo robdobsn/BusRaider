@@ -590,7 +590,7 @@
                 if (aux.length > 0)
                 {
                     let extension = aux[aux.length-1].toLowerCase();
-                    if (extension === "json")
+                    if ((extension === "json") && (filename.toLowerCase() !== 'demo.json'))
                         continue;
                 }
                 let filesize = fileListInfo.files[i].size;

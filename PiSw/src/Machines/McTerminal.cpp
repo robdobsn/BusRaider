@@ -74,6 +74,11 @@ int McTerminal::_shiftDigitKeyMap[SHIFT_DIGIT_KEY_MAP_LEN] =
 
 McTerminal::McTerminal() : McBase(_defaultDescriptorTables, sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0]))
 {
+    // Emulation
+    _pTerminalEmulation = new TermH19();
+    if (_pTerminalEmulation)
+        _pTerminalEmulation->init(80, 25);
+
     // Copy descriptor table
     _termCols = DEFAULT_TERM_COLS;
     _termRows = DEFAULT_TERM_ROWS;
@@ -107,67 +112,78 @@ void McTerminal::displayRefreshFromMirrorHw()
 
     // Use this to get keys from host and display
     bool screenChanged = false;
-    int numCharsAvailable = McManager::getNumCharsReceivedFromHost();
+    int numCharsAvailable = McManager::hostSerialNumChAvailable();
     if (numCharsAvailable != 0)
     {
         // Get chars
-        uint8_t* pCharBuf = (uint8_t*)nmalloc_malloc(numCharsAvailable+1);
-        if (pCharBuf)
+        static const int MAX_CHARS_AT_A_TIME = 1000;
+        uint8_t charBuf[MAX_CHARS_AT_A_TIME];
+        if (numCharsAvailable > MAX_CHARS_AT_A_TIME)
+            numCharsAvailable = MAX_CHARS_AT_A_TIME;
+        screenChanged = true;
+        uint32_t gotChars = McManager::hostSerialReadChars(charBuf, numCharsAvailable);
+        // LogWrite(_logPrefix, LOG_DEBUG, "Got Rx Chars act len = %d\n", gotChars);
+        
+        // Handle each char
+        for (uint32_t i = 0; i < gotChars; i++)
         {
-            screenChanged = true;
-            int gotChars = McManager::getCharsReceivedFromHost(pCharBuf, numCharsAvailable);
-            // LogWrite(_logPrefix, LOG_DEBUG, "Got Rx Chars act len = %d\n", gotChars);
-            
-            // Handle each char
-            for (int i = 0; i < gotChars; i++)
-            {
-                // Send to terminal window
-                dispChar(pCharBuf[i], _pDisplay);
-            }
-
-            // Release chars
-            nmalloc_free((void**)(&pCharBuf));
-
+            // Send to terminal window
+            // dispChar(charBuf[i], _pDisplay);
+            if (_pTerminalEmulation)
+                _pTerminalEmulation->putChar(charBuf[i]);
         }
-
     }
 
     // Update the display on the Pi Zero
-    if (screenChanged)
+    // if (screenChanged)
+    // {
+    //     for (int k = 0; k < _termRows; k++) 
+    //     {
+    //         for (int i = 0; i < _termCols; i++)
+    //         {
+    //             int cellIdx = k * _termCols + i;
+    //             if (!_screenBufferValid || (_screenBuffer[cellIdx] != _screenChars[cellIdx]))
+    //             {
+    //                 _pDisplay->write(i, k, _screenChars[cellIdx]);
+    //                 _screenBuffer[cellIdx] = _screenChars[cellIdx];
+    //             }
+    //         }
+    //     }
+    // }
+    // _screenBufferValid = true;
+    if (_pTerminalEmulation)
     {
-        for (int k = 0; k < _termRows; k++) 
+        if (_pTerminalEmulation->hasChanged())
         {
-            for (int i = 0; i < _termCols; i++)
+            for (int k = 0; k < _pTerminalEmulation->_rows; k++) 
             {
-                int cellIdx = k * _termCols + i;
-                if (!_screenBufferValid || (_screenBuffer[cellIdx] != _screenChars[cellIdx]))
+                for (int i = 0; i < _pTerminalEmulation->_cols; i++)
                 {
-                    _pDisplay->write(i, k, _screenChars[cellIdx]);
-                    _screenBuffer[cellIdx] = _screenChars[cellIdx];
+                    int cellIdx = k * _pTerminalEmulation->_cols + i;
+                    _pDisplay->write(i, k, _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode);
                 }
             }
         }
     }
-    _screenBufferValid = true;
 
     // Show the cursor as required
-    if (_cursorShow)
-    {
-        if (isTimeout(micros(), _cursorBlinkLastUs, _cursorBlinkRateMs*1000))
-        {
-            if (_cursorIsOn)
-            {
-                int cellIdx = _curPosY * _termCols + _curPosX;
-                _pDisplay->write(_curPosX, _curPosY, _screenChars[cellIdx]);
-            }
-            else
-            {
-                _pDisplay->write(_curPosX, _curPosY, _cursorChar);
-            }
-            _cursorIsOn = !_cursorIsOn;
-            _cursorBlinkLastUs = micros();
-        }
-    }
+    // if (_cursorShow)
+    // {
+    //     if (isTimeout(micros(), _cursorBlinkLastUs, _cursorBlinkRateMs*1000))
+    //     {
+    //         if (_cursorIsOn)
+    //         {
+    //             int cellIdx = _curPosY * _termCols + _curPosX;
+    //             _pDisplay->write(_curPosX, _curPosY, _screenChars[cellIdx]);
+    //         }
+    //         else
+    //         {
+    //             _pDisplay->write(_curPosX, _curPosY, _cursorChar);
+    //         }
+    //         _cursorIsOn = !_cursorIsOn;
+    //         _cursorBlinkLastUs = micros();
+    //     }
+    // }
 }
 
 int McTerminal::convertRawToAscii(unsigned char ucModifiers, const unsigned char rawKeys[6])
@@ -249,7 +265,7 @@ void McTerminal::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_
         return;
 
     // Send to host
-    McManager::sendKeyCodeToTarget(asciiCode);
+    McManager::sendKeyCodeToTargetStatic(asciiCode);
 }
 
 // Handle a file

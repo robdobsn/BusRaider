@@ -4,6 +4,7 @@
 #include "McBase.h"
 #include "McManager.h"
 #include "../System/logging.h"
+#include "../TerminalEmulation/TermH19.h"
 
 class McTerminal : public McBase
 {
@@ -31,6 +32,8 @@ private:
     // Shifted digits on keyboard
     static const int SHIFT_DIGIT_KEY_MAP_LEN = 10;
     static int _shiftDigitKeyMap[SHIFT_DIGIT_KEY_MAP_LEN];
+
+    TermEmu* _pTerminalEmulation;
 
 public:
 

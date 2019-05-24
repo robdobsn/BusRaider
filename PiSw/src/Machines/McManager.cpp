@@ -35,7 +35,7 @@ CommsSocketInfo McManager::_commsSocketInfo =
     true,
     McManager::handleRxMsg,
     NULL,
-    McManager::handleTargetFile
+    McManager::targetFileHandler
 };
 
 // Step validator
@@ -110,7 +110,7 @@ McDescriptorTable McManager::defaultDescriptorTable = {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 uint8_t McManager::_rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];
-int McManager::_rxHostCharsBufferLen = 0;
+uint32_t McManager::_rxHostCharsBufferLen = 0;
 uint32_t McManager::_refreshCount = 0;
 uint32_t McManager::_refreshLastUpdateUs = 0;
 uint32_t McManager::_refreshLastCountResetUs = 0;
@@ -354,6 +354,10 @@ void McManager::displayRefresh()
                 _pCurMachine->displayRefreshFromMirrorHw();
             }
         }
+        else
+        {
+            _pCurMachine->displayRefreshFromMirrorHw();
+        }
 
         // Heartbeat
         if (!TargetTracker::isTrackingActive())
@@ -387,7 +391,7 @@ int McManager::getDisplayRefreshRate()
 // Communication with machine
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void McManager::handleRxCharFromTarget(const uint8_t* pRxChars, int rxLen)
+void McManager::hostSerialAddRxCharsToBuffer(const uint8_t* pRxChars, uint32_t rxLen)
 {
     // Check for overflow
     if (rxLen + _rxHostCharsBufferLen >= MAX_RX_HOST_CHARS)
@@ -403,27 +407,43 @@ void McManager::handleRxCharFromTarget(const uint8_t* pRxChars, int rxLen)
     // Add to buffer
     memcpy(_rxHostCharsBuffer+_rxHostCharsBufferLen, pRxChars, rxLen);
     _rxHostCharsBufferLen += rxLen;
-    *(_rxHostCharsBuffer+_rxHostCharsBufferLen) = 0;
 }
 
-int McManager::getNumCharsReceivedFromHost()
+uint32_t McManager::hostSerialNumChAvailable()
 {
     return _rxHostCharsBufferLen;
 }
 
-int McManager::getCharsReceivedFromHost(uint8_t* pBuf, int bufMaxLen)
+uint32_t McManager::hostSerialReadChars(uint8_t* pBuf, uint32_t bufMaxLen)
 {
-    if ((!pBuf) || (bufMaxLen < _rxHostCharsBufferLen))
+    // Check for maximum chars available
+    uint32_t charsToCopy = bufMaxLen;
+    if (charsToCopy > _rxHostCharsBufferLen)
+        charsToCopy = _rxHostCharsBufferLen;
+
+    // Check valid
+    if ((!pBuf) || (charsToCopy == 0))
         return 0;
-    memcpy(pBuf, _rxHostCharsBuffer, _rxHostCharsBufferLen);
-    int retVal = _rxHostCharsBufferLen;
-    _rxHostCharsBufferLen = 0;
-    return retVal;
+
+    // Copy the chars
+    memcpy(pBuf, _rxHostCharsBuffer, charsToCopy);
+
+    // Move buffer down if required
+    if (charsToCopy > _rxHostCharsBufferLen)
+    {
+        memmove(_rxHostCharsBuffer, _rxHostCharsBuffer+charsToCopy, _rxHostCharsBufferLen-charsToCopy);
+        _rxHostCharsBufferLen -= charsToCopy;
+    }
+    else
+    {
+        _rxHostCharsBufferLen = 0;
+    }
+    return charsToCopy;
 }
 
-void McManager::sendKeyCodeToTarget(int asciiCode)
+void McManager::sendKeyCodeToTargetStatic(int asciiCode)
 {
-    CommandHandler::sendKeyCodeToTarget(asciiCode);
+    CommandHandler::sendKeyCodeToTargetStatic(asciiCode);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -442,7 +462,7 @@ void McManager::targetReset()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Handle programming of target machine
-void McManager::handleTargetProgram(bool execAfterProgramming)
+void McManager::targetProgrammingStart(bool execAfterProgramming)
 {
     // Check there is something to write
     if (TargetState::numMemoryBlocks() == 0) 
@@ -467,9 +487,9 @@ void McManager::handleTargetProgram(bool execAfterProgramming)
 // Target file handling
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool McManager::handleTargetFile(const char* rxFileInfo, const uint8_t* pData, int dataLen)
+bool McManager::targetFileHandler(const char* rxFileInfo, const uint8_t* pData, int dataLen)
 {
-    LogWrite(FromMcManager, LOG_DEBUG, "handleTargetFile");
+    LogWrite(FromMcManager, LOG_DEBUG, "targetFileHandler");
     McBase* pMc = McManager::getMachine();
     if (pMc)
         return pMc->fileHandler(rxFileInfo, pData, dataLen);
@@ -499,7 +519,7 @@ bool McManager::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t*
     }
     else if (strcasecmp(cmdName, "ProgramTarget") == 0)
     {
-        McManager::handleTargetProgram(false);
+        McManager::targetProgrammingStart(false);
 
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
@@ -507,7 +527,7 @@ bool McManager::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t*
     else if ((strcasecmp(cmdName, "ProgramAndReset") == 0) ||
             (strcasecmp(cmdName, "ProgramAndExec") == 0))
     {
-        McManager::handleTargetProgram(true);
+        McManager::targetProgrammingStart(true);
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
@@ -560,7 +580,7 @@ bool McManager::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t*
     else if (strcasecmp(cmdName, "RxHost") == 0)
     {
         // LogWrite(FromMcManager, LOG_VERBOSE, "RxFromHost, len %d", dataLen);
-        handleRxCharFromTarget(pParams, paramsLen);
+        hostSerialAddRxCharsToBuffer(pParams, paramsLen);
         return true;
     }
     return false;

@@ -35,7 +35,8 @@ CommandHandler* CommandHandler::_pSingletonCommandHandler = NULL;
 
 // Constructor
 CommandHandler::CommandHandler() :
-    _miniHDLC(hdlcPutChStatic, hdlcFrameRxStatic)
+    _miniHDLC(hdlcPutChStatic, hdlcFrameRxStatic),
+    _usbKeyboardRingBufPos(MAX_USB_KEYBOARD_CHARS)
 {   
     // Singleton
     _pSingletonCommandHandler = this;
@@ -48,7 +49,7 @@ CommandHandler::CommandHandler() :
     _receivedFileBufSize = 0;
     _receivedFileBytesRx = 0;
     _receivedBlockCount = 0;
-
+    
     // TODO
     // _rdpMsgCountIn = 0;
     // _rdpMsgCountOut = 0;
@@ -463,15 +464,20 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Send key code to target
+void CommandHandler::sendKeyCodeToTargetStatic(int keyCode)
+{
+    if (_pSingletonCommandHandler)
+        _pSingletonCommandHandler->sendKeyCodeToTarget(keyCode);
+}
+
 void CommandHandler::sendKeyCodeToTarget(int keyCode)
 {
-    static const int MAX_KEY_CMD_STR_LEN = 100;
-    static char keyStr[MAX_KEY_CMD_STR_LEN+1];
-    strlcpy(keyStr, "{\"cmdName\":\"keyCode\",\"key\":", MAX_KEY_CMD_STR_LEN);
-    rditoa(keyCode, (uint8_t*)(keyStr+strlen(keyStr)), 10, 10);
-    strlcpy(keyStr+strlen(keyStr), "}", MAX_KEY_CMD_STR_LEN);
-    if (_pSingletonCommandHandler)
-        _pSingletonCommandHandler->_miniHDLC.sendFrame((const uint8_t*)keyStr, strlen(keyStr)+1);
+    // Place in ring buffer
+    if (_pSingletonCommandHandler->_usbKeyboardRingBufPos.canPut())
+    {
+        _usbKeyboardRingBuffer[_usbKeyboardRingBufPos.posToPut()] = keyCode;
+        _usbKeyboardRingBufPos.hasPut();
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -588,6 +594,18 @@ void CommandHandler::logDebug(const char* pSeverity, const char* pSource, const 
 
 void CommandHandler::service()
 {
+    // Check for checks to send to target
+    if (_usbKeyboardRingBufPos.canGet())
+    {
+        int keyCode = _usbKeyboardRingBuffer[_usbKeyboardRingBufPos.posToGet()];
+        _usbKeyboardRingBufPos.hasGot();
+        const int MAX_KEY_CMD_STR_LEN = 100;
+        char keyStr[MAX_KEY_CMD_STR_LEN];
+        ee_sprintf(keyStr, "{\"cmdName\":\"keyCode\",\"key\":%d}", keyCode);
+        _miniHDLC.sendFrame((const uint8_t*)keyStr, strlen(keyStr)+1);
+    }
+
+
     // TODO
     // if (isTimeout(micros(), _rdpTimeUs, 5000000))
     // {

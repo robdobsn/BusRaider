@@ -65022,21 +65022,21 @@ void McManager::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
    2db98:	e8bd8010 	pop	{r4, pc}
    2db9c:	00074d98 	.word	0x00074d98
 
-0002dba0 <McManager::handleTargetFile(char const*, unsigned char const*, int)>:
+0002dba0 <McManager::targetFileHandler(char const*, unsigned char const*, int)>:
 {
    2dba0:	e92d4070 	push	{r4, r5, r6, lr}
    2dba4:	e1a04000 	mov	r4, r0
    2dba8:	e1a05001 	mov	r5, r1
-    LogWrite(FromMcManager, LOG_DEBUG, "handleTargetFile");
-   2dbac:	e59f003c 	ldr	r0, [pc, #60]	; 2dbf0 <McManager::handleTargetFile(char const*, unsigned char const*, int)+0x50>
+    LogWrite(FromMcManager, LOG_DEBUG, "targetFileHandler");
+   2dbac:	e59f003c 	ldr	r0, [pc, #60]	; 2dbf0 <McManager::targetFileHandler(char const*, unsigned char const*, int)+0x50>
 {
    2dbb0:	e1a06002 	mov	r6, r2
-    LogWrite(FromMcManager, LOG_DEBUG, "handleTargetFile");
+    LogWrite(FromMcManager, LOG_DEBUG, "targetFileHandler");
    2dbb4:	e3a01004 	mov	r1, #4
-   2dbb8:	e59f2034 	ldr	r2, [pc, #52]	; 2dbf4 <McManager::handleTargetFile(char const*, unsigned char const*, int)+0x54>
+   2dbb8:	e59f2034 	ldr	r2, [pc, #52]	; 2dbf4 <McManager::targetFileHandler(char const*, unsigned char const*, int)+0x54>
    2dbbc:	ebffd96d 	bl	24178 <LogWrite>
     return _pCurMachine;
-   2dbc0:	e59f3030 	ldr	r3, [pc, #48]	; 2dbf8 <McManager::handleTargetFile(char const*, unsigned char const*, int)+0x58>
+   2dbc0:	e59f3030 	ldr	r3, [pc, #48]	; 2dbf8 <McManager::targetFileHandler(char const*, unsigned char const*, int)+0x58>
    2dbc4:	e5930000 	ldr	r0, [r3]
     if (pMc)
    2dbc8:	e3500000 	cmp	r0, #0
@@ -65899,18 +65899,18 @@ void McManager::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
    2e5a4:	e12fff1e 	bx	lr
    2e5a8:	00074d98 	.word	0x00074d98
 
-0002e5ac <McManager::handleRxCharFromTarget(unsigned char const*, int)>:
+0002e5ac <McManager::hostSerialAddRxCharsToBuffer(unsigned char const*, int)>:
 {
    2e5ac:	e92d4070 	push	{r4, r5, r6, lr}
     if (rxLen + _rxHostCharsBufferLen >= MAX_RX_HOST_CHARS)
-   2e5b0:	e59f4050 	ldr	r4, [pc, #80]	; 2e608 <McManager::handleRxCharFromTarget(unsigned char const*, int)+0x5c>
-   2e5b4:	e59f2050 	ldr	r2, [pc, #80]	; 2e60c <McManager::handleRxCharFromTarget(unsigned char const*, int)+0x60>
+   2e5b0:	e59f4050 	ldr	r4, [pc, #80]	; 2e608 <McManager::hostSerialAddRxCharsToBuffer(unsigned char const*, int)+0x5c>
+   2e5b4:	e59f2050 	ldr	r2, [pc, #80]	; 2e60c <McManager::hostSerialAddRxCharsToBuffer(unsigned char const*, int)+0x60>
    2e5b8:	e59434a0 	ldr	r3, [r4, #1184]	; 0x4a0
    2e5bc:	e0835001 	add	r5, r3, r1
    2e5c0:	e1550002 	cmp	r5, r2
-   2e5c4:	ca000009 	bgt	2e5f0 <McManager::handleRxCharFromTarget(unsigned char const*, int)+0x44>
+   2e5c4:	ca000009 	bgt	2e5f0 <McManager::hostSerialAddRxCharsToBuffer(unsigned char const*, int)+0x44>
     memcpy(_rxHostCharsBuffer+_rxHostCharsBufferLen, pRxChars, rxLen);
-   2e5c8:	e59fc040 	ldr	ip, [pc, #64]	; 2e610 <McManager::handleRxCharFromTarget(unsigned char const*, int)+0x64>
+   2e5c8:	e59fc040 	ldr	ip, [pc, #64]	; 2e610 <McManager::hostSerialAddRxCharsToBuffer(unsigned char const*, int)+0x64>
    2e5cc:	e1a02001 	mov	r2, r1
    2e5d0:	e1a01000 	mov	r1, r0
    2e5d4:	e08c0003 	add	r0, ip, r3
@@ -65933,30 +65933,30 @@ void McManager::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
     if (rxLen + _rxHostCharsBufferLen >= MAX_RX_HOST_CHARS)
    2e5fc:	c8bd8070 	popgt	{r4, r5, r6, pc}
    2e600:	e1a05001 	mov	r5, r1
-   2e604:	eaffffef 	b	2e5c8 <McManager::handleRxCharFromTarget(unsigned char const*, int)+0x1c>
+   2e604:	eaffffef 	b	2e5c8 <McManager::hostSerialAddRxCharsToBuffer(unsigned char const*, int)+0x1c>
    2e608:	00074d98 	.word	0x00074d98
    2e60c:	000007cf 	.word	0x000007cf
    2e610:	0007523c 	.word	0x0007523c
 
-0002e614 <McManager::getNumCharsReceivedFromHost()>:
+0002e614 <McManager::hostSerialNumChAvailable()>:
     return _rxHostCharsBufferLen;
-   2e614:	e59f3004 	ldr	r3, [pc, #4]	; 2e620 <McManager::getNumCharsReceivedFromHost()+0xc>
+   2e614:	e59f3004 	ldr	r3, [pc, #4]	; 2e620 <McManager::hostSerialNumChAvailable()+0xc>
 }
    2e618:	e59304a0 	ldr	r0, [r3, #1184]	; 0x4a0
    2e61c:	e12fff1e 	bx	lr
    2e620:	00074d98 	.word	0x00074d98
 
-0002e624 <McManager::getCharsReceivedFromHost(unsigned char*, int)>:
+0002e624 <McManager::hostSerialReadChars(unsigned char*, int)>:
     if ((!pBuf) || (bufMaxLen < _rxHostCharsBufferLen))
    2e624:	e2503000 	subs	r3, r0, #0
-   2e628:	0a00000d 	beq	2e664 <McManager::getCharsReceivedFromHost(unsigned char*, int)+0x40>
+   2e628:	0a00000d 	beq	2e664 <McManager::hostSerialReadChars(unsigned char*, int)+0x40>
 {
    2e62c:	e92d4010 	push	{r4, lr}
     if ((!pBuf) || (bufMaxLen < _rxHostCharsBufferLen))
-   2e630:	e59f4034 	ldr	r4, [pc, #52]	; 2e66c <McManager::getCharsReceivedFromHost(unsigned char*, int)+0x48>
+   2e630:	e59f4034 	ldr	r4, [pc, #52]	; 2e66c <McManager::hostSerialReadChars(unsigned char*, int)+0x48>
    2e634:	e59424a0 	ldr	r2, [r4, #1184]	; 0x4a0
    2e638:	e1520001 	cmp	r2, r1
-   2e63c:	da000001 	ble	2e648 <McManager::getCharsReceivedFromHost(unsigned char*, int)+0x24>
+   2e63c:	da000001 	ble	2e648 <McManager::hostSerialReadChars(unsigned char*, int)+0x24>
         return 0;
    2e640:	e3a00000 	mov	r0, #0
 }
@@ -65991,34 +65991,34 @@ void McManager::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
    2e680:	ea0022cd 	b	371bc <BusAccess::targetReqReset(int, int)>
    2e684:	0006f144 	.word	0x0006f144
 
-0002e688 <McManager::handleTargetProgram(bool)>:
+0002e688 <McManager::targetProgrammingStart(bool)>:
 {
    2e688:	e92d4010 	push	{r4, lr}
    2e68c:	e1a04000 	mov	r4, r0
     if (TargetState::numMemoryBlocks() == 0) 
    2e690:	eb0030a9 	bl	3a93c <TargetState::numMemoryBlocks()>
    2e694:	e3500000 	cmp	r0, #0
-   2e698:	0a000008 	beq	2e6c0 <McManager::handleTargetProgram(bool)+0x38>
+   2e698:	0a000008 	beq	2e6c0 <McManager::targetProgrammingStart(bool)+0x38>
         BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_PROGRAMMING);
-   2e69c:	e59f3030 	ldr	r3, [pc, #48]	; 2e6d4 <McManager::handleTargetProgram(bool)+0x4c>
+   2e69c:	e59f3030 	ldr	r3, [pc, #48]	; 2e6d4 <McManager::targetProgrammingStart(bool)+0x4c>
    2e6a0:	e3a01002 	mov	r1, #2
    2e6a4:	e5930000 	ldr	r0, [r3]
    2e6a8:	eb0022f9 	bl	37294 <BusAccess::targetReqBus(int, BR_BUS_ACTION_REASON)>
         _busActionPendingProgramTarget = true;
    2e6ac:	e3a02001 	mov	r2, #1
-   2e6b0:	e59f3020 	ldr	r3, [pc, #32]	; 2e6d8 <McManager::handleTargetProgram(bool)+0x50>
+   2e6b0:	e59f3020 	ldr	r3, [pc, #32]	; 2e6d8 <McManager::targetProgrammingStart(bool)+0x50>
    2e6b4:	e5c3249d 	strb	r2, [r3, #1181]	; 0x49d
         _busActionPendingExecAfterProgram = execAfterProgramming;
    2e6b8:	e5c3449e 	strb	r4, [r3, #1182]	; 0x49e
 }
    2e6bc:	e8bd8010 	pop	{r4, pc}
         LogWrite(FromMcManager, LOG_DEBUG, "ProgramTarget - nothing to write");
-   2e6c0:	e59f2014 	ldr	r2, [pc, #20]	; 2e6dc <McManager::handleTargetProgram(bool)+0x54>
+   2e6c0:	e59f2014 	ldr	r2, [pc, #20]	; 2e6dc <McManager::targetProgrammingStart(bool)+0x54>
    2e6c4:	e3a01004 	mov	r1, #4
 }
    2e6c8:	e8bd4010 	pop	{r4, lr}
         LogWrite(FromMcManager, LOG_DEBUG, "ProgramTarget - nothing to write");
-   2e6cc:	e59f000c 	ldr	r0, [pc, #12]	; 2e6e0 <McManager::handleTargetProgram(bool)+0x58>
+   2e6cc:	e59f000c 	ldr	r0, [pc, #12]	; 2e6e0 <McManager::targetProgrammingStart(bool)+0x58>
    2e6d0:	eaffd6a8 	b	24178 <LogWrite>
    2e6d4:	0006f144 	.word	0x0006f144
    2e6d8:	00074d98 	.word	0x00074d98
@@ -68691,8 +68691,8 @@ McTerminal::McTerminal() : McBase(_defaultDescriptorTables, sizeof(_defaultDescr
    303a4:	e92d43f0 	push	{r4, r5, r6, r7, r8, r9, lr}
    303a8:	e24dd00c 	sub	sp, sp, #12
    303ac:	e1a06000 	mov	r6, r0
-    int numCharsAvailable = McManager::getNumCharsReceivedFromHost();
-   303b0:	ebfff897 	bl	2e614 <McManager::getNumCharsReceivedFromHost()>
+    int numCharsAvailable = McManager::hostSerialNumChAvailable();
+   303b0:	ebfff897 	bl	2e614 <McManager::hostSerialNumChAvailable()>
     if (numCharsAvailable != 0)
    303b4:	e2504000 	subs	r4, r0, #0
    303b8:	1a000024 	bne	30450 <McTerminal::displayRefreshFromMirrorHw()+0xb8>
@@ -68757,9 +68757,9 @@ McTerminal::McTerminal() : McBase(_defaultDescriptorTables, sizeof(_defaultDescr
    3045c:	e58d0004 	str	r0, [sp, #4]
         if (pCharBuf)
    30460:	0affffd5 	beq	303bc <McTerminal::displayRefreshFromMirrorHw()+0x24>
-            int gotChars = McManager::getCharsReceivedFromHost(pCharBuf, numCharsAvailable);
+            int gotChars = McManager::hostSerialReadChars(pCharBuf, numCharsAvailable);
    30464:	e1a01004 	mov	r1, r4
-   30468:	ebfff86d 	bl	2e624 <McManager::getCharsReceivedFromHost(unsigned char*, int)>
+   30468:	ebfff86d 	bl	2e624 <McManager::hostSerialReadChars(unsigned char*, int)>
             for (int i = 0; i < gotChars; i++)
    3046c:	e2505000 	subs	r5, r0, #0
    30470:	da000008 	ble	30498 <McTerminal::displayRefreshFromMirrorHw()+0x100>
@@ -88636,9 +88636,9 @@ bool ZEsarUXInterface::commandMatch(const char* s1, const char* s2)
    3c3a8:	e59f1070 	ldr	r1, [pc, #112]	; 3c420 <ZEsarUXInterface::service()+0x2e8>
    3c3ac:	e59f0070 	ldr	r0, [pc, #112]	; 3c424 <ZEsarUXInterface::service()+0x2ec>
    3c3b0:	ebffaab9 	bl	26e9c <CommandHandler::sendWithJSON(char const*, char const*, unsigned long, unsigned char const*, unsigned long)>
-                McManager::handleTargetProgram(true);
+                McManager::targetProgrammingStart(true);
    3c3b4:	e3a00001 	mov	r0, #1
-   3c3b8:	ebffc8b2 	bl	2e688 <McManager::handleTargetProgram(bool)>
+   3c3b8:	ebffc8b2 	bl	2e688 <McManager::targetProgrammingStart(bool)>
                 TargetTracker::completeTargetProgram();
    3c3bc:	ebfffbe2 	bl	3b34c <TargetTracker::completeTargetProgram()>
    3c3c0:	eaffff8c 	b	3c1f8 <ZEsarUXInterface::service()+0xc0>

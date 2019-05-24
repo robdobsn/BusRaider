@@ -43,19 +43,19 @@ public:
     static McDescriptorTable* getDescriptorTable();
 
     // Handle communication with machine
-    static void handleRxCharFromTarget(const uint8_t* pRxChars, int rxLen);
-    static int getNumCharsReceivedFromHost();
-    static int getCharsReceivedFromHost(uint8_t* pBuf, int bufMaxLen);
-    static void sendKeyCodeToTarget(int asciiCode);
+    static void hostSerialAddRxCharsToBuffer(const uint8_t* pRxChars, uint32_t rxLen);
+    static uint32_t hostSerialNumChAvailable();
+    static uint32_t hostSerialReadChars(uint8_t* pBuf, uint32_t bufMaxLen);
+    static void sendKeyCodeToTargetStatic(int asciiCode);
 
     // Target programming
-    static void handleTargetProgram(bool execAfterProgramming);
+    static void targetProgrammingStart(bool execAfterProgramming);
 
     // Target control
     static void targetReset();
 
     // Handle target files
-    static bool handleTargetFile(const char* rxFileInfo, const uint8_t* pData, int dataLen);
+    static bool targetFileHandler(const char* rxFileInfo, const uint8_t* pData, int dataLen);
 
     static void targetIrq(int durationUs = -1);
 
@@ -85,9 +85,9 @@ private:
             uint32_t flags, uint32_t& retVal);
             
     // Characters received from the host
-    static const int MAX_RX_HOST_CHARS = 2000;
+    static const uint32_t MAX_RX_HOST_CHARS = 10000;
     static uint8_t _rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];
-    static int _rxHostCharsBufferLen;
+    static uint32_t _rxHostCharsBufferLen;
 
     // Display
     static DisplayBase* _pDisplay;

@@ -76,7 +76,7 @@ void ZEsarUXInterface::service()
                                 (const uint8_t*)respMsg, strlen(respMsg));
 
                 // Start programming process
-                McManager::handleTargetProgram(true);
+                McManager::targetProgrammingStart(true);
 
                 // Step to initiate programming and reset
                 TargetTracker::completeTargetProgram();
@@ -1337,7 +1337,7 @@ bool ZEsarUXInterface::commandMatch(const char* s1, const char* s2)
 
 // //         // TODO
 // //         // // Program the target
-// //         // McManager::handleTargetProgram(true, false, true, true);
+// //         // McManager::targetProgrammingStart(true, false, true, true);
 // //     }
 // //     else if (commandMatch(cmdStr, "clear-membreakpoints"))
 // //     {

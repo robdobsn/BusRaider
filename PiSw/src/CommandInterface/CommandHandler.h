@@ -5,6 +5,7 @@
 #pragma once
 #include "MiniHDLC.h"
 #include <stdint.h>
+#include "../System/RingBufferPosn.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Callback types
@@ -72,7 +73,8 @@ public:
     static const int MAX_MC_SET_JSON_LEN = 10000;
 
     // Send key code to target
-    static void sendKeyCodeToTarget(int keyCode);
+    static void sendKeyCodeToTargetStatic(int keyCode);
+    void sendKeyCodeToTarget(int keyCode);
     static void sendWithJSON(const char* cmdName, const char* cmdJson, uint32_t msgIdx = 0, 
             const uint8_t* pData = NULL, uint32_t dataLen = 0);
     static void sendAPIReq(const char* reqLine);
@@ -132,6 +134,11 @@ private:
     int _receivedFileBufSize;
     int _receivedFileBytesRx;
     int _receivedBlockCount;
+
+    // Ring buffer for chars from USB
+    RingBufferPosn _usbKeyboardRingBufPos;
+    static const int MAX_USB_KEYBOARD_CHARS = 50;
+    uint8_t _usbKeyboardRingBuffer[MAX_USB_KEYBOARD_CHARS];
 
     // // Last RDP message index value string
     // static const int MAX_RDP_INDEX_VAL_LEN = 20;
