@@ -24,6 +24,9 @@ const char* FromBusRaiderApp = "BusRaiderApp";
 
 BusRaiderApp* BusRaiderApp::_pApp = NULL;
 
+BusRaiderApp::KeyInfo BusRaiderApp::_keyInfoBuffer[MAX_USB_KEYS_BUFFERED];
+RingBufferPosn BusRaiderApp::_keyInfoBufferPos(BusRaiderApp::MAX_USB_KEYS_BUFFERED);
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Comms socket
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -160,6 +163,15 @@ void BusRaiderApp::service()
 
     // Service commmand handler
     _commandHandler.service();
+
+    // Service keyboard
+    if (_keyInfoBufferPos.canGet())
+    {
+        KeyInfo* pKeyInfo = &_keyInfoBuffer[_keyInfoBufferPos.posToGet()];
+        if (_pApp)
+            _pApp->usbKeypressHandler(pKeyInfo->modifiers, pKeyInfo->rawKeys);
+        _keyInfoBufferPos.hasGot();
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -336,12 +348,20 @@ void BusRaiderApp::serviceGetFromSerial()
     }    
 }
 
-void BusRaiderApp::usbKeypressHandlerStatic(unsigned char ucModifiers, const unsigned char rawKeys[6])
+void BusRaiderApp::usbKeypressHandlerStatic(unsigned char ucModifiers, const unsigned char rawKeys[NUM_USB_KEYS_PASSED])
 {
-    _pApp->usbKeypressHandler(ucModifiers, rawKeys);
+    // Place in ring buffer
+    if (_keyInfoBufferPos.canPut())
+    {
+        KeyInfo* pKeyInfo = (&_keyInfoBuffer[_keyInfoBufferPos.posToPut()]);
+        for (int i = 0; i < NUM_USB_KEYS_PASSED; i++)
+            pKeyInfo->rawKeys[i] = rawKeys[i];
+        pKeyInfo->modifiers = ucModifiers;
+        _keyInfoBufferPos.hasPut();
+    }
 }
 
-void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned char rawKeys[6])
+void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned char rawKeys[NUM_USB_KEYS_PASSED])
 {
     // Check for immediate mode
     if (rawKeys[0] == KEY_F2)
@@ -389,7 +409,7 @@ void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned 
     }
 
     // Send to the target machine to process
-    // ee_printf("KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
+    // LogWrite(FromBusRaiderApp, LOG_DEBUG, "KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
     McBase* pMc = McManager::getMachine();
     if (pMc)
         pMc->keyHandler(ucModifiers, rawKeys);

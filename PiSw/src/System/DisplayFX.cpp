@@ -116,8 +116,8 @@ void DisplayFX::windowPut(int winIdx, int col, int row, int ch)
         return;
 
     // Pointer to framebuffer where char cell starts
-    uint8_t* pBuf = windowGetPFB(winIdx, col, row);
 
+    uint8_t* pBuf = windowGetPFB(winIdx, col, row);
     // Pointer to font data to write into char cell
     uint8_t* pFont = _windows[winIdx].pFont->pFontData + ch * _windows[winIdx].pFont->bytesPerChar;
 
@@ -131,14 +131,20 @@ void DisplayFX::windowPut(int winIdx, int col, int row, int ch)
     int xPixScale = _windows[winIdx].xPixScale;
     for (int y = 0; y < cellHeight; y++) {
         for (int i = 0; i < yPixScale; i++) {
+            uint8_t* pFontCur = pFont;
             pBufCur = pBuf;
-            int bitMask = 0x01 << (cellWidth - 1);
+            int bitMask = 0x80;
             for (int x = 0; x < cellWidth; x++) {
                 for (register int j = 0; j < xPixScale; j++) {
-                    *pBufCur = (*pFont & bitMask) ? fgColour : bgColour;
+                    *pBufCur = (*pFontCur & bitMask) ? fgColour : bgColour;
                     pBufCur++;
                 }
                 bitMask = bitMask >> 1;
+                if (bitMask == 0)
+                {
+                    bitMask = 0x80;
+                    pFontCur++;
+                }
             }
             pBuf += _pitch;
         }

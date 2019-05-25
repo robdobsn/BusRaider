@@ -407,6 +407,16 @@ void McManager::hostSerialAddRxCharsToBuffer(const uint8_t* pRxChars, uint32_t r
     // Add to buffer
     memcpy(_rxHostCharsBuffer+_rxHostCharsBufferLen, pRxChars, rxLen);
     _rxHostCharsBufferLen += rxLen;
+
+    // DEBUG
+    // char buf[1000];
+    // buf[0] = 0;
+    // int toWr = rxLen;
+    // if (rxLen > 250)
+    //     toWr = 250;
+    // for (int i = 0; i < toWr; i++)
+    //     ee_sprintf(buf+strlen(buf), "%02x ", pRxChars[i]);
+    // LogWrite(FromMcManager, LOG_DEBUG, "FromHostSer %s", buf);
 }
 
 uint32_t McManager::hostSerialNumChAvailable()

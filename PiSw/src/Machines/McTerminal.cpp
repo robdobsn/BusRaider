@@ -10,9 +10,10 @@
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetState.h"
 #include "../Hardware/HwManager.h"
-#include "../Fonts/SystemFont.h"
 
 const char* McTerminal::_logPrefix = "McTerm";
+
+extern WgfxFont __p12x16Font;
 
 McDescriptorTable McTerminal::_defaultDescriptorTables[] = {
     {
@@ -22,13 +23,13 @@ McDescriptorTable McTerminal::_defaultDescriptorTables[] = {
         McDescriptorTable::PROCESSOR_Z80,
         // Required display refresh rate
         .displayRefreshRatePerSec = 30,
-        .displayPixelsX = 80*8,
+        .displayPixelsX = 80*12,
         .displayPixelsY = 25*16,
-        .displayCellX = 8,
+        .displayCellX = 12,
         .displayCellY = 16,
         .pixelScaleX = 1,
-        .pixelScaleY = 1,
-        .pFont = &__systemFont,
+        .pixelScaleY = 2,
+        .pFont = &__p12x16Font,
         .displayForeground = DISPLAY_FX_WHITE,
         .displayBackground = DISPLAY_FX_BLACK,
         .displayMemoryMapped = false,
@@ -48,13 +49,13 @@ McDescriptorTable McTerminal::_defaultDescriptorTables[] = {
         McDescriptorTable::PROCESSOR_Z80,
         // Required display refresh rate
         .displayRefreshRatePerSec = 30,
-        .displayPixelsX = 80*8,
+        .displayPixelsX = 80*12,
         .displayPixelsY = 25*16,
-        .displayCellX = 8,
+        .displayCellX = 12,
         .displayCellY = 16,
         .pixelScaleX = 1,
-        .pixelScaleY = 1,
-        .pFont = &__systemFont,
+        .pixelScaleY = 2,
+        .pFont = &__p12x16Font,
         .displayForeground = DISPLAY_FX_WHITE,
         .displayBackground = DISPLAY_FX_BLACK,
         .displayMemoryMapped = false,
@@ -188,13 +189,17 @@ void McTerminal::displayRefreshFromMirrorHw()
 
 int McTerminal::convertRawToAscii(unsigned char ucModifiers, const unsigned char rawKeys[6])
 {
-    int asciiCode = 0;
+    int asciiCode = -1;
     int rawKey = rawKeys[0];
+    if ((rawKey >= 0x80) && (rawKeys[1] != 0))
+        rawKey = rawKeys[1];
     bool shiftPressed = (ucModifiers & KEY_MOD_LSHIFT) || (ucModifiers & KEY_MOD_RSHIFT);
-    // bool ctrlPressed = (ucModifiers & KEY_MOD_LCTRL) || (ucModifiers & KEY_MOD_RCTRL);
+    bool ctrlPressed = (ucModifiers & KEY_MOD_LCTRL) || (ucModifiers & KEY_MOD_RCTRL);
     if ((rawKey == KEY_NONE) || (rawKey == KEY_ERR_OVF))
-        return 0;
+        return -1;
     if ((rawKey >= KEY_A) && (rawKey <= KEY_Z)) {
+        if (ctrlPressed)
+            return (rawKey-KEY_A+1);
         // Handle A-Z
         asciiCode = (rawKey-KEY_A) + (shiftPressed ? 'A' : 'a');
     } else if ((rawKey >= KEY_1) && (rawKey <= KEY_9)) {
@@ -211,7 +216,24 @@ int McTerminal::convertRawToAscii(unsigned char ucModifiers, const unsigned char
         asciiCode = shiftPressed ? ':' : ';';
     } else if (rawKey == KEY_APOSTROPHE) {
         // Handle ' @
+        if (ctrlPressed)
+            return (0);
         asciiCode = shiftPressed ? '@' : '\'';
+    } else if (rawKey == KEY_LEFTBRACE) {
+        // Handle ' [
+        if (ctrlPressed)
+            return (0x1b);
+        asciiCode = shiftPressed ? '{' : '[';
+    } else if (rawKey == KEY_BACKSLASH) {
+        // Handle backslash
+        if (ctrlPressed)
+            return (0x1c);
+        asciiCode = shiftPressed ? '|' : '\\';
+    } else if (rawKey == KEY_RIGHTBRACE) {
+        // Handle ' ]
+        if (ctrlPressed)
+            return (0x1d);
+        asciiCode = shiftPressed ? '}' : ']';
     } else if (rawKey == KEY_COMMA) {
         // Handle , <
         asciiCode = shiftPressed ? '<' : ',';
@@ -223,6 +245,8 @@ int McTerminal::convertRawToAscii(unsigned char ucModifiers, const unsigned char
         asciiCode = shiftPressed ? '+' : '=';        
     } else if (rawKey == KEY_MINUS) {
         // Handle - _
+        if (ctrlPressed)
+            return (0x1f);
         asciiCode = shiftPressed ? '_' : '-';        
     } else if (rawKey == KEY_SLASH) {
         // Handle / ?
@@ -236,6 +260,9 @@ int McTerminal::convertRawToAscii(unsigned char ucModifiers, const unsigned char
     } else if (rawKey == KEY_ESC) {
         // Handle ESC
         asciiCode = 0x1d;        
+    } else if (rawKey == KEY_TAB) {
+        // Handle TAB
+        asciiCode = 0x09;
     } else if (rawKey == KEY_UP) {
         // Handle Up
         asciiCode = 0x11;
@@ -261,8 +288,11 @@ void McTerminal::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_
     int asciiCode = convertRawToAscii(ucModifiers, rawKeys);
 
     // Send chars to host
-    if (asciiCode == 0)
+    if (asciiCode < 0)
         return;
+
+    // LogWrite(_logPrefix, LOG_DEBUG, "ASCII %02x RAWKEY %02x %02x %02x %02x %02x %02x Mod %02x",
+    //                 asciiCode, rawKeys[0], rawKeys[1], rawKeys[2], rawKeys[3], rawKeys[4], rawKeys[5], ucModifiers);
 
     // Send to host
     McManager::sendKeyCodeToTargetStatic(asciiCode);
