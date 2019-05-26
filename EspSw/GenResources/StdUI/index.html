@@ -478,6 +478,8 @@
                 selEl = selectS[i].getElementsByTagName("select")[0];
                 if (selEl.options.length === 0)
                     continue;
+                if (selEl.selectedIndex < 0)
+                    selEl.selectedIndex = 0;
                 // Selected item div
                 let selItemDiv = document.createElement("div");
                 selItemDiv.setAttribute("class", "select-selected");

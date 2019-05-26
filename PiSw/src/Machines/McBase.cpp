@@ -14,6 +14,7 @@ McBase::McBase(McDescriptorTable* pDefaultTables, int numTables)
     _defaultDescriptorTablesLen = numTables;
     _activeDescriptorTable = pDefaultTables[0];
     _pDisplay = NULL;
+    _activeSubType = 0;
 
     // Add to machine manager
     McManager::add(this);
@@ -95,12 +96,10 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
 
     // Copy descriptor
     _activeDescriptorTable = _pDefaultDescriptorTables[mcSubType];
+    _activeSubType = mcSubType;
 
     // Disable initially
     HwManager::disableAll();
-
-    // Debug
-    LogWrite("McBase", LOG_DEBUG, "Subtype invalid %d", mcSubType);
 
     // Setup hardware
     HwManager::setupFromJson("hw", mcJson);

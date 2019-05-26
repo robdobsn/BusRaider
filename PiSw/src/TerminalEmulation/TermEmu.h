@@ -33,37 +33,47 @@ public:
 class TermChar
 {
 public:
+
+    static const uint32_t TERM_DEFAULT_FORE_COLOUR = 15;
+    static const uint32_t TERM_DEFAULT_BACK_COLOUR = 0;
+
     TermChar()
     {
+        clear();
+    }
+    void clear()
+    {
         _charCode = ' ';
-        _foreColour = 1;
-        _backColour = 0;
+        _foreColour = TERM_DEFAULT_FORE_COLOUR;
+        _backColour = TERM_DEFAULT_BACK_COLOUR;
+        _attribs = 0;
     }
     uint8_t _charCode;
-    uint8_t _foreColour;
-    uint8_t _backColour;
+    uint32_t _foreColour;
+    uint32_t _backColour;
+    uint32_t _attribs;
 };
 
 class TermEmu
 {
 public:
     TermEmu();
-    ~TermEmu();
+    virtual ~TermEmu();
     virtual void init(uint32_t cols, uint32_t rows);
     virtual void putChar(uint32_t ch);
     virtual void reset();
     virtual bool hasChanged()
     {
-        return false;
+        return _cursor._updated;
     }
     virtual void sendData(int ch)
     {
         LogWrite("TermEmu", LOG_DEBUG, "SendData %02x", ch);
     }
 
-    void consoleLog(const char* pStr)
+    void consoleLog([[maybe_unused]] const char* pStr)
     {
-        LogWrite("TermEmu", LOG_DEBUG, "%s", pStr);
+        // LogWrite("TermEmu", LOG_DEBUG, "%s", pStr);
     }
     
 public:

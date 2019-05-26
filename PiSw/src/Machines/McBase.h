@@ -106,6 +106,7 @@ protected:
     McDescriptorTable _activeDescriptorTable;
     McDescriptorTable* _pDefaultDescriptorTables;
     int _defaultDescriptorTablesLen;
+    int _activeSubType;
 
     // Display
     DisplayBase* _pDisplay;

@@ -4,7 +4,7 @@
 #include "McBase.h"
 #include "McManager.h"
 #include "../System/logging.h"
-#include "../TerminalEmulation/TermH19.h"
+#include "../TerminalEmulation/TermEmu.h"
 
 class McTerminal : public McBase
 {
@@ -16,9 +16,8 @@ private:
     static const int MAX_TERM_ROWS = 50;
     int _termCols;
     int _termRows;
-    uint8_t _screenChars[MAX_TERM_ROWS * MAX_TERM_COLS];
-    uint8_t _screenBuffer[MAX_TERM_ROWS * MAX_TERM_COLS];
-    bool _screenBufferValid;
+    uint8_t _screenCache[MAX_TERM_ROWS * MAX_TERM_COLS];
+    bool _screenCacheDirty;
     int _curPosX;
     int _curPosY;
     bool _cursorShow;
@@ -62,10 +61,4 @@ public:
 
     // Convert raw USB code to ASCII
     static int convertRawToAscii(unsigned char ucModifiers, const unsigned char rawKeys[6]);
-
-private:
-    void clearScreen();
-    void dispChar(uint8_t ch, DisplayBase* pDisplay);
-    void vscrollBuffer(int rows);
-    void moveAndCheckCurPos(int absX, int absY, int relX, int relY, DisplayBase* pDisplay);
 };

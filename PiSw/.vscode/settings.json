@@ -7,7 +7,9 @@
         "vector": "cpp",
         "xstring": "cpp",
         "xutility": "cpp",
-        "*.c_inc": "cpp"
+        "*.c_inc": "cpp",
+        "list": "cpp",
+        "xhash": "cpp"
     },
     "python.testing.pyTestArgs": [
         "test"
@@ -15,5 +17,6 @@
     "python.testing.pyTestEnabled": true,
     "python.testing.unittestEnabled": false,
     "python.testing.nosetestsEnabled": false,
-    "python.pythonPath": "C:\\Users\\rob\\AppData\\Local\\Programs\\Python\\Python37\\python.exe"
+    "python.pythonPath": "C:\\Users\\rob\\AppData\\Local\\Programs\\Python\\Python37\\python.exe",
+    "C_Cpp.errorSquiggles": "Disabled"
 }

@@ -45,10 +45,6 @@ public:
     virtual void init(uint32_t cols, uint32_t rows);
     virtual void putChar(uint32_t ch);
     virtual void reset();
-    virtual bool hasChanged()
-    {
-        return _cursor._updated;
-    }
     virtual void setAnsiMode(bool on);
 
     // character handling

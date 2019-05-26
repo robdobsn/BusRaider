@@ -1,0 +1,119 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_OUTPUT_MODE	u-ctags	/u-ctags or e-ctags/
+!_TAG_PROGRAM_AUTHOR	Universal Ctags Team	//
+!_TAG_PROGRAM_NAME	Universal Ctags	/Derived from Exuberant Ctags/
+!_TAG_PROGRAM_URL	https://ctags.io/	/official site/
+!_TAG_PROGRAM_VERSION	0.0.0	/6418097e/
+CommonTest	..\\test\\CommonTestCode.py	/^class CommonTest:$/;"	kind:class	line:32
+CommonTestCode.py	..\\test\\CommonTestCode.py	1;"	kind:file	line:1
+Frame	..\\test\\SimpleHDLC.py	/^class Frame(object):$/;"	kind:class	line:21
+Frame	..\\tools\\SimpleHDLC.py	/^class Frame(object):$/;"	kind:class	line:21
+HDLC	..\\test\\SimpleHDLC.py	/^class HDLC(object):$/;"	kind:class	line:61
+HDLC	..\\tools\\SimpleHDLC.py	/^class HDLC(object):$/;"	kind:class	line:61
+ParseHDLCDump.py	..\\tools\\ParseHDLCDump.py	1;"	kind:file	line:1
+STATE_ESCAPE	..\\test\\SimpleHDLC.py	/^    STATE_ESCAPE = 0x02$/;"	kind:variable	line:23
+STATE_ESCAPE	..\\tools\\SimpleHDLC.py	/^    STATE_ESCAPE = 0x02$/;"	kind:variable	line:23
+STATE_READ	..\\test\\SimpleHDLC.py	/^    STATE_READ = 0x01$/;"	kind:variable	line:22
+STATE_READ	..\\tools\\SimpleHDLC.py	/^    STATE_READ = 0x01$/;"	kind:variable	line:22
+SimpleHDLC.py	..\\test\\SimpleHDLC.py	1;"	kind:file	line:1
+SimpleHDLC.py	..\\tools\\SimpleHDLC.py	1;"	kind:file	line:1
+SimpleTCP	..\\test\\SimpleTCP.py	/^class SimpleTCP(object):$/;"	kind:class	line:7
+SimpleTCP.py	..\\test\\SimpleTCP.py	1;"	kind:file	line:1
+UploadToBusRaider.py	..\\tools\\UploadToBusRaider.py	1;"	kind:file	line:1
+__init__	..\\test\\SimpleHDLC.py	/^    def __init__(self):$/;"	kind:member	line:25
+__init__	..\\test\\SimpleHDLC.py	/^    def __init__(self, serial, dataSendFn, dumpFile=None):$/;"	kind:member	line:62
+__init__	..\\test\\SimpleTCP.py	/^    def __init__(self, ipAddr, port, dumpFile=None):$/;"	kind:member	line:9
+__init__	..\\tools\\SimpleHDLC.py	/^    def __init__(self):$/;"	kind:member	line:25
+__init__	..\\tools\\SimpleHDLC.py	/^    def __init__(self, serial, dumpFile=None):$/;"	kind:member	line:62
+__len__	..\\test\\SimpleHDLC.py	/^    def __len__(self):$/;"	kind:member	line:33
+__len__	..\\tools\\SimpleHDLC.py	/^    def __len__(self):$/;"	kind:member	line:33
+__version__	..\\test\\SimpleHDLC.py	/^__version__ = '0.2'$/;"	kind:variable	line:4
+__version__	..\\tools\\SimpleHDLC.py	/^__version__ = '0.2'$/;"	kind:variable	line:4
+_encode	..\\test\\SimpleHDLC.py	/^    def _encode(cls, bs):$/;"	kind:member	line:167
+_encode	..\\tools\\SimpleHDLC.py	/^    def _encode(cls, bs):$/;"	kind:member	line:157
+_onError	..\\test\\SimpleHDLC.py	/^    def _onError(self, frame):$/;"	kind:member	line:92
+_onError	..\\tools\\SimpleHDLC.py	/^    def _onError(self, frame):$/;"	kind:member	line:88
+_onFrame	..\\test\\SimpleHDLC.py	/^    def _onFrame(self, frame):$/;"	kind:member	line:85
+_onFrame	..\\tools\\SimpleHDLC.py	/^    def _onFrame(self, frame):$/;"	kind:member	line:81
+_readByteAndProc	..\\tools\\SimpleHDLC.py	/^    def _readByteAndProc(self, b):$/;"	kind:member	line:102
+_readBytesAndProc	..\\test\\SimpleHDLC.py	/^    def _readBytesAndProc(self, size):$/;"	kind:member	line:99
+_readBytesAndProc	..\\tools\\SimpleHDLC.py	/^    def _readBytesAndProc(self, size):$/;"	kind:member	line:95
+_receiveLoop	..\\test\\SimpleHDLC.py	/^    def _receiveLoop(self):$/;"	kind:member	line:181
+_receiveLoop	..\\test\\SimpleTCP.py	/^    def _receiveLoop(self):$/;"	kind:member	line:26
+_receiveLoop	..\\tools\\SimpleHDLC.py	/^    def _receiveLoop(self):$/;"	kind:member	line:171
+addByte	..\\test\\SimpleHDLC.py	/^    def addByte(self, b):$/;"	kind:member	line:36
+addByte	..\\tools\\ParseHDLCDump.py	/^def addByte(byt):$/;"	kind:function	line:16
+addByte	..\\tools\\SimpleHDLC.py	/^    def addByte(self, b):$/;"	kind:member	line:36
+badFrameCount	..\\tools\\ParseHDLCDump.py	/^badFrameCount = 0$/;"	kind:variable	line:11
+baseFolder	..\\tools\\UploadToBusRaider.py	/^    baseFolder = ' '.join(sys.argv[5:])$/;"	kind:variable	line:117
+calcCRC	..\\test\\SimpleHDLC.py	/^def calcCRC(data):$/;"	kind:function	line:16
+calcCRC	..\\tools\\ParseHDLCDump.py	/^def calcCRC(data):$/;"	kind:function	line:48
+calcCRC	..\\tools\\SimpleHDLC.py	/^def calcCRC(data):$/;"	kind:function	line:16
+checkCRC	..\\test\\SimpleHDLC.py	/^    def checkCRC(self):$/;"	kind:member	line:51
+checkCRC	..\\tools\\SimpleHDLC.py	/^    def checkCRC(self):$/;"	kind:member	line:51
+cleardown	..\\test\\CommonTestCode.py	/^    def cleardown(self):$/;"	kind:member	line:133
+cnt	..\\tools\\ParseHDLCDump.py	/^    cnt = 0$/;"	kind:variable	line:55
+commandLineTestStart	..\\test\\CommonTestCode.py	/^def commandLineTestStart():$/;"	kind:function	line:12
+dumpFileName	..\\tools\\ParseHDLCDump.py	/^dumpFileName = ".\/test\/logs\/StepValidateJMP000.bin"$/;"	kind:variable	line:4
+escVal	..\\tools\\ParseHDLCDump.py	/^escVal = False$/;"	kind:variable	line:9
+finish	..\\test\\SimpleHDLC.py	/^    def finish(self):$/;"	kind:member	line:46
+finish	..\\tools\\SimpleHDLC.py	/^    def finish(self):$/;"	kind:member	line:46
+flashbaud	..\\tools\\UploadToBusRaider.py	/^    flashbaud = int(' '.join(sys.argv[4:5]))$/;"	kind:variable	line:116
+formFileFrame	..\\test\\CommonTestCode.py	/^    def formFileFrame(self, fileFolder, fileName):$/;"	kind:member	line:179
+formatHex	..\\tools\\ParseHDLCDump.py	/^def formatHex(bytArr):$/;"	kind:function	line:13
+frameCallback	..\\test\\test_UnitTests.py	/^    def frameCallback(frameJson):$/;"	kind:function	line:29
+frameCallback	..\\test\\test_UnitTests.py	/^    def frameCallback(msgContent):$/;"	kind:function	line:129
+frameCallback	..\\test\\test_UnitTests.py	/^    def frameCallback(msgContent):$/;"	kind:function	line:173
+frameCallback	..\\test\\test_UnitTests.py	/^    def frameCallback(msgContent):$/;"	kind:function	line:285
+frameCallback	..\\test\\test_UnitTests.py	/^    def frameCallback(msgContent):$/;"	kind:function	line:375
+frameCallback	..\\test\\test_UnitTests.py	/^    def frameCallback(msgContent):$/;"	kind:function	line:488
+frameCallback	..\\test\\test_UnitTests.py	/^    def frameCallback(msgContent):$/;"	kind:function	line:57
+frameCallback	..\\test\\test_UnitTests.py	/^    def frameCallback(msgContent):$/;"	kind:function	line:578
+frameData	..\\tools\\ParseHDLCDump.py	/^frameData = bytearray()$/;"	kind:variable	line:8
+framePos	..\\tools\\ParseHDLCDump.py	/^framePos = 0$/;"	kind:variable	line:6
+getFileData	..\\test\\CommonTestCode.py	/^    def getFileData(self, fileFolder, fileName):$/;"	kind:member	line:163
+linPos	..\\tools\\ParseHDLCDump.py	/^        linPos = 0$/;"	kind:variable	line:57
+logger	..\\test\\SimpleHDLC.py	/^logger = logging.getLogger(__name__)$/;"	kind:variable	line:13
+logger	..\\tools\\SimpleHDLC.py	/^logger = logging.getLogger(__name__)$/;"	kind:variable	line:13
+okFrameCount	..\\tools\\ParseHDLCDump.py	/^okFrameCount = 0$/;"	kind:variable	line:10
+onFrame	..\\tools\\UploadToBusRaider.py	/^    def onFrame(fr):$/;"	kind:function	line:33
+onHDLCFrame	..\\test\\CommonTestCode.py	/^        def onHDLCFrame(fr):$/;"	kind:function	line:60
+onTCPFrame	..\\test\\CommonTestCode.py	/^            def onTCPFrame(fr):$/;"	kind:function	line:82
+processByte	..\\test\\SimpleHDLC.py	/^    def processByte(self, b):$/;"	kind:member	line:112
+processBytes	..\\test\\SimpleHDLC.py	/^    def processBytes(self, bs):$/;"	kind:member	line:106
+rxCRC	..\\tools\\ParseHDLCDump.py	/^rxCRC = 0$/;"	kind:variable	line:7
+sendDataToTCP	..\\test\\CommonTestCode.py	/^            def sendDataToTCP(dataToSend):$/;"	kind:function	line:78
+sendFileSerialHDLC	..\\tools\\UploadToBusRaider.py	/^def sendFileSerialHDLC(ser):$/;"	kind:function	line:31
+sendFileSerialIntelHexToDWelchBootloader	..\\tools\\UploadToBusRaider.py	/^def sendFileSerialIntelHexToDWelchBootloader(ser):$/;"	kind:function	line:18
+sendFileSerialSRECToDWelchBootloader	..\\tools\\UploadToBusRaider.py	/^def sendFileSerialSRECToDWelchBootloader(ser):$/;"	kind:function	line:25
+sendFrame	..\\test\\CommonTestCode.py	/^    def sendFrame(self, comment, content):$/;"	kind:member	line:121
+sendFrame	..\\test\\SimpleHDLC.py	/^    def sendFrame(self, data):$/;"	kind:member	line:76
+sendFrame	..\\test\\SimpleTCP.py	/^    def sendFrame(self, data):$/;"	kind:member	line:21
+sendFrame	..\\tools\\SimpleHDLC.py	/^    def sendFrame(self, data):$/;"	kind:member	line:75
+sendType	..\\tools\\UploadToBusRaider.py	/^    sendType = ' '.join(sys.argv[2:3])$/;"	kind:variable	line:114
+serObj	..\\tools\\UploadToBusRaider.py	/^        serObj = serial.Serial($/;"	kind:variable	line:131
+serialOrIp	..\\tools\\UploadToBusRaider.py	/^    serialOrIp = ' '.join(sys.argv[3:4])$/;"	kind:variable	line:115
+setCallbacks	..\\test\\SimpleHDLC.py	/^    def setCallbacks(self, onFrame, onError=None):$/;"	kind:member	line:191
+setup	..\\test\\CommonTestCode.py	/^    def setup(self, useIP, serialPort, serialBaud, ipAddrOrHostName, dumpBinFileName, dumpTextFi/;"	kind:member	line:34
+setupTests	..\\test\\test_UnitTests.py	/^def setupTests(testName):$/;"	kind:function	line:14
+startReader	..\\test\\SimpleHDLC.py	/^    def startReader(self, onFrame, onError=None):$/;"	kind:member	line:195
+startReader	..\\test\\SimpleTCP.py	/^    def startReader(self, onFrame, onError=None):$/;"	kind:member	line:42
+startReader	..\\tools\\SimpleHDLC.py	/^    def startReader(self, onFrame, onError=None):$/;"	kind:member	line:181
+stopReader	..\\test\\SimpleHDLC.py	/^    def stopReader(self):$/;"	kind:member	line:205
+stopReader	..\\test\\SimpleTCP.py	/^    def stopReader(self):$/;"	kind:member	line:56
+stopReader	..\\tools\\SimpleHDLC.py	/^    def stopReader(self):$/;"	kind:member	line:191
+test_Comms	..\\test\\test_UnitTests.py	/^def test_Comms():$/;"	kind:function	line:27
+test_GalaxiansExec	..\\test\\test_UnitTests.py	/^def test_GalaxiansExec():$/;"	kind:function	line:373
+test_MemRW	..\\test\\test_UnitTests.py	/^def test_MemRW():$/;"	kind:function	line:55
+test_SetMc	..\\test\\test_UnitTests.py	/^def test_SetMc():$/;"	kind:function	line:127
+test_StepValidateJMP000	..\\test\\test_UnitTests.py	/^def test_StepValidateJMP000():$/;"	kind:function	line:171
+test_TRS80Level1RomExec	..\\test\\test_UnitTests.py	/^def test_TRS80Level1RomExec():$/;"	kind:function	line:283
+test_UnitTests.py	..\\test\\test_UnitTests.py	1;"	kind:file	line:1
+test_regGetTest	..\\test\\test_UnitTests.py	/^def test_regGetTest():$/;"	kind:function	line:576
+test_stepSingle	..\\test\\test_UnitTests.py	/^def test_stepSingle():$/;"	kind:function	line:486
+toBytes	..\\test\\SimpleHDLC.py	/^    def toBytes(cls, data):$/;"	kind:member	line:73
+toBytes	..\\test\\SimpleTCP.py	/^    def toBytes(cls, data):$/;"	kind:member	line:18
+toBytes	..\\tools\\SimpleHDLC.py	/^    def toBytes(cls, data):$/;"	kind:member	line:72
+toString	..\\test\\SimpleHDLC.py	/^    def toString(self):$/;"	kind:member	line:58
+toString	..\\tools\\SimpleHDLC.py	/^    def toString(self):$/;"	kind:member	line:58

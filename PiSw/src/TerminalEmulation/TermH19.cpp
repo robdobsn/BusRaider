@@ -5,7 +5,7 @@
 #include "ascii.h"
 
 // Log string
-const char* FromTermH19 = "TermH19";
+const char *FromTermH19 = "TermH19";
 
 void TermH19::init(uint32_t cols, uint32_t rows)
 {
@@ -17,13 +17,13 @@ void TermH19::reset()
 {
     TermEmu::reset();
     mode_m = Normal;
-    reverseVideo_m    = false;
-    graphicMode_m     = false;
-    insertMode_m      = false;
-    line25_m          = false;
-    holdScreen_m      = false;
-    _cursor._off      = false;
-    altKeypadMode_m   = false;
+    reverseVideo_m = false;
+    graphicMode_m = false;
+    insertMode_m = false;
+    line25_m = false;
+    holdScreen_m = false;
+    _cursor._off = false;
+    altKeypadMode_m = false;
     keyboardEnabled_m = true;
     _ansiMode = false;
     _rowsMain = _rows - 1;
@@ -37,83 +37,83 @@ void TermH19::putChar(uint32_t ch)
     {
         switch (ch)
         {
-            case ascii::NUL:
-            case ascii::SOH:
-            case ascii::STX:
-            case ascii::ETX:
-            case ascii::EOT:
-            case ascii::ENQ:
-            case ascii::ACK:
-            case ascii::VT:
-            case ascii::FF:
-            case ascii::SO:
-            case ascii::SI:
-            case ascii::DLE:
-            case ascii::DC1:
-            case ascii::DC2:
-            case ascii::DC3:
-            case ascii::DC4:
-            case ascii::NAK:
-            case ascii::SYN:
-            case ascii::ETB:
-            case ascii::EM:
-            case ascii::SUB:
-            case ascii::FS:
-            case ascii::GS:
-            case ascii::RS:
-            case ascii::US:
-            case ascii::DEL:
-                // From manual, these characters are not processed by the terminal
-                break;
+        case ascii::NUL:
+        case ascii::SOH:
+        case ascii::STX:
+        case ascii::ETX:
+        case ascii::EOT:
+        case ascii::ENQ:
+        case ascii::ACK:
+        case ascii::VT:
+        case ascii::FF:
+        case ascii::SO:
+        case ascii::SI:
+        case ascii::DLE:
+        case ascii::DC1:
+        case ascii::DC2:
+        case ascii::DC3:
+        case ascii::DC4:
+        case ascii::NAK:
+        case ascii::SYN:
+        case ascii::ETB:
+        case ascii::EM:
+        case ascii::SUB:
+        case ascii::FS:
+        case ascii::GS:
+        case ascii::RS:
+        case ascii::US:
+        case ascii::DEL:
+            // From manual, these characters are not processed by the terminal
+            break;
 
-            case ascii::BEL: // Rings the bell.
-                /// \todo - implement ringing bell.
-                consoleLog("<BEL>");
-                break;
+        case ascii::BEL: // Rings the bell.
+            /// \todo - implement ringing bell.
+            consoleLog("<BEL>");
+            break;
 
-            case ascii::BS: // Backspace
-                consoleLog("<BS>");
-                processBS();
-                break;
+        case ascii::BS: // Backspace
+            consoleLog("<BS>");
+            processBS();
+            break;
 
-            case ascii::HT: // Horizontal Tab
-                consoleLog("<TAB>");
-                processTAB();
-                break;
+        case ascii::HT: // Horizontal Tab
+            consoleLog("<TAB>");
+            processTAB();
+            break;
 
-            case ascii::LF: // Line Feed
-                processLF();
+        case ascii::LF: // Line Feed
+            processLF();
 
-                if (autoCR_m)
-                {
-                    processCR();
-                }
-
-                consoleLog("\n");
-                break;
-
-            case ascii::CR: // Carriage Return
+            if (autoCR_m)
+            {
                 processCR();
+            }
 
-                if (autoLF_m)
-                {
-                    processLF();
-                }
+            consoleLog("\n");
+            break;
 
-                break;
+        case ascii::CR: // Carriage Return
+            processCR();
 
-            case ascii::CAN: // Cancel.
-                break;
+            if (autoLF_m)
+            {
+                processLF();
+            }
 
-            case ascii::ESC: // Escape
-                mode_m = Escape;
-                consoleLog("<ESC>");
-                break;
+            break;
 
-            default:
-                // if Printable character display it.
-                displayCharacter(ch);
-                break;
+        case ascii::CAN: // Cancel.
+            break;
+
+        case ascii::ESC: // Escape
+            mode_m = Escape;
+            consoleLog("<ESC>");
+            break;
+
+        default:
+            // if Printable character display it.
+            displayCharacter(ch);
+            break;
         }
     }
     else if (mode_m == Escape)
@@ -123,207 +123,207 @@ void TermH19::putChar(uint32_t ch)
 
         switch (ch)
         {
-            case ascii::CAN: // CAN - Cancel
-                // return to Normal mode, already set.
-                break;
+        case ascii::CAN: // CAN - Cancel
+            // return to Normal mode, already set.
+            break;
 
-            case ascii::ESC: // Escape
-                // From the ROM listing, stay in this mode.
-                mode_m = Escape;
-                break;
+        case ascii::ESC: // Escape
+            // From the ROM listing, stay in this mode.
+            mode_m = Escape;
+            break;
 
             // Cursor Functions
 
-            case 'H': // Cursor Home
-                _cursor._col = _cursor._row = 0;
-                _cursor._updated = true;
-                break;
+        case 'H': // Cursor Home
+            _cursor._col = _cursor._row = 0;
+            _cursor._updated = true;
+            break;
 
-            case 'C': // Cursor Forward
-                cursorForward();
-                break;
+        case 'C': // Cursor Forward
+            cursorForward();
+            break;
 
-            case 'D':        // Cursor Backward
-                processBS(); // same processing as cursor backward
-                break;
+        case 'D':        // Cursor Backward
+            processBS(); // same processing as cursor backward
+            break;
 
-            case 'B': // Cursor Down
-                cursorDown();
-                break;
+        case 'B': // Cursor Down
+            cursorDown();
+            break;
 
-            case 'A': // Cursor Up
-                cursorUp();
-                break;
+        case 'A': // Cursor Up
+            cursorUp();
+            break;
 
-            case 'I': // Reverse Index
-                reverseIndex();
-                break;
+        case 'I': // Reverse Index
+            reverseIndex();
+            break;
 
-            case 'n': // Cursor Position Report
-                cursorPositionReport();
-                break;
+        case 'n': // Cursor Position Report
+            cursorPositionReport();
+            break;
 
-            case 'j': // Save cursor position
-                saveCursorPosition();
-                break;
+        case 'j': // Save cursor position
+            saveCursorPosition();
+            break;
 
-            case 'k': // Restore cursor position
-                restoreCursorPosition();
-                break;
+        case 'k': // Restore cursor position
+            restoreCursorPosition();
+            break;
 
-            case 'Y': // Direct Cursor Addressing
-                mode_m = DCA_1;
-                break;
+        case 'Y': // Direct Cursor Addressing
+            mode_m = DCA_1;
+            break;
 
             // Erase and Editing
 
-            case 'E': // Clear Display
-                clearDisplay();
-                break;
+        case 'E': // Clear Display
+            clearDisplay();
+            break;
 
-            case 'b': // Erase Beginning of Display
-                eraseBOD();
-                break;
+        case 'b': // Erase Beginning of Display
+            eraseBOD();
+            break;
 
-            case 'J': // Erase to End of Page
-                eraseEOP();
-                break;
+        case 'J': // Erase to End of Page
+            eraseEOP();
+            break;
 
-            case 'l': // Erase entire Line
-                eraseEL();
-                break;
+        case 'l': // Erase entire Line
+            eraseEL();
+            break;
 
-            case 'o': // Erase Beginning Of Line
-                eraseBOL();
-                break;
+        case 'o': // Erase Beginning Of Line
+            eraseBOL();
+            break;
 
-            case 'K': // Erase To End Of Line
-                eraseEOL();
-                break;
+        case 'K': // Erase To End Of Line
+            eraseEOL();
+            break;
 
-            case 'L': // Insert Line
-                insertLine();
-                break;
+        case 'L': // Insert Line
+            insertLine();
+            break;
 
-            case 'M': // Delete Line
-                deleteLine();
-                break;
+        case 'M': // Delete Line
+            deleteLine();
+            break;
 
-            case 'N': // Delete Character
-                deleteChar();
-                break;
+        case 'N': // Delete Character
+            deleteChar();
+            break;
 
-            case '@': // Enter Insert Character Mode
-                insertMode_m = true;
-                break;
+        case '@': // Enter Insert Character Mode
+            insertMode_m = true;
+            break;
 
-            case 'O': // Exit Insert Character Mode
-                insertMode_m = false;
-                break;
+        case 'O': // Exit Insert Character Mode
+            insertMode_m = false;
+            break;
 
             // Configuration
 
-            case 'z': // Reset To Power-Up Configuration
-                reset();
-                break;
+        case 'z': // Reset To Power-Up Configuration
+            reset();
+            break;
 
-            case 'r': // Modify the Baud Rate
-                break;
+        case 'r': // Modify the Baud Rate
+            break;
 
-            case 'x': // Set Mode
-                mode_m = SetMode;
-                break;
+        case 'x': // Set Mode
+            mode_m = SetMode;
+            break;
 
-            case 'y': // Reset Mode
-                mode_m = ResetMode;
-                break;
+        case 'y': // Reset Mode
+            mode_m = ResetMode;
+            break;
 
-            case '<': // Enter ANSI Mode
-                // implement ANSI mode.
-                setAnsiMode(true);
-                break;
+        case '<': // Enter ANSI Mode
+            // implement ANSI mode.
+            setAnsiMode(true);
+            break;
 
             // Modes of operation
 
-            case '[': // Enter Hold Screen Mode
-                holdScreen_m = true;
-                break;
+        case '[': // Enter Hold Screen Mode
+            holdScreen_m = true;
+            break;
 
-            case '\\': // Exit Hold Screen Mode
-                holdScreen_m = false;
-                break;
+        case '\\': // Exit Hold Screen Mode
+            holdScreen_m = false;
+            break;
 
-            case 'p': // Enter Reverse Video Mode
-                reverseVideo_m = true;
-                break;
+        case 'p': // Enter Reverse Video Mode
+            reverseVideo_m = true;
+            break;
 
-            case 'q': // Exit Reverse Video Mode
-                reverseVideo_m = false;
-                break;
+        case 'q': // Exit Reverse Video Mode
+            reverseVideo_m = false;
+            break;
 
-            case 'F': // Enter Graphics Mode
-                graphicMode_m = true;
-                break;
+        case 'F': // Enter Graphics Mode
+            graphicMode_m = true;
+            break;
 
-            case 'G': // Exit Graphics Mode
-                graphicMode_m = false;
-                break;
+        case 'G': // Exit Graphics Mode
+            graphicMode_m = false;
+            break;
 
-            case 't': // Enter Keypad Shifted Mode
-                keypadShifted_m = true;
-                break;
+        case 't': // Enter Keypad Shifted Mode
+            keypadShifted_m = true;
+            break;
 
-            case 'u': // Exit Keypad Shifted Mode
-                // ROM - just sets the mode
-                keypadShifted_m = false;
-                break;
+        case 'u': // Exit Keypad Shifted Mode
+            // ROM - just sets the mode
+            keypadShifted_m = false;
+            break;
 
-            case '=': // Enter Alternate Keypad Mode
-                // ROM - just sets the mode
-                keypadShifted_m = true;
-                break;
+        case '=': // Enter Alternate Keypad Mode
+            // ROM - just sets the mode
+            keypadShifted_m = true;
+            break;
 
-            case '>': // Exit Alternate Keypad Mode
-                // ROM - just sets the mode
-                keypadShifted_m = false;
-                break;
+        case '>': // Exit Alternate Keypad Mode
+            // ROM - just sets the mode
+            keypadShifted_m = false;
+            break;
 
             // Additional Functions
 
-            case '}': // Keyboard Disable
-                /// \todo - determine whether to do this.
-                keyboardEnabled_m = false;
-                break;
+        case '}': // Keyboard Disable
+            /// \todo - determine whether to do this.
+            keyboardEnabled_m = false;
+            break;
 
-            case '{': // Keyboard Enable
-                keyboardEnabled_m = true;
-                break;
+        case '{': // Keyboard Enable
+            keyboardEnabled_m = true;
+            break;
 
-            case 'v': // Wrap Around at End Of Line
-                wrapEOL_m = true;
-                break;
+        case 'v': // Wrap Around at End Of Line
+            wrapEOL_m = true;
+            break;
 
-            case 'w': // Discard At End Of Line
-                wrapEOL_m = false;
-                break;
+        case 'w': // Discard At End Of Line
+            wrapEOL_m = false;
+            break;
 
-            case 'Z': // Identify as VT52 (Data: ESC / K)
-                sendData(ascii::ESC);
-                sendData('/');
-                sendData('K');
-                break;
+        case 'Z': // Identify as VT52 (Data: ESC / K)
+            sendData(ascii::ESC);
+            sendData('/');
+            sendData('K');
+            break;
 
-            case ']': // Transmit 25th Line
-                transmitLine25();
-                break;
+        case ']': // Transmit 25th Line
+            transmitLine25();
+            break;
 
-            case '#': // Transmit Page
-                transmitPage();
-                break;
+        case '#': // Transmit Page
+            transmitPage();
+            break;
 
-            default:
-                LogWrite(FromTermH19, LOG_DEBUG, "UnhandledESC %02x", ch);
-                break;
+        default:
+            LogWrite(FromTermH19, LOG_DEBUG, "UnhandledESC %02x", ch);
+            break;
         }
     }
     else if (mode_m == SetMode)
@@ -332,48 +332,48 @@ void TermH19::putChar(uint32_t ch)
 
         switch (ch)
         {
-            case '1': // Enable 25th line
-                // From the ROM, it erases line 25 on the enable, but here we erase on the disable.
-                line25_m = true;
-                break;
+        case '1': // Enable 25th line
+            // From the ROM, it erases line 25 on the enable, but here we erase on the disable.
+            line25_m = true;
+            break;
 
-            case '2': // No key click
-                keyClick_m = true;
-                break;
+        case '2': // No key click
+            keyClick_m = true;
+            break;
 
-            case '3': // Hold screen mode
-                holdScreen_m = true;
-                break;
+        case '3': // Hold screen mode
+            holdScreen_m = true;
+            break;
 
-            case '4': // Block Cursor
-                _cursor._blockCursor = true;
-                _cursor._updated = true;
-                break;
+        case '4': // Block Cursor
+            _cursor._blockCursor = true;
+            _cursor._updated = true;
+            break;
 
-            case '5': // Cursor Off
-                _cursor._off = true;
-                _cursor._updated = true;
-                break;
+        case '5': // Cursor Off
+            _cursor._off = true;
+            _cursor._updated = true;
+            break;
 
-            case '6': // Keypad Shifted
-                keypadShifted_m = true;
-                break;
+        case '6': // Keypad Shifted
+            keypadShifted_m = true;
+            break;
 
-            case '7': // Alternate Keypad mode
-                altKeypadMode_m = true;
-                break;
+        case '7': // Alternate Keypad mode
+            altKeypadMode_m = true;
+            break;
 
-            case '8': // Auto LF
-                autoLF_m = true;
-                break;
+        case '8': // Auto LF
+            autoLF_m = true;
+            break;
 
-            case '9': // Auto CR
-                autoCR_m = true;
-                break;
+        case '9': // Auto CR
+            autoCR_m = true;
+            break;
 
-            default:
-                /// Need to process ch as if none of this happened...
-                break;
+        default:
+            /// Need to process ch as if none of this happened...
+            break;
         }
     }
     else if (mode_m == ResetMode)
@@ -382,48 +382,48 @@ void TermH19::putChar(uint32_t ch)
 
         switch (ch)
         {
-            case '1': // Disable 25th line
-                eraseLine(_rowsMain);
-                line25_m  = false;
-                _cursor._updated = true;
-                break;
+        case '1': // Disable 25th line
+            eraseLine(_rowsMain);
+            line25_m = false;
+            _cursor._updated = true;
+            break;
 
-            case '2': // key click
-                keyClick_m = false;
-                break;
+        case '2': // key click
+            keyClick_m = false;
+            break;
 
-            case '3': // Hold screen mode
-                holdScreen_m = false;
-                break;
+        case '3': // Hold screen mode
+            holdScreen_m = false;
+            break;
 
-            case '4': // Block Cursor
-                _cursor._blockCursor = false;
-                _cursor._updated = true;
-                break;
+        case '4': // Block Cursor
+            _cursor._blockCursor = false;
+            _cursor._updated = true;
+            break;
 
-            case '5': // Cursor On
-                _cursor._off = false;
-                _cursor._updated = true;
-                break;
+        case '5': // Cursor On
+            _cursor._off = false;
+            _cursor._updated = true;
+            break;
 
-            case '6': // Keypad Unshifted
-                keypadShifted_m = false;
-                break;
+        case '6': // Keypad Unshifted
+            keypadShifted_m = false;
+            break;
 
-            case '7': // Exit Alternate Keypad mode
-                altKeypadMode_m = false;
-                break;
+        case '7': // Exit Alternate Keypad mode
+            altKeypadMode_m = false;
+            break;
 
-            case '8': // No Auto LF
-                autoLF_m = false;
-                break;
+        case '8': // No Auto LF
+            autoLF_m = false;
+            break;
 
-            case '9': // No Auto CR
-                autoCR_m = false;
-                break;
+        case '9': // No Auto CR
+            autoCR_m = false;
+            break;
 
-            default:
-                break;
+        default:
+            break;
         }
     }
     else if (mode_m == DCA_1)
@@ -444,7 +444,7 @@ void TermH19::putChar(uint32_t ch)
             int pos = ch - 31;
 
             // verify valid Position
-            if (((pos > 0) && (pos < (signed) _rows)) || ((pos == (signed) _rows) && (line25_m)))
+            if (((pos > 0) && (pos < (signed)_rows)) || ((pos == (signed)_rows) && (line25_m)))
             {
                 _cursor._row = pos - 1;
             }
@@ -478,7 +478,7 @@ void TermH19::putChar(uint32_t ch)
             }
 
             _cursor._updated = true;
-            mode_m    = Normal;
+            mode_m = Normal;
         }
     }
 }
@@ -490,13 +490,12 @@ void TermH19::setAnsiMode(bool on)
 
 /// \brief Process Carriage Return
 ///
-void
-TermH19::processCR()
+void TermH19::processCR()
 {
     // check to possibly save the update.
     if (_cursor._col)
     {
-        _cursor._col    = 0;
+        _cursor._col = 0;
         _cursor._updated = true;
     }
 }
@@ -504,8 +503,7 @@ TermH19::processCR()
 /// \brief Process Line Feed
 ///
 /// \todo - verify line 25 handling. make sure it doesn't clear line 25.
-void
-TermH19::processLF()
+void TermH19::processLF()
 {
     // LogWrite(FromTermH19, LOG_DEBUG, "processLF row %d col %d rowsMain %d", _cursor._row, _cursor._col, _rowsMain);
     if (onLine25())
@@ -530,8 +528,7 @@ TermH19::processLF()
 
 /// \brief Process Backspace
 ///
-void
-TermH19::processBS()
+void TermH19::processBS()
 {
     if (_cursor._col)
     {
@@ -542,14 +539,13 @@ TermH19::processBS()
 
 /// \brief Process TAB
 ///
-void
-TermH19::processTAB()
+void TermH19::processTAB()
 {
     if (_cursor._col < 72)
     {
-        _cursor._col   += 8;
+        _cursor._col += 8;
         // mask off the lower 3 bits to get the correct column.
-        _cursor._col   &= 0xf8;
+        _cursor._col &= 0xf8;
         _cursor._updated = true;
     }
     else if (_cursor._col < (_cols - 1))
@@ -561,21 +557,19 @@ TermH19::processTAB()
 
 /// \brief Process Cursor Home
 /// \todo - Determine how these function in relation to line 25..
-void
-TermH19::cursorHome()
+void TermH19::cursorHome()
 {
     if (_cursor._col || _cursor._row)
     {
-        _cursor._col    = 0;
-        _cursor._row    = 0;
+        _cursor._col = 0;
+        _cursor._row = 0;
         _cursor._updated = true;
     }
 }
 
 /// \brief Process Cursor Forward
 ///
-void
-TermH19::cursorForward()
+void TermH19::cursorForward()
 {
     // ROM comment says that it will wrap around when at pos 80, but the code does not do that,
     // and verifying on a real H89, even with wrap-around enabled, the cursor will not wrap.
@@ -588,8 +582,7 @@ TermH19::cursorForward()
 
 /// \brief Process cursor down
 ///
-void
-TermH19::cursorDown()
+void TermH19::cursorDown()
 {
     // ROM - Moves the cursor down one line on the display but does not cause a scroll past
     // the last line
@@ -602,8 +595,7 @@ TermH19::cursorDown()
 
 /// \brief Process cursor up
 /// \todo determine if this is correct with line 25.
-void
-TermH19::cursorUp()
+void TermH19::cursorUp()
 {
     if (_cursor._row)
     {
@@ -615,12 +607,11 @@ TermH19::cursorUp()
 ///
 /// \brief Process reverse index
 ///
-void
-TermH19::reverseIndex()
+void TermH19::reverseIndex()
 {
     if (!_pCharBuffer)
         return;
-        
+
     // Check for being on line 25
     if (onLine25())
     {
@@ -641,7 +632,7 @@ TermH19::reverseIndex()
         {
             for (unsigned int x = 0; x < _cols; ++x)
             {
-                _pCharBuffer[y*_cols+x] = _pCharBuffer[(y - 1)*_cols+x];
+                _pCharBuffer[y * _cols + x] = _pCharBuffer[(y - 1) * _cols + x];
             }
         }
 
@@ -654,21 +645,18 @@ TermH19::reverseIndex()
 /// \brief Process cursor position report
 ///
 /// Send ESC Y <_cursor._row+0x20> <_cursor._col+0x20>
-void
-TermH19::cursorPositionReport()
+void TermH19::cursorPositionReport()
 {
     // Send ESC Y <_cursor._row+0x20> <_cursor._col+0x20>
     sendData(ascii::ESC);
     sendData('Y');
     sendData(_cursor._row + 0x20);
     sendData(_cursor._col + 0x20);
-
 }
 
 /// \brief Process save cursor position
 ///
-void
-TermH19::saveCursorPosition()
+void TermH19::saveCursorPosition()
 {
     saveX_m = _cursor._col;
     saveY_m = _cursor._row;
@@ -676,21 +664,17 @@ TermH19::saveCursorPosition()
 
 /// \brief process restore cursor position
 ///
-void
-TermH19::restoreCursorPosition()
+void TermH19::restoreCursorPosition()
 {
-    _cursor._col    = saveX_m;
-    _cursor._row    = saveY_m;
-
+    _cursor._col = saveX_m;
+    _cursor._row = saveY_m;
     _cursor._updated = true;
 }
-
 
 // Erasing and Editing
 
 /// \brief Clear Display
-void
-TermH19::clearDisplay()
+void TermH19::clearDisplay()
 {
     // if on line 25, then only erase line 25
     if (onLine25())
@@ -714,8 +698,7 @@ TermH19::clearDisplay()
 
 /// \brief Erase to Beginning of display
 ///
-void
-TermH19::eraseBOD()
+void TermH19::eraseBOD()
 {
     eraseBOL();
 
@@ -736,8 +719,7 @@ TermH19::eraseBOD()
 
 /// \brief Erase to End of Page
 ///
-void
-TermH19::eraseEOP()
+void TermH19::eraseEOP()
 {
     eraseEOL();
     unsigned int y = _cursor._row + 1;
@@ -748,24 +730,20 @@ TermH19::eraseEOP()
         eraseLine(y);
         ++y;
     }
-
     _cursor._updated = true;
 }
 
 /// \brief Erase to End of Line
 ///
-void
-TermH19::eraseEL()
+void TermH19::eraseEL()
 {
     eraseLine(_cursor._row);
-
     _cursor._updated = true;
 }
 
 /// \brief Erase to beginning of line
 ///
-void
-TermH19::eraseBOL()
+void TermH19::eraseBOL()
 {
     if (!_pCharBuffer)
         return;
@@ -774,18 +752,16 @@ TermH19::eraseBOL()
 
     do
     {
-        _pCharBuffer[_cursor._row*_cols+x]._charCode = ascii::SP;
+        _pCharBuffer[_cursor._row * _cols + x]._charCode = ascii::SP;
         x--;
-    }
-    while (x >= 0);
+    } while (x >= 0);
 
     _cursor._updated = true;
 }
 
 /// \brief erase to end of line
 ///
-void
-TermH19::eraseEOL()
+void TermH19::eraseEOL()
 {
     if (!_pCharBuffer)
         return;
@@ -793,18 +769,16 @@ TermH19::eraseEOL()
 
     do
     {
-        _pCharBuffer[_cursor._row*_cols+x]._charCode = ascii::SP;
+        _pCharBuffer[_cursor._row * _cols + x]._charCode = ascii::SP;
         x++;
-    }
-    while (x < _cols);
+    } while (x < _cols);
 
     _cursor._updated = true;
 }
 
 /// \brief insert line
 ///
-void
-TermH19::insertLine()
+void TermH19::insertLine()
 {
     if (!_pCharBuffer)
         return;
@@ -816,13 +790,13 @@ TermH19::insertLine()
     {
         for (unsigned int x = 0; x < _cols; ++x)
         {
-            _pCharBuffer[y*_cols+x] = _pCharBuffer[(y - 1)*_cols+x];
+            _pCharBuffer[y * _cols + x] = _pCharBuffer[(y - 1) * _cols + x];
         }
     }
 
     eraseLine(_cursor._row);
 
-    _cursor._col    = 0;
+    _cursor._col = 0;
 
     _cursor._updated = true;
 }
@@ -832,8 +806,7 @@ TermH19::insertLine()
 /// \todo - Determine how the REAL H89 does this on Line 25, the ROM listing is not clear.
 /// - a real H19 messes up with either an insert or delete line on line 25.
 /// - note tested with early H19, newer H19 roms should have this fixed.
-void
-TermH19::deleteLine()
+void TermH19::deleteLine()
 {
     if (!_pCharBuffer)
         return;
@@ -846,20 +819,18 @@ TermH19::deleteLine()
     {
         for (unsigned int x = 0; x < _cols; ++x)
         {
-            _pCharBuffer[y*_cols+x] = _pCharBuffer[(y + 1)*_cols+x];
+            _pCharBuffer[y * _cols + x] = _pCharBuffer[(y + 1) * _cols + x];
         }
     }
 
     // clear line 24.
     eraseLine((_rowsMain - 1));
-
     _cursor._updated = true;
 }
 
 /// \brief delete character
 ///
-void
-TermH19::deleteChar()
+void TermH19::deleteChar()
 {
     if (!_pCharBuffer)
         return;
@@ -867,16 +838,15 @@ TermH19::deleteChar()
     // move all character in.
     for (unsigned int x = _cursor._col; x < (_cols - 1); x++)
     {
-        _pCharBuffer[_cursor._row*_cols+x] = _pCharBuffer[_cursor._row*_cols+x+1];
+        _pCharBuffer[_cursor._row * _cols + x] = _pCharBuffer[_cursor._row * _cols + x + 1];
     }
 
     // clear the last column
-    _pCharBuffer[_cursor._row*_cols+_cols - 1]._charCode = ascii::SP;
+    _pCharBuffer[_cursor._row * _cols + _cols - 1]._charCode = ascii::SP;
     _cursor._updated = true;
 }
 
-void
-TermH19::eraseLine(unsigned int line)
+void TermH19::eraseLine(unsigned int line)
 {
     if (!_pCharBuffer)
         return;
@@ -885,14 +855,13 @@ TermH19::eraseLine(unsigned int line)
 
     for (unsigned int x = 0; x < _cols; ++x)
     {
-        _pCharBuffer[line*_cols+x]._charCode = ascii::SP;
+        _pCharBuffer[line * _cols + x]._charCode = ascii::SP;
     }
 };
 
 /// \brief Process enable line 25.
 ///
-void
-TermH19::processEnableLine25()
+void TermH19::processEnableLine25()
 {
     // From the ROM, it erases line 25 on the enable, but here we erase on the disable.
     //
@@ -906,17 +875,16 @@ void TermH19::displayCharacter(unsigned int ch)
     // when in graphic mode, use this lookup table to determine character to display,
     // note: although entries 0 to 31 are defined, they are not used, since the control
     // characters are specifically checked in the switch statement.
-    static char  graphicLookup[0x80] =
-    {
-        0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14,  15,
-        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,  31,
-        32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46,  47,
-        48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62,  63,
-        64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78,  79,
-        80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 127, 31,
-        0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14,  15,
-        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30,  32
-    };
+    static char graphicLookup[0x80] =
+        {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+            16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+            32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
+            48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
+            64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79,
+            80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 127, 31,
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+            16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 32};
 
     unsigned int symbol;
 
@@ -948,7 +916,7 @@ void TermH19::displayCharacter(unsigned int ch)
     {
         for (unsigned int x = (_cols - 1); x > _cursor._col; --x)
         {
-            _pCharBuffer[_cursor._row*_cols+x] = _pCharBuffer[_cursor._row*_cols+x-1];
+            _pCharBuffer[_cursor._row * _cols + x] = _pCharBuffer[_cursor._row * _cols + x - 1];
         }
     }
 
@@ -979,8 +947,8 @@ void TermH19::displayCharacter(unsigned int ch)
         }
     }
 
-    _pCharBuffer[_cursor._row*_cols+_cursor._col]._charCode = symbol;
+    _pCharBuffer[_cursor._row * _cols + _cursor._col]._charCode = symbol;
     _cursor._col++;
 
-    _cursor._updated                = true;
+    _cursor._updated = true;
 }
