@@ -14,6 +14,8 @@ public:
     bool _updated;
     bool _off;
     bool _blockCursor;
+    uint32_t _cursorChar;
+    uint32_t _replacedChar;
 
     TermCursor()
     {
@@ -27,6 +29,8 @@ public:
         _updated = false;
         _off = false;
         _blockCursor = false;
+        _cursorChar = '_';
+        _replacedChar = ' ';
     }
 };
 
@@ -57,6 +61,8 @@ public:
 class TermEmu
 {
 public:
+    static const int MAX_ROWS = 100;
+    static const int MAX_COLS = 500;
     TermEmu();
     virtual ~TermEmu();
     virtual void init(uint32_t cols, uint32_t rows);

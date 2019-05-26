@@ -83,15 +83,10 @@ McTerminal::McTerminal() : McBase(_defaultDescriptorTables, sizeof(_defaultDescr
         _pTerminalEmulation->init(80, 25);
 
     // Copy descriptor table
-    _termCols = DEFAULT_TERM_COLS;
-    _termRows = DEFAULT_TERM_ROWS;
     _screenCacheDirty = true;
-    _cursorShow = true;
     _cursorBlinkLastUs = 0;
     _cursorBlinkRateMs = 500;
-    _cursorIsOn = false;
-    _cursorChar = '_';
-    // clearScreen();
+    _cursorIsShown = false;
 }
 
 // Enable machine
@@ -144,39 +139,18 @@ void McTerminal::displayRefreshFromMirrorHw()
         for (uint32_t i = 0; i < gotChars; i++)
         {
             // Send to terminal window
-            // dispChar(charBuf[i], _pDisplay);
             if (_pTerminalEmulation)
                 _pTerminalEmulation->putChar(charBuf[i]);
         }
     }
 
-    // Update the display on the Pi Zero
-    // if (screenChanged)
-    // {
-    //     for (int k = 0; k < _termRows; k++) 
-    //     {
-    //         for (int i = 0; i < _termCols; i++)
-    //         {
-    //             int cellIdx = k * _termCols + i;
-    //             if (!_screenBufferValid || (_screenBuffer[cellIdx] != _screenChars[cellIdx]))
-    //             {
-    //                 _pDisplay->write(i, k, _screenChars[cellIdx]);
-    //                 _screenBuffer[cellIdx] = _screenChars[cellIdx];
-    //             }
-    //         }
-    //     }
-    // }
     // _screenBufferValid = true;
     if (_pTerminalEmulation)
     {
         if (_screenCacheDirty || _pTerminalEmulation->hasChanged())
         {
-            if (_cursorIsOn)
-            {
-                int cellIdx = _pTerminalEmulation->_cursor._row * _pTerminalEmulation->_cols + _pTerminalEmulation->_cursor._col;
-                _pDisplay->write(_pTerminalEmulation->_cursor._col, _pTerminalEmulation->_cursor._row, _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode);
-                _cursorIsOn = false;
-            }
+            if (_cursorIsShown)
+                _pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._replacedChar);
             for (uint32_t k = 0; k < _pTerminalEmulation->_rows; k++) 
             {
                 for (uint32_t i = 0; i < _pTerminalEmulation->_cols; i++)
@@ -189,26 +163,47 @@ void McTerminal::displayRefreshFromMirrorHw()
                     }
                 }
             }
+            if (_cursorIsShown)
+            {
+                // Stash location
+                _cursorInfo = _pTerminalEmulation->_cursor;
+                int cellIdx = _cursorInfo._row * _pTerminalEmulation->_cols + _cursorInfo._col;
+                _cursorInfo._replacedChar = _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode;
+                // Show cursor
+                _pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._cursorChar);
+            }
         }
         _screenCacheDirty = false;
+        _pTerminalEmulation->_cursor._updated = false;
 
         // Show the cursor as required
         if (!_pTerminalEmulation->_cursor._off)
         {
             if (isTimeout(micros(), _cursorBlinkLastUs, _cursorBlinkRateMs*1000))
             {
-                if (_cursorIsOn)
+                if (!_cursorIsShown)
                 {
-                    int cellIdx = _pTerminalEmulation->_cursor._row * _pTerminalEmulation->_cols + _pTerminalEmulation->_cursor._col;
-                    _pDisplay->write(_pTerminalEmulation->_cursor._col, _pTerminalEmulation->_cursor._row, _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode);
+                    // Stash location
+                    _cursorInfo = _pTerminalEmulation->_cursor;
+                    int cellIdx = _cursorInfo._row * _pTerminalEmulation->_cols + _cursorInfo._col;
+                    _cursorInfo._replacedChar = _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode;
+                    // Show cursor
+                    _pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._cursorChar);
                 }
                 else
                 {
-                    _pDisplay->write(_pTerminalEmulation->_cursor._col, _pTerminalEmulation->_cursor._row, _cursorChar);
+                    // Replace cursor
+                    _pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._replacedChar);
                 }
-                _cursorIsOn = !_cursorIsOn;
+                _cursorIsShown = !_cursorIsShown;
                 _cursorBlinkLastUs = micros();
             }
+        }
+        else
+        {
+            if (_cursorIsShown)
+                _pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._replacedChar);
+            _cursorIsShown = false;
         }
     }
 }
@@ -293,17 +288,17 @@ int McTerminal::convertRawToAscii(unsigned char ucModifiers, const unsigned char
         // Handle DELETE
         asciiCode = 0x7F;
     } else if (rawKey == KEY_UP) {
-        // Handle Up
-        asciiCode = 0x11;
+        // Handle Up = Ctrl-E
+        asciiCode = 0x05;
     } else if (rawKey == KEY_DOWN) {
-        // Handle Down
-        asciiCode = 0x12;
+        // Handle Down = Ctrl-X
+        asciiCode = 0x18;
     } else if (rawKey == KEY_LEFT) {
-        // Handle Left
+        // Handle Left = Ctrl - S
         asciiCode = 0x13;
     } else if (rawKey == KEY_RIGHT) {
-        // Handle Right
-        asciiCode = 0x14;
+        // Handle Right = Ctrl -D
+        asciiCode = 0x04;
     } else if (rawKey == KEY_SPACE) {
         // Handle Space
         asciiCode = 0x20;
@@ -352,111 +347,6 @@ bool McTerminal::fileHandler(const char* pFileInfo, const uint8_t* pFileData, in
     TargetState::addMemoryBlock(baseAddr, pFileData, fileLen);
     return true;
 }
-
-// void McTerminal::clearScreen()
-// {
-//     for (int i = 0; i < _termRows * _termCols; i++)
-//         _screenChars[i] = ' ';
-//     _curPosX = 0;
-//     _curPosY = 0;
-// }
-
-// void McTerminal::dispChar(uint8_t ch, DisplayBase* pDisplay)
-// {
-//     switch(ch)
-//     {
-//         case 0x0d:
-//         {
-//             moveAndCheckCurPos(-1, -1, 0, 1, pDisplay);
-//             break;
-//         }
-//         case 0x0a:
-//         {
-//             _curPosX = 0;
-//             break;
-//         }
-//         case 0x08:
-//         {
-//             moveAndCheckCurPos(-1, -1, -1, 0, pDisplay);
-//             _screenChars[_curPosY * _termCols + _curPosX] = ' ';
-//             break;
-//         }
-//         case 0x0c:
-//         {
-//             clearScreen();
-//             break;
-//         }
-//         case 0x09:
-//         {
-//             break;
-//         }
-//         default:
-//         {
-//             // Show char at cursor
-//             _screenChars[_curPosY * _termCols + _curPosX] = ch;
-
-//             // Move cursor
-//             moveAndCheckCurPos(-1, -1, 1, 0, pDisplay);
-//             break;
-//         }
-//     }
-// }
-
-// void McTerminal::vscrollBuffer(int rows)
-// {
-//     if (rows >= _termRows)
-//     {
-//         clearScreen();
-//         return;
-//     }
-
-//     // Move chars
-//     int charsToMove = (_termRows - rows) * _termCols;
-//     int charsToWipe = rows * _termCols;
-//     memcpy(_screenChars, _screenChars+charsToWipe, charsToMove);
-
-//     // Clear remaining
-//     for (int i = charsToMove; i < _termRows * _termCols; i++)
-//         _screenChars[i] = ' ';
-
-//     // Set buffer dirty to ensure rewritten
-//     _screenBufferValid = false;
-// }
-
-// void McTerminal::moveAndCheckCurPos(int absX, int absY, int relX, int relY, DisplayBase* pDisplay)
-// {
-//     if (_cursorIsOn)
-//     {
-//         int cellIdx = _curPosY * _termCols + _curPosX;
-//         if (pDisplay)
-//             pDisplay->write(_curPosX, _curPosY, _screenChars[cellIdx]);
-//     }
-//     // LogWrite("Th", LOG_DEBUG, "%d %d %d %d cur %d %d", absX, absY, relX, relY, _curPosX, _curPosY);
-//     if (absX >= 0)
-//         _curPosX = absX;
-//     if (absY >= 0)
-//         _curPosY = absY;
-//     if (_curPosX+relX >= 0)
-//         _curPosX += relX;
-//     else
-//         _curPosX = 0;
-//     _curPosY += relY;
-//     if (_curPosX >= _termCols)
-//     {
-//         _curPosX = 0;
-//         _curPosY++;
-//     }
-//     if (_curPosY >= _termRows)
-//     {
-//         vscrollBuffer(1);
-//         _curPosY -= 1;
-//     }
-//     if (_curPosX < 0)
-//         _curPosX = 0;
-//     if (_curPosY < 0)
-//         _curPosY = 0;
-//     // LogWrite("Th", LOG_DEBUG, "after %d %d %d %d cur %d %d", absX, absY, relX, relY, _curPosX, _curPosY);
-// }
 
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
 void McTerminal::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 

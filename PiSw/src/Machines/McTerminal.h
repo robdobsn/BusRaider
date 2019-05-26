@@ -10,21 +10,12 @@ class McTerminal : public McBase
 {
 private:
     static const char* _logPrefix;
-    static const int DEFAULT_TERM_COLS = 80;
-    static const int DEFAULT_TERM_ROWS = 30;
-    static const int MAX_TERM_COLS = 120;
-    static const int MAX_TERM_ROWS = 50;
-    int _termCols;
-    int _termRows;
-    uint8_t _screenCache[MAX_TERM_ROWS * MAX_TERM_COLS];
+    uint8_t _screenCache[TermEmu::MAX_ROWS * TermEmu::MAX_COLS];
     bool _screenCacheDirty;
-    int _curPosX;
-    int _curPosY;
-    bool _cursorShow;
     uint32_t _cursorBlinkLastUs;
     uint32_t _cursorBlinkRateMs;
-    bool _cursorIsOn;
-    uint8_t _cursorChar;
+    bool _cursorIsShown;
+    TermCursor _cursorInfo;
 
     static McDescriptorTable _defaultDescriptorTables[];
 
@@ -32,6 +23,7 @@ private:
     static const int SHIFT_DIGIT_KEY_MAP_LEN = 10;
     static int _shiftDigitKeyMap[SHIFT_DIGIT_KEY_MAP_LEN];
 
+    // Terminal emulation maintains an in-memory image of the screen
     TermEmu* _pTerminalEmulation;
 
 public:

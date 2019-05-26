@@ -30,7 +30,7 @@ void TermAnsi::reset()
     _ansiParamsNum = 0;
     _arg = 0;
     _vtIgnored = false;
-    for (int i = 0; i < MAX_ANSI_TERMINAL_LINES; i++)
+    for (int i = 0; i < TermEmu::MAX_ROWS; i++)
         _lineDirty[i] = true;
     _curAttrs._backColour = TermChar::TERM_DEFAULT_BACK_COLOUR;
     _curAttrs._foreColour = TermChar::TERM_DEFAULT_FORE_COLOUR;
@@ -41,6 +41,8 @@ void TermAnsi::reset()
 
 void TermAnsi::putChar(uint32_t ch)
 {
+    // LogWrite(FromTermAnsi, LOG_DEBUG, "TermRx %02x", ch);
+
     if (handleAnsiChar(ch))
         return;
     writeCharAtCurs(ch);
@@ -157,12 +159,17 @@ void TermAnsi::clearlines(size_t rowIdx, size_t numRows)
 
 void TermAnsi::writeCharAtCurs(int ch)
 {
-    _pCharBuffer[_cursor._row * _cols + _cursor._col]._charCode = ch;
-    _pCharBuffer[_cursor._row * _cols + _cursor._col]._backColour = _curAttrs._backColour;
-    _pCharBuffer[_cursor._row * _cols + _cursor._col]._foreColour = _curAttrs._foreColour;
-    _pCharBuffer[_cursor._row * _cols + _cursor._col]._attribs = _curAttrs._attribs;
-    _cursor._updated = true;
+    // LogWrite(FromTermAnsi, LOG_DEBUG, "TermRx %02x", ch);
 
+    // Add character to buffer
+    int cellIdx = _cursor._row * _cols + _cursor._col;
+    _pCharBuffer[cellIdx]._charCode = ch;
+    _pCharBuffer[cellIdx]._backColour = _curAttrs._backColour;
+    _pCharBuffer[cellIdx]._foreColour = _curAttrs._foreColour;
+    _pCharBuffer[cellIdx]._attribs = _curAttrs._attribs;
+    dirtylines(_cursor._row, _cursor._row);
+
+    // Bump cursor
     if (_cursor._col < _cols - 1)
         _cursor._col++;
     else
@@ -171,11 +178,15 @@ void TermAnsi::writeCharAtCurs(int ch)
         _cursor._row++;
     }
 
+    // Scroll if needed
     if (_cursor._row >= _rows)
     {
         _cursor._row = _rows - 1;
         scrollUp(0, 1);
     }
+
+    // Cursor position changed
+    _cursor._updated = true;
 }
 
 void TermAnsi::scrollUp(size_t startRow, size_t n)

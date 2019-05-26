@@ -105,11 +105,9 @@ private:
 
     bool _vtIgnored;
 
-    static const int MAX_TABS_LINE_LEN = 250;
-    TermChar _tabLine[MAX_TABS_LINE_LEN];
+    TermChar _tabLine[MAX_COLS];
 
-    static const int MAX_ANSI_TERMINAL_LINES = 500;
-    bool _lineDirty[MAX_ANSI_TERMINAL_LINES];
+    bool _lineDirty[MAX_ROWS];
 
     TermChar _curAttrs;
     TermChar _oldAttrs;
