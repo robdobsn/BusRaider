@@ -107,10 +107,17 @@ private:
     static bool _busActionCodeWrittenAtResetVector;
 
     // Display refresh
-    #define REFRESH_RATE_WINDOW_SIZE_MS 1000
+    static const int REFRESH_RATE_WINDOW_SIZE_MS = 1000;
     static uint32_t _refreshCount;
     static int _refreshRate;
     static uint32_t _refreshLastUpdateUs;
     static uint32_t _refreshLastCountResetUs;
+
+    // Screen mirroring
+    static const int SCREEN_MIRROR_REFRESH_US = 50000;
+    static bool _screenMirrorOut;
+    static uint32_t _screenMirrorLastUs;
+    static const int SCREEN_MIRROR_FULL_REFRESH_COUNT = 100;
+    static uint32_t _screenMirrorCount;
 
 };

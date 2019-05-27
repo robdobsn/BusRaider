@@ -348,20 +348,20 @@ void BusRaiderApp::serviceGetFromSerial()
     }    
 }
 
-void BusRaiderApp::usbKeypressHandlerStatic(unsigned char ucModifiers, const unsigned char rawKeys[NUM_USB_KEYS_PASSED])
+void BusRaiderApp::usbKeypressHandlerStatic(unsigned char ucModifiers, const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED])
 {
     // Place in ring buffer
     if (_keyInfoBufferPos.canPut())
     {
         KeyInfo* pKeyInfo = (&_keyInfoBuffer[_keyInfoBufferPos.posToPut()]);
-        for (int i = 0; i < NUM_USB_KEYS_PASSED; i++)
+        for (int i = 0; i < CommandHandler::NUM_USB_KEYS_PASSED; i++)
             pKeyInfo->rawKeys[i] = rawKeys[i];
         pKeyInfo->modifiers = ucModifiers;
         _keyInfoBufferPos.hasPut();
     }
 }
 
-void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned char rawKeys[NUM_USB_KEYS_PASSED])
+void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED])
 {
     // Check for immediate mode
     if (rawKeys[0] == KEY_F2)

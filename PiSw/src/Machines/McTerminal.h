@@ -10,8 +10,8 @@ class McTerminal : public McBase
 {
 private:
     static const char* _logPrefix;
-    uint8_t _screenCache[TermEmu::MAX_ROWS * TermEmu::MAX_COLS];
-    bool _screenCacheDirty;
+    TermChar _screenCache[TermEmu::MAX_ROWS * TermEmu::MAX_COLS];
+    TermChar _screenMirrorCache[TermEmu::MAX_ROWS * TermEmu::MAX_COLS];
     uint32_t _cursorBlinkLastUs;
     uint32_t _cursorBlinkRateMs;
     bool _cursorIsShown;
@@ -25,6 +25,9 @@ private:
 
     // Terminal emulation maintains an in-memory image of the screen
     TermEmu* _pTerminalEmulation;
+
+    // Helpers
+    void invalidateScreenCaches(bool mirrorOnly);
 
 public:
 
@@ -53,4 +56,7 @@ public:
 
     // Convert raw USB code to ASCII
     static int convertRawToAscii(unsigned char ucModifiers, const unsigned char rawKeys[6]);
+
+    // Get changes made since last mirror display update
+    virtual uint32_t getMirrorChanges(uint8_t* pMirrorChangeBuf, uint32_t mirrorChangeMaxLen, bool forceGetAll);
 };

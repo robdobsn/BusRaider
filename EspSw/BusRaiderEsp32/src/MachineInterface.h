@@ -20,8 +20,6 @@
 #include "RestAPIEndpoints.h"
 #include "DebounceButton.h"
 
-// #define USE_WEBSOCKET_TERMINAL 1
-
 class MachineInterface
 {
 private:
@@ -41,11 +39,6 @@ private:
 
     // Command serial ptr (copy)
     CommandSerial* _pCommandSerial;
-
-    // Web socket for communication of keystrokes
-#ifdef USE_WEBSOCKET_TERMINAL
-    AsyncWebSocket* _pWebSocket;
-#endif
 
     // Telnet server
     AsyncTelnetServer* _pTelnetServer;
@@ -112,13 +105,6 @@ public:
     const char *getStatus();
     void handleDemoModeButtonPress(int buttonLevel);
 
-    // int convertEscKey(String& keyStr);
+    void sendKeyToTarget(int keyCode);
 
-#ifdef USE_WEBSOCKET_TERMINAL
-    void wsEventHandler(AsyncWebSocket *server,
-                        AsyncWebSocketClient *client,
-                        AwsEventType type,
-                        void *arg, uint8_t *data,
-                        size_t len);
-#endif
 };

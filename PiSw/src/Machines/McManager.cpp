@@ -115,6 +115,9 @@ uint32_t McManager::_refreshCount = 0;
 uint32_t McManager::_refreshLastUpdateUs = 0;
 uint32_t McManager::_refreshLastCountResetUs = 0;
 int McManager::_refreshRate = 0;
+bool McManager::_screenMirrorOut = false;
+uint32_t McManager::_screenMirrorCount = 0;
+uint32_t McManager::_screenMirrorLastUs = 0;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Init
@@ -142,6 +145,10 @@ void McManager::init(DisplayBase* pDisplay)
     // Refresh init
     _refreshCount = 0;
     _refreshLastUpdateUs = 0;
+    
+    // Screen mirroring
+    _screenMirrorOut = true;
+    _screenMirrorLastUs = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -150,6 +157,27 @@ void McManager::init(DisplayBase* pDisplay)
 
 void McManager::service()
 {
+    // Check for screen mirroring
+    if (_screenMirrorOut && _pCurMachine)
+    {
+        if (isTimeout(micros(), _screenMirrorLastUs, SCREEN_MIRROR_REFRESH_US))
+        {
+            // See if time to force a full refresh
+            bool forceGetAll = false;
+            if (_screenMirrorCount++ > SCREEN_MIRROR_FULL_REFRESH_COUNT)
+            {
+                forceGetAll = true;
+                _screenMirrorCount = 0;
+            }
+            // Check for changes
+            uint8_t mirrorChanges[McBase::MAX_MIRROR_CHANGE_BUF_LEN];
+            uint32_t mirrorChangeLen = _pCurMachine->getMirrorChanges(mirrorChanges, McBase::MAX_MIRROR_CHANGE_BUF_LEN, forceGetAll);
+            // LogWrite(FromMcManager, LOG_DEBUG, "Change len %d", mirrorChangeLen);
+            if (mirrorChangeLen > 0)
+            CommandHandler::sendWithJSON("mirrorScreen", "", 0, mirrorChanges, mirrorChangeLen);
+            _screenMirrorLastUs = micros();
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -591,6 +619,21 @@ bool McManager::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t*
     {
         // LogWrite(FromMcManager, LOG_VERBOSE, "RxFromHost, len %d", dataLen);
         hostSerialAddRxCharsToBuffer(pParams, paramsLen);
+        return true;
+    }
+    else if (strcasecmp(cmdName, "sendKey") == 0)
+    {
+        char* pEnd = NULL;
+        uint8_t usbKeyCodes[CommandHandler::NUM_USB_KEYS_PASSED];
+        memset(usbKeyCodes, 0, sizeof(usbKeyCodes));
+        int asciiCode = strtol((const char*)pParams, &pEnd, 10);
+        usbKeyCodes[0] = strtol(pEnd, &pEnd, 10);
+        int usbModCode = strtol(pEnd, &pEnd, 10);
+        asciiCode = asciiCode;
+        // LogWrite(FromMcManager, LOG_DEBUG, "SendKey, %s ascii 0x%02x usbKey 0x%02x usbMod 0x%02x", 
+        //             pParams, asciiCode, usbKeyCodes[0], usbModCode);
+        if (_pCurMachine)
+            _pCurMachine->keyHandler(usbModCode, usbKeyCodes);
         return true;
     }
     return false;

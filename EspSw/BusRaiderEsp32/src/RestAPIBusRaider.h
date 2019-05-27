@@ -67,6 +67,7 @@ public:
     void apiESPFirmwarePart(String& req, String& filename, size_t contentLen, size_t index, 
                     uint8_t *data, size_t len, bool finalBlock);
     void apiESPFirmwareUpdateDone(String &reqStr, String &respStr);
+    void apiSendKey(String &reqStr, String &respStr);
 
     // Setup endpoints
     void setup(RestAPIEndpoints &endpoints);

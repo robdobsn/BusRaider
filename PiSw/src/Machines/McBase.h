@@ -101,6 +101,16 @@ public:
     // Bus action complete callback
     virtual void busActionCompleteCallback(BR_BUS_ACTION actionType) = 0;
 
+    // Mirror change buffer max length
+    static const int MAX_MIRROR_CHANGE_BUF_LEN = 1000;
+
+    // Get changes made since last mirror display update
+    virtual uint32_t getMirrorChanges([[maybe_unused]] uint8_t* pMirrorChangeBuf, 
+                [[maybe_unused]] uint32_t mirrorChangeMaxLen, [[maybe_unused]] bool forceGetAll)
+    {
+        return 0;
+    }
+
 protected:
     // Descriptor tables
     McDescriptorTable _activeDescriptorTable;

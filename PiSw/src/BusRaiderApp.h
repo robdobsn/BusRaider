@@ -77,13 +77,12 @@ private:
 
     // Updates, etc
     static const int STATUS_UPDATE_TIME_MS = 1000;
-    static const int NUM_USB_KEYS_PASSED = 6;
     void clear();
     void statusDisplayUpdate();
     static void putToSerial(const uint8_t* pBuf, int len);
     static void serviceGetFromSerial();
-    static void usbKeypressHandlerStatic(unsigned char ucModifiers, const unsigned char rawKeys[NUM_USB_KEYS_PASSED]);
-    void usbKeypressHandler(unsigned char ucModifiers, const unsigned char rawKeys[NUM_USB_KEYS_PASSED]);
+    static void usbKeypressHandlerStatic(unsigned char ucModifiers, const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED]);
+    void usbKeypressHandler(unsigned char ucModifiers, const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED]);
     static bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
                 char* pRespJson, int maxRespLen);
     void storeESP32StatusInfo(const char* pCmdJson);

@@ -38,8 +38,9 @@ class TermChar
 {
 public:
 
-    static const uint32_t TERM_DEFAULT_FORE_COLOUR = 15;
-    static const uint32_t TERM_DEFAULT_BACK_COLOUR = 0;
+    static const uint8_t TERM_DEFAULT_FORE_COLOUR = 15;
+    static const uint8_t TERM_DEFAULT_BACK_COLOUR = 0;
+    static const uint8_t TERM_ATTR_INVALID_CODE = 0xff;
 
     TermChar()
     {
@@ -52,10 +53,23 @@ public:
         _backColour = TERM_DEFAULT_BACK_COLOUR;
         _attribs = 0;
     }
-    uint8_t _charCode;
-    uint32_t _foreColour;
-    uint32_t _backColour;
-    uint32_t _attribs;
+    bool equals(TermChar& otherCh)
+    {
+        return _charVal == otherCh._charVal;
+    }
+    union
+    {
+        #pragma pack(push, 1)
+        struct
+        {
+            uint8_t _charCode;
+            uint8_t _foreColour;
+            uint8_t _backColour;
+            uint8_t _attribs;
+        };
+        #pragma pack(pop)
+        uint32_t _charVal;
+    };
 };
 
 class TermEmu

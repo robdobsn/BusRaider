@@ -82,8 +82,8 @@ McTerminal::McTerminal() : McBase(_defaultDescriptorTables, sizeof(_defaultDescr
     if (_pTerminalEmulation)
         _pTerminalEmulation->init(80, 25);
 
-    // Copy descriptor table
-    _screenCacheDirty = true;
+    // Init
+    invalidateScreenCaches(false);
     _cursorBlinkLastUs = 0;
     _cursorBlinkRateMs = 500;
     _cursorIsShown = false;
@@ -106,8 +106,8 @@ void McTerminal::enable()
         _pTerminalEmulation->init(_activeDescriptorTable.displayPixelsX/_activeDescriptorTable.displayCellX, 
                     _activeDescriptorTable.displayPixelsY/_activeDescriptorTable.displayCellY);
 
-    // Invalidate screen cache
-    _screenCacheDirty = true;
+    // Invalidate screen caches
+    invalidateScreenCaches(false);
 }
 
 // Disable machine
@@ -147,7 +147,7 @@ void McTerminal::displayRefreshFromMirrorHw()
     // _screenBufferValid = true;
     if (_pTerminalEmulation)
     {
-        if (_screenCacheDirty || _pTerminalEmulation->hasChanged())
+        if (_pTerminalEmulation->hasChanged())
         {
             if (_cursorIsShown)
                 _pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._replacedChar);
@@ -156,10 +156,10 @@ void McTerminal::displayRefreshFromMirrorHw()
                 for (uint32_t i = 0; i < _pTerminalEmulation->_cols; i++)
                 {
                     uint32_t cellIdx = k * _pTerminalEmulation->_cols + i;
-                    if (_screenCacheDirty || (_screenCache[cellIdx] != _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode))
+                    if (!_screenCache[cellIdx].equals(_pTerminalEmulation->_pCharBuffer[cellIdx]))
                     {
                         _pDisplay->write(i, k, _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode);
-                        _screenCache[cellIdx] = _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode;
+                        _screenCache[cellIdx] = _pTerminalEmulation->_pCharBuffer[cellIdx];
                     }
                 }
             }
@@ -173,7 +173,6 @@ void McTerminal::displayRefreshFromMirrorHw()
                 _pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._cursorChar);
             }
         }
-        _screenCacheDirty = false;
         _pTerminalEmulation->_cursor._updated = false;
 
         // Show the cursor as required
@@ -206,6 +205,65 @@ void McTerminal::displayRefreshFromMirrorHw()
             _cursorIsShown = false;
         }
     }
+}
+
+uint32_t McTerminal::getMirrorChanges(uint8_t* pMirrorChangeBuf, uint32_t mirrorChangeMaxLen, bool forceGetAll)
+{
+    // Go through mirror cache and find changes
+    uint32_t curPos = 0;
+
+    // If time to force get of all screen info then invalidate the cache
+    if (forceGetAll)
+        invalidateScreenCaches(true);
+
+    // Add the screen dimensions to the buffer first
+    if (!pMirrorChangeBuf || (mirrorChangeMaxLen < 10))
+        return 0;
+    pMirrorChangeBuf[curPos++] = _pTerminalEmulation->_cols;
+    pMirrorChangeBuf[curPos++] = _pTerminalEmulation->_rows;
+    uint32_t mirrorChangeStart = curPos;
+
+    // Add the packed character changes
+    #pragma pack(push, 1)
+    struct {
+        uint8_t col;
+        uint8_t row;
+        uint8_t ch;
+        uint8_t fore;
+        uint8_t back;
+        uint8_t attr;
+    } changeElemPacked;
+    #pragma pack(pop)
+    bool bufFull = false;
+    for (uint32_t k = 0; k < _pTerminalEmulation->_rows; k++) 
+    {
+        if (bufFull)
+            break;
+        for (uint32_t i = 0; i < _pTerminalEmulation->_cols; i++)
+        {
+            uint32_t cellIdx = k * _pTerminalEmulation->_cols + i;
+            if (!_screenMirrorCache[cellIdx].equals(_pTerminalEmulation->_pCharBuffer[cellIdx]))
+            {
+                if (curPos + sizeof(changeElemPacked) > mirrorChangeMaxLen)
+                {
+                    bufFull = true;
+                    break;
+                }
+                changeElemPacked.col = i;
+                changeElemPacked.row = k;
+                changeElemPacked.ch = _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode;
+                changeElemPacked.fore = _pTerminalEmulation->_pCharBuffer[cellIdx]._foreColour;
+                changeElemPacked.back = _pTerminalEmulation->_pCharBuffer[cellIdx]._backColour;
+                changeElemPacked.attr = _pTerminalEmulation->_pCharBuffer[cellIdx]._attribs;
+                memcpy(pMirrorChangeBuf+curPos, &changeElemPacked, sizeof(changeElemPacked));
+                curPos += sizeof(changeElemPacked);
+                _screenMirrorCache[cellIdx] = _pTerminalEmulation->_pCharBuffer[cellIdx];
+            }
+        }
+    }
+    // LogWrite(_logPrefix, LOG_DEBUG, "Packing %d", sizeof(_screenMirrorCache));
+
+    return (mirrorChangeStart == curPos) ? 0 : curPos;
 }
 
 int McTerminal::convertRawToAscii(unsigned char ucModifiers, const unsigned char rawKeys[6])
@@ -311,12 +369,12 @@ void McTerminal::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_
 {
     int asciiCode = convertRawToAscii(ucModifiers, rawKeys);
 
+    // LogWrite(_logPrefix, LOG_DEBUG, "ASCII %02x RAWKEY %02x %02x %02x %02x %02x %02x Mod %02x",
+    //                 asciiCode, rawKeys[0], rawKeys[1], rawKeys[2], rawKeys[3], rawKeys[4], rawKeys[5], ucModifiers);
+
     // Send chars to host
     if (asciiCode < 0)
         return;
-
-    // LogWrite(_logPrefix, LOG_DEBUG, "ASCII %02x RAWKEY %02x %02x %02x %02x %02x %02x Mod %02x",
-    //                 asciiCode, rawKeys[0], rawKeys[1], rawKeys[2], rawKeys[3], rawKeys[4], rawKeys[5], ucModifiers);
 
     // Send to host
     McManager::sendKeyCodeToTargetStatic(asciiCode);
@@ -357,4 +415,15 @@ void McTerminal::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unuse
 // Bus action complete callback
 void McTerminal::busActionCompleteCallback([[maybe_unused]] BR_BUS_ACTION actionType)
 {
+}
+
+void McTerminal::invalidateScreenCaches(bool mirrorOnly)
+{
+    if (mirrorOnly)
+    {
+        for (uint32_t i = 0; i < sizeof(_screenCache)/sizeof(_screenCache[0]); i++)
+            _screenCache[i]._attribs = TermChar::TERM_ATTR_INVALID_CODE;    
+    }
+    for (uint32_t i = 0; i < sizeof(_screenMirrorCache)/sizeof(_screenMirrorCache[0]); i++)
+        _screenMirrorCache[i]._attribs = TermChar::TERM_ATTR_INVALID_CODE;    
 }

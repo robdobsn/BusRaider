@@ -72,6 +72,9 @@ public:
     // Max length of machine set command
     static const int MAX_MC_SET_JSON_LEN = 10000;
 
+    // Keys passed in keyHandler
+    static const int NUM_USB_KEYS_PASSED = 6;
+
     // Send key code to target
     static void sendKeyCodeToTargetStatic(int keyCode);
     void sendKeyCodeToTarget(int keyCode);

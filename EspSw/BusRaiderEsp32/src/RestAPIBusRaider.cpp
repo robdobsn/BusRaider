@@ -60,20 +60,6 @@ void RestAPIBusRaider::apiTargetCommandPostContent(const String &reqStr, uint8_t
     _commandSerial.sendTargetData(targetCmd.c_str(), pData, len, 0);
 }
 
-#ifdef SUPPORT_WEB_TERMINAL_REST
-void RestAPIBusRaider::apiPostCharsDone(String &reqStr, String &respStr)
-{
-    bool rslt = true;
-    Utils::setJsonBoolResult(respStr, rslt);
-}
-
-void RestAPIBusRaider::apiPostCharsBody(uint8_t *data, size_t len, size_t index, size_t total)
-{
-    // Log.trace("Rest %s %d %d %d\n", ss, len, index, total);
-    // machineInterface.sendSerialRxDataToHost(data, len);
-}
-#endif
-
 void RestAPIBusRaider::apiUploadToFileManComplete(String &reqStr, String &respStr)
 {
     Log.trace("%sapiUploadToFileManComplete %s\n", MODULE_PREFIX, reqStr.c_str());
@@ -263,6 +249,34 @@ void RestAPIBusRaider::apiESPFirmwareUpdateDone(String &reqStr, String &respStr)
     Utils::setJsonBoolResult(respStr, true);
 }
 
+void RestAPIBusRaider::apiSendKey(String &reqStr, String &respStr)
+{
+    bool rslt = true;
+    // Get command
+    String keyCode = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 1);
+    String usbCode = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 2);
+    String modCode = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 3);
+    String combinedCode = keyCode + " " + usbCode + " " + modCode;
+    // Log.trace("%sapiSendKey %s usb %s mod %s\n", MODULE_PREFIX, keyCode.c_str(), usbCode.c_str(), modCode.c_str());
+    // _machineInterface.sendKeyToTarget(keyCode.toInt());
+    _commandSerial.sendTargetData("sendKey", (const uint8_t*)combinedCode.c_str(), combinedCode.length()+1, 0);
+    Utils::setJsonBoolResult(respStr, rslt);
+}
+
+#ifdef SUPPORT_WEB_TERMINAL_REST
+void RestAPIBusRaider::apiPostCharsDone(String &reqStr, String &respStr)
+{
+    bool rslt = true;
+    Utils::setJsonBoolResult(respStr, rslt);
+}
+
+void RestAPIBusRaider::apiPostCharsBody(uint8_t *data, size_t len, size_t index, size_t total)
+{
+    // Log.trace("Rest %s %d %d %d\n", ss, len, index, total);
+    // machineInterface.sendSerialRxDataToHost(data, len);
+}
+#endif
+
 void RestAPIBusRaider::setup(RestAPIEndpoints &endpoints)
 {
     // Get initial config
@@ -305,20 +319,6 @@ void RestAPIBusRaider::setup(RestAPIEndpoints &endpoints)
                         std::bind(&RestAPIBusRaider::runFileOnTarget, this,
                                 std::placeholders::_1, std::placeholders::_2),
                         "Run file on target - /fileSystem/filename - from file system");                            
-#ifdef SUPPORT_WEB_TERMINAL_REST
-    endpoints.addEndpoint("postchars", 
-                        RestAPIEndpointDef::ENDPOINT_CALLBACK, 
-                        RestAPIEndpointDef::ENDPOINT_POST, 
-                        std::bind(&RestAPIBusRaider::apiPostCharsDone, this,
-                                std::placeholders::_1, std::placeholders::_2),
-                        "PostChars to host machine", "application/json", 
-                        NULL, 
-                        true, 
-                        NULL,
-                        std::bind(&RestAPIBusRaider::apiPostCharsBody, this, 
-                                std::placeholders::_1, std::placeholders::_2, 
-                                std::placeholders::_3, std::placeholders::_4));
-#endif
     endpoints.addEndpoint("uploadpisw", 
                         RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                         RestAPIEndpointDef::ENDPOINT_POST,
@@ -426,4 +426,24 @@ void RestAPIBusRaider::setup(RestAPIEndpoints &endpoints)
                                 std::placeholders::_3, std::placeholders::_4,
                                 std::placeholders::_5, std::placeholders::_6,
                                 std::placeholders::_7));
+    endpoints.addEndpoint("sendKey", 
+                        RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                        RestAPIEndpointDef::ENDPOINT_GET, 
+                        std::bind(&RestAPIBusRaider::apiSendKey, this,
+                                std::placeholders::_1, std::placeholders::_2),
+                        "Send key from terminal window");    
+#ifdef SUPPORT_WEB_TERMINAL_REST
+    endpoints.addEndpoint("postchars", 
+                        RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                        RestAPIEndpointDef::ENDPOINT_POST, 
+                        std::bind(&RestAPIBusRaider::apiPostCharsDone, this,
+                                std::placeholders::_1, std::placeholders::_2),
+                        "PostChars to host machine", "application/json", 
+                        NULL, 
+                        true, 
+                        NULL,
+                        std::bind(&RestAPIBusRaider::apiPostCharsBody, this, 
+                                std::placeholders::_1, std::placeholders::_2, 
+                                std::placeholders::_3, std::placeholders::_4));
+#endif
 }

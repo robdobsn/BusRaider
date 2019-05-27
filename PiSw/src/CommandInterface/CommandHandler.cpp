@@ -49,7 +49,7 @@ CommandHandler::CommandHandler() :
     _receivedFileBufSize = 0;
     _receivedFileBytesRx = 0;
     _receivedBlockCount = 0;
-    
+
     // TODO
     // _rdpMsgCountIn = 0;
     // _rdpMsgCountOut = 0;
@@ -490,7 +490,7 @@ void CommandHandler::sendWithJSON(const char* cmdName, const char* cmdJson, uint
     // Form and send command
     // This takes the form of a binary buffer, the first part is a JSON string null terminated
     // This JSON contains a dataLen value which determines the length of the binary part that follows
-    // The binary part immediately follows the null terminator of the JSON
+    // A pure binary part immediately follows the null terminator of the JSON
     // It is also null terminated and the null terminator is not included in the dataLan value
     static const int MAX_DATAFRAME_LEN = 10000;
     static char dataFrame[MAX_DATAFRAME_LEN];
@@ -605,6 +605,7 @@ void CommandHandler::service()
         _miniHDLC.sendFrame((const uint8_t*)keyStr, strlen(keyStr)+1);
     }
 
+    // Check for screen mirroring
 
     // TODO
     // if (isTimeout(micros(), _rdpTimeUs, 5000000))
