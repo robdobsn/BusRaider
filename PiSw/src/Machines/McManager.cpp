@@ -297,7 +297,7 @@ bool McManager::setMachineByName(const char* mcName)
 bool McManager::setupMachine(const char* mcJson)
 {
     // Extract machine name
-    static const int MAX_MC_NAME_LEN = 200;
+    static const int MAX_MC_NAME_LEN = 100;
     char mcName [MAX_MC_NAME_LEN];
     if (!jsonGetValueForKey("name", mcJson, mcName, MAX_MC_NAME_LEN))
         return false;
@@ -337,6 +337,25 @@ bool McManager::setupMachine(const char* mcJson)
     // Enable wait generation as required
     BusAccess::waitOnIO(_busSocketId, _pCurMachine->getDescriptorTable()->monitorIORQ);
     BusAccess::waitOnMemory(_busSocketId, _pCurMachine->getDescriptorTable()->monitorMREQ);
+
+    // See if any files to load
+    static const int MAX_FILE_NAME_LEN = 100;
+    char loadName [MAX_FILE_NAME_LEN];
+    if (jsonGetValueForKey("load", mcJson, loadName, MAX_FILE_NAME_LEN))
+    {
+        // Request the file from the ESP32
+        static const int MAX_API_REQ_LEN = 200;
+        char apiReqStr[MAX_API_REQ_LEN];
+        strlcpy(apiReqStr, "runfileontarget//", MAX_API_REQ_LEN);
+        strlcat(apiReqStr, loadName, MAX_API_REQ_LEN);
+        // Send command to ESP32
+        CommandHandler::sendAPIReq(apiReqStr);
+        LogWrite(FromMcManager, LOG_DEBUG, "runFileOnTarget %s", apiReqStr);
+    }
+    else
+    {
+        LogWrite(FromMcManager, LOG_DEBUG, "no load cmd found");
+    }
 
     return true;
 }
