@@ -13,14 +13,14 @@
 static const int DISPLAY_WIDTH = 1600;
 static const int DISPLAY_HEIGHT = 900;
 
-static const int DISPLAY_TARGET_WIDTH = 1024;
-static const int DISPLAY_TARGET_HEIGHT = 768;
-
 static const int DISPLAY_TARGET_BORDER = 8;
 static const int DISPLAY_STATUS_LINES = 7;
 static const int DISPLAY_STATUS_MARGIN = 10;
 static const int DISPLAY_CONSOLE_MARGIN = 10;
 static const int DISPLAY_STATUS_INDENT = 40;
+
+static const int DISPLAY_TARGET_WIDTH = 1024;
+static const int DISPLAY_TARGET_HEIGHT = DISPLAY_HEIGHT - (2 * DISPLAY_TARGET_BORDER);
 
 static const int DISPLAY_WINDOW_TARGET = 0;
 static const int DISPLAY_WINDOW_STATUS = 1;
