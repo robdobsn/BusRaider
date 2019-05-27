@@ -798,7 +798,8 @@
             let modCodes = 0;
             if (event.ctrlKey)
                 modCodes |= 1;
-            if (event.shiftKey != event.getModifierState("CapsLock"))
+            let uniCh = event.charCode || event.keyCode;
+            if (event.shiftKey != (event.getModifierState("CapsLock") && ((uniCh >= 65) && (uniCh <= 90))))
                 modCodes |= 2;
             if (event.altKey)
                 modCodes |= 4;
@@ -806,7 +807,7 @@
         }
         function termKeyDown(event) {
             console.log(event);
-            if ((event.keyCode == 16) || (event.keyCode == 17) || (event.keyCode == 18)) {
+            if ((event.keyCode == 16) || (event.keyCode == 17) || (event.keyCode == 18) || (event.keyCode == 20)) {
                 // Ctrl, shift or Alt
                 return;
             }
@@ -848,8 +849,10 @@
                 usbKeyCode = 0x35;
             } else if ((uniCh === 188)) {
                 usbKeyCode = 0x36;
-            } else if ((uniCh === 191)) {
+            } else if ((uniCh === 190)) {
                 usbKeyCode = 0x37;
+            } else if ((uniCh === 191)) {
+                usbKeyCode = 0x38;
             } else if ((uniCh >= 112) && (uniCh <= 123)) {
                 usbKeyCode = uniCh - 112 + 0x3a;
             } else if ((uniCh === 45)) {
