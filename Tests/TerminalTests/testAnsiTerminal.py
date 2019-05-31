@@ -1,20 +1,28 @@
 from serial import Serial
+import time, sys
 
 with Serial('COM7', 115200) as s:
 
     s.write(b"\x1b[2J")
     s.write(b"\x1b[0;0H")
     # s.write(bytearray(f"\x1b[30m", "utf-8"))
-    s.write(bytearray(f"\x1b[7mHello", "utf-8"))
+    s.write(bytearray(f"\x1b[7mHello\x1b[0m", "utf-8"))
 
     s.write(b"\n\n\r")
     for i in range(8):
-        s.write(bytearray(f"\x1b[{30+i}m\x1b[7mHelloWorld\x1b[0m Hello\n\r", "utf-8"))
+        s.write(bytearray(f"\x1b[{30+i};1mHelloWorld\x1b[0m Hello\n\r", "utf-8"))
 
-    # for i in range(8):
-    #     s.write(bytearray(f"\x1b[{40+i}mHelloWorld\x1b[0m Hello\n\r", "utf-8"))
+    for i in range(8):
+        s.write(bytearray(f"\x1b[{40+i};1mHelloWorld\x1b[0m Hello\n\r", "utf-8"))
 
-    import time, sys
+    for i in range(0, 16):
+        for j in range(0, 16):
+            code = str(i * 16 + j)
+            scodes = "\u001b[38;5;" + code + "m " + code.ljust(4)
+            s.write(bytearray(scodes, "utf-8"))
+            time.sleep(0.01)
+        s.write(bytearray(f"\x1b[0m", "utf-8"))
+
     def loading():
         s.write(b"Loading...\r\n")
         for i in range(0, 100):

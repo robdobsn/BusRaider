@@ -72,7 +72,7 @@ bool TermAnsi::handleAnsiChar(uint8_t ch)
     ON(S_ARG, ";",          consumearg())
     ON(S_ARG, "?",          (void)0)
     ON(S_ARG, "0123456789", _arg = _arg * 10 + atoi(cs))
-    DO(S_ARG, "A",          _cursor._row = MAX(((P1(0) > _cursor._row ? 0 : _cursor._row - P1(0)), 0))
+    DO(S_ARG, "A",          _cursor._row = MAX(((P1(0) > _cursor._row) ? 0 : _cursor._row - P1(0)), 0))
     DO(S_ARG, "B",          _cursor._row = MIN(_cursor._row + P1(0), _rows - 1))
     DO(S_ARG, "C",          _cursor._col = MIN(_cursor._col + P1(0), _cols - 1))
     DO(S_ARG, "D",          _cursor._col = MIN(((P1(0) > _cursor._col) ? 0 :_cursor._col - P1(0)), _cursor._col))
@@ -309,9 +309,32 @@ void TermAnsi::rep()
 
 void TermAnsi::sgr()
 {
-    #define FGBG(c) *(P0(i) < 40 ? &_curAttrs._foreColour : &_curAttrs._backColour) = TermAnsi::mapAnsiColour(c)
-    uint8_t attrs;
-    attrs = _curAttrs._attribs;
+    #define FGBG(c) (*(P0(i) < 40 ? &_curAttrs._foreColour : &_curAttrs._backColour) = (c))
+
+    // Colour
+    if (_ansiParamsNum >= 1)
+    {
+        if ((P0(0) >= 30) && (P0(0) <= 48))
+        {
+            size_t i = 0;
+            if (_ansiParamsNum == 1)
+            {
+                FGBG((P0(0)-30) % 10);
+            }
+            else if ((_ansiParamsNum == 2) && (P0(1) == 1))
+            {
+                FGBG(((P0(0)-30) % 10) + 8);
+            }
+            else if ((_ansiParamsNum == 3) && (P0(1) == 5))
+            {
+                FGBG(P0(2));
+            }
+            return;
+        }
+    }
+
+    // Attribs
+    uint8_t attrs = _curAttrs._attribs;
     for (size_t i = 0; i < _ansiParamsNum; i++)
     {
         switch (P0(i))
@@ -348,42 +371,6 @@ void TermAnsi::sgr()
         case 10:
         case 11:
             // vt->acs = P0(0) > 10;
-            break;
-        case 30:
-        case 40:
-            FGBG(TMT_COLOR_BLACK);
-            break;
-        case 31:
-        case 41:
-            FGBG(TMT_COLOR_RED);
-            break;
-        case 32:
-        case 42:
-            FGBG(TMT_COLOR_GREEN);
-            break;
-        case 33:
-        case 43:
-            FGBG(TMT_COLOR_YELLOW);
-            break;
-        case 34:
-        case 44:
-            FGBG(TMT_COLOR_BLUE);
-            break;
-        case 35:
-        case 45:
-            FGBG(TMT_COLOR_MAGENTA);
-            break;
-        case 36:
-        case 46:
-            FGBG(TMT_COLOR_CYAN);
-            break;
-        case 37:
-        case 47:
-            FGBG(TMT_COLOR_WHITE);
-            break;
-        case 39:
-        case 49:
-            FGBG(TMT_COLOR_DEFAULT);
             break;
         }
     }

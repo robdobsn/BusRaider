@@ -604,13 +604,4 @@ void CommandHandler::service()
         ee_sprintf(keyStr, "{\"cmdName\":\"keyCode\",\"key\":%d}", keyCode);
         _miniHDLC.sendFrame((const uint8_t*)keyStr, strlen(keyStr)+1);
     }
-
-    // Check for screen mirroring
-
-    // TODO
-    // if (isTimeout(micros(), _rdpTimeUs, 5000000))
-    // {
-    //     LogWrite("pingo", LOG_DEBUG, "rdpmsgstevalcount %d", _rdpMsgCountIn);
-    //     _rdpTimeUs = micros();
-    // }
 }

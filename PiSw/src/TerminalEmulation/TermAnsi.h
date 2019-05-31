@@ -38,45 +38,6 @@ public:
     virtual void putChar(uint32_t ch);
     virtual void reset();
 
-    enum tmt_color_t {
-        TMT_COLOR_DEFAULT = -1,
-        TMT_COLOR_BLACK = 1,
-        TMT_COLOR_RED,
-        TMT_COLOR_GREEN,
-        TMT_COLOR_YELLOW,
-        TMT_COLOR_BLUE,
-        TMT_COLOR_MAGENTA,
-        TMT_COLOR_CYAN,
-        TMT_COLOR_WHITE,
-        TMT_COLOR_MAX
-    };
-
-    static DISPLAY_FX_COLOUR mapAnsiColour(uint8_t colr)
-    {
-        switch(colr)
-        {
-            case TMT_COLOR_BLACK:
-                return DISPLAY_FX_BLACK;
-            case TMT_COLOR_RED:
-                return DISPLAY_FX_RED;
-            case TMT_COLOR_GREEN:
-                return DISPLAY_FX_GREEN;
-            case TMT_COLOR_YELLOW:
-                return DISPLAY_FX_YELLOW;
-            case TMT_COLOR_BLUE:
-                return DISPLAY_FX_BLUE;
-            case TMT_COLOR_MAGENTA:
-                return DISPLAY_FX_PURPLE;
-            case TMT_COLOR_CYAN:
-                return DISPLAY_FX_CYAN;
-            case TMT_COLOR_WHITE:
-                return DISPLAY_FX_WHITE;
-            default:
-                return DISPLAY_FX_WHITE;
-        }
-        return DISPLAY_FX_WHITE;
-    }
-    
     static const uint32_t DEFAULT_ATTRIBS = 0;
 
     enum tmt_msg_t{
