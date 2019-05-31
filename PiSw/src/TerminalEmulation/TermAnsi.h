@@ -5,6 +5,7 @@
 #pragma once
 
 #include "TermEmu.h"
+#include "../System/DisplayBase.h"
 
 #define TMT_KEY_UP             "\033[A"
 #define TMT_KEY_DOWN           "\033[B"
@@ -50,18 +51,32 @@ public:
         TMT_COLOR_MAX
     };
 
-    union tmt_attrs {
-        struct {
-            bool bold : 1;
-            bool dim : 1;
-            bool underline : 1;
-            bool blink : 1;
-            bool reverse : 1;
-            bool invisible :1 ;
-        };
-        uint32_t attrs;
-    };
-
+    static DISPLAY_FX_COLOUR mapAnsiColour(uint8_t colr)
+    {
+        switch(colr)
+        {
+            case TMT_COLOR_BLACK:
+                return DISPLAY_FX_BLACK;
+            case TMT_COLOR_RED:
+                return DISPLAY_FX_RED;
+            case TMT_COLOR_GREEN:
+                return DISPLAY_FX_GREEN;
+            case TMT_COLOR_YELLOW:
+                return DISPLAY_FX_YELLOW;
+            case TMT_COLOR_BLUE:
+                return DISPLAY_FX_BLUE;
+            case TMT_COLOR_MAGENTA:
+                return DISPLAY_FX_PURPLE;
+            case TMT_COLOR_CYAN:
+                return DISPLAY_FX_CYAN;
+            case TMT_COLOR_WHITE:
+                return DISPLAY_FX_WHITE;
+            default:
+                return DISPLAY_FX_WHITE;
+        }
+        return DISPLAY_FX_WHITE;
+    }
+    
     static const uint32_t DEFAULT_ATTRIBS = 0;
 
     enum tmt_msg_t{

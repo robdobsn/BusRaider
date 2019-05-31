@@ -125,6 +125,7 @@ public:
     void windowPut(int winIdx, int col, int row, const char* pStr);
     void windowPut(int winIdx, int col, int row, int ch);
     void windowForeground(int winIdx, DISPLAY_FX_COLOUR colour);
+    void windowBackground(int winIdx, DISPLAY_FX_COLOUR colour);
     void windowSetPixel(int winIdx, int x, int y, int value, DISPLAY_FX_COLOUR colour);
 
     // Console

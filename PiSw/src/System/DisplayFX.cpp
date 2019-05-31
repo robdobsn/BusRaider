@@ -160,6 +160,14 @@ void DisplayFX::windowForeground(int winIdx, DISPLAY_FX_COLOUR colour)
     _windows[winIdx].windowForeground = colour;
 }
 
+void DisplayFX::windowBackground(int winIdx, DISPLAY_FX_COLOUR colour)
+{
+    // Validity
+    if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
+        return;
+    _windows[winIdx].windowBackground = colour;
+}
+
 void DisplayFX::windowSetPixel(int winIdx, int x, int y, int value, DISPLAY_FX_COLOUR colour)
 {
     unsigned char* pBuf = windowGetPFBXY(winIdx, x, y);

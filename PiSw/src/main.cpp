@@ -26,6 +26,9 @@
 static const char* PROG_VERSION = "Bus Raider V1.7.119 (C) Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "https://robdobson.com/tag/raider";
 
+// Send log data to display (as opposed to merging in the ESP32 log output)
+// #define LOG_TO_DISPLAY 1
+
 // Log string
 const char* FromMain = "Main";
 
@@ -44,6 +47,15 @@ McManager mcManager;
 
 // Bus Raider app
 BusRaiderApp busRaiderApp(display, mainUart);
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Debug to display
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void debugToDisplay(const char* pSeverity, const char* pSource, const char* pMsg)
+{
+    display.logDebug(pSeverity, pSource, pMsg);
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Main
@@ -73,6 +85,10 @@ extern "C" int main()
     display.statusPut(Display::STATUS_FIELD_PI_VERSION, Display::STATUS_NORMAL, PROG_VERSION);
     display.statusPut(Display::STATUS_FIELD_ESP_VERSION, Display::STATUS_FAIL, "ESP32 Not Connected");
     display.statusPut(Display::STATUS_FIELD_LINKS, Display::STATUS_NORMAL, PROG_LINKS_1);
+
+    #ifdef LOG_TO_DISPLAY
+    LogSetOutMsgFn(debugToDisplay);
+    #endif
 
     // Bus raider setup
     BusAccess::init();

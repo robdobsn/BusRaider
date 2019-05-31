@@ -45,6 +45,7 @@ class DisplayBase
 {
 public:
     virtual void foreground(DISPLAY_FX_COLOUR colour) = 0;
+    virtual void background(DISPLAY_FX_COLOUR colour) = 0;
     virtual void write(int col, int row, const char* pStr) = 0;
     virtual void write(int col, int row, int ch) = 0;
     virtual void setPixel(int x, int y, int value, DISPLAY_FX_COLOUR colour) = 0;

@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 #include "../System/logging.h"
+#include "../System/DisplayBase.h"
 
 class TermCursor
 {
@@ -38,8 +39,8 @@ class TermChar
 {
 public:
 
-    static const uint8_t TERM_DEFAULT_FORE_COLOUR = 15;
-    static const uint8_t TERM_DEFAULT_BACK_COLOUR = 0;
+    static const uint8_t TERM_DEFAULT_FORE_COLOUR = DISPLAY_FX_WHITE;
+    static const uint8_t TERM_DEFAULT_BACK_COLOUR = DISPLAY_FX_BLACK;
     static const uint8_t TERM_ATTR_INVALID_CODE = 0xff;
 
     TermChar()
@@ -57,6 +58,14 @@ public:
     {
         return _charVal == otherCh._charVal;
     }
+
+    static const uint8_t TERM_ATTR_BOLD = 0x01;
+    static const uint8_t TERM_ATTR_DIM = 0x02;
+    static const uint8_t TERM_ATTR_UNDERLINE = 0x04;
+    static const uint8_t TERM_ATTR_BLINK = 0x08;
+    static const uint8_t TERM_ATTR_REVERSE = 0x10;
+    static const uint8_t TERM_ATTR_INVISIBLE = 0x20;
+
     union
     {
         #pragma pack(push, 1)

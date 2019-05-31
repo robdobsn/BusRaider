@@ -48,6 +48,7 @@ public:
 
     // Window
     void windowForeground(int winIdx, DISPLAY_FX_COLOUR colour);
+    void windowBackground(int winIdx, DISPLAY_FX_COLOUR colour);
     void windowWrite(int winIdx, int col, int row, const char* pStr);
     void windowWrite(int winIdx, int col, int row, int ch);
     void windowSetPixel(int winIdx, int x, int y, int value, DISPLAY_FX_COLOUR colour);
@@ -57,9 +58,13 @@ public:
     void consolePut(int ch);
     void consoleForeground(DISPLAY_FX_COLOUR colour);
     int consoleGetWidth();
+ 
+    // Log debug
+    void logDebug(const char* pSeverity, const char* pSource, const char* pMsg);
 
     // Target window
     void foreground(DISPLAY_FX_COLOUR colour);
+    void background(DISPLAY_FX_COLOUR colour);
     void write(int col, int row, const char* pStr);
     void write(int col, int row, int ch);
     void setPixel(int x, int y, int value, DISPLAY_FX_COLOUR colour);

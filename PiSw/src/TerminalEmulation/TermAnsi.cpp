@@ -72,10 +72,10 @@ bool TermAnsi::handleAnsiChar(uint8_t ch)
     ON(S_ARG, ";",          consumearg())
     ON(S_ARG, "?",          (void)0)
     ON(S_ARG, "0123456789", _arg = _arg * 10 + atoi(cs))
-    DO(S_ARG, "A",          _cursor._row = MAX(_cursor._row - P1(0), 0))
+    DO(S_ARG, "A",          _cursor._row = MAX(((P1(0) > _cursor._row ? 0 : _cursor._row - P1(0)), 0))
     DO(S_ARG, "B",          _cursor._row = MIN(_cursor._row + P1(0), _rows - 1))
     DO(S_ARG, "C",          _cursor._col = MIN(_cursor._col + P1(0), _cols - 1))
-    DO(S_ARG, "D",          _cursor._col = MIN(_cursor._col - P1(0), _cursor._col))
+    DO(S_ARG, "D",          _cursor._col = MIN(((P1(0) > _cursor._col) ? 0 :_cursor._col - P1(0)), _cursor._col))
     DO(S_ARG, "E",          _cursor._col = 0; _cursor._row = MIN(_cursor._row + P1(0), _rows - 1))
     DO(S_ARG, "F",          _cursor._col = 0; _cursor._row = MAX(_cursor._row - P1(0), 0))
     DO(S_ARG, "G",          _cursor._col = MIN(P1(0) - 1, _cols - 1))
@@ -309,40 +309,41 @@ void TermAnsi::rep()
 
 void TermAnsi::sgr()
 {
-    #define FGBG(c) *(P0(i) < 40 ? &_curAttrs._foreColour : &_curAttrs._foreColour) = c
-    tmt_attrs attrs;
-    attrs.attrs = _curAttrs._attribs;
+    #define FGBG(c) *(P0(i) < 40 ? &_curAttrs._foreColour : &_curAttrs._backColour) = TermAnsi::mapAnsiColour(c)
+    uint8_t attrs;
+    attrs = _curAttrs._attribs;
     for (size_t i = 0; i < _ansiParamsNum; i++)
     {
         switch (P0(i))
         {
         case 0:
-            attrs.attrs = DEFAULT_ATTRIBS;
+            attrs = DEFAULT_ATTRIBS;
+            _curAttrs._foreColour = TermChar::TERM_DEFAULT_FORE_COLOUR;
+            _curAttrs._backColour = TermChar::TERM_DEFAULT_BACK_COLOUR;
             break;
         case 1:
         case 22:
-
-            attrs.bold = P0(0) < 20;
+            attrs |= ((P0(0) < 20) ? TermChar::TERM_ATTR_BOLD : 0);
             break;
         case 2:
         case 23:
-            attrs.dim = P0(0) < 20;
+            attrs |= ((P0(0) < 20) ? TermChar::TERM_ATTR_DIM : 0);
             break;
         case 4:
         case 24:
-            attrs.underline = P0(0) < 20;
+            attrs |= ((P0(0) < 20) ? TermChar::TERM_ATTR_UNDERLINE : 0);
             break;
         case 5:
         case 25:
-            attrs.blink = P0(0) < 20;
+            attrs |= ((P0(0) < 20) ? TermChar::TERM_ATTR_BLINK : 0);
             break;
         case 7:
         case 27:
-            attrs.reverse = P0(0) < 20;
+            attrs |= ((P0(0) < 20) ? TermChar::TERM_ATTR_REVERSE : 0);
             break;
         case 8:
         case 28:
-            attrs.invisible = P0(0) < 20;
+            attrs |= ((P0(0) < 20) ? TermChar::TERM_ATTR_INVISIBLE : 0);
             break;
         case 10:
         case 11:
@@ -386,7 +387,7 @@ void TermAnsi::sgr()
             break;
         }
     }
-    _curAttrs._attribs = attrs.attrs;
+    _curAttrs._attribs = attrs;
 }
 
 void TermAnsi::dsr()

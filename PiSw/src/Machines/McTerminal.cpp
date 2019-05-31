@@ -158,6 +158,16 @@ void McTerminal::displayRefreshFromMirrorHw()
                     uint32_t cellIdx = k * _pTerminalEmulation->_cols + i;
                     if (!_screenCache[cellIdx].equals(_pTerminalEmulation->_pCharBuffer[cellIdx]))
                     {
+                        if (_pTerminalEmulation->_pCharBuffer[cellIdx]._attribs & TermChar::TERM_ATTR_REVERSE)
+                        {
+                            _pDisplay->foreground((DISPLAY_FX_COLOUR) _pTerminalEmulation->_pCharBuffer[cellIdx]._backColour);
+                            _pDisplay->background((DISPLAY_FX_COLOUR) _pTerminalEmulation->_pCharBuffer[cellIdx]._foreColour);
+                        }
+                        else
+                        {
+                            _pDisplay->foreground((DISPLAY_FX_COLOUR) _pTerminalEmulation->_pCharBuffer[cellIdx]._foreColour);
+                            _pDisplay->background((DISPLAY_FX_COLOUR) _pTerminalEmulation->_pCharBuffer[cellIdx]._backColour);
+                        }
                         _pDisplay->write(i, k, _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode);
                         _screenCache[cellIdx] = _pTerminalEmulation->_pCharBuffer[cellIdx];
                     }

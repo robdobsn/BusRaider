@@ -130,6 +130,13 @@ void Display::windowForeground(int winIdx, DISPLAY_FX_COLOUR colour)
     _displayFX.windowForeground(winIdx, colour);
 }
 
+void Display::windowBackground(int winIdx, DISPLAY_FX_COLOUR colour)
+{
+    if (!_displayStarted)
+        return;
+    _displayFX.windowBackground(winIdx, colour);
+}
+
 void Display::windowWrite(int winIdx, int col, int row, const char* pStr)
 {
     if (!_displayStarted)
@@ -154,6 +161,12 @@ void Display::windowSetPixel(int winIdx, int x, int y, int value, DISPLAY_FX_COL
 void Display::foreground(DISPLAY_FX_COLOUR colour)
 {
     windowForeground(DISPLAY_WINDOW_TARGET, colour);
+}
+
+
+void Display::background(DISPLAY_FX_COLOUR colour)
+{
+    windowBackground(DISPLAY_WINDOW_TARGET, colour);
 }
 
 void Display::write(int col, int row, const char* pStr)
@@ -207,3 +220,13 @@ int Display::consoleGetWidth()
         return 0;
     return _displayFX.consoleGetWidth();
 }
+
+void Display::logDebug(const char* pSeverity, const char* pSource, const char* pMsg)
+{
+    consolePut(pSeverity);
+    consolePut(":");
+    consolePut(pSource);
+    consolePut(": ");
+    consolePut(pMsg);
+    consolePut("\n");
+}    
