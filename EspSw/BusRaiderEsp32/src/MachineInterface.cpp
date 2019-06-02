@@ -156,7 +156,7 @@ void MachineInterface::setup(ConfigBase &config,
             Log.trace("%sportNum %d, baudRate %d, rxPin, txPin\n",
                         MODULE_PREFIX, _targetSerialPortNum, _targetSerialBaudRate, 3, 1);
         }
-        _pTargetSerial->setRxBufferSize(4096);
+        _pTargetSerial->setRxBufferSize(8192);
     }
 
     // Get demo button
@@ -168,7 +168,7 @@ void MachineInterface::setup(ConfigBase &config,
         _debounceButton.setup(demoPin, 0,
                     std::bind(&MachineInterface::handleDemoModeButtonPress, this, std::placeholders::_1));
 
-    // Add web socket handler
+    // Add web socket handlers
     String wsPath = csConfig.getString("wsPath", "");
     if (wsPath.length() > 0)
         _pWebServer->webSocketOpen(wsPath);
