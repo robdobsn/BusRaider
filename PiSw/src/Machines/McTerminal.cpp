@@ -66,7 +66,7 @@ McDescriptorTable McTerminal::_defaultDescriptorTables[] = {
         // Interrupt rate per second
         .irqRate = 0,
         // Bus monitor
-        .monitorIORQ = true,
+        .monitorIORQ = false,
         .monitorMREQ = false,
         .setRegistersCodeAddr = 0
     }
@@ -75,7 +75,9 @@ McDescriptorTable McTerminal::_defaultDescriptorTables[] = {
 int McTerminal::_shiftDigitKeyMap[SHIFT_DIGIT_KEY_MAP_LEN] =
     { '!', '"', '#', '$', '%', '^', '&', '*', '(', ')' };
 
-McTerminal::McTerminal() : McBase(_defaultDescriptorTables, sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0]))
+McTerminal::McTerminal() : 
+    McBase(_defaultDescriptorTables, sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0])),
+    _sendToTargetBufPos(MAX_SEND_TO_TARGET_CHARS)
 {
     // Emulation
     _pTerminalEmulation = new TermAnsi();
@@ -87,6 +89,11 @@ McTerminal::McTerminal() : McBase(_defaultDescriptorTables, sizeof(_defaultDescr
     _cursorBlinkLastUs = 0;
     _cursorBlinkRateMs = 500;
     _cursorIsShown = false;
+
+    // Emulation of uarts
+    _emulate6850 = false;
+    _emulationInterruptOnRx = false;
+    _emulateSIO = false;
 }
 
 // Enable machine
@@ -113,6 +120,35 @@ void McTerminal::enable()
 // Disable machine
 void McTerminal::disable()
 {
+}
+
+// Setup machine from JSON
+bool McTerminal::setupMachine(const char* mcName, const char* mcJson)
+{
+    // Setup via base class implementation
+    bool rslt = McBase::setupMachine(mcName, mcJson);
+
+    // Check for variations
+    _emulate6850 = false;
+    _emulationInterruptOnRx = false;
+    _emulateSIO = false;
+    getDescriptorTable()->monitorIORQ = false;
+    static const int MAX_UART_EMULATION_STR = 100;
+    char emulUartStr[MAX_UART_EMULATION_STR];
+    bool emulUartValid = jsonGetValueForKey("emulate6850", mcJson, emulUartStr, MAX_UART_EMULATION_STR);
+    if (emulUartValid)
+    {
+        LogWrite(_logPrefix, LOG_DEBUG, "setupMachine emulate6850");
+        _emulate6850 = true;
+        getDescriptorTable()->monitorIORQ = true;
+    }
+    emulUartValid = jsonGetValueForKey("emulateSIO", mcJson, emulUartStr, MAX_UART_EMULATION_STR);
+    if (emulUartValid)
+    {
+        _emulateSIO = true;
+        getDescriptorTable()->monitorIORQ = true;
+    }
+    return rslt;
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
@@ -387,7 +423,22 @@ void McTerminal::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_
         return;
 
     // Send to host
-    McManager::sendKeyCodeToTargetStatic(asciiCode);
+    if (_emulate6850 || _emulateSIO)
+    {
+        if (_sendToTargetBufPos.canPut())
+        {
+            _sendToTargetBuf[_sendToTargetBufPos.posToPut()] = asciiCode;
+            _sendToTargetBufPos.hasPut();
+
+            // Interrupt if enabled
+            if (_emulationInterruptOnRx)
+                McManager::targetIrq();
+        }
+    }
+    else
+    {
+        McManager::sendKeyCodeToTargetStatic(asciiCode);
+    }
 }
 
 // Handle a file
@@ -420,6 +471,65 @@ bool McTerminal::fileHandler(const char* pFileInfo, const uint8_t* pFileData, in
 void McTerminal::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
             [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t& retVal)
 {
+    // Check for uart emulation
+    if (_emulate6850)
+    {
+        // See if IORQ at appropriate address
+        if ((flags & BR_CTRL_BUS_IORQ_MASK) && (!(flags & BR_CTRL_BUS_M1_MASK)) && ((addr & 0xc0) == 0x80))
+        {
+
+            // LogWrite(_logPrefix, LOG_DEBUG, "IORQ %s %04x data %02x retVal %02x",
+            //         (flags & BR_CTRL_BUS_RD_MASK) ? "RD" : ((flags & BR_CTRL_BUS_WR_MASK) ? "WR" : "??"),
+            //         addr, 
+            //         data,
+            //         retVal);
+            if (flags & BR_CTRL_BUS_RD_MASK)
+            {
+                if ((addr & 0x01) == 0)
+                {
+                    // Read status
+                    // Set the transmit data empty high to indicate UART can transmit
+                    retVal = 0x02;
+
+                    // Check if anything to send to target
+                    if (_sendToTargetBufPos.canGet())
+                    {
+                        retVal |= 0x01;
+                        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_E);
+                    }
+                    // LogWrite(_logPrefix, LOG_DEBUG, "IORQ READ %04x returning %02x", addr, retVal);
+                }
+                else
+                {
+                    // Read received data
+                    if (_sendToTargetBufPos.canGet())
+                    {
+                        retVal = _sendToTargetBuf[_sendToTargetBufPos.posToGet()];
+                        _sendToTargetBufPos.hasGot();
+
+                        // Interrupt if chars still available
+                        if ((_emulationInterruptOnRx) && _sendToTargetBufPos.canGet())
+                            McManager::targetIrq();
+                    }
+                }
+            }
+            else if (flags & BR_CTRL_BUS_WR_MASK)
+            {
+                if ((addr & 0x01) == 0)
+                {
+                    // Write control
+                    // Check interrupt on rx char available
+                    _emulationInterruptOnRx = ((data & 0x80) != 0);
+                }
+                else
+                {
+                    // Write data - send to terminal window
+                    if (_pTerminalEmulation)
+                        _pTerminalEmulation->putChar(data);
+                }
+            }
+        }
+    }
 }
 
 // Bus action complete callback

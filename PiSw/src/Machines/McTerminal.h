@@ -17,6 +17,11 @@ private:
     bool _cursorIsShown;
     TermCursor _cursorInfo;
 
+    // Emulated UARTS
+    bool _emulate6850;
+    bool _emulationInterruptOnRx;
+    bool _emulateSIO;
+
     static McDescriptorTable _defaultDescriptorTables[];
 
     // Shifted digits on keyboard
@@ -29,6 +34,11 @@ private:
     // Helpers
     void invalidateScreenCaches(bool mirrorOnly);
 
+    // Buffer for chars to send to target
+    static const int MAX_SEND_TO_TARGET_CHARS = 5000;
+    RingBufferPosn _sendToTargetBufPos;
+    uint8_t _sendToTargetBuf[MAX_SEND_TO_TARGET_CHARS];
+
 public:
 
     McTerminal();
@@ -38,6 +48,9 @@ public:
 
     // Disable machine
     virtual void disable();
+
+    // Setup machine from JSON
+    virtual bool setupMachine(const char* mcName, const char* mcJson);
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
     virtual void displayRefreshFromMirrorHw();
