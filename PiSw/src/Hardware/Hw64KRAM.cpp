@@ -21,6 +21,7 @@ Hw64KRam::Hw64KRam() : HwBase()
     _validatorMemoryLen = _mirrorMemoryLen;
     _pValidatorMemory = NULL;
     _pName = _baseName;
+    _memoryEmulationMode = false;
     hwReset();
 }
 
@@ -114,8 +115,9 @@ void Hw64KRam::mirrorClone()
 
     // int blockReadResult = 
     BusAccess::blockRead(0, pDestMemory, _mirrorMemoryLen, false, false);
-    // LogWrite(_logPrefix, LOG_DEBUG, "mirrorClone blockRead %s", (blockReadResult == BR_OK) ? "OK" : "FAIL");
-    // LogWrite(_logPrefix, LOG_DEBUG, "mirrorClone blockRead %02x %02x %02x", pValMemory[0], pValMemory[1], pValMemory[2]);
+    // LogWrite(_logPrefix, LOG_DEBUG, "mirrorClone blockRead %s %02x %02x %02x",
+    //             (blockReadResult == BR_OK) ? "OK" : "FAIL",
+    //             pDestMemory[0], pDestMemory[1], pDestMemory[2]);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -224,10 +226,11 @@ void Hw64KRam::validatorClone()
     }
     else
     {
-        int blockReadResult = 
+        // int blockReadResult = 
         BusAccess::blockRead(0, pValMemory, _validatorMemoryLen, true, false);
-        LogWrite(_logPrefix, LOG_DEBUG, "validatorClone blockRead %s", (blockReadResult == BR_OK) ? "OK" : "FAIL");
-        LogWrite(_logPrefix, LOG_DEBUG, "validatorClone blockRead %02x %02x %02x", pValMemory[0], pValMemory[1], pValMemory[2]);
+        // LogWrite(_logPrefix, LOG_DEBUG, "validatorClone blockRead %s %02x %02x %02x",
+        //         (blockReadResult == BR_OK) ? "OK" : "FAIL",
+        //         pValMemory[0], pValMemory[1], pValMemory[2]);
     }
 }
 
@@ -282,18 +285,18 @@ void Hw64KRam::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType,
                 if (!_mirrorMode)
                     break;
                 // Make a copy of the enire memory while we have the chance
-                int blockReadResult = 
+                // int blockReadResult = 
                 BusAccess::blockRead(0, getMirrorMemory(), _mirrorMemoryLen, false, false);
                 // Debug
-                LogWrite(_logPrefix, LOG_DEBUG, "mirror memory blockRead %s addr %04x %d [0] %02x [1] %02x [2] %02x [3] %02x mirror %d %s",
-                             (blockReadResult == BR_OK) ? "OK" : "FAIL",
-                             0, _mirrorMemoryLen,
-                             getMirrorMemory()[0],
-                             getMirrorMemory()[1],
-                             getMirrorMemory()[2],
-                             getMirrorMemory()[3],
-                             _mirrorMode,
-                             _pName);
+                // LogWrite(_logPrefix, LOG_DEBUG, "mirror memory blockRead %s addr %04x %d [0] %02x [1] %02x [2] %02x [3] %02x mirror %d %s",
+                //              (blockReadResult == BR_OK) ? "OK" : "FAIL",
+                //              0, _mirrorMemoryLen,
+                //              getMirrorMemory()[0],
+                //              getMirrorMemory()[1],
+                //              getMirrorMemory()[2],
+                //              getMirrorMemory()[3],
+                //              _mirrorMode,
+                //              _pName);
             }
             break;
         default:

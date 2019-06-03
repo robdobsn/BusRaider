@@ -251,7 +251,7 @@ def test_StepValidateJMP000():
         commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":0,\"len\":3,\"isIo\":0}\0")
         time.sleep(0.1)
         commonTest.sendFrame("valPrime", b"{\"cmdName\":\"validatorPrimeFromMem\"}\0")   
-        commonTest.sendFrame("valStart", b"{\"cmdName\":\"validatorStart\"}\0")   
+        commonTest.sendFrame("valStart", b"{\"cmdName\":\"validatorStart\",\"logging\":1}\0")   
         commonTest.sendFrame("busStatusClear", b"{\"cmdName\":\"busStatusClear\"}\0")   
 
         msgIdx = 0

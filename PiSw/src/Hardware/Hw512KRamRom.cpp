@@ -30,6 +30,7 @@ Hw512KRamRom::Hw512KRamRom() : HwBase()
 {
     hwReset();
     _pName = _baseName;
+    _memoryEmulationMode = false;
 }
 
 // Page out RAM/ROM due to emulation
@@ -63,7 +64,6 @@ void Hw512KRamRom::pageOutForInjection(bool pageOut)
 // Hardware reset has occurred
 void Hw512KRamRom::hwReset()
 {
-    _memoryEmulationMode = false;
     _pagingEnabled = true;
     for (int i = 0; i < NUM_BANKS; i++)
         _bankRegisters[i] = 0;
