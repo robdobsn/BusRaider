@@ -61,15 +61,18 @@ class CommonTest:
             msgContent = {'cmdName':''}
             try:
                 msgContent = json.loads(fr)
+            except Exception as excp:
+                self.logger.error(f"Failed to parse Json from {fr}, {excp}")
+            try:
                 if msgContent['cmdName'] == "log":
                     try:
                         self.logger.info(f"{msgContent['lev']} : {msgContent['src']} {msgContent['msg']}")
                     except Exception as excp:
                         self.logger.error(f"LOG CONTENT NOT FOUND IN FRAME {fr}, {excp}")
                 else:
-                    frameCallback(msgContent, self.logger)
+                    frameCallback(msgContent)
             except Exception as excp:
-                self.logger.error(f"Failed to parse Json from {fr}, {excp}")
+                self.logger.error(f"Failed to extract cmdName {fr}, {excp}")
 
         # Check for using IP address
         if useIP:

@@ -55,6 +55,9 @@ public:
     static const int MAX_CODE_SNIPPET_LEN = 100;
     static int getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBuffer, uint32_t codeMaxlen);
 
+    // Bus access to data
+    static BR_RETURN_TYPE blockAccessSync(uint32_t addr, uint8_t* pData, uint32_t len, bool iorq, bool write);
+
     // Disassembly
     static const int MAX_Z80_DISASSEMBLY_LINE_LEN = 300;
 
@@ -192,4 +195,17 @@ private:
     static const int MAX_BYTES_IN_INSTR = 10;
     static uint8_t _debugInstrBytes[MAX_BYTES_IN_INSTR];
     static uint32_t _debugInstrBytePos;
+
+    // Synchronous bus access
+    static const int MAX_MEM_BLOCK_READ_WRITE = 1024;
+    static uint8_t _memAccessDataBuf[MAX_MEM_BLOCK_READ_WRITE];
+    static bool _memAccessPending;
+    static bool _memAccessWrite;
+    static uint32_t _memAccessDataLen;
+    static uint32_t _memAccessAddr;
+    static bool _memAccessIo;
+    static uint32_t _memAccessRdWrErrCount;
+    static const int MAX_RDWR_ERR_STR_LEN = 200;
+    static char _memAccessRdWrErrStr[MAX_RDWR_ERR_STR_LEN];
+    static bool _memAccessRdWrTest;
 };

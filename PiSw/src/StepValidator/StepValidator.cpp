@@ -71,6 +71,8 @@ StepValidator::StepValidator() :
     _stepCyclePos = 0;
     _pThisInstance = this;
     _logging = false;
+    _primeFromMemPending = false;
+    _serviceCount = 0;
 
     // Validator memory as required
 #ifdef STEP_VAL_WITHOUT_HW_MANAGER
@@ -200,7 +202,7 @@ void StepValidator::primeFromMem()
 #ifdef STEP_VAL_WITHOUT_HW_MANAGER
     // Grab all of normal memory
     uint8_t* pBuf = new uint8_t[STD_TARGET_MEMORY_LEN];
-    int blockReadResult = BusAccess::blockRead(0, pBuf, STD_TARGET_MEMORY_LEN, true, false);
+    int blockReadResult = BusAccess::blockRead(0, pBuf, STD_TARGET_MEMORY_LEN, false);
     if (blockReadResult != BR_OK)
         LogWrite(FromStepValidator, LOG_DEBUG, "Block read for stepVal failed %d", blockReadResult);
     uint32_t maxLen = (_validatorMemoryLen < STD_TARGET_MEMORY_LEN) ? _validatorMemoryLen : STD_TARGET_MEMORY_LEN;
@@ -208,7 +210,8 @@ void StepValidator::primeFromMem()
         memcpy(_pValidatorMemory, pBuf, maxLen);
     delete [] pBuf;
 #else
-    HwManager::validatorClone();
+    BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_MIRROR);
+    _primeFromMemPending = true;
 #endif
 }
 
@@ -219,7 +222,17 @@ void StepValidator::primeFromMem()
 void StepValidator::busActionCompleteStatic([[maybe_unused]]BR_BUS_ACTION actionType, [[maybe_unused]] BR_BUS_ACTION_REASON reason)
 {
     if ((actionType == BR_BUS_ACTION_RESET) && _pThisInstance)
+    {
         _pThisInstance->resetComplete();
+}
+    else if ((actionType == BR_BUS_ACTION_BUSRQ) && _pThisInstance)
+    {
+        if (_pThisInstance->_primeFromMemPending)
+        {
+            HwManager::validatorClone();
+            _pThisInstance->_primeFromMemPending = false;
+        }
+    }
 }
 
 void StepValidator::resetComplete()

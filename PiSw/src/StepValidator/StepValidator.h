@@ -143,4 +143,7 @@ private:
 
     // Service count
     int _serviceCount;
+
+    // Prime from memory pending
+    bool _primeFromMemPending;
 };

@@ -341,7 +341,7 @@ void BusAccess::busActionCheck()
     int busSocket = -1;
     for (int i = 0; i < _busSocketCount; i++)
     {
-        if (_busSockets[i].enabled && (_busSockets[i].getType() != BR_BUS_ACTION_NONE))
+        if (_busSockets[i].getType() != BR_BUS_ACTION_NONE)
         {
             busSocket = i;
             break;
@@ -439,9 +439,7 @@ void BusAccess::busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REA
 {
     for (int i = 0; i < _busSocketCount; i++)
     {
-        if (!_busSockets[i].enabled)
-            continue;
-        // Inform all active sockets of the bus action completion
+        // Inform all active sockets of the bus action completion (whether enabled or not!)
         _busSockets[i].busActionCallback(busActionType, reason);
     }
 
@@ -450,8 +448,6 @@ void BusAccess::busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REA
     {
         for (int i = 0; i < _busSocketCount; i++)
         {
-            if (!_busSockets[i].enabled)
-                continue;
             _busSockets[i].busActionCallback(busActionType, BR_BUS_ACTION_MIRROR);
         }
     }

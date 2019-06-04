@@ -99,6 +99,17 @@ uint32_t TargetTracker::_machineHeartbeatCounter = 0;
 uint8_t TargetTracker::_debugInstrBytes[TargetTracker::MAX_BYTES_IN_INSTR];
 uint32_t TargetTracker::_debugInstrBytePos = 0;
 
+// Synchronous memory access
+uint8_t TargetTracker::_memAccessDataBuf[MAX_MEM_BLOCK_READ_WRITE];
+bool TargetTracker::_memAccessPending = false;
+bool TargetTracker::_memAccessWrite = false;
+uint32_t TargetTracker::_memAccessDataLen = 0;
+uint32_t TargetTracker::_memAccessAddr = 0;
+bool TargetTracker::_memAccessIo = false;
+uint32_t TargetTracker::_memAccessRdWrErrCount = 0;
+char TargetTracker::_memAccessRdWrErrStr[MAX_RDWR_ERR_STR_LEN];
+bool TargetTracker::_memAccessRdWrTest = false;
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Init, Service, Enable
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -662,6 +673,22 @@ void TargetTracker::busActionCompleteStatic([[maybe_unused]]BR_BUS_ACTION action
             _targetResetPending = false;
         }
     }
+    else if ((actionType == BR_BUS_ACTION_BUSRQ) && _memAccessPending)
+    {
+        if (!_memAccessWrite)
+        {
+            // Read
+            BusAccess::blockRead(_memAccessAddr, _memAccessDataBuf, 
+                        _memAccessDataLen, false, _memAccessIo);
+        }
+        else
+        {
+            // Write
+            BusAccess::blockWrite(_memAccessAddr, _memAccessDataBuf, 
+                        _memAccessDataLen, false, _memAccessIo);
+        }
+        _memAccessPending = false;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -945,3 +972,43 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
 
     }
 }
+
+BR_RETURN_TYPE TargetTracker::blockAccessSync(uint32_t addr, uint8_t* pData, uint32_t len, bool iorq, bool write)
+{
+    // Request the bus
+    _memAccessPending = true;
+    _memAccessWrite = write;
+    _memAccessDataLen = len;
+    if (_memAccessDataLen > MAX_MEM_BLOCK_READ_WRITE)
+        _memAccessDataLen = MAX_MEM_BLOCK_READ_WRITE;
+    _memAccessAddr = addr;
+    _memAccessIo = iorq;
+    if (write)
+        memcpy(_memAccessDataBuf, pData, len);
+    BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_GENERAL);
+    // Now enter a loop to wait for the bus action to complete
+    static const uint32_t MAX_WAIT_FOR_BUS_ACCESS_US = 50000;
+    uint32_t busAccessReqStart = micros();
+
+    while(!isTimeout(micros(), busAccessReqStart, MAX_WAIT_FOR_BUS_ACCESS_US))
+    {
+        // Finished?
+        if (!_memAccessPending)
+        {
+
+            break;
+        }
+        // Service the bus access
+        BusAccess::service();
+    }
+    // Check if completed ok
+    if (_memAccessPending)
+    {
+        _memAccessPending = false;
+        return BR_NO_BUS_ACK;
+    }
+    if (!write)
+        memcpy(pData, _memAccessDataBuf, len);
+    return BR_OK;
+}
+
