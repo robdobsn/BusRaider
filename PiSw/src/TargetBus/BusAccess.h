@@ -387,10 +387,16 @@ private:
     static volatile uint32_t _busActionInProgressStartUs;
     static volatile uint32_t _busActionAssertedStartUs;
     static volatile uint32_t _busActionAssertedMaxUs;
-    static volatile bool _busActionInProgress;
-    static volatile bool _busActionAsserted;
     static volatile bool _busActionSyncWithWait;
     static const int TIMER_ISR_PERIOD_US = 100;
+
+    enum BUS_ACTION_STATE
+    {
+        BUS_ACTION_STATE_NONE,
+        BUS_ACTION_STATE_PENDING,
+        BUS_ACTION_STATE_ASSERTED
+    };
+    static volatile BUS_ACTION_STATE _busActionState;
 
     // Bus currently under BusRaider control
     static volatile bool _busIsUnderControl;
@@ -408,7 +414,7 @@ private:
     // Bus actions
     static void busActionCheck();
     static bool busActionHandleStart();
-    static void busActionHandleActive();
+    static bool busActionHandleActive();
     static void busActionClearFlags();
     static void busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REASON reason);
     // static BR_BUS_ACTION busActionCheckNext(bool initiateAction);
@@ -506,7 +512,7 @@ private:
     static const int CYCLES_DELAY_FOR_HIGH_ADDR_READ = 100;
 
     // Period target read control bus line is asserted during a read from the PIB (any bus element)
-    static const int CYCLES_DELAY_FOR_READ_FROM_PIB = 15;
+    static const int CYCLES_DELAY_FOR_READ_FROM_PIB = 50;
 
     // Max wait for end of read cycle
     static const int MAX_WAIT_FOR_END_OF_READ_US = 10;

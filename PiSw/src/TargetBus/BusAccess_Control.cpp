@@ -669,18 +669,18 @@ void BusAccess::isrPeak(int code, int val)
             _isrAssertCounts[code] = val;
 }
 
-void BusAccess::setSignal(BR_BUS_ACTION busAction, bool assert)
+void BusAccess::setSignal(BR_BUS_ACTION busAction, bool assertSignal)
 {
     switch (busAction)
     {
-        case BR_BUS_ACTION_RESET: assert ? muxSet(BR_MUX_RESET_Z80_BAR_LOW) : muxClear();
+        case BR_BUS_ACTION_RESET: assertSignal ? muxSet(BR_MUX_RESET_Z80_BAR_LOW) : muxClear();
                     // LogWrite("BA", LOG_DEBUG, "RESET"); 
                     break;
-        case BR_BUS_ACTION_NMI: assert ? muxSet(BR_MUX_NMI_BAR_LOW) : muxClear(); break;
-        case BR_BUS_ACTION_IRQ: assert ? muxSet(BR_MUX_IRQ_BAR_LOW) : muxClear(); 
+        case BR_BUS_ACTION_NMI: assertSignal ? muxSet(BR_MUX_NMI_BAR_LOW) : muxClear(); break;
+        case BR_BUS_ACTION_IRQ: assertSignal ? muxSet(BR_MUX_IRQ_BAR_LOW) : muxClear(); 
                     // LogWrite("BA", LOG_DEBUG, "IRQ"); 
                     break;
-        case BR_BUS_ACTION_BUSRQ: assert ? digitalWrite(BR_BUSRQ_BAR, 0) : digitalWrite(BR_BUSRQ_BAR, 1); break;
+        case BR_BUS_ACTION_BUSRQ: assertSignal ? digitalWrite(BR_BUSRQ_BAR, 0) : digitalWrite(BR_BUSRQ_BAR, 1); break;
         default: break;
     }
 }
