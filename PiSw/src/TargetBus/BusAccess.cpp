@@ -376,6 +376,14 @@ bool BusAccess::busActionHandleStart()
 
 bool BusAccess::busActionHandleActive()
 {
+    // Check for timeout on overall action
+    if ((_busActionState != BUS_ACTION_STATE_NONE) && (isTimeout(micros(), _busActionInProgressStartUs, MAX_WAIT_FOR_PENDING_ACTION_US)))
+    {
+        // Cancel the request
+        busActionClearFlags();
+        return false;
+    }
+
     // Handle active asserts
     if (_busActionState != BUS_ACTION_STATE_ASSERTED)
         return false;
@@ -537,16 +545,7 @@ void BusAccess::serviceWaitActivity()
 
     // Check for bus action in progress
     while(_busActionState != BUS_ACTION_STATE_NONE)
-    {
         busActionHandleActive();
-
-        // Timeout on overall action
-        if (isTimeout(micros(), _busActionInProgressStartUs, MAX_WAIT_FOR_PENDING_ACTION_US))
-        {
-            // Cancel the request
-            busActionClearFlags();
-        }
-    }
 
     // See if a new bus action is requested
     busActionCheck();
@@ -597,16 +596,7 @@ void BusAccess::serviceWaitActivity()
 
                     // Check for bus action in progress
                     while(_busActionState != BUS_ACTION_STATE_NONE)
-                    {
                         busActionHandleActive();
-
-                        // Timeout on overall action
-                        if (isTimeout(micros(), _busActionInProgressStartUs, MAX_WAIT_FOR_PENDING_ACTION_US))
-                        {
-                            // Cancel the request
-                            busActionClearFlags();
-                        }
-                    }
 
                 }
             }
@@ -615,19 +605,8 @@ void BusAccess::serviceWaitActivity()
     }
     else
     {
-        // Check for timeouts on bus actions
-        if (_busActionState != BUS_ACTION_STATE_NONE)
-        {
-            // Handle signals that have already started
-            busActionHandleActive();
-
-            // Timeout on overall action
-            if (!_waitAsserted && isTimeout(micros(), _busActionInProgressStartUs, MAX_WAIT_FOR_PENDING_ACTION_US))
-            {
-                // Cancel the request
-                busActionClearFlags();
-            }
-        }
+        // Handle signals that have already started
+        busActionHandleActive();
 
         // See if a new bus action is requested
         busActionCheck();

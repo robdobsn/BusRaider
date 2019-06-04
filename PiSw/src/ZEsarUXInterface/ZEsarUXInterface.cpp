@@ -373,8 +373,8 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
         {
             uint8_t dataBlock[MAX_BYTES_TO_RETURN];
             HwManager::blockRead(startAddr, dataBlock, blockLength, false, false, false);
-            // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "dataBlock %04x %02x %02x %02x %02x", 
-            //                 startAddr, dataBlock[0], dataBlock[1], dataBlock[2], dataBlock[3]);
+            LogWrite(FromZEsarUXInterface, LOG_DEBUG, "dataBlock %04x %02x %02x %02x %02x", 
+                            startAddr, dataBlock[0], dataBlock[1], dataBlock[2], dataBlock[3]);
             for (uint32_t i = 0; i < blockLength; i++)
             {
                 char chBuf[10];

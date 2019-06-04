@@ -537,6 +537,15 @@ void McManager::targetProgrammingStart(bool execAfterProgramming)
         BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_PROGRAMMING);
         _busActionPendingProgramTarget = true;
         _busActionPendingExecAfterProgram = execAfterProgramming;
+        LogWrite(FromMcManager, LOG_DEBUG, "ProgramTarget - busRequested");
+        // TODO
+        for (int i = 0; i < 10; i++)
+        {
+            digitalWrite(8,1);
+            microsDelay(10);
+            digitalWrite(8,0);
+            microsDelay(2);
+        }
     }
 }
 
@@ -671,7 +680,7 @@ void McManager::targetExec()
         // Check how to set registers
         if (HwManager::getOpcodeInjectEnable() || TargetTracker::isTrackingActive())
         {
-            // Use the BusAccess module to inject instructions to set registers
+            // Use the TargetTracker module to inject instructions to set registers
             Z80Registers regs;
             TargetState::getTargetRegs(regs);
             TargetTracker::startSetRegisterSequence(&regs);

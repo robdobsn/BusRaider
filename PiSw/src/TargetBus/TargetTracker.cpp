@@ -775,6 +775,8 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
                 // Bump state if in step mode or a grab is needed
                 if ((_stepMode == STEP_MODE_STEP_INTO) || _requestDisplayWhileStepping)
                 {
+                    // TODO
+                    ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_A);
                     _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
                 }
             }
