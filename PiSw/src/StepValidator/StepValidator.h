@@ -133,7 +133,7 @@ private:
     static int _stepCyclePos;
 
     // Exception list
-    static const int NUM_DEBUG_VALS = 200;
+    static const int NUM_DEBUG_VALS = 20;
     volatile StepValidatorException _exceptions[NUM_DEBUG_VALS];
     RingBufferPosn _exceptionsPosn;
     bool _isActive;

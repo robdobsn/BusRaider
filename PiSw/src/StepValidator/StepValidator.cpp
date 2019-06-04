@@ -315,7 +315,7 @@ void StepValidator::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_
         // Debug signal
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-        microsDelay(200);
+        microsDelay(1);
         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
 #endif
     }
@@ -331,7 +331,7 @@ void StepValidator::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_
 void StepValidator::service()
 {
     _serviceCount++;
-    if (_serviceCount < 100000)
+    if (_serviceCount < 10000)
         return;
     _serviceCount = 0;
 
