@@ -19,8 +19,9 @@ private:
 
     // Emulated UARTS
     bool _emulate6850;
+    bool _emulation6850NeedsReset;
+    bool _emulation6850NotSetup;
     bool _emulationInterruptOnRx;
-    bool _emulateSIO;
 
     static McDescriptorTable _defaultDescriptorTables[];
 

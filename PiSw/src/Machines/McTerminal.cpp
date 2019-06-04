@@ -93,7 +93,8 @@ McTerminal::McTerminal() :
     // Emulation of uarts
     _emulate6850 = false;
     _emulationInterruptOnRx = false;
-    _emulateSIO = false;
+    _emulation6850NeedsReset = true;
+    _emulation6850NotSetup = false;
 }
 
 // Enable machine
@@ -131,7 +132,6 @@ bool McTerminal::setupMachine(const char* mcName, const char* mcJson)
     // Check for variations
     _emulate6850 = false;
     _emulationInterruptOnRx = false;
-    _emulateSIO = false;
     getDescriptorTable()->monitorIORQ = false;
     static const int MAX_UART_EMULATION_STR = 100;
     char emulUartStr[MAX_UART_EMULATION_STR];
@@ -140,12 +140,6 @@ bool McTerminal::setupMachine(const char* mcName, const char* mcJson)
     {
         LogWrite(_logPrefix, LOG_DEBUG, "setupMachine emulate6850");
         _emulate6850 = true;
-        getDescriptorTable()->monitorIORQ = true;
-    }
-    emulUartValid = jsonGetValueForKey("emulateSIO", mcJson, emulUartStr, MAX_UART_EMULATION_STR);
-    if (emulUartValid)
-    {
-        _emulateSIO = true;
         getDescriptorTable()->monitorIORQ = true;
     }
     return rslt;
@@ -423,7 +417,7 @@ void McTerminal::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_
         return;
 
     // Send to host
-    if (_emulate6850 || _emulateSIO)
+    if (_emulate6850)
     {
         if (_sendToTargetBufPos.canPut())
         {
@@ -471,18 +465,15 @@ bool McTerminal::fileHandler(const char* pFileInfo, const uint8_t* pFileData, in
 void McTerminal::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
             [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t& retVal)
 {
+
+    // static int debugCount = 0;
+
     // Check for uart emulation
     if (_emulate6850)
     {
         // See if IORQ at appropriate address
         if ((flags & BR_CTRL_BUS_IORQ_MASK) && (!(flags & BR_CTRL_BUS_M1_MASK)) && ((addr & 0xc0) == 0x80))
         {
-
-            // LogWrite(_logPrefix, LOG_DEBUG, "IORQ %s %04x data %02x retVal %02x",
-            //         (flags & BR_CTRL_BUS_RD_MASK) ? "RD" : ((flags & BR_CTRL_BUS_WR_MASK) ? "WR" : "??"),
-            //         addr, 
-            //         data,
-            //         retVal);
             if (flags & BR_CTRL_BUS_RD_MASK)
             {
                 if ((addr & 0x01) == 0)
@@ -495,13 +486,20 @@ void McTerminal::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unuse
                     if (_sendToTargetBufPos.canGet())
                     {
                         retVal |= 0x01;
-                        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_E);
                     }
+
+                    // Check if reset needed - in which case return overrun and framing errors
+                    if (_emulation6850NeedsReset)
+                        retVal |= 0x30;
+                    else if (_emulation6850NotSetup)
+                        retVal = 0;
+        
                     // LogWrite(_logPrefix, LOG_DEBUG, "IORQ READ %04x returning %02x", addr, retVal);
                 }
                 else
                 {
                     // Read received data
+                    retVal = 0;
                     if (_sendToTargetBufPos.canGet())
                     {
                         retVal = _sendToTargetBuf[_sendToTargetBufPos.posToGet()];
@@ -511,6 +509,7 @@ void McTerminal::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unuse
                         if ((_emulationInterruptOnRx) && _sendToTargetBufPos.canGet())
                             McManager::targetIrq();
                     }
+                    _emulation6850NeedsReset = false;
                 }
             }
             else if (flags & BR_CTRL_BUS_WR_MASK)
@@ -520,6 +519,16 @@ void McTerminal::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unuse
                     // Write control
                     // Check interrupt on rx char available
                     _emulationInterruptOnRx = ((data & 0x80) != 0);
+                    // Reset
+                    if ((data & 0x03) == 0x03)
+                    {
+                        _emulation6850NeedsReset = false;
+                        _emulation6850NotSetup = true;
+                    }
+                    else if (_emulation6850NotSetup)
+                    {
+                        _emulation6850NotSetup = false;
+                    }
                 }
                 else
                 {
@@ -528,6 +537,16 @@ void McTerminal::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unuse
                         _pTerminalEmulation->putChar(data);
                 }
             }
+            // if (debugCount < 50)
+            // {
+            // LogWrite(_logPrefix, LOG_DEBUG, "IORQ %s %04x data %02x retVal %02x irq %d",
+            //         (flags & BR_CTRL_BUS_RD_MASK) ? "RD" : ((flags & BR_CTRL_BUS_WR_MASK) ? "WR" : "??"),
+            //         addr, 
+            //         data,
+            //         retVal,
+            //         _emulationInterruptOnRx);
+            //     debugCount++;
+            // }
         }
     }
 }
@@ -535,6 +554,11 @@ void McTerminal::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unuse
 // Bus action complete callback
 void McTerminal::busActionCompleteCallback([[maybe_unused]] BR_BUS_ACTION actionType)
 {
+    if (actionType == BR_BUS_ACTION_RESET)
+    {
+        _emulation6850NeedsReset = true;
+        _emulation6850NotSetup = false;
+    }
 }
 
 void McTerminal::invalidateScreenCaches(bool mirrorOnly)
