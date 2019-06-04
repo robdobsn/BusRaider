@@ -65,7 +65,7 @@ void McRobsZ80::displayRefreshFromMirrorHw()
 {
     // Read mirror memory at the location of the memory mapped screen
     uint8_t pScrnBuffer[ROBSZ80_DISP_RAM_SIZE];
-    if (HwManager::blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, 1, 0, true) == BR_OK)
+    if (HwManager::blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, false, false, true) == BR_OK)
         updateDisplayFromBuffer(pScrnBuffer, ROBSZ80_DISP_RAM_SIZE);
 }
 

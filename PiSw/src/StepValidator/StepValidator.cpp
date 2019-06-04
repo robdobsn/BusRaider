@@ -202,7 +202,7 @@ void StepValidator::primeFromMem()
 #ifdef STEP_VAL_WITHOUT_HW_MANAGER
     // Grab all of normal memory
     uint8_t* pBuf = new uint8_t[STD_TARGET_MEMORY_LEN];
-    int blockReadResult = BusAccess::blockRead(0, pBuf, STD_TARGET_MEMORY_LEN, false);
+    int blockReadResult = BusAccess::blockRead(0, pBuf, STD_TARGET_MEMORY_LEN, true, false);
     if (blockReadResult != BR_OK)
         LogWrite(FromStepValidator, LOG_DEBUG, "Block read for stepVal failed %d", blockReadResult);
     uint32_t maxLen = (_validatorMemoryLen < STD_TARGET_MEMORY_LEN) ? _validatorMemoryLen : STD_TARGET_MEMORY_LEN;
