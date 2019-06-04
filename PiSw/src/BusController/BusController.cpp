@@ -147,10 +147,9 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
         errStr[0] = 0;
         for (int i = 0; i < 1000; i++)
         {
-            static const uint8_t testData[] = { 0x54, 0x45, 0x53, 0x54, 0x20, 0x44, 0x41, 0x54, 0x41, 0xaa, 0x55, 0xaa, 0x55};
             uint8_t writeBuf[MAX_MEM_BLOCK_READ_WRITE];
-            memset(writeBuf, 0, MAX_MEM_BLOCK_READ_WRITE);
-            memcpy(writeBuf, testData, sizeof(testData));
+            for (int j = 0; j < MAX_MEM_BLOCK_READ_WRITE; j++)
+                writeBuf[j] = rand() & 0xff;
             BusAccess::blockWrite(0x3c00, writeBuf, MAX_MEM_BLOCK_READ_WRITE, true, false);
 
             uint8_t readBuf[MAX_MEM_BLOCK_READ_WRITE];
@@ -180,7 +179,11 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
                 errs++;
             }
         }
-        LogWrite(FromBusController, LOG_DEBUG, "{\"err\":\"ok\",\"errs\":%d,\"errStr\":\"%s\"}", errs, errStr);
+        if (maxRespLen > 200)
+        {
+            ee_sprintf(pRespJson, "\"err\":\"%s\",\"errs\":%d,\"errStr\":\"%s\"", errs > 0 ? "fail" : "ok", errs, errStr);
+            LogWrite(FromBusController, LOG_DEBUG, pRespJson);
+        }
         return true;
     }
     else if (strcasecmp(cmdName, "busStatus") == 0)

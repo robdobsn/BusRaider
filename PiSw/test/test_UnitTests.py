@@ -26,7 +26,7 @@ def setupTests(testName):
 
 def test_Comms():
 
-    def frameCallback(frameJson):
+    def frameCallback(frameJson, logger):
         assert(frameJson['cmdName'] == "validatorStatusResp")
         if frameJson['cmdName'] == "validatorStatusResp":
             logger.info(f"isrCount {frameJson['isrCount']} errors {frameJson['errors']}")
@@ -54,7 +54,7 @@ def test_Comms():
 
 def test_MemRW():
 
-    def frameCallback(msgContent):
+    def frameCallback(msgContent, logger):
         logger.info(f"FrameRx:{msgContent}")
         if msgContent['cmdName'] == "RdResp":
             curReadPos = len(readData)
@@ -87,7 +87,7 @@ def test_MemRW():
     logger.setLevel(logging.DEBUG)
     setupTests("MemRW")
     commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
-    testRepeatCount = 100
+    testRepeatCount = 20
     # Test data
     writtenData = []
     readData = []
@@ -105,11 +105,11 @@ def test_MemRW():
         time.sleep(0.01)
         commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":32768,\"len\":10,\"isIo\":0}\0" + testWriteData)
         writtenData.append(testWriteData)
-        time.sleep(0.01)
+        time.sleep(0.015)
         commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":32768,\"len\":10,\"isIo\":0}\0")
-        time.sleep(0.01)
+        time.sleep(0.015)
         commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
-        time.sleep(0.05)
+        time.sleep(0.02)
         testWriteData = bytearray(len(testWriteData))
         for i in range(len(testWriteData)):
             testWriteData[i] = random.randint(0,255)
@@ -126,7 +126,7 @@ def test_MemRW():
 
 def test_SetMc():
 
-    def frameCallback(msgContent):
+    def frameCallback(msgContent, logger):
         if msgContent['cmdName'] == "busStatusResp":
             testStats['clrMaxUs'] = max(testStats['clrMaxUs'], msgContent['clrMaxUs'])
         elif msgContent['cmdName'] == "getStatusResp":
@@ -170,7 +170,7 @@ def test_SetMc():
 
 def test_StepValidateJMP000():
 
-    def frameCallback(msgContent):
+    def frameCallback(msgContent, logger):
         if msgContent['cmdName'] == "RdResp":
             requiredResp = ''.join(('%02x' % testWriteData[i]) for i in range(len(testWriteData)))
             respOk = requiredResp == msgContent['data']
@@ -202,8 +202,8 @@ def test_StepValidateJMP000():
             pass
         elif msgContent['cmdName'] == "validatorStatusResp":
             logger.info(f"isrCount {msgContent['isrCount']} errors {msgContent['errors']}")
-            testStats['stepValErrCount'] = msgContent['errors']
-            testStats['isrCount'] = msgContent['isrCount']
+            testStats['stepValErrCount'] += msgContent['errors']
+            testStats['isrCount'] += msgContent['isrCount']
             testStats['stepValRespCount'] += 1
             logger.info(f"StepValStatus ISRCount {msgContent['isrCount']} errors {msgContent['errors']}")
         elif msgContent['cmdName'] == "busStatusResp":
@@ -237,7 +237,7 @@ def test_StepValidateJMP000():
 
     # Repeat tests
     testRepeatCount = 10
-    testValStatusCount = 10
+    testValStatusCount = 1
     # Bus reset
     commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
     for i in range(testRepeatCount):
@@ -254,6 +254,10 @@ def test_StepValidateJMP000():
         commonTest.sendFrame("valStart", b"{\"cmdName\":\"validatorStart\",\"logging\":1}\0")   
         commonTest.sendFrame("busStatusClear", b"{\"cmdName\":\"busStatusClear\"}\0")   
 
+        # Run for 2 seconds
+        time.sleep(2)
+
+        # Get status
         msgIdx = 0
         for j in range(testValStatusCount):
             commonTest.sendFrame("statusReq", b"{\"cmdName\":\"validatorStatus\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
@@ -282,7 +286,7 @@ def test_StepValidateJMP000():
 
 def test_TRS80Level1RomExec():
 
-    def frameCallback(msgContent):
+    def frameCallback(msgContent, logger):
         if msgContent['cmdName'] == "busStatusResp":
             testStats['clrMaxUs'] = max(testStats['clrMaxUs'], msgContent['clrMaxUs'])
         elif "SetMachine=" in msgContent['cmdName'] or \
@@ -328,7 +332,7 @@ def test_TRS80Level1RomExec():
     commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":250000}\0")
 
     # Loop through tests
-    testRepeatCount = 10
+    testRepeatCount = 5
     for i in range(testRepeatCount):
 
         # Remove test valid check text
@@ -355,13 +359,13 @@ def test_TRS80Level1RomExec():
 
             # Program and reset
             commonTest.sendFrame("ProgramAndReset", b"{\"cmdName\":\"ProgramAndReset\"}\0")
+            readDataExpected = b"READY"
+            rdLen = len(readDataExpected)
             time.sleep(1.5)
 
             # Test memory at screen location
-            readDataExpected = b"READY"
-            rdLen = len(readDataExpected)
             commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":" + bytes(str(TRS80ScreenAddr),'utf-8') + b",\"len\":" + bytes(str(rdLen),'utf-8') + b",\"isIo\":0}\0")
-            time.sleep(0.2)
+            time.sleep(0.5)
 
     # Wait for test end and cleardown
     commonTest.cleardown()
@@ -372,7 +376,7 @@ def test_TRS80Level1RomExec():
 
 def test_GalaxiansExec():
 
-    def frameCallback(msgContent):
+    def frameCallback(msgContent, logger):
         if msgContent['cmdName'] == "busStatusResp":
             testStats['clrMaxUs'] = max(testStats['clrMaxUs'], msgContent['clrMaxUs'])
             testStats['iorqWr'] = msgContent['iorqWr']
@@ -485,7 +489,7 @@ def test_GalaxiansExec():
 
 def test_stepSingle():
 
-    def frameCallback(msgContent):
+    def frameCallback(msgContent, logger):
         if msgContent['cmdName'] == "busStatusResp":
             testStats['clrMaxUs'] = max(testStats['clrMaxUs'], msgContent['clrMaxUs'])
             testStats['iorqWr'] = msgContent['iorqWr']
@@ -575,7 +579,7 @@ def test_stepSingle():
 
 def test_regGetTest():
 
-    def frameCallback(msgContent):
+    def frameCallback(msgContent, logger):
         if msgContent['cmdName'] == "busStatusResp":
             testStats['clrMaxUs'] = max(testStats['clrMaxUs'], msgContent['clrMaxUs'])
             testStats['iorqWr'] = msgContent['iorqWr']

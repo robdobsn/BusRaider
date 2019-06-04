@@ -67,7 +67,7 @@ class CommonTest:
                     except Exception as excp:
                         self.logger.error(f"LOG CONTENT NOT FOUND IN FRAME {fr}, {excp}")
                 else:
-                    frameCallback(msgContent)
+                    frameCallback(msgContent, self.logger)
             except Exception as excp:
                 self.logger.error(f"Failed to parse Json from {fr}, {excp}")
 
