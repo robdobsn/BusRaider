@@ -51,6 +51,9 @@ BusSocketInfo BusController::_busSocketInfo =
 // This instance
 BusController* BusController::_pThisInstance = NULL;
 
+// Memory read/write handler
+uint8_t BusController::_memAccessDataBuf[MAX_MEM_BLOCK_READ_WRITE];
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Construction
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -59,6 +62,11 @@ BusController* BusController::_pThisInstance = NULL;
 BusController::BusController()
 {
     _pThisInstance = this;
+    _memAccessReadPending = false;
+    _memAccessWritePending = false;
+    _memAccessDataLen = 0;
+    _memAccessAddr = 0;
+    _memAccessIo = false;
 }
 
 void BusController::init()
@@ -103,8 +111,33 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
             strlcpy(pRespJson, "\"err\":\"LenTooLong\"", maxRespLen);
             return true;
         }
-        uint8_t dataBuf[MAX_MEM_BLOCK_READ_WRITE];
-        BusAccess::blockRead(addr, dataBuf, dataLen, true, isIo);
+        // Request the bus
+        _pThisInstance->_memAccessReadPending = true;
+        _pThisInstance->_memAccessDataLen = dataLen;
+        _pThisInstance->_memAccessAddr = addr;
+        _pThisInstance->_memAccessIo = isIo;
+        BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_GENERAL);
+        // Now enter a loop to wait for the bus action to complete
+        static const uint32_t MAX_WAIT_FOR_BUS_ACCESS_US = 50000;
+        uint32_t busAccessReqStart = micros();
+        while(!isTimeout(micros(), busAccessReqStart, MAX_WAIT_FOR_BUS_ACCESS_US))
+        {
+            // Finished?
+            if (!_pThisInstance->_memAccessReadPending)
+                break;
+            // Service the bus access
+            BusAccess::service();
+        }
+        // Check if completed ok
+        if (_pThisInstance->_memAccessReadPending)
+        {
+            _pThisInstance->_memAccessReadPending = false;
+            ee_sprintf(pRespJson, "\"err\":\"fail\"");
+            digitalWrite(8,1);
+            microsDelay(100);
+            digitalWrite(8,0);
+            return true;
+        }
         // Format data to send
         static const int MAX_MEM_READ_RESP = MAX_MEM_BLOCK_READ_WRITE*2+100; 
         char jsonResp[MAX_MEM_READ_RESP];
@@ -112,7 +145,7 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
         int pos = strlen(jsonResp);
         for (int i = 0; i < dataLen; i++)
         {
-            ee_sprintf(jsonResp+pos, "%02x", dataBuf[i]);
+            ee_sprintf(jsonResp+pos, "%02x", _memAccessDataBuf[i]);
             pos+=2;
         }
         strlcat(jsonResp, "\"", MAX_MEM_READ_RESP);
@@ -136,7 +169,31 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
             strlcpy(pRespJson, "\"err\":\"LenTooLong\"", maxRespLen);
             return true;
         }
-        BusAccess::blockWrite(addr, pParams, dataLen, true, isIo);
+        // Set for write
+        _pThisInstance->_memAccessWritePending = true;
+        _pThisInstance->_memAccessDataLen = dataLen;
+        _pThisInstance->_memAccessAddr = addr;
+        _pThisInstance->_memAccessIo = isIo;
+        memcpy(_memAccessDataBuf, pParams, dataLen);
+        BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_GENERAL);
+        // Now enter a loop to wait for the bus action to complete
+        static const uint32_t MAX_WAIT_FOR_BUS_ACCESS_US = 50000;
+        uint32_t busAccessReqStart = micros();
+        while(!isTimeout(micros(), busAccessReqStart, MAX_WAIT_FOR_BUS_ACCESS_US))
+        {
+            // Finished?
+            if (!_pThisInstance->_memAccessWritePending)
+                break;
+            // Service the bus access
+            BusAccess::service();
+        }
+        // Check if completed ok
+        if (_pThisInstance->_memAccessWritePending)
+        {
+            _pThisInstance->_memAccessWritePending = false;
+            ee_sprintf(pRespJson, "\"err\":\"fail\"");
+            return true;
+        }
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
@@ -381,6 +438,23 @@ bool BusController::getArgsRdAndWr(const char* pCmdJson, uint32_t& addr, int& da
 
 void BusController::busActionCompleteStatic([[maybe_unused]]BR_BUS_ACTION actionType, [[maybe_unused]] BR_BUS_ACTION_REASON reason)
 {
+    if ((actionType == BR_BUS_ACTION_BUSRQ) && _pThisInstance)
+    {
+        if (_pThisInstance->_memAccessReadPending)
+        {
+            // Read
+            BusAccess::blockRead(_pThisInstance->_memAccessAddr, _memAccessDataBuf, 
+                        _pThisInstance->_memAccessDataLen, false, _pThisInstance->_memAccessIo);
+            _pThisInstance->_memAccessReadPending = false;
+        }
+        if (_pThisInstance->_memAccessWritePending)
+        {
+            // Read
+            BusAccess::blockWrite(_pThisInstance->_memAccessAddr, _memAccessDataBuf, 
+                        _pThisInstance->_memAccessDataLen, false, _pThisInstance->_memAccessIo);
+            _pThisInstance->_memAccessWritePending = false;
+        }
+    }
 }
 
 void BusController::handleWaitInterruptStatic(uint32_t addr, uint32_t data, 

@@ -51,4 +51,13 @@ private:
 
     // Helpers
     static bool getArgsRdAndWr(const char* pCmdJson, uint32_t& addr, int& dataLen, bool& isIo);
+
+    // Bus access
+    static uint8_t _memAccessDataBuf[MAX_MEM_BLOCK_READ_WRITE];
+    bool _memAccessReadPending;
+    bool _memAccessWritePending;
+    uint32_t _memAccessDataLen;
+    uint32_t _memAccessAddr;
+    bool _memAccessIo;
+
 };
