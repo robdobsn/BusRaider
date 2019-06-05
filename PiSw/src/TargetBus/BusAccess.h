@@ -506,7 +506,7 @@ private:
     static const int CYCLES_DELAY_FOR_HIGH_ADDR_READ = 100;
 
     // Period target read control bus line is asserted during a read from the PIB (any bus element)
-    static const int CYCLES_DELAY_FOR_READ_FROM_PIB = 15;
+    static const int CYCLES_DELAY_FOR_READ_FROM_PIB = 50;
 
     // Max wait for end of read cycle
     static const int MAX_WAIT_FOR_END_OF_READ_US = 10;

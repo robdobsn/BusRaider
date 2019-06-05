@@ -269,7 +269,6 @@ def test_StepValidateJMP000():
         # Breakout early if failing
         if not testStats["msgRdOk"] or testStats['stepValErrCount'] > 0:
             break
-
     
         # Send messages to stop
         commonTest.sendFrame("valStop", b"{\"cmdName\":\"validatorStop\"}\0")
