@@ -100,16 +100,17 @@ def test_MemRW():
     # Processor clock
     commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":250000}\0")
     time.sleep(1)
+    # Bus reset
+    commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
+    time.sleep(0.01)
     for i in range(testRepeatCount):
-        commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
-        time.sleep(0.01)
         commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":32768,\"len\":10,\"isIo\":0}\0" + testWriteData)
         writtenData.append(testWriteData)
         time.sleep(0.015)
         commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":32768,\"len\":10,\"isIo\":0}\0")
-        time.sleep(0.015)
-        commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
         time.sleep(0.02)
+        if not testStats["msgRdOk"]:
+            break
         testWriteData = bytearray(len(testWriteData))
         for i in range(len(testWriteData)):
             testWriteData[i] = random.randint(0,255)
@@ -264,6 +265,11 @@ def test_StepValidateJMP000():
             msgIdx += 1
             commonTest.sendFrame("busStatus", b"{\"cmdName\":\"busStatus\"}\0")
             time.sleep(0.2)
+
+        # Breakout early if failing
+        if not testStats["msgRdOk"] or testStats['stepValErrCount'] > 0:
+            break
+
     
         # Send messages to stop
         commonTest.sendFrame("valStop", b"{\"cmdName\":\"validatorStop\"}\0")
@@ -366,6 +372,10 @@ def test_TRS80Level1RomExec():
             # Test memory at screen location
             commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":" + bytes(str(TRS80ScreenAddr),'utf-8') + b",\"len\":" + bytes(str(rdLen),'utf-8') + b",\"isIo\":0}\0")
             time.sleep(0.5)
+
+            # Breakout early if failing
+            if not testStats["msgRdOk"] or testStats['stepValErrCount'] > 0:
+                break
 
     # Wait for test end and cleardown
     commonTest.cleardown()
@@ -524,7 +534,9 @@ def test_stepSingle():
                     msgContent['cmdName'] == "busResetResp":
             pass
         elif msgContent['cmdName'] == "getRegsResp":
-            testStats["AFOK"] = ("AF=ba" in msgContent['regs'])
+            logger.info(f"Expected register value {regsExpectedContent}")
+            logger.info(f"{msgContent['regs']}")
+            testStats["AFOK"] = (regsExpectedContent in msgContent['regs'])
             if not testStats["AFOK"]:
                 logger.error(f"AFOK not ok! {msgContent}")
             testStats["regsOk"] = True
@@ -546,19 +558,26 @@ def test_stepSingle():
     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\"}\0")
     time.sleep(.2)
 
-    # Send program
+    # Send program and check it
     commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
     time.sleep(.1)
     commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"len\":" + testWriteLen  + b",\"isIo\":0}\0" + testWriteData)
+    readDataExpected = testWriteData
     time.sleep(.1)
+    commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":0,\"len\":" + testWriteLen  + b",\"isIo\":0}\0")
+    time.sleep(0.1)
 
     # Setup Test
     commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\",\"reset\":1}\0")
     time.sleep(.1)
-    numTestLoops = 60
-    for i in range(4*numTestLoops):
+    numTestLoops = 20
+    for i in range(numTestLoops):
+        # Run a step
         commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
         time.sleep(.2)
+
+    # Expected regs
+    regsExpectedContent = f"AF={((numTestLoops-1)-((numTestLoops-1)//4)+6):02x}"
     time.sleep(.1)
 
     # Check status
@@ -571,11 +590,12 @@ def test_stepSingle():
 
     # Wait for test end and cleardown
     commonTest.cleardown()
-    assert(testStats["unknownMsgCount"] == 0)
-    assert(testStats["stepCount"] == 4 * numTestLoops)
-    logger.debug(f"StepCount {testStats['stepCount']}")
+    assert(testStats["msgRdOk"])
     assert(testStats["AFOK"])
     assert(testStats["regsOk"])
+    assert(testStats["stepCount"] == numTestLoops)
+    assert(testStats["unknownMsgCount"] == 0)
+    logger.debug(f"StepCount {testStats['stepCount']}")
 
 def test_regGetTest():
 
