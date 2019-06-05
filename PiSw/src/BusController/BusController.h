@@ -23,6 +23,9 @@ public:
     // Service
     void service();
 
+    // Bus access to data
+    static BR_RETURN_TYPE blockAccessSync(uint32_t addr, uint8_t* pData, uint32_t len, bool iorq, bool write);
+
 private:
 
     // Singleton instance
@@ -51,4 +54,16 @@ private:
 
     // Helpers
     static bool getArgsRdAndWr(const char* pCmdJson, uint32_t& addr, int& dataLen, bool& isIo);
+
+    // Synchronous bus access
+    static uint8_t _memAccessDataBuf[MAX_MEM_BLOCK_READ_WRITE];
+    static bool _memAccessPending;
+    static bool _memAccessWrite;
+    static uint32_t _memAccessDataLen;
+    static uint32_t _memAccessAddr;
+    static bool _memAccessIo;
+    static uint32_t _memAccessRdWrErrCount;
+    static const int MAX_RDWR_ERR_STR_LEN = 200;
+    static char _memAccessRdWrErrStr[MAX_RDWR_ERR_STR_LEN];
+    static bool _memAccessRdWrTest;
 };

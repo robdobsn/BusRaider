@@ -537,15 +537,6 @@ void McManager::targetProgrammingStart(bool execAfterProgramming)
         BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_PROGRAMMING);
         _busActionPendingProgramTarget = true;
         _busActionPendingExecAfterProgram = execAfterProgramming;
-        LogWrite(FromMcManager, LOG_DEBUG, "ProgramTarget - busRequested");
-        // TODO
-        for (int i = 0; i < 10; i++)
-        {
-            digitalWrite(8,1);
-            microsDelay(10);
-            digitalWrite(8,0);
-            microsDelay(2);
-        }
     }
 }
 

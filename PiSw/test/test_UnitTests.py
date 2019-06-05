@@ -94,7 +94,7 @@ def test_MemRW():
     testWriteData = bytearray(b"\xaa\x55\xaa\x55\xaa\x55\xaa\x55\xaa\x55")
     testStats = {"msgRdOk": True, "msgRdRespCount":0, "msgWrRespCount": 0, "msgWrRespErrCount":0, "msgWrRespErrMissingCount":0, "unknownMsgCount":0, "clockSetOk":False}
     # Set serial terminal machine - to avoid conflicts with display updates, etc
-    mc = "Serial Terminal"
+    mc = "Serial Terminal ANSI"
     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
     time.sleep(1)
     # Processor clock
@@ -224,7 +224,7 @@ def test_StepValidateJMP000():
     testStats = {"msgRdOk": True, "msgRdRespCount":0, "msgWrRespCount": 0, "msgWrRespErrCount":0, "msgWrRespErrMissingCount":0,
                  "unknownMsgCount":0, "isrCount":0, "stepValErrCount":0, "clrMaxUs":0, "stepValRespCount":0}
     # Set serial terminal machine - to avoid conflicts with display updates, etc
-    mc = "Serial Terminal"
+    mc = "Serial Terminal ANSI"
     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
     time.sleep(1)
     # Processor clock
@@ -542,7 +542,7 @@ def test_stepSingle():
     testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRespCount":0,
             "iorqRd":0, "iorqWr":0, "mreqRd":0, "mreqWr":0, "AFOK": False, "regsOk": False, "stepCount":0}
 
-    mc = "Serial Terminal"
+    mc = "Serial Terminal ANSI"
     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\"}\0")
     time.sleep(.2)
 
@@ -657,7 +657,7 @@ def test_regGetTest():
     testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRespCount":0,
             "iorqRd":0, "iorqWr":0, "mreqRd":0, "mreqWr":0, "regsOk": True}
 
-    mc = "Serial Terminal"
+    mc = "Serial Terminal ANSI"
     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\"}\0")
     time.sleep(1)
 
