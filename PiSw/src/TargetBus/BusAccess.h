@@ -503,7 +503,7 @@ private:
 
 private:
     // Timeouts
-    static const int MAX_WAIT_FOR_PENDING_ACTION_US = 2000;
+    static const int MAX_WAIT_FOR_PENDING_ACTION_US = 100000;
     static const int MAX_WAIT_FOR_CTRL_LINES_COUNT = 10;
 
     // Period target write control bus line is asserted during a write

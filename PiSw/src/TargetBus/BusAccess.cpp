@@ -376,6 +376,17 @@ bool BusAccess::busActionHandleStart()
 
 void BusAccess::busActionHandleActive()
 {
+    // Timeout on overall action
+    if (_busActionState == BUS_ACTION_STATE_PENDING)
+    {
+        if (isTimeout(micros(), _busActionInProgressStartUs, MAX_WAIT_FOR_PENDING_ACTION_US))
+        {
+            // Cancel the request
+            setSignal(_busActionType, false);
+            busActionClearFlags();
+        }
+    }
+    
     // Handle active asserts only
     if (_busActionState != BUS_ACTION_STATE_ASSERTED)
         return;
@@ -475,20 +486,11 @@ void BusAccess::stepTimerISR([[maybe_unused]] void* pParam)
 void BusAccess::serviceWaitActivity()
 {
 
+#define NEW_CODE_2 1
 #ifndef NEW_CODE_2
 
     // Check for bus action in progress
-    while(_busActionState != BUS_ACTION_STATE_NONE)
-    {
-        busActionHandleActive();
-
-        // Timeout on overall action
-        if (isTimeout(micros(), _busActionInProgressStartUs, MAX_WAIT_FOR_PENDING_ACTION_US))
-        {
-            // Cancel the request
-            busActionClearFlags();
-        }
-    }
+    busActionHandleActive();
 
     // See if a new bus action is requested
     busActionCheck();
@@ -538,18 +540,7 @@ void BusAccess::serviceWaitActivity()
                     waitResetFlipFlops();
 
                     // Check for bus action in progress
-                    while(_busActionState != BUS_ACTION_STATE_NONE)
-                    {
-                        busActionHandleActive();
-
-                        // Timeout on overall action
-                        if (isTimeout(micros(), _busActionInProgressStartUs, MAX_WAIT_FOR_PENDING_ACTION_US))
-                        {
-                            // Cancel the request
-                            busActionClearFlags();
-                        }
-                    }
-
+                    busActionHandleActive();
                 }
             }
         }
@@ -557,19 +548,8 @@ void BusAccess::serviceWaitActivity()
     }
     else
     {
-        // Check for timeouts on bus actions
-        if (_busActionState != BUS_ACTION_STATE_NONE)
-        {
-            // Handle signals that have already started
-            busActionHandleActive();
-
-            // Timeout on overall action
-            if (!_waitAsserted && isTimeout(micros(), _busActionInProgressStartUs, MAX_WAIT_FOR_PENDING_ACTION_US))
-            {
-                // Cancel the request
-                busActionClearFlags();
-            }
-        }
+        // Handle signals that have already started
+        busActionHandleActive();
 
         // See if a new bus action is requested
         busActionCheck();
@@ -636,11 +616,9 @@ void BusAccess::serviceWaitActivity()
     busActionCheck();
 
     // Handle completion of any existing bus actions
-    if (busActionHandleActive())
-    {
-        // Return if bus action is still active
+    busActionHandleActive();
+    if (_busActionState == BUS_ACTION_STATE_ASSERTED)
         return;
-    }
 
     // Check for no existing wait
     if (!_waitAsserted)

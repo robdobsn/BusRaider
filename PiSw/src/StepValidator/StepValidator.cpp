@@ -224,7 +224,7 @@ void StepValidator::busActionCompleteStatic([[maybe_unused]]BR_BUS_ACTION action
     if ((actionType == BR_BUS_ACTION_RESET) && _pThisInstance)
     {
         _pThisInstance->resetComplete();
-}
+    }
     else if ((actionType == BR_BUS_ACTION_BUSRQ) && _pThisInstance)
     {
         if (_pThisInstance->_primeFromMemPending)
@@ -248,11 +248,17 @@ void StepValidator::resetComplete()
     _stepCyclePos = 0;
     _isActive = true;
 
+    #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        microsDelay(20);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+    #endif
+    
     if (_logging)
         LogWrite(FromStepValidator, LOG_DEBUG, "Reset");
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-    microsDelay(10);
+    microsDelay(1);
     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
 #endif
 
@@ -289,9 +295,12 @@ void StepValidator::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_
     _stepCyclePos++;
 
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-    microsDelay(1);
-    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+    for (int i = 0; i < _stepCycleCount + 3; i++)
+    {
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        microsDelay(1);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+    }
 #endif
 
     // Check against what we got from the real system
@@ -315,7 +324,7 @@ void StepValidator::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_
         // Debug signal
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-        microsDelay(1);
+        microsDelay(10);
         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
 #endif
     }

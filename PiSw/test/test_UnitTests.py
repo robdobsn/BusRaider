@@ -266,12 +266,13 @@ def test_StepValidateJMP000():
             commonTest.sendFrame("busStatus", b"{\"cmdName\":\"busStatus\"}\0")
             time.sleep(0.2)
 
+        # Send messages to stop
+        commonTest.sendFrame("valStop", b"{\"cmdName\":\"validatorStop\"}\0")
+
         # Breakout early if failing
         if not testStats["msgRdOk"] or testStats['stepValErrCount'] > 0:
             break
     
-        # Send messages to stop
-        commonTest.sendFrame("valStop", b"{\"cmdName\":\"validatorStop\"}\0")
     # Bus reset
     commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
     time.sleep(1)
