@@ -387,10 +387,17 @@ private:
     static volatile uint32_t _busActionInProgressStartUs;
     static volatile uint32_t _busActionAssertedStartUs;
     static volatile uint32_t _busActionAssertedMaxUs;
-    static volatile bool _busActionInProgress;
-    static volatile bool _busActionAsserted;
     static volatile bool _busActionSyncWithWait;
     static const int TIMER_ISR_PERIOD_US = 100;
+
+    // Bus access state
+    enum BUS_ACTION_STATE
+    {
+        BUS_ACTION_STATE_NONE,
+        BUS_ACTION_STATE_PENDING,
+        BUS_ACTION_STATE_ASSERTED
+    };
+    static volatile BUS_ACTION_STATE _busActionState;
 
     // Bus currently under BusRaider control
     static volatile bool _busIsUnderControl;

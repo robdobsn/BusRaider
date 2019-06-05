@@ -48,8 +48,7 @@ volatile BR_BUS_ACTION BusAccess::_busActionType = BR_BUS_ACTION_NONE;
 volatile uint32_t BusAccess::_busActionInProgressStartUs = 0;
 volatile uint32_t BusAccess::_busActionAssertedStartUs = 0;
 volatile uint32_t BusAccess::_busActionAssertedMaxUs = 0;
-volatile bool BusAccess::_busActionInProgress = false;
-volatile bool BusAccess::_busActionAsserted = false;
+volatile BusAccess::BUS_ACTION_STATE BusAccess::_busActionState = BUS_ACTION_STATE_NONE;
 volatile bool BusAccess::_busActionSyncWithWait = false;
 
 // Status
@@ -281,7 +280,7 @@ void BusAccess::targetReqBus(int busSocket, BR_BUS_ACTION_REASON busMasterReason
     _busSockets[busSocket].busMasterRequest = true;
     _busSockets[busSocket].busMasterReason = busMasterReason;
 
-    // Bus request can be handled immediately
+    // Bus request can be handled immediately as the BUSRQ line is not part of the multiplexer (so is not affected by WAIT processing)
     busActionCheck();
     busActionHandleStart();
     // LogWrite("BusAccess", LOG_DEBUG, "reqBus sock %d enabled %d reason %d", busSocket, _busSockets[busSocket].enabled, busMasterReason);
@@ -334,7 +333,7 @@ void BusAccess::service()
 void BusAccess::busActionCheck()
 {
     // Should be idle
-    if (_busActionInProgress)
+    if (_busActionState != BUS_ACTION_STATE_NONE)
         return;
 
     // See if anything to do
@@ -353,15 +352,14 @@ void BusAccess::busActionCheck()
     // Set this new action as in progress
     _busActionSocket = busSocket;
     _busActionType = _busSockets[busSocket].getType();
-    _busActionInProgress = true;
+    _busActionState = BUS_ACTION_STATE_PENDING;
     _busActionInProgressStartUs = micros();
-    _busActionAsserted = false;
 }
 
 bool BusAccess::busActionHandleStart()
 {
     // Check if a bus action has started but isn't yet asserted
-    if (!_busActionInProgress || _busActionAsserted)
+    if (_busActionState != BUS_ACTION_STATE_PENDING)
         return false;
 
     // Initiate the action
@@ -372,14 +370,14 @@ bool BusAccess::busActionHandleStart()
     // Set start timer
     _busActionAssertedStartUs = micros();
     _busActionAssertedMaxUs = _busSockets[_busActionSocket].getAssertUs(_busActionType);
-    _busActionAsserted = true;
+    _busActionState = BUS_ACTION_STATE_ASSERTED;
     return true;
 }
 
 void BusAccess::busActionHandleActive()
 {
-    // Handle active asserts
-    if (!_busActionInProgress || !_busActionAsserted)
+    // Handle active asserts only
+    if (_busActionState != BUS_ACTION_STATE_ASSERTED)
         return;
 
     // Handle BUSRQ separately
@@ -416,7 +414,7 @@ void BusAccess::busActionHandleActive()
     }
     else
     {
-        // Handle ending bus actions
+        // Handle ending RESET, INT and NMI bus actions
         if (isTimeout(micros(), _busActionAssertedStartUs, _busActionAssertedMaxUs))
         {
 
@@ -432,7 +430,7 @@ void BusAccess::busActionClearFlags()
     // Clear for all sockets
     for (int i = 0; i < _busSocketCount; i++)
         _busSockets[i].clearDown(_busActionType);
-    _busActionInProgress = false;
+    _busActionState = BUS_ACTION_STATE_NONE;
 }
 
 void BusAccess::busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REASON reason)
@@ -480,7 +478,7 @@ void BusAccess::serviceWaitActivity()
 #ifndef NEW_CODE_2
 
     // Check for bus action in progress
-    while(_busActionInProgress)
+    while(_busActionState != BUS_ACTION_STATE_NONE)
     {
         busActionHandleActive();
 
@@ -540,7 +538,7 @@ void BusAccess::serviceWaitActivity()
                     waitResetFlipFlops();
 
                     // Check for bus action in progress
-                    while(_busActionInProgress)
+                    while(_busActionState != BUS_ACTION_STATE_NONE)
                     {
                         busActionHandleActive();
 
@@ -560,10 +558,10 @@ void BusAccess::serviceWaitActivity()
     else
     {
         // Check for timeouts on bus actions
-        if (_busActionInProgress)
+        if (_busActionState != BUS_ACTION_STATE_NONE)
         {
-        // Handle signals that have already started
-        busActionHandleActive();
+            // Handle signals that have already started
+            busActionHandleActive();
 
             // Timeout on overall action
             if (!_waitAsserted && isTimeout(micros(), _busActionInProgressStartUs, MAX_WAIT_FOR_PENDING_ACTION_US))
@@ -590,7 +588,7 @@ void BusAccess::serviceWaitActivity()
             {
                 // Check if a bus action (other than BUSRQ) is happening which would 
                 // be cleared too soon by the wait handler as MUX hardware is shared
-                if (_busActionInProgress && (_busActionType != BR_BUS_ACTION_BUSRQ))
+                if ((_busActionState == BUS_ACTION_STATE_ASSERTED) && (_busActionType != BR_BUS_ACTION_BUSRQ))
                 {
                     // Don't handle the wait until the bus action has completed
                 }
