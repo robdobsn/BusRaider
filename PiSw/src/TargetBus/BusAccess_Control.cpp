@@ -673,14 +673,24 @@ void BusAccess::setSignal(BR_BUS_ACTION busAction, bool assertSignal)
 {
     switch (busAction)
     {
-        case BR_BUS_ACTION_RESET: assertSignal ? muxSet(BR_MUX_RESET_Z80_BAR_LOW) : muxClear();
-                    // LogWrite("BA", LOG_DEBUG, "RESET"); 
-                    break;
-        case BR_BUS_ACTION_NMI: assertSignal ? muxSet(BR_MUX_NMI_BAR_LOW) : muxClear(); break;
-        case BR_BUS_ACTION_IRQ: assertSignal ? muxSet(BR_MUX_IRQ_BAR_LOW) : muxClear(); 
-                    // LogWrite("BA", LOG_DEBUG, "IRQ"); 
-                    break;
-        case BR_BUS_ACTION_BUSRQ: assertSignal ? digitalWrite(BR_BUSRQ_BAR, 0) : digitalWrite(BR_BUSRQ_BAR, 1); break;
+        case BR_BUS_ACTION_RESET: 
+            assertSignal ? muxSet(BR_MUX_RESET_Z80_BAR_LOW) : muxClear();
+            // LogWrite("BA", LOG_DEBUG, "RESET"); 
+            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_E, assertSignal);
+            break;
+        case BR_BUS_ACTION_NMI: 
+            assertSignal ? muxSet(BR_MUX_NMI_BAR_LOW) : muxClear(); 
+            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_F, assertSignal);
+            break;
+        case BR_BUS_ACTION_IRQ: 
+            assertSignal ? muxSet(BR_MUX_IRQ_BAR_LOW) : muxClear(); 
+            // LogWrite("BA", LOG_DEBUG, "IRQ"); 
+            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_I, assertSignal);
+            break;
+        case BR_BUS_ACTION_BUSRQ: 
+            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B, assertSignal);
+            assertSignal ? digitalWrite(BR_BUSRQ_BAR, 0) : digitalWrite(BR_BUSRQ_BAR, 1); 
+            break;
         default: break;
     }
 }

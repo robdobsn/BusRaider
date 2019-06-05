@@ -691,6 +691,16 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
             {
                 // Tell bus to hold at this point
                 BusAccess::waitHold(_busSocketId, true);
+
+                // TODO DEBUG
+                // int val = digitalRead(8);
+                // for (int i = 0; i < 3; i++)
+                // {
+                //     digitalWrite(8,!val);
+                //     microsDelay(1);
+                //     digitalWrite(8,val);
+                //     microsDelay(2);
+                // }
             }
 
             // Check for step-over, breakpoints, etc
@@ -748,8 +758,8 @@ void TargetTracker::handleWaitInterruptStatic(uint32_t addr, uint32_t data,
                 // Bump state if in step mode or a grab is needed
                 if ((_stepMode == STEP_MODE_STEP_INTO) || _requestDisplayWhileStepping)
                 {
-                    // TODO
-                    ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_A);
+                    // TODO DEBUG
+                    // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_A);
                     _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
                 }
             }
@@ -880,6 +890,15 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
                 busAction = BR_BUS_ACTION_DISPLAY;
             _requestDisplayWhileStepping = false;
             BusAccess::targetReqBus(_busSocketId, busAction);
+            // TODO DEBUG
+            // int val = digitalRead(8);
+            // for (int i = 0; i < 7; i++)
+            // {
+            //     digitalWrite(8,!val);
+            //     microsDelay(1);
+            //     digitalWrite(8,val);
+            //     microsDelay(1);
+            // }
         }
     }
     else if (injectProgress == OPCODE_INJECT_DONE)
@@ -895,15 +914,15 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
         BusAccess::targetPageForInjection(_busSocketId, false);
         _pageOutForInjectionActive = false;
 
-                                                        // TODO
-                // int val = digitalRead(8);
-                // for (int i = 0; i < 5; i++)
-                // {
-                //     digitalWrite(8,!val);
-                //     microsDelay(10);
-                //     digitalWrite(8,val);
-                //     microsDelay(10);
-                // }
+        // TODO DEBUG
+        // int val = digitalRead(8);
+        // for (int i = 0; i < 5; i++)
+        // {
+        //     digitalWrite(8,!val);
+        //     microsDelay(5);
+        //     digitalWrite(8,val);
+        //     microsDelay(1);
+        // }
 
         // Go back to allowing a single instruction to run before reg get
 #ifdef PAUSE_GET_REGS_AT_CUR_ADDR

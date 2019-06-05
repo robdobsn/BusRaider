@@ -364,8 +364,10 @@ bool BusAccess::busActionHandleStart()
 
     // Initiate the action
     setSignal(_busActionType, true);
+
+    // TODO
     // if (_busActionType == BR_BUS_ACTION_RESET)
-    //     LogWrite(FromBusAccess, LOG_DEBUG, "RESET SET %u", micros());
+    //     LogWrite(FromBusAccess, LOG_DEBUG, "RESET start %u", micros());
 
     // Set start timer
     _busActionAssertedStartUs = micros();
@@ -382,6 +384,7 @@ void BusAccess::busActionHandleActive()
         if (isTimeout(micros(), _busActionInProgressStartUs, MAX_WAIT_FOR_PENDING_ACTION_US))
         {
             // Cancel the request
+            // LogWrite(FromBusAccess, LOG_DEBUG, "Timeout on bus action %u type %d _waitAsserted %d", micros(), _busActionType, _waitAsserted);
             setSignal(_busActionType, false);
             busActionClearFlags();
         }
@@ -409,6 +412,7 @@ void BusAccess::busActionHandleActive()
 
             // Release bus
             controlRelease();
+            setSignal(BR_BUS_ACTION_BUSRQ, false);
         }
         else
         {
@@ -485,133 +489,6 @@ void BusAccess::stepTimerISR([[maybe_unused]] void* pParam)
 
 void BusAccess::serviceWaitActivity()
 {
-
-#define NEW_CODE_2 1
-#ifndef NEW_CODE_2
-
-    // Check for bus action in progress
-    busActionHandleActive();
-
-    // See if a new bus action is requested
-    busActionCheck();
-
-    // Handle differently if waitIsOnMemory
-    if (waitIsOnMemory())
-    {
-        // Check for a new wait if there isn't one already active
-        if (!_waitAsserted)
-        {
-            // Read the control lines
-            uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
-
-            // Check if we have a new wait (and we're not in BUSACK)
-            if (((busVals & BR_WAIT_BAR_MASK) == 0) && ((busVals & BR_BUSACK_BAR_MASK) != 0))
-            {
-                // In case we are held in the wait
-                _waitAssertedStartUs = micros();
-                _waitAsserted = true;
-
-                // Handle the wait
-                waitHandleNew();
-            }
-        }
-
-        // Check if wait is asserted
-        if (_waitAsserted)
-        {
-            // Read the control lines
-            uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
-
-            // IORQ waits can be released as we don't hold at an IORQ
-            if ((busVals & BR_IORQ_BAR_MASK) == 0)
-            {
-                // Release the wait - also clears _waitAsserted flag
-                waitResetFlipFlops();
-            }
-            else if (!_waitHold)
-            {
-                // If we are not held then check for timeouts
-                if (isTimeout(micros(), _waitAssertedStartUs, _waitCycleLengthUs))
-                {
-                    // Check if we need to assert any new bus requests
-                    busActionHandleStart();
-
-                    // Release the wait - also clears _waitAsserted flag
-                    waitResetFlipFlops();
-
-                    // Check for bus action in progress
-                    busActionHandleActive();
-                }
-            }
-        }
-
-    }
-    else
-    {
-        // Handle signals that have already started
-        busActionHandleActive();
-
-        // See if a new bus action is requested
-        busActionCheck();
-
-        // Check for new wait
-        if (!_waitAsserted)
-        {
-            // Start any bus actions here
-            busActionHandleStart();
-
-            // Read the control lines
-            uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
-
-            // Check if we have a new wait (and we're not in BUSACK)
-            if (((busVals & BR_WAIT_BAR_MASK) == 0) && ((busVals & BR_BUSACK_BAR_MASK) != 0))
-            {
-                // Check if a bus action (other than BUSRQ) is happening which would 
-                // be cleared too soon by the wait handler as MUX hardware is shared
-                if ((_busActionState == BUS_ACTION_STATE_ASSERTED) && (_busActionType != BR_BUS_ACTION_BUSRQ))
-                {
-                    // Don't handle the wait until the bus action has completed
-                }
-                else
-                {
-                    // In case we are held in the wait
-                    _waitAssertedStartUs = micros();
-                    _waitAsserted = true;
-
-                    // Handle the wait
-                    waitHandleNew();
-                }
-            }
-        }
-
-        // Check if wait is asserted
-        if (_waitAsserted)
-        {
-            // Read the control lines
-            uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
-
-            // IORQ waits can be released as we don't hold at an IORQ
-            if ((busVals & BR_IORQ_BAR_MASK) == 0)
-            {
-                // Release the wait - also clears _waitAsserted flag
-                waitResetFlipFlops();
-            }
-            else if (!_waitHold)
-            {
-                // If we are not held then check for timeouts
-                if (isTimeout(micros(), _waitAssertedStartUs, _waitCycleLengthUs))
-                {
-                    // Check if we need to assert any new bus requests
-                    busActionHandleStart();
-
-                    // Release the wait - also clears _waitAsserted flag
-                    waitResetFlipFlops();
-                }
-            }
-        }
-    }
-#else
-
     // Check for new bus actions
     busActionCheck();
 
@@ -635,6 +512,14 @@ void BusAccess::serviceWaitActivity()
 
             // Handle the wait
             waitHandleNew();
+        }
+        else
+        {
+            if (!waitIsOnMemory())
+            {
+                // Check if we need to assert any new bus requests
+                busActionHandleStart();
+            }
         }
     }
 
@@ -665,7 +550,6 @@ void BusAccess::serviceWaitActivity()
             waitResetFlipFlops();
         }
     }
-#endif
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
