@@ -104,10 +104,10 @@ def test_MemRW():
     commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
     time.sleep(0.01)
     for i in range(testRepeatCount):
-        commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":32768,\"len\":10,\"isIo\":0}\0" + testWriteData)
+        commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":8000,\"lenDec\":10,\"isIo\":0}\0" + testWriteData)
         writtenData.append(testWriteData)
         time.sleep(0.015)
-        commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":32768,\"len\":10,\"isIo\":0}\0")
+        commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":8000,\"lenDec\":10,\"isIo\":0}\0")
         time.sleep(0.02)
         if not testStats["msgRdOk"]:
             break
@@ -245,11 +245,11 @@ def test_StepValidateJMP000():
 
         # Send program
         time.sleep(0.1)
-        commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"len\":3,\"isIo\":0}\0" + testWriteData)
+        commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"lenDec\":3,\"isIo\":0}\0" + testWriteData)
         time.sleep(0.1)
         # Start validator
         commonTest.sendFrame("valStop", b"{\"cmdName\":\"validatorStop\"}\0")
-        commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":0,\"len\":3,\"isIo\":0}\0")
+        commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":0,\"lenDec\":3,\"isIo\":0}\0")
         time.sleep(0.1)
         commonTest.sendFrame("valPrime", b"{\"cmdName\":\"validatorPrimeFromMem\"}\0")   
         commonTest.sendFrame("valStart", b"{\"cmdName\":\"validatorStart\",\"logging\":1}\0")   
@@ -330,7 +330,7 @@ def test_TRS80Level1RomExec():
 
     # Set TRS80
     mc = "TRS80"
-    TRS80ScreenAddr = 0x3c00 + 64
+    TRS80ScreenAddr = '3c40'
     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\"}\0")
     time.sleep(1)
 
@@ -344,10 +344,10 @@ def test_TRS80Level1RomExec():
         # Remove test valid check text
         testWriteData = b"TESTING IN PROGRESS"
         readDataExpected = testWriteData
-        commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":" + bytes(str(TRS80ScreenAddr),'utf-8') + b",\"len\":19,\"isIo\":0}\0" + testWriteData)
+        commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":" + bytes(TRS80ScreenAddr,'utf-8') + b",\"lenDec\":19,\"isIo\":0}\0" + testWriteData)
         time.sleep(0.2)
         rdLen = len(readDataExpected)
-        commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":" + bytes(str(TRS80ScreenAddr),'utf-8') + b",\"len\":" + bytes(str(rdLen),'utf-8') + b",\"isIo\":0}\0")
+        commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":" + bytes(TRS80ScreenAddr,'utf-8') + b",\"lenDec\":" + bytes(str(rdLen),'utf-8') + b",\"isIo\":0}\0")
         time.sleep(0.5)
 
         # Clear target
@@ -370,7 +370,7 @@ def test_TRS80Level1RomExec():
             time.sleep(1.5)
 
             # Test memory at screen location
-            commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":" + bytes(str(TRS80ScreenAddr),'utf-8') + b",\"len\":" + bytes(str(rdLen),'utf-8') + b",\"isIo\":0}\0")
+            commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":" + bytes(TRS80ScreenAddr,'utf-8') + b",\"lenDec\":" + bytes(str(rdLen),'utf-8') + b",\"isIo\":0}\0")
             time.sleep(0.5)
 
             # Breakout early if failing
@@ -430,7 +430,7 @@ def test_GalaxiansExec():
 
     # Set TRS80
     mc = "TRS80"
-    TRS80ScreenAddr = 0x3c00 + 64
+    TRS80ScreenAddr = '3c40'
     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\"}\0")
     time.sleep(1)
 
@@ -443,7 +443,7 @@ def test_GalaxiansExec():
 
         # Remove test valid check text
         testWriteData = b"TESTING IN PROGRESS"
-        commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":" + bytes(str(TRS80ScreenAddr),'utf-8') + b",\"len\":19,\"isIo\":0}\0" + testWriteData)
+        commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":" + bytes(TRS80ScreenAddr,'utf-8') + b",\"lenDec\":19,\"isIo\":0}\0" + testWriteData)
         time.sleep(0.2)
 
         # Clear target
@@ -487,7 +487,7 @@ def test_GalaxiansExec():
             # # Test memory at screen location
             # readDataExpected = b"READY"
             # rdLen = len(readDataExpected)
-            # commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":" + bytes(str(TRS80ScreenAddr),'utf-8') + b",\"len\":" + bytes(str(rdLen),'utf-8') + b",\"isIo\":0}\0")
+            # commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":" + bytes(str(TRS80ScreenAddr),'utf-8') + b",\"lenDec\":" + bytes(str(rdLen),'utf-8') + b",\"isIo\":0}\0")
             # time.sleep(0.2)
 
     # Wait for test end and cleardown
@@ -561,10 +561,10 @@ def test_stepSingle():
     # Send program and check it
     commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
     time.sleep(.1)
-    commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"len\":" + testWriteLen  + b",\"isIo\":0}\0" + testWriteData)
+    commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"lenDec\":" + testWriteLen  + b",\"isIo\":0}\0" + testWriteData)
     readDataExpected = testWriteData
     time.sleep(.1)
-    commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":0,\"len\":" + testWriteLen  + b",\"isIo\":0}\0")
+    commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":0,\"lenDec\":" + testWriteLen  + b",\"isIo\":0}\0")
     time.sleep(0.1)
 
     # Setup Test
@@ -683,7 +683,7 @@ def test_regGetTest():
 
     # Send program
     commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
-    commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"len\":" + testWriteLen  + b",\"isIo\":0}\0" + testWriteData)
+    commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"lenDec\":" + testWriteLen  + b",\"isIo\":0}\0" + testWriteData)
 
     # Setup Test
     commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\",\"reset\":1}\0")

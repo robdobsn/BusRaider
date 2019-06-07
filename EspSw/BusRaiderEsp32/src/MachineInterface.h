@@ -64,6 +64,11 @@ private:
     uint32_t _cachedStatusRequestMs;
     static const int TIME_BETWEEN_STATUS_REQS_MS = 10000;
 
+    // Command response
+    static const int MAX_WAIT_FOR_CMD_RESPONSE_MS = 200;
+    String _cmdResponseBuf;
+    bool _cmdResponseNew;
+
     // Demo handling
     DebounceButton _debounceButton;
     int _demoState;
@@ -107,4 +112,5 @@ public:
 
     void sendKeyToTarget(int keyCode);
 
+    bool sendTargetCommand(const String& cmd, const String& reqStr, String& resp, bool waitForResponse=true);
 };

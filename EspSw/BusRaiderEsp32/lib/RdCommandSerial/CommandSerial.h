@@ -68,7 +68,7 @@ public:
     void sendFileStartRecord(const char* fileType, const String& req, const String& filename, int fileLength);
     void sendFileBlock(size_t index, uint8_t *data, size_t len);
     void sendFileEndRecord(int blockCount, const char* pAdditionalJsonNameValues);
-    void sendTargetCommand(const String& targetCmd);
+    void sendTargetCommand(const String& targetCmd, const String& reqStr);
     void sendTargetData(const String& cmdName, const uint8_t* pData, int len, int index);
     void uploadAPIBlockHandler(const char* fileType, const String& req, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock);
 

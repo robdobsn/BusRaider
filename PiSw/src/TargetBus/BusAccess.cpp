@@ -25,6 +25,9 @@ static const char FromBusAccess[] = "BusAccess";
 BusSocketInfo BusAccess::_busSockets[MAX_BUS_SOCKETS];
 int BusAccess::_busSocketCount = 0;
 
+// Bus service enabled - can be disabled to allow external API to completely control bus
+bool BusAccess::_busServiceEnabled = true;
+
 // Wait state enables
 bool BusAccess::_waitOnMemory = false;
 bool BusAccess::_waitOnIO = false;
@@ -156,6 +159,9 @@ void BusAccess::busAccessReset()
     // Debug
     // LogWrite("BusAccess", LOG_DEBUG, "busAccessReset");
     waitEnablementUpdate();
+
+    // Reactivate bus service
+    _busServiceEnabled = true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -322,7 +328,8 @@ void BusAccess::targetPageForInjection([[maybe_unused]]int busSocket, bool pageO
 void BusAccess::service()
 {
 #ifndef TIMER_BASED_WAIT_STATES
-    serviceWaitActivity();
+    if (_busServiceEnabled)
+        serviceWaitActivity();
 #endif
 }
 
@@ -479,7 +486,8 @@ void BusAccess::busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REA
 void BusAccess::stepTimerISR([[maybe_unused]] void* pParam)
 {
 #ifdef TIMER_BASED_WAIT_STATES
-    serviceWaitActivity();
+    if (_busServiceEnabled)
+        serviceWaitActivity();
 #endif
 }
 

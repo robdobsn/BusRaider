@@ -53,7 +53,12 @@ private:
             uint32_t flags, uint32_t& retVal);
 
     // Helpers
-    static bool getArgsRdAndWr(const char* pCmdJson, uint32_t& addr, int& dataLen, bool& isIo);
+    static bool busLineHandler(const char* pCmdJson);
+    static bool muxLineHandler(const char* pCmdJson);
+    static void busLinesRead(char* pRespJson, [[maybe_unused]]int maxRespLen);
+    static bool getArg(const char* argName, int argNum, const char* pCmdJson, 
+                uint32_t& value, char* pOutStr = NULL, uint32_t maxOutStrLen = 0,
+                bool forceDecimal = false);
 
     // Synchronous bus access
     static uint8_t _memAccessDataBuf[MAX_MEM_BLOCK_READ_WRITE];

@@ -346,6 +346,23 @@ public:
     static void getStatus(BusAccessStatusInfo& statusInfo);
     static void clearStatus();
 
+    // External API low-level bus control
+    static void rawBusControlEnable(bool en);
+    static void rawBusControlClearWait();
+    static void rawBusControlWaitDisable();
+    static void rawBusControlClockEnable(bool en);
+    static bool rawBusControlTakeBus();
+    static void rawBusControlReleaseBus();
+    static void rawBusControlSetAddress(uint32_t addr);
+    static void rawBusControlSetData(uint32_t data);
+    static uint32_t rawBusControlReadRaw();
+    static void rawBusControlSetPin(uint32_t pinNumber, bool level);
+    static bool rawBusControlGetPin(uint32_t pinNumber);
+    static uint32_t rawBusControlReadPIB();
+    static void rawBusControlWritePIB(uint32_t val);
+    static void rawBusControlMuxSet(uint32_t val);
+    static void rawBusControlMuxClear();
+
     // Debug
     static void isrAssert(int code);
     static void isrValue(int code, int val);
@@ -357,6 +374,9 @@ private:
     static const int MAX_BUS_SOCKETS = 10;
     static BusSocketInfo _busSockets[MAX_BUS_SOCKETS];
     static int _busSocketCount;
+
+    // Bus service active
+    static bool _busServiceEnabled;
 
     // Current wait state flags
     static bool _waitOnMemory;
@@ -418,7 +438,6 @@ private:
     static void busActionHandleActive();
     static void busActionClearFlags();
     static void busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REASON reason);
-    // static BR_BUS_ACTION busActionCheckNext(bool initiateAction);
 
     // Set address
     static void addrLowSet(uint32_t lowAddrByte);

@@ -208,11 +208,11 @@ void CommandSerial::sendFileEndRecord(int blockCount, const char* pAdditionalJso
     _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
 }
 
-void CommandSerial::sendTargetCommand(const String& targetCmd)
+void CommandSerial::sendTargetCommand(const String& targetCmd, const String& reqStr)
 {
     // Serial.printf("CommandSerial: targetCommand Msg %s\n", targetCmd.c_str());
 
-    String frame = "{\"cmdName\":\"" + targetCmd + "\"}\0";
+    String frame = "{\"cmdName\":\"" + targetCmd + "\",\"reqStr\":\"" + reqStr + "\"}\0";
     _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
 }
 
@@ -258,7 +258,7 @@ void CommandSerial::uploadCommonBlockHandler(const char* fileType, const String&
        // Log.trace("%sfile end sent\n", MODULE_PREFIX);
         if (_uploadTargetCommandWhenComplete.length() != 0)
         {
-            sendTargetCommand(_uploadTargetCommandWhenComplete);
+            sendTargetCommand(_uploadTargetCommandWhenComplete, "");
             // Log.trace("%spost-upload target command sent %s\n", MODULE_PREFIX,
             //         _uploadTargetCommandWhenComplete.c_str());
         }

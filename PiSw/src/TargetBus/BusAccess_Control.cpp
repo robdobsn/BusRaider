@@ -295,10 +295,10 @@ void BusAccess::addrSet(unsigned int addr)
 // - control of host bus has been requested and acknowledged
 // - address bus is already set and output enabled to host bus
 // - PIB is already set to output
-void BusAccess::byteWrite(uint32_t byte, int iorq)
+void BusAccess::byteWrite(uint32_t data, int iorq)
 {
     // Set the data onto the PIB
-    pibSetValue(byte);
+    pibSetValue(data);
     // Perform the write
     // Clear DIR_IN (so make direction out), enable data output onto data bus and MREQ_BAR active
     WR32(ARM_GPIO_GPCLR0, (1 << BR_DATA_DIR_IN) | BR_MUX_CTRL_BIT_MASK | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)));
@@ -702,4 +702,105 @@ void BusAccess::pagingPageIn()
         if (_busSockets[i].enabled)
             _busSockets[i].busActionCallback(BR_BUS_ACTION_PAGE_IN_FOR_INJECT, BR_BUS_ACTION_GENERAL);
     }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// External API control
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusAccess::rawBusControlEnable(bool en)
+{
+    busAccessReset();
+    _busServiceEnabled = !en;
+}
+
+void BusAccess::rawBusControlClearWait()
+{
+    waitResetFlipFlops();
+}
+
+void BusAccess::rawBusControlWaitDisable()
+{
+    waitGenerationDisable();
+}
+
+void BusAccess::rawBusControlClockEnable(bool en)
+{
+    if(!en)
+    {
+        clockEnable(false);
+        pinMode(BR_CLOCK_PIN, OUTPUT);
+    }
+    else
+    {
+        clockSetup();
+        clockSetFreqHz(1000000);
+        clockEnable(true);
+    }
+}
+
+bool BusAccess::rawBusControlTakeBus()
+{
+    return (controlRequestAndTake() == BR_OK);
+}
+
+void BusAccess::rawBusControlReleaseBus()
+{
+    controlRelease();
+}
+
+void BusAccess::rawBusControlSetAddress(uint32_t addr)
+{
+    addrSet(addr);
+}
+
+void BusAccess::rawBusControlSetData(uint32_t data)
+{
+    // Set the data onto the PIB
+    pibSetOut();
+    pibSetValue(data);
+    // Perform the write
+    // Clear DIR_IN (so make direction out), enable data output onto data bus and MREQ_BAR active
+    WR32(ARM_GPIO_GPCLR0, (1 << BR_DATA_DIR_IN) | BR_MUX_CTRL_BIT_MASK);
+    WR32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
+}
+
+uint32_t BusAccess::rawBusControlReadRaw()
+{
+    return RD32(ARM_GPIO_GPLEV0);
+}
+
+void BusAccess::rawBusControlSetPin(uint32_t pinNumber, bool level)
+{
+    digitalWrite(pinNumber, level);
+}
+
+bool BusAccess::rawBusControlGetPin(uint32_t pinNumber)
+{
+    return digitalRead(pinNumber);
+}
+
+uint32_t BusAccess::rawBusControlReadPIB()
+{
+    pibSetIn();
+    digitalWrite(BR_DATA_DIR_IN, 1);
+    muxClear();
+    return (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
+}
+
+void BusAccess::rawBusControlWritePIB(uint32_t val)
+{
+    // Set the data onto the PIB
+    pibSetOut();
+    pibSetValue(val);
+}
+
+void BusAccess::rawBusControlMuxSet(uint32_t val)
+{
+    muxSet(val);
+}
+
+void BusAccess::rawBusControlMuxClear()
+{
+    muxClear();
 }

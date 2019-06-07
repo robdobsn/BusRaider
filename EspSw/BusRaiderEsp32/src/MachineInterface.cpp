@@ -40,6 +40,7 @@ MachineInterface::MachineInterface() :
     _rdpCommandIndex = 0;
     _zesaruxCommandIndex = 0;
     _cachedStatusRequestMs = 0;
+    _cmdResponseNew = false;
 
     // TODO
     // _rdpValStatCount = 0;
@@ -190,7 +191,7 @@ void MachineInterface::service()
         {
             // Request status
             if (_pCommandSerial)
-                _pCommandSerial->sendTargetCommand("getStatus");
+                _pCommandSerial->sendTargetCommand("getStatus", "");
             // Log.trace("%sQuery status\n", MODULE_PREFIX);
             _cachedStatusRequestMs = millis();
         }
@@ -379,6 +380,11 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *frameBuffer, int frame
         // Log.trace("Mirror screen len %d\n", frameLength);
         _pWebServer->webSocketSend(frameBuffer, frameLength);
     }
+    else if ((cmdName.endsWith("Resp")))
+    {
+        _cmdResponseNew = true;
+        _cmdResponseBuf = pRxStr;
+    }
 
 }
 
@@ -482,4 +488,32 @@ void MachineInterface::sendKeyToTarget(int keyCode)
     if (_pTargetSerial)
         _pTargetSerial->write(keyCode);
     // Log.verbose("%ssent target char %x\n", MODULE_PREFIX, (char)asciiCode);
+}
+
+bool MachineInterface::sendTargetCommand(const String& cmd, const String& reqStr, String& respStr, bool waitForResponse)
+{
+    // Send command
+    _cmdResponseNew = false;
+    _pCommandSerial->sendTargetCommand(cmd, reqStr);
+
+    // Return if no response required
+    if (!waitForResponse)
+    {
+        Utils::setJsonBoolResult(respStr, true);
+        return true;
+    }
+
+    // Wait for a response (or time-out)
+    uint32_t timeStarted = millis();
+    while (!Utils::isTimeout(millis(), timeStarted, MAX_WAIT_FOR_CMD_RESPONSE_MS))
+    {
+        _pCommandSerial->service();
+        if (_cmdResponseNew)
+        {
+            respStr = _cmdResponseBuf;
+            return true;
+        }
+    }
+    Utils::setJsonBoolResult(respStr, false);
+    return false;
 }

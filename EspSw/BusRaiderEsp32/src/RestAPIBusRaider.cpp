@@ -30,12 +30,10 @@ void RestAPIBusRaider::service()
 
 void RestAPIBusRaider::apiTargetCommand(String &reqStr, String &respStr)
 {
-    bool rslt = true;
     // Get command
     String targetCmd = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 1);
     // Log.trace("%sapiTargetCommand %s\n", MODULE_PREFIX, targetCmd.c_str());
-    _commandSerial.sendTargetCommand(targetCmd);
-    Utils::setJsonBoolResult(respStr, rslt);
+    _machineInterface.sendTargetCommand(targetCmd, reqStr, respStr, true);
 }
 
 void RestAPIBusRaider::apiTargetCommandPost(String &reqStr, String &respStr)
@@ -105,7 +103,7 @@ void RestAPIBusRaider::apiUploadAppendPart(String& req, String& filename, size_t
 void RestAPIBusRaider::apiUploadAndRunComplete(String &reqStr, String &respStr)
 {
     Log.trace("%sapiUploadAndRunComplete %s\n", MODULE_PREFIX, reqStr.c_str());
-    _commandSerial.sendTargetCommand("ProgramAndReset");
+    _commandSerial.sendTargetCommand("ProgramAndReset", reqStr);
     Utils::setJsonBoolResult(respStr, true);
 }
 
@@ -120,7 +118,7 @@ void RestAPIBusRaider::apiUploadAndRunPart(String& req, String& filename, size_t
 void RestAPIBusRaider::apiSendFileToTargetBuffer(const String &reqStr, String &respStr)
 {
     // Clear target first
-    _commandSerial.sendTargetCommand("ClearTarget");
+    _commandSerial.sendTargetCommand("ClearTarget", reqStr);
     // File system
     String fileSystemStr = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 1);
     // Filename        
@@ -142,7 +140,7 @@ void RestAPIBusRaider::apiAppendFileToTargetBuffer(const String &reqStr, String 
 void RestAPIBusRaider::runFileOnTarget(const String &reqStr, String &respStr)
 {
     // Clear target first
-    _commandSerial.sendTargetCommand("ClearTarget");
+    _commandSerial.sendTargetCommand("ClearTarget", reqStr);
     // File system
     String fileSystemStr = RestAPIEndpoints::getNthArgStr(reqStr.c_str(), 1);
     // Filename        

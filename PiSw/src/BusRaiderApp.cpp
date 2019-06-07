@@ -286,7 +286,7 @@ void BusRaiderApp::statusDisplayUpdate()
         else
             strlcat(statusStr, "Free Running", MAX_STATUS_STR_LEN);
         if (BusAccess::isUnderControl())
-            strlcat(statusStr, "PiControl   ", MAX_STATUS_STR_LEN);
+            strlcat(statusStr, " & PiControl   ", MAX_STATUS_STR_LEN);
         _display.statusPut(Display::STATUS_FIELD_BUS_ACCESS, Display::STATUS_NORMAL, statusStr);
 
         // Refresh rate
