@@ -66,9 +66,9 @@ public:
     static BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
     static BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
 
-    // Validator interface to hardware
-    static void validatorClone();
-    static void validatorHandleAccess(uint32_t addr, uint32_t data, 
+    // Tracer interface to hardware
+    static void tracerClone();
+    static void tracerHandleAccess(uint32_t addr, uint32_t data, 
             uint32_t flags, uint32_t& retVal);
 
     // Enable/Disable

@@ -15,7 +15,7 @@
 #include "Machines/McManager.h"
 #include "BusController/BusController.h"
 #include "ZEsarUXInterface/ZEsarUXInterface.h"
-#include "StepValidator/StepValidator.h"
+#include "StepTracer/StepTracer.h"
 #include "BusRaiderApp.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -23,7 +23,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Program details
-static const char* PROG_VERSION = "Bus Raider V1.7.127 (C) Rob Dobson 2018-2019";
+static const char* PROG_VERSION = "Bus Raider V1.7.130 (C) Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "https://robdobson.com/tag/raider";
 
 // Send log data to display (as opposed to merging in the ESP32 log output)
@@ -39,8 +39,8 @@ Display display;
 #define MAIN_UART_BAUD_RATE 921600
 UartMaxi mainUart;
 
-// CommandHandler, StepValidator, BusController
-StepValidator stepValidator;
+// CommandHandler, StepTracer, BusController
+StepTracer stepTracer;
 BusController busController;
 ZEsarUXInterface _ZEsarUXInterface;
 McManager mcManager;
@@ -64,7 +64,7 @@ void debugToDisplay(const char* pSeverity, const char* pSource, const char* pMsg
 extern "C" int main()
 {
     // Initialise UART
-    if (!mainUart.setup(MAIN_UART_BAUD_RATE, 1000000, 100000))
+    if (!mainUart.setup(MAIN_UART_BAUD_RATE, 1000000, 10000))
     {
         // display.statusPut(Display::STATUS_FIELD_ESP_VERSION, Display::STATUS_FAIL, "ESP32: Not Connected, UART Fail");
         microsDelay(5000000);
@@ -99,9 +99,9 @@ extern "C" int main()
     // Target tracker
     TargetTracker::init();
 
-    // BusController, StepValidator
+    // BusController, StepTracer
     busController.init();
-    stepValidator.init();
+    stepTracer.init();
     _ZEsarUXInterface.init();
 
     // Init machine manager
@@ -115,6 +115,10 @@ extern "C" int main()
 
     // Select Serial Terminal machine - overridden with info from ESP32
     mcManager.setMachineByName("Serial Terminal");
+
+
+    LogWrite(FromMain, LOG_DEBUG, "StepTracer %08x %u ZEsarUXInterface %08x %u",
+            &stepTracer, &stepTracer, &_ZEsarUXInterface, &_ZEsarUXInterface);
 
     // Loop forever
     while(1)
@@ -140,9 +144,9 @@ extern "C" int main()
         // Service machine manager
         McManager::service();
 
-        // BusController, StepValidator
+        // BusController, StepTracer
         busController.service();
-        stepValidator.service();
+        stepTracer.service();
         _ZEsarUXInterface.service();
     }
 }

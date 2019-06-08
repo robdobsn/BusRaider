@@ -27,8 +27,8 @@ def setupTests(testName):
 def test_Comms():
 
     def frameCallback(frameJson, logger):
-        assert(frameJson['cmdName'] == "validatorStatusResp")
-        if frameJson['cmdName'] == "validatorStatusResp":
+        assert(frameJson['cmdName'] == "tracerStatusResp")
+        if frameJson['cmdName'] == "tracerStatusResp":
             logger.info(f"isrCount {frameJson['isrCount']} errors {frameJson['errors']}")
             testStats["framesRx"] += 1
             testStats["msgRx"][frameJson['msgIdx']] = True
@@ -41,7 +41,7 @@ def test_Comms():
     testRepeatCount = 100
     testStats = {"framesRx": 0, "msgRx":[False]*testRepeatCount}
     for i in range(testRepeatCount):
-        commonTest.sendFrame("statusReq", b"{\"cmdName\":\"validatorStatus\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
+        commonTest.sendFrame("statusReq", b"{\"cmdName\":\"tracerStatus\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
         msgIdx += 1
         # time.sleep(0.001)
     time.sleep(1)
@@ -74,7 +74,7 @@ def test_MemRW():
             except:
                 logger.error(f"WrResp doesn't contain err {msgContent}")
                 testStats["msgWrRespErrMissingCount"] += 1
-        elif msgContent['cmdName'] == "busResetResp":
+        elif msgContent['cmdName'] == "busInitResp":
             pass
         elif msgContent['cmdName'][:10] == "SetMachine":
             pass
@@ -100,8 +100,8 @@ def test_MemRW():
     # Processor clock
     commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":250000}\0")
     time.sleep(1)
-    # Bus reset
-    commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
+    # Bus init
+    commonTest.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
     time.sleep(0.01)
     for i in range(testRepeatCount):
         commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":8000,\"lenDec\":10,\"isIo\":0}\0" + testWriteData)
@@ -169,7 +169,7 @@ def test_SetMc():
     assert(testStats["unknownMsgCount"] == 0)
     assert(testStats["mcCount"] >= 4)
 
-def test_StepValidateJMP000():
+def test_TraceJMP000():
 
     def frameCallback(msgContent, logger):
         if msgContent['cmdName'] == "RdResp":
@@ -188,25 +188,25 @@ def test_StepValidateJMP000():
             except:
                 logger.error(f"WrResp doesn't contain err {msgContent}")
                 testStats["msgWrRespErrMissingCount"] += 1
-        elif msgContent['cmdName'] == "busResetResp":
+        elif msgContent['cmdName'] == "busInitResp":
             pass
         elif msgContent['cmdName'][:10] == "SetMachine":
             pass
         elif msgContent['cmdName'] == "clockHzSetResp":
             testStats["clockSetOk"] = True
-        elif msgContent['cmdName'] == "validatorPrimeFromMemResp" or \
-                msgContent['cmdName'] == "validatorStopResp" or \
-                msgContent['cmdName'] == "validatorStartResp":
+        elif msgContent['cmdName'] == "tracerPrimeFromMemResp" or \
+                msgContent['cmdName'] == "tracerStopResp" or \
+                msgContent['cmdName'] == "tracerStartResp":
             pass
         elif msgContent['cmdName'] == "busStatusClearResp" or \
-                msgContent['cmdName'] == "busResetResp":
+                msgContent['cmdName'] == "busInitResp":
             pass
-        elif msgContent['cmdName'] == "validatorStatusResp":
+        elif msgContent['cmdName'] == "tracerStatusResp":
             logger.info(f"isrCount {msgContent['isrCount']} errors {msgContent['errors']}")
-            testStats['stepValErrCount'] += msgContent['errors']
+            testStats['tracerErrCount'] += msgContent['errors']
             testStats['isrCount'] += msgContent['isrCount']
-            testStats['stepValRespCount'] += 1
-            logger.info(f"StepValStatus ISRCount {msgContent['isrCount']} errors {msgContent['errors']}")
+            testStats['tracerRespCount'] += 1
+            logger.info(f"TracerStatus ISRCount {msgContent['isrCount']} errors {msgContent['errors']}")
         elif msgContent['cmdName'] == "busStatusResp":
             testStats['clrMaxUs'] = max(testStats['clrMaxUs'], msgContent['clrMaxUs'])
         elif msgContent['cmdName'] == "hwListResp" or \
@@ -218,12 +218,12 @@ def test_StepValidateJMP000():
 
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
-    setupTests("StepValidateJMP000")
+    setupTests("TraceJMP000")
     commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
     # Test data - jump to 0000
     testWriteData = b"\xc3\x00\x00"
     testStats = {"msgRdOk": True, "msgRdRespCount":0, "msgWrRespCount": 0, "msgWrRespErrCount":0, "msgWrRespErrMissingCount":0,
-                 "unknownMsgCount":0, "isrCount":0, "stepValErrCount":0, "clrMaxUs":0, "stepValRespCount":0}
+                 "unknownMsgCount":0, "isrCount":0, "tracerErrCount":0, "clrMaxUs":0, "tracerRespCount":0}
     # Set serial terminal machine - to avoid conflicts with display updates, etc
     mc = "Serial Terminal ANSI"
     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
@@ -239,20 +239,20 @@ def test_StepValidateJMP000():
     # Repeat tests
     testRepeatCount = 10
     testValStatusCount = 1
-    # Bus reset
-    commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
+    # Bus init
+    commonTest.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
     for i in range(testRepeatCount):
 
         # Send program
         time.sleep(0.1)
         commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"lenDec\":3,\"isIo\":0}\0" + testWriteData)
         time.sleep(0.1)
-        # Start validator
-        commonTest.sendFrame("valStop", b"{\"cmdName\":\"validatorStop\"}\0")
+        # Start tracer
+        commonTest.sendFrame("tracerStop", b"{\"cmdName\":\"tracerStop\"}\0")
         commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":0,\"lenDec\":3,\"isIo\":0}\0")
         time.sleep(0.1)
-        commonTest.sendFrame("valPrime", b"{\"cmdName\":\"validatorPrimeFromMem\"}\0")   
-        commonTest.sendFrame("valStart", b"{\"cmdName\":\"validatorStart\",\"logging\":1}\0")   
+        commonTest.sendFrame("tracerPrime", b"{\"cmdName\":\"tracerPrimeFromMem\"}\0")   
+        commonTest.sendFrame("tracerStart", b"{\"cmdName\":\"tracerStart\",\"logging\":1,\"compare\":1}\0")   
         commonTest.sendFrame("busStatusClear", b"{\"cmdName\":\"busStatusClear\"}\0")   
 
         # Run for 2 seconds
@@ -261,20 +261,20 @@ def test_StepValidateJMP000():
         # Get status
         msgIdx = 0
         for j in range(testValStatusCount):
-            commonTest.sendFrame("statusReq", b"{\"cmdName\":\"validatorStatus\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
+            commonTest.sendFrame("statusReq", b"{\"cmdName\":\"tracerStatus\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
             msgIdx += 1
             commonTest.sendFrame("busStatus", b"{\"cmdName\":\"busStatus\"}\0")
             time.sleep(0.2)
 
         # Send messages to stop
-        commonTest.sendFrame("valStop", b"{\"cmdName\":\"validatorStop\"}\0")
+        commonTest.sendFrame("tracerStop", b"{\"cmdName\":\"tracerStop\"}\0")
 
         # Breakout early if failing
-        if not testStats["msgRdOk"] or testStats['stepValErrCount'] > 0:
+        if not testStats["msgRdOk"] or testStats['tracerErrCount'] > 0:
             break
     
-    # Bus reset
-    commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
+    # Bus init
+    commonTest.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
     time.sleep(1)
     
     # Wait for test end and cleardown
@@ -287,8 +287,8 @@ def test_StepValidateJMP000():
     assert(testStats["unknownMsgCount"] == 0)
     assert(testStats["clockSetOk"] == True)
     assert(testStats["isrCount"] > 0)
-    assert(testStats["stepValRespCount"] == testRepeatCount * testValStatusCount)
-    assert(testStats["stepValErrCount"] == 0)
+    assert(testStats["tracerRespCount"] == testRepeatCount * testValStatusCount)
+    assert(testStats["tracerErrCount"] == 0)
 
 def test_TRS80Level1RomExec():
 
@@ -313,7 +313,7 @@ def test_TRS80Level1RomExec():
             testStats["msgRdRespCount"] += 1
             if not respOk:
                 logger.error(f"Read {msgContent['data']} != expected {requiredResp}")
-        elif msgContent['cmdName'] == "busResetResp":
+        elif msgContent['cmdName'] == "busInitResp":
             pass
         else:
             testStats["unknownMsgCount"] += 1
@@ -325,8 +325,8 @@ def test_TRS80Level1RomExec():
     commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
     testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRespCount":0}
 
-    # Reset bus
-    commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
+    # Bus init
+    commonTest.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
 
     # Set TRS80
     mc = "TRS80"
@@ -374,7 +374,7 @@ def test_TRS80Level1RomExec():
             time.sleep(0.5)
 
             # Breakout early if failing
-            if not testStats["msgRdOk"] or testStats['stepValErrCount'] > 0:
+            if not testStats["msgRdOk"] or testStats['tracerErrCount'] > 0:
                 break
 
     # Wait for test end and cleardown
@@ -411,7 +411,7 @@ def test_GalaxiansExec():
             if not respOk:
                 logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
         elif msgContent['cmdName'] == "busStatusClearResp" or \
-                    msgContent['cmdName'] == "busResetResp":
+                    msgContent['cmdName'] == "busInitResp":
             pass
         else:
             testStats["unknownMsgCount"] += 1
@@ -424,8 +424,8 @@ def test_GalaxiansExec():
     testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRespCount":0,
             "iorqWr":0}
 
-    # Reset bus
-    commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
+    # Init bus
+    commonTest.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
     commonTest.sendFrame("busStatusClear", b"{\"cmdName\":\"busStatusClear\"}\0")   
 
     # Set TRS80
@@ -531,7 +531,7 @@ def test_stepSingle():
             if not respOk:
                 logger.error(f"Read {msgContent['data']} != expected {requiredResp}")
         elif msgContent['cmdName'] == "busStatusClearResp" or \
-                    msgContent['cmdName'] == "busResetResp":
+                    msgContent['cmdName'] == "busInitResp":
             pass
         elif msgContent['cmdName'] == "getRegsResp":
             logger.info(f"Expected register value {regsExpectedContent}")
@@ -559,7 +559,7 @@ def test_stepSingle():
     time.sleep(.2)
 
     # Send program and check it
-    commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
+    commonTest.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
     time.sleep(.1)
     commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"lenDec\":" + testWriteLen  + b",\"isIo\":0}\0" + testWriteData)
     readDataExpected = testWriteData
@@ -631,7 +631,7 @@ def test_regGetTest():
             if not respOk:
                 logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
         elif msgContent['cmdName'] == "busStatusClearResp" or \
-                    msgContent['cmdName'] == "busResetResp":
+                    msgContent['cmdName'] == "busInitResp":
             pass
         elif msgContent['cmdName'] == "getRegsResp":
             regsCount = len(regsGot)
@@ -682,7 +682,7 @@ def test_regGetTest():
     time.sleep(1)
 
     # Send program
-    commonTest.sendFrame("busReset", b"{\"cmdName\":\"busReset\"}\0")
+    commonTest.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
     commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"lenDec\":" + testWriteLen  + b",\"isIo\":0}\0" + testWriteData)
 
     # Setup Test

@@ -10,7 +10,6 @@
 
 #include "../CommandInterface/CommandHandler.h"
 
-// Validator
 class ZEsarUXInterface
 {
 public:

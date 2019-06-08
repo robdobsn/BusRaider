@@ -11,7 +11,6 @@
 #include "../TargetBus/TargetCPUZ80.h"
 #include "../TargetBus/TargetTracker.h"
 #include "../Hardware/HwManager.h"
-#include "../StepValidator/StepValidator.h"
 #include "../Fonts/SystemFont.h"
 #include "../Machines/McTRS80.h"
 #include "../Machines/McRobsZ80.h"
@@ -38,7 +37,7 @@ CommsSocketInfo McManager::_commsSocketInfo =
     McManager::targetFileHandler
 };
 
-// Step validator
+// Step tracer
 BusSocketInfo McManager::_busSocketInfo = 
 {
     true,

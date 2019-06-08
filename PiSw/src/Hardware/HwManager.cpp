@@ -301,23 +301,23 @@ void HwManager::mirrorClone()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Validator Interface
+// Tracer Interface
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// The Validator interface is allows a whole extra version of the hardware to be accessed for purposes
-// of validation of the hardware against an emulated processor (this is not the same as memory emulation)
+// The Tracer interface allows a whole extra version of the hardware to be accessed for purposes
+// of tracing of the hardware - possibly against an emulated processor (this is not the same as memory emulation)
 
-void HwManager::validatorClone()
+void HwManager::tracerClone()
 {
     // Iterate hardware
     for (int i = 0; i < _numHardware; i++)
     {
         if (_pHw[i] && _pHw[i]->isEnabled())
-            _pHw[i]->validatorClone();
+            _pHw[i]->tracerClone();
     }
 }
 
-void HwManager::validatorHandleAccess(uint32_t addr, uint32_t data, 
+void HwManager::tracerHandleAccess(uint32_t addr, uint32_t data, 
         uint32_t flags, uint32_t& retVal)
 {
     // Iterate hardware
@@ -325,7 +325,7 @@ void HwManager::validatorHandleAccess(uint32_t addr, uint32_t data,
     {
         if (_pHw[i] && _pHw[i]->isEnabled())
         {
-            _pHw[i]->validatorHandleAccess(addr, data, flags, retVal);
+            _pHw[i]->tracerHandleAccess(addr, data, flags, retVal);
         }
     }
 

@@ -70,13 +70,13 @@ uint8_t* HwBase::getMirrorMemForAddr([[maybe_unused]]uint32_t addr)
     return NULL;
 }
 
-// Validator interface to hardware
-void HwBase::validatorClone()
+// Tracer interface to hardware
+void HwBase::tracerClone()
 {
 
 }
 
-void HwBase::validatorHandleAccess([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+void HwBase::tracerHandleAccess([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
         [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t& retVal)
 {
     

@@ -31,9 +31,9 @@ public:
     // Get mirror memory for address
     uint8_t* getMirrorMemForAddr(uint32_t addr);
 
-    // Validator interface to hardware
-    virtual void validatorClone();
-    virtual void validatorHandleAccess(uint32_t addr, uint32_t data, 
+    // Tracer interface to hardware
+    virtual void tracerClone();
+    virtual void tracerHandleAccess(uint32_t addr, uint32_t data, 
             uint32_t flags, uint32_t& retVal);
 
     // Handle a completed bus action
@@ -58,10 +58,10 @@ private:
     uint32_t _mirrorMemoryLen;
     uint8_t* getMirrorMemory();
 
-    // Validator memory (used for emulated CPU step-validation)
-    uint8_t* _pValidatorMemory;
-    uint32_t _validatorMemoryLen;
-    uint8_t* getValidatorMemory();
+    // Tracer memory (used for emulated CPU step-validation)
+    uint8_t* _pTracerMemory;
+    uint32_t _tracerMemoryLen;
+    uint8_t* getTracerMemory();
 
     // Reset
     void hwReset();

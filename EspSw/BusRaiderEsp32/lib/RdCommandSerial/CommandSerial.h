@@ -62,6 +62,12 @@ public:
     // Upload in progress
     bool uploadInProgress();
 
+    // Get HDLC stats
+    MiniHDLCStats* getHDLCStats()
+    {
+        return _miniHDLC.getStats();
+    }
+
     // Service 
     void service();
 

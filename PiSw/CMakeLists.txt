@@ -48,7 +48,7 @@ add_custom_command(TARGET ${PROJECT_ELF} POST_BUILD
   # COMMAND "C:/Program Files (x86)/teraterm/ttermpro.exe" /R ${PROJECT_SOURCE_DIR}/bin/kernel.img /speed=115200 /c=39
   # COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${PROJECT_ELF}> ${PROJECT_HEX}
   # COMMAND ${CMAKE_OBJCOPY} -O srec --srec-forceS3 $<TARGET_FILE:${PROJECT_ELF}> ${PROJECT_SREC}
-  # COMMAND ${CMAKE_OBJDUMP} -drwCS $<TARGET_FILE:${PROJECT_ELF}> | $(PREFIX)c++filt > ${PROJECT_SOURCE_DIR}/${PROJ_NAME}.lst
+  # COMMAND ${CMAKE_OBJDUMP} -drwxCS $<TARGET_FILE:${PROJECT_ELF}> | $(PREFIX)c++filt > ${PROJECT_SOURCE_DIR}/${PROJ_NAME}.lst
   COMMENT "Building and uploading ...")
 
 # add_custom_command(TARGET ${PROJECT_ELF} POST_BUILD

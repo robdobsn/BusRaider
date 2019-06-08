@@ -41,10 +41,6 @@ MachineInterface::MachineInterface() :
     _zesaruxCommandIndex = 0;
     _cachedStatusRequestMs = 0;
     _cmdResponseNew = false;
-
-    // TODO
-    // _rdpValStatCount = 0;
-    // _rdpLastOutMs = 0;
 }
 
 // Setup
@@ -177,13 +173,6 @@ void MachineInterface::setup(ConfigBase &config,
 
 void MachineInterface::service()
 {
-    // TODO
-    // if (Utils::isTimeout(millis(), _rdpLastOutMs, 2000))
-    // {
-    //     Log.trace("_rdpValStatCount %d\n", _rdpValStatCount);
-    //     _rdpLastOutMs = millis();
-    // }
-
     // Check cached status is ok
     if (_cachedStatusJSON.length() <= 2)
     {

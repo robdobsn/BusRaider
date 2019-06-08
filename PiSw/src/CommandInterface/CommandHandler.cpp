@@ -24,7 +24,8 @@ CommsSocketInfo CommandHandler::_commsSockets[MAX_COMMS_SOCKETS];
 int CommandHandler::_commsSocketCount = 0;
 
 // Callbacks
-CmdHandlerPutToSerialFnType* CommandHandler::_pPutToHDLCSerialFunction = NULL;
+CmdHandlerSerialPutStrFnType* CommandHandler::_pHDLCSerialPutStrFunction = NULL;
+CmdHandlerSerialTxAvailableFnType* CommandHandler::_pHDLCSerialTxAvailableFunction = NULL;
 
 // Singleton command handler
 CommandHandler* CommandHandler::_pSingletonCommandHandler = NULL;
@@ -98,11 +99,11 @@ void CommandHandler::handleHDLCReceivedChars(const uint8_t* pBytes, int numBytes
 
 void CommandHandler::hdlcPutCh(uint8_t ch)
 {
-    if (_pPutToHDLCSerialFunction)
+    if (_pHDLCSerialPutStrFunction)
     {
         uint8_t buf[1];
         buf[0] = ch;
-        _pPutToHDLCSerialFunction(buf, 1);
+        _pHDLCSerialPutStrFunction(buf, 1);
     }
 }
 
@@ -118,6 +119,14 @@ void CommandHandler::hdlcPutChStatic(uint8_t ch)
 
     if (_pSingletonCommandHandler)
         _pSingletonCommandHandler->hdlcPutCh(ch);
+}
+
+uint32_t CommandHandler::hdlcTxAvailableStatic()
+{
+    if (_pSingletonCommandHandler)
+        if (_pSingletonCommandHandler->_pHDLCSerialTxAvailableFunction)
+            return _pSingletonCommandHandler->_pHDLCSerialTxAvailableFunction();
+    return 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -208,7 +217,7 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
         rdpMessage = true;
 
         // TODO
-        // if (strcasecmp(cmdName, "validatorStatus") == 0)
+        // if (strcasecmp(cmdName, "tracerStatus") == 0)
         //     _rdpMsgCountIn++;
         // LogWrite(FromCmdHandler, LOG_DEBUG, "RDPRX cmd %s cmdLen %d paramsStr %s paramslen %d rdCountIn %d this %d", 
         //             pCmdJson, strlen(pCmdJson), pParams, paramsLen, _rdpMsgCountIn, this);
@@ -233,7 +242,7 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     {
         // Wrap up the JSON
         static const int JSON_RESP_MAX_LEN = 10000;
-        static char jsonFrame[JSON_RESP_MAX_LEN];
+        char jsonFrame[JSON_RESP_MAX_LEN];
         strlcpy(jsonFrame, "{\"cmdName\":\"", JSON_RESP_MAX_LEN);
         strlcat(jsonFrame, cmdNameResp, JSON_RESP_MAX_LEN);
         strlcat(jsonFrame, "\"", JSON_RESP_MAX_LEN);
@@ -481,6 +490,15 @@ void CommandHandler::sendKeyCodeToTarget(int keyCode)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Check if we can send
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uint32_t CommandHandler::getTxAvailable()
+{
+    return hdlcTxAvailableStatic();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Send with JSON payload
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -493,10 +511,10 @@ void CommandHandler::sendWithJSON(const char* cmdName, const char* cmdJson, uint
     // A pure binary part immediately follows the null terminator of the JSON
     // It is also null terminated and the null terminator is not included in the dataLan value
     static const int MAX_DATAFRAME_LEN = 10000;
-    static char dataFrame[MAX_DATAFRAME_LEN];
-    static char indexStr[10];
+    char dataFrame[MAX_DATAFRAME_LEN];
+    char indexStr[10];
     itoa(msgIdx, indexStr, 10);
-    static char lenStr[10];
+    char lenStr[10];
     itoa(dataLen, lenStr, 10);
     strlcpy(dataFrame, "{\"cmdName\":\"", MAX_DATAFRAME_LEN);
     strlcat(dataFrame, cmdName, MAX_DATAFRAME_LEN);
@@ -539,7 +557,7 @@ void CommandHandler::sendAPIReq(const char* reqLine)
 {
     // Form and send
     static const int MAX_REQ_STR_LEN = 100;
-    static char reqStr[MAX_REQ_STR_LEN+1];
+    char reqStr[MAX_REQ_STR_LEN+1];
     strlcpy(reqStr, "\"req\":\"", MAX_REQ_STR_LEN);
     strlcpy(reqStr+strlen(reqStr), reqLine, MAX_REQ_STR_LEN);
     strlcpy(reqStr+strlen(reqStr), "\"", MAX_REQ_STR_LEN);

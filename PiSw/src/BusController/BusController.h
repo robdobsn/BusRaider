@@ -11,7 +11,6 @@
 #include "../TargetBus/BusAccess.h"
 #include "../CommandInterface/CommandHandler.h"
 
-// Validator
 class BusController
 {
 public:

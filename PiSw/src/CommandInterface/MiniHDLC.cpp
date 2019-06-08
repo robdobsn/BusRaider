@@ -30,6 +30,7 @@ const uint16_t MiniHDLC::_CRCTable[256] = {
     MiniHDLCFrameRxFnType MiniHDLC::_frameRxFn = NULL;
 #endif
 
+// If bitwise HDLC then the first parameter will receive bits not bytes 
 MiniHDLC::MiniHDLC(MiniHDLCPutChFnType putChFn, MiniHDLCFrameRxFnType frameRxFn,
 				bool bigEndianCRC, bool bitwiseHDLC)
 {

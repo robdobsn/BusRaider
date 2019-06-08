@@ -37,9 +37,9 @@ public:
     // Get mirror memory for address
     virtual uint8_t* getMirrorMemForAddr(uint32_t addr);
 
-    // Validator interface to hardware
-    virtual void validatorClone();
-    virtual void validatorHandleAccess(uint32_t addr, uint32_t data, 
+    // Tracer interface to hardware
+    virtual void tracerClone();
+    virtual void tracerHandleAccess(uint32_t addr, uint32_t data, 
             uint32_t flags, uint32_t& retVal);
 
     // Is enabled

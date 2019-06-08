@@ -36,7 +36,7 @@
 const char* systemType = "BusRaiderESP32";
 
 // System version
-const char* systemVersion = "1.7.127";
+const char* systemVersion = "1.7.130";
 
 // Build date
 const char* buildDate = __DATE__;
@@ -181,8 +181,16 @@ RestAPIBusRaider restAPIBusRaider(commandSerial, machineInterface, fileManager, 
 // Debug loop timer and callback function
 void debugLoopInfoCallback(String &infoStr)
 {
+    MiniHDLCStats* pStats = commandSerial.getHDLCStats();
     if (wifiManager.isEnabled())
-        infoStr = wifiManager.getHostname() + " V" + String(systemVersion) + " SSID " + WiFi.SSID() + " IP " + WiFi.localIP().toString() + " Heap " + String(ESP.getFreeHeap());
+        infoStr = wifiManager.getHostname() + 
+            " V" + String(systemVersion) + 
+            " SSID " + WiFi.SSID() + 
+            " IP " + WiFi.localIP().toString() + 
+            " Heap " + String(ESP.getFreeHeap()) + 
+            " FR " + String(pStats->_rxFrameCount) + 
+            " CRC " + String(pStats->_frameCRCErrCount) + 
+            " TOO " + String(pStats->_frameTooLongCount);
     else
         infoStr = "WiFi Disabled, Heap " + String(ESP.getFreeHeap());
 }

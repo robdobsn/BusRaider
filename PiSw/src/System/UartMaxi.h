@@ -30,6 +30,7 @@ public:
     void clear();
 
     // Output
+    int txAvailable();
     int write(unsigned int c);
     void write(const char* data, unsigned int size);
     void writeStr(const char* data);

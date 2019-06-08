@@ -12,7 +12,8 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Callback types
-typedef void CmdHandlerPutToSerialFnType(const uint8_t* pBytes, int numBytes);
+typedef void CmdHandlerSerialPutStrFnType(const uint8_t* pBytes, int numBytes);
+typedef uint32_t CmdHandlerSerialTxAvailableFnType();
 typedef bool CmdHandlerHandleRxMsgFnType(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
                     char* pRespJson, int maxRespLen);
 typedef bool CmdHandlerOTAUpdateFnType(const uint8_t* pData, int dataLen);
@@ -46,9 +47,11 @@ public:
     static void commsSocketEnable(int commsSocket, bool enable);
 
     // Callback when command handler wants to send on serial channel to ESP32
-    void setPutToSerialCallback(CmdHandlerPutToSerialFnType* pPutToSerialFunction)
+    void setPutToSerialCallback(CmdHandlerSerialPutStrFnType* pSerialPutStrFunction,
+                    CmdHandlerSerialTxAvailableFnType* pSerialTxAvailableFunction)
     {
-        _pPutToHDLCSerialFunction = pPutToSerialFunction;
+        _pHDLCSerialPutStrFunction = pSerialPutStrFunction;
+        _pHDLCSerialTxAvailableFunction = pSerialTxAvailableFunction;
     }
 
     // Handle data received from ESP32 via serial connection
@@ -78,12 +81,21 @@ public:
     // Send key code to target
     static void sendKeyCodeToTargetStatic(int keyCode);
     void sendKeyCodeToTarget(int keyCode);
+
+    // Num chars that can be sent
+    static uint32_t getTxAvailable();
+
+    // Send
     static void sendWithJSON(const char* cmdName, const char* cmdJson, uint32_t msgIdx = 0, 
             const uint8_t* pData = NULL, uint32_t dataLen = 0);
     static void sendAPIReq(const char* reqLine);
+
+    // Get status
     void getStatusResponse(bool* pIPAddressValid, char** pIPAddress, char** pWifiConnStr, 
                 char** pWifiSSID, char** pEsp32Version);
     void sendRegularStatusUpdate();
+
+    // Logging
     void logDebugMessage(const char* pStr);
     void logDebugJson(const char* pStr);
     static void logDebug(const char* pSeverity, const char* pSource, const char* pMsg);
@@ -99,6 +111,7 @@ private:
 
     // HDLC
     static void hdlcPutChStatic(uint8_t ch);
+    static uint32_t hdlcTxAvailableStatic();
     static void hdlcFrameRxStatic(const uint8_t *frameBuffer, int frameLength);
     void hdlcPutCh(uint8_t ch);
     void hdlcFrameRx(const uint8_t *frameBuffer, int frameLength);
@@ -112,7 +125,8 @@ private:
     static void addressRxCallback(uint32_t addr);
 
     // Callbacks
-    static CmdHandlerPutToSerialFnType* _pPutToHDLCSerialFunction;
+    static CmdHandlerSerialPutStrFnType* _pHDLCSerialPutStrFunction;
+    static CmdHandlerSerialTxAvailableFnType* _pHDLCSerialTxAvailableFunction;
 
     // Singleton pointer - to allow access to the singleton commandHandler from static functions
     static CommandHandler* _pSingletonCommandHandler;

@@ -83,6 +83,11 @@ public:
         return _bufLen - posToGet + _putPos;
     }
 
+    unsigned int size()
+    {
+        return _bufLen;
+    }
+
     // Get Nth element prior to the put position
     // 0 is the last element put in the queue
     // 1 is the one put in before that

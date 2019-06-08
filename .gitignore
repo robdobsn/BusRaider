@@ -340,3 +340,6 @@ EspSw/BusRaiderEsp32/.vscode/.BROWSE.C_CPP.2.DB-shm
 EspSw/.pytest_cache
 
 PiSw/test/logs
+PiSw/examples/logs/TraceLong.bin
+PiSw/examples/logs/TraceLong.txt
+PiSw/examples/logs/TraceLongLog.txt

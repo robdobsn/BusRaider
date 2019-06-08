@@ -79,7 +79,8 @@ private:
     static const int STATUS_UPDATE_TIME_MS = 1000;
     void clear();
     void statusDisplayUpdate();
-    static void putToSerial(const uint8_t* pBuf, int len);
+    static void serialPutStr(const uint8_t* pBuf, int len);
+    static uint32_t serialTxAvailable();
     static void serviceGetFromSerial();
     static void usbKeypressHandlerStatic(unsigned char ucModifiers, const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED]);
     void usbKeypressHandler(unsigned char ucModifiers, const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED]);

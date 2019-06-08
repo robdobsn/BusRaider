@@ -156,6 +156,11 @@ void UartMaxi::clear()
 // Write
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+int UartMaxi::txAvailable()
+{
+    return _txBufferPosn.size()-_txBufferPosn.count();
+}
+
 int UartMaxi::writeBase(unsigned int c)
 {
     bool canPut = _txBufferPosn.canPut();

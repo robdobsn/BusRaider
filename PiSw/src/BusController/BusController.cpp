@@ -434,7 +434,7 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
-    else if (strcasecmp(cmdName, "busReset") == 0)
+    else if (strcasecmp(cmdName, "busInit") == 0)
     {
         // Get bus status
         BusAccess::busAccessReset();

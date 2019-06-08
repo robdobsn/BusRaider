@@ -56,7 +56,7 @@ void BusRaiderApp::init()
     clear();
 
     // Command Handler
-    _commandHandler.setPutToSerialCallback(putToSerial);
+    _commandHandler.setPutToSerialCallback(serialPutStr, serialTxAvailable);
     _commandHandler.commsSocketAdd(_commsSocket);
 
 }
@@ -305,6 +305,37 @@ void BusRaiderApp::statusDisplayUpdate()
 
         // Get ISR debug info
         strcpy(statusStr, "");
+        int rxFramingErrCount = 0;
+        int rxOverrunErrCount = 0;
+        int rxBreakCount = 0;
+        int rxBufferFullCount = 0;
+        int txBufferFullCount = 0;
+        _uart.getStatusCounts(txBufferFullCount, rxFramingErrCount, rxOverrunErrCount, rxBreakCount, rxBufferFullCount);
+        if (txBufferFullCount > 0)
+        {
+            ee_sprintf(refreshStr, "TxFull %u,", txBufferFullCount);
+            strlcat(statusStr, refreshStr, MAX_STATUS_STR_LEN);
+        }
+        if (rxFramingErrCount > 0)
+        {
+            ee_sprintf(refreshStr, "RxFr %u,", rxFramingErrCount);
+            strlcat(statusStr, refreshStr, MAX_STATUS_STR_LEN);
+        }
+        if (rxOverrunErrCount > 0)
+        {
+            ee_sprintf(refreshStr, "RxOv %u,", rxOverrunErrCount);
+            strlcat(statusStr, refreshStr, MAX_STATUS_STR_LEN);
+        }
+        if (rxBreakCount > 0)
+        {
+            ee_sprintf(refreshStr, "RxBk %u,", rxBreakCount);
+            strlcat(statusStr, refreshStr, MAX_STATUS_STR_LEN);
+        }
+        if (rxBufferFullCount > 0)
+        {
+            ee_sprintf(refreshStr, "RxFull %u,", rxBufferFullCount);
+            strlcat(statusStr, refreshStr, MAX_STATUS_STR_LEN);
+        }
         for (int i = 0; i < ISR_ASSERT_NUM_CODES; i++)
         {
             int cnt = BusAccess::isrAssertGetCount(i);
@@ -328,10 +359,15 @@ void BusRaiderApp::statusDisplayUpdate()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Function to send to uart from command handler
-void BusRaiderApp::putToSerial(const uint8_t* pBuf, int len)
+void BusRaiderApp::serialPutStr(const uint8_t* pBuf, int len)
 {
     for (int i = 0; i < len; i++)
         _pApp->_uart.write(pBuf[i]);
+}
+
+uint32_t BusRaiderApp::serialTxAvailable()
+{
+    return _pApp->_uart.txAvailable();
 }
 
 void BusRaiderApp::serviceGetFromSerial()

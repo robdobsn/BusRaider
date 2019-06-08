@@ -662,7 +662,7 @@ bool ZEsarUXInterface::commandMatch(const char* s1, const char* s2)
 //     NULL
 // };
 
-// // Step validator
+// // Step Tracer
 // BusSocketInfo Debugger::_busSocketInfo = 
 // {
 //     false,

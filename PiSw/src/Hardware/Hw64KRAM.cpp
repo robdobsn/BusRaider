@@ -18,8 +18,8 @@ Hw64KRam::Hw64KRam() : HwBase()
 {
     _mirrorMemoryLen = 64*1024;
     _pMirrorMemory = NULL;
-    _validatorMemoryLen = _mirrorMemoryLen;
-    _pValidatorMemory = NULL;
+    _tracerMemoryLen = _mirrorMemoryLen;
+    _pTracerMemory = NULL;
     _pName = _baseName;
     _memoryEmulationMode = false;
     hwReset();
@@ -132,7 +132,7 @@ BR_RETURN_TYPE Hw64KRam::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t
     if (iorq)
         return BR_NOT_HANDLED;
 
-    // Validator memory
+    // Tracer memory
     uint8_t* pMirrorMemory = getMirrorMemory();
     if (!pMirrorMemory)
         return BR_ERR;
@@ -157,7 +157,7 @@ BR_RETURN_TYPE Hw64KRam::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len,
     if (iorq)
         return BR_NOT_HANDLED;
 
-    // Validator memory
+    // Tracer memory
     uint8_t* pMirrorMemory = getMirrorMemory();
     if (!pMirrorMemory)
         return BR_ERR;
@@ -202,16 +202,16 @@ uint8_t* Hw64KRam::getMirrorMemForAddr(uint32_t addr)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Validator interface
+// Tracer interface
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Hw64KRam::validatorClone()
+void Hw64KRam::tracerClone()
 {
-    LogWrite(_logPrefix, LOG_DEBUG, "validatorClone emulated %d mem %d", 
-            _memoryEmulationMode, getValidatorMemory());
+    LogWrite(_logPrefix, LOG_DEBUG, "tracerClone emulated %d mem %d", 
+            _memoryEmulationMode, getTracerMemory());
 
-    // Validator memory
-    uint8_t* pValMemory = getValidatorMemory();
+    // Tracer memory
+    uint8_t* pValMemory = getTracerMemory();
     if (!pValMemory)
         return;
 
@@ -221,28 +221,28 @@ void Hw64KRam::validatorClone()
         uint8_t* pSrcMemory = getMirrorMemory();
         if (!pSrcMemory)
             return;
-        uint32_t maxLen = _mirrorMemoryLen < _validatorMemoryLen ? _mirrorMemoryLen : _validatorMemoryLen;
+        uint32_t maxLen = _mirrorMemoryLen < _tracerMemoryLen ? _mirrorMemoryLen : _tracerMemoryLen;
         memcpy(pValMemory, pSrcMemory, maxLen);
     }
     else
     {
         // int blockReadResult = 
-        BusAccess::blockRead(0, pValMemory, _validatorMemoryLen, false, false);
-        // LogWrite(_logPrefix, LOG_DEBUG, "validatorClone blockRead %s %02x %02x %02x",
+        BusAccess::blockRead(0, pValMemory, _tracerMemoryLen, false, false);
+        // LogWrite(_logPrefix, LOG_DEBUG, "tracerClone blockRead %s %02x %02x %02x",
         //         (blockReadResult == BR_OK) ? "OK" : "FAIL",
         //         pValMemory[0], pValMemory[1], pValMemory[2]);
     }
 }
 
-void Hw64KRam::validatorHandleAccess(uint32_t addr, uint32_t data, 
+void Hw64KRam::tracerHandleAccess(uint32_t addr, uint32_t data, 
         uint32_t flags, uint32_t& retVal)
 {
-    // Check validator memory ok
-    uint8_t* pMemory = getValidatorMemory();
+    // Check tracer memory ok
+    uint8_t* pMemory = getTracerMemory();
     if (!pMemory)
         return;
 
-    // Memory requests use validator memory
+    // Memory requests use tracer memory
     if (flags & BR_CTRL_BUS_MREQ_MASK)
     {
         if (flags & BR_CTRL_BUS_WR_MASK)
@@ -252,11 +252,11 @@ void Hw64KRam::validatorHandleAccess(uint32_t addr, uint32_t data,
     }
 }
 
-uint8_t* Hw64KRam::getValidatorMemory()
+uint8_t* Hw64KRam::getTracerMemory()
 {
-    if (!_pValidatorMemory)
-        _pValidatorMemory = new uint8_t[_validatorMemoryLen];
-    return _pValidatorMemory;
+    if (!_pTracerMemory)
+        _pTracerMemory = new uint8_t[_tracerMemoryLen];
+    return _pTracerMemory;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
