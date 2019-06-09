@@ -252,7 +252,7 @@ def test_TraceJMP000():
         commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":0,\"lenDec\":3,\"isIo\":0}\0")
         time.sleep(0.1)
         commonTest.sendFrame("tracerPrime", b"{\"cmdName\":\"tracerPrimeFromMem\"}\0")   
-        commonTest.sendFrame("tracerStart", b"{\"cmdName\":\"tracerStart\",\"logging\":1,\"compare\":1}\0")   
+        commonTest.sendFrame("tracerStart", b"{\"cmdName\":\"tracerStart\",\"logging\":1,\"compare\":1}\0")
         commonTest.sendFrame("busStatusClear", b"{\"cmdName\":\"busStatusClear\"}\0")   
 
         # Run for 2 seconds
@@ -374,7 +374,7 @@ def test_TRS80Level1RomExec():
             time.sleep(0.5)
 
             # Breakout early if failing
-            if not testStats["msgRdOk"] or testStats['tracerErrCount'] > 0:
+            if not testStats["msgRdOk"]:
                 break
 
     # Wait for test end and cleardown
