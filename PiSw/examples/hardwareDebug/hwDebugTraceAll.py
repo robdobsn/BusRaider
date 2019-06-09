@@ -1,4 +1,4 @@
-import time
+import time, datetime
 import json
 import logging
 import os
@@ -9,12 +9,8 @@ class Tracer:
 
     # Start trace
     def start(self):
+        # Setup
         self.setup("192.168.86.192", "./examples/logs", "TraceLong.txt", "TraceLongLog.txt", "TraceLong.bin")
-
-        # # Test data - jump to 0000
-        # testWriteData = b"\xc3\x00\x00"
-        # testStats = {"msgRdOk": True, "msgRdRespCount":0, "msgWrRespCount": 0, "msgWrRespErrCount":0, "msgWrRespErrMissingCount":0,
-        #              "unknownMsgCount":0, "isrCount":0, "tracerErrCount":0, "clrMaxUs":0, "tracerRespCount":0}
 
         # Set serial terminal machine - to avoid conflicts with display updates, etc
         mc = "Serial Terminal ANSI"
@@ -30,27 +26,30 @@ class Tracer:
         # self.sendFrame("hwEnable", b"{\"cmdName\":\"hwEnable\",\"hwName\":\"64KRAM\",\"enable\":1}\0")
         # time.sleep(0.1)
 
-        # Bus reset
-        self.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
-        # self.sendFrame("reset", b"\"cmdName\":\"ResetTarget\"\0")
-        time.sleep(1)
-
         # # Send program
         # time.sleep(0.1)
         # # commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"lenDec\":3,\"isIo\":0}\0" + testWriteData)
         # # time.sleep(0.1)
 
-        # Stop tracer
+        # Stop previous tracer
         self.sendFrame("tracerStop", b"{\"cmdName\":\"tracerStop\"}\0")
+
+        # Bus reset
+        self.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
+        self.sendFrame("reset", b"\"cmdName\":\"resetTarget\"\0")
+        time.sleep(1)
+
         # commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":0,\"lenDec\":3,\"isIo\":0}\0")
-        time.sleep(.1)
-        # commonTest.sendFrame("valPrime", b"{\"cmdName\":\"tracerPrimeFromMem\"}\0")   
+        time.sleep(1)
+        # commonTest.sendFrame("valPrime", b"{\"cmdName\":\"tracerPrimeFromMem\"}\0")
         self.sendFrame("tracerStart", b"{\"cmdName\":\"tracerStart\",\"logging\":0,\"record\":1}\0")
-        # commonTest.sendFrame("busStatusClear", b"{\"cmdName\":\"busStatusClear\"}\0")   
+        # commonTest.sendFrame("busStatusClear", b"{\"cmdName\":\"busStatusClear\"}\0")
+        timeStart = datetime.datetime.now()
+        self.logger.info(f"Execution trace started at {str(timeStart)}")
 
         # Run
         self.awaitingTraceResponse = False
-        for i in range(3000):
+        for i in range(100):
             j = 0
             while self.awaitingTraceResponse and j < 1000:
                 time.sleep(0.001)
@@ -59,6 +58,14 @@ class Tracer:
             self.sendFrame("tracerGetLong", b"{\"cmdName\":\"tracerGetBin\"}\0")
             self.awaitingTraceResponse = True
             time.sleep(0.01)
+        
+        # Calculate rate
+        timeEnd = datetime.datetime.now()
+        elapsed = (timeEnd - timeStart).total_seconds()
+        self.logger.info(f"{self.instrCountAtStart} {self.curInstructionCount} Skipped {self.instructionsSkipped}")
+        if elapsed > 0 and not self.instrCountAtStart is None:
+            instrCount = self.curInstructionCount - self.instrCountAtStart
+            self.logger.info(f"{instrCount} instructions in {elapsed:.2f} secs => {instrCount/elapsed:.1f} per second")
 
         # # Get status
         # msgIdx = 0
@@ -118,12 +125,6 @@ class Tracer:
                 logger.error(f"WrResp err not ok {msgContent}")
             else:
                 logger.error(f"WrResp doesn't contain err {msgContent}")
-        elif msgContent['cmdName'] == "busInitResp":
-            pass
-        elif msgContent['cmdName'] == "clockHzSetResp":
-            pass
-        elif msgContent['cmdName'] == "setMcJsonResp":
-            pass
         elif msgContent['cmdName'] == "tracerPrimeFromMemResp" or \
                 msgContent['cmdName'] == "tracerStopResp" or \
                 msgContent['cmdName'] == "tracerStartResp":
@@ -143,17 +144,37 @@ class Tracer:
             self.awaitingTraceResponse = False
         elif msgContent['cmdName'] == "tracerGetBinData":
             if not self.dumpTraceFile is None:
-                dataCount = msgContent['dataLen'] // 4
+                dataCount = msgContent['dataLen'] // self.sizeOfTraceBinElem
+                traceCount = msgContent['traceCount']
+                # Check if any missed
+                if self.curInstructionCount != traceCount:
+                    self.instructionsSkipped += traceCount - self.curInstructionCount
+                if self.instrCountAtStart is None:
+                    self.instrCountAtStart = traceCount
+                self.curInstructionCount = traceCount + dataCount
+                elemPos = 0
                 for i in range(dataCount):
-                    dataStr = self.formatTraceBin(binContent, i*4)
+                    dataStr = self.formatTraceBinElem(binContent, elemPos, traceCount)
+                    elemPos += self.sizeOfTraceBinElem
+                    traceCount += 1
                     self.dumpTraceFile.write(dataStr + "\n")
             self.awaitingTraceResponse = False
-        else:
-            logger.info(f"Unknown message {msgContent}")
 
-    def formatTraceBin(self, binContent, contentPos):
-        count = binContent[contentPos] + (binContent[contentPos+1]*256) + (binContent[contentPos+2]*65536) + (binContent[contentPos+3]*16777216)
-        return str(count)
+    def formatTraceBinElem(self, binContent, contentPos, traceCount):
+        addr = binContent[contentPos] + (binContent[contentPos+1]*256)
+        busData = binContent[contentPos+2]
+        retData = binContent[contentPos+3]
+        flags = binContent[contentPos+4]
+        retData = f"{traceCount:08d} {addr:04x} {busData:02x} {self.formatFlags1(flags)}{self.formatFlags2(flags)}"
+        if (flags & 0x80) != 0:
+              retData += f"{retData:02x}"
+        return retData
+
+    def formatFlags1(self, busFlags):
+        return self.flags1[(busFlags >> 3) & 0x07]
+
+    def formatFlags2(self, busFlags):
+        return self.flags2[busFlags & 0x07]
 
     def sendFrame(self, comment, content):
         frame = bytearray(content)
@@ -183,21 +204,30 @@ class Tracer:
                 msgContent = json.loads(jsonStr)
         except Exception as excp:
             self.logger.error(f"Failed to parse Json from {fr}, {excp}")
-            aaaaaa
-        # try:
-        if 'cmdName' in msgContent:
-            if msgContent['cmdName'] == "log":
-                try:
-                    self.logger.info(f"{msgContent['lev']} : {msgContent['src']} {msgContent['msg']}")
-                except Exception as excp:
-                    self.logger.error(f"LOG CONTENT NOT FOUND IN FRAME {fr}, {excp}")
-            else:
-                self.frameCallback(msgContent, binContent, self.logger)
-        # except Exception as excp:
-        #     self.logger.error(f"Failed to extract cmdName {fr}, {excp}")
+        try:
+            if 'cmdName' in msgContent:
+                if msgContent['cmdName'] == "log":
+                    try:
+                        self.logger.info(f"{msgContent['lev']} : {msgContent['src']} {msgContent['msg']}")
+                    except Exception as excp:
+                        self.logger.error(f"LOG CONTENT NOT FOUND IN FRAME {fr}, {excp}")
+                else:
+                    self.frameCallback(msgContent, binContent, self.logger)
+        except Exception as excp:
+            self.logger.error(f"Failed to extract cmdName {fr}, {excp}")
 
     # Check for using IP address
     def setup(self, ipAddrOrHostName, fileBase, dumpTraceFileName, dumpBinFileName, dumpTextFileName, logSends=False):
+
+        # Format of trace binary element
+        self.sizeOfTraceBinElem = 5
+        self.flags1 = ("...","..I",".1.",".1I","W..","W.I","W1.","W1I")
+        self.flags2 = ("...","..R",".W.",".WR","M..","M.R","MW.","WWR")
+
+        # Instruction timing
+        self.instrCountAtStart = None
+        self.curInstructionCount = 0
+        self.instructionsSkipped = 0
 
         # Logging
         self.logger = logging.getLogger(__name__)

@@ -76,8 +76,6 @@ StepTracer::StepTracer() :
     _primeFromMemPending = false;
     _serviceCount = 0;
     _recordIsHoldingTarget = false;
-    // _lastLogCount = 0;
-    // _lastPutCount = 0;
 
     // Tracer memory as required
 #ifdef STEP_VAL_WITHOUT_HW_MANAGER
@@ -139,6 +137,8 @@ bool StepTracer::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t
         if (jsonGetValueForKey("compare", pCmdJson, argStr, MAX_CMD_NAME_STR))
             if ((strlen(argStr) != 0) && (argStr[0] != '0'))
                 compareToEmulated = true;
+
+        // Start tracing
         if (_pThisInstance)
             _pThisInstance->start(logging, recordAll, compareToEmulated);
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
@@ -208,6 +208,12 @@ void StepTracer::start(bool logging, bool recordAll, bool compareToEmulated)
         _busSocketId = BusAccess::busSocketAdd(_busSocketInfo);
     BusAccess::busSocketEnable(_busSocketId, true);
 
+    // Clear wait
+    BusAccess::waitHold(_busSocketId, false);
+    
+    // Clear bus hold
+    BusAccess::waitRelease();
+
     // Reset target - becomes active when reset acknowledge signal is received
     BusAccess::targetReqReset(_busSocketId);
 }
@@ -220,6 +226,17 @@ void StepTracer::stop()
     // Turn off the bus socket
     BusAccess::busSocketEnable(_busSocketId, false);
     _isActive = false;
+
+    // Clear bus hold
+    BusAccess::waitRelease();
+
+    // Clear log buffers
+    _tracesPosn.clear();
+    _exceptionsPosn.clear();
+
+    // Clear stats
+    _stats.clear();
+
 }
 
 void StepTracer::primeFromMem()
@@ -278,8 +295,6 @@ void StepTracer::resetComplete()
     // Clear test case variables
     _stepCycleCount = 0;
     _stepCyclePos = 0;
-    // _lastLogCount = 0;
-    // _lastPutCount = 0;
     _isActive = true;
 
     #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
@@ -381,32 +396,16 @@ void StepTracer::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unu
             _traces[pos].traceCount = _stats.isrCalls;
             _tracesPosn.hasPut();
 
-            // if (_lastPutCount != _stats.isrCalls)
-            // {
-            //     ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_F);
-            //     _lastPutCount = _stats.isrCalls;
-            // }
-            // _lastPutCount++;
-
             // Check if we need to hold - ensure there's space for all accesses that might follow
             // noting that a wait on a PUSH (for instance) will involve at least two further writes
             // before the wait takes place
             if (_tracesPosn.size() - _tracesPosn.count() < MIN_SPACES_IN_TRACES)
             {
-                // TODO
-                // LogWrite(FromStepTracer, LOG_DEBUG, "HELD %d", _stats.isrCalls);
-                // digitalWrite(8,1);
-                // microsDelay(100);
-                // digitalWrite(8,0);
                 // Hold the bus
                 _recordIsHoldingTarget = true;
                 BusAccess::waitHold(_busSocketId, true);
             }
         }
-        // else
-        // {
-        //     ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_K);
-        // }
     }
 
     // Bump instruction count
@@ -482,14 +481,6 @@ void StepTracer::getTraceLong(char* pRespJson, int maxRespLen)
                 flags & 0x01 ? 'R': '.', flags & 0x02 ? 'W': '.', flags & 0x04 ? 'M': '.',
                 flags & 0x08 ? 'I': '.', flags & 0x10 ? '1': '.', flags & 0x20 ? 'T': '.',
                 flags & 0x40 ? 'X': '.', flags & 0x80 ? 'Q': '.', flags & 0x100 ? 'N': '.');
-    // CommandHandler::sendWithJSON("rdp", "", _traces[pos].traceCount, (const uint8_t*)debugMsg, strlen(debugMsg));
-
-    // if (_lastLogCount != _traces[pos].traceCount)
-    // {
-    //     ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_E);
-    //     _lastLogCount = _traces[pos].traceCount;
-    // }
-    // _lastLogCount++;
 
     // Move ring buffer on
     _tracesPosn.hasGot();
@@ -502,6 +493,10 @@ void StepTracer::getTraceLong(char* pRespJson, int maxRespLen)
         BusAccess::waitRelease();
     }
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Get execution trace as binary data
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void StepTracer::getTraceBin()
 {
@@ -521,19 +516,26 @@ void StepTracer::getTraceBin()
     if (!_tracesPosn.canGet())
         return;
 
-    // 
-    uint32_t binBuf[2500];
+    // Current buffer position
+    uint32_t pos = _tracesPosn.posToGet();
+    uint32_t initialTraceCount = _traces[pos].traceCount;
+
+    // Read while available or until full
+    TraceBinElemFormat binElems[MAX_TRACE_MSG_BUF_ELEMS_MAX * sizeof(TraceBinElemFormat)];
     uint32_t count = 0;
-    for (int i = 0; i < 1000; i++)
+    for (int i = 0; i < MAX_TRACE_MSG_BUF_ELEMS_MAX; i++)
     {
         if (!_tracesPosn.canGet())
             break;
-        uint32_t pos = _tracesPosn.posToGet();
-        binBuf[i] = _traces[pos].traceCount;
+        binElems[i].addr = _traces[pos].addr;
+        binElems[i].busData = _traces[pos].busData;
+        binElems[i].retData = _traces[pos].returnedData & 0xff;
+        binElems[i].flags = (_traces[pos].flags & 0x3f) | ((_traces[pos].returnedData & BR_MEM_ACCESS_RSLT_NOT_DECODED) ? 0 : 0x80);
         count++;
 
         // Move ring buffer on
         _tracesPosn.hasGot();
+        pos = _tracesPosn.posToGet();
     }
 
     // Form JSON message
@@ -542,32 +544,26 @@ void StepTracer::getTraceBin()
     strlcpy(jsonFrame, "{\"cmdName\":\"", JSON_RESP_MAX_LEN);
     strlcat(jsonFrame, "tracerGetBinData", JSON_RESP_MAX_LEN);
     strlcat(jsonFrame, "\"", JSON_RESP_MAX_LEN);
-    // if (strlen(respJson) > 0)
-    // {
-    //     strlcat(jsonFrame, ",", JSON_RESP_MAX_LEN);
-    //     strlcat(jsonFrame, respJson, JSON_RESP_MAX_LEN);
-    // }
-    // if (strlen(msgIdxStr) > 0)
-    // {
-    //     strlcat(jsonFrame, ",\"msgIdx\":", JSON_RESP_MAX_LEN);
-    //     strlcat(jsonFrame, msgIdxStr, JSON_RESP_MAX_LEN);
-    // }
+
     char tmpStr[50];
-    ee_sprintf(tmpStr, ",\"txAvail\":%u", txAvailable);
+    // ee_sprintf(tmpStr, ",\"txAvail\":%u", txAvailable);
+    // strlcat(jsonFrame, tmpStr, JSON_RESP_MAX_LEN);
+
+    ee_sprintf(tmpStr, ",\"traceCount\":%u", initialTraceCount);
     strlcat(jsonFrame, tmpStr, JSON_RESP_MAX_LEN);
 
-    // Data count
-    uint32_t binDataLen = count*sizeof(uint32_t);
+    // Data len
+    uint32_t binDataLen = count*sizeof(TraceBinElemFormat);
     ee_sprintf(tmpStr, ",\"dataLen\":%u}", binDataLen);
     strlcat(jsonFrame, tmpStr, JSON_RESP_MAX_LEN);
 
     // Copy binary to end of buffer
-    memcpy(jsonFrame+strlen(jsonFrame)+1, (uint8_t*)binBuf, binDataLen);
+    memcpy(jsonFrame+strlen(jsonFrame)+1, (uint8_t*)binElems, binDataLen);
 
     CommandHandler::sendWithJSON("rdp", "", 0, (const uint8_t*)jsonFrame, strlen(jsonFrame)+1+binDataLen);
 
     // TODO
-    uint32_t txAvailable = CommandHandler::getTxAvailable();
+    txAvailable = CommandHandler::getTxAvailable();
     ISR_VALUE(ISR_ASSERT_CODE_DEBUG_J, txAvailable);
 
     // No longer hold

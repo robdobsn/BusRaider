@@ -99,8 +99,6 @@ private:
     bool _recordAll;
     bool _compareToEmulated;
     bool _recordIsHoldingTarget;
-    // uint32_t _lastLogCount;
-    // uint32_t _lastPutCount;
 
     // Memory system
 #ifdef STEP_VAL_WITHOUT_HW_MANAGER
@@ -157,12 +155,30 @@ private:
     volatile StepTracerException _exceptions[NUM_DEBUG_VALS];
     RingBufferPosn _exceptionsPosn;
 
-    // Record list
+    // Execution trace list
     static const int NUM_TRACE_VALS = 1000;
     static const int MIN_SPACES_IN_TRACES = 50;
-    static const int MIN_TX_AVAILABLE_FOR_BIN_FRAME = 16000;
     volatile StepTracerTrace _traces[NUM_TRACE_VALS];
     RingBufferPosn _tracesPosn;
+
+    // Execution trace format
+    #pragma pack(push, 1)
+    struct TraceBinHeaderFormat
+    {
+        uint32_t idx;
+    };
+    struct TraceBinElemFormat
+    {
+        uint16_t addr;
+        uint8_t busData;
+        uint8_t retData;
+        uint8_t flags;
+    };
+    #pragma pack(pop)
+    static const int MAX_TRACE_MSG_BUF_ELEMS_MAX = 2000;
+
+    // Tx chars available in tx buffer for bin frame transmission
+    static const int MIN_TX_AVAILABLE_FOR_BIN_FRAME = 16000;
 
     // Active
     bool _isActive;
