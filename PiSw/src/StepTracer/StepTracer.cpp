@@ -210,7 +210,7 @@ void StepTracer::start(bool logging, bool recordAll, bool compareToEmulated)
 
     // Clear wait
     BusAccess::waitHold(_busSocketId, false);
-    
+
     // Clear bus hold
     BusAccess::waitRelease();
 
@@ -325,6 +325,15 @@ void StepTracer::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unu
 {    
     if (!_isActive)
         return;
+    
+    // TODO
+    // Debug signal
+    #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        microsDelay(1);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+    #endif
+
 
     // Handle comparison with an emulated processor
     if (_compareToEmulated)
@@ -345,15 +354,6 @@ void StepTracer::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unu
         expData = _stepCycles[_stepCyclePos].data;
         _stepCyclePos++;
 
-    #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
-        for (int i = 0; i < _stepCycleCount + 3; i++)
-        {
-            digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-            microsDelay(1);
-            digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-        }
-    #endif
-
         // Check against what we got from the real system
         if ((addr != expAddr) || (expCtrl != (flags & ~BR_CTRL_BUS_WAIT_MASK)) || (expData != data))
         {
@@ -372,10 +372,20 @@ void StepTracer::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unu
             }
             _stats.errors++;
 
+    #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
+            for (int i = 0; i < _stepCycleCount + 3; i++)
+            {
+                digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+                microsDelay(1);
+                digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+                microsDelay(1);
+            }
+    #endif
+
             // Debug signal
     #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
             digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-            microsDelay(10);
+            microsDelay(100);
             digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
     #endif
         }
