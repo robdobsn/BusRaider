@@ -102,7 +102,7 @@ public:
     virtual void busActionCompleteCallback(BR_BUS_ACTION actionType) = 0;
 
     // Mirror change buffer max length
-    static const int MAX_MIRROR_CHANGE_BUF_LEN = 1000;
+    static const int MAX_MIRROR_CHANGE_BUF_LEN = 5000;
 
     // Get changes made since last mirror display update
     virtual uint32_t getMirrorChanges([[maybe_unused]] uint8_t* pMirrorChangeBuf, 

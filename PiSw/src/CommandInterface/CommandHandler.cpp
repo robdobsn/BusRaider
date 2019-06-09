@@ -543,7 +543,7 @@ void CommandHandler::sendWithJSON(const char* cmdName, const char* cmdJson, uint
         else
             return;
     }
-    // Terminate the binary portion two (belt-and-braces!)
+    // Terminate the binary portion too (belt-and-braces!)
     dataFrame[dataFrameTotalLen-1] = 0;
     if (_pSingletonCommandHandler)
         _pSingletonCommandHandler->_miniHDLC.sendFrame((const uint8_t*)dataFrame, dataFrameTotalLen);

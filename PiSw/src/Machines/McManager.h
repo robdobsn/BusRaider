@@ -114,10 +114,10 @@ private:
     static uint32_t _refreshLastCountResetUs;
 
     // Screen mirroring
-    static const int SCREEN_MIRROR_REFRESH_US = 50000;
+    static const int SCREEN_MIRROR_REFRESH_US = 100000;
     static bool _screenMirrorOut;
     static uint32_t _screenMirrorLastUs;
-    static const int SCREEN_MIRROR_FULL_REFRESH_COUNT = 1000;
+    static const int SCREEN_MIRROR_FULL_REFRESH_COUNT = 500;
     static uint32_t _screenMirrorCount;
 
 };
