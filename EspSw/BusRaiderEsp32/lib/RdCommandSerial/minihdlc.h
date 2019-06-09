@@ -10,13 +10,19 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <functional>
 
+#define USE_STD_FUNCTION_AND_BIND 1
+
+#ifdef USE_STD_FUNCTION_AND_BIND
+#include <functional>
 // Put byte or bit callback function type
 typedef std::function<void(uint8_t ch)> MiniHDLCPutChFnType;
-
 // Received frame callback function type
 typedef std::function<void(const uint8_t *framebuffer, int framelength)> MiniHDLCFrameRxFnType;
+#else
+typedef void (*MiniHDLCPutChFnType)(uint8_t ch);
+typedef void (*MiniHDLCFrameRxFnType)(const uint8_t *framebuffer, int framelength);
+#endif
 
 class MiniHDLCStats
 {
@@ -86,8 +92,13 @@ private:
     static const uint16_t _CRCTable[256];
 
     // Callback functions for PutCh/PutBit and FrameRx
+#ifdef USE_STD_FUNCTION_AND_BIND
     MiniHDLCPutChFnType _putChFn;
     MiniHDLCFrameRxFnType _frameRxFn;
+#else
+    static MiniHDLCPutChFnType _putChFn;
+    static MiniHDLCFrameRxFnType _frameRxFn;
+#endif
 
     // Bitwise HDLC flag (otherwise byte-wise)
     bool _bitwiseHDLC;

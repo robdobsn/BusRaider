@@ -45,19 +45,20 @@ class Tracer:
         # commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":0,\"lenDec\":3,\"isIo\":0}\0")
         time.sleep(.1)
         # commonTest.sendFrame("valPrime", b"{\"cmdName\":\"tracerPrimeFromMem\"}\0")   
-        self.sendFrame("tracerStart", b"{\"cmdName\":\"tracerStart\",\"logging\":0,\"record\":1,\"longForm\":1}\0")
+        self.sendFrame("tracerStart", b"{\"cmdName\":\"tracerStart\",\"logging\":0,\"record\":1}\0")
         # commonTest.sendFrame("busStatusClear", b"{\"cmdName\":\"busStatusClear\"}\0")   
 
         # Run
         self.awaitingTraceResponse = False
-        for i in range(10000):
+        for i in range(3000):
             j = 0
             while self.awaitingTraceResponse and j < 1000:
                 time.sleep(0.001)
             if j >= 1000:
                 break
-            self.sendFrame("tracerGetLong", b"{\"cmdName\":\"tracerGetLong\"}\0")
+            self.sendFrame("tracerGetLong", b"{\"cmdName\":\"tracerGetBin\"}\0")
             self.awaitingTraceResponse = True
+            time.sleep(0.01)
 
         # # Get status
         # msgIdx = 0
@@ -90,22 +91,34 @@ class Tracer:
         # assert(testStats["isrCount"] > 0)
         # assert(testStats["tracerRespCount"] == testRepeatCount * testValStatusCount)
         # assert(testStats["tracerErrCount"] == 0)
+        self.cleardown()
 
-    def frameCallback(self, msgContent, logger):
+    def cleardown(self):
+        prevTime = time.time()
+        while True:
+            if time.time() - prevTime > 1:
+                break
+        try:
+            self.rdpTCP.stopReader()
+        except Exception as excp:
+            self.logger.error(f"{excp}")
+        if self.dumpBinFile:
+            self.dumpBinFile.close()
+        if self.dumpTraceFile:
+            self.dumpTraceFile.close()
+
+    def frameCallback(self, msgContent, binContent, logger):
         if msgContent['cmdName'] == "RdResp":
             requiredResp = ''.join(('%02x' % testWriteData[i]) for i in range(len(testWriteData)))
             respOk = requiredResp == msgContent['data']
             if not respOk:
                 logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
         elif msgContent['cmdName'] == "WrResp":
-            try:
-                if msgContent['err'] != 'ok':
-                    logger.error(f"WrResp err not ok {msgContent}")
-            except:
+            if not 'err' in msgContent or msgContent['err'] != 'ok':
+                logger.error(f"WrResp err not ok {msgContent}")
+            else:
                 logger.error(f"WrResp doesn't contain err {msgContent}")
         elif msgContent['cmdName'] == "busInitResp":
-            pass
-        elif msgContent['cmdName'][:10] == "SetMachine":
             pass
         elif msgContent['cmdName'] == "clockHzSetResp":
             pass
@@ -128,8 +141,19 @@ class Tracer:
             if not self.dumpTraceFile is None:
                 self.dumpTraceFile.write(str(msgContent) + "\n")
             self.awaitingTraceResponse = False
+        elif msgContent['cmdName'] == "tracerGetBinData":
+            if not self.dumpTraceFile is None:
+                dataCount = msgContent['dataLen'] // 4
+                for i in range(dataCount):
+                    dataStr = self.formatTraceBin(binContent, i*4)
+                    self.dumpTraceFile.write(dataStr + "\n")
+            self.awaitingTraceResponse = False
         else:
             logger.info(f"Unknown message {msgContent}")
+
+    def formatTraceBin(self, binContent, contentPos):
+        count = binContent[contentPos] + (binContent[contentPos+1]*256) + (binContent[contentPos+2]*65536) + (binContent[contentPos+3]*16777216)
+        return str(count)
 
     def sendFrame(self, comment, content):
         frame = bytearray(content)
@@ -144,26 +168,31 @@ class Tracer:
         #     self.logger.error(f"Failed to send frame {comment}, {excp}")
 
     # HDLC Frame handler
-    def onHDLCFrame(self, fr):
-        if fr[0] == "{":
-            msgContent = {'cmdName':''}
-            # try:
-            msgContent = json.loads(fr)
-            # except Exception as excp:
-            #     self.logger.error(f"Failed to parse Json from {fr}, {excp}")
-            # try:
-            if 'cmdName' in msgContent:
-                if msgContent['cmdName'] == "log":
-                    try:
-                        self.logger.info(f"{msgContent['lev']} : {msgContent['src']} {msgContent['msg']}")
-                    except Exception as excp:
-                        self.logger.error(f"LOG CONTENT NOT FOUND IN FRAME {fr}, {excp}")
-                else:
-                    self.frameCallback(msgContent, self.logger)
-        else:
-            # Not JSON data
-            pass        
-
+    def onHDLCBinFrame(self, fr):
+        msgContent = {'cmdName':''}
+        try:
+            # Split string
+            nullPos = fr.find(b"\0")
+            binContent = b""
+            if nullPos >= 0:
+                jsonStr = fr[:nullPos].decode('utf-8').rstrip('\0')
+                msgContent = json.loads(jsonStr)
+                binContent = fr[nullPos+1:]
+            else:
+                jsonStr = fr.decode('utf-8').rstrip('\0')
+                msgContent = json.loads(jsonStr)
+        except Exception as excp:
+            self.logger.error(f"Failed to parse Json from {fr}, {excp}")
+            aaaaaa
+        # try:
+        if 'cmdName' in msgContent:
+            if msgContent['cmdName'] == "log":
+                try:
+                    self.logger.info(f"{msgContent['lev']} : {msgContent['src']} {msgContent['msg']}")
+                except Exception as excp:
+                    self.logger.error(f"LOG CONTENT NOT FOUND IN FRAME {fr}, {excp}")
+            else:
+                self.frameCallback(msgContent, binContent, self.logger)
         # except Exception as excp:
         #     self.logger.error(f"Failed to extract cmdName {fr}, {excp}")
 
@@ -216,7 +245,7 @@ class Tracer:
 
         # Setup HDLC
         self.hdlcHandler = HDLC(None, sendDataToTCP, self.dumpBinFile)
-        self.hdlcHandler.setCallbacks(self.onHDLCFrame)
+        self.hdlcHandler.setCallbacks(None, self.onHDLCBinFrame)
 
         self.logger.info(f"UnitTest BusRaider IP {ipAddrOrHostName} port {self.tcpHdlcPort}")
 

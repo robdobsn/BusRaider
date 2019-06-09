@@ -72,7 +72,6 @@ StepTracer::StepTracer() :
     _pThisInstance = this;
     _logging = false;
     _recordAll = false;
-    _longForm = false;
     _compareToEmulated = false;
     _primeFromMemPending = false;
     _serviceCount = 0;
@@ -136,16 +135,12 @@ bool StepTracer::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t
         if (jsonGetValueForKey("record", pCmdJson, argStr, MAX_CMD_NAME_STR))
             if ((strlen(argStr) != 0) && (argStr[0] != '0'))
                 recordAll = true;
-        bool longForm = false;
-        if (jsonGetValueForKey("longForm", pCmdJson, argStr, MAX_CMD_NAME_STR))
-            if ((strlen(argStr) != 0) && (argStr[0] != '0'))
-                longForm = true;
         bool compareToEmulated = false;
         if (jsonGetValueForKey("compare", pCmdJson, argStr, MAX_CMD_NAME_STR))
             if ((strlen(argStr) != 0) && (argStr[0] != '0'))
                 compareToEmulated = true;
         if (_pThisInstance)
-            _pThisInstance->start(logging, recordAll, longForm, compareToEmulated);
+            _pThisInstance->start(logging, recordAll, compareToEmulated);
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
@@ -198,16 +193,15 @@ bool StepTracer::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t
 // Start/Stop
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void StepTracer::start(bool logging, bool recordAll, bool longForm, bool compareToEmulated)
+void StepTracer::start(bool logging, bool recordAll, bool compareToEmulated)
 {
     // Debug
     _logging = logging;
     _recordAll = recordAll;
-    _longForm = longForm;
     _compareToEmulated = compareToEmulated;
     if (_logging)
-        LogWrite(FromStepTracer, LOG_DEBUG, "TracerStart logging %d record %d longForm %d compare %d",
-                    _logging, _recordAll, _longForm, _compareToEmulated);
+        LogWrite(FromStepTracer, LOG_DEBUG, "TracerStart logging %d record %d compare %d",
+                    _logging, _recordAll, _compareToEmulated);
 
     // Connect to the bus socket
     if (_busSocketId < 0)
@@ -480,18 +474,15 @@ void StepTracer::getTraceLong(char* pRespJson, int maxRespLen)
     // Trace
     uint32_t pos = _tracesPosn.posToGet();
 
-    if (_longForm)
-    {
-        uint32_t flags = _traces[pos].flags;
-        ee_sprintf(pRespJson, "\"err\":\"ok\",\"trace\":{\"step\":%u,\"addr\":\"%04x\",\"data\":\"%02x\",\"flags\":\"%c%c%c%c%c%c%c%c%c\"}",
-                    _traces[pos].traceCount,
-                    _traces[pos].addr, 
-                    ((flags & 0x02) || (_traces[pos].returnedData & 0x80000000)) ? _traces[pos].busData : _traces[pos].returnedData, 
-                    flags & 0x01 ? 'R': '.', flags & 0x02 ? 'W': '.', flags & 0x04 ? 'M': '.',
-                    flags & 0x08 ? 'I': '.', flags & 0x10 ? '1': '.', flags & 0x20 ? 'T': '.',
-                    flags & 0x40 ? 'X': '.', flags & 0x80 ? 'Q': '.', flags & 0x100 ? 'N': '.');
-        // CommandHandler::sendWithJSON("rdp", "", _traces[pos].traceCount, (const uint8_t*)debugMsg, strlen(debugMsg));
-    }
+    uint32_t flags = _traces[pos].flags;
+    ee_sprintf(pRespJson, "\"err\":\"ok\",\"trace\":{\"step\":%u,\"addr\":\"%04x\",\"data\":\"%02x\",\"flags\":\"%c%c%c%c%c%c%c%c%c\"}",
+                _traces[pos].traceCount,
+                _traces[pos].addr, 
+                ((flags & 0x02) || (_traces[pos].returnedData & 0x80000000)) ? _traces[pos].busData : _traces[pos].returnedData, 
+                flags & 0x01 ? 'R': '.', flags & 0x02 ? 'W': '.', flags & 0x04 ? 'M': '.',
+                flags & 0x08 ? 'I': '.', flags & 0x10 ? '1': '.', flags & 0x20 ? 'T': '.',
+                flags & 0x40 ? 'X': '.', flags & 0x80 ? 'Q': '.', flags & 0x100 ? 'N': '.');
+    // CommandHandler::sendWithJSON("rdp", "", _traces[pos].traceCount, (const uint8_t*)debugMsg, strlen(debugMsg));
 
     // if (_lastLogCount != _traces[pos].traceCount)
     // {
@@ -514,25 +505,70 @@ void StepTracer::getTraceLong(char* pRespJson, int maxRespLen)
 
 void StepTracer::getTraceBin()
 {
+    // Check if we would be able to transmit without issues
+    uint32_t txAvailable = CommandHandler::getTxAvailable();
+    if (txAvailable < MIN_TX_AVAILABLE_FOR_BIN_FRAME)
+    {
+        // TODO
+        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_H);
+        return;
+    }
+    else
+    {
+        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_I);
+    }
+
     if (!_tracesPosn.canGet())
         return;
 
     // 
-    uint32_t binBuf[250];
+    uint32_t binBuf[2500];
     uint32_t count = 0;
-    for (int i = 0; i < 100; i++)
+    for (int i = 0; i < 1000; i++)
     {
         if (!_tracesPosn.canGet())
             break;
         uint32_t pos = _tracesPosn.posToGet();
-        binBuf[i+1] = _traces[pos].traceCount;
+        binBuf[i] = _traces[pos].traceCount;
         count++;
 
         // Move ring buffer on
         _tracesPosn.hasGot();
     }
-    binBuf[0] = count;
-    CommandHandler::sendWithJSON("rdp", "", 0, (const uint8_t*)&binBuf, (count+1)*sizeof(uint32_t));
+
+    // Form JSON message
+    static const int JSON_RESP_MAX_LEN = 10000;
+    char jsonFrame[JSON_RESP_MAX_LEN];
+    strlcpy(jsonFrame, "{\"cmdName\":\"", JSON_RESP_MAX_LEN);
+    strlcat(jsonFrame, "tracerGetBinData", JSON_RESP_MAX_LEN);
+    strlcat(jsonFrame, "\"", JSON_RESP_MAX_LEN);
+    // if (strlen(respJson) > 0)
+    // {
+    //     strlcat(jsonFrame, ",", JSON_RESP_MAX_LEN);
+    //     strlcat(jsonFrame, respJson, JSON_RESP_MAX_LEN);
+    // }
+    // if (strlen(msgIdxStr) > 0)
+    // {
+    //     strlcat(jsonFrame, ",\"msgIdx\":", JSON_RESP_MAX_LEN);
+    //     strlcat(jsonFrame, msgIdxStr, JSON_RESP_MAX_LEN);
+    // }
+    char tmpStr[50];
+    ee_sprintf(tmpStr, ",\"txAvail\":%u", txAvailable);
+    strlcat(jsonFrame, tmpStr, JSON_RESP_MAX_LEN);
+
+    // Data count
+    uint32_t binDataLen = count*sizeof(uint32_t);
+    ee_sprintf(tmpStr, ",\"dataLen\":%u}", binDataLen);
+    strlcat(jsonFrame, tmpStr, JSON_RESP_MAX_LEN);
+
+    // Copy binary to end of buffer
+    memcpy(jsonFrame+strlen(jsonFrame)+1, (uint8_t*)binBuf, binDataLen);
+
+    CommandHandler::sendWithJSON("rdp", "", 0, (const uint8_t*)jsonFrame, strlen(jsonFrame)+1+binDataLen);
+
+    // TODO
+    uint32_t txAvailable = CommandHandler::getTxAvailable();
+    ISR_VALUE(ISR_ASSERT_CODE_DEBUG_J, txAvailable);
 
     // No longer hold
     if (_recordIsHoldingTarget && (_tracesPosn.size() - _tracesPosn.count() > MIN_SPACES_IN_TRACES))

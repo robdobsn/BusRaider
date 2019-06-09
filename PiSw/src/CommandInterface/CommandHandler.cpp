@@ -238,7 +238,7 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     strlcpy(cmdNameResp, cmdName, MAX_CMD_NAME_STR);
     strlcat(cmdNameResp, "Resp", MAX_CMD_NAME_STR);
 
-    if (rdpMessage)
+    if ((rdpMessage) && (strlen(respJson) > 0))
     {
         // Wrap up the JSON
         static const int JSON_RESP_MAX_LEN = 10000;
@@ -246,11 +246,8 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
         strlcpy(jsonFrame, "{\"cmdName\":\"", JSON_RESP_MAX_LEN);
         strlcat(jsonFrame, cmdNameResp, JSON_RESP_MAX_LEN);
         strlcat(jsonFrame, "\"", JSON_RESP_MAX_LEN);
-        if (strlen(respJson) > 0)
-        {
-            strlcat(jsonFrame, ",", JSON_RESP_MAX_LEN);
-            strlcat(jsonFrame, respJson, JSON_RESP_MAX_LEN);
-        }
+        strlcat(jsonFrame, ",", JSON_RESP_MAX_LEN);
+        strlcat(jsonFrame, respJson, JSON_RESP_MAX_LEN);
         if (strlen(msgIdxStr) > 0)
         {
             strlcat(jsonFrame, ",\"msgIdx\":", JSON_RESP_MAX_LEN);
@@ -535,7 +532,10 @@ void CommandHandler::sendWithJSON(const char* cmdName, const char* cmdJson, uint
     // LogWrite(FromCmdHandler, LOG_DEBUG, "SEND DATA cmd %s dataFr %s dataFrameLen %d tooLong %d msg %s",
     //             cmdName, dataFrame, dataFrameLen, dataFrameLen >= MAX_DATAFRAME_LEN, (pData ? pData : ""));
     if (dataFrameTotalLen >= MAX_DATAFRAME_LEN)
+    {
+        LogWrite(FromCmdHandler, LOG_DEBUG, "Frame too long");
         return;
+    }
     if (dataLen > 0)
     {
         if (pData)

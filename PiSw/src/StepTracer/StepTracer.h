@@ -79,7 +79,7 @@ public:
     void init();
 
     // Control
-    void start(bool logging, bool recordAll, bool logLong, bool compareToEmulated);
+    void start(bool logging, bool recordAll, bool compareToEmulated);
     void stop();
     void primeFromMem();
     
@@ -96,7 +96,6 @@ private:
 
     // Flags
     bool _logging;
-    bool _longForm;
     bool _recordAll;
     bool _compareToEmulated;
     bool _recordIsHoldingTarget;
@@ -161,6 +160,7 @@ private:
     // Record list
     static const int NUM_TRACE_VALS = 1000;
     static const int MIN_SPACES_IN_TRACES = 50;
+    static const int MIN_TX_AVAILABLE_FOR_BIN_FRAME = 16000;
     volatile StepTracerTrace _traces[NUM_TRACE_VALS];
     RingBufferPosn _tracesPosn;
 

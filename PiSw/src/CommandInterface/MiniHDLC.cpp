@@ -3,7 +3,6 @@
 // Very loosely based on https://github.com/mengguang/minihdlc
 
 #include "MiniHDLC.h"
-#include "../System/logging.h"
 
 // CRC Lookup table
 const uint16_t MiniHDLC::_CRCTable[256] = { 
@@ -112,8 +111,6 @@ void MiniHDLC::handleChar(uint8_t ch)
             // Serial.println("");
             if (rxcrc == _frameCRC)
             {
-                // LogWrite("HDLC", LOG_DEBUG, "frameok");
-                
                 // Null terminate the frame (in case used as a string)
                 _rxBuffer[_framePos-2] = 0;
 

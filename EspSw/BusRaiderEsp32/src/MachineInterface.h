@@ -58,7 +58,7 @@ private:
     FileManager* _pFileManager;
 
     // Max buffer sizes
-    static const int MAX_COMMAND_LEN = 1500;
+    static const int MAX_COMMAND_LEN = 10000;
 
     // Status request
     uint32_t _cachedStatusRequestMs;

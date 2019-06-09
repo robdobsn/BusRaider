@@ -65,6 +65,7 @@ class HDLC(object):
         self.current_frame = None
         self.last_frame = None
         self.frame_callback = None
+        self.frame_bin_callback = None
         self.error_callback = None
         self.running = False
         self.dumpFile = dumpFile
@@ -84,9 +85,11 @@ class HDLC(object):
 
     def _onFrame(self, frame):
         self.last_frame = frame
-        s = self.last_frame.toString()
+        if self.frame_bin_callback:
+            self.frame_bin_callback(self.last_frame.data)
         # logger.info("Received Frame: %d %s", len(s), s[:20])
         if self.frame_callback is not None:
+            s = self.last_frame.toString()
             self.frame_callback(s)
 
     def _onError(self, frame):
@@ -188,16 +191,18 @@ class HDLC(object):
                 continue
             self._readBytesAndProc(i)
 
-    def setCallbacks(self, onFrame, onError=None):
+    def setCallbacks(self, onFrame, onBinFrame=None, onError=None):
         self.frame_callback = onFrame
+        self.frame_bin_callback = onBinFrame
         self.error_callback = onError
 
-    def startReader(self, onFrame, onError=None):
+    def startReader(self, onFrame, onBinFrame=None, onError=None):
         if self.running:
             raise RuntimeError("reader already running")
         self.reader = Thread(target=self._receiveLoop)
         self.reader.setDaemon(True)
         self.frame_callback = onFrame
+        self.frame_bin_callback = onBinFrame
         self.error_callback = onError
         self.running = True
         self.reader.start()
