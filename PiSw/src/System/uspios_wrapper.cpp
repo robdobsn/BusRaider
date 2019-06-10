@@ -72,7 +72,7 @@ int GetMACAddress(unsigned char Buffer[6]) // "get board MAC address"
 
 void uspi_assertion_failed(const char* pExpr, const char* pFile, unsigned nLine)
 {
-    LogPrintf("ASSERTION FAILED: %s, in %s (Line %d)\n", pExpr, pFile, nLine);
+    LogWrite("USPIOSWrapper", LOG_DEBUG, "ASSERTION FAILED: %s, in %s (Line %d)\n", pExpr, pFile, nLine);
 
     while (1)
         microsDelay(1000000);
@@ -80,8 +80,8 @@ void uspi_assertion_failed(const char* pExpr, const char* pFile, unsigned nLine)
 
 void DebugHexdump(const void* pBuffer, unsigned nBufLen, const char* pSource /* = 0 */)
 {
-    LogPrintf("Memory dump of %s:\n", pSource);
-    LogDumpMemory((unsigned char*)pBuffer, (unsigned char*)(pBuffer) + nBufLen);
+    LogWrite("USPIOSWrapper", LOG_DEBUG, "Memory dump of %s:\n", pSource);
+    LogDumpMemory("USPIOSWrapper", LOG_DEBUG, (unsigned char*)pBuffer, (unsigned char*)(pBuffer) + nBufLen);
 }
 
 #ifdef __cplusplus

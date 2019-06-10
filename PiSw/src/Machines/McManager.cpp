@@ -699,7 +699,7 @@ void McManager::targetExec()
                     // Reset vector
                     uint8_t jumpCmd[3] = { 0xc3, uint8_t(codeDestAddr & 0xff), uint8_t((codeDestAddr >> 8) & 0xff) };
                     HwManager::blockWrite(Z80_PROGRAM_RESET_VECTOR, jumpCmd, 3, false, false, false);
-                    LogDumpMemory(regSetCode, regSetCode + codeLen);
+                    LogDumpMemory(FromMcManager, LOG_DEBUG, regSetCode, regSetCode + codeLen);
                 }
             }
         }

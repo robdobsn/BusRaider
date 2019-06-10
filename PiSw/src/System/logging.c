@@ -8,10 +8,10 @@
 #include "../System/logging.h"
 
 // Set output to be character based
-LogOutChFnType* __log_pOutChFunction = NULL;
-void LogSetOutFn(LogOutChFnType* pOutFn)
+LogOutStrFnType* __log_pOutStrFunction = NULL;
+void LogSetOutFn(LogOutStrFnType* pOutFn)
 {
-    __log_pOutChFunction = pOutFn;
+    __log_pOutStrFunction = pOutFn;
 }
 
 // Set output to be message based
@@ -22,8 +22,7 @@ void LogSetOutMsgFn(LogOutMsgFnType* pOutFn)
 }
 
 // Macros for output
-#define DISP_WRITE_STRING(x) if(__log_pOutChFunction) (*__log_pOutChFunction)((const char*)x)
-#define LOG_WRITE_STRING(x) if(__log_pOutChFunction) (*__log_pOutChFunction)((const char*)x)
+#define LOG_WRITE_STRING(x) if(__log_pOutStrFunction) (*__log_pOutStrFunction)((const char*)x)
 
 // Log severity
 #define USPI_LOG_SEVERITY LOG_VERBOSE
@@ -66,7 +65,7 @@ void LogWrite(const char* pSource,
     }
 
     // Character based output
-    if (__log_pOutChFunction)
+    if (__log_pOutStrFunction)
     {
         LOG_WRITE_STRING("[");
         switch (severity) {
@@ -102,34 +101,24 @@ void LogSetLevel(int severity)
     __logSeverity = severity;
 }
 
-void LogPrintf(const char* fmt, ...)
-{
-    char buf[15 * 80];
-    va_list args;
-
-    va_start(args, fmt);
-    ee_vsprintf(buf, fmt, args);
-    va_end(args);
-
-    DISP_WRITE_STRING(buf);
-}
-
-void LogDumpMemory(unsigned char* start_addr, unsigned char* end_addr)
+void LogDumpMemory(const char* fromSource, int logLevel, unsigned char* start_addr, unsigned char* end_addr)
 {
     unsigned char* pAddr = start_addr;
     int linPos = 0;
+    static const int MAX_BUF_LEN = 200;
+    char outLine[MAX_BUF_LEN];
+    strcpy(outLine, "");
+    char tmpBuf[10];
     for (long i = 0; i < end_addr - start_addr; i++) {
-        LogPrintf("%02x", *pAddr++);
         linPos++;
+        ee_sprintf(tmpBuf, "%02x", *pAddr++);
+        strlcat(outLine, tmpBuf, MAX_BUF_LEN);
         if (linPos == 16)
         {
-            LogPrintf("\r\n");
             linPos = 0;
-        }
-        else
-        {
-            LogPrintf(" ");
+            LogWrite(fromSource, logLevel, outLine);
         }
     }
-    LogPrintf("\r\n");
+    if (linPos != 0)
+        LogWrite(fromSource, logLevel, outLine);
 }

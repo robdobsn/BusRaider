@@ -404,7 +404,7 @@ void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned 
     {
         if (!_immediateMode)
         {
-            LogPrintf("Entering immediate mode, e.g. w/ssid/password/hostname<enter> to setup WiFi ...\n");
+            _display.consolePut("Immediate mode: w/ssid/password/hostname<enter> to setup WiFi ...\n");
         }
         _immediateMode = true;
         return;
@@ -414,7 +414,7 @@ void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned 
         if (_immediateModeLineLen < IMM_MODE_LINE_MAXLEN)
         {
             int asciiCode = McTerminal::convertRawToAscii(ucModifiers, rawKeys);
-            if (asciiCode == 0)
+            if (asciiCode < 0)
                 return;
             if (asciiCode == 0x08)
             {
@@ -430,7 +430,9 @@ void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned 
                 if (_immediateModeLineLen > 0)
                 {
                     CommandHandler::sendAPIReq(_immediateModeLine);
-                    LogPrintf("Sent request to ESP32: %s\n", _immediateModeLine);
+                    _display.consolePut("Sent request to ESP32:");
+                    _display.consolePut(_immediateModeLine);
+                    _display.consolePut("\n");
                 }
                 _immediateModeLineLen = 0;
             }
@@ -439,7 +441,6 @@ void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned 
                 _immediateModeLine[_immediateModeLineLen++] = asciiCode;
             }
             _display.consolePut(asciiCode);
-            // LogPrintf("%x ", asciiCode);
         }
         return;
     }
