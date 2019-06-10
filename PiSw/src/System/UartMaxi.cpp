@@ -5,7 +5,7 @@
 #include "../System/logging.h"
 #include "BCM2835.h"
 #include "CInterrupts.h"
-#include "MachineInfo.h"
+#include "machineinfo.h"
 #include "nmalloc.h"
 #include "PiWiring.h"
 #include "lowlib.h"

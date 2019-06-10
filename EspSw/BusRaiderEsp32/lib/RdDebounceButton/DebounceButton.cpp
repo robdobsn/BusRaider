@@ -4,7 +4,7 @@
 // Callback on button press via a hardware pin
 
 #include "DebounceButton.h"
-#include "utils.h"
+#include "Utils.h"
 #include "ArduinoLog.h"
 
 // Constructor

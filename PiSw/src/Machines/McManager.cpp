@@ -5,7 +5,7 @@
 #include <string.h>
 #include "../System/lowlib.h"
 #include "../System/rdutils.h"
-#include "../System/piwiring.h"
+#include "../System/PiWiring.h"
 #include "../TargetBus/TargetState.h"
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetCPUZ80.h"

@@ -1,10 +1,10 @@
 // Bus Raider Wiring Library (like Arduino)
 // Rob Dobson 2018
 
-#include "piwiring.h"
+#include "PiWiring.h"
 #include "BCM2835.h"
-#include "LowLev.h"
-#include "LowLib.h"
+#include "lowlev.h"
+#include "lowlib.h"
 
 uint8_t convModeToVal(uint8_t mode)
 {

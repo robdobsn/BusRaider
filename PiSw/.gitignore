@@ -3,7 +3,8 @@
 sourceme.bash
 thumbs.db
 Find Results
-build
+build/*
+!build/placeholder
 .pytest_cache
 __pycache__
 

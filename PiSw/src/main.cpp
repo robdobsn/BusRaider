@@ -3,7 +3,7 @@
 
 #include "System/lowlev.h"
 #include "System/lowlib.h"
-#include "System/piwiring.h"
+#include "System/PiWiring.h"
 #include "System/UartMaxi.h"
 #include "System/ee_sprintf.h"
 #include "System/timer.h"

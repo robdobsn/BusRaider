@@ -2,7 +2,7 @@
 // Rob Dobson 2019
 
 #include "BusController.h"
-#include "../System/piwiring.h"
+#include "../System/PiWiring.h"
 #include "../System/lowlib.h"
 #include "../System/ee_sprintf.h"
 #include "../System/logging.h"

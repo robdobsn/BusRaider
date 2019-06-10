@@ -1,11 +1,11 @@
 // Bus Raider Hardware RC2014 64K RAM
 // Rob Dobson 2019
 
-#include "Hw64KRam.h"
+#include "Hw64KRAM.h"
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetState.h"
 #include "../System/rdutils.h"
-#include "../System/piwiring.h"
+#include "../System/PiWiring.h"
 #include "../System/lowlib.h"
 #include "../System/logging.h"
 #include <stdlib.h>

@@ -3,7 +3,7 @@
 
 #include "../System/logging.h"
 #include "BusAccess.h"
-#include "../System/piwiring.h"
+#include "../System/PiWiring.h"
 #include "../System/lowlib.h"
 #include "../System/BCM2835.h"
 

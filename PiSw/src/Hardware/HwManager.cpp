@@ -9,7 +9,7 @@
 #include "../System/rdutils.h"
 #include "../System/lowlib.h"
 #include "../System/ee_sprintf.h"
-#include "../System/piwiring.h"
+#include "../System/PiWiring.h"
 #include "Hw64KRAM.h"
 #include "Hw512KRamRom.h"
 

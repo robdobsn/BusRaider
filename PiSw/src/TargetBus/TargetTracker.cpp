@@ -2,7 +2,7 @@
 // Rob Dobson 2019
 
 #include "TargetTracker.h"
-#include "../System/piwiring.h"
+#include "../System/PiWiring.h"
 #include "../System/lowlib.h"
 #include "../System/ee_sprintf.h"
 #include "../System/logging.h"
@@ -282,7 +282,7 @@ int TargetTracker::getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBu
 
     if (codeMaxlen >= sizeof(regSetInstructions))
     {
-        memcpy(pCodeBuffer, regSetInstructions, codeMaxlen);
+        memcpy(pCodeBuffer, regSetInstructions, sizeof(regSetInstructions));
         return sizeof(regSetInstructions);
     }
     return 0;

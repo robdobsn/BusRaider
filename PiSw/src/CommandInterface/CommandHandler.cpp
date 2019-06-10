@@ -5,7 +5,7 @@
 #include "../System/nmalloc.h"
 #include "../System/ee_sprintf.h"
 #include "../System/logging.h"
-#include "minihdlc.h"
+#include "MiniHDLC.h"
 #include "../System/rdutils.h"
 #include "../System/RdStdCpp.h"
 #include "../System/lowlib.h"

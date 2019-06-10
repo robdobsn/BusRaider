@@ -1,7 +1,7 @@
 // Bus Raider
 // Rob Dobson 2018
 
-#include "uartMini.h"
+#include "UartMini.h"
 #include "BCM2835.h"
 #include "CInterrupts.h"
 #include "nmalloc.h"

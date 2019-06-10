@@ -4,7 +4,7 @@
 #include "McBase.h"
 #include "McManager.h"
 #include "../System/rdutils.h"
-#include "../hardware/HwManager.h"
+#include "../Hardware/HwManager.h"
 #include <stdlib.h>
 
 McBase::McBase(McDescriptorTable* pDefaultTables, int numTables)

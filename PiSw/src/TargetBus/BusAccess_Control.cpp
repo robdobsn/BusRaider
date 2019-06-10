@@ -2,7 +2,7 @@
 // Rob Dobson 2018-2019
 
 #include "BusAccess.h"
-#include "../System/piwiring.h"
+#include "../System/PiWiring.h"
 #include "../System/CInterrupts.h"
 #include "../System/lowlev.h"
 #include "../System/lowlib.h"

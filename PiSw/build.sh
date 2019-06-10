@@ -4,6 +4,6 @@ if [[ $1 == c ]]; then
     rmdir CMakeFiles
     rm CMakeCache.txt
 fi
-cmake ../ -G"MinGW Makefiles" -DCMAKE_MAKE_PROGRAM=make -DCMAKE_TOOLCHAIN_FILE=./cmake/toolchain.cmake
+cmake ../ -DCMAKE_MAKE_PROGRAM=make -DCMAKE_TOOLCHAIN_FILE=./cmake/toolchain.cmake
 make
 cd ..

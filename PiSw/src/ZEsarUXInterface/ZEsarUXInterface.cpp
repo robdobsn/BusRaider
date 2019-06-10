@@ -6,7 +6,7 @@
 #include "../System/logging.h"
 #include "../System/rdutils.h"
 #include "../System/lowlib.h"
-#include "../System/piwiring.h"
+#include "../System/PiWiring.h"
 #include "../TargetBus/TargetTracker.h"
 #include "../Hardware/HwManager.h"
 #include "../Machines/McManager.h"
