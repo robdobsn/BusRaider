@@ -326,11 +326,11 @@ void BusRaiderApp::statusDisplayUpdate()
             ee_sprintf(refreshStr, "RxOv %u,", rxOverrunErrCount);
             strlcat(statusStr, refreshStr, MAX_STATUS_STR_LEN);
         }
-        if (rxBreakCount > 0)
-        {
-            ee_sprintf(refreshStr, "RxBk %u,", rxBreakCount);
-            strlcat(statusStr, refreshStr, MAX_STATUS_STR_LEN);
-        }
+        // if (rxBreakCount > 0)
+        // {
+        //     ee_sprintf(refreshStr, "RxBk %u,", rxBreakCount);
+        //     strlcat(statusStr, refreshStr, MAX_STATUS_STR_LEN);
+        // }
         if (rxBufferFullCount > 0)
         {
             ee_sprintf(refreshStr, "RxFull %u,", rxBufferFullCount);

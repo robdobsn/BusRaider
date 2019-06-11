@@ -229,6 +229,7 @@ void BusAccess::addrLowSet(uint32_t lowAddrByte)
     // Delay a few cycles
     lowlev_cycleDelay(CYCLES_DELAY_FOR_CLEAR_LOW_ADDR);
     muxClear();
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_CLEAR_LOW_ADDR);
     // Clock the required value in - requires one more count than
     // expected as the output register is one clock pulse behind the counter
     for (uint32_t i = 0; i < (lowAddrByte & 0xff) + 1; i++) {
