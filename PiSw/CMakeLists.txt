@@ -8,6 +8,7 @@ set(PROJ_NAME BusRaider)
 set(PROJECT_ELF ${PROJ_NAME}.elf)
 set(PROJECT_HEX ${PROJ_NAME}.hex)
 set(PROJECT_SREC ${PROJ_NAME}.srec)
+set(LIBUSPI_A ${PROJECT_SOURCE_DIR}/uspi/lib/libuspi.a)
 
 project($PROJ_NAME C CXX ASM)
 
@@ -15,7 +16,11 @@ set(ASM_SOURCE_FILES src/System/startup.s src/System/lowlev.s)
 file(GLOB_RECURSE C_SOURCE_FILES "./src/*.c")
 file(GLOB_RECURSE CXX_SOURCE_FILES "./src/*.cpp")
 
-add_executable(${PROJECT_ELF} "${ASM_SOURCE_FILES}" "${C_SOURCE_FILES}" "${CXX_SOURCE_FILES}" )
+add_custom_command(OUTPUT ${LIBUSPI_A}
+    COMMAND "make" "ARCH=-march=armv6j -mtune=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp" 
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/uspi/lib/")
+
+add_executable(${PROJECT_ELF} "${ASM_SOURCE_FILES}" "${C_SOURCE_FILES}" "${CXX_SOURCE_FILES}" ${LIBUSPI_A})
 
 target_link_libraries(${PROJECT_ELF} ${PROJECT_SOURCE_DIR}/uspi/lib/libuspi.a)
 
@@ -44,7 +49,7 @@ add_custom_command(TARGET ${PROJECT_ELF} POST_BUILD
   # COMMAND ${CMAKE_OBJCOPY} -O srec --srec-forceS3 $<TARGET_FILE:${PROJECT_ELF}> ${PROJECT_SREC}
   # COMMAND python ${PROJECT_SOURCE_DIR}/test/UploadToBusRaider.py 0 srec COM39 921600 ${PROJECT_SOURCE_DIR}
   # COMMAND python ${PROJECT_SOURCE_DIR}/tools/UploadToBusRaider.py 0 hdlc COM7 921600 ${PROJECT_SOURCE_DIR}
-  COMMAND curl -F "file=@${PROJECT_SOURCE_DIR}/bin/kernel.img" http://192.168.86.50/uploadpisw
+  # COMMAND curl -F "file=@${PROJECT_SOURCE_DIR}/bin/kernel.img" http://192.168.86.50/uploadpisw
   # COMMAND "C:/Program Files (x86)/teraterm/ttermpro.exe" /R ${PROJECT_SOURCE_DIR}/bin/kernel.img /speed=115200 /c=39
   # COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${PROJECT_ELF}> ${PROJECT_HEX}
   # COMMAND ${CMAKE_OBJCOPY} -O srec --srec-forceS3 $<TARGET_FILE:${PROJECT_ELF}> ${PROJECT_SREC}

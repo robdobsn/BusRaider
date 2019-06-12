@@ -1,5 +1,6 @@
 cd ./build
-if [[ $1 == c ]]; then
+if test "$1" = "c"
+then
     REM echo "Removing cache"
     rmdir CMakeFiles
     rm CMakeCache.txt

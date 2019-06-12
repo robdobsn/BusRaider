@@ -7,5 +7,9 @@
         "functional": "cpp",
         "iosfwd": "cpp",
         "xstring": "cpp"
+    },
+    "terminal.integrated.env.linux": {
+        "PATH": "/home/rob/.platformio/penv/bin:/home/rob/.platformio/penv:/home/rob/bin:/home/rob/.local/bin:/home/rob/.nvm/versions/node/v8.8.1/bin:/home/rob/bin:/home/rob/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin",
+        "PLATFORMIO_CALLER": "vscode"
     }
 }
