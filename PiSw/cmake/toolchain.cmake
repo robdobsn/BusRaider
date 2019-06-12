@@ -1,12 +1,12 @@
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR BCM2835)
 
-set(CMAKE_C_COMPILER "arm-none-eabi-gcc.exe")
-set(CMAKE_CXX_COMPILER "arm-none-eabi-gcc.exe")
-set(CMAKE_ASM_COMPILER "arm-none-eabi-as.exe")
-# set(CMAKE_LINKER "arm-none-eabi-ld.exe")
-set(CMAKE_OBJCOPY "arm-none-eabi-objcopy.exe")
-set(CMAKE_OBJDUMP "arm-none-eabi-objdump.exe")
+set(CMAKE_C_COMPILER "arm-none-eabi-gcc")
+set(CMAKE_CXX_COMPILER "arm-none-eabi-gcc")
+set(CMAKE_ASM_COMPILER "arm-none-eabi-as")
+# set(CMAKE_LINKER "arm-none-eabi-ld")
+set(CMAKE_OBJCOPY "arm-none-eabi-objcopy")
+set(CMAKE_OBJDUMP "arm-none-eabi-objdump")
 
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O0" )
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g" )
