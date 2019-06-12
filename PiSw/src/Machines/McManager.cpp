@@ -678,8 +678,9 @@ void McManager::targetExec()
         }
         else
         {
-            // If the code doesn't start at 0, generate a code snippet to set registers and run
-            if (!_busActionCodeWrittenAtResetVector)
+            // If the code doesn't start at 0 or a start location has been supplied,
+            // generate a code snippet to set registers and run
+            if (!_busActionCodeWrittenAtResetVector || TargetState::areRegistersValid())
             {
                 uint8_t regSetCode[MAX_REGISTER_SET_CODE_LEN];
                 Z80Registers regs;

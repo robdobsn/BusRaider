@@ -241,6 +241,8 @@ void MachineInterface::service()
             if (numPreloadFiles > DEMO_PRELOAD_MAX_FILES)
                 numPreloadFiles = DEMO_PRELOAD_MAX_FILES;
 
+            // Log.notice("NO UPLOAD IN PROGRESS preloadIdx %d preloadNum %d\n", _demoPreloadFileIdx, numPreloadFiles);
+
             // Check done
             if (_demoPreloadFileIdx >= numPreloadFiles)
             {
@@ -258,7 +260,7 @@ void MachineInterface::service()
                 break;
             }
 
-            // Log.notice("WOULD UPLOAD %s\n", preloadName.c_str());
+            // Log.notice("Start FS upload preload file %s\n", preloadName.c_str());
             
             // Send
             _pCommandSerial->startUploadFromFileSystem("spiffs", "", preloadName, "");
@@ -270,7 +272,7 @@ void MachineInterface::service()
             if (_pCommandSerial->uploadInProgress())
                 break;
 
-            // Log.notice("WOULD UPLOAD %s\n", _demoFileToRun.c_str());
+            // Log.notice("Start FS upload demo file %s\n", _demoFileToRun.c_str());
 
             // Send and run
             _pCommandSerial->startUploadFromFileSystem("spiffs", "", _demoFileToRun, "ProgramAndReset");

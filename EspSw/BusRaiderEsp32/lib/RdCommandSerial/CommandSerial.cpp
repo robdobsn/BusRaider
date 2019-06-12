@@ -154,6 +154,8 @@ void CommandSerial::service()
                 if (!finalChunk)
                     Log.warning("%supload 0 len but not final\n", MODULE_PREFIX);
                 _uploadFromFSInProgress = false;
+                // Log.notice("File upload from FS timed out lastBlockMs %u betweenBlocksMs %u chunkLen %u finalChunk %d", 
+                //         _uploadLastBlockMs, DEFAULT_BETWEEN_BLOCKS_MS, chunkLen, finalChunk);
             }
         }
     }
@@ -243,19 +245,20 @@ void CommandSerial::uploadCommonBlockHandler(const char* fileType, const String&
     {
         _uploadFileType = fileType;
         sendFileStartRecord(fileType, req, filename, fileLength);
-        Log.trace("%snew upload started millis %d\n", MODULE_PREFIX, _uploadLastBlockMs);
+        // Log.trace("%snew upload started millis %d blockLen %d final %d\n", MODULE_PREFIX, 
+        //         _uploadLastBlockMs, len, finalBlock);
     }
 
     // Send the block
     sendFileBlock(index, data, len);
-    // Log.trace("%sblock sent\n", MODULE_PREFIX);
+    // Log.trace("%sblock sent blockIdx %d len %d final %d\n", MODULE_PREFIX, _blockCount, len, finalBlock);
     _blockCount++;
 
     // Check if that was the final block
     if (finalBlock)
     {
         sendFileEndRecord(_blockCount, NULL);
-       // Log.trace("%sfile end sent\n", MODULE_PREFIX);
+    //    Log.trace("%sfile end sent\n", MODULE_PREFIX);
         if (_uploadTargetCommandWhenComplete.length() != 0)
         {
             sendTargetCommand(_uploadTargetCommandWhenComplete, "");
