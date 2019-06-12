@@ -1,3 +1,4 @@
 [submodule "PiSw/uspi"]
 	path = PiSw/uspi
 	url = https://github.com/rsta2/uspi
+    ignore = dirty
