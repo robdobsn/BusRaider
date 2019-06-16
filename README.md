@@ -23,13 +23,13 @@ displayed on the HDMI video stream along with a display area for the Retro compu
 
 ## Documentation
 
-For full documentation see the [BusRaider 1.x Manual.pdf](https://github.com/robdobsn/PiBusRaider/blob/master/Docs/BusRaider%201.7%20Manual.pdf)
+For full documentation see the [BusRaider 1.x Manual.pdf](https://github.com/robdobsn/PiBusRaider/blob/master/Docs/BusRaider%20Current%20Manual.pdf)
 
 ## License
 
 The MIT License (MIT)
 
-Copyright (c) 2018 Rob Dobson
+Copyright (c) 2018-2019 Rob Dobson
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
