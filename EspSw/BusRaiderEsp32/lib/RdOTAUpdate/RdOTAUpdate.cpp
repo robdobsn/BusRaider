@@ -31,8 +31,8 @@ RdOTAUpdate::RdOTAUpdate()
     _otaDirectInProgress = false;
 }
 
-void RdOTAUpdate::setup(ConfigBase& config, const char *projectName, const char *currentVers)
-{            
+void RdOTAUpdate::setup(ConfigBase &config, const char *projectName, const char *currentVers)
+{
     // Get config
     ConfigBase otaConfig(config.getString("OTAUpdate", "").c_str());
     _otaEnabled = otaConfig.getLong("enabled", 0) != 0;
@@ -41,8 +41,8 @@ void RdOTAUpdate::setup(ConfigBase& config, const char *projectName, const char 
     _projectName = projectName;
     _currentVers = currentVers;
     // Update server
-    _updateServerName = otaConfig.getString("server","");
-    _updateServerPort = otaConfig.getLong("port",80);
+    _updateServerName = otaConfig.getString("server", "");
+    _updateServerPort = otaConfig.getLong("port", 80);
     // Init timer
     _updateStateEntryMs = millis();
 }
@@ -103,7 +103,7 @@ void RdOTAUpdate::service()
     }
 
     // State management
-    switch(_otaUpdateState)
+    switch (_otaUpdateState)
     {
         default:
         case OTA_UPDATE_STATE_IDLE:
@@ -163,7 +163,7 @@ void RdOTAUpdate::startUpdateProcess()
     if (_wifiClient.connected())
     {
         _wifiClient.stop();
-        Log.verbose("%sStopped existing TCP conn\n", MODULE_PREFIX);            
+        Log.verbose("%sStopped existing TCP conn\n", MODULE_PREFIX);
     }
 
     // Connect
@@ -263,7 +263,7 @@ void RdOTAUpdate::setState(OTAUpdateState newState)
         if (_wifiClient.connected())
         {
             _wifiClient.stop();
-            Log.verbose("%sStopped existing TCP conn\n", MODULE_PREFIX);            
+            Log.verbose("%sStopped existing TCP conn\n", MODULE_PREFIX);
         }
         _responseHeader.reserve(1);
         Log.trace("%sSetState Idle\n", MODULE_PREFIX);

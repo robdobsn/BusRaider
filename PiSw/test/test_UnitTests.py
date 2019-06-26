@@ -290,6 +290,131 @@ def test_TraceJMP000():
     assert(testStats["tracerRespCount"] == testRepeatCount * testValStatusCount)
     assert(testStats["tracerErrCount"] == 0)
 
+# def test_TraceManic():
+
+#     def frameCallback(msgContent, logger):
+#         if msgContent['cmdName'] == "RdResp":
+#             requiredResp = ''.join(('%02x' % testWriteData[i]) for i in range(len(testWriteData)))
+#             respOk = requiredResp == msgContent['data']
+#             testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
+#             testStats["msgRdRespCount"] += 1
+#             if not respOk:
+#                 logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
+#         elif msgContent['cmdName'] == "WrResp":
+#             testStats["msgWrRespCount"] += 1
+#             try:
+#                 if msgContent['err'] != 'ok':
+#                     testStats["msgWrRespErrCount"] += 1
+#                     logger.error(f"WrResp err not ok {msgContent}")
+#             except:
+#                 logger.error(f"WrResp doesn't contain err {msgContent}")
+#                 testStats["msgWrRespErrMissingCount"] += 1
+#         elif msgContent['cmdName'] == "busInitResp":
+#             pass
+#         elif msgContent['cmdName'][:10] == "SetMachine":
+#             pass
+#         elif msgContent['cmdName'] == "clockHzSetResp":
+#             testStats["clockSetOk"] = True
+#         elif msgContent['cmdName'] == "tracerPrimeFromMemResp" or \
+#                 msgContent['cmdName'] == "tracerStopResp" or \
+#                 msgContent['cmdName'] == "tracerStartResp":
+#             pass
+#         elif msgContent['cmdName'] == "busStatusClearResp" or \
+#                 msgContent['cmdName'] == "busInitResp":
+#             pass
+#         elif msgContent['cmdName'] == "tracerStatusResp":
+#             logger.info(f"isrCount {msgContent['isrCount']} errors {msgContent['errors']}")
+#             testStats['tracerErrCount'] += msgContent['errors']
+#             testStats['isrCount'] += msgContent['isrCount']
+#             testStats['tracerRespCount'] += 1
+#             logger.info(f"TracerStatus ISRCount {msgContent['isrCount']} errors {msgContent['errors']}")
+#         elif msgContent['cmdName'] == "busStatusResp":
+#             testStats['clrMaxUs'] = max(testStats['clrMaxUs'], msgContent['clrMaxUs'])
+#         elif msgContent['cmdName'] == "hwListResp" or \
+#             msgContent['cmdName'] == "hwEnableResp":
+#             pass
+#         else:
+#             testStats["unknownMsgCount"] += 1
+#             logger.info(f"Unknown message {msgContent}")
+
+#     logger = logging.getLogger(__name__)
+#     logger.setLevel(logging.DEBUG)
+#     setupTests("TraceManic")
+#     commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
+
+#     # Stats
+#     testStats = {"msgRdOk": True, "msgRdRespCount":0, "msgWrRespCount": 0, "msgWrRespErrCount":0, "msgWrRespErrMissingCount":0,
+#                 "unknownMsgCount":0, "isrCount":0, "tracerErrCount":0, "clrMaxUs":0, "tracerRespCount":0}
+
+#     # Set ZXSpectrum
+#     mc = "ZX Spectrum"
+#     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
+#     time.sleep(1)
+
+#     # Check hardware list and set 64K RAM
+#     commonTest.sendFrame("hwList", b"{\"cmdName\":\"hwList\"}\0")
+#     commonTest.sendFrame("hwEnable", b"{\"cmdName\":\"hwEnable\",\"hwName\":\"64KRAM\",\"enable\":1}\0")
+#     time.sleep(0.1)
+
+#     # Bus init
+#     commonTest.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
+
+#     # Send ROM
+#     targetCodeFolder = r"./test/testdata"
+#     zxSpectrum48RomFilename = r"48.rom"
+#     romFrame = commonTest.formFileFrame(targetCodeFolder, zxSpectrum48RomFilename)
+#     assert(not(romFrame is None))
+#     if not romFrame is None:
+#         # Send ROM data
+#         logger.debug(f"ROM frame len {len(romFrame)} start {romFrame[0:60]}")
+#         commonTest.sendFrame("ZXSpectrum40KROM", romFrame)
+
+#         # Program and reset
+#         commonTest.sendFrame("ProgramAndReset", b"{\"cmdName\":\"ProgramAndReset\"}\0")
+#         time.sleep(2)
+
+#     # Test
+#     testValStatusCount = 1
+
+#     # Start tracer
+#     commonTest.sendFrame("tracerStop", b"{\"cmdName\":\"tracerStop\"}\0")
+#     time.sleep(0.1)
+#     commonTest.sendFrame("tracerPrime", b"{\"cmdName\":\"tracerPrimeFromMem\"}\0")   
+#     commonTest.sendFrame("tracerStart", b"{\"cmdName\":\"tracerStart\",\"logging\":1,\"compare\":1}\0")
+#     commonTest.sendFrame("busStatusClear", b"{\"cmdName\":\"busStatusClear\"}\0")   
+
+#     # Run for a long time
+#     for i in range(3600):
+
+#         # Get status
+#         commonTest.sendFrame("statusReq", b"{\"cmdName\":\"tracerStatus\",\"msgIdx\":0}\0")
+#         commonTest.sendFrame("busStatus", b"{\"cmdName\":\"busStatus\"}\0")
+#         time.sleep(10)
+
+#         # Breakout early if failing
+#         if not testStats["msgRdOk"] or testStats['tracerErrCount'] > 0:
+#             break
+        
+#     # Send messages to stop
+#     commonTest.sendFrame("tracerStop", b"{\"cmdName\":\"tracerStop\"}\0")
+
+#     # Bus init
+#     commonTest.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
+#     time.sleep(1)
+    
+#     # Wait for test end and cleardown
+#     commonTest.cleardown()
+#     assert(testStats["msgRdOk"] == True)
+#     assert(testStats["msgWrRespCount"] == testRepeatCount)
+#     assert(testStats["msgRdRespCount"] == testRepeatCount)
+#     assert(testStats["msgWrRespErrCount"] == 0)
+#     assert(testStats["msgWrRespErrMissingCount"] == 0)
+#     assert(testStats["unknownMsgCount"] == 0)
+#     assert(testStats["clockSetOk"] == True)
+#     assert(testStats["isrCount"] > 0)
+#     assert(testStats["tracerRespCount"] == testRepeatCount * testValStatusCount)
+#     assert(testStats["tracerErrCount"] == 0)
+
 def test_TRS80Level1RomExec():
 
     def frameCallback(msgContent, logger):

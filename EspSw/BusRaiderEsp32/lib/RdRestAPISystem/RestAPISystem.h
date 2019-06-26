@@ -33,7 +33,7 @@ private:
     NTPClient& _ntpClient;
     CommandScheduler& _commandScheduler;
     String _systemType;
-    String _systemVersion;
+    static String _systemVersion;
     
 public:
     RestAPISystem(WiFiManager& wifiManager, MQTTManager& mqttManager,
@@ -44,8 +44,8 @@ public:
 
     // Setup and status
     void setup(RestAPIEndpoints &endpoints);
-    String getWifiStatusStr();
-    int reportHealth(int bitPosStart, unsigned long *pOutHash, String *pOutStr);
+    static String getWifiStatusStr();
+    static int reportHealth(int bitPosStart, unsigned long *pOutHash, String *pOutStr);
 
     // Call frequently
     void service();
@@ -68,6 +68,7 @@ public:
     void apiNetLogSerial(String &reqStr, String &respStr);
     void apiNetLogCmdSerial(String &reqStr, String &respStr);
     void apiNetLogHTTP(String &reqStr, String &respStr);
+    void apiNetLogPT(String &reqStr, String &respStr);
 
     // Command scheduler
     void apiCmdSchedGetConfig(String &reqStr, String &respStr);

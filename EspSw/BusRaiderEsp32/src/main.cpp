@@ -1,29 +1,33 @@
 // Bus Raider ESP 32
-// Rob Dobson 2018
+// Rob Dobson 2018-2019
 
 // API used for web, MQTT and BLE (future)
-//   Get version:    /v                   - returns version info
-//   Set WiFi:       /w/ssss/pppp/hhhh    - ssss = ssid, pppp = password - assumes WPA2, hhhh = hostname
-//                                        - does not clear previous WiFi so clear first if required
-//   Clear WiFi:     /wc                  - clears all stored SSID, etc
-//   Set MQTT:       /mq/ss/ii/oo/pp      - ss = server, ii and oo are in/out topics, pp = port
-//                                        - in topics / should be replaced by ~ 
-//                                        - (e.g. /devicename/in becomes ~devicename~in)
+//   Get version:    /v                     - returns version info
+//   Set WiFi:       /w/ssss/pppp/hhhh      - ssss = ssid, pppp = password - assumes WPA2, hhhh = hostname
+//                                          - does not clear previous WiFi so clear first if required
+//   Clear WiFi:     /wc                    - clears all stored SSID, etc
+//   Set MQTT:       /mq/ss/ii/oo/pp        - ss = server, ii and oo are in/out topics, pp = port
+//                                          - in topics / should be replaced by ~
+//                                          - (e.g. /devicename/in becomes ~devicename~in)
 //   Check updates:  /checkupdate           - check for updates on the update server
-//   Reset:          /reset               - reset device
-//   Log level:      /loglevel/lll        - Logging level (for MQTT and HTTP)
-//                                        - lll one of v (verbose), t (trace), n (notice), w (warning), e (error), f (fatal)
-//   Log to MQTT:    /logmqtt/en/topic    - Control logging to MQTT
-//                                        - en = 0 or 1 for off/on, topic is the topic logging messages are sent to
-//   Log to HTTP:    /loghttp/en/ip/po/ur - Control logging to HTTP
-//                                        - en = 0 or 1 for off/on
-//                                        - ip is the IP address of the computer to log to (or hostname) and po is the port
-//                                        - ur is the HTTP url logging messages are POSTed to
-//   Log to serial:  /logserial/en/port   - Control logging to serial
-//                                        - en = 0 or 1 for off/on
-//                                        - port is the port number 0 = standard USB port
-//   Log to cmd:     /logcmd/en           - Control logging to command port (extra serial if configured)
-//                                        - en = 0 or 1 for off/on
+//   Reset:          /reset                 - reset device
+//   Log level:      /loglevel/lll          - Logging level (for MQTT, HTTP and Papertrail)
+//                                          - lll one of v (verbose), t (trace), n (notice), w (warning), e (error), f (fatal)
+//   Log to MQTT:    /logmqtt/en/topic      - Control logging to MQTT
+//                                          - en = 0 or 1 for off/on, topic is the topic logging messages are sent to
+//   Log to HTTP:    /loghttp/en/ip/po/ur   - Control logging to HTTP
+//                                          - en = 0 or 1 for off/on
+//                                          - ip is the IP address of the computer to log to (or hostname) and po is the port
+//                                          - ur is the HTTP url logging messages are POSTed to
+//   Log to Papertail:    /logpt/en/ho/po   - Control logging to Papertrail
+//                                          - en = 0 or 1 for off/on
+//                                          - ho is the papertrail host
+//                                          - po is the papertrail port
+//   Log to serial:  /logserial/en/port     - Control logging to serial
+//                                          - en = 0 or 1 for off/on
+//                                          - port is the port number 0 = standard USB port
+//   Log to cmd:     /logcmd/en             - Control logging to command port (extra serial if configured)
+//                                          - en = 0 or 1 for off/on
 //   Set NTP:        /ntp/gmt/dst/s1/s2/s3  - Set NTP server(s)
 //                                          - gmt = GMT offset in seconds, dst = Daylight Savings Offset in seconds
 //                                          - s1, s2, s3 = NTP servers, e.g. pool.ntp.org
@@ -36,7 +40,7 @@
 const char* systemType = "BusRaiderESP32";
 
 // System version
-const char* systemVersion = "1.7.137";
+const char* systemVersion = "1.7.139";
 
 // Build date
 const char* buildDate = __DATE__;
@@ -116,7 +120,7 @@ static const char *hwConfigJSON = {
     "\"webServerPort\":80,"
     "\"OTAUpdate\":{\"enabled\":1,\"server\":\"192.168.86.235\",\"port\":5076,\"directOk\":1},"
     "\"serialConsole\":{\"portNum\":0},"
-    "\"commandSerial\":{\"portNum\":1,\"baudRate\":916200},"
+    "\"commandSerial\":{\"portNum\":1,\"baudRate\":916200,\"rxBufSize\":32768},"
     "\"ntpConfig\":{\"ntpServer\":\"pool.ntp.org\", \"gmtOffsetSecs\":0, \"dstOffsetSecs\":0},"
     "\"fileManager\":{\"spiffsEnabled\":1,\"spiffsFormatIfCorrupt\":1,"
         "\"sdEnabled\": 1,\"sdMOSI\": \"23\",\"sdMISO\": \"19\",\"sdCLK\": \"18\",\"sdCS\": \"4\""

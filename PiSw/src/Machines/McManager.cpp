@@ -12,6 +12,7 @@
 #include "../TargetBus/TargetTracker.h"
 #include "../Hardware/HwManager.h"
 #include "../Fonts/SystemFont.h"
+#include "../StepTracer/StepTracer.h"
 #include "../Machines/McTRS80.h"
 #include "../Machines/McRobsZ80.h"
 #include "../Machines/McZXSpectrum.h"
@@ -319,6 +320,9 @@ bool McManager::setupMachine(const char* mcJson)
 
     // Set cur machine
     _pCurMachine = pMc;
+
+    // Remove step tracer
+    StepTracer::stopAll();
 
     // Remove wait generation
     BusAccess::waitOnIO(_busSocketId, false);

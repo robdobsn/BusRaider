@@ -218,6 +218,12 @@ void StepTracer::start(bool logging, bool recordAll, bool compareToEmulated)
     BusAccess::targetReqReset(_busSocketId);
 }
 
+void StepTracer::stopAll()
+{
+    if (_pThisInstance)
+        _pThisInstance->stop();
+}
+
 void StepTracer::stop()
 {
     if (_logging)

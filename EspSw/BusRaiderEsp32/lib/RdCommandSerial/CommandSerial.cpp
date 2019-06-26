@@ -59,7 +59,13 @@ void CommandSerial::setup(ConfigBase& config)
             Log.notice("%sportNum %d, baudRate %d, rxPin %d, txPin %d\n", MODULE_PREFIX,
                             _serialPortNum, _baudRate, 3, 1);
         }
-        _pSerial->setRxBufferSize(32768);
+
+        // Set rx buffer size or leave as default
+        int rxBufSize = csConfig.getLong("rxBufSize", -1);
+        if (rxBufSize > 0)
+        {
+            _pSerial->setRxBufferSize(rxBufSize);
+        }
     }
     else
     {
@@ -98,10 +104,15 @@ void CommandSerial::eventMessage(String& msgJson)
 void CommandSerial::responseMessage(String& reqStr, String& msgJson)
 {
     // Serial.printf("CommandSerial: req %s ... response Msg %s\n", reqStr.c_str(), msgJson.c_str());
-
-    String frame = "{\"cmdName\":\"" + reqStr + "Resp\",";
-    frame += msgJson;
-    frame += "}";
+    String frame;
+    if (msgJson.startsWith("{"))
+    {
+        frame = "{\"cmdName\":\"" + reqStr + "Resp\",\"msg\":" + msgJson + "}\0";
+    }
+    else
+    {
+        frame = "{\"cmdName\":\"" + reqStr + "Resp\"," + msgJson + "}\0";
+    }
     _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
 }
 
@@ -288,7 +299,7 @@ void CommandSerial::uploadAPIBlockHandler(const char* fileType, const String& re
         _uploadFromAPIInProgress = true;
         _blockCount = 0;
         _uploadStartMs = millis();
-        Log.notice("%suploadAPIBlockHandler starting new - nothing in progress\n", MODULE_PREFIX);
+        // Log.notice("%suploadAPIBlockHandler starting new - nothing in progress\n", MODULE_PREFIX);
     }
     
     // Commmon handler
@@ -311,12 +322,12 @@ bool CommandSerial::startUploadFromFileSystem(const String& fileSystemName,
     // Start a chunked file session
     if (!_fileManager.chunkedFileStart(fileSystemName, filename, false))
     {
-        Log.trace("%sstartUploadFromFileSystem failed to start %s\n", MODULE_PREFIX, filename.c_str());
+        // Log.trace("%sstartUploadFromFileSystem failed to start %s\n", MODULE_PREFIX, filename.c_str());
         return false;
     }
 
     // Upload now in progress
-    Log.trace("%sstartUploadFromFileSystem %s\n", MODULE_PREFIX, filename.c_str());
+    // Log.trace("%sstartUploadFromFileSystem %s\n", MODULE_PREFIX, filename.c_str());
     _uploadFromFSInProgress = true;
     _uploadFileType = "target";
     _uploadFromFSRequest = uploadRequest;

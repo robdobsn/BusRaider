@@ -81,6 +81,7 @@ public:
     // Control
     void start(bool logging, bool recordAll, bool compareToEmulated);
     void stop();
+    static void stopAll();
     void primeFromMem();
     
     // Service
