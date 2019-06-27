@@ -430,7 +430,7 @@ void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned 
                 if (_immediateModeLineLen > 0)
                 {
                     CommandHandler::sendAPIReq(_immediateModeLine);
-                    _display.consolePut("Sent request to ESP32:");
+                    _display.consolePut("\nSent request to ESP32:");
                     _display.consolePut(_immediateModeLine);
                     _display.consolePut("\n");
                 }

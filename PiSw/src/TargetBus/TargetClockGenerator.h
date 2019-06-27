@@ -48,7 +48,7 @@ class TargetClockGenerator
 
     uint32_t getMinFreqHz()
     {
-        return 200000;
+        return 1;
     }
 
     uint32_t getMaxFreqHz()
@@ -79,8 +79,9 @@ class TargetClockGenerator
         // https://www.raspberrypi.org/documentation/hardware/raspberrypi/bcm2835/BCM2835-ARM-Peripherals.pdf
         // Page 107
 
-        // Disable to start
-        WR32(ARM_CM_GP0CTL, ARM_CM_PASSWD | ARM_CM_CTL_CLKSRC_PLLD);
+        // Disable initially without changing clock source or mash
+        uint32_t curVal = RD32(ARM_CM_GP0CTL);
+        WR32(ARM_CM_GP0CTL, ARM_CM_PASSWD | (curVal & ARM_CM_CTL_CLK_SET_MASK));
         if (!en)
         {
             _enabled = false;
@@ -100,34 +101,44 @@ class TargetClockGenerator
         // Wait a little if busy
         int busyCount = 0;
         static const int MAX_BUSY_WAIT_COUNT = 100;
-        // uint32_t lastBusy = 0;
+        uint32_t lastBusy = 0;
         for (int i = 0; i < MAX_BUSY_WAIT_COUNT; i++)
         {
             if ((RD32(ARM_CM_GP0CTL) & ARM_CM_CTL_BUSY) == 0)
                 break;
             microsDelay(1);
             busyCount++;
-            // lastBusy = RD32(ARM_CM_PWMCTL);
+            lastBusy = RD32(ARM_CM_PWMCTL);
         }
 
         // Set the output pin
         pinMode(_outputPin, _altMode);
 
+        // Check which clock source we're using 
+        bool bUsePLLD = (_freqReqd >= ARM_CM_CTL_MIN_FREQ_FOR_PLLD);
+        uint32_t sourceFreq = (bUsePLLD ? ARM_CM_CTL_PLLD_FREQ : ARM_CM_CTL_OSCILLATOR_FREQ);
+        uint32_t clkSourceMask = (bUsePLLD ? ARM_CM_CTL_CLKSRC_PLLD : ARM_CM_CTL_CLKSRC_OSCILLATOR);
+
+        // Set the source but keep disabled
+        WR32(ARM_CM_GP0CTL, ARM_CM_PASSWD | clkSourceMask);
+        microsDelay(1000);
+
         // Set the divisor
-        uint32_t divisor = ARM_CM_CTL_PLLD_FREQ / _freqReqd;
+        uint32_t divisor = sourceFreq / _freqReqd;
         if (divisor > 4095)
             divisor = 4095;
         WR32(ARM_CM_GP0DIV, ARM_CM_PASSWD | divisor << 12);
-
+        microsDelay(1000);
+        
         // Enable (or disable) as required
         uint32_t enMask = en ? ARM_CM_CTL_ENAB : 0;
-        WR32(ARM_CM_GP0CTL, ARM_CM_PASSWD | enMask | ARM_CM_CTL_CLKSRC_PLLD);
+        WR32(ARM_CM_GP0CTL, ARM_CM_PASSWD | enMask | clkSourceMask);
         _enabled = true;
 
         // Debug
-        // uint32_t freqGenerated = ARM_CM_CTL_PLLD_FREQ / divisor;
-        // LogWrite("ClockGen", LOG_NOTICE, "Freq %d (req %d div %d) pin %d mode %d busyCount %d lastBusy %08x",
-        //                 freqGenerated, _freqReqd, divisor, _outputPin, _altMode, busyCount, lastBusy);
+        uint32_t freqGenerated = sourceFreq / divisor;
+        LogWrite("ClockGen", LOG_NOTICE, "Generated freq %d (req %d src %d div %d) pin %d mode %d busyCount %d lastBusy %08x",
+                        freqGenerated, _freqReqd, sourceFreq, divisor, _outputPin, _altMode, busyCount, lastBusy);
     }
 
     uint32_t getFreqInHz()
