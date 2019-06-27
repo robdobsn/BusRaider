@@ -1443,7 +1443,6 @@
             margin-left: 20px;
         }
         .clock-setting {
-            float: right;
             display: inline-block;
             padding: 5px 10px;
             background: #444;
@@ -1525,7 +1524,7 @@
                 <span class="button" onclick="sendCmdToTarget('releasetarget')">Release</span> -->
                 <div class="clock-setting">
                     <label>Clock</label>
-                    <input id="clock-freq-hz" type="number" max=50.0 min=0.2 value=1.0 step=0.1 class="clock-freq" onchange="clockHzSet();">
+                    <input id="clock-freq-hz" type="number" max=50.0 min=0 value=1.0 step=0.1 class="clock-freq" onchange="clockHzSet();">
                     <label>MHz</label>
                 </div>
             </div>
