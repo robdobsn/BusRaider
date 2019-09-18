@@ -21,6 +21,9 @@
 // Module name
 static const char FromBusAccess[] = "BusAccess";
 
+// Hardware version
+int BusAccess::_hwVersionNumber = 20;
+
 // Bus sockets
 BusSocketInfo BusAccess::_busSockets[MAX_BUS_SOCKETS];
 int BusAccess::_busSocketCount = 0;
@@ -90,9 +93,12 @@ void BusAccess::init()
     setPinOut(BR_BUSRQ_BAR, 1);
     _busIsUnderControl = false;
         
+#ifdef INCLUDE_V1_7_SUPPORT
     // Address push
-    setPinOut(BR_PUSH_ADDR_BAR, 1);
-    
+    if (_hwVersionNumber == 17)
+        setPinOut(BR_PUSH_ADDR_BAR, 1);
+#endif
+
     // High address clock
     setPinOut(BR_HADDR_CK, 0);
     
@@ -143,12 +149,7 @@ void BusAccess::busAccessReset()
     _waitCycleLengthUs = 0;
 
     // Check for bus ack released
-    for (int i = 0; i < BusSocketInfo::MAX_WAIT_FOR_BUSACK_US; i++)
-    {
-        if (!controlBusAcknowledged())
-            break;
-        microsDelay(1);
-    }
+    waitForBusAck(false);
 
     // Clear any wait condition if necessary
     uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
@@ -244,36 +245,36 @@ void BusAccess::waitHold(int busSocket, bool hold)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Reset the host
-void BusAccess::targetReqReset(int busSocket, int durationUs)
+void BusAccess::targetReqReset(int busSocket, int durationTStates)
 {
     // Check validity
     if ((busSocket < 0) || (busSocket >= _busSocketCount))
         return;
-    _busSockets[busSocket].resetDurationUs = (durationUs <= 0) ? BR_RESET_PULSE_US : durationUs;
+    _busSockets[busSocket].resetDurationTStates = (durationTStates <= 0) ? BR_RESET_PULSE_T_STATES : durationTStates;
     _busSockets[busSocket].resetPending = true;
     LogWrite("BusAccess", LOG_DEBUG, "targetReqReset");
 }
 
 // Non-maskable interrupt the host
-void BusAccess::targetReqNMI(int busSocket, int durationUs)
+void BusAccess::targetReqNMI(int busSocket, int durationTStates)
 {
     // Check validity
     if ((busSocket < 0) || (busSocket >= _busSocketCount))
         return;
     // Request NMI
-    _busSockets[busSocket].nmiDurationUs = (durationUs <= 0) ? BR_NMI_PULSE_US : durationUs;
+    _busSockets[busSocket].nmiDurationTStates = (durationTStates <= 0) ? BR_NMI_PULSE_T_STATES : durationTStates;
     _busSockets[busSocket].nmiPending = true;
 }
 
 // Maskable interrupt the host
-void BusAccess::targetReqIRQ(int busSocket, int durationUs)
+void BusAccess::targetReqIRQ(int busSocket, int durationTStates)
 {
     // Check validity
     // LogWrite("BA", LOG_DEBUG, "ReqIRQ sock %d us %d", busSocket, _busSockets[busSocket].busActionDurationUs);
     if ((busSocket < 0) || (busSocket >= _busSocketCount))
         return;
     // Request NMI
-    _busSockets[busSocket].irqDurationUs = (durationUs <= 0) ? BR_IRQ_PULSE_US : durationUs;
+    _busSockets[busSocket].irqDurationTStates = (durationTStates <= 0) ? BR_IRQ_PULSE_T_STATES : durationTStates;
     _busSockets[busSocket].irqPending = true;
 }
 
@@ -378,7 +379,7 @@ bool BusAccess::busActionHandleStart()
 
     // Set start timer
     _busActionAssertedStartUs = micros();
-    _busActionAssertedMaxUs = _busSockets[_busActionSocket].getAssertUs(_busActionType);
+    _busActionAssertedMaxUs = _busSockets[_busActionSocket].getAssertUs(_busActionType, clockCurFreqHz());
     _busActionState = BUS_ACTION_STATE_ASSERTED;
     return true;
 }
@@ -419,7 +420,6 @@ void BusAccess::busActionHandleActive()
 
             // Release bus
             controlRelease();
-            setSignal(BR_BUS_ACTION_BUSRQ, false);
         }
         else
         {
@@ -545,7 +545,6 @@ void BusAccess::serviceWaitActivity()
             // Extend timing of bus actions in this case
             _busActionInProgressStartUs = micros();
             _busActionAssertedStartUs = micros();
-
         }
 
         // Release the wait if timed-out
@@ -628,14 +627,15 @@ void BusAccess::waitHandleNew()
                 (((busVals & BR_WR_BAR_MASK) == 0) ? BR_CTRL_BUS_WR_MASK : 0) |
                 (((busVals & BR_MREQ_BAR_MASK) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
                 (((busVals & BR_IORQ_BAR_MASK) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
-                (((busVals & BR_WAIT_BAR_MASK) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0);
+                (((busVals & BR_WAIT_BAR_MASK) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
+                (((busVals & BR_M1_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
 
         // Check for (MREQ || IORQ) && (RD || WR)
         bool ctrlValid = ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) || (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)) && ((ctrlBusVals & BR_CTRL_BUS_RD_MASK) || (ctrlBusVals & BR_CTRL_BUS_WR_MASK));
         
         // Also valid if IORQ && M1 as this is used for interrupt ack
-        // TODO - this isn't valid as M1 can't be relied upon
-        // ctrlValid = ctrlValid || (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) & (ctrlBusVals & BR_CTRL_BUS_M1_MASK);
+        if (_hwVersionNumber != 17)
+            ctrlValid = ctrlValid || (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) & (ctrlBusVals & BR_CTRL_BUS_M1_MASK);
 
         // If ctrl is already valid then continue
         if (ctrlValid)
@@ -665,19 +665,29 @@ void BusAccess::waitHandleNew()
         // Set PIB to input
         pibSetIn();
 
-        // Set data bus direction out so we can read the M1 value
-        WR32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
+        // Handle V1.7 hardware which didn't have good M1 detection
+        if (_hwVersionNumber == 17)
+        {
+            // Delay to allow data to settle
+            // Set data bus direction out so we can read the M1 value
+            WR32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);        
 
-        // Clear the mux to deactivate output enables
-        muxClear();
+            // Clear the mux to deactivate output enables
+            muxClear();
+            
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
+            // Read the control lines and get M1 level
+#ifdef INCLUDE_V1_7_SUPPORT
+            uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
+            ctrlBusVals |= (((busVals & BR_M1_PIB_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
+#endif
+        }
+        else
+        {
+            // Clear the mux to deactivate output enables
+            muxClear();
+        }
         
-        // Delay to allow data to settle
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
-
-        // Read the control lines and set M1
-        uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
-        ctrlBusVals |= (((busVals & BR_M1_PIB_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
-
         // Enable the high address onto the PIB
         muxSet(BR_MUX_HADDR_OE_BAR);
 

@@ -29,10 +29,13 @@ BusSocketInfo HwManager::_busSocketInfo =
     HwManager::busActionCompleteStatic,
     false,
     false,
+    // Reset
     false,
     0,
+    // NMI
     false,
     0,
+    // IRQ
     false,
     0,
     false,

@@ -55,8 +55,6 @@
 #define BR_MREQ_BAR 0 // ID_SD
 #define BR_IORQ_BAR 1 // ID_SC
 #define BR_DATA_BUS 20 // GPIO20..27
-#define BR_M1_PIB_BAR 20 // Piggy backing on the PIB (with resistor to avoid conflict)
-#define BR_PUSH_ADDR_BAR 3 // SCL
 #define BR_HADDR_CK 7 // SPI0 CE1
 #define BR_LADDR_CK 16 // SPI1 CE2
 #define BR_DATA_DIR_IN 6
@@ -73,8 +71,17 @@
 #define BR_RD_BAR_MASK (1 << BR_RD_BAR)
 #define BR_BUSACK_BAR_MASK (1 << BR_BUSACK_BAR)
 #define BR_WAIT_BAR_MASK (1 << BR_WAIT_BAR_PIN)
-#define BR_M1_PIB_BAR_MASK (1 << BR_M1_PIB_BAR)
 #define BR_ANY_EDGE_MASK 0xffffffff
+
+// The following two lines are V1.7 only
+#ifdef INCLUDE_V1_7_SUPPORT
+#define BR_M1_PIB_BAR 20 // Piggy backing on the PIB (with resistor to avoid conflict)
+#define BR_M1_PIB_BAR_MASK (1 << BR_M1_PIB_BAR)
+#define BR_PUSH_ADDR_BAR 3 // SCL
+#endif
+// The following two lines are V2.0
+#define BR_M1_BAR 3 // SCL
+#define BR_M1_BAR_MASK (1 << BR_M1_BAR)
 
 // M1 piggy back onto PIB line
 #define BR_M1_PIB_DATA_LINE 0
@@ -107,11 +114,11 @@
 #define ISR_ASSERT_CODE_DEBUG_K 11
 #define ISR_ASSERT_NUM_CODES 12
 
-// Width of a reset, NMI, IRQ pulses
-#define BR_RESET_PULSE_US 1000
-#define BR_NMI_PULSE_US 50
-#define BR_IRQ_PULSE_US 50
-#define BR_BUSRQ_MAX_US 100
+// Timing of a reset, NMI, IRQ and wait for BUSACK
+#define BR_RESET_PULSE_T_STATES 100
+#define BR_NMI_PULSE_T_STATES 32
+#define BR_IRQ_PULSE_T_STATES 32
+#define BR_MAX_WAIT_FOR_BUSACK_T_STATES 100
 
 // Clock frequency for debug
 #define BR_TARGET_DEBUG_CLOCK_HZ 500000
@@ -131,8 +138,6 @@ typedef void BusActionCBFnType(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON re
 class BusSocketInfo
 {
 public:
-    static const int MAX_WAIT_FOR_BUSACK_US = 100;
-
     // Socket enablement
     bool enabled;
 
@@ -146,11 +151,11 @@ public:
 
     // Bus actions and duration
     volatile bool resetPending;
-    volatile uint32_t resetDurationUs;
+    volatile uint32_t resetDurationTStates;
     volatile bool nmiPending;
-    volatile uint32_t nmiDurationUs;
+    volatile uint32_t nmiDurationTStates;
     volatile bool irqPending;
-    volatile uint32_t irqDurationUs;
+    volatile uint32_t irqDurationTStates;
 
     // Bus master request and reason
     volatile bool busMasterRequest;
@@ -185,16 +190,26 @@ public:
             irqPending = false;
     }
 
-    uint32_t getAssertUs(BR_BUS_ACTION type)
+    // Time calc
+    static uint32_t getUsFromTStates(uint32_t tStates, uint32_t clockFreqHz, uint32_t defaultTStates = 1)
+    {
+        uint32_t tS = tStates >= 1 ? tStates : defaultTStates;
+        uint32_t uS = 1000000 * tS / clockFreqHz;
+        if (uS <= 0)
+            uS = 1;
+        return uS;
+    }
+
+    uint32_t getAssertUs(BR_BUS_ACTION type, uint32_t clockFreqHz)
     {
         if (type == BR_BUS_ACTION_BUSRQ)
-            return MAX_WAIT_FOR_BUSACK_US;
+            return getUsFromTStates(BR_MAX_WAIT_FOR_BUSACK_T_STATES, clockFreqHz);
         else if (type == BR_BUS_ACTION_RESET)
-            return resetDurationUs;
+            return getUsFromTStates(resetDurationTStates, clockFreqHz, BR_RESET_PULSE_T_STATES);
         else if (type == BR_BUS_ACTION_NMI)
-            return nmiDurationUs;
+            return getUsFromTStates(nmiDurationTStates, clockFreqHz, BR_NMI_PULSE_T_STATES);
         else if (type == BR_BUS_ACTION_IRQ)
-            return irqDurationUs;
+            return getUsFromTStates(irqDurationTStates, clockFreqHz, BR_IRQ_PULSE_T_STATES);
         return 0;
     }
 };
@@ -297,9 +312,9 @@ public:
     static void waitSetCycleUs(uint32_t cycleUs);
 
     // Reset, NMI and IRQ on target
-    static void targetReqReset(int busSocket, int durationUs = -1);
-    static void targetReqNMI(int busSocket, int durationUs = -1);
-    static void targetReqIRQ(int busSocket, int durationUs = -1);
+    static void targetReqReset(int busSocket, int durationTStates = -1);
+    static void targetReqNMI(int busSocket, int durationTStates = -1);
+    static void targetReqIRQ(int busSocket, int durationTStates = -1);
     static void targetReqBus(int busSocket, BR_BUS_ACTION_REASON busMasterReason);
     static void targetPageForInjection(int busSocket, bool pageOut);
 
@@ -363,6 +378,12 @@ public:
     static void rawBusControlMuxSet(uint32_t val);
     static void rawBusControlMuxClear();
 
+    // Version
+    static int getHwVersion()
+    {
+        return _hwVersionNumber;
+    }
+
     // Debug
     static void isrAssert(int code);
     static void isrValue(int code, int val);
@@ -370,6 +391,10 @@ public:
     static int isrAssertGetCount(int code);
 
 private:
+    // Hardware version
+    // V1.7 ==> 17, V2.0 ==> 20
+    static int _hwVersionNumber;
+    
     // Bus Sockets
     static const int MAX_BUS_SOCKETS = 10;
     static BusSocketInfo _busSockets[MAX_BUS_SOCKETS];
@@ -476,6 +501,7 @@ private:
     static void controlRelease();
     static int controlBusAcknowledged();
     static void controlTake();
+    static bool waitForBusAck(bool ack);
 
     // Interrupt service routine for wait states
     static void stepTimerISR(void* pParam);

@@ -43,10 +43,13 @@ BusSocketInfo StepTracer::_busSocketInfo =
     StepTracer::busActionCompleteStatic,
     true,
     true,
+    // Reset
     false,
     0,
+    // NMI
     false,
     0,
+    // IRQ
     false,
     0,
     false,

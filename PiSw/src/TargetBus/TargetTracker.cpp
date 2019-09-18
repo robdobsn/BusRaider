@@ -39,10 +39,13 @@ BusSocketInfo TargetTracker::_busSocketInfo =
     TargetTracker::busActionCompleteStatic,
     .waitOnMemory=true,
     .waitOnIO=false,
+    // Reset
     false,
     0,
+    // NMI
     false,
     0,
+    // IRQ
     false,
     0,
     .busMasterRequest=false,

@@ -37,10 +37,13 @@ BusSocketInfo BusController::_busSocketInfo =
     BusController::busActionCompleteStatic,
     false,
     false,
+    // Reset
     false,
     0,
+    // NMI
     false,
     0,
+    // IRQ
     false,
     0,
     false,
@@ -729,13 +732,20 @@ bool BusController::busLineHandler(const char* pCmdJson)
     {
         BusAccess::rawBusControlSetPin(BR_HADDR_CK, busValue);
     }
+#ifdef INCLUDE_V1_7_SUPPORT
     else if (strcasecmp(lineName, "PUSH_ADDR") == 0)
     {
-        BusAccess::rawBusControlSetPin(BR_PUSH_ADDR_BAR, busValue);
+        if (BusAccess::getHwVersion() == 17)
+            BusAccess::rawBusControlSetPin(BR_PUSH_ADDR_BAR, busValue);
     }
+#endif
     else if (strcasecmp(lineName, "CLOCK") == 0)
     {
         BusAccess::rawBusControlSetPin(BR_CLOCK_PIN, busValue);
+    }
+    else if (strcasecmp(lineName, "M1") == 0)
+    {
+        BusAccess::rawBusControlSetPin(BR_M1_BAR, busValue);
     }
     return true;
 }
@@ -792,6 +802,11 @@ void BusController::busLinesRead(char* pRespJson, [[maybe_unused]]int maxRespLen
 {
     // Read bus lines
     uint32_t lines = BusAccess::rawBusControlReadRaw();
+    bool m1Val = lines & BR_M1_BAR_MASK; 
+#ifdef INCLUDE_V1_7_SUPPORT
+    if (BusAccess::getHwVersion() == 17)
+        m1Val = (lines & BR_M1_PIB_BAR_MASK);
+#endif
     ee_sprintf(pRespJson, "\"err\":\"ok\",\"raw\":\"%02x\",\"pib\":\"%02x\",\"ctrl\":\"%c%c%c%c%c\"",
             BusAccess::rawBusControlReadRaw(), 
             (BusAccess::rawBusControlReadRaw() >> BR_DATA_BUS) & 0xff,
@@ -799,7 +814,7 @@ void BusController::busLinesRead(char* pRespJson, [[maybe_unused]]int maxRespLen
             (lines & BR_IORQ_BAR_MASK) ? 'I' : '.', 
             (lines & BR_RD_BAR_MASK) ? 'R' : '.', 
             (lines & BR_WR_BAR_MASK) ? 'W' : '.',
-            (lines & BR_M1_PIB_BAR_MASK) ? '1' : '.'
+            m1Val ? '1' : '.'
             );
 }
 

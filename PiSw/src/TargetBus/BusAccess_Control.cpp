@@ -123,9 +123,14 @@ void BusAccess::controlTake()
     setPinOut(BR_RD_BAR, 1);
     setPinOut(BR_MREQ_BAR, 1);
     setPinOut(BR_IORQ_BAR, 1);
+    setPinOut(BR_WAIT_BAR_PIN, 1);
+    setPinOut(BR_M1_BAR, 1);
 
+#ifdef INCLUDE_V1_7_SUPPORT
     // Address bus enabled
-    digitalWrite(BR_PUSH_ADDR_BAR, 0);
+    if (_hwVersionNumber == 17)
+        digitalWrite(BR_PUSH_ADDR_BAR, 0);
+#endif
 }
 
 // Release control of bus
@@ -135,28 +140,29 @@ void BusAccess::controlRelease()
     // So that the very first MREQ cycle after a BUSRQ/BUSACK causes a WAIT to be generated
     // (if enabled)
 
-    // Set M1 high (inactive) - M1 is on bit 0 of PIB with resistor
-    pibSetOut();
-    pibSetValue(1 << BR_M1_PIB_DATA_LINE);
-
-    // Set data direction out so we can set the M1 value
-    WR32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
+    // Set M1 high (inactive)
+    WR32(ARM_GPIO_GPSET0, BR_M1_BAR_MASK);
 
     // Pulse MREQ to prime the FF
+    // This also clears the FF that controls data bus output enables (i.e. disables data bus output)
+    digitalWrite(BR_IORQ_BAR, 1);
     lowlev_cycleDelay(CYCLES_DELAY_FOR_MREQ_FF_RESET);
     digitalWrite(BR_MREQ_BAR, 0);
     lowlev_cycleDelay(CYCLES_DELAY_FOR_MREQ_FF_RESET);
     digitalWrite(BR_MREQ_BAR, 1);
 
     // Go back to data inwards
-    WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
     pibSetIn();
+    WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
 
     // Clear the mux to deactivate output enables
     muxClear();
 
-    // Address bus not enabled
-    digitalWrite(BR_PUSH_ADDR_BAR, 1);
+#ifdef INCLUDE_V1_7_SUPPORT
+    // Address bus disabled
+    if (_hwVersionNumber == 17)
+        digitalWrite(BR_PUSH_ADDR_BAR, 1);
+#endif
 
     // Clear wait detected in case we created some MREQ cycles that
     // triggered wait
@@ -178,14 +184,20 @@ void BusAccess::controlRelease()
     // No longer request bus
     digitalWrite(BR_BUSRQ_BAR, 1);
 
-    // Control bus release
+    // Wait until BUSACK is released
+    waitForBusAck(false);
+
+    // Control bus lines to input
     pinMode(BR_WR_BAR, INPUT);
     pinMode(BR_RD_BAR, INPUT);
     pinMode(BR_MREQ_BAR, INPUT);
     pinMode(BR_IORQ_BAR, INPUT);
+    pinMode(BR_WAIT_BAR_PIN, INPUT);
+    pinMode(BR_M1_BAR, INPUT);
 
     // Bus no longer under BusRaider control
     _busIsUnderControl = false;    
+
 }
 
 // Request bus, wait until available and take control
@@ -195,16 +207,9 @@ BR_RETURN_TYPE BusAccess::controlRequestAndTake()
     controlRequest();
 
     // Check for ack
-    for (int i = 0; i < BusSocketInfo::MAX_WAIT_FOR_BUSACK_US; i++)
+    if (!waitForBusAck(true))
     {
-        if (controlBusAcknowledged())
-            break;
-        microsDelay(1);
-    }
-    
-    // Check we really have the bus
-    if (!controlBusAcknowledged()) 
-    {
+        // We didn't get the bus
         controlRelease();
         return BR_NO_BUS_ACK;
     }
@@ -212,6 +217,31 @@ BR_RETURN_TYPE BusAccess::controlRequestAndTake()
     // Take control
     controlTake();
     return BR_OK;
+}
+
+bool BusAccess::waitForBusAck(bool ack)
+{
+    // Initially check very frequently so the response is fast
+    for (int j = 0; j < 1000; j++)
+        if (controlBusAcknowledged() == ack)
+            break;
+
+    // Fall-back to slower checking which can be timed against target clock speed
+    if (controlBusAcknowledged() != ack)
+    {
+        uint32_t maxUsToWait = BusSocketInfo::getUsFromTStates(BR_MAX_WAIT_FOR_BUSACK_T_STATES, clockCurFreqHz());
+        if (maxUsToWait <= 0)
+            maxUsToWait = 1;
+        for (uint32_t j = 0; j < maxUsToWait; j++)
+        {
+            if (controlBusAcknowledged() == ack)
+                break;
+            microsDelay(1);
+        }
+    }
+
+    // Check we succeeded
+    return controlBusAcknowledged() == ack;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

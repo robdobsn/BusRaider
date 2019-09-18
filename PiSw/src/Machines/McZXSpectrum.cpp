@@ -47,8 +47,8 @@ McDescriptorTable McZXSpectrum::_defaultDescriptorTables[] = {
         .displayMemoryMapped = true,
         // Clock
         .clockFrequencyHz = 3500000,
-        // Interrupt rate per second
-        .irqRate = 0,
+        // Interrupt rate in T-States (clock cycles)
+        .irqRate = 69888,
         // Bus monitor
         .monitorIORQ = true,
         .monitorMREQ = false,

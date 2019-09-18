@@ -57,7 +57,7 @@ public:
     // Handle target files
     static bool targetFileHandler(const char* rxFileInfo, const uint8_t* pData, int dataLen);
 
-    static void targetIrq(int durationUs = -1);
+    static void targetIrq(int durationTStates = -1);
 
 private:
     static McDescriptorTable defaultDescriptorTable;

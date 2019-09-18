@@ -46,10 +46,13 @@ BusSocketInfo McManager::_busSocketInfo =
     McManager::busActionCompleteStatic,
     false,
     false,
+    // Reset
     false,
     0,
+    // NMI
     false,
     0,
+    // IRQ
     false,
     0,
     false,
@@ -268,10 +271,10 @@ int McManager::getMachineClock()
 // Manage Machine List
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void McManager::targetIrq(int durationUs)
+void McManager::targetIrq(int durationTStates)
 {
     // Generate a maskable interrupt
-    BusAccess::targetReqIRQ(_busSocketId, durationUs);
+    BusAccess::targetReqIRQ(_busSocketId, durationTStates);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
