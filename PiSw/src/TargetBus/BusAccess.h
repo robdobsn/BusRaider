@@ -463,6 +463,7 @@ private:
     static void busActionHandleActive();
     static void busActionClearFlags();
     static void busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REASON reason);
+    static bool busAccessHandleIrqAck();
 
     // Set address
     static void addrLowSet(uint32_t lowAddrByte);

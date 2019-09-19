@@ -133,7 +133,10 @@ extern "C" int main()
         timer_poll();
 
         // Service bus access
-        BusAccess::service();
+        for (int i = 0; i < 100; i++)
+        {
+            BusAccess::service();
+        }
 
         // Service hardware manager
         HwManager::service();

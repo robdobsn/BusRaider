@@ -340,7 +340,7 @@ void BusAccess::service()
 
 void BusAccess::busActionCheck()
 {
-    // Should be idle
+    // Only check for new stuff if idle
     if (_busActionState != BUS_ACTION_STATE_NONE)
         return;
 
@@ -381,7 +381,43 @@ bool BusAccess::busActionHandleStart()
     _busActionAssertedStartUs = micros();
     _busActionAssertedMaxUs = _busSockets[_busActionSocket].getAssertUs(_busActionType, clockCurFreqHz());
     _busActionState = BUS_ACTION_STATE_ASSERTED;
+
+    // TODO
+    if (_busActionType == BR_BUS_ACTION_IRQ)
+    {
+        ISR_VALUE(ISR_ASSERT_CODE_DEBUG_D, _busActionAssertedMaxUs);
+    }
     return true;
+}
+
+bool BusAccess::busAccessHandleIrqAck()
+{
+    // Check for IRQ action
+    if (_busActionType == BR_BUS_ACTION_IRQ)
+    {
+        // Check for irq ack
+        // Read the control lines
+        uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
+
+        // Check M1 and IORQ are low and BUSACK is not
+        bool irqAck = (((busVals & BR_M1_BAR_MASK) == 0) && 
+                ((busVals & BR_M1_BAR_MASK) == 0) &&
+                ((busVals & BR_BUSACK_BAR_MASK) != 0));
+
+        // A valid IRQ
+        if (irqAck)
+        {
+            // Clear the IRQ
+            setSignal(_busActionType, false);
+            busActionClearFlags();
+
+            // // TODO
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+            // lowlev_cycleDelay(20);
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+        }
+    }
+    return false;
 }
 
 void BusAccess::busActionHandleActive()
@@ -436,13 +472,17 @@ void BusAccess::busActionHandleActive()
     }
     else
     {
-        // Handle ending RESET, INT and NMI bus actions
-        if (isTimeout(micros(), _busActionAssertedStartUs, _busActionAssertedMaxUs))
+        // Check for IRQ acknowledged
+        if (!busAccessHandleIrqAck())
         {
+            // Handle ending RESET, INT and NMI bus actions
+            if (isTimeout(micros(), _busActionAssertedStartUs, _busActionAssertedMaxUs))
+            {
 
-            busActionCallback(_busActionType, BR_BUS_ACTION_GENERAL);
-            setSignal(_busActionType, false);
-            busActionClearFlags();
+                busActionCallback(_busActionType, BR_BUS_ACTION_GENERAL);
+                setSignal(_busActionType, false);
+                busActionClearFlags();
+            }
         }
     }
 }
@@ -635,14 +675,26 @@ void BusAccess::waitHandleNew()
         
         // Also valid if IORQ && M1 as this is used for interrupt ack
         if (_hwVersionNumber != 17)
-            ctrlValid = ctrlValid || (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) & (ctrlBusVals & BR_CTRL_BUS_M1_MASK);
+            ctrlValid = ctrlValid || ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) && (ctrlBusVals & BR_CTRL_BUS_M1_MASK));
+
+        // if ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) && (ctrlBusVals & BR_CTRL_BUS_M1_MASK))
+        // {
+        //             // TODO
+        //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        //     lowlev_cycleDelay(20);
+        //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+        // }
+            // // TODO
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+            // lowlev_cycleDelay(20);
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
 
         // If ctrl is already valid then continue
         if (ctrlValid)
             break;
 
         // Delay
-        microsDelay(1);
+        lowlev_cycleDelay(10);
 
         // Ensure we don't lock up on weird bus activity
         avoidLockupCtr++;
