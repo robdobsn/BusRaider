@@ -35,6 +35,23 @@ int isTimeout(unsigned long curTime, unsigned long lastTime, unsigned long maxDu
     return ((ULONG_MAX - lastTime) + curTime) > maxDuration;
 }
 
+uint32_t timeToTimeout(unsigned long curTime, unsigned long lastTime, unsigned long maxDuration)
+{
+    if (curTime >= lastTime)
+    {
+        if (curTime > lastTime + maxDuration)
+        {
+            return 0;
+        }
+        return maxDuration - (curTime - lastTime);
+    }
+    if (ULONG_MAX - (lastTime - curTime) > maxDuration)
+    {
+        return 0;
+    }
+    return maxDuration - (ULONG_MAX - (lastTime - curTime));
+}
+
 // Startup code
 extern "C" void entry_point()
 {

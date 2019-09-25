@@ -115,15 +115,18 @@ void BusAccess::init()
     waitSetupMREQAndIORQEnables();
     _waitAsserted = false;
 
-    // TODO maybe no longer needed ??? service or timer used instead of edge detection??
     // Remove edge detection
-    // WR32(ARM_GPIO_GPREN0, 0);
-    // WR32(ARM_GPIO_GPAREN0, 0);
-    // WR32(ARM_GPIO_GPFEN0, 0);
-    // WR32(ARM_GPIO_GPAFEN0, 0); //RD32(ARM_GPIO_GPFEN0) & (~(1 << BR_WAIT_BAR)));
+#ifdef ISR_TEST
+    WR32(ARM_GPIO_GPREN0, 0);
+    WR32(ARM_GPIO_GPAREN0, 0);
+    WR32(ARM_GPIO_GPFEN0, 0);
+    WR32(ARM_GPIO_GPAFEN0, 0); //RD32(ARM_GPIO_GPFEN0) & (~(1 << BR_WAIT_BAR)));
 
     // // Clear any currently detected edge
-    // WR32(ARM_GPIO_GPEDS0, BR_ANY_EDGE_MASK);
+    WR32(ARM_GPIO_GPEDS0, BR_ANY_EDGE_MASK);
+
+    CInterrupts::connectFIQ(52, stepTimerISR, 0);
+#endif
 
     // Heartbeat timer
 #ifdef TIMER_BASED_WAIT_STATES
@@ -329,8 +332,74 @@ void BusAccess::targetPageForInjection([[maybe_unused]]int busSocket, bool pageO
 void BusAccess::service()
 {
 #ifndef TIMER_BASED_WAIT_STATES
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+            // lowlev_cycleDelay(20);
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+
     if (_busServiceEnabled)
-        serviceWaitActivity();
+    {
+        // TODO
+                // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+                // lowlev_cycleDelay(120);
+                // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+                // lowlev_cycleDelay(20);
+                // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+                // lowlev_cycleDelay(120);
+                // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+
+        uint32_t serviceLoopStartUs = micros();
+        for (int i = 0; i < 100; i++)
+        {
+
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+            // lowlev_cycleDelay(20);
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+
+            serviceWaitActivity();
+
+            if ((_busActionState != BUS_ACTION_STATE_ASSERTED) && (!_waitAsserted))
+                break;
+
+
+            if (isTimeout(micros(), serviceLoopStartUs, BR_MAX_TIME_IN_SERVICE_LOOP_US))
+                break;
+
+            // static bool isFirst = true;
+
+            // uint32_t oi = micros();
+            // if ((oi > serviceLoopStartUs) && (isTimeout(oi, serviceLoopStartUs, 100)))
+            // {
+            //     if (isFirst)
+            //     {
+            //         ISR_VALUE(ISR_ASSERT_CODE_DEBUG_E, oi);
+            //         ISR_VALUE(ISR_ASSERT_CODE_DEBUG_F, serviceLoopStartUs);
+            //         ISR_VALUE(ISR_ASSERT_CODE_DEBUG_G, 100);
+            //         isFirst = false;
+            //     }
+            // }
+
+
+            // if (_busActionState == BUS_ACTION_STATE_ASSERTED)
+            // {
+                // TODO
+            // }
+        }
+
+        // uint32_t serviceLoopStartUs = micros();
+        // while (!isTimeout(micros(), serviceLoopStartUs, BR_MAX_TIME_IN_SERVICE_LOOP_US))
+        // {
+        //     serviceWaitActivity();
+        //     // Only wait in service loop if a bus action is asserted
+        //     if (_busActionState != BUS_ACTION_STATE_ASSERTED)
+        //         break;
+        // }
+    }
+
+    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+    // lowlev_cycleDelay(200);
+    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+
+
 #endif
 }
 
@@ -525,9 +594,17 @@ void BusAccess::busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REA
 
 void BusAccess::stepTimerISR([[maybe_unused]] void* pParam)
 {
+#ifdef ISR_TEST
+    // WR32(ARM_GPIO_GPSET0, 1 << BR_DEBUG_PI_SPI0_CE0);  
+    // lowlev_cycleDelay(20);
+    // WR32(ARM_GPIO_GPCLR0, 1 << BR_DEBUG_PI_SPI0_CE0);  
+    // WR32(ARM_GPIO_GPEDS0, BR_ANY_EDGE_MASK);
+    lowlev_disable_fiq();
+#else
 #ifdef TIMER_BASED_WAIT_STATES
     if (_busServiceEnabled)
         serviceWaitActivity();
+#endif
 #endif
 }
 
@@ -703,6 +780,9 @@ void BusAccess::waitHandleNew()
     // Check if bus detail is suspended for one cycle
     if (_waitSuspendBusDetailOneCycle)
     {
+            //         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+            // lowlev_cycleDelay(20);
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
         _waitSuspendBusDetailOneCycle = false;
     }
     else

@@ -249,8 +249,6 @@ bool BusAccess::waitForBusAck(bool ack)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Set low address value by clearing and counting
-// Assumptions:
-// - some other code will set push-addr to enable onto the address bus
 void BusAccess::addrLowSet(uint32_t lowAddrByte)
 {
     // Clear initially
@@ -271,8 +269,6 @@ void BusAccess::addrLowSet(uint32_t lowAddrByte)
 }
 
 // Increment low address value by clocking the counter
-// Assumptions:
-// - some other code will set push-addr to enable onto the address bus
 void BusAccess::addrLowInc()
 {
     WR32(ARM_GPIO_GPSET0, 1 << BR_LADDR_CK);
@@ -282,8 +278,6 @@ void BusAccess::addrLowInc()
 }
 
 // Set the high address value
-// Assumptions:
-// - some other code will set push-addr to enable onto the address bus
 void BusAccess::addrHighSet(uint32_t highAddrByte)
 {
     // Shift the value into the register
@@ -309,8 +303,6 @@ void BusAccess::addrHighSet(uint32_t highAddrByte)
 }
 
 // Set the full address
-// Assumptions:
-// - some other code will set push-addr to enable onto the address bus
 void BusAccess::addrSet(unsigned int addr)
 {
     addrHighSet(addr >> 8);
@@ -324,7 +316,7 @@ void BusAccess::addrSet(unsigned int addr)
 // Write a single byte to currently set address (or IO port)
 // Assumes:
 // - control of host bus has been requested and acknowledged
-// - address bus is already set and output enabled to host bus
+// - address bus is already set
 // - PIB is already set to output
 void BusAccess::byteWrite(uint32_t data, int iorq)
 {
@@ -346,7 +338,7 @@ void BusAccess::byteWrite(uint32_t data, int iorq)
 // Read a single byte from currently set address (or IO port)
 // Assumes:
 // - control of host bus has been requested and acknowledged
-// - address bus is already set and output enabled to host bus
+// - address bus is already set
 // - PIB is already set to input
 // - data direction on data bus driver is set to input (default)
 uint8_t BusAccess::byteRead(int iorq)
@@ -557,6 +549,26 @@ void BusAccess::waitEnablementUpdate()
     // Debug
     // LogWrite("BusAccess", LOG_DEBUG, "WAIT UPDATE mem %d io %d", _waitOnMemory, _waitOnIO);
 
+#ifdef ISR_TEST
+    // Setup edge triggering on falling edge of IORQ
+    // Clear any current detected edges
+    WR32(ARM_GPIO_GPEDS0, (1 << BR_IORQ_BAR) | (1 << BR_MREQ_BAR));  
+    // Set falling edge detect
+    if (_waitOnIO)
+    {
+        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) | BR_IORQ_BAR_MASK);
+        lowlev_enable_fiq();
+    }
+    else
+    {
+        WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) & (~BR_IORQ_BAR_MASK));
+        lowlev_disable_fiq();
+    }
+    // if (_waitOnMemory)
+    //     WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) | BR_WAIT_BAR_MASK);
+    // else
+    //     WR32(ARM_GPIO_GPFEN0, RD32(ARM_GPIO_GPFEN0) & (~BR_WAIT_BAR_MASK);
+#endif
 }
 
 void BusAccess::waitGenerationDisable()

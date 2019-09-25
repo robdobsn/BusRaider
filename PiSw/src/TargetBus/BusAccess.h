@@ -10,6 +10,8 @@
 #include "../System/BCM2835.h"
 #include "../System/lowlib.h"
 
+// #define ISR_TEST 1
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Defs
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -119,6 +121,9 @@
 #define BR_NMI_PULSE_T_STATES 32
 #define BR_IRQ_PULSE_T_STATES 32
 #define BR_MAX_WAIT_FOR_BUSACK_T_STATES 100
+
+// Max time bound in service function
+#define BR_MAX_TIME_IN_SERVICE_LOOP_US 10000
 
 // Clock frequency for debug
 #define BR_TARGET_DEBUG_CLOCK_HZ 500000
