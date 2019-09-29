@@ -650,8 +650,11 @@ void BusAccess::waitResetFlipFlops()
     if ((RD32(ARM_PWM_STA) & 1) == 0)
     {
         // Write to FIFO
-        WR32(ARM_PWM_FIF1, 0x00ffffff);
-        WR32(ARM_PWM_FIF1, 0x00ffffff);
+        uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
+        bool ioWaitClear = ((busVals & BR_IORQ_BAR_MASK) == 0) && _waitOnIO;
+        WR32(ARM_PWM_FIF1, ioWaitClear ? 0x00ffffff : 0);  // IORQ sequence
+        bool memWaitClear = ((busVals & BR_MREQ_BAR_MASK) == 0) && _waitOnMemory;
+        WR32(ARM_PWM_FIF1, memWaitClear ? 0x00ffffff : 0);  // MREQ sequence
     }
 
     // Clear flag
