@@ -735,7 +735,7 @@ void BusAccess::setSignal(BR_BUS_ACTION busAction, bool assertSignal)
             break;
         case BR_BUS_ACTION_BUSRQ: 
             // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B, assertSignal);
-            assertSignal ? digitalWrite(BR_BUSRQ_BAR, 0) : digitalWrite(BR_BUSRQ_BAR, 1); 
+            assertSignal ? controlRequest() : controlRelease();
             break;
         default: break;
     }
