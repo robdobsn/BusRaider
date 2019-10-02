@@ -724,28 +724,22 @@ bool BusController::busLineHandler(const char* pCmdJson)
     {
         BusAccess::rawBusControlSetPin(BR_MREQ_WAIT_EN, busValue);
     }
-    else if (strcasecmp(lineName, "LADDR_CK") == 0)
-    {
-        BusAccess::rawBusControlSetPin(BR_LADDR_CK, busValue);
-    }
     else if (strcasecmp(lineName, "HADDR_CK") == 0)
     {
         BusAccess::rawBusControlSetPin(BR_HADDR_CK, busValue);
     }
-#ifdef INCLUDE_V1_7_SUPPORT
     else if (strcasecmp(lineName, "PUSH_ADDR") == 0)
     {
         if (BusAccess::getHwVersion() == 17)
-            BusAccess::rawBusControlSetPin(BR_PUSH_ADDR_BAR, busValue);
+            BusAccess::rawBusControlSetPin(BR_V17_PUSH_ADDR_BAR, busValue);
     }
-#endif
     else if (strcasecmp(lineName, "CLOCK") == 0)
     {
         BusAccess::rawBusControlSetPin(BR_CLOCK_PIN, busValue);
     }
     else if (strcasecmp(lineName, "M1") == 0)
     {
-        BusAccess::rawBusControlSetPin(BR_M1_BAR, busValue);
+        BusAccess::rawBusControlSetPin(BR_V20_M1_BAR, busValue);
     }
     return true;
 }
@@ -763,9 +757,9 @@ bool BusController::muxLineHandler(const char* pCmdJson)
     if (pStrEnd)
         *pStrEnd = 0;
     LogWrite(FromBusController, LOG_DEBUG, "muxSet %s", lineName);
-    if (strcasecmp(lineName, "HADDR_SER") == 0)
+    if (strcasecmp(lineName, "LADDR_CLK") == 0)
     {
-        BusAccess::rawBusControlMuxSet(BR_MUX_HADDR_SER_LOW);
+        BusAccess::rawBusControlMuxSet(BR_MUX_LADDR_CLK);
     }
     else if (strcasecmp(lineName, "LADDR_CLR_BAR") == 0)
     {
@@ -802,11 +796,9 @@ void BusController::busLinesRead(char* pRespJson, [[maybe_unused]]int maxRespLen
 {
     // Read bus lines
     uint32_t lines = BusAccess::rawBusControlReadRaw();
-    bool m1Val = lines & BR_M1_BAR_MASK; 
-#ifdef INCLUDE_V1_7_SUPPORT
+    bool m1Val = lines & BR_V20_M1_BAR_MASK; 
     if (BusAccess::getHwVersion() == 17)
-        m1Val = (lines & BR_M1_PIB_BAR_MASK);
-#endif
+        m1Val = (lines & BR_V17_M1_PIB_BAR_MASK);
     ee_sprintf(pRespJson, "\"err\":\"ok\",\"raw\":\"%02x\",\"pib\":\"%02x\",\"ctrl\":\"%c%c%c%c%c\"",
             BusAccess::rawBusControlReadRaw(), 
             (BusAccess::rawBusControlReadRaw() >> BR_DATA_BUS) & 0xff,

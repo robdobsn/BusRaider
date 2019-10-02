@@ -22,7 +22,7 @@
 static const char FromBusAccess[] = "BusAccess";
 
 // Hardware version
-int BusAccess::_hwVersionNumber = 20;
+int BusAccess::_hwVersionNumber = HW_VERSION_DEFAULT;
 
 // Bus sockets
 BusSocketInfo BusAccess::_busSockets[MAX_BUS_SOCKETS];
@@ -88,24 +88,20 @@ void BusAccess::init()
     setPinOut(BR_MUX_0, 0);
     setPinOut(BR_MUX_1, 0);
     setPinOut(BR_MUX_2, 0);
+
+    // Set the MUX enable on V2.0 hardware - on V1.7 this is LADDR_CLK but it is an
+    // output either way which is good as this code is only run once so can't take
+    // into account the hardware version which comes from the ESP32 later on
+    setPinOut(BR_MUX_EN_BAR, 1);
     
     // Bus Request
     setPinOut(BR_BUSRQ_BAR, 1);
     _busIsUnderControl = false;
         
-#ifdef INCLUDE_V1_7_SUPPORT
-    // Address push
-    if (_hwVersionNumber == 17)
-        setPinOut(BR_PUSH_ADDR_BAR, 1);
-#endif
-
     // High address clock
     setPinOut(BR_HADDR_CK, 0);
     
-    // Low address clock
-    setPinOut(BR_LADDR_CK, 0);
-    
-    // Data bus direction
+    // Data bus driver direction inward
     setPinOut(BR_DATA_DIR_IN, 1);
 
     // Paging initially inactive
@@ -332,74 +328,29 @@ void BusAccess::targetPageForInjection([[maybe_unused]]int busSocket, bool pageO
 void BusAccess::service()
 {
 #ifndef TIMER_BASED_WAIT_STATES
-            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-            // lowlev_cycleDelay(20);
-            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+
+#ifndef SERVICE_PERFORMANCE_OPTIMIZED
+
+    serviceWaitActivity();
+
+#else
 
     if (_busServiceEnabled)
     {
-        // TODO
-                // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-                // lowlev_cycleDelay(120);
-                // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-                // lowlev_cycleDelay(20);
-                // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-                // lowlev_cycleDelay(120);
-                // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-
         uint32_t serviceLoopStartUs = micros();
         for (int i = 0; i < 100; i++)
         {
-
-            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-            // lowlev_cycleDelay(20);
-            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-
             serviceWaitActivity();
 
             if ((_busActionState != BUS_ACTION_STATE_ASSERTED) && (!_waitAsserted))
                 break;
 
-
             if (isTimeout(micros(), serviceLoopStartUs, BR_MAX_TIME_IN_SERVICE_LOOP_US))
                 break;
-
-            // static bool isFirst = true;
-
-            // uint32_t oi = micros();
-            // if ((oi > serviceLoopStartUs) && (isTimeout(oi, serviceLoopStartUs, 100)))
-            // {
-            //     if (isFirst)
-            //     {
-            //         ISR_VALUE(ISR_ASSERT_CODE_DEBUG_E, oi);
-            //         ISR_VALUE(ISR_ASSERT_CODE_DEBUG_F, serviceLoopStartUs);
-            //         ISR_VALUE(ISR_ASSERT_CODE_DEBUG_G, 100);
-            //         isFirst = false;
-            //     }
-            // }
-
-
-            // if (_busActionState == BUS_ACTION_STATE_ASSERTED)
-            // {
-                // TODO
-            // }
         }
-
-        // uint32_t serviceLoopStartUs = micros();
-        // while (!isTimeout(micros(), serviceLoopStartUs, BR_MAX_TIME_IN_SERVICE_LOOP_US))
-        // {
-        //     serviceWaitActivity();
-        //     // Only wait in service loop if a bus action is asserted
-        //     if (_busActionState != BUS_ACTION_STATE_ASSERTED)
-        //         break;
-        // }
     }
 
-    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-    // lowlev_cycleDelay(200);
-    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-
-
+#endif
 #endif
 }
 
@@ -451,11 +402,21 @@ bool BusAccess::busActionHandleStart()
     _busActionAssertedMaxUs = _busSockets[_busActionSocket].getAssertUs(_busActionType, clockCurFreqHz());
     _busActionState = BUS_ACTION_STATE_ASSERTED;
 
+#ifdef DEBUG_IORQ_PROCESSING
     // TODO
     if (_busActionType == BR_BUS_ACTION_IRQ)
     {
         ISR_VALUE(ISR_ASSERT_CODE_DEBUG_D, _busActionAssertedMaxUs);
     }
+    else if (_busActionType == BR_BUS_ACTION_RESET)
+    {
+        _statusInfo._debugIORQIntProcessed = false;
+        _statusInfo._debugIORQNum = 0;
+        _statusInfo._debugIORQIntNext = false;
+        ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_A);
+    }
+#endif
+
     return true;
 }
 
@@ -469,9 +430,14 @@ bool BusAccess::busAccessHandleIrqAck()
         uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
 
         // Check M1 and IORQ are low and BUSACK is not
-        bool irqAck = (((busVals & BR_M1_BAR_MASK) == 0) && 
-                ((busVals & BR_M1_BAR_MASK) == 0) &&
+        bool irqAck = (((busVals & BR_V20_M1_BAR_MASK) == 0) && 
+                ((busVals & BR_IORQ_BAR_MASK) == 0) &&
                 ((busVals & BR_BUSACK_BAR_MASK) != 0));
+        if (_hwVersionNumber == 17)
+        {
+            // TODO check if we can do better than this
+            irqAck = false;
+        }
 
         // A valid IRQ
         if (irqAck)
@@ -480,11 +446,49 @@ bool BusAccess::busAccessHandleIrqAck()
             setSignal(_busActionType, false);
             busActionClearFlags();
 
+#ifdef DEBUG_IORQ_PROCESSING
+            if (!_statusInfo._debugIORQIntProcessed)
+            {
+                _statusInfo._debugIORQIntNext = false;
+                _statusInfo._debugIORQNum = 0;
+                    ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_H);
+                if (isTimeout(micros(), _statusInfo._debugIORQClrMicros, 1000000))
+                {
+                    _statusInfo._debugIORQIntProcessed = true;
+                }
+            }
+            else if ((!_statusInfo._debugIORQIntNext) && (_statusInfo._debugIORQNum != 0))
+            {
+                    ISR_VALUE(ISR_ASSERT_CODE_DEBUG_I, _statusInfo._debugIORQNum+1000);
+                _statusInfo._debugIORQIntNext = true; 
+                _statusInfo._debugIORQMatchNum = 0;
+                _statusInfo._debugIORQMatchExpected = _statusInfo._debugIORQNum;
+            }
+            else
+            {
+                if (_statusInfo._debugIORQMatchNum != _statusInfo._debugIORQMatchExpected)
+                {
+                    // TODO
+                    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+                    // lowlev_cycleDelay(20);
+                    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+                    // lowlev_cycleDelay(20);
+                    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+                    // lowlev_cycleDelay(20);
+                    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+                    // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_K);
+                }
+                _statusInfo._debugIORQMatchNum = 0;
+            }
+
             // // TODO
             // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
             // lowlev_cycleDelay(20);
             // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+#endif // DEBUG_IORQ_PROCESSING
+
         }
+
     }
     return false;
 }
@@ -694,13 +698,14 @@ void BusAccess::waitHandleReadRelease()
         {
             // Set data bus direction in
             pibSetIn();
-            WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
+            WR32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK);
             // Check if paging in/out is required
             if (_targetPageInOnReadComplete)
             {
                 pagingPageIn();
                 _targetPageInOnReadComplete = false;
             }
+
             // Done now
             return;
         }
@@ -735,6 +740,16 @@ void BusAccess::waitHandleNew()
     ctrlBusVals = 0;
     while(avoidLockupCtr < MAX_WAIT_FOR_CTRL_LINES_COUNT)
     {
+        // Handle M1 for V1.7 hardware
+        if (_hwVersionNumber == 17)
+        {
+            // Clear the mux to deactivate output enables
+            muxClear();
+
+            // Delay for settling of M1
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
+        }
+
         // Read the control lines
         uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
 
@@ -745,27 +760,23 @@ void BusAccess::waitHandleNew()
                 (((busVals & BR_MREQ_BAR_MASK) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
                 (((busVals & BR_IORQ_BAR_MASK) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
                 (((busVals & BR_WAIT_BAR_MASK) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
-                (((busVals & BR_M1_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
+                (((busVals & BR_V20_M1_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
+
+        // Also valid if IORQ && M1 as this is used for interrupt ack
+        if (_hwVersionNumber == 17)
+        {
+            // Clear M1 in case set above
+            ctrlBusVals = ctrlBusVals & (~BR_CTRL_BUS_M1_MASK);
+
+            // Set M1 from PIB reading
+            ctrlBusVals |= (((busVals & BR_V17_M1_PIB_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
+        }
 
         // Check for (MREQ || IORQ) && (RD || WR)
         bool ctrlValid = ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) || (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)) && ((ctrlBusVals & BR_CTRL_BUS_RD_MASK) || (ctrlBusVals & BR_CTRL_BUS_WR_MASK));
-        
         // Also valid if IORQ && M1 as this is used for interrupt ack
-        if (_hwVersionNumber != 17)
-            ctrlValid = ctrlValid || ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) && (ctrlBusVals & BR_CTRL_BUS_M1_MASK));
-
-        // if ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) && (ctrlBusVals & BR_CTRL_BUS_M1_MASK))
-        // {
-        //             // TODO
-        //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-        //     lowlev_cycleDelay(20);
-        //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-        // }
-            // // TODO
-            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-            // lowlev_cycleDelay(20);
-            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-
+        ctrlValid = ctrlValid || ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) && (ctrlBusVals & BR_CTRL_BUS_M1_MASK));
+        
         // If ctrl is already valid then continue
         if (ctrlValid)
             break;
@@ -788,7 +799,7 @@ void BusAccess::waitHandleNew()
     else
     {
 
-    // TODO DEBUG
+        // TODO DEBUG
             // pinMode(BR_WR_BAR, INPUT);
             // pinMode(BR_RD_BAR, INPUT);
             // pinMode(BR_MREQ_BAR, INPUT);
@@ -797,28 +808,8 @@ void BusAccess::waitHandleNew()
         // Set PIB to input
         pibSetIn();
 
-        // Handle V1.7 hardware which didn't have good M1 detection
-        if (_hwVersionNumber == 17)
-        {
-            // Delay to allow data to settle
-            // Set data bus direction out so we can read the M1 value
-            WR32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);        
-
-            // Clear the mux to deactivate output enables
-            muxClear();
-            
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
-            // Read the control lines and get M1 level
-#ifdef INCLUDE_V1_7_SUPPORT
-            uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
-            ctrlBusVals |= (((busVals & BR_M1_PIB_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
-#endif
-        }
-        else
-        {
-            // Clear the mux to deactivate output enables
-            muxClear();
-        }
+        // Clear the mux to deactivate output enables
+        muxClear();
         
         // Enable the high address onto the PIB
         muxSet(BR_MUX_HADDR_OE_BAR);
@@ -852,9 +843,14 @@ void BusAccess::waitHandleNew()
         // output of the data bus is latched onto the PIB (or out onto the data bus in the case
         // where the ISR provides data for the processor to read)
 
-        // Enable data bus onto PIB
-        WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
-        muxSet(BR_MUX_DATA_OE_BAR_LOW);
+        // Set data bus driver direction inward - onto PIB
+        WR32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK);
+
+        // Set output enable on data bus driver by resetting flip-flop
+        // Note that the outputs of the data bus buffer are enabled from this point until
+        // a rising edge of IORQ or MREQ
+        // This can cause a bus conflict if BR_DATA_DIR_IN is set low before this happens
+        muxDataBusOutputEnable();
 
         // Delay to allow data to settle
         lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
@@ -862,8 +858,6 @@ void BusAccess::waitHandleNew()
         // Read the data bus values
         dataBusVals = pibGetValue() & 0xff;
 
-        // Clear Mux
-        muxClear();
     }
 
     // Send this to all bus sockets
@@ -882,22 +876,134 @@ void BusAccess::waitHandleNew()
         }
     }
 
+#ifdef DEBUG_IORQ_PROCESSING
+
+    // TEST CODE
+    // TODO
+    if ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) && (!(ctrlBusVals & BR_CTRL_BUS_M1_MASK)))
+    {
+        if ((_statusInfo._debugIORQIntProcessed) && (!_statusInfo._debugIORQIntNext))
+        {
+            ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_J);
+            // Find match if any
+            bool matchFound = false;
+            // for (int i = 0; i < _statusInfo._debugIORQNum; i++)
+            // {
+            //     if (_statusInfo._debugIORQEvs[i]._addr == (addr & 0xff))
+            //     {
+            //         matchFound = true;
+            //         _statusInfo._debugIORQEvs[i]._count++;
+            //         break;
+            //     }
+            // }
+            if ((!matchFound) && (_statusInfo._debugIORQNum < _statusInfo.MAX_DEBUG_IORQ_EVS))
+            {
+                _statusInfo._debugIORQEvs[_statusInfo._debugIORQNum]._micros = micros();
+                _statusInfo._debugIORQEvs[_statusInfo._debugIORQNum]._addr = (addr & 0xff);
+                _statusInfo._debugIORQEvs[_statusInfo._debugIORQNum]._data = dataBusVals;
+                _statusInfo._debugIORQEvs[_statusInfo._debugIORQNum]._flags = ctrlBusVals;
+                _statusInfo._debugIORQEvs[_statusInfo._debugIORQNum]._count = 1;
+                _statusInfo._debugIORQNum++;
+                                    ISR_VALUE(ISR_ASSERT_CODE_DEBUG_K, _statusInfo._debugIORQNum);
+
+            }
+
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+            // lowlev_cycleDelay(20);
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+        }
+        else if (_statusInfo._debugIORQIntNext)
+        {
+            if ((_statusInfo._debugIORQMatchNum < _statusInfo.MAX_DEBUG_IORQ_EVS) && (_statusInfo._debugIORQMatchNum < _statusInfo._debugIORQNum))
+            {
+                _statusInfo._debugIORQEvsMatch[_statusInfo._debugIORQMatchNum]._micros = micros();
+                _statusInfo._debugIORQEvsMatch[_statusInfo._debugIORQMatchNum]._addr = (addr & 0xff);
+                _statusInfo._debugIORQEvsMatch[_statusInfo._debugIORQMatchNum]._data = dataBusVals;
+                _statusInfo._debugIORQEvsMatch[_statusInfo._debugIORQMatchNum]._flags = ctrlBusVals;
+                _statusInfo._debugIORQEvsMatch[_statusInfo._debugIORQMatchNum]._count = 1;
+
+                if ((_statusInfo._debugIORQEvs[_statusInfo._debugIORQMatchNum]._addr != _statusInfo._debugIORQEvsMatch[_statusInfo._debugIORQMatchNum]._addr) ||
+                    (_statusInfo._debugIORQEvs[_statusInfo._debugIORQMatchNum]._flags != _statusInfo._debugIORQEvsMatch[_statusInfo._debugIORQMatchNum]._flags))
+                {
+                    // TODO
+                    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+                    // lowlev_cycleDelay(20);
+                    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+                    // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_I);
+                    // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_H, _statusInfo._debugIORQEvs[_statusInfo._debugIORQMatchNum]._addr);
+                    // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_G, _statusInfo._debugIORQEvsMatch[_statusInfo._debugIORQMatchNum]._addr);
+                    // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_F, _statusInfo._debugIORQEvs[_statusInfo._debugIORQMatchNum]._flags);
+                    // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_E, _statusInfo._debugIORQEvsMatch[_statusInfo._debugIORQMatchNum]._flags);
+                }
+
+                _statusInfo._debugIORQMatchNum++;
+            }
+        }
+    }
+#endif
+
     // If Z80 is reading from the data bus (inc reading an ISR vector)
     // and result is valid then put the returned data onto the bus
-    bool isWriting = (ctrlBusVals & BR_CTRL_BUS_WR_MASK);
-    if (!isWriting && ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0))
+    bool isReading = ((((ctrlBusVals & BR_CTRL_BUS_RD_MASK) != 0) && (((ctrlBusVals & BR_CTRL_BUS_MREQ_MASK) != 0) || ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) != 0))) ||
+                     (((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) != 0) && ((ctrlBusVals & BR_CTRL_BUS_M1_MASK) != 0)));
+    if (isReading && ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0))
     {
+        // TODO
+        // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        // lowlev_cycleDelay(20);
+        // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
         // Now driving data onto the target data bus
+
+
+        // TODO
+        // Need to make sure in all cases that OE FF is active
+        // Currently this looks like it might not be the case
+        // if _waitSuspendBusDetailOneCycle
+        if (_waitSuspendBusDetailOneCycle)
+            muxDataBusOutputEnable();
+
+
+        // Set data direction out on the data bus driver
         WR32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
-        // A flip-flop handles data OE during the IORQ/MREQ cycle and 
-        // deactivates at the end of that cycle - so prime this flip-flop here
-        muxSet(BR_MUX_DATA_OE_BAR_LOW);
         pibSetOut();
         pibSetValue(retVal & 0xff);
-        // lowlev_cycleDelay(CYCLES_DELAY_FOR_WAIT_CLEAR);
-        muxClear();
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_TARGET_READ);
+
+#ifdef SET_DB_OUT
+
+        // // TODO
+        // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        // lowlev_cycleDelay(20);
+        // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+
+        // A flip-flop handles data OE during the IORQ/MREQ cycle and 
+        // deactivates at the end of that cycle - so prime this flip-flop here
+        // Actually this is already done above during reading from the data bus
+        // so isn't actually required
+        // muxDataBusOutputEnable();
+#endif
+        // lowlev_cycleDelay(CYCLES_DELAY_FOR_TARGET_READ);
         _targetReadInProgress = true;
+
+        // uint32_t readLoopStartUs = micros();
+        // while(true)
+        // {
+
+        //     uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
+
+        //     // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        //     // lowlev_cycleDelay(20);
+        //     // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+
+        //     if ((busVals & BR_RD_BAR_MASK) != 0)
+        //         break;
+
+        //     if (isTimeout(micros(), readLoopStartUs, BR_MAX_TIME_IN_READ_LOOP_US))
+        //     {
+        //         _targetReadInProgress = true;
+        //         break;
+        //     }
+        // }
+
     }
 
     // Elapsed and count
@@ -952,5 +1058,31 @@ const char* BusAccessStatusInfo::getJson()
     ee_sprintf(tmpResp, ",\"mreqRd\":%u,\"mreqWr\":%u,\"iorqRd\":%u,\"iorqWr\":%u,\"irqAck\":%u,\"isrBadBusrq\":%u,\"irqDuringBusAck\":%u,\"irqNoWait\":%u",
                 isrMREQRD, isrMREQWR, isrIORQRD, isrIORQWR, isrIRQACK, isrSpuriousBUSRQ, isrDuringBUSACK, isrWithoutWAIT);
     strlcat(_jsonBuf, tmpResp, MAX_JSON_LEN);
+
+#ifdef DEBUG_IORQ_PROCESSING
+    ee_sprintf(_jsonBuf, "");
+    ee_sprintf(tmpResp, ",\"debugIORQCount\":%u,\"debugIORQList\":[", _debugIORQNum);
+    strlcat(_jsonBuf, tmpResp, MAX_JSON_LEN);
+    for (int i = 0; i < _debugIORQNum; i++)
+    {
+        if (i != 0)
+            strlcat(_jsonBuf, ",", MAX_JSON_LEN);
+        ee_sprintf(tmpResp, "{\"u\":%u,\"a\":%02x,\"d\":%02x,\"f\":%04x,\"c\":%u}", 
+                    _debugIORQEvs[i]._micros,
+                    _debugIORQEvs[i]._addr,
+                    _debugIORQEvs[i]._data,
+                    _debugIORQEvs[i]._flags,
+                    _debugIORQEvs[i]._count
+                    );
+        strlcat(_jsonBuf, tmpResp, MAX_JSON_LEN);
+    }
+    strlcat(_jsonBuf, "]", MAX_JSON_LEN);
+
+    _debugIORQIntProcessed = false;
+    _debugIORQIntNext = false;
+    _debugIORQNum = 0;
+    _debugIORQClrMicros = micros();
+#endif
+
     return _jsonBuf;
 }

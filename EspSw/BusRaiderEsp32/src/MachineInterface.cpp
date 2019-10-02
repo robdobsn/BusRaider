@@ -41,6 +41,8 @@ MachineInterface::MachineInterface() :
     _zesaruxCommandIndex = 0;
     _cachedStatusRequestMs = 0;
     _cmdResponseNew = false;
+    // Assume hardware version until detected
+    _hwVersion = ESP_HW_VERSION_DEFAULT;
 }
 
 // Setup
@@ -65,6 +67,25 @@ void MachineInterface::setup(ConfigBase &config,
     _pTCPHDLCServer = pTCPHDLCServer;
     _pRestAPIEndpoints = pRestAPIEndpoints;
     _pFileManager = pFileManager;
+
+    // Hardware version detection
+    pinMode(HW_VERSION_DETECT_IN_PIN, INPUT_PULLUP);
+    pinMode(HW_VERSION_DETECT_OUT_PIN, OUTPUT);
+    digitalWrite(HW_VERSION_DETECT_OUT_PIN, 0);
+    bool hwIn0Value = digitalRead(HW_VERSION_DETECT_IN_PIN);
+    digitalWrite(HW_VERSION_DETECT_OUT_PIN, 1);
+    bool hwIn1Value = digitalRead(HW_VERSION_DETECT_IN_PIN);
+    // Check if IN and OUT pins tied together - if setting out to 0
+    // makes in 0 then they are (as input is pulled-up otherwise)
+    _hwVersion = 17;
+    if (hwIn0Value != hwIn1Value)
+        _hwVersion = 20;
+    Log.trace("%sHW version detect wrote 1 got %d wrote 0 got %d so hwVersion = %d\n", MODULE_PREFIX, 
+            hwIn0Value, hwIn1Value, _hwVersion);
+
+    // Tidy up
+    pinMode(HW_VERSION_DETECT_IN_PIN, INPUT);
+    pinMode(HW_VERSION_DETECT_OUT_PIN, INPUT);
 
     // Set the telnet callback
     if (_pTelnetServer)

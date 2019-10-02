@@ -6,6 +6,8 @@
     "files.associations": {
         "functional": "cpp",
         "iosfwd": "cpp",
-        "xstring": "cpp"
+        "xstring": "cpp",
+        "string": "cpp",
+        "*.tcc": "cpp"
     }
 }

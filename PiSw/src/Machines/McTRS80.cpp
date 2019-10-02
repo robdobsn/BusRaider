@@ -352,6 +352,7 @@ void McTRS80::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]]
     // Check for read from IO
     else if ((flags & BR_CTRL_BUS_RD_MASK) && (flags & BR_CTRL_BUS_IORQ_MASK))
     {
+        // FDD
         if ((addr >= 0x37ec) && (addr < 0x37ef))
         {
             handleWD1771DiskController(addr-0x37ec, data, flags, retVal);

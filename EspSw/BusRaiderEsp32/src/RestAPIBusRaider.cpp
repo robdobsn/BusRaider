@@ -192,7 +192,9 @@ void RestAPIBusRaider::apiQueryESPHealth(const String &reqStr, String &respStr)
     Log.verbose("%squeryESPHealth %s\n", MODULE_PREFIX, reqStr.c_str());
     String healthStr;
     _restAPISystem.reportHealth(0, NULL, &healthStr);
-    respStr = "\"espHealth\":{" + healthStr + "}";
+    respStr = "\"espHealth\":{" + healthStr;
+    respStr += ",\"espHWV\":\"" + String(_machineInterface.getHwVersion()) + "\"";
+    respStr += "}";
 }
 
 void RestAPIBusRaider::apiESPFirmwarePart(String& req, String& filename, size_t contentLen, size_t index, 

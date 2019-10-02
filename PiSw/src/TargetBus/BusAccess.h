@@ -30,7 +30,7 @@
 //  1  1  1     1  1  1     PI_HADDR_OE_BAR
 #define BR_MUX_LOW_BIT_POS 9
 #define BR_MUX_CTRL_BIT_MASK (0x07 << BR_MUX_LOW_BIT_POS)
-#define BR_MUX_HADDR_SER_LOW 0x00
+#define BR_MUX_LADDR_CLK 0x00
 #define BR_MUX_LADDR_CLR_BAR_LOW 0x04
 #define BR_MUX_DATA_OE_BAR_LOW 0x01
 #define BR_MUX_RESET_Z80_BAR_LOW 0x05
@@ -39,17 +39,13 @@
 #define BR_MUX_LADDR_OE_BAR 0x03
 #define BR_MUX_HADDR_OE_BAR 0x07
 
-// The following is used when HADDR_SER needs to be HIGH - the default is low
-// It actually sets MUX to BR_MUX_HADDR_OE_BAR - this is ok as PIB is input
-// at this stage
-#define BR_MUX_HADDR_SER_HIGH BR_MUX_HADDR_OE_BAR 
-
 // Pi pins used for control of host bus
 #define BR_BUSRQ_BAR 19 // SPI1 MISO
 #define BR_BUSACK_BAR 2 // SDA
 #define BR_MUX_0 11 // SPI0 SCLK
 #define BR_MUX_1 9 // SPI0 MISO
 #define BR_MUX_2 10 // SPI0 MOSI
+#define BR_MUX_EN_BAR 16 // SPI1 CE2
 #define BR_IORQ_WAIT_EN 12 // GPIO12
 #define BR_MREQ_WAIT_EN 13 // GPIO13
 #define BR_WR_BAR 17 // SPI1 CE1
@@ -58,13 +54,27 @@
 #define BR_IORQ_BAR 1 // ID_SC
 #define BR_DATA_BUS 20 // GPIO20..27
 #define BR_HADDR_CK 7 // SPI0 CE1
-#define BR_LADDR_CK 16 // SPI1 CE2
 #define BR_DATA_DIR_IN 6
 #define BR_WAIT_BAR_PIN 5 // GPIO5
 #define BR_CLOCK_PIN 4 // GPIO4
 #define BR_PAGING_RAM_PIN 8 // CPI CE0
 
+// V1.7 hardware pins
+#define BR_V17_LADDR_CK 16 // SPI1 CE2
+#define BR_V17_LADDR_CK_MASK (1 << BR_V17_LADDR_CK)
+#define BR_V17_M1_PIB_BAR 20 // Piggy backing on the PIB (with resistor to avoid conflict)
+#define BR_V17_PUSH_ADDR_BAR 3 // SCL
+#define BR_V17_M1_PIB_BAR_MASK (1 << BR_V17_M1_PIB_BAR)
+#define BR_V17_M1_PIB_DATA_LINE 0
+#define BR_V17_MUX_HADDR_SER_LOW 0x00
+#define BR_V17_MUX_HADDR_SER_HIGH BR_MUX_LADDR_CLR_BAR_LOW 
+
+// V2.0 hardware pins
+#define BR_V20_M1_BAR 3 // SCL
+#define BR_V20_M1_BAR_MASK (1 << BR_V20_M1_BAR)
+
 // Masks for above
+#define BR_MUX_EN_BAR_MASK (1 << BR_MUX_EN_BAR)
 #define BR_IORQ_WAIT_EN_MASK (1 << BR_IORQ_WAIT_EN)
 #define BR_MREQ_WAIT_EN_MASK (1 << BR_MREQ_WAIT_EN)
 #define BR_MREQ_BAR_MASK (1 << BR_MREQ_BAR)
@@ -73,20 +83,8 @@
 #define BR_RD_BAR_MASK (1 << BR_RD_BAR)
 #define BR_BUSACK_BAR_MASK (1 << BR_BUSACK_BAR)
 #define BR_WAIT_BAR_MASK (1 << BR_WAIT_BAR_PIN)
+#define BR_DATA_DIR_IN_MASK (1 << BR_DATA_DIR_IN)
 #define BR_ANY_EDGE_MASK 0xffffffff
-
-// The following two lines are V1.7 only
-#ifdef INCLUDE_V1_7_SUPPORT
-#define BR_M1_PIB_BAR 20 // Piggy backing on the PIB (with resistor to avoid conflict)
-#define BR_M1_PIB_BAR_MASK (1 << BR_M1_PIB_BAR)
-#define BR_PUSH_ADDR_BAR 3 // SCL
-#endif
-// The following two lines are V2.0
-#define BR_M1_BAR 3 // SCL
-#define BR_M1_BAR_MASK (1 << BR_M1_BAR)
-
-// M1 piggy back onto PIB line
-#define BR_M1_PIB_DATA_LINE 0
 
 // Pi debug pin
 #define BR_DEBUG_PI_SPI0_CE0 8 // SPI0 CE0
@@ -124,6 +122,7 @@
 
 // Max time bound in service function
 #define BR_MAX_TIME_IN_SERVICE_LOOP_US 10000
+#define BR_MAX_TIME_IN_READ_LOOP_US 10000
 
 // Clock frequency for debug
 #define BR_TARGET_DEBUG_CLOCK_HZ 500000
@@ -252,6 +251,14 @@ public:
         isrIORQRD = 0;
         isrIORQWR = 0;
         isrIRQACK = 0;
+#ifdef DEBUG_IORQ_PROCESSING
+        _debugIORQNum = 0;
+        _debugIORQClrMicros = 0;
+        _debugIORQIntProcessed = false;
+        _debugIORQIntNext = false;
+        _debugIORQMatchNum = 0;
+        _debugIORQMatchExpected = 0;
+#endif
     }
 
     static const int MAX_JSON_LEN = 30 * 20;
@@ -288,6 +295,39 @@ public:
 
     // Bus actions
     uint32_t busActionFailedDueToWait;
+
+#ifdef DEBUG_IORQ_PROCESSING
+    class DebugIORQ
+    {
+    public:
+        uint32_t _micros;
+        uint8_t _addr;
+        uint8_t _data;
+        uint16_t _flags;
+        uint32_t _count;
+
+        DebugIORQ() 
+        {
+            _micros = 0;
+            _addr = 0;
+            _data = 0;
+            _flags = 0;
+            _count = 0;
+        }
+    };
+
+    static const int MAX_DEBUG_IORQ_EVS = 20;
+    DebugIORQ _debugIORQEvs[MAX_DEBUG_IORQ_EVS];
+    int _debugIORQNum;
+    uint32_t _debugIORQClrMicros;
+    bool _debugIORQIntProcessed;
+    bool _debugIORQIntNext;
+
+    DebugIORQ _debugIORQEvsMatch[MAX_DEBUG_IORQ_EVS];
+    int _debugIORQMatchNum;
+    int _debugIORQMatchExpected;
+#endif
+
 };
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -384,9 +424,14 @@ public:
     static void rawBusControlMuxClear();
 
     // Version
+    static const int HW_VERSION_DEFAULT = 20;
     static int getHwVersion()
     {
         return _hwVersionNumber;
+    }
+    static void setHwVersion(int hwVersion)
+    {
+        _hwVersionNumber = hwVersion;
     }
 
     // Debug
@@ -520,17 +565,88 @@ private:
     // Set the MUX
     static inline void muxSet(int muxVal)
     {
-        // Clear first as this is a safe setting - sets HADDR_SER low
-        WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-        // Now set bits required
-        WR32(ARM_GPIO_GPSET0, muxVal << BR_MUX_LOW_BIT_POS);
+        if (_hwVersionNumber == 17)
+        {
+            // Clear first as this is a safe setting - sets HADDR_SER low
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+            // Now set bits required
+            WR32(ARM_GPIO_GPSET0, muxVal << BR_MUX_LOW_BIT_POS);
+        }
+        else
+        {
+            // Clear first
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+            // Now set bits required
+            WR32(ARM_GPIO_GPSET0, muxVal << BR_MUX_LOW_BIT_POS);
+            // Enable the mux
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
+        }
     }
 
     // Clear the MUX
     static inline void muxClear()
     {
-        // Clear to a safe setting - sets HADDR_SER low
-        WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+        if (_hwVersionNumber == 17)
+        {
+            // Clear to a safe setting - sets HADDR_SER low
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+        }
+        else
+        {
+            // Disable the mux
+            WR32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
+        }
+    }
+
+    // Mux set data bus driver output enable
+    static inline void muxDataBusOutputEnable()
+    {
+        if (_hwVersionNumber == 17)
+        {
+            // Clear first as this is a safe setting - sets HADDR_SER low
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+            // Now set OE bit
+            WR32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
+            // Time pulse width
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_OUT_FF_SET);
+            // Clear again
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+        }
+        else
+        {
+            // Clear then set the output enable
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+            WR32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
+            // Pulse mux enable
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_OUT_FF_SET);
+            WR32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
+        }
+    }
+
+    // Mux clear low address
+    static inline void muxClearLowAddr()
+    {
+        if (_hwVersionNumber == 17)
+        {
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+            WR32(ARM_GPIO_GPSET0, BR_MUX_LADDR_CLR_BAR_LOW << BR_MUX_LOW_BIT_POS);
+            // Time pulse width
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_OUT_FF_SET);
+            // Clear again
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+        }
+        else
+        {
+            // Clear then set the low address clear line
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+            WR32(ARM_GPIO_GPSET0, BR_MUX_LADDR_CLR_BAR_LOW << BR_MUX_LOW_BIT_POS);
+            // Pulse mux enable
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_CLEAR_LOW_ADDR);
+            WR32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
+        }
+        
     }
 
     // Set signal (RESET/IRQ/NMI)
@@ -571,6 +687,7 @@ private:
 
     // Delay in machine cycles for setting the pulse width when clearing/incrementing the address counter/shift-reg
     static const int CYCLES_DELAY_FOR_CLEAR_LOW_ADDR = 15;
+    static const int CYCLES_DELAY_FOR_CLOCK_LOW_ADDR = 15;
     static const int CYCLES_DELAY_FOR_LOW_ADDR_SET = 15;
     static const int CYCLES_DELAY_FOR_HIGH_ADDR_SET = 20;
     static const int CYCLES_DELAY_FOR_WAIT_CLEAR = 50;

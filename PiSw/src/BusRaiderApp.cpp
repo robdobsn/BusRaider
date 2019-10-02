@@ -237,7 +237,8 @@ void BusRaiderApp::statusDisplayUpdate()
         else
         {
             strlcat(statusStr, _esp32ESP32Version, MAX_STATUS_STR_LEN);
-            strlcat(statusStr, "              ", MAX_STATUS_STR_LEN);
+            strlcat(statusStr, BusAccess::getHwVersion() == 17 ? " (HW V1.7)" : " (HW V2.0)", MAX_STATUS_STR_LEN);
+            strlcat(statusStr, "          ", MAX_STATUS_STR_LEN);
             _display.statusPut(Display::STATUS_FIELD_ESP_VERSION, Display::STATUS_NORMAL, statusStr);
         }
 
@@ -473,17 +474,19 @@ void BusRaiderApp::storeESP32StatusInfo(const char* pCmdJson)
     microsDelay(1000);
     // Get espHealth field
     char espHealthJson[MAX_ESP_HEALTH_STR];
-    if (!jsonGetValueForKey("espHealth", pCmdJson, espHealthJson, MAX_ESP_HEALTH_STR))
-        return;
-    if (!jsonGetValueForKey("wifiIP", espHealthJson, _esp32IPAddress, MAX_IP_ADDR_STR))
-        return;
+    jsonGetValueForKey("espHealth", pCmdJson, espHealthJson, MAX_ESP_HEALTH_STR);
+    jsonGetValueForKey("wifiIP", espHealthJson, _esp32IPAddress, MAX_IP_ADDR_STR);
     _esp32IPAddressValid = (strcmp(_esp32IPAddress, "0.0.0.0") != 0);
-    if (!jsonGetValueForKey("wifiConn", espHealthJson, _esp32WifiConnStr, MAX_WIFI_CONN_STR))
-        return;
-    if (!jsonGetValueForKey("ssid", espHealthJson, _esp32WifiSSID, MAX_WIFI_SSID_STR))
-        return;
-    if (!jsonGetValueForKey("espV", espHealthJson, _esp32ESP32Version, MAX_ESP_VERSION_STR))
-        return;
+    jsonGetValueForKey("wifiConn", espHealthJson, _esp32WifiConnStr, MAX_WIFI_CONN_STR);
+    jsonGetValueForKey("ssid", espHealthJson, _esp32WifiSSID, MAX_WIFI_SSID_STR);
+    jsonGetValueForKey("espV", espHealthJson, _esp32ESP32Version, MAX_ESP_VERSION_STR);
+    char espHwVersStr[MAX_ESP_VERSION_STR];
+    espHwVersStr[0] = '\0';
+    int espHwVersion = BusAccess::HW_VERSION_DEFAULT;
+    jsonGetValueForKey("espHWV", espHealthJson, espHwVersStr, MAX_ESP_VERSION_STR);
+    if (strlen(espHwVersStr) != 0)
+        espHwVersion = atoi(espHwVersStr);
+    BusAccess::setHwVersion(espHwVersion);
     // LogWrite(FromBusRaiderApp, LOG_DEBUG, "Ip Address %s", _esp32IPAddress);
 }
 

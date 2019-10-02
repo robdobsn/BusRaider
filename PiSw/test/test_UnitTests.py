@@ -16,9 +16,9 @@ def setupTests(testName):
     global logTextFileName, logMsgDataFileName, ipAddrOrHostName
     global commonTest
     useIP = True
-    serialPort = "COM7"
+    serialPort = "COM6"
     serialSpeed = 921600
-    ipAddrOrHostName = "192.168.86.192"
+    ipAddrOrHostName = "192.168.86.103"
     baseFolder = "."
     logTextFileName = testName + ".log"
     logMsgDataFileName = testName + ".bin"

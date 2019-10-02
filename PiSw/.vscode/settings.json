@@ -11,13 +11,13 @@
         "list": "cpp",
         "xhash": "cpp"
     },
-    "python.testing.pyTestArgs": [
+    "python.testing.pytestArgs": [
         "test"
     ],
-    "python.testing.pyTestEnabled": true,
+    "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
     "python.testing.nosetestsEnabled": false,
-    "python.pythonPath": "C:\\Users\\rob\\AppData\\Local\\Programs\\Python\\Python37\\python.exe",
+    "python.pythonPath": "C:\\Python37\\python.exe",
     "C_Cpp.errorSquiggles": "Disabled",
     "C_Cpp.dimInactiveRegions": false
 }
