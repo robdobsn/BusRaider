@@ -21,6 +21,11 @@ CommandSerial::CommandSerial(FileManager& fileManager) :
     _blockCount = 0;
     _baudRate = 115200;
     _frameRxCallback = nullptr;
+    _statsRxCh = 0;
+    _statsTxCh = 0;
+    _statsRxFr = 0;
+    _statsTxFr = 0;
+    _statsLastReportMs = 0;
 }
 
 void CommandSerial::setup(ConfigBase& config)
@@ -46,18 +51,24 @@ void CommandSerial::setup(ConfigBase& config)
             _pSerial->begin(_baudRate, SERIAL_8N1, 16, 17, false);
             Log.notice("%sportNum %d, baudRate %d, rxPin %d, txPin %d\n", MODULE_PREFIX,
                             _serialPortNum, _baudRate, 16, 17);
+            // Make rx pin a pullup to avoid noise if link unconnected
+            pinMode(16, INPUT_PULLUP);
         }
         else if (_serialPortNum == 2)
         {
             _pSerial->begin(_baudRate, SERIAL_8N1, 26, 25, false);
             Log.notice("%sportNum %d, baudRate %d, rxPin %d, txPin %d\n", MODULE_PREFIX,
                             _serialPortNum, _baudRate, 26, 25);
+            // Make rx pin a pullup to avoid noise if link unconnected
+            pinMode(26, INPUT_PULLUP);
         }
         else
         {
             _pSerial->begin(_baudRate);
             Log.notice("%sportNum %d, baudRate %d, rxPin %d, txPin %d\n", MODULE_PREFIX,
                             _serialPortNum, _baudRate, 3, 1);
+            // Make rx pin a pullup to avoid noise if link unconnected
+            pinMode(3, INPUT_PULLUP);
         }
 
         // Set rx buffer size or leave as default
@@ -89,6 +100,7 @@ void CommandSerial::logMessage(String& msg)
     // Log over HDLC
     String frame = "{\"cmdName\":\"logMsg\",\"msg\":\"" + msg + "}\0";
     _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
+    _statsTxFr++;
 }
 
 // Event message
@@ -98,6 +110,7 @@ void CommandSerial::eventMessage(String& msgJson)
 
     String frame = "{\"cmdName\":\"eventMsg\"," + msgJson + "}\0";
     _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
+    _statsTxFr++;
 }
 
 // Event message
@@ -113,7 +126,8 @@ void CommandSerial::responseMessage(String& reqStr, String& msgJson)
     {
         frame = "{\"cmdName\":\"" + reqStr + "Resp\"," + msgJson + "}\0";
     }
-    _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
+    _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());    
+    _statsTxFr++;
 }
 
 // Upload in progress
@@ -129,6 +143,14 @@ void CommandSerial::service()
     if (!_pSerial)
         return;
 
+    // Stats report
+    if (Utils::isTimeout(millis(), _statsLastReportMs, STATS_REPORT_TIME_MS))
+    {
+        Log.trace("%sCommsStats RxCh %d TxCh %d RxFr %d TxFr %d\n", MODULE_PREFIX, 
+                _statsRxCh, _statsTxCh, _statsRxFr, _statsTxFr); 
+        _statsLastReportMs = millis();
+    }
+
     // See if characters to be processed
     for (int rxCtr = 0; rxCtr < 5000; rxCtr++)
     {
@@ -138,6 +160,7 @@ void CommandSerial::service()
 
         // Handle char
         _miniHDLC.handleChar(rxCh);
+        _statsRxCh++;
     }
 
     // Check if there's a file system upload in progress
@@ -200,6 +223,7 @@ void CommandSerial::sendFileStartRecord(const char* fileType, const String& req,
                 ((reqParams.length() > 0) ? ("," + reqParams) : "") +
                 "}";
     _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
+    _statsTxFr++;
 }
 
 void CommandSerial::sendFileBlock(size_t index, uint8_t *data, size_t len)
@@ -212,6 +236,7 @@ void CommandSerial::sendFileBlock(size_t index, uint8_t *data, size_t len)
     memcpy(pFrameBuf + headerLen + 1, data, len);
     _miniHDLC.sendFrame(pFrameBuf, headerLen + len + 1);
     delete [] pFrameBuf;
+    _statsTxFr++;
 }
 
 void CommandSerial::sendFileEndRecord(int blockCount, const char* pAdditionalJsonNameValues)
@@ -219,6 +244,7 @@ void CommandSerial::sendFileEndRecord(int blockCount, const char* pAdditionalJso
     String frame = "{\"cmdName\":\"ufEnd\",\"blockCount\":\"" + String(blockCount) + "\"" +
             (pAdditionalJsonNameValues ? ("," + String(pAdditionalJsonNameValues)) : "") + "}";
     _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
+    _statsTxFr++;
 }
 
 void CommandSerial::sendTargetCommand(const String& targetCmd, const String& reqStr)
@@ -227,6 +253,7 @@ void CommandSerial::sendTargetCommand(const String& targetCmd, const String& req
 
     String frame = "{\"cmdName\":\"" + targetCmd + "\",\"reqStr\":\"" + reqStr + "\"}\0";
     _miniHDLC.sendFrame((const uint8_t*)frame.c_str(), frame.length());
+    _statsTxFr++;
 }
 
 void CommandSerial::sendTargetData(const String& cmdName, const uint8_t* pData, int len, int index)
@@ -239,6 +266,7 @@ void CommandSerial::sendTargetData(const String& cmdName, const uint8_t* pData, 
     memcpy(pFrameBuf + headerLen + 1, pData, len);
     _miniHDLC.sendFrame(pFrameBuf, headerLen + len + 1);
     delete [] pFrameBuf;
+    _statsTxFr++;
 }
 
 void CommandSerial::uploadCommonBlockHandler(const char* fileType, const String& req, 
@@ -343,6 +371,7 @@ void CommandSerial::sendCharToCmdPort(uint8_t ch)
 {
     if (_pSerial)
         _pSerial->write(ch);
+    _statsTxCh++;
 }
 
 void CommandSerial::frameHandler(const uint8_t *framebuffer, int framelength)
@@ -350,5 +379,6 @@ void CommandSerial::frameHandler(const uint8_t *framebuffer, int framelength)
     // Handle received frames
     if (_frameRxCallback)
         _frameRxCallback(framebuffer, framelength);
+    _statsRxFr++;
     // Serial.printf("HDLC frame received, len %d\n", framelength);
 }

@@ -37,6 +37,14 @@ private:
     static const int MAX_BETWEEN_BLOCKS_MS = 20000;
     static const int DEFAULT_BETWEEN_BLOCKS_MS = 10;
 
+    // Stats
+    uint32_t _statsRxCh;
+    uint32_t _statsTxCh;
+    uint32_t _statsRxFr;
+    uint32_t _statsTxFr;
+    uint32_t _statsLastReportMs;
+    static const int STATS_REPORT_TIME_MS = 60000;
+
     // Frame handling callback
     CommandSerialFrameRxFnType _frameRxCallback;
 

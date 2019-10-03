@@ -159,20 +159,26 @@ void MachineInterface::setup(ConfigBase &config,
         if (_targetSerialPortNum == 1)
         {
             _pTargetSerial->begin(_targetSerialBaudRate, SERIAL_8N1, 16, 17, false);
-            Log.trace("%sportNum %d, baudRate %d, rxPin, txPin\n",
+            Log.trace("%sportNum %d, baudRate %d, rxPin %d, txPin %d\n",
                         MODULE_PREFIX, _targetSerialPortNum, _targetSerialBaudRate, 16, 17);
+            // Make rx pin a pullup to avoid noise if link unconnected
+            pinMode(16, INPUT_PULLUP);
         }
         else if (_targetSerialPortNum == 2)
         {
             _pTargetSerial->begin(_targetSerialBaudRate, SERIAL_8N1, 26, 25, false);
-            Log.trace("%sportNum %d, baudRate %d, rxPin, txPin\n",
+            Log.trace("%sportNum %d, baudRate %d, rxPin %d, txPin %d\n",
                         MODULE_PREFIX, _targetSerialPortNum, _targetSerialBaudRate, 26, 25);
+            // Make rx pin a pullup to avoid noise if link unconnected
+            pinMode(26, INPUT_PULLUP);
         }
         else
         {
             _pTargetSerial->begin(_targetSerialBaudRate);
-            Log.trace("%sportNum %d, baudRate %d, rxPin, txPin\n",
+            Log.trace("%sportNum %d, baudRate %d, rxPin %d, txPin %d\n",
                         MODULE_PREFIX, _targetSerialPortNum, _targetSerialBaudRate, 3, 1);
+            // Make rx pin a pullup to avoid noise if link unconnected
+            pinMode(3, INPUT_PULLUP);
         }
         _pTargetSerial->setRxBufferSize(8192);
     }
@@ -228,7 +234,7 @@ void MachineInterface::service()
         if (charsReceived.length() > 0)
         {
             // Debug
-            Log.verbose("McIF RxChars %s\n", charsReceived.c_str());
+            // Log.trace("McIF RxChars %s\n", charsReceived.c_str());
         
             // Send to Pi
             if (_pCommandSerial)
