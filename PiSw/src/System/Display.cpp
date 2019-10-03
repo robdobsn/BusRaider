@@ -65,6 +65,10 @@ bool Display::init()
         0, DISPLAY_FX_DARK_GRAY);
     _displayFX.consoleSetWindow(DISPLAY_WINDOW_CONSOLE);
 
+    // Clear current strings
+    for (int i = 0; i < STATUS_FIELD_NUM_ELEMENTS; i++)
+        _statusFieldStrings[i][0] = 0;
+
     // Started ok
     _displayStarted = true;
     return true;
@@ -93,6 +97,13 @@ void Display::statusPut(int statusElement, int statusType, const char* pStr)
         { 0,                        5 }, // Keyboard
         { 30,                       5 }, // Asserts
     };
+
+    // Check for changes
+    if (statusElement >= STATUS_FIELD_NUM_ELEMENTS)
+        return;
+    if (strcmp(_statusFieldStrings[statusElement], pStr) == 0)
+        return;
+    strncpy(_statusFieldStrings[statusElement], pStr, MAX_STATUS_FIELD_STRLEN-1);
     int x = fieldPositions[statusElement].x;
     int y = fieldPositions[statusElement].y;
     windowForeground(DISPLAY_WINDOW_STATUS, (statusType == STATUS_FAIL) ? DISPLAY_FX_RED : (statusType == STATUS_NORMAL) ? DISPLAY_FX_YELLOW : DISPLAY_FX_GREEN);

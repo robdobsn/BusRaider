@@ -22,7 +22,8 @@ public:
         STATUS_FIELD_BUS_ACCESS,
         STATUS_FIELD_REFRESH_RATE,
         STATUS_FIELD_KEYBOARD,
-        STATUS_FIELD_ASSERTS
+        STATUS_FIELD_ASSERTS,
+        STATUS_FIELD_NUM_ELEMENTS
     };
 
     static const int STATUS_NORMAL = 0;
@@ -82,4 +83,8 @@ private:
 
     // Flag
     bool _displayStarted;
+
+    // Current status field values
+    static const int MAX_STATUS_FIELD_STRLEN = 100;
+    char _statusFieldStrings[STATUS_FIELD_NUM_ELEMENTS][MAX_STATUS_FIELD_STRLEN];
 };
