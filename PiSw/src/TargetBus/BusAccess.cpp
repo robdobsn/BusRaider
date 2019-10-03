@@ -11,6 +11,8 @@
 #include "../System/Timers.h"
 #include "../System/ee_sprintf.h"
 
+#define BODGE_OE_FF_PROBLEM 1
+
 // Uncomment to drive wait states through timer - alternatively use service()
 // #define TIMER_BASED_WAIT_STATES 1
 
@@ -144,16 +146,22 @@ void BusAccess::busAccessReset()
     // Clear mux
     muxClear();
 
+    // Set data direction inwards
+    pibSetIn();
+    WR32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK);
+    _targetReadInProgress = false;
+
     // Wait cycle length
     _waitCycleLengthUs = 0;
 
     // Check for bus ack released
     waitForBusAck(false);
 
-    // Clear any wait condition if necessary
-    uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
-    if ((busVals & BR_WAIT_BAR_MASK) == 0)
-        waitResetFlipFlops();
+    // Disable wait
+    waitGenerationDisable();
+
+    // Clear any wait condition
+    waitResetFlipFlops(true);
 
     // Update wait state generation
     // Debug
@@ -212,6 +220,8 @@ void BusAccess::waitSetCycleUs(uint32_t cycleUs)
 void BusAccess::waitRelease()
 {
     waitResetFlipFlops();
+    // Handle release after a read
+    waitHandleReadRelease();
 }
 
 bool BusAccess::waitIsHeld()
@@ -282,7 +292,10 @@ void BusAccess::targetReqBus(int busSocket, BR_BUS_ACTION_REASON busMasterReason
 {
     // Check validity
     if ((busSocket < 0) || (busSocket >= _busSocketCount))
+    {
+        LogWrite("BA", LOG_DEBUG, "targetReqBus sock %d invalid count = %d", busSocket, _busSocketCount);
         return;
+    }
     _busSockets[busSocket].busMasterRequest = true;
     _busSockets[busSocket].busMasterReason = busMasterReason;
 
@@ -426,18 +439,12 @@ bool BusAccess::busAccessHandleIrqAck()
     if (_busActionType == BR_BUS_ACTION_IRQ)
     {
         // Check for irq ack
-        // Read the control lines
-        uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
+        uint32_t ctrlBusVals = controlBusRead();
 
-        // Check M1 and IORQ are low and BUSACK is not
-        bool irqAck = (((busVals & BR_V20_M1_BAR_MASK) == 0) && 
-                ((busVals & BR_IORQ_BAR_MASK) == 0) &&
-                ((busVals & BR_BUSACK_BAR_MASK) != 0));
-        if (_hwVersionNumber == 17)
-        {
-            // TODO check if we can do better than this
-            irqAck = false;
-        }
+        // Check M1 and IORQ are asserted and BUSACK is not
+        bool irqAck = ((ctrlBusVals & BR_CTRL_BUS_M1_MASK) && 
+                (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) &&
+                ((ctrlBusVals & BR_CTRL_BUS_BUSACK_MASK) == 0));
 
         // A valid IRQ
         if (irqAck)
@@ -515,7 +522,7 @@ void BusAccess::busActionHandleActive()
     if (_busActionType == BR_BUS_ACTION_BUSRQ)
     {
         // Check for BUSACK
-        if (controlBusAcknowledged())
+        if (controlBusReqAcknowledged())
         {
             // Take control of bus
             controlTake();
@@ -625,7 +632,7 @@ void BusAccess::serviceWaitActivity()
     busActionHandleActive();
     if (_busActionState == BUS_ACTION_STATE_ASSERTED)
         return;
-
+ 
     // Check for no existing wait
     if (!_waitAsserted)
     {
@@ -674,8 +681,8 @@ void BusAccess::serviceWaitActivity()
             // Check if we need to assert any new bus requests
             busActionHandleStart();
 
-            // Release the wait - also clears _waitAsserted flag
-            waitResetFlipFlops();
+            // Release the wait
+            waitRelease();
         }
     }
 }
@@ -686,6 +693,9 @@ void BusAccess::serviceWaitActivity()
 
 void BusAccess::waitHandleReadRelease()
 {
+    if (!_targetReadInProgress)
+        return;
+
     // Stay here until read cycle is complete
     uint32_t waitForReadCompleteStartUs = micros();
     while(!isTimeout(micros(), waitForReadCompleteStartUs, MAX_WAIT_FOR_END_OF_READ_US))
@@ -724,7 +734,6 @@ void BusAccess::waitHandleNew()
 
     uint32_t addr = 0;
     uint32_t dataBusVals = 0;
-    uint32_t ctrlBusVals = 0;
 
     // Check if paging in/out is required
     if (_targetPageInOnReadComplete)
@@ -733,60 +742,8 @@ void BusAccess::waitHandleNew()
         _targetPageInOnReadComplete = false;
     }
 
-    // Loop until control lines are valid
-    // In a write cycle WR is asserted after MREQ so we need to wait until WR changes before
-    // we can determine what kind of operation is in progress 
-    int avoidLockupCtr = 0;
-    ctrlBusVals = 0;
-    while(avoidLockupCtr < MAX_WAIT_FOR_CTRL_LINES_COUNT)
-    {
-        // Handle M1 for V1.7 hardware
-        if (_hwVersionNumber == 17)
-        {
-            // Clear the mux to deactivate output enables
-            muxClear();
-
-            // Delay for settling of M1
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
-        }
-
-        // Read the control lines
-        uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
-
-        // Get the appropriate bits for up-line communication
-        ctrlBusVals = 
-                (((busVals & BR_RD_BAR_MASK) == 0) ? BR_CTRL_BUS_RD_MASK : 0) |
-                (((busVals & BR_WR_BAR_MASK) == 0) ? BR_CTRL_BUS_WR_MASK : 0) |
-                (((busVals & BR_MREQ_BAR_MASK) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
-                (((busVals & BR_IORQ_BAR_MASK) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
-                (((busVals & BR_WAIT_BAR_MASK) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
-                (((busVals & BR_V20_M1_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
-
-        // Also valid if IORQ && M1 as this is used for interrupt ack
-        if (_hwVersionNumber == 17)
-        {
-            // Clear M1 in case set above
-            ctrlBusVals = ctrlBusVals & (~BR_CTRL_BUS_M1_MASK);
-
-            // Set M1 from PIB reading
-            ctrlBusVals |= (((busVals & BR_V17_M1_PIB_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
-        }
-
-        // Check for (MREQ || IORQ) && (RD || WR)
-        bool ctrlValid = ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) || (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)) && ((ctrlBusVals & BR_CTRL_BUS_RD_MASK) || (ctrlBusVals & BR_CTRL_BUS_WR_MASK));
-        // Also valid if IORQ && M1 as this is used for interrupt ack
-        ctrlValid = ctrlValid || ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) && (ctrlBusVals & BR_CTRL_BUS_M1_MASK));
-        
-        // If ctrl is already valid then continue
-        if (ctrlValid)
-            break;
-
-        // Delay
-        lowlev_cycleDelay(10);
-
-        // Ensure we don't lock up on weird bus activity
-        avoidLockupCtr++;
-    }
+    // Read control lines
+    uint32_t ctrlBusVals = controlBusRead();
     
     // Check if bus detail is suspended for one cycle
     if (_waitSuspendBusDetailOneCycle)
@@ -804,6 +761,13 @@ void BusAccess::waitHandleNew()
             // pinMode(BR_RD_BAR, INPUT);
             // pinMode(BR_MREQ_BAR, INPUT);
             // pinMode(BR_IORQ_BAR, INPUT);
+
+        if ((_hwVersionNumber == 17) || (BODGE_OE_FF_PROBLEM))
+        {
+            // Set data bus driver direction outward - so it doesn't conflict with the PIB
+            // if FF OE is set
+            WR32(ARM_GPIO_GPCLR0, BR_DATA_DIR_IN_MASK);            
+        }
 
         // Set PIB to input
         pibSetIn();

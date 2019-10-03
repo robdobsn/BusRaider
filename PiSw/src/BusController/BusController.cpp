@@ -871,11 +871,9 @@ BR_RETURN_TYPE BusController::blockAccessSync(uint32_t addr, uint8_t* pData, uin
     {
         // Finished?
         if (!_memAccessPending)
-        {
-
             break;
-        }
-        // Service the bus access
+        // Service the bus access - the actual read/write operation occurs in a
+        // callback during this function call
         BusAccess::service();
     }
     // Check if completed ok

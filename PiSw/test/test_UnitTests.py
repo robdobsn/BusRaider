@@ -106,9 +106,9 @@ def test_MemRW():
     for i in range(testRepeatCount):
         commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":8000,\"lenDec\":10,\"isIo\":0}\0" + testWriteData)
         writtenData.append(testWriteData)
-        time.sleep(0.015)
+        time.sleep(0.01)
         commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":8000,\"lenDec\":10,\"isIo\":0}\0")
-        time.sleep(0.02)
+        time.sleep(0.01)
         if not testStats["msgRdOk"]:
             break
         testWriteData = bytearray(len(testWriteData))
@@ -241,22 +241,23 @@ def test_TraceJMP000():
     testValStatusCount = 1
     # Bus init
     commonTest.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
+    commonTest.sendFrame("tracerStop", b"{\"cmdName\":\"tracerStop\",\"logging\":1}\0")
+    time.sleep(0.1)
     for i in range(testRepeatCount):
 
-        # Send program
-        time.sleep(0.1)
-        commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"lenDec\":3,\"isIo\":0}\0" + testWriteData)
-        time.sleep(0.1)
-        # Start tracer
-        commonTest.sendFrame("tracerStop", b"{\"cmdName\":\"tracerStop\"}\0")
-        commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":0,\"lenDec\":3,\"isIo\":0}\0")
-        time.sleep(0.1)
-        commonTest.sendFrame("tracerPrime", b"{\"cmdName\":\"tracerPrimeFromMem\"}\0")   
-        commonTest.sendFrame("tracerStart", b"{\"cmdName\":\"tracerStart\",\"logging\":1,\"compare\":1}\0")
-        commonTest.sendFrame("busStatusClear", b"{\"cmdName\":\"busStatusClear\"}\0")   
+        testStats['isrCount'] = 0
 
-        # Run for 2 seconds
-        time.sleep(2)
+        # Send program
+        commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"lenDec\":3,\"isIo\":0}\0" + testWriteData)
+        time.sleep(0.01)
+        # Start tracer
+        commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":0,\"lenDec\":3,\"isIo\":0}\0")
+        commonTest.sendFrame("busStatusClear", b"{\"cmdName\":\"busStatusClear\"}\0")
+        time.sleep(0.01)
+        commonTest.sendFrame("tracerStart", b"{\"cmdName\":\"tracerStart\",\"logging\":1,\"compare\":1,\"primeFromMem\":1}\0")
+
+        # Run for some seconds
+        time.sleep(1)
 
         # Get status
         msgIdx = 0
@@ -264,10 +265,11 @@ def test_TraceJMP000():
             commonTest.sendFrame("statusReq", b"{\"cmdName\":\"tracerStatus\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
             msgIdx += 1
             commonTest.sendFrame("busStatus", b"{\"cmdName\":\"busStatus\"}\0")
-            time.sleep(0.2)
+            time.sleep(0.1)
 
-        # Send messages to stop
+        # Stop tracer
         commonTest.sendFrame("tracerStop", b"{\"cmdName\":\"tracerStop\"}\0")
+        time.sleep(0.1)
 
         # Breakout early if failing
         if not testStats["msgRdOk"] or testStats['tracerErrCount'] > 0:
@@ -622,7 +624,7 @@ def test_GalaxiansExec():
     assert(testStats["msgRdOk"] == True)
     assert(testStats["iorqWr"] > 0)
 
-def test_stepSingle():
+def test_stepSingle_RequiresPaging():
 
     def frameCallback(msgContent, logger):
         if msgContent['cmdName'] == "busStatusResp":
@@ -722,7 +724,7 @@ def test_stepSingle():
     assert(testStats["unknownMsgCount"] == 0)
     logger.debug(f"StepCount {testStats['stepCount']}")
 
-def test_regGetTest():
+def test_regGetTest_requiresPaging():
 
     def frameCallback(msgContent, logger):
         if msgContent['cmdName'] == "busStatusResp":

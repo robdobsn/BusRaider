@@ -325,7 +325,7 @@ bool McManager::setupMachine(const char* mcJson)
     _pCurMachine = pMc;
 
     // Remove step tracer
-    StepTracer::stopAll();
+    StepTracer::stopAll(true);
 
     // Remove wait generation
     BusAccess::waitOnIO(_busSocketId, false);
@@ -334,11 +334,11 @@ bool McManager::setupMachine(const char* mcJson)
     // Store new name
     strlcpy(_currentMachineName, mcName, MAX_MACHINE_NAME_LEN);
 
-    // Setup display
-    pMc->setupDisplay(_pDisplay);
-
     // Setup the machine
     pMc->setupMachine(mcName, mcJson);
+
+    // Setup display
+    pMc->setupDisplay(_pDisplay);
 
     // Enable wait generation as required
     BusAccess::waitOnIO(_busSocketId, _pCurMachine->getDescriptorTable()->monitorIORQ);

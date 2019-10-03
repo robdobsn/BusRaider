@@ -70,7 +70,10 @@ class CommonTest:
                     except Exception as excp:
                         self.logger.error(f"LOG CONTENT NOT FOUND IN FRAME {fr}, {excp}")
                 else:
-                    frameCallback(msgContent, self.logger)
+                    try:
+                        frameCallback(msgContent, self.logger)
+                    except Exception as excp:
+                        self.logger.error(f"Error in frameCallback with content {msgContent}, {excp}")
             except Exception as excp:
                 self.logger.error(f"Failed to extract cmdName {fr}, {excp}")
 

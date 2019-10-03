@@ -98,12 +98,6 @@ void BusAccess::controlRequest()
     digitalWrite(BR_BUSRQ_BAR, 0);
 }
 
-// Check if bus request has been acknowledged
-int BusAccess::controlBusAcknowledged()
-{
-    return (RD32(ARM_GPIO_GPLEV0) & BR_BUSACK_BAR_MASK) == 0;
-}
-
 // Take control of bus
 void BusAccess::controlTake()
 {
@@ -144,18 +138,22 @@ void BusAccess::controlRelease()
     // So that the very first MREQ cycle after a BUSRQ/BUSACK causes a WAIT to be generated
     // (if enabled)
 
+#ifdef ATTEMPT_TO_CLEAR_WAIT_FF_WHILE_STILL_IN_BUSRQ
+
     // Set M1 high (inactive)
     // Since in V1.7 hardware this is PUSH_ADDR then this is also ok for that case
     WR32(ARM_GPIO_GPSET0, BR_V20_M1_BAR_MASK);
 
     // Pulse MREQ to prime the FF
-    // This also clears the FF that controls data bus output enables (i.e. disables data bus output)
+    // For V2.0 hardware this also clears the FF that controls data bus output enables (i.e. disables data bus output)
+    // but that doesn't work on V1.7 hardware as BUSRQ holds the FF active
     digitalWrite(BR_IORQ_BAR, 1);
     lowlev_cycleDelay(CYCLES_DELAY_FOR_MREQ_FF_RESET);
     digitalWrite(BR_MREQ_BAR, 0);
     lowlev_cycleDelay(CYCLES_DELAY_FOR_MREQ_FF_RESET);
     digitalWrite(BR_MREQ_BAR, 1);
 
+#endif
     // Go back to data inwards
     pibSetIn();
     WR32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
@@ -167,11 +165,11 @@ void BusAccess::controlRelease()
     if (_hwVersionNumber == 17)
         digitalWrite(BR_V17_PUSH_ADDR_BAR, 1);
 
-    // Clear wait detected in case we created some MREQ cycles that
+    // Clear wait detected in case we created some MREQ or IORQ cycles that
     // triggered wait
-    uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
-    if ((busVals & BR_WAIT_BAR_MASK) == 0)
-        waitResetFlipFlops();
+    waitResetFlipFlops(true);
+
+    // Clear wait detection - only does something if Pi interrupts are used
     waitClearDetected();
 
     // Re-establish wait generation
@@ -184,8 +182,11 @@ void BusAccess::controlRelease()
     // Check if we need to assert any new bus requests
     busActionHandleStart();
 
-    // No longer request bus
-    digitalWrite(BR_BUSRQ_BAR, 1);
+    // No longer request bus & set all control lines high (inactive)
+    uint32_t setMask = BR_BUSRQ_BAR_MASK | BR_WR_BAR_MASK | BR_RD_BAR_MASK | BR_IORQ_BAR_MASK | BR_MREQ_BAR_MASK | BR_WAIT_BAR_MASK;
+    if (_hwVersionNumber != 17)
+        setMask = setMask | BR_V20_M1_BAR_MASK;
+    WR32(ARM_GPIO_GPSET0, setMask);
 
     // Control bus lines to input
     pinMode(BR_WR_BAR, INPUT);
@@ -194,18 +195,17 @@ void BusAccess::controlRelease()
     pinMode(BR_IORQ_BAR, INPUT);
     pinMode(BR_WAIT_BAR_PIN, INPUT);
 
-    if (_hwVersionNumber == 17)
+    if (_hwVersionNumber != 17)
     {
         // For V2.0 set GPIO3 which is M1 to an input
         pinMode(BR_V20_M1_BAR, INPUT);
     }
 
-    // Wait until BUSACK is released
+    // // Wait until BUSACK is released
     waitForBusAck(false);
 
     // Bus no longer under BusRaider control
-    _busIsUnderControl = false;    
-
+    _busIsUnderControl = false;
 }
 
 // Request bus, wait until available and take control
@@ -231,25 +231,117 @@ bool BusAccess::waitForBusAck(bool ack)
 {
     // Initially check very frequently so the response is fast
     for (int j = 0; j < 1000; j++)
-        if (controlBusAcknowledged() == ack)
+        if (controlBusReqAcknowledged() == ack)
             break;
 
     // Fall-back to slower checking which can be timed against target clock speed
-    if (controlBusAcknowledged() != ack)
+    if (controlBusReqAcknowledged() != ack)
     {
         uint32_t maxUsToWait = BusSocketInfo::getUsFromTStates(BR_MAX_WAIT_FOR_BUSACK_T_STATES, clockCurFreqHz());
         if (maxUsToWait <= 0)
             maxUsToWait = 1;
         for (uint32_t j = 0; j < maxUsToWait; j++)
         {
-            if (controlBusAcknowledged() == ack)
+            if (controlBusReqAcknowledged() == ack)
                 break;
             microsDelay(1);
         }
     }
 
     // Check we succeeded
-    return controlBusAcknowledged() == ack;
+    return controlBusReqAcknowledged() == ack;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Control Bus Functions
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Control bus read
+uint32_t BusAccess::controlBusRead()
+{
+    uint32_t startGetCtrlBusUs = micros();
+    int loopCount = 0;
+    while (true)
+    {
+        // Read the control lines
+        uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
+
+        // Handle slower M1 signal on V1.7 hardware
+        if (_hwVersionNumber == 17)
+        {
+            // Check if we're in a wait - in which case FF OE will be active
+            // So we must set the data bus direction outward even if this causes a temporary
+            // conflict on the data bus
+            WR32(ARM_GPIO_GPCLR0, BR_DATA_DIR_IN_MASK);
+
+            // Delay for settling of M1
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
+
+            // Read the control lines
+            busVals = RD32(ARM_GPIO_GPLEV0);
+
+            // Set data bus driver direction inward - onto PIB
+            WR32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK);
+        }
+
+        // Get the appropriate bits for up-line communication
+        uint32_t ctrlBusVals = 
+                (((busVals & BR_RD_BAR_MASK) == 0) ? BR_CTRL_BUS_RD_MASK : 0) |
+                (((busVals & BR_WR_BAR_MASK) == 0) ? BR_CTRL_BUS_WR_MASK : 0) |
+                (((busVals & BR_MREQ_BAR_MASK) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
+                (((busVals & BR_IORQ_BAR_MASK) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
+                (((busVals & BR_WAIT_BAR_MASK) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
+                (((busVals & BR_V20_M1_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0) |
+                (((busVals & BR_BUSACK_BAR_MASK) == 0) ? BR_CTRL_BUS_BUSACK_MASK : 0);
+
+        // Handle slower M1 signal on V1.7 hardware
+        if (_hwVersionNumber == 17)
+        {
+            // Clear M1 in case set above
+            ctrlBusVals = ctrlBusVals & (~BR_CTRL_BUS_M1_MASK);
+
+            // Set M1 from PIB reading
+            ctrlBusVals |= (((busVals & BR_V17_M1_PIB_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
+        }
+
+        // Check if valid (MREQ || IORQ) && (RD || WR)
+        bool ctrlValid = ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) || (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)) && ((ctrlBusVals & BR_CTRL_BUS_RD_MASK) || (ctrlBusVals & BR_CTRL_BUS_WR_MASK));
+        // Also valid if IORQ && M1 as this is used for interrupt ack
+        ctrlValid = ctrlValid || ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) && (ctrlBusVals & BR_CTRL_BUS_M1_MASK));
+        
+        // If ctrl is already valid then continue
+        if (ctrlValid)
+        {
+            // if (((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) == 0) && ((ctrlBusVals & BR_CTRL_BUS_MREQ_MASK) == 0))
+            // {
+            //     // TODO
+            //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+            //     microsDelay(1);
+            //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+            // }
+            return ctrlBusVals;
+        }
+
+        // Break out if time-out and enough loops done
+        loopCount++;
+        if ((isTimeout(micros(), startGetCtrlBusUs, MAX_WAIT_FOR_CTRL_BUS_VALID_US)) && (loopCount > MIN_LOOP_COUNT_FOR_CTRL_BUS_VALID))
+        {
+            // // TODO
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+            // microsDelay(1);
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+            // microsDelay(1);
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+            // microsDelay(1);
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+            // microsDelay(1);
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+            // microsDelay(1);
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+            // microsDelay(1);
+            return ctrlBusVals;
+        }
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -415,7 +507,7 @@ uint8_t BusAccess::byteRead(int iorq)
     // Delay to allow data to settle
     lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
     // Get the data
-    uint8_t val = (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
+    uint8_t val = pibGetValue();
     // Deactivate leaving data-dir inwards
     if (_hwVersionNumber == 17)
     {
@@ -450,9 +542,15 @@ BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32
     pibSetOut();
 
     // Iterate data
-    for (uint32_t i = 0; i < len; i++) {
+    uint32_t i = 0;
+    while (true)
+    {
         // Write byte
         byteWrite(*pData, iorq);
+
+        // Check complete
+        if (++i >= len)
+            break;
 
         // Increment the lower address counter
         addrLowInc();
@@ -505,7 +603,9 @@ BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
     uint32_t reqLinePlusRead = (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | (1 << BR_RD_BAR);
 
     // Iterate data
-    for (uint32_t i = 0; i < len; i++) {
+    uint32_t i = 0;
+    while(true)
+    {
 
         // Enable data bus driver output - must be done each time round the loop as it is
         // cleared by IORQ or MREQ rising edge
@@ -518,10 +618,14 @@ BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
         lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
         
         // Get the data
-        *pData = (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
+        *pData = pibGetValue();
 
         // Deactivate IORQ/MREQ and RD and clock the low address
         WR32(ARM_GPIO_GPSET0, reqLinePlusRead);
+
+        // Check complete
+        if (++i >= len)
+            break;
 
         // Inc low address
         addrLowInc();
@@ -713,25 +817,21 @@ void BusAccess::waitSetupMREQAndIORQEnables()
     LogWrite("BusAccess", LOG_DEBUG, "PWM div %d, busyCount %d, lastBusy %08x afterKill %08x", divisor, busyCount, lastBusy, afterKill);
 }
 
-void BusAccess::waitResetFlipFlops()
+void BusAccess::waitResetFlipFlops(bool forceClear)
 {
     // Since the FIFO is shared the data output to MREQ/IORQ enable pins will be interleaved so we need to write data for both
     if ((RD32(ARM_PWM_STA) & 1) == 0)
     {
         // Write to FIFO
         uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
-        bool ioWaitClear = ((busVals & BR_IORQ_BAR_MASK) == 0) && _waitOnIO;
+        bool ioWaitClear = (forceClear || ((busVals & BR_IORQ_BAR_MASK) == 0)) && _waitOnIO;
         WR32(ARM_PWM_FIF1, ioWaitClear ? 0x00ffffff : 0);  // IORQ sequence
-        bool memWaitClear = ((busVals & BR_MREQ_BAR_MASK) == 0) && _waitOnMemory;
+        bool memWaitClear = (forceClear || ((busVals & BR_MREQ_BAR_MASK) == 0)) && _waitOnMemory;
         WR32(ARM_PWM_FIF1, memWaitClear ? 0x00ffffff : 0);  // MREQ sequence
     }
 
     // Clear flag
     _waitAsserted = false;
-
-    // Handle release after a read
-    if (_targetReadInProgress)
-        waitHandleReadRelease();
 }
 
 void BusAccess::waitClearDetected()
@@ -832,6 +932,8 @@ void BusAccess::rawBusControlEnable(bool en)
 void BusAccess::rawBusControlClearWait()
 {
     waitResetFlipFlops();
+    // Handle release after a read
+    waitHandleReadRelease();
 }
 
 void BusAccess::rawBusControlWaitDisable()

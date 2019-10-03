@@ -74,6 +74,7 @@
 #define BR_V20_M1_BAR_MASK (1 << BR_V20_M1_BAR)
 
 // Masks for above
+#define BR_BUSRQ_BAR_MASK (1 << BR_BUSRQ_BAR)
 #define BR_MUX_EN_BAR_MASK (1 << BR_MUX_EN_BAR)
 #define BR_IORQ_WAIT_EN_MASK (1 << BR_IORQ_WAIT_EN)
 #define BR_MREQ_WAIT_EN_MASK (1 << BR_MREQ_WAIT_EN)
@@ -521,6 +522,9 @@ private:
     static void addrHighSet(uint32_t highAddrByte);
     static void addrSet(unsigned int addr);
 
+    // Control bus read
+    static uint32_t controlBusRead();
+
     // Control the PIB (bus used to transfer data to/from Pi)
     static inline void pibSetOut()
     {
@@ -550,9 +554,20 @@ private:
     static void controlRequest();
     static BR_RETURN_TYPE controlRequestAndTake();
     static void controlRelease();
-    static int controlBusAcknowledged();
     static void controlTake();
     static bool waitForBusAck(bool ack);
+
+    // Check if bus request has been acknowledged
+    static inline bool controlBusReqAcknowledged()
+    {
+        return (RD32(ARM_GPIO_GPLEV0) & BR_BUSACK_BAR_MASK) == 0;
+    }
+
+    // Check if WAIT asserted
+    static inline bool controlBusWaitAsserted()
+    {
+        return (RD32(ARM_GPIO_GPLEV0) & BR_WAIT_BAR_MASK) == 0;
+    }
 
     // Interrupt service routine for wait states
     static void stepTimerISR(void* pParam);
@@ -654,7 +669,7 @@ private:
 
     // Wait control
     static void waitSetupMREQAndIORQEnables();
-    static void waitResetFlipFlops();
+    static void waitResetFlipFlops(bool forceClear = false);
     static void waitClearDetected();
     static void waitHandleNew();
     static void waitEnablementUpdate();
@@ -672,6 +687,8 @@ private:
     // Timeouts
     static const int MAX_WAIT_FOR_PENDING_ACTION_US = 100000;
     static const int MAX_WAIT_FOR_CTRL_LINES_COUNT = 10;
+    static const int MAX_WAIT_FOR_CTRL_BUS_VALID_US = 10;
+    static const int MIN_LOOP_COUNT_FOR_CTRL_BUS_VALID = 100;
 
     // Period target write control bus line is asserted during a write
     static const int CYCLES_DELAY_FOR_WRITE_TO_TARGET = 250;

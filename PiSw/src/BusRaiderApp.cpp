@@ -8,6 +8,7 @@
 #include "System/lowlib.h"
 #include "System/rdutils.h"
 #include "System/ee_sprintf.h"
+#include "System/PiWiring.h"
 #include "Machines/McManager.h"
 #include "Machines/usb_hid_keys.h"
 #include "Machines/McTerminal.h"
@@ -349,9 +350,6 @@ void BusRaiderApp::statusDisplayUpdate()
         strlcat(statusStr, "                                    ", MAX_STATUS_STR_LEN);
     
         _display.statusPut(Display::STATUS_FIELD_ASSERTS, Display::STATUS_FAIL, statusStr);
-
-        // Ready for next time
-        _statusUpdateStartUs = micros();
     }
 }
 

@@ -10,7 +10,7 @@
 #include "libz80/z80.h"
 
 // Uncomment the following line to use SPI0 CE0 of the Pi as a debug pin
-// #define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
+#define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Variables
@@ -41,8 +41,8 @@ BusSocketInfo StepTracer::_busSocketInfo =
     false,
     StepTracer::handleWaitInterruptStatic,
     StepTracer::busActionCompleteStatic,
-    true,
-    true,
+    false,
+    false,
     // Reset
     false,
     0,
@@ -143,14 +143,20 @@ bool StepTracer::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t
 
         // Start tracing
         if (_pThisInstance)
-            _pThisInstance->start(logging, recordAll, compareToEmulated);
+            _pThisInstance->start(logging, recordAll, compareToEmulated, true);
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "tracerStop") == 0)
     {
+        char argStr[MAX_CMD_NAME_STR];
+        argStr[0] = 0;
+        bool logging = false;
+        if (jsonGetValueForKey("logging", pCmdJson, argStr, MAX_CMD_NAME_STR))
+            if ((strlen(argStr) != 0) && (argStr[0] != '0'))
+                logging = true;
         if (_pThisInstance)
-            _pThisInstance->stop();
+            _pThisInstance->stop(logging);
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
@@ -167,13 +173,6 @@ bool StepTracer::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t
             _pThisInstance->getStatus(statusStr, MAX_STATUS_RESP_LEN, statusIdxStr);
         strlcpy(pRespJson, statusStr, maxRespLen);
         // LogWrite(FromStepTracer, LOG_DEBUG, "TracerStatus %s", statusStr);
-        return true;
-    }
-    else if (strcasecmp(cmdName, "tracerPrimeFromMem") == 0)
-    {
-        if (_pThisInstance)
-            _pThisInstance->primeFromMem();
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "tracerGetLong") == 0)
@@ -196,7 +195,7 @@ bool StepTracer::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t
 // Start/Stop
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void StepTracer::start(bool logging, bool recordAll, bool compareToEmulated)
+void StepTracer::start(bool logging, bool recordAll, bool compareToEmulated, bool primeFromMem)
 {
     // Debug
     _logging = logging;
@@ -211,33 +210,54 @@ void StepTracer::start(bool logging, bool recordAll, bool compareToEmulated)
         _busSocketId = BusAccess::busSocketAdd(_busSocketInfo);
     BusAccess::busSocketEnable(_busSocketId, true);
 
+    // Prime from memory if required
+    if (primeFromMem)
+    {
+#ifdef STEP_VAL_WITHOUT_HW_MANAGER
+        // Grab all of normal memory
+        uint8_t* pBuf = new uint8_t[STD_TARGET_MEMORY_LEN];
+        int blockReadResult = BusAccess::blockRead(0, pBuf, STD_TARGET_MEMORY_LEN, true, false);
+        if (blockReadResult != BR_OK)
+            LogWrite(FromStepTracer, LOG_DEBUG, "Block read for tracer failed %d", blockReadResult);
+        uint32_t maxLen = (_tracerMemoryLen < STD_TARGET_MEMORY_LEN) ? _tracerMemoryLen : STD_TARGET_MEMORY_LEN;
+        if (_pTracerMemory)
+            memcpy(_pTracerMemory, pBuf, maxLen);
+        delete [] pBuf;
+#else
+        LogWrite(FromStepTracer, LOG_DEBUG, "Tracer prime from memory");
+        BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_MIRROR);
+        _primeFromMemPending = true;
+#endif
+    }
+}
+
+void StepTracer::stopAll(bool logging)
+{
+    if (_pThisInstance)
+        _pThisInstance->stop(logging);
+}
+
+void StepTracer::stop(bool logging)
+{
+    _logging = logging;
+    if (_logging)
+        LogWrite(FromStepTracer, LOG_DEBUG, "TracerStop");
+
+    // Remove wait on memory and IO
+    BusAccess::waitOnMemory(_busSocketId, false);
+    BusAccess::waitOnIO(_busSocketId, false);
+
     // Clear wait
     BusAccess::waitHold(_busSocketId, false);
 
     // Clear bus hold
     BusAccess::waitRelease();
 
-    // Reset target - becomes active when reset acknowledge signal is received
-    BusAccess::targetReqReset(_busSocketId);
-}
-
-void StepTracer::stopAll()
-{
-    if (_pThisInstance)
-        _pThisInstance->stop();
-}
-
-void StepTracer::stop()
-{
-    if (_logging)
-        LogWrite(FromStepTracer, LOG_DEBUG, "TracerStop");
-
-    // Turn off the bus socket
-    BusAccess::busSocketEnable(_busSocketId, false);
+    // Turn off the bus socket but don't set _busSocketId to -1
+    // or all sockets will be used up
+    if (_busSocketId >= 0)
+        BusAccess::busSocketEnable(_busSocketId, false);
     _isActive = false;
-
-    // Clear bus hold
-    BusAccess::waitRelease();
 
     // Clear log buffers
     _tracesPosn.clear();
@@ -246,24 +266,6 @@ void StepTracer::stop()
     // Clear stats
     _stats.clear();
 
-}
-
-void StepTracer::primeFromMem()
-{
-#ifdef STEP_VAL_WITHOUT_HW_MANAGER
-    // Grab all of normal memory
-    uint8_t* pBuf = new uint8_t[STD_TARGET_MEMORY_LEN];
-    int blockReadResult = BusAccess::blockRead(0, pBuf, STD_TARGET_MEMORY_LEN, true, false);
-    if (blockReadResult != BR_OK)
-        LogWrite(FromStepTracer, LOG_DEBUG, "Block read for tracer failed %d", blockReadResult);
-    uint32_t maxLen = (_tracerMemoryLen < STD_TARGET_MEMORY_LEN) ? _tracerMemoryLen : STD_TARGET_MEMORY_LEN;
-    if (_pTracerMemory)
-        memcpy(_pTracerMemory, pBuf, maxLen);
-    delete [] pBuf;
-#else
-    BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_MIRROR);
-    _primeFromMemPending = true;
-#endif
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -280,8 +282,18 @@ void StepTracer::busActionCompleteStatic([[maybe_unused]]BR_BUS_ACTION actionTyp
     {
         if (_pThisInstance->_primeFromMemPending)
         {
+            // Clone the system's memory
             HwManager::tracerClone();
             _pThisInstance->_primeFromMemPending = false;
+            // Add wait on memory and IO
+            BusAccess::waitOnMemory(_busSocketId, true);
+            BusAccess::waitOnIO(_busSocketId, true);
+            // Clear wait
+            BusAccess::waitHold(_busSocketId, false);
+            // Clear bus hold
+            BusAccess::waitRelease();
+            // Reset target - becomes active when reset acknowledge signal is received
+            BusAccess::targetReqReset(_busSocketId);
         }
     }
 }

@@ -74,7 +74,7 @@ void McBase::getMachineNames(char* mcNameStr, int maxLen)
 bool McBase::setupMachine(const char* mcName, const char* mcJson)
 {
     // Disable machine first
-    LogWrite("McBase", LOG_DEBUG, "Disabling %s", mcName);
+    LogWrite("McBase", LOG_DEBUG, "Disabling %s", getMachineName());
     disable();
 
     // Get machine sub type
@@ -130,7 +130,7 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
 
     // Enable machine
     enable();
-    LogWrite("McBase", LOG_DEBUG, "Enabling %s", mcName);
+    LogWrite("McBase", LOG_DEBUG, "Enabling %s", getMachineName());
     return true;
 }
 

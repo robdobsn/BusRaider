@@ -79,10 +79,9 @@ public:
     void init();
 
     // Control
-    void start(bool logging, bool recordAll, bool compareToEmulated);
-    void stop();
-    static void stopAll();
-    void primeFromMem();
+    void start(bool logging, bool recordAll, bool compareToEmulated, bool primeFromMem);
+    void stop(bool logging);
+    static void stopAll(bool logging);
     
     // Service
     void service();

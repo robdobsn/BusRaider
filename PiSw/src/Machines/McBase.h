@@ -17,7 +17,8 @@ public:
 
 public:
     // Name
-    const char* machineName;
+    static const int MAX_MACHINE_NAME_LEN = 100;
+    char machineName[MAX_MACHINE_NAME_LEN];
     // Processor type
     PROCESSOR_TYPE processorType;
     // Display
