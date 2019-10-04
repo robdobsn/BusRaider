@@ -461,6 +461,7 @@
             files = [...files];
             initializeProgress(files.length, 'progress-bar-file-manager');
             files.forEach(uploadOnlyFile);
+            document.getElementById("fileElemUpload").value = ""
         }
 
         function uploadOnlyFile(file, i) {
@@ -471,6 +472,7 @@
             files = [...files];
             initializeProgress(files.length, 'progress-bar-run');
             files.forEach(uploadAndRunFile);
+            document.getElementById("fileElemRun").value = ""
         }
 
         function uploadAndRunFile(file, i) {
@@ -1082,7 +1084,11 @@
             vertical-align: middle;
         }
 
-        #fileElem {
+        #fileElemRun {
+            display: none;
+        }
+
+        #fileElemUpload {
             display: none;
         }
 
@@ -1538,8 +1544,8 @@
             <div class="uiPanelSub">
                 <form class="file-upload-form">
                     <p>Drop files to immediately run on the target</p>
-                    <input type="file" id="fileElem" onchange="uploadAndRunFiles(this.files)">
-                    <label class="button" for="fileElem">Select a file to immediately run</label>
+                    <label class="button" for="fileElemRun">Select a file to immediately run</label>
+                    <input type="file" id="fileElemRun" onchange="uploadAndRunFiles(this.files)">
                 </form>
             </div>
             <progress id="progress-bar-run" max=100 value=0></progress>
@@ -1560,8 +1566,8 @@
             <form class="file-upload-form">
                 <div class=uiPanelSub>
                     <p>Drop files to upload to ESP32 file system</p>
-                    <input type="file" id="fileElem" onchange="uploadToFileManager(this.files)">
-                    <label class="button" for="fileElem">Select a file to upload</label>
+                    <input type="file" id="fileElemUpload" onchange="uploadToFileManager(this.files)">
+                    <label class="button" for="fileElemUpload">Select a file to upload</label>
                     <!-- <span class="button radio" onclick="fsSelectClick(event)">File System = SPIFFS</span> -->
                 </div>
                 <progress id="progress-bar-file-manager" max=100 value=0></progress>
