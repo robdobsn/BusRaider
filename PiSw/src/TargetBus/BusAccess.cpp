@@ -13,6 +13,8 @@
 
 #define BODGE_OE_FF_PROBLEM 1
 
+#define SERVICE_PERFORMANCE_OPTIMIZED 1
+
 // Uncomment to drive wait states through timer - alternatively use service()
 // #define TIMER_BASED_WAIT_STATES 1
 

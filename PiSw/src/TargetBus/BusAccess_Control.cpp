@@ -481,12 +481,12 @@ void BusAccess::byteWrite(uint32_t data, int iorq)
     // Deactivate and leave data direction set to inwards
     if (_hwVersionNumber == 17)
     {
-        WR32(ARM_GPIO_GPSET0, (1 << BR_DATA_DIR_IN) | (1 << (iorq ? BR_IORQ_BAR : BR_MREQ_BAR)) | (1 << BR_WR_BAR));
+        WR32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_WR_BAR_MASK);
         muxClear();
     }
     else
     {
-        WR32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | BR_MUX_EN_BAR_MASK | (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | (1 << BR_WR_BAR));
+        WR32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | BR_MUX_EN_BAR_MASK | (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_WR_BAR_MASK);
     }
 }
 
@@ -542,15 +542,10 @@ BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32
     pibSetOut();
 
     // Iterate data
-    uint32_t i = 0;
-    while (true)
+    for (uint32_t i = 0; i < len; i++)
     {
         // Write byte
         byteWrite(*pData, iorq);
-
-        // Check complete
-        if (++i >= len)
-            break;
 
         // Increment the lower address counter
         addrLowInc();
@@ -603,8 +598,7 @@ BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
     uint32_t reqLinePlusRead = (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | (1 << BR_RD_BAR);
 
     // Iterate data
-    uint32_t i = 0;
-    while(true)
+    for (uint32_t i = 0; i < len; i++)
     {
 
         // Enable data bus driver output - must be done each time round the loop as it is
@@ -622,10 +616,6 @@ BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
 
         // Deactivate IORQ/MREQ and RD and clock the low address
         WR32(ARM_GPIO_GPSET0, reqLinePlusRead);
-
-        // Check complete
-        if (++i >= len)
-            break;
 
         // Inc low address
         addrLowInc();

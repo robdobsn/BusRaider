@@ -89,6 +89,7 @@
 
 // Pi debug pin
 #define BR_DEBUG_PI_SPI0_CE0 8 // SPI0 CE0
+#define BR_DEBUG_PI_SPI0_CE0_MASK (1 << BR_DEBUG_PI_SPI0_CE0) // SPI0 CE0
 
 // Direct access to Pi PIB (used for data transfer to/from host data bus)
 #define BR_PIB_MASK (~((uint32_t)0xff << BR_DATA_BUS))

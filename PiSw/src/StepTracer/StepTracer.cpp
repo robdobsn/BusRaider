@@ -10,7 +10,7 @@
 #include "libz80/z80.h"
 
 // Uncomment the following line to use SPI0 CE0 of the Pi as a debug pin
-#define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
+// #define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Variables
