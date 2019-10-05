@@ -22,7 +22,7 @@ McDescriptorTable McTRS80::_defaultDescriptorTables[] = {
         // Processor
         McDescriptorTable::PROCESSOR_Z80,
         // Required display refresh rate
-        .displayRefreshRatePerSec = 30,
+        .displayRefreshRatePerSec = 50,
         .displayPixelsX = 8 * 64,
         .displayPixelsY = 24 * 16,
         .displayCellX = 8,

@@ -11,8 +11,6 @@
 #include "../System/Timers.h"
 #include "../System/ee_sprintf.h"
 
-#define BODGE_OE_FF_PROBLEM 1
-
 #define SERVICE_PERFORMANCE_OPTIMIZED 1
 
 // Uncomment to drive wait states through timer - alternatively use service()
@@ -764,7 +762,7 @@ void BusAccess::waitHandleNew()
             // pinMode(BR_MREQ_BAR, INPUT);
             // pinMode(BR_IORQ_BAR, INPUT);
 
-        if ((_hwVersionNumber == 17) || (BODGE_OE_FF_PROBLEM))
+        if (_hwVersionNumber == 17)
         {
             // Set data bus driver direction outward - so it doesn't conflict with the PIB
             // if FF OE is set

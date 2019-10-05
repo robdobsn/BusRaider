@@ -806,10 +806,11 @@ def test_regGetTest_requiresPaging():
 
     mc = "Serial Terminal ANSI"
     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\"}\0")
-    time.sleep(1)
+    time.sleep(1.5)
 
     # Send program
     commonTest.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
+    time.sleep(.2)
     commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"lenDec\":" + testWriteLen  + b",\"isIo\":0}\0" + testWriteData)
 
     # Setup Test

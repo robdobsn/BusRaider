@@ -12,6 +12,8 @@
 
 // #define ISR_TEST 1
 
+#define V2_PROTO_USING_MUX_EN 1
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Defs
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -590,12 +592,19 @@ private:
         }
         else
         {
+#ifdef V2_PROTO_USING_MUX_EN
             // Clear first
             WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
             // Now set bits required
             WR32(ARM_GPIO_GPSET0, muxVal << BR_MUX_LOW_BIT_POS);
             // Enable the mux
             WR32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
+#else
+            // Clear first
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+            // Now set bits required
+            WR32(ARM_GPIO_GPSET0, muxVal << BR_MUX_LOW_BIT_POS);
+#endif
         }
     }
 
@@ -609,8 +618,15 @@ private:
         }
         else
         {
+#ifdef V2_PROTO_USING_MUX_EN
             // Disable the mux
             WR32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
+            // Clear to a safe setting - sets LADDR_CK low
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+#else
+            // Clear to a safe setting - sets LADDR_CK low
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+#endif
         }
     }
 
@@ -630,6 +646,7 @@ private:
         }
         else
         {
+#ifdef V2_PROTO_USING_MUX_EN
             // Clear then set the output enable
             WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
             WR32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
@@ -637,6 +654,13 @@ private:
             WR32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
             lowlev_cycleDelay(CYCLES_DELAY_FOR_OUT_FF_SET);
             WR32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
+#else
+            // Clear then set the output enable
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+            WR32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_OUT_FF_SET);
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);       
+#endif
         }
     }
 
@@ -654,6 +678,7 @@ private:
         }
         else
         {
+#ifdef V2_PROTO_USING_MUX_EN
             // Clear then set the low address clear line
             WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
             WR32(ARM_GPIO_GPSET0, BR_MUX_LADDR_CLR_BAR_LOW << BR_MUX_LOW_BIT_POS);
@@ -661,6 +686,13 @@ private:
             WR32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
             lowlev_cycleDelay(CYCLES_DELAY_FOR_CLEAR_LOW_ADDR);
             WR32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
+#else
+            // Clear then set the low address clear line
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+            WR32(ARM_GPIO_GPSET0, BR_MUX_LADDR_CLR_BAR_LOW << BR_MUX_LOW_BIT_POS);
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_CLEAR_LOW_ADDR);
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+#endif
         }
         
     }

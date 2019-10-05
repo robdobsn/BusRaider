@@ -369,10 +369,20 @@ void BusAccess::addrLowSet(uint32_t lowAddrByte)
         WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
         WR32(ARM_GPIO_GPSET0, BR_MUX_LADDR_CLK << BR_MUX_LOW_BIT_POS);
         for (uint32_t i = 0; i < (lowAddrByte & 0xff) + 1; i++) {
+#ifdef V2_PROTO_USING_MUX_EN
             WR32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
             lowlev_cycleDelay(CYCLES_DELAY_FOR_CLOCK_LOW_ADDR);
             WR32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
             lowlev_cycleDelay(CYCLES_DELAY_FOR_CLOCK_LOW_ADDR);
+#else
+            // This clears the OE FFbut is used as a safe way
+            // to cycle the low address clock
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+            WR32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_CLOCK_LOW_ADDR);
+            WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_CLOCK_LOW_ADDR);
+#endif
         }
     }
 }
@@ -389,11 +399,21 @@ void BusAccess::addrLowInc()
     }
     else
     {
+#ifdef V2_PROTO_USING_MUX_EN
+        // This sets the low address clock low as it is MUX0
         WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-        WR32(ARM_GPIO_GPSET0, BR_MUX_LADDR_CLK << BR_MUX_LOW_BIT_POS);
         WR32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
         lowlev_cycleDelay(CYCLES_DELAY_FOR_CLOCK_LOW_ADDR);
         WR32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
+#else
+        // This clears the OE FF but is used as a safe way
+        // to cycle the low address clock
+        WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+        WR32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_CLOCK_LOW_ADDR);
+        WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_CLOCK_LOW_ADDR);
+#endif
     }
 }
 
@@ -473,9 +493,17 @@ void BusAccess::byteWrite(uint32_t data, int iorq)
     WR32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
     // Write the data by setting WR_BAR active
     if (_hwVersionNumber == 17)
+    {
         WR32(ARM_GPIO_GPCLR0, BR_WR_BAR_MASK);
+    }
     else
+    {
+#ifdef V2_PROTO_USING_MUX_EN
         WR32(ARM_GPIO_GPCLR0, BR_WR_BAR_MASK | BR_MUX_EN_BAR_MASK);
+#else
+        WR32(ARM_GPIO_GPCLR0, BR_WR_BAR_MASK);
+#endif
+    }
     // Target write delay
     lowlev_cycleDelay(CYCLES_DELAY_FOR_WRITE_TO_TARGET);
     // Deactivate and leave data direction set to inwards
@@ -486,7 +514,12 @@ void BusAccess::byteWrite(uint32_t data, int iorq)
     }
     else
     {
+#ifdef V2_PROTO_USING_MUX_EN
         WR32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | BR_MUX_EN_BAR_MASK | (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_WR_BAR_MASK);
+#else
+        WR32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_WR_BAR_MASK);
+        WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+#endif
     }
 }
 
@@ -502,7 +535,9 @@ uint8_t BusAccess::byteRead(int iorq)
     WR32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | (BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS));
     if (_hwVersionNumber != 17)
     {
+#ifdef V2_PROTO_USING_MUX_EN
         WR32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
+#endif
     }
     // Delay to allow data to settle
     lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
@@ -516,7 +551,12 @@ uint8_t BusAccess::byteRead(int iorq)
     }
     else
     {
+#ifdef V2_PROTO_USING_MUX_EN
         WR32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK | (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
+#else
+        WR32(ARM_GPIO_GPSET0, (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
+        WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+#endif
     }
     return val;
 }
@@ -833,7 +873,8 @@ void BusAccess::waitClearDetected()
 
 void BusAccess::waitSuspendBusDetailOneCycle()
 {
-    _waitSuspendBusDetailOneCycle = true;
+    if (_hwVersionNumber == 17)
+        _waitSuspendBusDetailOneCycle = true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -977,9 +1018,15 @@ void BusAccess::rawBusControlSetData(uint32_t data)
     }
     else
     {
+#ifdef V2_PROTO_USING_MUX_EN
         WR32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
         lowlev_cycleDelay(CYCLES_DELAY_FOR_OUT_FF_SET);
         WR32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
+        WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);       
+#else
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_OUT_FF_SET);
+        WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);       
+#endif
     }
 }
 
