@@ -47,6 +47,8 @@ class CommonTest:
             fileLogger.setFormatter(logging.Formatter('%(asctime)s: %(message)s'))
             self.logger.addHandler(fileLogger)
         self.logSends = logSends
+        self.respAwaited = None
+        self.respGot = False
 
         # Open dump file
         try:
@@ -70,6 +72,11 @@ class CommonTest:
                     except Exception as excp:
                         self.logger.error(f"LOG CONTENT NOT FOUND IN FRAME {fr}, {excp}")
                 else:
+                    # Check for awaited response
+                    if "cmdName" in msgContent and self.respAwaited is not None:
+                        if msgContent["cmdName"] == self.respAwaited:
+                            self.respGot = True
+                    # Callback
                     try:
                         frameCallback(msgContent, self.logger)
                     except Exception as excp:
@@ -124,7 +131,9 @@ class CommonTest:
             self.hdlcHandler = HDLC(self.ser, self.dumpBinFile)
             self.hdlcHandler.startReader(onHDLCFrame)
 
-    def sendFrame(self, comment, content):
+    def sendFrame(self, comment, content, respExpected = None):
+        self.respAwaited = respExpected
+        self.respGot = False
         frame = bytearray(content)
         # for b in frame:
         #     print(hex(b)+" ",end='')
@@ -135,6 +144,16 @@ class CommonTest:
                 self.logger.debug(f"Sent {comment}")
         except Exception as excp:
             self.logger.error(f"Failed to send frame {comment}, {excp}")
+
+    def awaitResponse(self, maxWaitMs):
+        if self.respAwaited is not None:
+            waitMsCount = 0
+            while(waitMsCount < maxWaitMs):
+                if self.respGot:
+                    return True
+                time.sleep(0.001)
+                waitMsCount += 1
+        return False
 
     def cleardown(self):
         # Remain running for a little while to hoover up diagnostics, etc

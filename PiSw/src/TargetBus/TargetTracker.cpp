@@ -926,6 +926,11 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
         _pageOutForInjectionActive = false;
 
         // TODO DEBUG
+        // BusAccess::rawBusControlMuxSet(BR_MUX_LADDR_CLR_BAR_LOW);
+        // microsDelay(1);
+        // BusAccess::rawBusControlMuxClear();
+
+        // TODO DEBUG
         // int val = digitalRead(8);
         // for (int i = 0; i < 5; i++)
         // {

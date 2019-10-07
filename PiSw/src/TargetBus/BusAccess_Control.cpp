@@ -136,7 +136,33 @@ void BusAccess::controlRelease()
 {
     // Prime flip-flop that skips refresh cycles
     // So that the very first MREQ cycle after a BUSRQ/BUSACK causes a WAIT to be generated
-    // (if enabled)
+    // (if memory waits are enabled)
+
+    if (_hwVersionNumber == 17)
+    {
+        // Set M1 high via the PIB
+        // Need to make data direction out in case FF OE is active
+        WR32(ARM_GPIO_GPCLR0, BR_DATA_DIR_IN_MASK);
+        pibSetOut();
+        WR32(ARM_GPIO_GPSET0, BR_V17_M1_PIB_BAR_MASK | BR_IORQ_BAR_MASK);
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
+        WR32(ARM_GPIO_GPCLR0, BR_MREQ_BAR_MASK);
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_MREQ_FF_RESET);
+        WR32(ARM_GPIO_GPSET0, BR_MREQ_BAR_MASK);
+        pibSetIn();
+    }
+    else
+    {   
+        // Set M1 high (and other control lines)
+        WR32(ARM_GPIO_GPSET0, BR_V20_M1_BAR_MASK | BR_IORQ_BAR_MASK | BR_RD_BAR_MASK | BR_WR_BAR_MASK | BR_MREQ_BAR_MASK);
+        // Pulse MREQ to prime the FF
+        // For V2.0 hardware this also clears the FF that controls data bus output enables (i.e. disables data bus output)
+        // but that doesn't work on V1.7 hardware as BUSRQ holds the FF active
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_MREQ_FF_RESET);
+        WR32(ARM_GPIO_GPCLR0, BR_MREQ_BAR_MASK);
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_MREQ_FF_RESET);
+        WR32(ARM_GPIO_GPSET0, BR_MREQ_BAR_MASK);
+    }
 
 #ifdef ATTEMPT_TO_CLEAR_WAIT_FF_WHILE_STILL_IN_BUSRQ
 

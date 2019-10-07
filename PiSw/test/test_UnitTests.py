@@ -2,6 +2,7 @@ from CommonTestCode import CommonTest
 import time
 import logging
 import random
+from datetime import datetime
 
 # This is a program for testing the BusRaider firmware
 # It requires either:
@@ -820,17 +821,18 @@ def test_regGetTest_requiresPaging():
     regsGot = []
     addr = 0
     for i in range(22):
-        # logger.debug(f"i={i}")
+        # logger.error(f"i={i}")
         commonTest.sendFrame("stepInto", b"{\"cmdName\":\"stepInto\"}\0")
-        time.sleep(.2)
+        time.sleep(0.02)
         addr += testInstrLens[i % len(testInstrLens)]
         if i % len(testInstrLens) == len(testInstrLens) - 1:
             addr = 0
         regsStr = f"PC={addr:04x}"
         regsExpected.append(regsStr)
-        commonTest.sendFrame("getRegs", b"{\"cmdName\":\"getRegs\"}\0")
-        time.sleep(.2)
-
+        commonTest.sendFrame("getRegs", b"{\"cmdName\":\"getRegs\"}\0", "getRegsResp")
+        # print(str(datetime.now()))
+        commonTest.awaitResponse(1000)
+    
     # Check status
     commonTest.sendFrame("busStatus", b"{\"cmdName\":\"busStatus\"}\0")
     time.sleep(2)
@@ -842,3 +844,4 @@ def test_regGetTest_requiresPaging():
     commonTest.cleardown()
     assert(testStats["unknownMsgCount"] == 0)
     assert(testStats["regsOk"])
+
