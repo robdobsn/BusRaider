@@ -163,7 +163,7 @@ bool ZEsarUXInterface::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const u
         // Handle the zesarux frame - extract command string
         uint32_t maxContentLen = ZEsarUX_CMD_MAX_LEN-1 < paramsLen ? ZEsarUX_CMD_MAX_LEN-1 : paramsLen;
         if (maxContentLen > 0)
-            memcpy(pCommandString, (const char*)pParams, maxContentLen);
+            memcopyfast(pCommandString, (const char*)pParams, maxContentLen);
         pCommandString[maxContentLen] = 0;
 
         // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "ZESARUX cmd %s cmdLen %d contentStr %s zesaruxIdx %d", 

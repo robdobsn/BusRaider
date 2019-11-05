@@ -458,7 +458,7 @@ void McManager::hostSerialAddRxCharsToBuffer(const uint8_t* pRxChars, uint32_t r
         return;
 
     // Add to buffer
-    memcpy(_rxHostCharsBuffer+_rxHostCharsBufferLen, pRxChars, rxLen);
+    memcopyfast(_rxHostCharsBuffer+_rxHostCharsBufferLen, pRxChars, rxLen);
     _rxHostCharsBufferLen += rxLen;
 
     // DEBUG
@@ -489,7 +489,7 @@ uint32_t McManager::hostSerialReadChars(uint8_t* pBuf, uint32_t bufMaxLen)
         return 0;
 
     // Copy the chars
-    memcpy(pBuf, _rxHostCharsBuffer, charsToCopy);
+    memcopyfast(pBuf, _rxHostCharsBuffer, charsToCopy);
 
     // Move buffer down if required
     if (charsToCopy > _rxHostCharsBufferLen)

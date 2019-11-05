@@ -145,7 +145,7 @@ BR_RETURN_TYPE Hw64KRam::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t
     {
         // LogWrite(_logPrefix, LOG_DEBUG, "Hw64KRam::blockWrite %04x %d [0] %02x [1] %02x [2] %02x [3] %02x",
         //         addr, len, pBuf[0], pBuf[1], pBuf[2], pBuf[3]);
-        memcpy(pMirrorMemory+addr, pBuf, len);
+        memcopyfast(pMirrorMemory+addr, pBuf, len);
     }
     return BR_OK;
 }
@@ -174,14 +174,14 @@ BR_RETURN_TYPE Hw64KRam::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len,
     }
     if (firstPartLen > 0)
     {
-        memcpy(pBuf, pMirrorMemory+addr, firstPartLen);
+        memcopyfast(pBuf, pMirrorMemory+addr, firstPartLen);
         // LogWrite(_logPrefix, LOG_DEBUG, "Hw64KRam::blockRead %04x %d [0] %02x [1] %02x [2] %02x [3] %02x",
         //         addr, firstPartLen, pBuf[0], pBuf[1], pBuf[2], pBuf[3]);
     }
     // Check for wrap to get second section
     if (len > firstPartLen)
     {
-        memcpy(pBuf+firstPartLen, pMirrorMemory, len-firstPartLen);
+        memcopyfast(pBuf+firstPartLen, pMirrorMemory, len-firstPartLen);
         // LogWrite(_logPrefix, LOG_DEBUG, "Hw64KRam::blockRead wrap %04x %d [0] %02x [1] %02x [2] %02x [3] %02x",
         //         addr, len, pBuf[firstPartLen], pBuf[firstPartLen+1], pBuf[firstPartLen+2], pBuf[firstPartLen+3]);
     }
@@ -222,7 +222,7 @@ void Hw64KRam::tracerClone()
         if (!pSrcMemory)
             return;
         uint32_t maxLen = _mirrorMemoryLen < _tracerMemoryLen ? _mirrorMemoryLen : _tracerMemoryLen;
-        memcpy(pValMemory, pSrcMemory, maxLen);
+        memcopyfast(pValMemory, pSrcMemory, maxLen);
     }
     else
     {

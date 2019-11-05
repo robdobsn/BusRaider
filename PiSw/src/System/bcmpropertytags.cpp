@@ -101,7 +101,7 @@ bool CBcmPropertyTags::GetTags (void *pTags, unsigned nTagsSize)
 
 	pBuffer->nBufferSize = nBufferSize;
 	pBuffer->nCode = CODE_REQUEST;
-	memcpy (pBuffer->Tags, pTags, nTagsSize);
+	memcopyfast (pBuffer->Tags, pTags, nTagsSize);
 
 	uint32_t *pEndTag = (uint32_t *) (pBuffer->Tags + nTagsSize);
 	*pEndTag = PROPTAG_END;
@@ -121,7 +121,7 @@ bool CBcmPropertyTags::GetTags (void *pTags, unsigned nTagsSize)
 		return false;
 	}
 
-	memcpy (pTags, pBuffer->Tags, nTagsSize);
+	memcopyfast (pTags, pBuffer->Tags, nTagsSize);
 
 	return true;
 }

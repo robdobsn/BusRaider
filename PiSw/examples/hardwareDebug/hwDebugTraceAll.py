@@ -8,7 +8,7 @@ class Tracer:
     # Start trace
     def start(self):
         # Setup
-        self.setup("192.168.86.192", "./examples/logs", "TraceLong.txt")
+        self.setup("192.168.86.103", "./examples/logs", "TraceLong.txt")
 
         # Stop any previous tracer
         self.sendFrame("tracerStop", b"{\"cmdName\":\"tracerStop\"}\0")
@@ -35,6 +35,7 @@ class Tracer:
             j = 0
             while self.awaitingTraceResponse and j < 2000:
                 time.sleep(0.001)
+                j += 1
             if j >= 2000:
                 break
             self.sendFrame("tracerGetLong", b"{\"cmdName\":\"tracerGetBin\"}\0")
@@ -161,8 +162,8 @@ class Tracer:
         try:
             if dumpTraceFileName is not None and len(dumpTraceFileName) > 0:
                 self.dumpTraceFile = open(os.path.join(fileBase, dumpTraceFileName), "w")
-        except Exception(excp):
-            self.logger.warning("Can't open dump trace file " + os.path.join(fileBase, dumpTraceFile))
+        except Exception as excp:
+            self.logger.warning("Can't open dump trace file " + os.path.join(fileBase, dumpTraceFileName))
 
         # HDLC port
         self.tcpHdlcPort = 10001

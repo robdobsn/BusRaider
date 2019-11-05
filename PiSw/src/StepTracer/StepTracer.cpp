@@ -221,7 +221,7 @@ void StepTracer::start(bool logging, bool recordAll, bool compareToEmulated, boo
             LogWrite(FromStepTracer, LOG_DEBUG, "Block read for tracer failed %d", blockReadResult);
         uint32_t maxLen = (_tracerMemoryLen < STD_TARGET_MEMORY_LEN) ? _tracerMemoryLen : STD_TARGET_MEMORY_LEN;
         if (_pTracerMemory)
-            memcpy(_pTracerMemory, pBuf, maxLen);
+            memcopyfast(_pTracerMemory, pBuf, maxLen);
         delete [] pBuf;
 #else
         LogWrite(FromStepTracer, LOG_DEBUG, "Tracer prime from memory");
@@ -589,7 +589,7 @@ void StepTracer::getTraceBin()
     strlcat(jsonFrame, tmpStr, JSON_RESP_MAX_LEN);
 
     // Copy binary to end of buffer
-    memcpy(jsonFrame+strlen(jsonFrame)+1, (uint8_t*)binElems, binDataLen);
+    memcopyfast(jsonFrame+strlen(jsonFrame)+1, (uint8_t*)binElems, binDataLen);
 
     CommandHandler::sendWithJSON("rdp", "", 0, (const uint8_t*)jsonFrame, strlen(jsonFrame)+1+binDataLen);
 

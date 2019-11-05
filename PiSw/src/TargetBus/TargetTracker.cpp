@@ -287,7 +287,7 @@ int TargetTracker::getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBu
 
     if (codeMaxlen >= sizeof(regSetInstructions))
     {
-        memcpy(pCodeBuffer, regSetInstructions, sizeof(regSetInstructions));
+        memcopyfast(pCodeBuffer, regSetInstructions, sizeof(regSetInstructions));
         return sizeof(regSetInstructions);
     }
     return 0;

@@ -239,7 +239,7 @@ void BusRaiderApp::statusDisplayUpdate()
         {
             strlcat(statusStr, _esp32ESP32Version, MAX_STATUS_STR_LEN);
             strlcat(statusStr, BusAccess::getHwVersion() == 17 ? " (HW V1.7)" : " (HW V2.0)", MAX_STATUS_STR_LEN);
-            strlcat(statusStr, "          ", MAX_STATUS_STR_LEN);
+            strlcat(statusStr, "        ", MAX_STATUS_STR_LEN);
             _display.statusPut(Display::STATUS_FIELD_ESP_VERSION, Display::STATUS_NORMAL, statusStr);
         }
 

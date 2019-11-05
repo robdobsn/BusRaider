@@ -411,7 +411,7 @@ void CommandHandler::handleFileBlock(const char* pCmdJson, const uint8_t* pData,
         return;
 
     // Store the data
-    memcpy(_pReceivedFileDataPtr+blockStart, pData, dataLen);
+    memcopyfast(_pReceivedFileDataPtr+blockStart, pData, dataLen);
     _receivedFileBytesRx += dataLen;
 
     // Add to count of blocks
@@ -539,7 +539,7 @@ void CommandHandler::sendWithJSON(const char* cmdName, const char* cmdJson, uint
     if (dataLen > 0)
     {
         if (pData)
-            memcpy(dataFrame+dataFrameBinaryPos, pData, dataLen);
+            memcopyfast(dataFrame+dataFrameBinaryPos, pData, dataLen);
         else
             return;
     }

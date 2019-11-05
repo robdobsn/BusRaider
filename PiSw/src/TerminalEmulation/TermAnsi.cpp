@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../system/lowlev.h"
 #include "TermAnsi.h"
 
 #define MAX(x, y) (((size_t)(x) > (size_t)(y)) ? (size_t)(x) : (size_t)(y))
@@ -199,10 +200,10 @@ void TermAnsi::scrollUp(size_t startRow, size_t n)
     if (n){
         TermChar* pBuf = new TermChar[n*_cols];
 
-        memcpy(pBuf, _pCharBuffer + startRow * _cols, n * sizeof(TermChar) * _cols);
+        memcopyfast(pBuf, _pCharBuffer + startRow * _cols, n * sizeof(TermChar) * _cols);
         memmove(_pCharBuffer + startRow * _cols, _pCharBuffer + (startRow + n) * _cols,
                (_rows - n - startRow) * sizeof(TermChar) * _cols);
-        memcpy(_pCharBuffer + (_rows - n) * _cols,
+        memcopyfast(_pCharBuffer + (_rows - n) * _cols,
                pBuf, n * sizeof(TermChar) * _cols);
         
         delete [] pBuf;
@@ -222,10 +223,10 @@ void TermAnsi::scrollDown(size_t startRow, size_t n)
     if (n){
         TermChar* pBuf = new TermChar[n*_cols];
 
-        memcpy(pBuf, _pCharBuffer + (_rows-n) * _cols, n * sizeof(TermChar) * _cols);
+        memcopyfast(pBuf, _pCharBuffer + (_rows-n) * _cols, n * sizeof(TermChar) * _cols);
         memmove(_pCharBuffer + (startRow+n) * _cols, _pCharBuffer + startRow * _cols,
                (_rows - n - startRow) * sizeof(TermChar) * _cols);
-        memcpy(_pCharBuffer + startRow * _cols,
+        memcopyfast(_pCharBuffer + startRow * _cols,
                pBuf, n * sizeof(TermChar) * _cols);
         
         delete [] pBuf;

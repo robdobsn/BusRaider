@@ -295,13 +295,15 @@ uint32_t McTerminal::getMirrorChanges(uint8_t* pMirrorChangeBuf, uint32_t mirror
                 changeElemPacked.fore = _pTerminalEmulation->_pCharBuffer[cellIdx]._foreColour;
                 changeElemPacked.back = _pTerminalEmulation->_pCharBuffer[cellIdx]._backColour;
                 changeElemPacked.attr = _pTerminalEmulation->_pCharBuffer[cellIdx]._attribs;
-                memcpy(pMirrorChangeBuf+curPos, &changeElemPacked, sizeof(changeElemPacked));
+                memcopyfast(pMirrorChangeBuf+curPos, &changeElemPacked, sizeof(changeElemPacked));
                 curPos += sizeof(changeElemPacked);
                 _screenMirrorCache[cellIdx] = _pTerminalEmulation->_pCharBuffer[cellIdx];
             }
         }
     }
-    // LogWrite(_logPrefix, LOG_DEBUG, "Packing %d", sizeof(_screenMirrorCache));
+    // LogWrite(_logPrefix, LOG_DEBUG, "BufMax %d Packing %d rows %d cols %d packedElemSize %d mirrorChangeStart %d curPos %d buf[0] %x buf[1] %x buf[2] %x buf[3] %x", 
+    //             mirrorChangeMaxLen, sizeof(_screenMirrorCache), _pTerminalEmulation->_rows, _pTerminalEmulation->_cols, 
+    //             sizeof(changeElemPacked), mirrorChangeStart, curPos, pMirrorChangeBuf[0], pMirrorChangeBuf[1], pMirrorChangeBuf[2], pMirrorChangeBuf[3]);
 
     return (mirrorChangeStart == curPos) ? 0 : curPos;
 }

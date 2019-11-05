@@ -395,7 +395,7 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *frameBuffer, int frame
     }
     else if (cmdName.equalsIgnoreCase("mirrorScreen"))
     {
-        // Log.trace("Mirror screen len %d\n", frameLength);
+        // Log.trace("Mirror screen len %d buf[52]... %x %x %x %x\n", frameLength, frameBuffer[52], frameBuffer[53], frameBuffer[54], frameBuffer[55]);
         _pWebServer->webSocketSend(frameBuffer, frameLength);
     }
     else if ((cmdName.endsWith("Resp")))

@@ -861,7 +861,7 @@ BR_RETURN_TYPE BusController::blockAccessSync(uint32_t addr, uint8_t* pData, uin
     _memAccessAddr = addr;
     _memAccessIo = iorq;
     if (write)
-        memcpy(_memAccessDataBuf, pData, len);
+        memcopyfast(_memAccessDataBuf, pData, len);
     BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_GENERAL);
     // Now enter a loop to wait for the bus action to complete
     static const uint32_t MAX_WAIT_FOR_BUS_ACCESS_US = 50000;
@@ -883,6 +883,6 @@ BR_RETURN_TYPE BusController::blockAccessSync(uint32_t addr, uint8_t* pData, uin
         return BR_NO_BUS_ACK;
     }
     if (!write)
-        memcpy(pData, _memAccessDataBuf, len);
+        memcopyfast(pData, _memAccessDataBuf, len);
     return BR_OK;
 }

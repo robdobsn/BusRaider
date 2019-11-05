@@ -4,6 +4,7 @@
 #include "TargetCPUZ80.h"
 #include <string.h>
 #include <stdlib.h>
+#include "../system/lowlev.h"
 
 // Module name
 static const char FromTargetCPUZ80[] = "TargetCPUZ80";
@@ -89,7 +90,7 @@ int TargetCPUZ80::getInjectToSetRegs(Z80Registers& regs, uint8_t* pCodeBuffer, u
 
     if (codeMaxlen >= sizeof(regSetInstructions))
     {
-        memcpy(pCodeBuffer, regSetInstructions, codeMaxlen);
+        memcopyfast(pCodeBuffer, regSetInstructions, codeMaxlen);
         return sizeof(regSetInstructions);
     }
     return 0;
@@ -172,7 +173,7 @@ int TargetCPUZ80::getSnippetToSetRegs(uint32_t codeLocation, Z80Registers& regs,
 
     if (codeMaxlen >= sizeof(regSetInstructions))
     {
-        memcpy(pCodeBuffer, regSetInstructions, codeMaxlen);
+        memcopyfast(pCodeBuffer, regSetInstructions, codeMaxlen);
         return sizeof(regSetInstructions);
     }
     return 0;
