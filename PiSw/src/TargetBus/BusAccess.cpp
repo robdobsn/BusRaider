@@ -107,6 +107,7 @@ void BusAccess::init()
     setPinOut(BR_DATA_DIR_IN, 1);
 
     // Paging initially inactive
+    setPinOut(BR_PAGING_RAM_PIN, 1);
     busPagePinSetActive(false);
 
     // Setup MREQ and IORQ enables
