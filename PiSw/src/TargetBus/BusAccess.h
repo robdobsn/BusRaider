@@ -438,6 +438,9 @@ public:
         _hwVersionNumber = hwVersion;
     }
 
+    // Control of bus paging pin
+    static void busPagePinSetActive(bool active);
+
     // Debug
     static void isrAssert(int code);
     static void isrValue(int code, int val);
@@ -710,7 +713,7 @@ private:
     static void waitHandleReadRelease();
 
     // Paging
-    static void pagingPageIn();
+    static void busAccessCallbackPageIn();
 
     // Read and write bytes
     static void byteWrite(uint32_t byte, int iorq);

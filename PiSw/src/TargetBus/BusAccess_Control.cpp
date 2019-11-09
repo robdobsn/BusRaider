@@ -967,13 +967,19 @@ void BusAccess::setSignal(BR_BUS_ACTION busAction, bool assertSignal)
     }
 }
 
-void BusAccess::pagingPageIn()
+void BusAccess::busAccessCallbackPageIn()
 {
     for (int i = 0; i < _busSocketCount; i++)
     {
         if (_busSockets[i].enabled)
             _busSockets[i].busActionCallback(BR_BUS_ACTION_PAGE_IN_FOR_INJECT, BR_BUS_ACTION_GENERAL);
     }
+}
+
+// Paging pin on the bus
+void BusAccess::busPagePinSetActive(bool active)
+{
+    digitalWrite(BR_PAGING_RAM_PIN, (_hwVersionNumber == 17) ? active : !active);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

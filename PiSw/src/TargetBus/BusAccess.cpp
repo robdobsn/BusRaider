@@ -107,7 +107,7 @@ void BusAccess::init()
     setPinOut(BR_DATA_DIR_IN, 1);
 
     // Paging initially inactive
-    setPinOut(BR_PAGING_RAM_PIN, 0);
+    busPagePinSetActive(false);
 
     // Setup MREQ and IORQ enables
     waitSetupMREQAndIORQEnables();
@@ -140,8 +140,8 @@ void BusAccess::init()
 // Reset the bus raider bus
 void BusAccess::busAccessReset()
 {
-    // Instruct hardware to page in
-    pagingPageIn();
+    // Instruct extension hardware to page in
+    busAccessCallbackPageIn();
     
     // Clear mux
     muxClear();
@@ -712,7 +712,7 @@ void BusAccess::waitHandleReadRelease()
             // Check if paging in/out is required
             if (_targetPageInOnReadComplete)
             {
-                pagingPageIn();
+                busAccessCallbackPageIn();
                 _targetPageInOnReadComplete = false;
             }
 
@@ -738,7 +738,7 @@ void BusAccess::waitHandleNew()
     // Check if paging in/out is required
     if (_targetPageInOnReadComplete)
     {
-        pagingPageIn();
+        busAccessCallbackPageIn();
         _targetPageInOnReadComplete = false;
     }
 

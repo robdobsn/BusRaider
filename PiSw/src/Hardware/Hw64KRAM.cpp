@@ -42,13 +42,13 @@ void Hw64KRam::setMemoryEmulationMode(bool pageOut)
     if (pageOut)
     {
         // Page out
-        digitalWrite(BR_PAGING_RAM_PIN, 1);
+        BusAccess::busPagePinSetActive(true);
     }
     else
     {
         // Release paging unless otherwise paged out
         if (!_currentlyPagedOut)
-            digitalWrite(BR_PAGING_RAM_PIN, 0);
+            BusAccess::busPagePinSetActive(false);
     }
 }
 
@@ -66,13 +66,13 @@ void Hw64KRam::pageOutForInjection(bool pageOut)
     // Page out
     if (pageOut)
     {
-        digitalWrite(BR_PAGING_RAM_PIN, 1);
+        BusAccess::busPagePinSetActive(true);
     }
     else
     {
         // Release paging unless emulation in progress
         if (!_memoryEmulationMode)
-            digitalWrite(BR_PAGING_RAM_PIN, 0);
+            BusAccess::busPagePinSetActive(false);
     }
 }
 
@@ -81,7 +81,7 @@ void Hw64KRam::hwReset()
 {
     _pagingEnabled = true;
     _currentlyPagedOut = false;
-    digitalWrite(BR_PAGING_RAM_PIN, 0);
+    BusAccess::busPagePinSetActive(false);
 }
 
 // Mirror mode
