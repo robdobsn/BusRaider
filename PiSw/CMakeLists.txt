@@ -31,13 +31,17 @@ set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -nostartfiles" )
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall" )
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wextra" )
 set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DRASPPI=1" )
+# set( CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -v" ) # Verbose output
 
 set( CMAKE_CXX_FLAGS "${CMAKE_C_FLAGS}" )
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-rtti" )
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions" )
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-sized-deallocation" )
+set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -isystem \"${PROJECT_SOURCE_DIR}/src/circle/include\"")
 
 set( CMAKE_EXE_LINKER_FLAGS "-Wl,-T,${PROJECT_SOURCE_DIR}/memmap" )
+
+# include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/src")
 
 add_custom_target(unittest_run 
   COMMAND python ${PROJECT_SOURCE_DIR}/test/SendAndTest.py test1 none 1 COM12 460800 ${PROJECT_SOURCE_DIR} > testResult.txt
@@ -49,7 +53,7 @@ add_custom_command(TARGET ${PROJECT_ELF} POST_BUILD
   # COMMAND ${CMAKE_OBJCOPY} -O srec --srec-forceS3 $<TARGET_FILE:${PROJECT_ELF}> ${PROJECT_SREC}
   # COMMAND python ${PROJECT_SOURCE_DIR}/test/UploadToBusRaider.py 0 srec COM39 921600 ${PROJECT_SOURCE_DIR}
   # COMMAND python ${PROJECT_SOURCE_DIR}/tools/UploadToBusRaider.py 0 hdlc COM7 921600 ${PROJECT_SOURCE_DIR}
-  COMMAND curl -F "file=@${PROJECT_SOURCE_DIR}/bin/kernel.img" http://192.168.86.197/uploadpisw
+  COMMAND curl -F "file=@${PROJECT_SOURCE_DIR}/bin/kernel.img" http://192.168.86.123/uploadpisw
   # COMMAND "C:/Program Files (x86)/teraterm/ttermpro.exe" /R ${PROJECT_SOURCE_DIR}/bin/kernel.img /speed=115200 /c=39
   # COMMAND ${CMAKE_OBJCOPY} -O ihex $<TARGET_FILE:${PROJECT_ELF}> ${PROJECT_HEX}
   # COMMAND ${CMAKE_OBJCOPY} -O srec --srec-forceS3 $<TARGET_FILE:${PROJECT_ELF}> ${PROJECT_SREC}
