@@ -1,11 +1,10 @@
 # BusRaider by Rob Dobson
 ## Memory Mapped Graphics and Single-Step Debugging for Retro Computer
 
-BusRaider uses a Raspberry Pi Zero based PCB to snoop on the bus of a 
+BusRaider is an add-on circuit board for the RC2014 retro computer.
+It uses a Raspberry Pi Zero and an ESP32 to snoop on the bus of a 
 host vintage 8 bit CPU and provide things like a memory mapped display,
-keyboard and single-step debugging. The PCB is designed for the RC2014.
-
-This work is inspired by PiGFX and RC2014
+WiFi connection, keyboard and single-step debugging
 
 More information is in the blog post [https://robdobson.com/2018/08/trs80-galaxy-invasion-on-rc2014/](https://robdobson.com/2018/08/trs80-galaxy-invasion-on-rc2014/)
 and [https://robdobson.com/2018/08/trs80-galaxy-invasion-on-rc2014/](https://robdobson.com/2018/09/raid-the-bus-and-the-speccy-lives/)
@@ -18,12 +17,12 @@ and [https://robdobson.com/2018/08/trs80-galaxy-invasion-on-rc2014/](https://rob
 the Raspberry Pi](https://github.com/raspberrypi/firmware/tree/master/boot)
 3. Insert the card and reboot the Pi on the Bus Raider PCB
 
-As soon as your BusRaider is turned on, the message "RC2014 Bus Raider V1.x.xxx" should be
+As soon as your BusRaider is turned on, the message "RC2014 Bus Raider V2.x.xxx" should be
 displayed on the HDMI video stream along with a display area for the Retro computer.
 
 ## Documentation
 
-For full documentation see the [BusRaider 1.x Manual.pdf](https://github.com/robdobsn/PiBusRaider/blob/master/Docs/BusRaider%20Current%20Manual.pdf)
+For full documentation see the [BusRaider Current Manual.pdf](https://github.com/robdobsn/PiBusRaider/blob/master/Docs/BusRaider%20Current%20Manual.pdf)
 
 ## License
 
