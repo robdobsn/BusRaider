@@ -4,8 +4,8 @@
 
 .section ".text.startup"
 
-.global _startup
-_startup:
+.global _start
+_start:
     ldr pc, _reset_h
     ldr pc, _undefined_instruction_h
     ldr pc, _software_interrupt_h
@@ -26,10 +26,10 @@ _fast_interrupt_h:           .word   fiq_handler_
 
 // Linker script file used to set these definitions
 .global bss_start
-bss_start: .word __bss_start__
+bss_start: .word __bss_start
 
 .global bss_end
-bss_end: .word __bss_end__
+bss_end: .word __bss_end
 
 // Program entry point
 _reset_:

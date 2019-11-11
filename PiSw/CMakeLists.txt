@@ -12,7 +12,7 @@ set(LIBUSPI_A ${PROJECT_SOURCE_DIR}/uspi/lib/libuspi.a)
 
 project($PROJ_NAME C CXX ASM)
 
-set(ASM_SOURCE_FILES src/System/startup.s src/System/lowlev.s)
+set(ASM_SOURCE_FILES src/System/startup.S src/System/lowlev.S)
 file(GLOB_RECURSE C_SOURCE_FILES "./src/*.c")
 file(GLOB_RECURSE CXX_SOURCE_FILES "./src/*.cpp")
 
@@ -20,7 +20,7 @@ add_custom_command(OUTPUT ${LIBUSPI_A}
     COMMAND "make" "ARCH=-march=armv6j -mtune=arm1176jzf-s -mfloat-abi=hard -mfpu=vfp" 
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/uspi/lib/")
 
-add_executable(${PROJECT_ELF} "${ASM_SOURCE_FILES}" "${C_SOURCE_FILES}" "${CXX_SOURCE_FILES}" ${LIBUSPI_A})
+add_executable(${PROJECT_ELF} "${ASM_SOURCE_FILES}" "${C_SOURCE_FILES}" "${CXX_SOURCE_FILES}" ${LIBUSPI_A} ${PROJECT_SOURCE_DIR}/busraider.ld)
 
 target_link_libraries(${PROJECT_ELF} ${PROJECT_SOURCE_DIR}/uspi/lib/libuspi.a)
 
@@ -39,7 +39,7 @@ set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-exceptions" )
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-sized-deallocation" )
 set( CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -isystem \"${PROJECT_SOURCE_DIR}/src/circle/include\"")
 
-set( CMAKE_EXE_LINKER_FLAGS "-Wl,-T,${PROJECT_SOURCE_DIR}/memmap" )
+set( CMAKE_EXE_LINKER_FLAGS "-Wl,-T,${PROJECT_SOURCE_DIR}/busraider.ld,--section-start=.init=0x8000" )
 
 # include_directories(SYSTEM "${PROJECT_SOURCE_DIR}/src")
 
