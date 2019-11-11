@@ -12,7 +12,7 @@ set(LIBUSPI_A ${PROJECT_SOURCE_DIR}/uspi/lib/libuspi.a)
 
 project($PROJ_NAME C CXX ASM)
 
-set(ASM_SOURCE_FILES src/System/startup.s src/System/lowlev.s)
+set(ASM_SOURCE_FILES src/System/startup.S src/System/lowlev.S)
 file(GLOB_RECURSE C_SOURCE_FILES "./src/*.c")
 file(GLOB_RECURSE CXX_SOURCE_FILES "./src/*.cpp")
 
