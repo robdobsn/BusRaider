@@ -95,6 +95,10 @@ private:
     // Reset
     void hwReset();
 
+    // Access linear or banked memory
+    BR_RETURN_TYPE physicalBlockAccess(uint32_t addr, const uint8_t* pBuf, uint32_t len,
+            bool busRqAndRelease, bool iorq, bool write);
+            
     // Base name
     static const char* _baseName;
 };

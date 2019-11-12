@@ -63,8 +63,8 @@ void HwRAMROM::configure([[maybe_unused]] const char* jsonConfig)
 
     uint32_t newMemSizeBytes = memSizeK*1024;
 
-    LogWrite(_logPrefix, LOG_DEBUG, "curMemSizeBytes %d newMemSizeBytes %d memSizeK %d param %s", 
-            _memCardSizeBytes, newMemSizeBytes, memSizeK, memSizeStr);
+    // LogWrite(_logPrefix, LOG_DEBUG, "curMemSizeBytes %d newMemSizeBytes %d memSizeK %d param %s", 
+    //         _memCardSizeBytes, newMemSizeBytes, memSizeK, memSizeStr);
 
     if (_memCardSizeBytes != newMemSizeBytes)
     {
@@ -196,6 +196,50 @@ void HwRAMROM::mirrorClone()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Handling of linear and banked physical memory
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+BR_RETURN_TYPE HwRAMROM::physicalBlockAccess(uint32_t addr, const uint8_t* pBuf, uint32_t len,
+            [[maybe_unused]] bool busRqAndRelease, bool iorq, bool write)
+{
+    // Check if banked registers need to be changed
+    // if linear
+    //   if topAddress below 64K
+    //     just access linearly
+    //   else 
+    //     switch into bank mode and use bank regs to access banks
+    // else
+    //   store bank regs, then use bank regs to access banks, restore bank regs
+    if (_memoryCardOpMode == MEM_CARD_OP_MODE_LINEAR)
+    {
+        if (addr + len <= 65536)
+        {
+            if (write)
+                return BusAccess::blockWrite(addr, pBuf, len, busRqAndRelease, iorq);
+            return BusAccess::blockRead(addr, const_cast<uint8_t*>(pBuf), len, busRqAndRelease, iorq);
+        }
+        else
+        {
+            // Switch card to banked mode
+
+            // access memory using bank 0
+
+            // Switch card back to linear mode
+
+        }
+    }
+    else
+    {
+            // Store bank register contents
+
+            // access memory using bank 0
+            
+            // Restore bank register contents
+    }
+    return BR_NOT_HANDLED;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Block access
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -206,8 +250,8 @@ BR_RETURN_TYPE HwRAMROM::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t
     // Check forced mirror access
     if (!forceMirrorAccess)
     {
-        // Access memory via BusAccess
-        return BusAccess::blockWrite(addr, pBuf, len, busRqAndRelease, iorq);
+        // Access physical memory
+        return physicalBlockAccess(addr, pBuf, len, busRqAndRelease, iorq, true);
     }
 
     // Check for memory request
@@ -238,8 +282,8 @@ BR_RETURN_TYPE HwRAMROM::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len,
     // Check forced mirror access
     if (!forceMirrorAccess)
     {
-        // Access memory via BusAccess
-        return BusAccess::blockRead(addr, pBuf, len, busRqAndRelease, iorq);
+        // Access physical memory
+        return physicalBlockAccess(addr, pBuf, len, busRqAndRelease, iorq, false);
     }
 
     // Check for memory request
