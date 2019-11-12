@@ -83,7 +83,8 @@ HwBase* HwManager::_pHw[HwManager::MAX_HARDWARE];
 int HwManager::_numHardware = 0;
 
 // Default hardware list - to use if no hardware specified
-const char* HwManager::_pDefaultHardwareList = "[{\"name\":\"RAMROM\",\"enable\":1}]";
+const char* HwManager::_pDefaultHardwareList = 
+        "[{\"name\":\"RAMROM\",\"enable\":1,\"pageOut\":\"busPAGE\",\"bankHw\":\"LINPAGE\",\"memSizeK\":64}]";
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Init
@@ -229,6 +230,8 @@ uint32_t HwManager::getMaxAddress()
 BR_RETURN_TYPE HwManager::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, 
                 bool busRqAndRelease, bool iorq, bool forceMirrorAccess)
 {
+    // LogWrite(FromHwManager, LOG_DEBUG, "blockWrite");
+
     // Check if bus access is available
     forceMirrorAccess = forceMirrorAccess || (!TargetTracker::busAccessAvailable());
 

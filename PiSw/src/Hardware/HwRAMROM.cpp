@@ -16,13 +16,43 @@ const char* HwRAMROM::_baseName = "RAMROM";
 
 HwRAMROM::HwRAMROM() : HwBase()
 {
-    _mirrorMemoryLen = 64*1024;
+    _memCardSizeBytes = 64*1024;
+    _mirrorMemoryLen = _memCardSizeBytes;
     _pMirrorMemory = NULL;
-    _tracerMemoryLen = _mirrorMemoryLen;
+    _mirrorMemAllocNotified = false;
+    _tracerMemoryLen = _memCardSizeBytes;
     _pTracerMemory = NULL;
+    _tracerMemAllocNotified = false;
     _pName = _baseName;
     _memoryEmulationMode = false;
+    _memoryCardOpMode = MEM_CARD_OP_MODE_LINEAR;
+    _bankHwBaseIOAddr = BANK_16K_BASE_ADDR;
+    _bankHwPageEnIOAddr = BANK_16K_PAGE_ENABLE;
     hwReset();
+}
+
+// Configure
+void HwRAMROM::configure([[maybe_unused]] const char* jsonConfig)
+{
+    LogWrite(_logPrefix, LOG_DEBUG, "configure %s", jsonConfig);
+
+    uint32_t newMemSizeBytes = 64*1024;
+    if (_memCardSizeBytes != newMemSizeBytes)
+    {
+        _memCardSizeBytes = newMemSizeBytes;
+        _mirrorMemoryLen = _memCardSizeBytes;
+        _tracerMemoryLen = _memCardSizeBytes;
+        if (_pMirrorMemory)
+        {
+            delete [] _pMirrorMemory;
+            _pMirrorMemory = NULL;
+        }
+        if (_pTracerMemory)
+        {
+            delete [] _pTracerMemory;
+            _pTracerMemory = NULL;
+        }
+    }
 }
 
 // Set memory emulation mode - page out real RAM/ROM and use mirror memory
@@ -82,6 +112,8 @@ void HwRAMROM::hwReset()
     _pagingEnabled = true;
     _currentlyPagedOut = false;
     BusAccess::busPagePinSetActive(false);
+    for (int i = 0; i < NUM_BANKS; i++)
+        _bankRegisters[i] = 0;
 }
 
 // Mirror mode
@@ -98,7 +130,15 @@ void HwRAMROM::setMirrorMode(bool val)
 uint8_t* HwRAMROM::getMirrorMemory()
 {
     if (!_pMirrorMemory)
+    {
         _pMirrorMemory = new uint8_t[_mirrorMemoryLen];
+        if (!_mirrorMemAllocNotified)
+        {
+            _mirrorMemAllocNotified = true;
+            LogWrite(_logPrefix, LOG_DEBUG, "Alloc for mirror memory len %d %s", 
+                    _mirrorMemoryLen, _pMirrorMemory ? "OK" : "FAIL");
+        }
+    }
     return _pMirrorMemory;
 }
 
@@ -171,7 +211,7 @@ BR_RETURN_TYPE HwRAMROM::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len,
     if (iorq)
         return BR_NOT_HANDLED;
 
-    // Tracer memory
+    // Access mirror memory
     uint8_t* pMirrorMemory = getMirrorMemory();
     if (!pMirrorMemory)
         return BR_ERR;
@@ -269,7 +309,16 @@ void HwRAMROM::tracerHandleAccess(uint32_t addr, uint32_t data,
 uint8_t* HwRAMROM::getTracerMemory()
 {
     if (!_pTracerMemory)
+    {
         _pTracerMemory = new uint8_t[_tracerMemoryLen];
+        if (!_tracerMemAllocNotified)
+        {
+            _tracerMemAllocNotified = true;
+            LogWrite(_logPrefix, LOG_DEBUG, "Alloc for tracer memory len %d %s", 
+                    _tracerMemoryLen, _pTracerMemory ? "OK" : "FAIL");
+        }
+    }
+
     return _pTracerMemory;
 }
 
@@ -339,4 +388,22 @@ void HwRAMROM::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]]
                 retVal = (retVal & 0xffff0000) | pMemory[addr];
         }
     }
+
+    // // Check for address range used by this card
+    // if (_pagingEnabled && ((addr & 0xff) >= _bankHwBaseIOAddr) && ((addr & 0xff) < _bankHwBaseIOAddr + NUM_BANKS))
+    // {
+    //     if(flags & BR_CTRL_BUS_WR_MASK)
+    //     {
+    //         _bankRegisters[(addr & 0xff) - _bankHwBaseIOAddr] = data;
+    //         //TODO
+    //         // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B + (addr & 0xff) - _bankHwBaseIOAddr, data);
+    //     }
+    // }
+    // else if ((addr & 0xff) == _bankHwPageEnIOAddr)
+    // {
+    //     if (flags & BR_CTRL_BUS_WR_MASK)
+    //     {
+    //         _pagingEnabled = ((data & 0x01) != 0);
+    //     }
+    // }
 }

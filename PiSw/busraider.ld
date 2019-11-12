@@ -7,7 +7,7 @@ MEMORY
 }
 
 heap_size = 50M;
-otaUpdateBufferSize = 10M;
+otaUpdateBufferSize = 20M;
 
 SECTIONS
 {
