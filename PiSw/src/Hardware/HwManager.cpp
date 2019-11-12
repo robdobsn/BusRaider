@@ -11,7 +11,6 @@
 #include "../System/ee_sprintf.h"
 #include "../System/PiWiring.h"
 #include "HwRAMROM.h"
-#include "Hw1MBRamRom.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Variables
@@ -84,7 +83,7 @@ HwBase* HwManager::_pHw[HwManager::MAX_HARDWARE];
 int HwManager::_numHardware = 0;
 
 // Default hardware list - to use if no hardware specified
-const char* HwManager::_pDefaultHardwareList = "[{\"name\":\"64KRAM\",\"enable\":1}]";
+const char* HwManager::_pDefaultHardwareList = "[{\"name\":\"RAMROM\",\"enable\":1}]";
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Init
@@ -101,8 +100,7 @@ void HwManager::init()
         _commsSocketId = CommandHandler::commsSocketAdd(_commsSocketInfo);
 
     // Add hardware - HwBase constructor adds to HwManager
-    new Hw64KRam();
-    new Hw1MBRamRom();
+    new HwRAMROM();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -358,8 +356,9 @@ bool HwManager::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t*
             return false;
         bool enable = strtoul(enableVal, NULL, 10) != 0;
 
-        // Enable hardware
+        // Enable hardware and configure
         bool foundOk = enableHw(hwName, enable);
+        configureHw(hwName, pCmdJson);
 
         // Ok
         ee_sprintf(pRespJson, "\"err\":\"%s\"", foundOk ? "ok" : "notFound");
@@ -464,6 +463,22 @@ void HwManager::disableAll()
     }
 }
 
+// Configure
+void HwManager::configureHw(const char* hwName, const char* hwDefJson)
+{
+    // Find hardware and enable
+    for (int i = 0; i < _numHardware; i++)
+    {
+        if (!_pHw[i])
+            continue;
+        if (strcasecmp(_pHw[i]->name(), hwName) == 0)
+        {
+            _pHw[i]->configure(hwDefJson);
+            break;
+        }
+    }
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Setup from JSON
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -519,14 +534,7 @@ void HwManager::setupFromJson(const char* jsonKey, const char* hwJson)
 
         LogWrite(FromHwManager, LOG_DEBUG, "Hardware %d Name %s Enable %d", hwIdx, hwName, en);
 
-        // Configure each piece of hardware with this information
-        // only the named one will actually use the configuration
-        for (int i = 0; i < _numHardware; i++)
-        {
-            if (!_pHw[i])
-                continue;
-            _pHw[i]->configure(hwName, hwDefJson);
-        }
+        // Configure hardware
+        configureHw(hwName, hwDefJson);
     }    
-
 }

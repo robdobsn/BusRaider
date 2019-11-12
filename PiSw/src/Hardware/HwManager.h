@@ -76,6 +76,7 @@ public:
     // Enable/Disable
     static bool enableHw(const char* hwName, bool enable);
     static void disableAll();
+    static void configureHw(const char* hwName, const char* hwDefJson);
 
     // Get mirror memory for address
     static uint8_t* getMirrorMemForAddr(uint32_t addr);

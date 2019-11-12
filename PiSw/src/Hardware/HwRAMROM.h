@@ -1,12 +1,12 @@
-// Bus Raider Hardware RC2014 64K RAM
+// Bus Raider Hardware RC2014 RAMROM
 // Rob Dobson 2019
 
 #include "HwBase.h"
 
-class Hw64KRam : public HwBase
+class HwRAMROM : public HwBase
 {
 public:
-    Hw64KRam();
+    HwRAMROM();
 
     // Page out RAM/ROM due to emulation
     virtual void setMemoryEmulationMode(bool pageOut);

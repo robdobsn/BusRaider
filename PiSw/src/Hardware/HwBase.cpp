@@ -85,7 +85,7 @@ void HwBase::tracerHandleAccess([[maybe_unused]] uint32_t addr, [[maybe_unused]]
 }
 
 // Configure
-void HwBase::configure([[maybe_unused]] const char* name, [[maybe_unused]] const char* jsonConfig)
+void HwBase::configure([[maybe_unused]] const char* jsonConfig)
 {
 
 }

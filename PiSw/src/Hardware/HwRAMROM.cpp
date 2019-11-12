@@ -1,4 +1,4 @@
-// Bus Raider Hardware RC2014 64K RAM
+// Bus Raider Hardware RC2014 RAMROM
 // Rob Dobson 2019
 
 #include "HwRAMROM.h"
@@ -11,10 +11,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-const char* Hw64KRam::_logPrefix = "RC2014_64K_RAM";
-const char* Hw64KRam::_baseName = "64KRAM";
+const char* HwRAMROM::_logPrefix = "HWRAMROM";
+const char* HwRAMROM::_baseName = "RAMROM";
 
-Hw64KRam::Hw64KRam() : HwBase()
+HwRAMROM::HwRAMROM() : HwBase()
 {
     _mirrorMemoryLen = 64*1024;
     _pMirrorMemory = NULL;
@@ -27,7 +27,7 @@ Hw64KRam::Hw64KRam() : HwBase()
 
 // Set memory emulation mode - page out real RAM/ROM and use mirror memory
 // for bus accesses
-void Hw64KRam::setMemoryEmulationMode(bool pageOut)
+void HwRAMROM::setMemoryEmulationMode(bool pageOut)
 {
     _memoryEmulationMode = pageOut;
 
@@ -53,7 +53,7 @@ void Hw64KRam::setMemoryEmulationMode(bool pageOut)
 }
 
 // Page out RAM/ROM for opcode injection
-void Hw64KRam::pageOutForInjection(bool pageOut)
+void HwRAMROM::pageOutForInjection(bool pageOut)
 {
     _currentlyPagedOut = pageOut;
 
@@ -77,7 +77,7 @@ void Hw64KRam::pageOutForInjection(bool pageOut)
 }
 
 // Hardware reset has occurred
-void Hw64KRam::hwReset()
+void HwRAMROM::hwReset()
 {
     _pagingEnabled = true;
     _currentlyPagedOut = false;
@@ -85,7 +85,7 @@ void Hw64KRam::hwReset()
 }
 
 // Mirror mode
-void Hw64KRam::setMirrorMode(bool val)
+void HwRAMROM::setMirrorMode(bool val)
 {
     // LogWrite(_logPrefix, LOG_DEBUG, "Mirror mode %d", val);
     _mirrorMode = val;
@@ -95,14 +95,14 @@ void Hw64KRam::setMirrorMode(bool val)
 // Mirror memory
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-uint8_t* Hw64KRam::getMirrorMemory()
+uint8_t* HwRAMROM::getMirrorMemory()
 {
     if (!_pMirrorMemory)
         _pMirrorMemory = new uint8_t[_mirrorMemoryLen];
     return _pMirrorMemory;
 }
 
-void Hw64KRam::mirrorClone()
+void HwRAMROM::mirrorClone()
 {
     // No point doing this in emulator mode as mirror and emulator memory is shared
     if (_memoryEmulationMode)
@@ -124,10 +124,10 @@ void Hw64KRam::mirrorClone()
 // Block access
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-BR_RETURN_TYPE Hw64KRam::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len,
+BR_RETURN_TYPE HwRAMROM::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len,
             [[maybe_unused]] bool busRqAndRelease, bool iorq, bool forceMirrorAccess)
 {
-    //     LogWrite(_logPrefix, LOG_DEBUG, "Hw64KRam::blockWrite");
+    //     LogWrite(_logPrefix, LOG_DEBUG, "HwRAMROM::blockWrite");
     // Check forced mirror access
     if (!forceMirrorAccess)
     {
@@ -150,14 +150,14 @@ BR_RETURN_TYPE Hw64KRam::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t
     // Write
     if (len > 0)
     {
-        // LogWrite(_logPrefix, LOG_DEBUG, "Hw64KRam::blockWrite %04x %d [0] %02x [1] %02x [2] %02x [3] %02x",
+        // LogWrite(_logPrefix, LOG_DEBUG, "HwRAMROM::blockWrite %04x %d [0] %02x [1] %02x [2] %02x [3] %02x",
         //         addr, len, pBuf[0], pBuf[1], pBuf[2], pBuf[3]);
         memcopyfast(pMirrorMemory+addr, pBuf, len);
     }
     return BR_OK;
 }
 
-BR_RETURN_TYPE Hw64KRam::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, 
+BR_RETURN_TYPE HwRAMROM::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, 
             [[maybe_unused]] bool busRqAndRelease, bool iorq, bool forceMirrorAccess)
 {
     // Check forced mirror access
@@ -189,14 +189,14 @@ BR_RETURN_TYPE Hw64KRam::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len,
     if (firstPartLen > 0)
     {
         memcopyfast(pBuf, pMirrorMemory+addr, firstPartLen);
-        // LogWrite(_logPrefix, LOG_DEBUG, "Hw64KRam::blockRead %04x %d [0] %02x [1] %02x [2] %02x [3] %02x",
+        // LogWrite(_logPrefix, LOG_DEBUG, "HwRAMROM::blockRead %04x %d [0] %02x [1] %02x [2] %02x [3] %02x",
         //         addr, firstPartLen, pBuf[0], pBuf[1], pBuf[2], pBuf[3]);
     }
     // Check for wrap to get second section
     if (len > firstPartLen)
     {
         memcopyfast(pBuf+firstPartLen, pMirrorMemory, len-firstPartLen);
-        // LogWrite(_logPrefix, LOG_DEBUG, "Hw64KRam::blockRead wrap %04x %d [0] %02x [1] %02x [2] %02x [3] %02x",
+        // LogWrite(_logPrefix, LOG_DEBUG, "HwRAMROM::blockRead wrap %04x %d [0] %02x [1] %02x [2] %02x [3] %02x",
         //         addr, len, pBuf[firstPartLen], pBuf[firstPartLen+1], pBuf[firstPartLen+2], pBuf[firstPartLen+3]);
     }
     return BR_OK;
@@ -207,7 +207,7 @@ BR_RETURN_TYPE Hw64KRam::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len,
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Get mirror memory for address
-uint8_t* Hw64KRam::getMirrorMemForAddr(uint32_t addr)
+uint8_t* HwRAMROM::getMirrorMemForAddr(uint32_t addr)
 {
     uint8_t* pMirrorMemory = getMirrorMemory();
     if (!pMirrorMemory)
@@ -219,7 +219,7 @@ uint8_t* Hw64KRam::getMirrorMemForAddr(uint32_t addr)
 // Tracer interface
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Hw64KRam::tracerClone()
+void HwRAMROM::tracerClone()
 {
     LogWrite(_logPrefix, LOG_DEBUG, "tracerClone emulated %d mem %d", 
             _memoryEmulationMode, getTracerMemory());
@@ -248,7 +248,7 @@ void Hw64KRam::tracerClone()
     }
 }
 
-void Hw64KRam::tracerHandleAccess(uint32_t addr, uint32_t data, 
+void HwRAMROM::tracerHandleAccess(uint32_t addr, uint32_t data, 
         uint32_t flags, uint32_t& retVal)
 {
     // Check tracer memory ok
@@ -266,7 +266,7 @@ void Hw64KRam::tracerHandleAccess(uint32_t addr, uint32_t data,
     }
 }
 
-uint8_t* Hw64KRam::getTracerMemory()
+uint8_t* HwRAMROM::getTracerMemory()
 {
     if (!_pTracerMemory)
         _pTracerMemory = new uint8_t[_tracerMemoryLen];
@@ -278,7 +278,7 @@ uint8_t* Hw64KRam::getTracerMemory()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Handle a completed bus action
-void Hw64KRam::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType, [[maybe_unused]] BR_BUS_ACTION_REASON reason)
+void HwRAMROM::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType, [[maybe_unused]] BR_BUS_ACTION_REASON reason)
 {
     // LogWrite(_logPrefix, LOG_DEBUG, "busActionComplete %d", actionType);
 
@@ -319,7 +319,7 @@ void Hw64KRam::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType,
 }
 
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-void Hw64KRam::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+void HwRAMROM::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
         [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t& retVal)
 {
     // Check emulation mode

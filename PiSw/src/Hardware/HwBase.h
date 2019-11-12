@@ -63,7 +63,7 @@ public:
     }
 
     // Configure
-    virtual void configure(const char* name, const char* jsonConfig);
+    virtual void configure(const char* jsonConfig);
 
 protected:
     bool _enabled;
