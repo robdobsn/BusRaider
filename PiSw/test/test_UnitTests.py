@@ -10,7 +10,7 @@ from datetime import datetime
 #   (BusRaider jumpers configured to connect Pi serial to FTDI)
 # b) a BusRaider with ESP32 firmware for uploading (normal firmware) and configured
 #    with ESP Serial 0 to Pi
-# c) most tests also require Clock from BusRaider to be enabled, 64K Ram board in place
+# c) most tests also require Clock from BusRaider to be enabled, Ram board in place
 
 def setupTests(testName):
     global useIP, serialPort, serialSpeed, baseFolder
@@ -101,6 +101,85 @@ def test_MemRW():
     # Processor clock
     commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":250000}\0")
     time.sleep(1)
+    # Bus init
+    commonTest.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
+    time.sleep(0.01)
+    for i in range(testRepeatCount):
+        commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":8000,\"lenDec\":10,\"isIo\":0}\0" + testWriteData)
+        writtenData.append(testWriteData)
+        time.sleep(0.01)
+        commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":8000,\"lenDec\":10,\"isIo\":0}\0")
+        time.sleep(0.01)
+        if not testStats["msgRdOk"]:
+            break
+        testWriteData = bytearray(len(testWriteData))
+        for i in range(len(testWriteData)):
+            testWriteData[i] = random.randint(0,255)
+    
+    # Wait for test end and cleardown
+    commonTest.cleardown()
+    assert(testStats["msgRdOk"] == True)
+    assert(testStats["msgRdRespCount"] == testRepeatCount)
+    assert(testStats["msgWrRespCount"] == testRepeatCount)
+    assert(testStats["msgWrRespErrCount"] == 0)
+    assert(testStats["msgWrRespErrMissingCount"] == 0)
+    assert(testStats["unknownMsgCount"] == 0)
+    assert(testStats["clockSetOk"] == True)
+
+def test_BankedMemRW():
+
+    def frameCallback(msgContent, logger):
+        logger.info(f"FrameRx:{msgContent}")
+        if msgContent['cmdName'] == "RdResp":
+            curReadPos = len(readData)
+            requiredResp = ''.join(('%02x' % writtenData[curReadPos][i]) for i in range(len(writtenData[curReadPos])))
+            readData.append(msgContent['data'])
+            respOk = requiredResp == msgContent['data']
+            testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
+            testStats["msgRdRespCount"] += 1
+            if not respOk:
+                logger.error(f"Read {msgContent['data']} != expected {requiredResp}")
+        elif msgContent['cmdName'] == "WrResp":
+            testStats["msgWrRespCount"] += 1
+            try:
+                if msgContent['err'] != 'ok':
+                    testStats["msgWrRespErrCount"] += 1
+                    logger.error(f"WrResp err not ok {msgContent}")
+            except:
+                logger.error(f"WrResp doesn't contain err {msgContent}")
+                testStats["msgWrRespErrMissingCount"] += 1
+        elif msgContent['cmdName'] == "busInitResp":
+            pass
+        elif msgContent['cmdName'] == "hwListResp" or \
+            msgContent['cmdName'] == "hwEnableResp":
+            pass
+        elif msgContent['cmdName'][:10] == "SetMachine":
+            pass
+        elif msgContent['cmdName'] == "clockHzSetResp":
+            testStats["clockSetOk"] = True
+        else:
+            testStats["unknownMsgCount"] += 1
+
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    setupTests("BankedMemRW")
+    commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
+    testRepeatCount = 20
+    # Test data
+    writtenData = []
+    readData = []
+    testWriteData = bytearray(b"\xaa\x55\xaa\x55\xaa\x55\xaa\x55\xaa\x55")
+    testStats = {"msgRdOk": True, "msgRdRespCount":0, "msgWrRespCount": 0, "msgWrRespErrCount":0, "msgWrRespErrMissingCount":0, "unknownMsgCount":0, "clockSetOk":False}
+    # Set serial terminal machine - to avoid conflicts with display updates, etc
+    mc = "Serial Terminal ANSI"
+    commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
+    time.sleep(1)
+    # Processor clock
+    commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":250000}\0")
+    time.sleep(1)
+    # Hardware
+    commonTest.sendFrame("hwList", b"{\"cmdName\":\"hwList\"}\0")
+    commonTest.sendFrame("hwEnable", b"{\"cmdName\":\"hwEnable\",\"hwName\":\"RAMROM\",\"enable\":1}\0")
     # Bus init
     commonTest.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
     time.sleep(0.01)
@@ -232,9 +311,9 @@ def test_TraceJMP000():
     # Processor clock
     commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":250000}\0")
     time.sleep(0.1)
-    # Check hardware list and set 64K RAM
+    # Check hardware list and set RAM enabled
     commonTest.sendFrame("hwList", b"{\"cmdName\":\"hwList\"}\0")
-    commonTest.sendFrame("hwEnable", b"{\"cmdName\":\"hwEnable\",\"hwName\":\"64KRAM\",\"enable\":1}\0")
+    commonTest.sendFrame("hwEnable", b"{\"cmdName\":\"hwEnable\",\"hwName\":\"RAMROM\",\"enable\":1}\0")
     time.sleep(0.1)
 
     # Repeat tests
@@ -354,9 +433,9 @@ def test_TraceJMP000():
 #     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
 #     time.sleep(1)
 
-#     # Check hardware list and set 64K RAM
+#     # Check hardware list and set RAM
 #     commonTest.sendFrame("hwList", b"{\"cmdName\":\"hwList\"}\0")
-#     commonTest.sendFrame("hwEnable", b"{\"cmdName\":\"hwEnable\",\"hwName\":\"64KRAM\",\"enable\":1}\0")
+#     commonTest.sendFrame("hwEnable", b"{\"cmdName\":\"hwEnable\",\"hwName\":\"RAMROM\",\"enable\":1}\0")
 #     time.sleep(0.1)
 
 #     # Bus init

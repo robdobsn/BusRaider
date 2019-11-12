@@ -25,8 +25,10 @@ public:
     virtual void pageOutForInjection(bool pageOut);
 
     // Block access to hardware
-    virtual BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq);
-    virtual BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq);
+    virtual BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, 
+                bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
+    virtual BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, 
+                bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
 
     // Get mirror memory for address
     uint8_t* getMirrorMemForAddr(uint32_t addr);

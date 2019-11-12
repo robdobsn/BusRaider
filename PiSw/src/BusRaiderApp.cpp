@@ -218,6 +218,7 @@ bool BusRaiderApp::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8
 // Status Display
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+static inline int locmin ( int a, int b ) { return a < b ? a : b; }
 void BusRaiderApp::statusDisplayUpdate()
 {
     // Update status
@@ -263,7 +264,7 @@ void BusRaiderApp::statusDisplayUpdate()
         // Machine name
         strlcpy(statusStr, "M/C: ", MAX_STATUS_STR_LEN);
         strlcat(statusStr, McManager::getMachineName(), MAX_STATUS_STR_LEN);
-        strlcat(statusStr, "                       ", MAX_STATUS_STR_LEN);
+        strlcat(statusStr, "                       ", locmin(MAX_STATUS_STR_LEN, 40));
         _display.statusPut(Display::STATUS_FIELD_CUR_MACHINE, Display::STATUS_NORMAL, statusStr);
 
         // Speed

@@ -10,7 +10,7 @@
 #include "../System/lowlib.h"
 #include "../System/ee_sprintf.h"
 #include "../System/PiWiring.h"
-#include "Hw64KRAM.h"
+#include "HwRAMROM.h"
 #include "Hw1MBRamRom.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -228,11 +228,11 @@ uint32_t HwManager::getMaxAddress()
     return STD_TARGET_MEMORY_LEN-1;
 }
 
-BR_RETURN_TYPE HwManager::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq, bool forceMirrorAccess)
+BR_RETURN_TYPE HwManager::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, 
+                bool busRqAndRelease, bool iorq, bool forceMirrorAccess)
 {
     // Check if bus access is available
-    if (TargetTracker::busAccessAvailable() && !forceMirrorAccess)
-        return BusAccess::blockWrite(addr, pBuf, len, busRqAndRelease, iorq);
+    forceMirrorAccess = forceMirrorAccess || (!TargetTracker::busAccessAvailable());
 
     // Iterate hardware
     BR_RETURN_TYPE retVal = BR_OK;
@@ -240,7 +240,7 @@ BR_RETURN_TYPE HwManager::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_
     {
         if (_pHw[i] && _pHw[i]->isEnabled())
         {
-            BR_RETURN_TYPE newRet = _pHw[i]->blockWrite(addr, pBuf, len, busRqAndRelease, iorq);
+            BR_RETURN_TYPE newRet = _pHw[i]->blockWrite(addr, pBuf, len, busRqAndRelease, iorq, forceMirrorAccess);
             retVal = (newRet == BR_OK || newRet == BR_NOT_HANDLED) ? retVal : newRet;
         }
     }
@@ -252,11 +252,7 @@ BR_RETURN_TYPE HwManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, 
     // LogWrite(FromHwManager, LOG_DEBUG, "blockRead");
 
     // Check if bus access is available
-    if (TargetTracker::busAccessAvailable() && !forceMirrorAccess)
-    {
-        // LogWrite(FromHwManager, LOG_DEBUG, "blockRead busaccess");
-        return BusAccess::blockRead(addr, pBuf, len, busRqAndRelease, iorq);
-    }
+    forceMirrorAccess = forceMirrorAccess || (!TargetTracker::busAccessAvailable());
 
     // Iterate hardware
     BR_RETURN_TYPE retVal = BR_OK;
@@ -264,7 +260,7 @@ BR_RETURN_TYPE HwManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, 
     {
         if (_pHw[i] && _pHw[i]->isEnabled())
         {
-            BR_RETURN_TYPE newRet = _pHw[i]->blockRead(addr, pBuf, len, busRqAndRelease, iorq);
+            BR_RETURN_TYPE newRet = _pHw[i]->blockRead(addr, pBuf, len, busRqAndRelease, iorq, forceMirrorAccess);
             retVal = (newRet == BR_OK || newRet == BR_NOT_HANDLED) ? retVal : newRet;
             // LogWrite(FromHwManager, LOG_DEBUG, "blkrd %d %d", i, retVal);
         }

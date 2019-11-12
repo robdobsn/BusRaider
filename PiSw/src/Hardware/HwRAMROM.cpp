@@ -1,7 +1,7 @@
 // Bus Raider Hardware RC2014 64K RAM
 // Rob Dobson 2019
 
-#include "Hw64KRAM.h"
+#include "HwRAMROM.h"
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetState.h"
 #include "../System/rdutils.h"
@@ -125,9 +125,16 @@ void Hw64KRam::mirrorClone()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 BR_RETURN_TYPE Hw64KRam::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len,
-            [[maybe_unused]] bool busRqAndRelease, bool iorq)
+            [[maybe_unused]] bool busRqAndRelease, bool iorq, bool forceMirrorAccess)
 {
     //     LogWrite(_logPrefix, LOG_DEBUG, "Hw64KRam::blockWrite");
+    // Check forced mirror access
+    if (!forceMirrorAccess)
+    {
+        // Access memory via BusAccess
+        return BusAccess::blockWrite(addr, pBuf, len, busRqAndRelease, iorq);
+    }
+
     // Check for memory request
     if (iorq)
         return BR_NOT_HANDLED;
@@ -151,8 +158,15 @@ BR_RETURN_TYPE Hw64KRam::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t
 }
 
 BR_RETURN_TYPE Hw64KRam::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, 
-            [[maybe_unused]] bool busRqAndRelease, bool iorq)
+            [[maybe_unused]] bool busRqAndRelease, bool iorq, bool forceMirrorAccess)
 {
+    // Check forced mirror access
+    if (!forceMirrorAccess)
+    {
+        // Access memory via BusAccess
+        return BusAccess::blockRead(addr, pBuf, len, busRqAndRelease, iorq);
+    }
+
     // Check for memory request
     if (iorq)
         return BR_NOT_HANDLED;

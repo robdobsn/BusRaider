@@ -22,16 +22,6 @@ SECTIONS
         __init_end = .; 
     } > ram
 
-	.ARM.exidx : {
-		__exidx_start = .;
-		*(.ARM.exidx*)
-		__exidx_end = .;
-	} > ram
-
-	.eh_frame : {
-		*(.eh_frame*)
-	} > ram
-
     .data ALIGN(4096): { *(.data*) } > ram
 
     /* Uninitialized data section */

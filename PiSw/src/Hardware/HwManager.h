@@ -63,8 +63,10 @@ public:
 
     // Block access to hardware
     static uint32_t getMaxAddress();
-    static BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
-    static BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
+    static BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, 
+                bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
+    static BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, 
+                bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
 
     // Tracer interface to hardware
     static void tracerClone();

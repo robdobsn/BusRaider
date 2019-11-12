@@ -8,6 +8,7 @@
 #include "../System/logging.h"
 #include "../System/rdutils.h"
 #include "../TargetBus/TargetTracker.h"
+#include "../Hardware/HwManager.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Variables
@@ -821,14 +822,14 @@ void BusController::busActionCompleteStatic([[maybe_unused]]BR_BUS_ACTION action
         if (!_memAccessWrite)
         {
             // Read
-            BusAccess::blockRead(_memAccessAddr, _memAccessDataBuf, 
-                        _memAccessDataLen, false, _memAccessIo);
+            HwManager::blockRead(_memAccessAddr, _memAccessDataBuf, 
+                        _memAccessDataLen, false, _memAccessIo, false);
         }
         else
         {
             // Write
-            BusAccess::blockWrite(_memAccessAddr, _memAccessDataBuf, 
-                        _memAccessDataLen, false, _memAccessIo);
+            HwManager::blockWrite(_memAccessAddr, _memAccessDataBuf, 
+                        _memAccessDataLen, false, _memAccessIo, false);
         }
         _memAccessPending = false;
     }

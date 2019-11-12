@@ -53,13 +53,15 @@ void HwBase::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]] u
 
 // Block access to hardware
 BR_RETURN_TYPE HwBase::blockWrite([[maybe_unused]] uint32_t addr, [[maybe_unused]] const uint8_t* pBuf, 
-            [[maybe_unused]] uint32_t len, [[maybe_unused]] bool busRqAndRelease, [[maybe_unused]] bool iorq)
+            [[maybe_unused]] uint32_t len, [[maybe_unused]] bool busRqAndRelease, 
+            [[maybe_unused]] bool iorq, [[maybe_unused]] bool forceMirrorAccess)
 {
     return BR_NOT_HANDLED;
 }
 
 BR_RETURN_TYPE HwBase::blockRead([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint8_t* pBuf, 
-            [[maybe_unused]] uint32_t len, [[maybe_unused]] bool busRqAndRelease, [[maybe_unused]] bool iorq)
+            [[maybe_unused]] uint32_t len, [[maybe_unused]] bool busRqAndRelease, 
+            [[maybe_unused]] bool iorq, [[maybe_unused]] bool forceMirrorAccess)
 {
     return BR_NOT_HANDLED;
 }
