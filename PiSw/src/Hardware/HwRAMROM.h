@@ -71,8 +71,9 @@ private:
     uint8_t* getTracerMemory();
 
     // Size of memory card
+    static const uint32_t DEFAULT_MEM_SIZE_K = 64;
     uint32_t _memCardSizeBytes;
-    
+
     // Operation mode of memory card
     enum memoryCardOpMode_t {
         MEM_CARD_OP_MODE_LINEAR,

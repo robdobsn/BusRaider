@@ -84,7 +84,7 @@ int HwManager::_numHardware = 0;
 
 // Default hardware list - to use if no hardware specified
 const char* HwManager::_pDefaultHardwareList = 
-        "[{\"name\":\"RAMROM\",\"enable\":1,\"pageOut\":\"busPAGE\",\"bankHw\":\"LINPAGE\",\"memSizeK\":64}]";
+        "[{\"name\":\"RAMROM\",\"enable\":1,\"pageOut\":\"busPAGE\",\"bankHw\":\"LINEAR\",\"memSizeK\":64}]";
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Init

@@ -16,7 +16,7 @@ const char* HwRAMROM::_baseName = "RAMROM";
 
 HwRAMROM::HwRAMROM() : HwBase()
 {
-    _memCardSizeBytes = 64*1024;
+    _memCardSizeBytes = DEFAULT_MEM_SIZE_K*1024;
     _mirrorMemoryLen = _memCardSizeBytes;
     _pMirrorMemory = NULL;
     _mirrorMemAllocNotified = false;
@@ -28,15 +28,44 @@ HwRAMROM::HwRAMROM() : HwBase()
     _memoryCardOpMode = MEM_CARD_OP_MODE_LINEAR;
     _bankHwBaseIOAddr = BANK_16K_BASE_ADDR;
     _bankHwPageEnIOAddr = BANK_16K_PAGE_ENABLE;
+    _pagingEnabled = true;
     hwReset();
 }
 
 // Configure
 void HwRAMROM::configure([[maybe_unused]] const char* jsonConfig)
 {
-    LogWrite(_logPrefix, LOG_DEBUG, "configure %s", jsonConfig);
+    // Get values from JSON
+    static const int MAX_CMD_PARAM_STR = 100;
 
-    uint32_t newMemSizeBytes = 64*1024;
+    // Get memSize param
+    char memSizeStr[MAX_CMD_PARAM_STR+1];
+    uint32_t memSizeK = DEFAULT_MEM_SIZE_K;
+    if (jsonGetValueForKey("memSizeK", jsonConfig, memSizeStr, MAX_CMD_PARAM_STR))
+        memSizeK = strtoul(memSizeStr, NULL, 10);
+
+    // Get linear/banked param
+    char paramStr[MAX_CMD_PARAM_STR+1];
+    _memoryCardOpMode = MEM_CARD_OP_MODE_LINEAR;
+    if (jsonGetValueForKey("bankHw", jsonConfig, paramStr, MAX_CMD_PARAM_STR))
+    {
+        if (strcasecmp(paramStr, "BANKED") == 0)
+            _memoryCardOpMode = MEM_CARD_OP_MODE_BANKED;
+    }
+
+    // Get pageOut param
+    _pagingEnabled = true;
+    if (jsonGetValueForKey("pageOut", jsonConfig, paramStr, MAX_CMD_PARAM_STR))
+    {
+        if (strcasecmp(paramStr, "busPAGE") != 0)
+            _pagingEnabled = false;
+    }
+
+    uint32_t newMemSizeBytes = memSizeK*1024;
+
+    LogWrite(_logPrefix, LOG_DEBUG, "curMemSizeBytes %d newMemSizeBytes %d memSizeK %d param %s", 
+            _memCardSizeBytes, newMemSizeBytes, memSizeK, memSizeStr);
+
     if (_memCardSizeBytes != newMemSizeBytes)
     {
         _memCardSizeBytes = newMemSizeBytes;
@@ -53,6 +82,13 @@ void HwRAMROM::configure([[maybe_unused]] const char* jsonConfig)
             _pTracerMemory = NULL;
         }
     }
+
+    LogWrite(_logPrefix, LOG_DEBUG, "configure Paging %s, Mode %s, MemSize %d (%dK) ... json %s", 
+                _pagingEnabled ? "Y" : "N",
+                _memoryCardOpMode == MEM_CARD_OP_MODE_LINEAR ? "Linear" : "Banked",
+                _memCardSizeBytes,
+                memSizeK,
+                jsonConfig);
 }
 
 // Set memory emulation mode - page out real RAM/ROM and use mirror memory
@@ -109,7 +145,6 @@ void HwRAMROM::pageOutForInjection(bool pageOut)
 // Hardware reset has occurred
 void HwRAMROM::hwReset()
 {
-    _pagingEnabled = true;
     _currentlyPagedOut = false;
     BusAccess::busPagePinSetActive(false);
     for (int i = 0; i < NUM_BANKS; i++)
