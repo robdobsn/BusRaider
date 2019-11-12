@@ -19,7 +19,7 @@ def setupTests(testName):
     useIP = True
     serialPort = "COM6"
     serialSpeed = 921600
-    ipAddrOrHostName = "192.168.86.103"
+    ipAddrOrHostName = "192.168.86.123"
     baseFolder = "."
     logTextFileName = testName + ".log"
     logMsgDataFileName = testName + ".bin"

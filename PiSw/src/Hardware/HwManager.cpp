@@ -11,7 +11,7 @@
 #include "../System/ee_sprintf.h"
 #include "../System/PiWiring.h"
 #include "Hw64KRAM.h"
-#include "Hw512KRamRom.h"
+#include "Hw1MBRamRom.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Variables
@@ -102,7 +102,7 @@ void HwManager::init()
 
     // Add hardware - HwBase constructor adds to HwManager
     new Hw64KRam();
-    new Hw512KRamRom();
+    new Hw1MBRamRom();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

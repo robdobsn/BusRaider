@@ -1,7 +1,7 @@
 // Bus Raider Hardware RC2014 512K RAM/ROM
 // Rob Dobson 2019
 
-#include "Hw512KRamRom.h"
+#include "Hw1MBRamRom.h"
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetState.h"
 #include "../System/rdutils.h"
@@ -9,24 +9,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-const char* Hw512KRamRom::_logPrefix = "RC2014_512K_RAM_ROM";
-const char* Hw512KRamRom::_baseName = "512KRAMROM";
+const char* Hw1MBRamRom::_logPrefix = "RC2014_512K_RAM_ROM";
+const char* Hw1MBRamRom::_baseName = "512KRAMROM";
 
-static const int Hw512KRamRom_BASE_ADDR = 0x78;
-static const int Hw512KRamRom_PAGE_ENABLE = 0x7c;
+static const int Hw1MBRamRom_BASE_ADDR = 0x78;
+static const int Hw1MBRamRom_PAGE_ENABLE = 0x7c;
 
 // Value to write to 74ls670 registers to disable the bank
 // Actually any value with bit 5 set should work
-static const int Hw512KRamRom_BANK_DISABLE = 0xff;
+static const int Hw1MBRamRom_BANK_DISABLE = 0xff;
 
-uint8_t Hw512KRamRom::_pageOutAllBanks[] = {
-    Hw512KRamRom_BANK_DISABLE,
-    Hw512KRamRom_BANK_DISABLE,
-    Hw512KRamRom_BANK_DISABLE,
-    Hw512KRamRom_BANK_DISABLE
+uint8_t Hw1MBRamRom::_pageOutAllBanks[] = {
+    Hw1MBRamRom_BANK_DISABLE,
+    Hw1MBRamRom_BANK_DISABLE,
+    Hw1MBRamRom_BANK_DISABLE,
+    Hw1MBRamRom_BANK_DISABLE
 };
 
-Hw512KRamRom::Hw512KRamRom() : HwBase()
+Hw1MBRamRom::Hw1MBRamRom() : HwBase()
 {
     hwReset();
     _pName = _baseName;
@@ -34,13 +34,13 @@ Hw512KRamRom::Hw512KRamRom() : HwBase()
 }
 
 // Page out RAM/ROM due to emulation
-void Hw512KRamRom::setMemoryEmulationMode(bool pageOut)
+void Hw1MBRamRom::setMemoryEmulationMode(bool pageOut)
 {
     _memoryEmulationMode = pageOut;
 }
 
 // Page out RAM/ROM for opcode injection
-void Hw512KRamRom::pageOutForInjection(bool pageOut)
+void Hw1MBRamRom::pageOutForInjection(bool pageOut)
 {
     // Check enabled
     if (!_pagingEnabled)
@@ -50,19 +50,19 @@ void Hw512KRamRom::pageOutForInjection(bool pageOut)
     if (pageOut)
     {
         // Write pageOut value
-        BusAccess::blockWrite(Hw512KRamRom_BASE_ADDR, _pageOutAllBanks,
+        BusAccess::blockWrite(Hw1MBRamRom_BASE_ADDR, _pageOutAllBanks,
                 NUM_BANKS, false, true);
     }
     else
     {
         // Restore
-        BusAccess::blockWrite(Hw512KRamRom_BASE_ADDR, _bankRegisters,
+        BusAccess::blockWrite(Hw1MBRamRom_BASE_ADDR, _bankRegisters,
                 NUM_BANKS, false, true);
     }
 }
 
 // Hardware reset has occurred
-void Hw512KRamRom::hwReset()
+void Hw1MBRamRom::hwReset()
 {
     _pagingEnabled = true;
     for (int i = 0; i < NUM_BANKS; i++)
@@ -74,7 +74,7 @@ void Hw512KRamRom::hwReset()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Handle a completed bus action
-void Hw512KRamRom::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType, [[maybe_unused]] BR_BUS_ACTION_REASON reason)
+void Hw1MBRamRom::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType, [[maybe_unused]] BR_BUS_ACTION_REASON reason)
 {
     switch(actionType)
     {
@@ -102,20 +102,20 @@ void Hw512KRamRom::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionT
 }
 
 // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-void Hw512KRamRom::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
+void Hw1MBRamRom::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
             [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t& retVal)
 {
     // Check for address range used by this card
-    if (_pagingEnabled && ((addr & 0xff) >= Hw512KRamRom_BASE_ADDR) && ((addr & 0xff) < Hw512KRamRom_BASE_ADDR + NUM_BANKS))
+    if (_pagingEnabled && ((addr & 0xff) >= Hw1MBRamRom_BASE_ADDR) && ((addr & 0xff) < Hw1MBRamRom_BASE_ADDR + NUM_BANKS))
     {
         if(flags & BR_CTRL_BUS_WR_MASK)
         {
-            _bankRegisters[(addr & 0xff) - Hw512KRamRom_BASE_ADDR] = data;
+            _bankRegisters[(addr & 0xff) - Hw1MBRamRom_BASE_ADDR] = data;
             //TODO
-            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B + (addr & 0xff) - Hw512KRamRom_BASE_ADDR, data);
+            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B + (addr & 0xff) - Hw1MBRamRom_BASE_ADDR, data);
         }
     }
-    else if ((addr & 0xff) == Hw512KRamRom_PAGE_ENABLE)
+    else if ((addr & 0xff) == Hw1MBRamRom_PAGE_ENABLE)
     {
         if (flags & BR_CTRL_BUS_WR_MASK)
         {

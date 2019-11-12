@@ -3,12 +3,12 @@
 
 #include "HwBase.h"
 
-class Hw512KRamRom : public HwBase
+class Hw1MBRamRom : public HwBase
 {
 
 public:
 
-    Hw512KRamRom();
+    Hw1MBRamRom();
 
     // Page out RAM/ROM due to emulation
     virtual void setMemoryEmulationMode(bool pageOut);
