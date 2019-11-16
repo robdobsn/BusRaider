@@ -140,6 +140,7 @@ private:
     static const int MAX_INT_ARG_STR_LEN = 10;
     static const int MAX_FILE_NAME_STR = 100;
     static const int MAX_FILE_TYPE_STR = 40;
+    static const int MAX_DATAFRAME_LEN = 5000;
 
     // File name and type
     char _receivedFileName[MAX_FILE_NAME_STR+1];

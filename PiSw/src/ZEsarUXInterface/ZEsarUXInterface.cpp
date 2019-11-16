@@ -218,7 +218,7 @@ void ZEsarUXInterface::handleMessage([[maybe_unused]] const char* pJsonCmd, cons
         }
 
         // Process the command
-        static const int MAX_RESP_MSG_LEN = 2000;
+        static const int MAX_RESP_MSG_LEN = 5000;
         char respMsg[MAX_RESP_MSG_LEN];
         respMsg[0] = 0;
         handleLine(pCmdCur, respMsg, MAX_RESP_MSG_LEN, zesaruxIndex);

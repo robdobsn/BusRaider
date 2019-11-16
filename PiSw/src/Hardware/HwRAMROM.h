@@ -90,7 +90,8 @@ private:
     // Scott Baker / Spencer Owen / Sergey Kiselevs RC2014 RAM/ROM card addresses
     static const int BANK_16K_BASE_ADDR = 0x78;
     static const int BANK_16K_PAGE_ENABLE = 0x7c;
-    // static const int BANK_16K_LIN_TO_PAGE = 0x7c;
+    static const int BANK_16K_LIN_TO_PAGE = 0x7e;
+    static const int BANK_SIZE_BYTES = 16384;
     
     // Reset
     void hwReset();

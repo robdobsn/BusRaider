@@ -210,22 +210,98 @@ BR_RETURN_TYPE HwRAMROM::physicalBlockAccess(uint32_t addr, const uint8_t* pBuf,
     //     switch into bank mode and use bank regs to access banks
     // else
     //   store bank regs, then use bank regs to access banks, restore bank regs
+    // Memory buffer pointer
+    uint8_t* pMemBuf = const_cast<uint8_t*>(pBuf);
+
+    // Card mode
     if (_memoryCardOpMode == MEM_CARD_OP_MODE_LINEAR)
     {
         if (addr + len <= 65536)
         {
             if (write)
-                return BusAccess::blockWrite(addr, pBuf, len, busRqAndRelease, iorq);
-            return BusAccess::blockRead(addr, const_cast<uint8_t*>(pBuf), len, busRqAndRelease, iorq);
+                return BusAccess::blockWrite(addr, pMemBuf, len, busRqAndRelease, iorq);
+            return BusAccess::blockRead(addr, pMemBuf, len, busRqAndRelease, iorq);
         }
         else
         {
-            // Switch card to banked mode
+            LogWrite(_logPrefix, LOG_DEBUG, "Setting to paged, lastByte = %02x", pMemBuf[len-1]);
 
-            // access memory using bank 0
+            // Check if we need to request bus
+            if (busRqAndRelease) {
+                // Request bus and take control after ack
+                BR_RETURN_TYPE ret = BusAccess::controlRequestAndTake();
+                if (ret != BR_OK)
+                {
+                    LogWrite(_logPrefix, LOG_DEBUG, "Failed to acquire bus");
+                    return ret;     
+                }
+            }
+
+            // Return value
+            BR_RETURN_TYPE retVal = BR_OK;
+
+            // Switch card to banked mode
+            const uint8_t setPageMode[] = { 1 };
+            BusAccess::blockWrite(BANK_16K_LIN_TO_PAGE, setPageMode, 1, false, true);
+
+            // Enable memory registers
+            const uint8_t setRegEn[] = { 1 };
+            BusAccess::blockWrite(BANK_16K_PAGE_ENABLE, setRegEn, 1, false, true);
+
+            // Access memory using bank 0
+            uint32_t initialBankOffset = addr % BANK_SIZE_BYTES;
+            uint32_t num16KBanks = (len == 0) ? 0 : ((len - 1 + initialBankOffset) / BANK_SIZE_BYTES) + 1;
+            uint8_t bankNumber = addr / BANK_SIZE_BYTES;
+            uint32_t bytesRemaining = len;
+            
+            // Start address and initial page number
+            for (uint32_t i = 0; i < num16KBanks; i++)
+            {
+                // Start and length calculation for first block
+                uint32_t start = initialBankOffset;
+                uint32_t lenInBank = (num16KBanks == 1) ? bytesRemaining : BANK_SIZE_BYTES - start;
+                // Other blocks
+                if (i > 0)
+                {
+                    start = 0;
+                    lenInBank = (bytesRemaining < BANK_SIZE_BYTES) ? bytesRemaining : BANK_SIZE_BYTES;
+                }
+                LogWrite(_logPrefix, LOG_DEBUG, "%s Addr %06x Len 0x%x NumBanks %d BankNo %x startAddr %04x lenInBank 0x%x", 
+                                write ? "WRITE" : "READ", addr, len, num16KBanks, bankNumber, start, lenInBank);
+
+                // Write the bank number to bank register 0
+                const uint8_t bankNumData[] = { bankNumber };
+                BusAccess::blockWrite(BANK_16K_BASE_ADDR, bankNumData, 1, false, true);
+                microsDelay(1);
+
+                // Perform the memory operation
+                if (write)
+                    retVal = BusAccess::blockWrite(start, pMemBuf, lenInBank, false, iorq);
+                else
+                    retVal = BusAccess::blockRead(start, pMemBuf, lenInBank, false, iorq);
+                if (retVal != BR_OK)
+                    break;
+
+                // Bump bank number
+                bankNumber++;
+                pMemBuf += lenInBank;
+                bytesRemaining -= lenInBank;
+            }
+
+            // Disable memory registers
+            const uint8_t setRegDisable[] = { 0 };
+            BusAccess::blockWrite(BANK_16K_PAGE_ENABLE, setRegDisable, 1, false, true);
 
             // Switch card back to linear mode
+            const uint8_t clearPageMode[] = { 0 };
+            BusAccess::blockWrite(BANK_16K_LIN_TO_PAGE, clearPageMode, 1, false, true);
 
+            // Check if we need to release bus
+            if (busRqAndRelease) {
+                // release bus
+                BusAccess::controlRelease();
+            }
+            return retVal;
         }
     }
     else

@@ -447,6 +447,13 @@ public:
     static void isrPeak(int code, int val);
     static int isrAssertGetCount(int code);
 
+    // Bus request/ack
+    static void controlRequest();
+    static BR_RETURN_TYPE controlRequestAndTake();
+    static void controlRelease();
+    static void controlTake();
+    static bool waitForBusAck(bool ack);
+
 private:
     // Hardware version
     // V1.7 ==> 17, V2.0 ==> 20
@@ -555,13 +562,6 @@ private:
     {
         return (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
     }
-
-    // Bus request/ack
-    static void controlRequest();
-    static BR_RETURN_TYPE controlRequestAndTake();
-    static void controlRelease();
-    static void controlTake();
-    static bool waitForBusAck(bool ack);
 
     // Check if bus request has been acknowledged
     static inline bool controlBusReqAcknowledged()

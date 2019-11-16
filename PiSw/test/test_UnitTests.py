@@ -2,7 +2,9 @@ from CommonTestCode import CommonTest
 import time
 import logging
 import random
+import os
 from datetime import datetime
+import json
 
 # This is a program for testing the BusRaider firmware
 # It requires either:
@@ -131,9 +133,11 @@ def test_BankedMemRW():
     def frameCallback(msgContent, logger):
         logger.info(f"FrameRx:{msgContent}")
         if msgContent['cmdName'] == "RdResp":
-            curReadPos = len(readData)
-            requiredResp = ''.join(('%02x' % writtenData[curReadPos][i]) for i in range(len(writtenData[curReadPos])))
-            readData.append(msgContent['data'])
+            print("RdResp", msgContent)
+            addr = int(msgContent["addr"], 0)
+            dataLen = int(msgContent["len"])
+            writtenData = testWriteData[addr:addr+dataLen]
+            requiredResp = ''.join(('%02x' % writtenData[i]) for i in range(len(writtenData)))
             respOk = requiredResp == msgContent['data']
             testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
             testStats["msgRdRespCount"] += 1
@@ -155,20 +159,22 @@ def test_BankedMemRW():
             pass
         elif msgContent['cmdName'][:10] == "SetMachine":
             pass
+        elif msgContent['cmdName'] == "ResetTargetResp":
+            pass
         elif msgContent['cmdName'] == "clockHzSetResp":
             testStats["clockSetOk"] = True
         else:
             testStats["unknownMsgCount"] += 1
+            print("UnknownResponse", msgContent)
 
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
     setupTests("BankedMemRW")
     commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
-    testRepeatCount = 20
+    testRepeatCount = 5
+    numTestBlocks = 20
     # Test data
     writtenData = []
-    readData = []
-    testWriteData = bytearray(b"\xaa\x55\xaa\x55\xaa\x55\xaa\x55\xaa\x55")
     testStats = {"msgRdOk": True, "msgRdRespCount":0, "msgWrRespCount": 0, "msgWrRespErrCount":0, "msgWrRespErrMissingCount":0, "unknownMsgCount":0, "clockSetOk":False}
     # Set serial terminal machine - to avoid conflicts with display updates, etc
     mc = "Serial Terminal ANSI"
@@ -179,27 +185,58 @@ def test_BankedMemRW():
     time.sleep(1)
     # Hardware
     commonTest.sendFrame("hwList", b"{\"cmdName\":\"hwList\"}\0")
-    commonTest.sendFrame("hwEnable", b"{\"cmdName\":\"hwEnable\",\"hwName\":\"RAMROM\",\"enable\":1}\0")
+    commonTest.sendFrame("hwEnable", b"{\"cmdName\":\"hwEnable\",\"hwName\":\"RAMROM\",\"enable\":1,\"pageOut\":\"busPAGE\",\"bankHw\":\"LINEAR\",\"memSizeK\":\"1024\"}\0")
     # Bus init
     commonTest.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
+    # Send JMP 0000 instructions to avoid Z80 messing with memory while we test it
+    z80Jmp0000 = b"\xc3\x00\x00"
+    commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"lenDec\":3,\"isIo\":0}\0" + z80Jmp0000)
+    # Reset processor
+    commonTest.sendFrame("Z80Reset", b"{\"cmdName\":\"ResetTarget\"}\0")
     time.sleep(0.01)
+    testMemorySize = 512 * 1024
+    blocksWritten = 0
+    blocksRead = 0
     for i in range(testRepeatCount):
-        commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":8000,\"lenDec\":10,\"isIo\":0}\0" + testWriteData)
-        writtenData.append(testWriteData)
-        time.sleep(0.01)
-        commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":8000,\"lenDec\":10,\"isIo\":0}\0")
-        time.sleep(0.01)
-        if not testStats["msgRdOk"]:
-            break
-        testWriteData = bytearray(len(testWriteData))
-        for i in range(len(testWriteData)):
-            testWriteData[i] = random.randint(0,255)
+        testBlockLen = 1024
+        testWriteData = bytearray(os.urandom(testMemorySize))
+        print("Last byte", hex(testWriteData[-1]))
+        curAddr = 0x010000
+        testBlockInc = (testMemorySize - curAddr) // numTestBlocks
+        for testBlockNum in range(numTestBlocks):
+            apiCmd = {"cmdName":"Wr", "isIo":0}
+            apiCmd["addr"] = hex(curAddr)
+            apiCmd["lenDec"] = str(testBlockLen)
+            writtenData = testWriteData[curAddr:curAddr+testBlockLen]
+            cmdFrame = json.dumps(apiCmd).encode() + b"\0" + writtenData
+            commonTest.sendFrame("blockWrite", cmdFrame, "WrResp")
+            commonTest.awaitResponse(1000)
+            curAddr += testBlockInc
+            writtenDataHex = ''.join(('%02x' % writtenData[i]) for i in range(len(writtenData)))
+            print("Written addr", apiCmd["addr"], "len", str(len(writtenData)), "data", writtenDataHex)
+            blocksWritten += 1
+        
+        time.sleep(1)
+        # Now read blocks back in reverse order
+        curAddr -= testBlockInc
+        for testBlockNum in range(numTestBlocks):
+            apiCmd = {"cmdName":"Rd", "isIo":0}
+            apiCmd["addr"] = hex(curAddr)
+            apiCmd["lenDec"] = str(testBlockLen)
+            commonTest.sendFrame("blockRead", json.dumps(apiCmd).encode() + b"\0", "RdResp")
+            commonTest.awaitResponse(1000)
+            if not testStats["msgRdOk"]:
+                break
+            curAddr -= testBlockInc
+            blocksRead += 1
+
+        time.sleep(1)
     
     # Wait for test end and cleardown
     commonTest.cleardown()
     assert(testStats["msgRdOk"] == True)
-    assert(testStats["msgRdRespCount"] == testRepeatCount)
-    assert(testStats["msgWrRespCount"] == testRepeatCount)
+    assert(testStats["msgRdRespCount"] == blocksRead)
+    assert(testStats["msgWrRespCount"] == blocksWritten+1)
     assert(testStats["msgWrRespErrCount"] == 0)
     assert(testStats["msgWrRespErrMissingCount"] == 0)
     assert(testStats["unknownMsgCount"] == 0)

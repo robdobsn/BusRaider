@@ -224,10 +224,9 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     }
               
     // Offer to comms sockets
-    static const int MAX_RESP_MSG_LEN = 2000;
-    char respJson[MAX_RESP_MSG_LEN];
+    char respJson[MAX_DATAFRAME_LEN];
     respJson[0] = 0;
-    commsSocketHandleRxMsg(pCmdJson, pParams, paramsLen, respJson, MAX_RESP_MSG_LEN);
+    commsSocketHandleRxMsg(pCmdJson, pParams, paramsLen, respJson, MAX_DATAFRAME_LEN);
 
     // if (rdpMessage)
     //     LogWrite(FromCmdHandler, LOG_DEBUG, "CMDMSG rx cmd %s cmdLen %d paramsStr %s paramslen %d respJson %s", 
@@ -571,7 +570,6 @@ void CommandHandler::sendAPIReq(const char* reqLine)
 
 void CommandHandler::logDebugMessage(const char* pStr)
 {
-    static const int MAX_DATAFRAME_LEN = 2000;
     char responseJson[MAX_DATAFRAME_LEN+1];
     strlcpy(responseJson, "\"msg\":\"", MAX_DATAFRAME_LEN);
     strlcat(responseJson, pStr, MAX_DATAFRAME_LEN);

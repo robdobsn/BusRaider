@@ -9,7 +9,9 @@
         "xutility": "cpp",
         "*.c_inc": "cpp",
         "list": "cpp",
-        "xhash": "cpp"
+        "xhash": "cpp",
+        "array": "cpp",
+        "string": "cpp"
     },
     "python.testing.pytestArgs": [
         "test"
@@ -17,7 +19,7 @@
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
     "python.testing.nosetestsEnabled": false,
-    "python.pythonPath": "C:\\Python37\\python.exe",
+    "python.pythonPath": "C:\\Users\\rob\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
     "C_Cpp.errorSquiggles": "Disabled",
     "C_Cpp.dimInactiveRegions": false
 }

@@ -103,7 +103,7 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
     // Check for memory/IO read
     if (strcasecmp(cmdName, "Rd") == 0)
     {
-        LogWrite(FromBusController, LOG_DEBUG, "RD %s", pCmdJson);
+        // LogWrite(FromBusController, LOG_DEBUG, "Rd %s", pCmdJson);
 
         // Get params
         uint32_t addr = 0;
@@ -125,7 +125,7 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
             return true;
         }
         // Get data using bus access
-        if ((dataLen <= 0) || (dataLen >= MAX_MEM_BLOCK_READ_WRITE))
+        if ((dataLen <= 0) || (dataLen > MAX_MEM_BLOCK_READ_WRITE))
         {
             strlcpy(pRespJson, "\"err\":\"LenTooLong\"", maxRespLen);
             return true;
@@ -141,7 +141,7 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
         // Format data to send
         static const int MAX_MEM_READ_RESP = MAX_MEM_BLOCK_READ_WRITE*2+100; 
         char jsonResp[MAX_MEM_READ_RESP];
-        ee_sprintf(jsonResp, "\"err\":\"ok\",\"len\":%d,\"data\":\"", dataLen);
+        ee_sprintf(jsonResp, "\"err\":\"ok\",\"len\":%d,\"addr\":\"0x%04x\",\"isIo\":%d,\"data\":\"", dataLen, addr, isIo);
         int pos = strlen(jsonResp);
         for (uint32_t i = 0; i < dataLen; i++)
         {
@@ -150,10 +150,15 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
         }
         strlcat(jsonResp, "\"", MAX_MEM_READ_RESP);
         strlcpy(pRespJson, jsonResp, maxRespLen);
+
+        // LogWrite(FromBusController, LOG_DEBUG, "Rd result ok, lastByte 0x%c%c", jsonResp[strlen(jsonResp)-3], jsonResp[strlen(jsonResp)-2]);
+
         return true;
     }
     else if (strcasecmp(cmdName, "Wr") == 0)
     {
+        // LogWrite(FromBusController, LOG_DEBUG, "Wr %s", pCmdJson);
+        
         // Get params
         uint32_t addr = 0;
         uint32_t dataLen = 0;
@@ -174,7 +179,7 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
             return true;
         }
         // Get data using bus access
-        if ((dataLen <= 0) || (dataLen >= MAX_MEM_BLOCK_READ_WRITE) || (dataLen > (uint32_t)paramsLen))
+        if ((dataLen <= 0) || (dataLen > MAX_MEM_BLOCK_READ_WRITE) || (dataLen > (uint32_t)paramsLen))
         {
             strlcpy(pRespJson, "\"err\":\"LenTooLong\"", maxRespLen);
             return true;
