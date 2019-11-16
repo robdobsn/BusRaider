@@ -368,7 +368,7 @@ void McTRS80::busActionCompleteCallback(BR_BUS_ACTION actionType)
     {
         // Read memory of RC2014 at the location of the TRS80 memory mapped screen
         unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
-        if (BusAccess::blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, false, false) == BR_OK)
+        if (HwManager::blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, false, false, false) == BR_OK)
             updateDisplayFromBuffer(pScrnBuffer, TRS80_DISP_RAM_SIZE);
 
         // Check for key presses and send to the TRS80 if necessary
@@ -378,7 +378,7 @@ void McTRS80::busActionCompleteCallback(BR_BUS_ACTION actionType)
                 LogWrite(_logPrefix, LOG_DEBUG, "KB Dirty %02x %02x %02x %02x %02x %02x %02x %02x",
                     _keyBuffer[0], _keyBuffer[1], _keyBuffer[2], _keyBuffer[4], 
                     _keyBuffer[8], _keyBuffer[16], _keyBuffer[32], _keyBuffer[64], _keyBuffer[128]);
-            BusAccess::blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, false, false);
+            HwManager::blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, false, false, false);
             _keyBufferDirty = false;
         }
     }

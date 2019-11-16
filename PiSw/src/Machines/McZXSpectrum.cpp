@@ -524,7 +524,7 @@ void McZXSpectrum::busActionCompleteCallback(BR_BUS_ACTION actionType)
     if (actionType == BR_BUS_ACTION_BUSRQ)
     {
         // Read memory at the location of the memory mapped screen
-        if (BusAccess::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, false, false) == BR_OK)
+        if (HwManager::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, false, false, false) == BR_OK)
             _screenBufferValid = true;
 
         // // TODO

@@ -65,6 +65,12 @@ public:
     // Configure
     virtual void configure(const char* jsonConfig);
 
+    // Max address
+    virtual uint32_t getMaxAddress()
+    {
+        return STD_TARGET_MEMORY_LEN;
+    }
+
 protected:
     bool _enabled;
     const char* _pName;

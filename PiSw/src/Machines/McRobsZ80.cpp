@@ -140,7 +140,7 @@ void McRobsZ80::busActionCompleteCallback(BR_BUS_ACTION actionType)
     {
         // Read memory at the location of the memory mapped screen
         uint8_t pScrnBuffer[ROBSZ80_DISP_RAM_SIZE];
-        if (BusAccess::blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, false, false) == BR_OK)
+        if (HwManager::blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, false, false, false) == BR_OK)
             updateDisplayFromBuffer(pScrnBuffer, ROBSZ80_DISP_RAM_SIZE);
     }
 }

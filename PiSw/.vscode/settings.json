@@ -11,7 +11,14 @@
         "list": "cpp",
         "xhash": "cpp",
         "array": "cpp",
-        "string": "cpp"
+        "string": "cpp",
+        "memory": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "utility": "cpp",
+        "*.tcc": "cpp",
+        "functional": "cpp",
+        "istream": "cpp"
     },
     "python.testing.pytestArgs": [
         "test"

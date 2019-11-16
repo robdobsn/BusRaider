@@ -47,6 +47,12 @@ public:
     // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
     virtual void handleMemOrIOReq(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
 
+    // Max address
+    virtual uint32_t getMaxAddress()
+    {
+        return (_memCardSizeBytes * 1024) - 1;
+    }
+
 private:
     static const char* _logPrefix;
 

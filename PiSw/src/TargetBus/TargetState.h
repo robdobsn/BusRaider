@@ -9,8 +9,8 @@
 class TargetState
 {
 public:
-    // Consts
-    static const int MAX_TARGET_MEMORY_SIZE = STD_TARGET_MEMORY_LEN;
+    // Max 1MB address range of Z180 so use that as the limit of memory
+    static const int MAX_TARGET_MEMORY_SIZE = 1024 * 1024;
     static const int MAX_TARGET_MEMORY_BLOCKS = 20;
 
     typedef struct TargetMemoryBlock {

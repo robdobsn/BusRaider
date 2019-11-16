@@ -737,8 +737,8 @@ void McManager::busActionCompleteStatic(BR_BUS_ACTION actionType, [[maybe_unused
             _busActionCodeWrittenAtResetVector = false;
             for (int i = 0; i < TargetState::numMemoryBlocks(); i++) {
                 TargetState::TargetMemoryBlock* pBlock = TargetState::getMemoryBlock(i);
-                BR_RETURN_TYPE brResult = BusAccess::blockWrite(pBlock->start, 
-                            TargetState::getMemoryImagePtr() + pBlock->start, pBlock->len, false, false);
+                BR_RETURN_TYPE brResult = HwManager::blockWrite(pBlock->start, 
+                            TargetState::getMemoryImagePtr() + pBlock->start, pBlock->len, false, false, false);
                 LogWrite(FromMcManager, LOG_DEBUG,"ProgramTarget done %08x len %d result %d micros %u", pBlock->start, pBlock->len, brResult, micros());
                 if (pBlock->start == Z80_PROGRAM_RESET_VECTOR)
                     _busActionCodeWrittenAtResetVector = true;

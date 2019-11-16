@@ -224,7 +224,18 @@ void HwManager::setMirrorMode(bool val)
 
 uint32_t HwManager::getMaxAddress()
 {
-    return STD_TARGET_MEMORY_LEN-1;
+    // Iterate hardware
+    uint32_t maxAddress = STD_TARGET_MEMORY_LEN-1;
+    for (int i = 0; i < _numHardware; i++)
+    {
+        if (_pHw[i] && _pHw[i]->isEnabled())
+        {
+            uint32_t maxAddrForHw = _pHw[i]->getMaxAddress();
+            if (maxAddress < maxAddrForHw)
+                maxAddress = maxAddrForHw; 
+        }
+    }
+    return maxAddress;
 }
 
 BR_RETURN_TYPE HwManager::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, 
