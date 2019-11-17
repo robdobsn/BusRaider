@@ -14,7 +14,7 @@ static const int DISPLAY_WIDTH = 1600;
 static const int DISPLAY_HEIGHT = 900;
 
 static const int DISPLAY_TARGET_BORDER = 8;
-static const int DISPLAY_STATUS_LINES = 7;
+static const int DISPLAY_STATUS_LINES = 8;
 static const int DISPLAY_STATUS_MARGIN = 10;
 static const int DISPLAY_CONSOLE_MARGIN = 10;
 static const int DISPLAY_STATUS_INDENT = 40;
@@ -96,6 +96,7 @@ void Display::statusPut(int statusElement, int statusType, const char* pStr)
         { DISPLAY_STATUS_INDENT-2,  4 }, // Refresh
         { 0,                        5 }, // Keyboard
         { 30,                       5 }, // Asserts
+        { 0,                        6 }, // Asserts
     };
 
     // Check for changes

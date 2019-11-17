@@ -351,6 +351,30 @@ void BusRaiderApp::statusDisplayUpdate()
         strlcat(statusStr, "                                    ", MAX_STATUS_STR_LEN);
     
         _display.statusPut(Display::STATUS_FIELD_ASSERTS, Display::STATUS_FAIL, statusStr);
+
+        // Get file receive status
+        uint32_t fileLen = 0, filePos = 0;
+        if (!_commandHandler.getFileReceiveStatus(fileLen, filePos))
+            fileLen = 0;
+        int progressBarLen = 0;
+        const int MAX_FILE_PROGRESS_BAR_LEN = 30;
+        if (fileLen > 0)
+            progressBarLen = 7 + filePos*MAX_FILE_PROGRESS_BAR_LEN/fileLen;
+        if (progressBarLen > 0)
+        {
+            const int MAX_FILE_STATUS_STR_LEN = MAX_FILE_PROGRESS_BAR_LEN + 10;
+            char fileStatusStr[MAX_FILE_STATUS_STR_LEN+1];
+            fileStatusStr[0] = 0;
+            strlcpy(fileStatusStr, "Upload ########################################", progressBarLen);
+            _display.statusPut(Display::STATUS_FIELD_FILE_STATUS, Display::STATUS_FAIL, fileStatusStr);
+        }
+        else
+        {
+            _display.statusPut(Display::STATUS_FIELD_FILE_STATUS, Display::STATUS_FAIL, "                                        ");
+        }
+
+        // LogWrite(FromBusRaiderApp, LOG_DEBUG, "filelen %d filepos %d progbarlen %d dispStr %s", 
+        //             fileLen, filePos, progressBarLen, fileStatusStr);
     }
 }
 

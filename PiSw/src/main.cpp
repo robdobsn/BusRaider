@@ -23,7 +23,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Program details
-static const char* PROG_VERSION = "Bus Raider V2.0.024 (C) Rob Dobson 2018-2019";
+static const char* PROG_VERSION = "Bus Raider V2.0.025 (C) Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "https://robdobson.com/tag/raider";
 
 // Send log data to display (as opposed to merging in the ESP32 log output)
@@ -36,7 +36,7 @@ const char* FromMain = "Main";
 Display display;
 
 // Baud rate
-#define MAIN_UART_BAUD_RATE 921600
+#define MAIN_UART_BAUD_RATE 2000000
 UartMaxi mainUart;
 
 // CommandHandler, StepTracer, BusController

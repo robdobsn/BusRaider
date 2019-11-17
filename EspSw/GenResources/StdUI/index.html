@@ -452,15 +452,16 @@
         function updateProgress(fileNumber, percent, progressBarName) {
             let progressBar = document.getElementById(progressBarName);
             window.pageState.uploadProgress[fileNumber] = percent;
-            let total = window.pageState.uploadProgress.reduce((tot, curr) => tot + curr, 0) / window.pageState.uploadProgress.length;
+            let total = window.pageState.uploadProgress.reduce((tot, curr) => tot + curr, 0) / 
+                        window.pageState.uploadProgress.length;
             // console.debug('update', fileNumber, percent, total);
             progressBar.value = total;
         }
 
         function uploadToFileManager(files) {
-            files = [...files];
-            initializeProgress(files.length, 'progress-bar-file-manager');
-            files.forEach(uploadOnlyFile);
+            filesArray = [...files];
+            initializeProgress(filesArray.length, 'progress-bar-file-manager');
+            filesArray.forEach(uploadOnlyFile);
             document.getElementById("fileElemUpload").value = ""
         }
 
@@ -469,9 +470,9 @@
         }
 
         function uploadAndRunFiles(files) {
-            files = [...files];
-            initializeProgress(files.length, 'progress-bar-run');
-            files.forEach(uploadAndRunFile);
+            filesArray = [...files];
+            initializeProgress(filesArray.length, 'progress-bar-run');
+            filesArray.forEach(uploadAndRunFile);
             document.getElementById("fileElemRun").value = ""
         }
 
@@ -488,7 +489,8 @@
 
             // Update progress (can be used to show progress indicator)
             xhr.upload.addEventListener("progress", function (e) {
-                updateProgress(i, (e.loaded * 100.0 / e.total) || 100, progressBarName)
+                updateProgress(i, (e.loaded * 100.0 / e.total) || 100, progressBarName);
+                // console.log("Progress" + e.loaded + ", " + e.total);
             });
 
             xhr.addEventListener('readystatechange', function (e) {

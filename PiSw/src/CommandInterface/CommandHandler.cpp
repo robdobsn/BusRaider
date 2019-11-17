@@ -332,15 +332,15 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
     if (!jsonGetValueForKey("fileName", pCmdJson, _receivedFileName, MAX_FILE_NAME_STR))
         return;
 
-    LogWrite(FromCmdHandler, LOG_VERBOSE, "ufStart File %s, toPtr %08x", 
-                _receivedFileName, _pReceivedFileDataPtr);
+    // LogWrite(FromCmdHandler, LOG_DEBUG, "ufStart File %s, toPtr %08x", 
+    //             _receivedFileName, _pReceivedFileDataPtr);
 
     // Get file type
     if (!jsonGetValueForKey("fileType", pCmdJson, _pReceivedFileType, MAX_FILE_TYPE_STR))
         return;
 
-    LogWrite(FromCmdHandler, LOG_VERBOSE, "ufStart FileType %s", 
-                _receivedFileName);
+    // LogWrite(FromCmdHandler, LOG_DEBUG, "ufStart FileType %s", 
+    //             _receivedFileName);
 
     // Get file length
     char fileLenStr[MAX_INT_ARG_STR_LEN+1];
@@ -371,13 +371,13 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
         _receivedFileBufSize = fileLen;
 
         // Debug
-        LogWrite(FromCmdHandler, LOG_VERBOSE, "efStart File %s, toPtr %08x, bufSize %d", 
-                    _receivedFileName, _pReceivedFileDataPtr, _receivedFileBufSize);
+        // LogWrite(FromCmdHandler, LOG_DEBUG, "ufStart File %s, toPtr %08x, bufSize %d", 
+        //             _receivedFileName, _pReceivedFileDataPtr, _receivedFileBufSize);
     }
     else
     {
         _receivedFileBufSize = 0;
-        LogWrite(FromCmdHandler, LOG_WARNING, "efStart unable to allocate memory for file %s, bufSize %d", 
+        LogWrite(FromCmdHandler, LOG_WARNING, "ufStart unable to allocate memory for file %s, bufSize %d", 
                     _receivedFileName, _receivedFileBufSize);
 
     }
@@ -436,7 +436,7 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
     ee_sprintf(ackMsgJson, "\"rxCount\":%d, \"expCount\":%d", _receivedBlockCount, blockCount);
     if (blockCount != _receivedBlockCount)
     {
-        LogWrite(FromCmdHandler, LOG_WARNING, "efEnd File %s, blockCount rx %d != sent %d", 
+        LogWrite(FromCmdHandler, LOG_WARNING, "ufEnd File %s, blockCount rx %d != sent %d", 
                 _receivedFileName, _receivedBlockCount, blockCount);
         sendWithJSON("ufEndNotAck", ackMsgJson);
         return;
@@ -452,16 +452,30 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
     {
         // Short delay to allow comms completion 
         microsDelay(100000);
-        LogWrite(FromCmdHandler, LOG_DEBUG, "efEnd IMG firmware update File %s, len %d", _receivedFileName, _receivedFileBytesRx);
+        LogWrite(FromCmdHandler, LOG_DEBUG, "ufEnd IMG firmware update File %s, len %d", _receivedFileName, _receivedFileBytesRx);
     }
     else
     {
         // LogWrite(FromCmdHandler, LOG_VERBOSE, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
     }
     commsSocketHandleReceivedFile(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx, isFirmware);
+    LogWrite(FromCmdHandler, LOG_DEBUG, "ufEnd File %s, len %d Completed", _receivedFileName, _receivedFileBytesRx);
     
     // File handling completed
     _pReceivedFileDataPtr = NULL;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// File receive status
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool CommandHandler::getFileReceiveStatus(uint32_t& fileLen, uint32_t& filePos)
+{
+    if ((_receivedFileBufSize == 0) || (_receivedFileBufSize == _receivedFileBytesRx))
+        return false;
+    fileLen = _receivedFileBufSize;
+    filePos = _receivedFileBytesRx;
+    return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

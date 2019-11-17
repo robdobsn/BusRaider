@@ -100,6 +100,9 @@ public:
     void logDebugJson(const char* pStr);
     static void logDebug(const char* pSeverity, const char* pSource, const char* pMsg);
 
+    // File Receive Status
+    bool getFileReceiveStatus(uint32_t& fileLen, uint32_t& filePos);
+
 private:
     // Comms Sockets
     static const int MAX_COMMS_SOCKETS = 10;
@@ -137,7 +140,7 @@ private:
 private:
     // String lengths
     static const int CMD_HANDLER_MAX_CMD_STR_LEN = 200;
-    static const int MAX_INT_ARG_STR_LEN = 10;
+    static const int MAX_INT_ARG_STR_LEN = 20;
     static const int MAX_FILE_NAME_STR = 100;
     static const int MAX_FILE_TYPE_STR = 40;
     static const int MAX_DATAFRAME_LEN = 5000;

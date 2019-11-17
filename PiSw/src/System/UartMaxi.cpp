@@ -61,7 +61,7 @@ bool UartMaxi::setup(unsigned int baudRate, int rxBufSize, int txBufSize)
 {
         // Baud rate calculation
     uint32_t FUARTCLK_MAX = CMachineInfo::Get ()->GetMaxClockRate (CLOCK_ID_UART);
-    CMachineInfo::Get ()->SetClockRate (CLOCK_ID_UART, 16000000, true);
+    CMachineInfo::Get ()->SetClockRate (CLOCK_ID_UART, 32000000, true);
     uint32_t FUARTCLK = CMachineInfo::Get ()->GetClockRate (CLOCK_ID_UART);
 	uint32_t baudRateX16 = baudRate * 16;
     uint32_t intBaudDivisor = FUARTCLK / baudRateX16;
