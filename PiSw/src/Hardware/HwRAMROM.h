@@ -17,7 +17,7 @@ public:
     // Set paging enable
     virtual void setMemoryPagingEnable(bool val)
     {
-        _pagingEnabled = val;
+        _pageOutEnabled = val;
     }
 
     // Mirror mode
@@ -58,7 +58,7 @@ private:
 
     // Paging hardware support
     bool _memoryEmulationMode;
-    bool _pagingEnabled;
+    bool _pageOutEnabled;
     bool _currentlyPagedOut;
 
     // Mirror mode
@@ -91,13 +91,15 @@ private:
     // Rob's memory card options
     enum memOpts_t {
         MEM_OPT_OPT_NONE = 0x00,
-        MEM_OPT_STAY_BANKED = 0x01
+        MEM_OPT_STAY_BANKED = 0x01,
+        MEM_OPT_EMULATE_LINEAR = 0x04
     };
     memOpts_t _memCardOpts;
 
     // Memory card using 74670 register files to bank 16K pages
     static const int NUM_BANKS = 4;
     uint8_t _bankRegisters[NUM_BANKS];
+    bool _bankRegisterOutputEnable;
     uint32_t _bankHwBaseIOAddr;
     uint32_t _bankHwPageEnIOAddr;
 
@@ -113,7 +115,10 @@ private:
     // Access linear or banked memory
     BR_RETURN_TYPE physicalBlockAccess(uint32_t addr, const uint8_t* pBuf, uint32_t len,
             bool busRqAndRelease, bool iorq, bool write);
-            
+    void setBanksToEmulate64KAddrSpace();
+    BR_RETURN_TYPE readWriteBankedMemory(uint32_t addr, uint8_t* pBuf, uint32_t len,
+            bool iorq, bool write);
+
     // Base name
     static const char* _baseName;
 };

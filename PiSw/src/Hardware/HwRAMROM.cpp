@@ -30,7 +30,8 @@ HwRAMROM::HwRAMROM() : HwBase()
     _memCardOpts = MEM_OPT_OPT_NONE;
     _bankHwBaseIOAddr = BANK_16K_BASE_ADDR;
     _bankHwPageEnIOAddr = BANK_16K_PAGE_ENABLE;
-    _pagingEnabled = true;
+    _pageOutEnabled = true;
+    _bankRegisterOutputEnable = false;
     for (int i = 0; i < NUM_BANKS; i++)
         _bankRegisters[i] = 0;
     hwReset();
@@ -53,7 +54,7 @@ void HwRAMROM::configure([[maybe_unused]] const char* jsonConfig)
     _memoryCardOpMode = MEM_CARD_OP_MODE_LINEAR;
     if (jsonGetValueForKey("bankHw", jsonConfig, paramStr, MAX_CMD_PARAM_STR))
     {
-        if (strcasecmp(paramStr, "BANKED") == 0)
+        if ((strcasecmp(paramStr, "BANKED") == 0) || (strcasecmp(paramStr, "PAGED") == 0))
             _memoryCardOpMode = MEM_CARD_OP_MODE_BANKED;
     }
 
@@ -63,14 +64,16 @@ void HwRAMROM::configure([[maybe_unused]] const char* jsonConfig)
     {
         if (strcasecmp(paramStr, "STAYBANKED") == 0)
             _memCardOpts = MEM_OPT_STAY_BANKED;
+        if (strcasecmp(paramStr, "EMULATELINEAR") == 0)
+            _memCardOpts = MEM_OPT_EMULATE_LINEAR;
     }
 
     // Get pageOut param
-    _pagingEnabled = true;
+    _pageOutEnabled = true;
     if (jsonGetValueForKey("pageOut", jsonConfig, paramStr, MAX_CMD_PARAM_STR))
     {
         if (strcasecmp(paramStr, "busPAGE") != 0)
-            _pagingEnabled = false;
+            _pageOutEnabled = false;
     }
 
     uint32_t newMemSizeBytes = memSizeK*1024;
@@ -96,7 +99,7 @@ void HwRAMROM::configure([[maybe_unused]] const char* jsonConfig)
     }
 
     LogWrite(_logPrefix, LOG_DEBUG, "configure Paging %s, Mode %s, Opts %x, MemSize %d (%dK) ... json %s", 
-                _pagingEnabled ? "Y" : "N",
+                _pageOutEnabled ? "Y" : "N",
                 _memoryCardOpMode == MEM_CARD_OP_MODE_LINEAR ? "Linear" : "Banked",
                 _memCardOpts,
                 _memCardSizeBytes,
@@ -111,7 +114,7 @@ void HwRAMROM::setMemoryEmulationMode(bool pageOut)
     _memoryEmulationMode = pageOut;
 
     // Paging
-    if (!_pagingEnabled)
+    if (!_pageOutEnabled)
         return;
 
     // Debug
@@ -136,10 +139,10 @@ void HwRAMROM::pageOutForInjection(bool pageOut)
 {
     _currentlyPagedOut = pageOut;
 
-    // LogWrite(_logPrefix, LOG_DEBUG, "pageOutForInjection %s pagingEn %d", pageOut ? "Y" : "N", _pagingEnabled);
+    // LogWrite(_logPrefix, LOG_DEBUG, "pageOutForInjection %s pagingEn %d", pageOut ? "Y" : "N", _pageOutEnabled);
 
     // Check enabled
-    if (!_pagingEnabled)
+    if (!_pageOutEnabled)
         return;
         
     // Page out
@@ -207,6 +210,84 @@ void HwRAMROM::mirrorClone()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Emulate 64K linear memory with banked memory card
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void HwRAMROM::setBanksToEmulate64KAddrSpace()
+{
+    // Write consecutive bank numbers to all bank registers
+    const uint8_t bankNumData[] = { 0, 1, 2, 3 };
+    BusAccess::blockWrite(BANK_16K_BASE_ADDR, bankNumData, 4, false, true);
+
+    // Enable register outputs
+    const uint8_t setRegEn[] = { 1 };
+    BusAccess::blockWrite(BANK_16K_PAGE_ENABLE, setRegEn, 1, false, true);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Read/Write to banked physical memory
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+BR_RETURN_TYPE HwRAMROM::readWriteBankedMemory(uint32_t addr, uint8_t* pBuf, uint32_t len,
+            bool iorq, bool write)
+{
+    // Return value
+    BR_RETURN_TYPE retVal = BR_OK;
+
+    // Enable register outputs
+    const uint8_t setRegEn[] = { 1 };
+    BusAccess::blockWrite(BANK_16K_PAGE_ENABLE, setRegEn, 1, false, true);
+
+    // Access memory using bank 0
+    uint32_t initialBankOffset = addr % BANK_SIZE_BYTES;
+    uint32_t num16KBanks = (len == 0) ? 0 : ((len - 1 + initialBankOffset) / BANK_SIZE_BYTES) + 1;
+    uint8_t bankNumber = addr / BANK_SIZE_BYTES;
+    uint32_t bytesRemaining = len;
+    
+    // Start address and initial page number
+    for (uint32_t i = 0; i < num16KBanks; i++)
+    {
+        // Start and length calculation for first block
+        uint32_t start = initialBankOffset;
+        uint32_t lenInBank = (num16KBanks == 1) ? bytesRemaining : BANK_SIZE_BYTES - start;
+        // Other blocks
+        if (i > 0)
+        {
+            start = 0;
+            lenInBank = (bytesRemaining < BANK_SIZE_BYTES) ? bytesRemaining : BANK_SIZE_BYTES;
+        }
+        // LogWrite(_logPrefix, LOG_DEBUG, "%s Addr %06x Len 0x%x NumBanks %d BankNo %x startAddr %04x lenInBank 0x%x", 
+        //                 write ? "WRITE" : "READ", addr, len, num16KBanks, bankNumber, start, lenInBank);
+
+        // Write the bank number to bank register 0
+        const uint8_t bankNumData[] = { bankNumber };
+        BusAccess::blockWrite(BANK_16K_BASE_ADDR, bankNumData, 1, false, true);
+
+        // Perform the memory operation
+        if (write)
+            retVal = BusAccess::blockWrite(start, pBuf, lenInBank, false, iorq);
+        else
+            retVal = BusAccess::blockRead(start, pBuf, lenInBank, false, iorq);
+        if (retVal != BR_OK)
+            break;
+
+        // Bump bank number
+        bankNumber++;
+        pBuf += lenInBank;
+        bytesRemaining -= lenInBank;
+    }
+
+    // Disable memory registers
+    const uint8_t setRegEnableValue[] = { _bankRegisterOutputEnable };
+    BusAccess::blockWrite(BANK_16K_PAGE_ENABLE, setRegEnableValue, 1, false, true);
+
+    // Write the current bank number back to bank register 0
+    const uint8_t bankNumData[] = { _bankRegisters[0] };
+    BusAccess::blockWrite(BANK_16K_BASE_ADDR, bankNumData, 1, false, true);
+    return retVal;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Handling of linear and banked physical memory
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -221,8 +302,6 @@ BR_RETURN_TYPE HwRAMROM::physicalBlockAccess(uint32_t addr, const uint8_t* pBuf,
     //     switch into bank mode and use bank regs to access banks
     // else
     //   store bank regs, then use bank regs to access banks, restore bank regs
-    // Memory buffer pointer
-    uint8_t* pMemBuf = const_cast<uint8_t*>(pBuf);
 
     // Card mode
     if (_memoryCardOpMode == MEM_CARD_OP_MODE_LINEAR)
@@ -230,12 +309,12 @@ BR_RETURN_TYPE HwRAMROM::physicalBlockAccess(uint32_t addr, const uint8_t* pBuf,
         if (addr + len <= 65536)
         {
             if (write)
-                return BusAccess::blockWrite(addr, pMemBuf, len, busRqAndRelease, iorq);
-            return BusAccess::blockRead(addr, pMemBuf, len, busRqAndRelease, iorq);
+                return BusAccess::blockWrite(addr, pBuf, len, busRqAndRelease, iorq);
+            return BusAccess::blockRead(addr, const_cast<uint8_t*>(pBuf), len, busRqAndRelease, iorq);
         }
         else
         {
-            LogWrite(_logPrefix, LOG_DEBUG, "Setting to paged, lastByte = %02x", pMemBuf[len-1]);
+            LogWrite(_logPrefix, LOG_DEBUG, "Setting to paged, lastByte = %02x", pBuf[len-1]);
 
             // Check if we need to request bus
             if (busRqAndRelease) {
@@ -248,60 +327,12 @@ BR_RETURN_TYPE HwRAMROM::physicalBlockAccess(uint32_t addr, const uint8_t* pBuf,
                 }
             }
 
-            // Return value
-            BR_RETURN_TYPE retVal = BR_OK;
-
             // Switch card to banked mode
             const uint8_t setBankedMode[] = { 1 };
             BusAccess::blockWrite(BANK_16K_LIN_TO_PAGE, setBankedMode, 1, false, true);
 
-            // Enable memory registers
-            const uint8_t setRegEn[] = { 1 };
-            BusAccess::blockWrite(BANK_16K_PAGE_ENABLE, setRegEn, 1, false, true);
-
-            // Access memory using bank 0
-            uint32_t initialBankOffset = addr % BANK_SIZE_BYTES;
-            uint32_t num16KBanks = (len == 0) ? 0 : ((len - 1 + initialBankOffset) / BANK_SIZE_BYTES) + 1;
-            uint8_t bankNumber = addr / BANK_SIZE_BYTES;
-            uint32_t bytesRemaining = len;
-            
-            // Start address and initial page number
-            for (uint32_t i = 0; i < num16KBanks; i++)
-            {
-                // Start and length calculation for first block
-                uint32_t start = initialBankOffset;
-                uint32_t lenInBank = (num16KBanks == 1) ? bytesRemaining : BANK_SIZE_BYTES - start;
-                // Other blocks
-                if (i > 0)
-                {
-                    start = 0;
-                    lenInBank = (bytesRemaining < BANK_SIZE_BYTES) ? bytesRemaining : BANK_SIZE_BYTES;
-                }
-                LogWrite(_logPrefix, LOG_DEBUG, "%s Addr %06x Len 0x%x NumBanks %d BankNo %x startAddr %04x lenInBank 0x%x", 
-                                write ? "WRITE" : "READ", addr, len, num16KBanks, bankNumber, start, lenInBank);
-
-                // Write the bank number to bank register 0
-                const uint8_t bankNumData[] = { bankNumber };
-                BusAccess::blockWrite(BANK_16K_BASE_ADDR, bankNumData, 1, false, true);
-                microsDelay(1);
-
-                // Perform the memory operation
-                if (write)
-                    retVal = BusAccess::blockWrite(start, pMemBuf, lenInBank, false, iorq);
-                else
-                    retVal = BusAccess::blockRead(start, pMemBuf, lenInBank, false, iorq);
-                if (retVal != BR_OK)
-                    break;
-
-                // Bump bank number
-                bankNumber++;
-                pMemBuf += lenInBank;
-                bytesRemaining -= lenInBank;
-            }
-
-            // Disable memory registers
-            const uint8_t setRegDisable[] = { 0 };
-            BusAccess::blockWrite(BANK_16K_PAGE_ENABLE, setRegDisable, 1, false, true);
+            // Read/Write the banked memory block
+            BR_RETURN_TYPE retVal = readWriteBankedMemory(addr, const_cast<uint8_t*>(pBuf), len, iorq, write);
 
             // Switch card back to linear mode if required
             if ((_memCardOpts & MEM_OPT_STAY_BANKED) == 0)
@@ -321,11 +352,12 @@ BR_RETURN_TYPE HwRAMROM::physicalBlockAccess(uint32_t addr, const uint8_t* pBuf,
     }
     else
     {
-            // Store bank register contents
+        // Read/Write the banked memory block
+        readWriteBankedMemory(addr, const_cast<uint8_t*>(pBuf), len, iorq, write);
 
-            // access memory using bank 0
-            
-            // Restore bank register contents
+        // Check if banks should be set to emulate 64K linear address space
+        if (_memCardOpts & MEM_OPT_EMULATE_LINEAR)
+            setBanksToEmulate64KAddrSpace();
     }
     return BR_NOT_HANDLED;
 }
@@ -575,8 +607,8 @@ void HwRAMROM::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]]
         }
     }
 
-    // // Check for address range used by this card
-    // if (_pagingEnabled && ((addr & 0xff) >= _bankHwBaseIOAddr) && ((addr & 0xff) < _bankHwBaseIOAddr + NUM_BANKS))
+    // Check for address range used by this card
+    // if (((addr & 0xff) >= _bankHwBaseIOAddr) && ((addr & 0xff) < _bankHwBaseIOAddr + NUM_BANKS))
     // {
     //     if(flags & BR_CTRL_BUS_WR_MASK)
     //     {
@@ -589,7 +621,7 @@ void HwRAMROM::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]]
     // {
     //     if (flags & BR_CTRL_BUS_WR_MASK)
     //     {
-    //         _pagingEnabled = ((data & 0x01) != 0);
+    //         _bankRegisterOutputEnable = ((data & 0x01) != 0);
     //     }
     // }
 }
