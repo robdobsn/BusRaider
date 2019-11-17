@@ -30,6 +30,7 @@ enum BR_BUS_ACTION {
     BR_BUS_ACTION_HOLD_IN_WAIT,
     BR_BUS_ACTION_PAGE_OUT_FOR_INJECT,
     BR_BUS_ACTION_PAGE_IN_FOR_INJECT,
+    BR_BUS_ACTION_RESET_END,
     BR_BUS_ACTION_COUNT
 };
 
@@ -41,6 +42,8 @@ enum BR_BUS_ACTION_REASON {
     BR_BUS_ACTION_MIRROR,
     // Request to program the target memory
     BR_BUS_ACTION_PROGRAMMING,
+    // Hardware access
+    BR_BUS_ACTION_HW_ACTION,
     // General indicator - used when bus action is not bus mastering
     BR_BUS_ACTION_GENERAL
 };

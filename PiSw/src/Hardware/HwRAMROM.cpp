@@ -2,6 +2,7 @@
 // Rob Dobson 2019
 
 #include "HwRAMROM.h"
+#include "HwManager.h"
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetState.h"
 #include "../System/rdutils.h"
@@ -26,9 +27,12 @@ HwRAMROM::HwRAMROM() : HwBase()
     _pName = _baseName;
     _memoryEmulationMode = false;
     _memoryCardOpMode = MEM_CARD_OP_MODE_LINEAR;
+    _memCardOpts = MEM_OPT_OPT_NONE;
     _bankHwBaseIOAddr = BANK_16K_BASE_ADDR;
     _bankHwPageEnIOAddr = BANK_16K_PAGE_ENABLE;
     _pagingEnabled = true;
+    for (int i = 0; i < NUM_BANKS; i++)
+        _bankRegisters[i] = 0;
     hwReset();
 }
 
@@ -51,6 +55,14 @@ void HwRAMROM::configure([[maybe_unused]] const char* jsonConfig)
     {
         if (strcasecmp(paramStr, "BANKED") == 0)
             _memoryCardOpMode = MEM_CARD_OP_MODE_BANKED;
+    }
+
+    // Get rob's linear/banked card options
+    _memCardOpts = MEM_OPT_OPT_NONE;
+    if (jsonGetValueForKey("memOpt", jsonConfig, paramStr, MAX_CMD_PARAM_STR))
+    {
+        if (strcasecmp(paramStr, "STAYBANKED") == 0)
+            _memCardOpts = MEM_OPT_STAY_BANKED;
     }
 
     // Get pageOut param
@@ -83,9 +95,10 @@ void HwRAMROM::configure([[maybe_unused]] const char* jsonConfig)
         // }
     }
 
-    LogWrite(_logPrefix, LOG_DEBUG, "configure Paging %s, Mode %s, MemSize %d (%dK) ... json %s", 
+    LogWrite(_logPrefix, LOG_DEBUG, "configure Paging %s, Mode %s, Opts %x, MemSize %d (%dK) ... json %s", 
                 _pagingEnabled ? "Y" : "N",
                 _memoryCardOpMode == MEM_CARD_OP_MODE_LINEAR ? "Linear" : "Banked",
+                _memCardOpts,
                 _memCardSizeBytes,
                 memSizeK,
                 jsonConfig);
@@ -147,8 +160,6 @@ void HwRAMROM::hwReset()
 {
     _currentlyPagedOut = false;
     BusAccess::busPagePinSetActive(false);
-    for (int i = 0; i < NUM_BANKS; i++)
-        _bankRegisters[i] = 0;
 }
 
 // Mirror mode
@@ -241,8 +252,8 @@ BR_RETURN_TYPE HwRAMROM::physicalBlockAccess(uint32_t addr, const uint8_t* pBuf,
             BR_RETURN_TYPE retVal = BR_OK;
 
             // Switch card to banked mode
-            const uint8_t setPageMode[] = { 1 };
-            BusAccess::blockWrite(BANK_16K_LIN_TO_PAGE, setPageMode, 1, false, true);
+            const uint8_t setBankedMode[] = { 1 };
+            BusAccess::blockWrite(BANK_16K_LIN_TO_PAGE, setBankedMode, 1, false, true);
 
             // Enable memory registers
             const uint8_t setRegEn[] = { 1 };
@@ -292,9 +303,13 @@ BR_RETURN_TYPE HwRAMROM::physicalBlockAccess(uint32_t addr, const uint8_t* pBuf,
             const uint8_t setRegDisable[] = { 0 };
             BusAccess::blockWrite(BANK_16K_PAGE_ENABLE, setRegDisable, 1, false, true);
 
-            // Switch card back to linear mode
-            const uint8_t clearPageMode[] = { 0 };
-            BusAccess::blockWrite(BANK_16K_LIN_TO_PAGE, clearPageMode, 1, false, true);
+            // Switch card back to linear mode if required
+            if ((_memCardOpts & MEM_OPT_STAY_BANKED) == 0)
+            {
+                const uint8_t clearBankedMode[] = { 0 };
+                BusAccess::blockWrite(BANK_16K_LIN_TO_PAGE, clearBankedMode, 1, false, true);
+                // LogWrite(_logPrefix, LOG_DEBUG, "Restore to linear");
+            }
 
             // Check if we need to release bus
             if (busRqAndRelease) {
@@ -490,6 +505,12 @@ void HwRAMROM::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType,
     {
         case BR_BUS_ACTION_RESET:
             hwReset();
+            // Request the bus again so we can change the mode of the card if required
+            if (_memCardOpts & MEM_OPT_STAY_BANKED)
+            {
+                // LogWrite(_logPrefix, LOG_DEBUG, "BUSRQ Opts %d Set to stay banked %d", _memCardOpts, _memCardOpts & MEM_OPT_STAY_BANKED);
+                BusAccess::targetReqBus(HwManager::getBusSocketId(), BR_BUS_ACTION_HW_ACTION);
+            }
             break;
         case BR_BUS_ACTION_PAGE_OUT_FOR_INJECT:
             pageOutForInjection(true);
@@ -515,6 +536,16 @@ void HwRAMROM::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType,
                 //              getMirrorMemory()[3],
                 //              _mirrorMode,
                 //              _pName);
+            }
+            if (reason == BR_BUS_ACTION_HW_ACTION)
+            {
+                // Switch card back to banked mode if required
+                // LogWrite(_logPrefix, LOG_DEBUG, "HWAction Opts %d Set to stay banked %d", _memCardOpts, _memCardOpts & MEM_OPT_STAY_BANKED);
+                if (_memCardOpts & MEM_OPT_STAY_BANKED)
+                {
+                    const uint8_t setBankedMode[] = { 1 };
+                    BusAccess::blockWrite(BANK_16K_LIN_TO_PAGE, setBankedMode, 1, true, true);
+                }
             }
             break;
         default:

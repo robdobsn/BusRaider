@@ -88,6 +88,13 @@ private:
     };
     memoryCardOpMode_t _memoryCardOpMode;
 
+    // Rob's memory card options
+    enum memOpts_t {
+        MEM_OPT_OPT_NONE = 0x00,
+        MEM_OPT_STAY_BANKED = 0x01
+    };
+    memOpts_t _memCardOpts;
+
     // Memory card using 74670 register files to bank 16K pages
     static const int NUM_BANKS = 4;
     uint8_t _bankRegisters[NUM_BANKS];

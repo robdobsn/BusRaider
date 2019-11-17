@@ -84,6 +84,11 @@ public:
     // Setup from Json
     static void setupFromJson(const char* jsonKey, const char* hwJson);
 
+    // Get bus socket ID
+    static int getBusSocketId()
+    {
+        return _busSocketId;
+    }
 private:
 
     // Hardware slots

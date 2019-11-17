@@ -563,6 +563,8 @@ void BusAccess::busActionHandleActive()
                 busActionCallback(_busActionType, BR_BUS_ACTION_GENERAL);
                 setSignal(_busActionType, false);
                 busActionClearFlags();
+                if (_busActionType == BR_BUS_ACTION_RESET)
+                    busActionCallback(BR_BUS_ACTION_RESET_END, BR_BUS_ACTION_GENERAL);
             }
         }
     }
