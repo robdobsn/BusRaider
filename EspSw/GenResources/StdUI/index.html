@@ -74,6 +74,10 @@
             {
                 console.log("Web socket open");
             }
+            window.pageState.screenMirrorWebSocket.onclose = function () 
+            {
+                console.log("Web socket closed");
+            }
             window.pageState.screenMirrorWebSocket.onmessage = function(event)
             {
                 const SIZE_OF_MSG_CHAR_DATA = 6;
