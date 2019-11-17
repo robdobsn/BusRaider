@@ -40,7 +40,7 @@ McDescriptorTable McTerminal::_defaultDescriptorTables[] = {
         // Interrupt rate per second
         .irqRate = 0,
         // Bus monitor
-        .monitorIORQ = false,
+        .monitorIORQ = true,
         .monitorMREQ = false,
         .setRegistersCodeAddr = 0
     },
@@ -66,7 +66,7 @@ McDescriptorTable McTerminal::_defaultDescriptorTables[] = {
         // Interrupt rate per second
         .irqRate = 0,
         // Bus monitor
-        .monitorIORQ = false,
+        .monitorIORQ = true,
         .monitorMREQ = false,
         .setRegistersCodeAddr = 0
     }
@@ -91,7 +91,7 @@ McTerminal::McTerminal() :
     _cursorIsShown = false;
 
     // Emulation of uarts
-    _emulate6850 = false;
+    _emulate6850 = true;
     _emulationInterruptOnRx = false;
     _emulation6850NeedsReset = true;
     _emulation6850NotSetup = false;
@@ -130,18 +130,19 @@ bool McTerminal::setupMachine(const char* mcName, const char* mcJson)
     bool rslt = McBase::setupMachine(mcName, mcJson);
 
     // Check for variations
-    _emulate6850 = false;
+    _emulate6850 = true;
     _emulationInterruptOnRx = false;
-    getDescriptorTable()->monitorIORQ = false;
+    getDescriptorTable()->monitorIORQ = true;
     static const int MAX_UART_EMULATION_STR = 100;
     char emulUartStr[MAX_UART_EMULATION_STR];
     bool emulUartValid = jsonGetValueForKey("emulate6850", mcJson, emulUartStr, MAX_UART_EMULATION_STR);
     if (emulUartValid)
     {
-        LogWrite(_logPrefix, LOG_DEBUG, "setupMachine emulate6850");
-        _emulate6850 = true;
-        getDescriptorTable()->monitorIORQ = true;
+        _emulate6850 = (strtol(emulUartStr, NULL, 10) != 0);
+        if (!_emulate6850)
+            getDescriptorTable()->monitorIORQ = false;
     }
+    LogWrite(_logPrefix, LOG_DEBUG, "setupMachine emulate6850 %s", _emulate6850 ? "Y" : "N");
     return rslt;
 }
 
