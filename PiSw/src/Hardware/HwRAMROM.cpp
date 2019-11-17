@@ -20,7 +20,7 @@ HwRAMROM::HwRAMROM() : HwBase()
     _mirrorMemoryLen = _memCardSizeBytes;
     _pMirrorMemory = NULL;
     _mirrorMemAllocNotified = false;
-    _tracerMemoryLen = _memCardSizeBytes;
+    _tracerMemoryLen = TRACER_DEFAULT_MEM_SIZE_K*1024;
     _pTracerMemory = NULL;
     _tracerMemAllocNotified = false;
     _pName = _baseName;
@@ -70,17 +70,17 @@ void HwRAMROM::configure([[maybe_unused]] const char* jsonConfig)
     {
         _memCardSizeBytes = newMemSizeBytes;
         _mirrorMemoryLen = _memCardSizeBytes;
-        _tracerMemoryLen = _memCardSizeBytes;
         if (_pMirrorMemory)
         {
             delete [] _pMirrorMemory;
             _pMirrorMemory = NULL;
         }
-        if (_pTracerMemory)
-        {
-            delete [] _pTracerMemory;
-            _pTracerMemory = NULL;
-        }
+        // _tracerMemoryLen = _memCardSizeBytes;
+        // if (_pTracerMemory)
+        // {
+        //     delete [] _pTracerMemory;
+        //     _pTracerMemory = NULL;
+        // }
     }
 
     LogWrite(_logPrefix, LOG_DEBUG, "configure Paging %s, Mode %s, MemSize %d (%dK) ... json %s", 

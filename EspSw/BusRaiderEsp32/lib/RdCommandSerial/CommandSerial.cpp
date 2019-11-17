@@ -228,7 +228,7 @@ void CommandSerial::sendFileStartRecord(const char* fileType, const String& req,
 
 void CommandSerial::sendFileBlock(size_t index, uint8_t *data, size_t len)
 {
-    String header = "{\"cmdName\":\"ufBlock\",\"index\":" + String(index) + ",\"len\":" + String(len) + "}";
+   String header = "{\"cmdName\":\"ufBlock\",\"index\":" + String(index) + ",\"len\":" + String(len) + "}";
     int headerLen = header.length();
     uint8_t* pFrameBuf = new uint8_t[headerLen + len + 1];
     memcpy(pFrameBuf, header.c_str(), headerLen);
@@ -301,8 +301,12 @@ void CommandSerial::uploadCommonBlockHandler(const char* fileType, const String&
         if (_uploadTargetCommandWhenComplete.length() != 0)
         {
             sendTargetCommand(_uploadTargetCommandWhenComplete, "");
-            // Log.trace("%spost-upload target command sent %s\n", MODULE_PREFIX,
-            //         _uploadTargetCommandWhenComplete.c_str());
+            Log.trace("%spost-upload target command sent %s\n", MODULE_PREFIX,
+                    _uploadTargetCommandWhenComplete.c_str());
+        }
+        else
+        {
+            Log.trace("%spost-upload no target command requested\n", MODULE_PREFIX);
         }
         _uploadTargetCommandWhenComplete = "";
         _uploadFromFSInProgress = false;
@@ -364,6 +368,8 @@ bool CommandSerial::startUploadFromFileSystem(const String& fileSystemName,
     _uploadLastBlockMs = millis();
     if (pTargetCmdWhenDone)
         _uploadTargetCommandWhenComplete = pTargetCmdWhenDone;
+    else
+        _uploadTargetCommandWhenComplete = "";
     return true;
 }
 

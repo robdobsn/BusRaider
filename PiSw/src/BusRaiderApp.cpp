@@ -357,20 +357,25 @@ void BusRaiderApp::statusDisplayUpdate()
         if (!_commandHandler.getFileReceiveStatus(fileLen, filePos))
             fileLen = 0;
         int progressBarLen = 0;
-        const int MAX_FILE_PROGRESS_BAR_LEN = 30;
+        const int MAX_FILE_PROGRESS_BAR_LEN = 40;
         if (fileLen > 0)
-            progressBarLen = 7 + filePos*MAX_FILE_PROGRESS_BAR_LEN/fileLen;
+            progressBarLen = filePos*MAX_FILE_PROGRESS_BAR_LEN/fileLen;
         if (progressBarLen > 0)
         {
-            const int MAX_FILE_STATUS_STR_LEN = MAX_FILE_PROGRESS_BAR_LEN + 10;
+            const int MAX_FILE_STATUS_STR_LEN = MAX_FILE_PROGRESS_BAR_LEN + 20;
             char fileStatusStr[MAX_FILE_STATUS_STR_LEN+1];
-            fileStatusStr[0] = 0;
-            strlcpy(fileStatusStr, "Upload ########################################", progressBarLen);
+            static const char* uploadStr = "Upload ["; 
+            strlcpy(fileStatusStr, uploadStr, MAX_FILE_STATUS_STR_LEN);
+            int stCurPos = strlen(fileStatusStr);
+            for (int i = 0; i < MAX_FILE_PROGRESS_BAR_LEN; i++)
+                fileStatusStr[i+stCurPos] = (i < progressBarLen) ? '#' : ' ';
+            fileStatusStr[stCurPos+MAX_FILE_PROGRESS_BAR_LEN] = ']';
+            fileStatusStr[stCurPos+MAX_FILE_PROGRESS_BAR_LEN+1] = 0;
             _display.statusPut(Display::STATUS_FIELD_FILE_STATUS, Display::STATUS_FAIL, fileStatusStr);
         }
         else
         {
-            _display.statusPut(Display::STATUS_FIELD_FILE_STATUS, Display::STATUS_FAIL, "                                        ");
+            _display.statusPut(Display::STATUS_FIELD_FILE_STATUS, Display::STATUS_FAIL, "                                                  ");
         }
 
         // LogWrite(FromBusRaiderApp, LOG_DEBUG, "filelen %d filepos %d progbarlen %d dispStr %s", 

@@ -71,13 +71,14 @@ private:
     uint8_t* getMirrorMemory();
 
     // Tracer memory (used for emulated CPU step-validation)
+    static const uint32_t TRACER_DEFAULT_MEM_SIZE_K = 64;
     uint8_t* _pTracerMemory;
     uint32_t _tracerMemoryLen;
     bool _tracerMemAllocNotified;
     uint8_t* getTracerMemory();
 
     // Size of memory card
-    static const uint32_t DEFAULT_MEM_SIZE_K = 64;
+    static const uint32_t DEFAULT_MEM_SIZE_K = 1024;
     uint32_t _memCardSizeBytes;
 
     // Operation mode of memory card
