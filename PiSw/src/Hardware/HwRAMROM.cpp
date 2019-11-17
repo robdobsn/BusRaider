@@ -608,20 +608,22 @@ void HwRAMROM::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]]
     }
 
     // Check for address range used by this card
-    // if (((addr & 0xff) >= _bankHwBaseIOAddr) && ((addr & 0xff) < _bankHwBaseIOAddr + NUM_BANKS))
-    // {
-    //     if(flags & BR_CTRL_BUS_WR_MASK)
-    //     {
-    //         _bankRegisters[(addr & 0xff) - _bankHwBaseIOAddr] = data;
-    //         //TODO
-    //         // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B + (addr & 0xff) - _bankHwBaseIOAddr, data);
-    //     }
-    // }
-    // else if ((addr & 0xff) == _bankHwPageEnIOAddr)
-    // {
-    //     if (flags & BR_CTRL_BUS_WR_MASK)
-    //     {
-    //         _bankRegisterOutputEnable = ((data & 0x01) != 0);
-    //     }
-    // }
+    uint32_t ioAddr = (addr & 0xff);
+    if ((ioAddr >= _bankHwBaseIOAddr) && (ioAddr < _bankHwBaseIOAddr + NUM_BANKS))
+    {
+        if(flags & BR_CTRL_BUS_WR_MASK)
+        {
+            _bankRegisters[ioAddr - _bankHwBaseIOAddr] = data;
+            //TODO
+            ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B + ioAddr - _bankHwBaseIOAddr, data);
+        }
+    }
+    else if (ioAddr == _bankHwPageEnIOAddr)
+    {
+        if (flags & BR_CTRL_BUS_WR_MASK)
+        {
+            _bankRegisterOutputEnable = ((data & 0x01) != 0);
+            ISR_VALUE(ISR_ASSERT_CODE_DEBUG_K, data);
+        }
+    }
 }
