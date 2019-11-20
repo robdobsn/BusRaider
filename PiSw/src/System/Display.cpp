@@ -5,6 +5,8 @@
 #include <string.h>
 
 #include "DisplayFX.h"
+#include "../System/lowlib.h"
+#include "../System/ee_sprintf.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Layout
@@ -237,6 +239,14 @@ void Display::logDebug(const char* pSeverity, const char* pSource, const char* p
 {
     consolePut(pSeverity);
     consolePut(":");
+    // Time
+// #define INCLUDE_MICROS_TIME 1
+#ifdef INCLUDE_MICROS_TIME
+    char timeStr[20];
+    ee_sprintf(timeStr, "%u ", micros());
+    consolePut(timeStr);
+    consolePut(" ");
+#endif
     consolePut(pSource);
     consolePut(": ");
     consolePut(pMsg);

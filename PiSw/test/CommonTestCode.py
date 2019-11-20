@@ -66,6 +66,7 @@ class CommonTest:
             except Exception as excp:
                 self.logger.error(f"Failed to parse Json from {fr}, {excp}")
             try:
+                # print("rxmsg", msgContent['cmdName'])
                 if msgContent['cmdName'] == "log":
                     try:
                         self.logger.info(f"{msgContent['lev']} : {msgContent['src']} {msgContent['msg']}")
@@ -147,9 +148,11 @@ class CommonTest:
 
     def awaitResponse(self, maxWaitMs):
         if self.respAwaited is not None:
+            # print("Awaiting response", self.respAwaited, "MaxWaitMs", maxWaitMs)
             waitMsCount = 0
             while(waitMsCount < maxWaitMs):
                 if self.respGot:
+                    # print("Awaiting response GOT", self.respAwaited)
                     return True
                 time.sleep(0.001)
                 waitMsCount += 1

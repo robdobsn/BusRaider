@@ -66,6 +66,10 @@ uint32_t BusController::_memAccessRdWrErrCount = 0;
 char BusController::_memAccessRdWrErrStr[MAX_RDWR_ERR_STR_LEN];
 bool BusController::_memAccessRdWrTest = false;
 
+// Step messaging
+bool BusController::_stepCompletionPending = false;
+bool BusController::_targetTrackerResetPending = false;
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Construction
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -556,13 +560,18 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
         // Get clock rate required
         static const int MAX_CMD_PARAM_STR = 50;
         char paramVal[MAX_CMD_PARAM_STR+1];
-        if (!jsonGetValueForKey("reset", pCmdJson, paramVal, MAX_CMD_PARAM_STR))
-            return false;
-        bool reset = strtol(paramVal, NULL, 10) != 0;
+        bool reset = true;
+        if (jsonGetValueForKey("reset", pCmdJson, paramVal, MAX_CMD_PARAM_STR))
+        {
+            reset = strtol(paramVal, NULL, 10) != 0;
+        }
         // Turn target tracker on
         TargetTracker::enable(true);
         if (reset)
+        {
             TargetTracker::targetReset();
+            _targetTrackerResetPending = true;
+        }
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
@@ -578,8 +587,9 @@ bool BusController::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint
     {
         // Turn target tracker on
         TargetTracker::stepInto();
-        // LogWrite(FromBusController, LOG_DEBUG, "TargettrackerStep");
+        // LogWrite(FromBusController, LOG_DEBUG, "TargettrackerStep %s", pCmdJson);
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        _stepCompletionPending = true;
         return true;
     }
     else if (strcasecmp(cmdName, "stepRun") == 0)
@@ -854,6 +864,18 @@ void BusController::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_
 
 void BusController::service()
 {
+    // Check for targettracker enable message response
+    if (_targetTrackerResetPending && TargetTracker::isStepPaused())
+    {
+        CommandHandler::sendUnnumberedMsg("targetTrackerOnDone", "\"err\":\"ok\"");
+        _targetTrackerResetPending = false;
+    }
+    // Check for step completion message response
+    if (_stepCompletionPending && TargetTracker::isStepPaused())
+    {
+        CommandHandler::sendUnnumberedMsg("stepIntoDone", "\"err\":\"ok\"");
+        _stepCompletionPending = false;
+    }
 }
 
 BR_RETURN_TYPE BusController::blockAccessSync(uint32_t addr, uint8_t* pData, uint32_t len, bool iorq, bool write)

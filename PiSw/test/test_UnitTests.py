@@ -784,6 +784,10 @@ def test_stepSingle_RequiresPaging():
             if not testStats["AFOK"]:
                 logger.error(f"AFOK not ok! {msgContent}")
             testStats["regsOk"] = True
+        elif msgContent['cmdName'] == "stepIntoDone":
+            pass
+        elif msgContent['cmdName'] == "targetTrackerOnDone":
+            pass
         else:
             testStats["unknownMsgCount"] += 1
             logger.info(f"Unknown message {msgContent}")
@@ -812,16 +816,23 @@ def test_stepSingle_RequiresPaging():
     time.sleep(0.1)
 
     # Setup Test
-    commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\",\"reset\":1}\0")
-    time.sleep(.1)
+    commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\",\"reset\":1}\0", "targetTrackerOnDone")
+    commonTest.awaitResponse(2000)
     numTestLoops = 20
+    expectedAFValue = 5
+    codePos = 0
     for i in range(numTestLoops):
         # Run a step
-        commonTest.sendFrame("stepRun", b"{\"cmdName\":\"stepInto\"}\0")
-        time.sleep(.2)
+        commonTest.sendFrame("stepInto", b"{\"cmdName\":\"stepInto\"}\0", "stepIntoDone")
+        commonTest.awaitResponse(2000)
+        if codePos > 0 and codePos <=3:
+            expectedAFValue += 1
+        codePos += 1
+        if codePos >= 5:
+            codePos = 1
 
     # Expected regs
-    regsExpectedContent = f"AF={((numTestLoops-1)-((numTestLoops-1)//4)+6):02x}"
+    regsExpectedContent = f"AF={expectedAFValue:02x}"
     time.sleep(.1)
 
     # Check status
@@ -884,6 +895,10 @@ def test_regGetTest_requiresPaging():
             if not newRegsOk:
                 logger.error(f"Regs not as expected at pos {regsCount} {regsExpected[regsCount]} != {msgContent['regs']}")
             testStats["regsOk"] = testStats["regsOk"] and newRegsOk
+        elif msgContent['cmdName'] == "stepIntoDone":
+            pass
+        elif msgContent['cmdName'] == "targetTrackerOnDone":
+            pass
         else:
             testStats["unknownMsgCount"] += 1
             logger.info(f"Unknown message {msgContent}")
@@ -931,23 +946,23 @@ def test_regGetTest_requiresPaging():
     commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":0,\"lenDec\":" + testWriteLen  + b",\"isIo\":0}\0" + testWriteData)
 
     # Setup Test
-    commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\",\"reset\":1}\0")
-    time.sleep(.2)
+    commonTest.sendFrame("targetTrackerOn", b"{\"cmdName\":\"targetTrackerOn\",\"reset\":1}\0", "targetTrackerOnDone")
+    commonTest.awaitResponse(2000)
     regsExpected = []
     regsGot = []
     addr = 0
-    for i in range(22):
+    for i in range(50):
         # logger.error(f"i={i}")
-        commonTest.sendFrame("stepInto", b"{\"cmdName\":\"stepInto\"}\0")
-        time.sleep(0.02)
-        addr += testInstrLens[i % len(testInstrLens)]
-        if i % len(testInstrLens) == len(testInstrLens) - 1:
-            addr = 0
+        commonTest.sendFrame("stepInto", b"{\"cmdName\":\"stepInto\"}\0", "stepIntoDone")
+        commonTest.awaitResponse(2000)
         regsStr = f"PC={addr:04x}"
         regsExpected.append(regsStr)
         commonTest.sendFrame("getRegs", b"{\"cmdName\":\"getRegs\"}\0", "getRegsResp")
         # print(str(datetime.now()))
         commonTest.awaitResponse(1000)
+        addr += testInstrLens[i % len(testInstrLens)]
+        if i % len(testInstrLens) == len(testInstrLens) - 1:
+            addr = 0
     
     # Check status
     commonTest.sendFrame("busStatus", b"{\"cmdName\":\"busStatus\"}\0")

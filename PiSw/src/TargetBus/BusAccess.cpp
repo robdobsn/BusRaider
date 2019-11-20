@@ -162,6 +162,7 @@ void BusAccess::busAccessReset()
     waitGenerationDisable();
 
     // Clear any wait condition
+    LogWrite("BusAccess", LOG_DEBUG, "busAccessReset");
     waitResetFlipFlops(true);
 
     // Update wait state generation
@@ -186,7 +187,7 @@ void BusAccess::waitOnMemory(int busSocket, bool isOn)
 
     // Update wait handling
     // Debug
-    // LogWrite("BusAccess", LOG_DEBUG, "waitonMem");
+    // LogWrite("BusAccess", LOG_DEBUG, "waitonMem %d", isOn);
     waitEnablementUpdate();
 }
 
@@ -220,6 +221,7 @@ void BusAccess::waitSetCycleUs(uint32_t cycleUs)
 
 void BusAccess::waitRelease()
 {
+    // LogWrite("BusAccess", LOG_DEBUG, "waitRelease");
     waitResetFlipFlops();
     // Handle release after a read
     waitHandleReadRelease();
@@ -232,6 +234,7 @@ bool BusAccess::waitIsHeld()
 
 void BusAccess::waitHold(int busSocket, bool hold)
 {
+    // LogWrite("BusAccess", LOG_DEBUG, "waitHold %d", hold);
     // Check validity
     if ((busSocket < 0) || (busSocket >= _busSocketCount))
         return;
@@ -331,6 +334,9 @@ void BusAccess::targetPageForInjection([[maybe_unused]]int busSocket, bool pageO
     }
     else
     {
+        // LogWrite("BA", LOG_DEBUG, "targetPageForInjection FALSE on complete count %d en %s", _busSocketCount,
+        //             (_busSocketCount > 0) ? (_busSockets[0].enabled ? "Y" : "N") : "X");
+
         _targetPageInOnReadComplete = true;
     }
 }
@@ -352,7 +358,7 @@ void BusAccess::service()
     if (_busServiceEnabled)
     {
         uint32_t serviceLoopStartUs = micros();
-        for (int i = 0; i < 100; i++)
+        for (int i = 0; i < 10; i++)
         {
             serviceWaitActivity();
 
@@ -636,16 +642,16 @@ void BusAccess::serviceWaitActivity()
     if (_busActionState == BUS_ACTION_STATE_ASSERTED)
         return;
  
-    // Check for no existing wait
+    // Check if we are already in a wait
     if (!_waitAsserted)
     {
-        // Read the control lines
+        // We're not currently in wait so read the control lines to check for a new one
         uint32_t busVals = RD32(ARM_GPIO_GPLEV0);
 
         // Check if we have a new wait (and we're not in BUSACK)
         if (((busVals & BR_WAIT_BAR_MASK) == 0) && ((busVals & BR_BUSACK_BAR_MASK) != 0))
         {
-            // In case we are held in the wait
+            // Record the time of the wait start
             _waitAssertedStartUs = micros();
             _waitAsserted = true;
 
@@ -654,9 +660,11 @@ void BusAccess::serviceWaitActivity()
         }
         else
         {
+            // Check if we're waiting on memory accesses
             if (!waitIsOnMemory())
             {
-                // Check if we need to assert any new bus requests
+                // We're not waiting on memory accesses so it is safe to check
+                // if we need to assert any new bus requests
                 busActionHandleStart();
             }
         }
@@ -685,6 +693,8 @@ void BusAccess::serviceWaitActivity()
             busActionHandleStart();
 
             // Release the wait
+            // LogWrite("BA", LOG_DEBUG, "waitRelease due to timeout, waitHold %d busVals %x", _waitHold, busVals);
+
             waitRelease();
         }
     }

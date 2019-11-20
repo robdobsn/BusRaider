@@ -193,13 +193,13 @@ void BusAccess::controlRelease()
 
     // Clear wait detected in case we created some MREQ or IORQ cycles that
     // triggered wait
+    // LogWrite("BusAccess", LOG_DEBUG, "controlRelease");
     waitResetFlipFlops(true);
-
+    
     // Clear wait detection - only does something if Pi interrupts are used
     waitClearDetected();
 
     // Re-establish wait generation
-    // LogWrite("BusAccess", LOG_DEBUG, "controlRelease");
     waitEnablementUpdate();
 
     // Check if any bus action is pending
@@ -875,6 +875,8 @@ void BusAccess::waitSetupMREQAndIORQEnables()
 
 void BusAccess::waitResetFlipFlops(bool forceClear)
 {
+    // LogWrite("BusAccess", LOG_DEBUG, "WAIT waitResetFlipFlops");
+
     // Since the FIFO is shared the data output to MREQ/IORQ enable pins will be interleaved so we need to write data for both
     if ((RD32(ARM_PWM_STA) & 1) == 0)
     {
@@ -969,6 +971,8 @@ void BusAccess::setSignal(BR_BUS_ACTION busAction, bool assertSignal)
 
 void BusAccess::busAccessCallbackPageIn()
 {
+    // LogWrite("BA", LOG_DEBUG, "targetPageForInjection FALSE");
+
     for (int i = 0; i < _busSocketCount; i++)
     {
         if (_busSockets[i].enabled)
@@ -979,6 +983,7 @@ void BusAccess::busAccessCallbackPageIn()
 // Paging pin on the bus
 void BusAccess::busPagePinSetActive(bool active)
 {
+    // LogWrite("BA", LOG_DEBUG, "pagePin = %d", (_hwVersionNumber == 17) ? active : !active);
     digitalWrite(BR_PAGING_RAM_PIN, (_hwVersionNumber == 17) ? active : !active);
 }
 
@@ -994,6 +999,7 @@ void BusAccess::rawBusControlEnable(bool en)
 
 void BusAccess::rawBusControlClearWait()
 {
+    // LogWrite("BusAccess", LOG_DEBUG, "rawBusControlClearWait");
     waitResetFlipFlops();
     // Handle release after a read
     waitHandleReadRelease();

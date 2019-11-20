@@ -70,4 +70,8 @@ private:
     static const int MAX_RDWR_ERR_STR_LEN = 200;
     static char _memAccessRdWrErrStr[MAX_RDWR_ERR_STR_LEN];
     static bool _memAccessRdWrTest;
+
+    // Comms
+    static bool _stepCompletionPending;
+    static bool _targetTrackerResetPending;
 };

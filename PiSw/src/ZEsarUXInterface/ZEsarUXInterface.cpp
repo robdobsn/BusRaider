@@ -251,7 +251,7 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "get-version"))
     {
-        strlcat(pResponse, "7.2-SN", maxResponseLen);
+        strlcat(pResponse, "8.0", maxResponseLen);
     }
     else if (commandMatch(cmdStr, "check-extensions"))
     {

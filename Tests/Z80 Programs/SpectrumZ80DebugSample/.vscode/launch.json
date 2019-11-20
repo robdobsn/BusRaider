@@ -8,27 +8,23 @@
             "type": "z80-debug",
             "request": "launch",
             "name": "Z80 Debugger",
-            "zhostname": "192.168.86.192",
+            "zhostname": "192.168.86.123",
             // "zhostname": "localhost",
             "zport": 10000,
             "listFiles": [
                 { 
                     "path": "Spectrum48KRom.list",
+                    "useFiles": true,
                     "asm": "z80asm",
-                    "mainFile": "Spectrum48KRom.asm",
-                    "srcDirs": [""] 
+                    "mainFile": "Spectrum48KRom.asm"
                 },
                 { 
                     "path": "z80-sample-program.list", 
+                    "useFiles": true,
                     "asm": "z80asm",
-                    "mainFile": "main.asm",
-                    "srcDirs": [""]
+                    "mainFile": "main.asm"
                 }
             ],
-            "labelsFiles": [
-                //"rom48.labels",
-                // "z80-sample-program.labels"
-             ],
             "startAutomatically": false,
             "skipInterrupt": true,
             "commandsAfterLaunch": [

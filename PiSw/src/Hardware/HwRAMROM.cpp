@@ -34,6 +34,7 @@ HwRAMROM::HwRAMROM() : HwBase()
     _bankRegisterOutputEnable = false;
     for (int i = 0; i < NUM_BANKS; i++)
         _bankRegisters[i] = 0;
+    _currentlyPagedOut = false;
     hwReset();
 }
 
@@ -161,8 +162,6 @@ void HwRAMROM::pageOutForInjection(bool pageOut)
 // Hardware reset has occurred
 void HwRAMROM::hwReset()
 {
-    _currentlyPagedOut = false;
-    BusAccess::busPagePinSetActive(false);
 }
 
 // Mirror mode
@@ -314,7 +313,7 @@ BR_RETURN_TYPE HwRAMROM::physicalBlockAccess(uint32_t addr, const uint8_t* pBuf,
         }
         else
         {
-            LogWrite(_logPrefix, LOG_DEBUG, "Setting to paged, lastByte = %02x", pBuf[len-1]);
+            // LogWrite(_logPrefix, LOG_DEBUG, "Setting to paged, lastByte = %02x", pBuf[len-1]);
 
             // Check if we need to request bus
             if (busRqAndRelease) {
@@ -601,9 +600,14 @@ void HwRAMROM::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]]
         if (flags & BR_CTRL_BUS_MREQ_MASK)
         {
             if (flags & BR_CTRL_BUS_WR_MASK)
+            {
                 pMemory[addr] = data;
-            else if (flags & BR_CTRL_BUS_RD_MASK)
+            }
+            else if ((flags & BR_CTRL_BUS_RD_MASK) && (!_mirrorMode))
+            {
+                // In mirror mode only writes are handled - reads come from the systems memory
                 retVal = (retVal & 0xffff0000) | pMemory[addr];
+            }
         }
     }
 
@@ -614,8 +618,7 @@ void HwRAMROM::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]]
         if(flags & BR_CTRL_BUS_WR_MASK)
         {
             _bankRegisters[ioAddr - _bankHwBaseIOAddr] = data;
-            //TODO
-            ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B + ioAddr - _bankHwBaseIOAddr, data);
+            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B + ioAddr - _bankHwBaseIOAddr, data);
         }
     }
     else if (ioAddr == _bankHwPageEnIOAddr)
@@ -623,7 +626,7 @@ void HwRAMROM::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]]
         if (flags & BR_CTRL_BUS_WR_MASK)
         {
             _bankRegisterOutputEnable = ((data & 0x01) != 0);
-            ISR_VALUE(ISR_ASSERT_CODE_DEBUG_K, data);
+            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_K, data);
         }
     }
 }

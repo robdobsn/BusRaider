@@ -89,6 +89,8 @@ public:
     static void sendWithJSON(const char* cmdName, const char* cmdJson, uint32_t msgIdx = 0, 
             const uint8_t* pData = NULL, uint32_t dataLen = 0);
     static void sendAPIReq(const char* reqLine);
+    // Send unnumbered message
+    static void sendUnnumberedMsg(const char* pCmdName, const char* pMsgJson);
 
     // Get status
     void getStatusResponse(bool* pIPAddressValid, char** pIPAddress, char** pWifiConnStr, 
@@ -102,6 +104,7 @@ public:
 
     // File Receive Status
     bool getFileReceiveStatus(uint32_t& fileLen, uint32_t& filePos);
+
 
 private:
     // Comms Sockets
@@ -118,6 +121,9 @@ private:
     static void hdlcFrameRxStatic(const uint8_t *frameBuffer, int frameLength);
     void hdlcPutCh(uint8_t ch);
     void hdlcFrameRx(const uint8_t *frameBuffer, int frameLength);
+
+    // RDP
+    static void sendRDPMsg(uint32_t msgIdx, const char* pCmdName, const char* pMsgJson);
 
     // Command processing
     void processCommand(const char* pCmdJson, const uint8_t* pParams, int paramsLen);
@@ -160,6 +166,8 @@ private:
     RingBufferPosn _usbKeyboardRingBufPos;
     static const int MAX_USB_KEYBOARD_CHARS = 50;
     uint8_t _usbKeyboardRingBuffer[MAX_USB_KEYBOARD_CHARS];
+
+    static const uint32_t RDP_INDEX_NONE = 0xffffffff;
 
     // // Last RDP message index value string
     // static const int MAX_RDP_INDEX_VAL_LEN = 20;
