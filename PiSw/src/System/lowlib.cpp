@@ -19,6 +19,12 @@ uint32_t micros()
     return *pTimerLower32Bits;
 }
 
+uint32_t millis()
+{
+    static const uint32_t volatile* pTimerLower32Bits = (uint32_t*)ARM_SYSTIMER_CLO;
+    return (*pTimerLower32Bits) / 1000;
+}
+
 void microsDelay(uint32_t us)
 {
     uint32_t timeNow = micros();

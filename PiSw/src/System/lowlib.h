@@ -16,6 +16,7 @@ extern "C" {
 #define RD32(addr) (*(volatile unsigned *)(addr))
 
 extern uint32_t micros();
+extern uint32_t millis();
 extern void microsDelay(uint32_t us);
 extern int isTimeout(unsigned long curTime, unsigned long lastTime, unsigned long maxDuration);
 uint32_t timeToTimeout(unsigned long curTime, unsigned long lastTime, unsigned long maxDuration);

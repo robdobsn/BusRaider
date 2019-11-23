@@ -8,6 +8,7 @@
 #include "../System/lowlib.h"
 #include "../System/BCM2835.h"
 #include "../TargetBus/TargetClockGenerator.h"
+#include "../System/ee_sprintf.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Variables
@@ -368,6 +369,70 @@ uint32_t BusAccess::controlBusRead()
             return ctrlBusVals;
         }
     }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Address & Data Bus Functions
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusAccess::addrAndDataBusRead(uint32_t& addr, uint32_t& dataBusVals)
+{
+    if (_hwVersionNumber == 17)
+    {
+        // Set data bus driver direction outward - so it doesn't conflict with the PIB
+        // if FF OE is set
+        WR32(ARM_GPIO_GPCLR0, BR_DATA_DIR_IN_MASK);            
+    }
+
+    // Set PIB to input
+    pibSetIn();
+
+    // Enable the high address onto the PIB
+    muxSet(BR_MUX_HADDR_OE_BAR);
+
+    // Delay to allow data to settle
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_READ);
+
+    // Or in the high address
+    addr = (pibGetValue() & 0xff) << 8;
+
+    // Enable the low address onto the PIB
+    muxSet(BR_MUX_LADDR_OE_BAR);
+
+    // Delay to allow data to settle
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
+
+    // Get low address value
+    addr |= pibGetValue() & 0xff;
+
+    // Clear the mux to deactivate output enables
+    muxClear();
+
+    // Delay to allow data to settle
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
+
+    // Read the data bus
+    // If the target machine is writing then this will be the data it wants to write
+    // If reading then the memory/IO system may have placed its data onto the data bus 
+
+    // Due to hardware limitations reading from the data bus MUST be done last as the
+    // output of the data bus is latched onto the PIB (or out onto the data bus in the case
+    // where the ISR provides data for the processor to read)
+
+    // Set data bus driver direction inward - onto PIB
+    WR32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK);
+
+    // Set output enable on data bus driver by resetting flip-flop
+    // Note that the outputs of the data bus buffer are enabled from this point until
+    // a rising edge of IORQ or MREQ
+    // This can cause a bus conflict if BR_DATA_DIR_IN is set low before this happens
+    muxDataBusOutputEnable();
+
+    // Delay to allow data to settle
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
+
+    // Read the data bus values
+    dataBusVals = pibGetValue() & 0xff;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1073,6 +1138,17 @@ uint32_t BusAccess::rawBusControlReadRaw()
     return RD32(ARM_GPIO_GPLEV0);
 }
 
+uint32_t BusAccess::rawBusControlReadCtrl()
+{
+    return controlBusRead();
+}
+
+void BusAccess::rawBusControlReadAll(uint32_t& ctrl, uint32_t& addr, uint32_t& data)
+{
+    ctrl = controlBusRead();
+    addrAndDataBusRead(addr, data);
+}
+
 void BusAccess::rawBusControlSetPin(uint32_t pinNumber, bool level)
 {
     digitalWrite(pinNumber, level);
@@ -1086,7 +1162,6 @@ bool BusAccess::rawBusControlGetPin(uint32_t pinNumber)
 uint32_t BusAccess::rawBusControlReadPIB()
 {
     pibSetIn();
-    digitalWrite(BR_DATA_DIR_IN, 1);
     return (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
 }
 
@@ -1106,3 +1181,43 @@ void BusAccess::rawBusControlMuxClear()
 {
     muxClear();
 }
+
+void BusAccess::formatCtrlBus(uint32_t ctrlBus, char* msgBuf, int maxMsgBufLen)
+{
+    // Check valid
+    if (maxMsgBufLen < 20)
+        return;
+    // Format
+    ee_sprintf(msgBuf, "%c%c%c%c%c", 
+                (ctrlBus & BR_CTRL_BUS_MREQ_MASK) ? 'M' : '.',
+                (ctrlBus & BR_CTRL_BUS_IORQ_MASK) ? 'I' : '.',
+                (ctrlBus & BR_CTRL_BUS_RD_MASK) ? 'R' : '.',
+                (ctrlBus & BR_CTRL_BUS_WR_MASK) ? 'W' : '.',
+                (ctrlBus & BR_CTRL_BUS_M1_MASK) ? '1' : '.');
+}
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// // Auto bus test - assumes ONLY the BusRaider is on the bus
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// BR_RETURN_TYPE BusAccess::testBusAuto()
+// {
+//     // Check that BUSACK is low
+//     bool busrqAckBar = digitalRead(BR_BUSACK_BAR);
+//     if (busrqAckBar != 0)
+//         return BR_NO_BUS_ACK;
+
+//     // Set control lines
+//     digitalWrite(BR_WR_BAR, 1);
+//     digitalWrite(BR_RD_BAR, 1);
+//     digitalWrite(BR_MREQ_BAR, 1);
+//     digitalWrite(BR_IORQ_BAR, 1);
+//     digitalWrite(BR_WAIT_BAR_PIN, 1);
+//     digitalWrite(BR_BUSRQ_BAR, 1);
+//     digitalWrite(BR_PAGING_RAM_PIN, 1);
+//     muxClear();
+
+//     // Step through patterns to test
+
+
+// }

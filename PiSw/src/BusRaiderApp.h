@@ -87,6 +87,10 @@ private:
     static bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
                 char* pRespJson, int maxRespLen);
     void storeESP32StatusInfo(const char* pCmdJson);
+    void testSelf_busrq();
+    void testSelf_readSetBus(bool readMode);
+    void testSelf_detailedBus();
+    void testSelf_memory();
 
     // Key info
     class KeyInfo
@@ -95,7 +99,8 @@ private:
         uint8_t rawKeys[6];
         uint32_t modifiers;
     };
-    static const int MAX_USB_KEYS_BUFFERED = 10;
+    static const int MAX_USB_KEYS_BUFFERED = 100;
     static KeyInfo _keyInfoBuffer[MAX_USB_KEYS_BUFFERED];
     static RingBufferPosn _keyInfoBufferPos;
+    static bool _inKeyboardRoutine;
 };

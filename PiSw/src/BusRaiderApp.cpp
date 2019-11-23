@@ -7,6 +7,7 @@
 #include "System/UartMaxi.h"
 #include "System/lowlib.h"
 #include "System/rdutils.h"
+#include "System/timer.h"
 #include "System/ee_sprintf.h"
 #include "System/PiWiring.h"
 #include "Machines/McManager.h"
@@ -15,6 +16,7 @@
 #include "TargetBus/TargetTracker.h"
 typedef unsigned char		u8;
 #include "../uspi/include/uspi.h"
+#include "System/memoryTests.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Vars
@@ -27,6 +29,7 @@ BusRaiderApp* BusRaiderApp::_pApp = NULL;
 
 BusRaiderApp::KeyInfo BusRaiderApp::_keyInfoBuffer[MAX_USB_KEYS_BUFFERED];
 RingBufferPosn BusRaiderApp::_keyInfoBufferPos(BusRaiderApp::MAX_USB_KEYS_BUFFERED);
+bool BusRaiderApp::_inKeyboardRoutine = false;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Comms socket
@@ -88,7 +91,7 @@ void BusRaiderApp::initUSB()
     // USB
     if (USPiInitialize()) 
     {
-        // LogWrite(FromMain, LOG_DEBUG, "Checking for keyboards...");
+        // LogWrite(FromBusRaiderApp, LOG_DEBUG, "Checking for keyboards...");
 
         if (USPiKeyboardAvailable()) 
         {
@@ -166,12 +169,19 @@ void BusRaiderApp::service()
     _commandHandler.service();
 
     // Service keyboard
-    if (_keyInfoBufferPos.canGet())
+    if (!_inKeyboardRoutine)
     {
-        KeyInfo* pKeyInfo = &_keyInfoBuffer[_keyInfoBufferPos.posToGet()];
-        if (_pApp)
-            _pApp->usbKeypressHandler(pKeyInfo->modifiers, pKeyInfo->rawKeys);
-        _keyInfoBufferPos.hasGot();
+        // LogWrite(FromBusRaiderApp, LOG_DEBUG, "Keys in buffer %d", _keyInfoBufferPos.count());
+        if (_keyInfoBufferPos.canGet())
+        {
+            KeyInfo* pKeyInfo = &_keyInfoBuffer[_keyInfoBufferPos.posToGet()];
+            _keyInfoBufferPos.hasGot();
+            LogWrite(FromBusRaiderApp, LOG_DEBUG, "Keyattop %02x %02x %02x", pKeyInfo->rawKeys[0], pKeyInfo->rawKeys[1], pKeyInfo->rawKeys[2]);
+            _inKeyboardRoutine = true;
+            if (_pApp)
+                _pApp->usbKeypressHandler(pKeyInfo->modifiers, pKeyInfo->rawKeys);
+            _inKeyboardRoutine = false;
+        }
     }
 }
 
@@ -423,6 +433,7 @@ void BusRaiderApp::usbKeypressHandlerStatic(unsigned char ucModifiers, const uns
             pKeyInfo->rawKeys[i] = rawKeys[i];
         pKeyInfo->modifiers = ucModifiers;
         _keyInfoBufferPos.hasPut();
+        // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_C);
     }
 }
 
@@ -433,7 +444,14 @@ void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned 
     {
         if (!_immediateMode)
         {
-            _display.consolePut("Immediate mode: w/ssid/password/hostname<enter> to setup WiFi ...\n");
+            _display.consolePut("Immediate mode\n");
+            _display.consolePut("* WiFi setup enter      ... w/ssid/password/hostname <enter>\n");
+            _display.consolePut("* BusRaider board test  ... t <enter>\n");
+            _display.consolePut("* Memory test           ... m <enter>\n");
+
+            // _display.consolePut("To self-test (CPU) BUSRQ type ... q<enter>\n");
+            // _display.consolePut("To show raw bus values type ... r<enter>\n");
+            // _display.consolePut("To test the bus only (NO CPU OR memory) type ... b<enter>\n");
         }
         _immediateMode = true;
         return;
@@ -458,12 +476,34 @@ void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned 
                 _immediateModeLine[_immediateModeLineLen] = 0;
                 if (_immediateModeLineLen > 0)
                 {
-                    CommandHandler::sendAPIReq(_immediateModeLine);
-                    _display.consolePut("\nSent request to ESP32:");
-                    _display.consolePut(_immediateModeLine);
-                    _display.consolePut("\n");
+                    // Check for test commands
+                    if (rdtolower(_immediateModeLine[0]) == 't')
+                    {
+                        // Run detailed bus test
+                        testSelf_detailedBus();
+                    }
+                    else if (rdtolower(_immediateModeLine[0]) == 'm')
+                    {
+                        // Run memory test
+                        testSelf_memory();
+                    }
+                    else if ((rdtolower(_immediateModeLine[0]) == 'r') || (rdtolower(_immediateModeLine[0]) == 's'))
+                    {
+                        // Run self-tests
+                        testSelf_readSetBus(rdtolower(_immediateModeLine[0]) == 'r');
+                    }
+                    else
+                    {
+                        // Send other commands to ESP32
+                        CommandHandler::sendAPIReq(_immediateModeLine);
+                        _display.consolePut("\nSent request to ESP32:");
+                        _display.consolePut(_immediateModeLine);
+                        _display.consolePut("\n");
+                    }
                 }
                 _immediateModeLineLen = 0;
+                _display.consolePut("\nNormal mode\n");
+                _immediateMode = false;
             }
             else if ((asciiCode >= 32) && (asciiCode < 127))
             {
@@ -518,3 +558,862 @@ void BusRaiderApp::storeESP32StatusInfo(const char* pCmdJson)
     // LogWrite(FromBusRaiderApp, LOG_DEBUG, "Ip Address %s", _esp32IPAddress);
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Self test
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusRaiderApp::testSelf_busrq()
+{
+    _display.consolePut("\nSelf-testing\n");
+    _display.consolePut("Make sure CPU and RAM are plugged in ...\n");
+
+    enum testState_type
+    {
+        TEST_STATE_SET_MC,
+        TEST_STATE_CHECK_BUSRQ,
+        TEST_STATE_DONE
+    } testState = TEST_STATE_SET_MC;
+
+    // Loop here until tests done
+    while (1)
+    {
+        // Service the comms channels and display updates
+        service();
+        // Timer polling
+        timer_poll();
+        // Service bus access
+        BusAccess::service();
+
+        // Check state
+        int issueCount = 0;
+        switch(testState)
+        {
+            case TEST_STATE_SET_MC:
+            {
+                bool mcSet = McManager::setMachineByName("Serial Terminal ANSI");
+                if (!mcSet)
+                {
+                    _display.consoleForeground(DISPLAY_FX_RED);
+                    _display.consolePut("FAILED to set machine Serial Terminal ANSI - maybe a name change?\n");
+                    _display.consoleForeground(DISPLAY_FX_WHITE);
+                    issueCount++;
+                }
+                testState = TEST_STATE_CHECK_BUSRQ;
+                break;
+            }
+            case TEST_STATE_CHECK_BUSRQ:
+            {
+                // Check if BUSRQ works
+                BR_RETURN_TYPE busAckedRetc = BusAccess::controlRequestAndTake();
+                if (busAckedRetc != BR_OK)
+                {
+                    _display.consoleForeground(DISPLAY_FX_RED);
+                    _display.consolePut("FAILED to request Z80 bus: ");
+                    _display.consolePut(BusAccess::retcString(busAckedRetc));
+                    _display.consolePut("\nCheck CLOCK jumper installed on BusRaider OR external clock\n");
+                    _display.consolePut("Use bustest command to test the bus slowly\n");
+                    _display.consolePut("Or if you have a scope/logic analyzer check:\n");
+                    _display.consolePut("- CLOCK line on the backplane - should be oscillating\n");
+                    _display.consolePut("- BUSRQ should pulse low during this test and BUSACK should follow\n");
+                    _display.consoleForeground(DISPLAY_FX_WHITE);
+                    issueCount++;
+                }
+                testState = TEST_STATE_DONE;
+                break;
+            }
+            case TEST_STATE_DONE:
+            {
+                BusAccess::controlRelease();
+                if (issueCount == 0)
+                {
+                    _display.consoleForeground(DISPLAY_FX_GREEN);
+                    _display.consolePut("Tests complete no issues found");
+                    _display.consoleForeground(DISPLAY_FX_WHITE);
+                }
+                else
+                {
+                    _display.consoleForeground(DISPLAY_FX_RED);
+                    char issueText[100];
+                    ee_sprintf(issueText, "Tests complete %d issue%s found",
+                                    issueCount, issueCount > 1 ? "s" : "");
+                    _display.consolePut(issueText);
+                    _display.consoleForeground(DISPLAY_FX_WHITE);
+                }
+                return;
+            }
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Self test - read/set bus
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusRaiderApp::testSelf_readSetBus(bool readMode)
+{
+    _display.consolePut("\nSelf-testing show bus values\n");
+    _display.consolePut("Confirm ONLY BusRaider installed (y/n) ...");
+
+    enum testState_type
+    {
+        TEST_STATE_CONFIRM,
+        TEST_STATE_SET_MC,
+        TEST_STATE_READ_BUS,
+        TEST_STATE_SET_BUS,
+        TEST_STATE_DONE
+    } testState = TEST_STATE_CONFIRM;
+
+    uint32_t lastUpdateTimeMs = 0;
+    uint32_t startUpdateTimeMs = millis();
+
+    int issueCount = 0;
+    while (1)
+    {
+        // Service the comms channels and display updates
+        service();
+        // Timer polling
+        timer_poll();
+        // Service bus access
+        BusAccess::service();
+
+        // Check state
+        switch(testState)
+        {
+            case TEST_STATE_CONFIRM:
+            {
+                if (_keyInfoBufferPos.canGet())
+                {
+                    KeyInfo* pKeyInfo = &_keyInfoBuffer[_keyInfoBufferPos.posToGet()];
+                    _keyInfoBufferPos.hasGot();
+                    LogWrite(FromBusRaiderApp, LOG_DEBUG, "Keyin %02x %02x %02x", pKeyInfo->rawKeys[0], pKeyInfo->rawKeys[1], pKeyInfo->rawKeys[2]);
+                    int asciiCode = McTerminal::convertRawToAscii(pKeyInfo->modifiers, pKeyInfo->rawKeys);
+                    char keyStr[2];
+                    keyStr[0] = asciiCode;
+                    keyStr[1] = 0;
+                    if (rdisalpha(asciiCode) || rdisdigit(asciiCode) || rdisspace(asciiCode))
+                        _display.consolePut(keyStr);
+                    if (rdtolower(asciiCode) == 'y')
+                    {
+                        _display.consolePut("\n");
+                        testState = TEST_STATE_SET_MC;
+                    }
+                }
+                if (isTimeout(millis(), startUpdateTimeMs, 20000))
+                {
+                    testState = TEST_STATE_DONE;
+                    _display.consolePut("\nTimed-out, repeat if required\n");
+                }
+                break;
+            }
+            case TEST_STATE_SET_MC:
+            {
+                bool mcSet = McManager::setMachineByName("Serial Terminal ANSI");
+                if (!mcSet)
+                {
+                    _display.consoleForeground(DISPLAY_FX_RED);
+                    _display.consolePut("FAILED to set machine Serial Terminal ANSI - maybe a name change?\n");
+                    _display.consoleForeground(DISPLAY_FX_WHITE);
+                    issueCount++;
+                }
+                testState = readMode ? TEST_STATE_READ_BUS : TEST_STATE_SET_BUS;
+                startUpdateTimeMs = millis();
+                break;
+            }
+            case TEST_STATE_READ_BUS:
+            {
+                if (isTimeout(millis(), lastUpdateTimeMs, 1000))
+                {
+                    uint32_t rawVals = BusAccess::rawBusControlReadRaw();
+                    uint32_t addr = 0, data = 0, ctrl = 0;
+                    WR32(ARM_GPIO_GPCLR0, BR_DATA_DIR_IN_MASK);
+                    BusAccess::rawBusControlReadAll(ctrl, addr, data);
+                    char busInfo[100];
+                    char ctrlBusStr[20];
+                    BusAccess::formatCtrlBus(ctrl, ctrlBusStr, 20);
+                    ee_sprintf(busInfo, "BUS Addr: %04x Data: %02x, Ctrl: %s%c%c (%08x)\n", 
+                                addr, data, 
+                                ctrlBusStr,
+                                (rawVals & BR_BUSACK_BAR_MASK) ? '.' : 'K',
+                                (rawVals & BR_WAIT_BAR_MASK) ? '.' : 'T',
+                                rawVals);
+                    _display.consolePut(busInfo);
+                    lastUpdateTimeMs = millis();
+                    // Toggle MREQ to ensure bus control is cleared
+                    BusAccess::rawBusControlSetPin(BR_CTRL_BUS_MREQ_BITNUM, 0);
+                    microsDelay(1);
+                    BusAccess::rawBusControlSetPin(BR_CTRL_BUS_MREQ_BITNUM, 1);
+                }
+                if (isTimeout(millis(), startUpdateTimeMs, 60000))
+                {
+                    testState = TEST_STATE_DONE;
+                    _display.consolePut("\nTest finished, repeat if required\n");
+                }
+                break;
+            }
+            case TEST_STATE_SET_BUS:
+            {
+                testState = TEST_STATE_DONE;
+                break;                
+            }
+            case TEST_STATE_DONE:
+            {
+                BusAccess::controlRelease();
+                return;
+            }
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Self test - read/set bus
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusRaiderApp::testSelf_detailedBus()
+{
+    _display.consoleForeground(DISPLAY_FX_BLUE);
+    _display.consolePut("\nDetailed bus test\n");
+    _display.consoleForeground(DISPLAY_FX_WHITE);
+    _display.consolePut("\nThis test requires a male-male jumper wire but\n");
+    _display.consolePut("but don't plug anything into the bus until asked to do so\n");
+    _display.consolePut("Confirm that ONLY BusRaider is installed (y/n) ...");
+
+    enum testState_type
+    {
+        TEST_STATE_CONFIRM,
+        TEST_STATE_SET_MC,
+        TEST_STATE_TEST_SEQUENCE,
+        TEST_STATE_TEST_WAIT_FOR_KEY,
+        TEST_STATE_PREPPED,
+        TEST_STATE_TEST_BUS_PIN,
+        TEST_STATE_TEST_PIN_TO_PIN,
+        TEST_STATE_TEST_ADDR,
+        TEST_STATE_TEST_FAILED,
+        TEST_STATE_TEST_OK,
+        TEST_STATE_NEXT,
+        TEST_STATE_DONE
+    } testState = TEST_STATE_CONFIRM;
+
+    enum testOption_type
+    {
+        TEST_OPT_PIN_FIXED,
+        TEST_OPT_PIN_TO_PIN,
+        TEST_OPT_ADDR
+    };
+
+    struct testSequence_type
+    {
+        const char* testPinName;
+        testOption_type testOption;
+        const char* msgBeforeTest;
+        int pinToTest;
+        int pinMode;
+        int levelToCheckFor;
+        bool continueOnFail;
+        const char* msgIfFailed;
+        const char* msgIfSucceeded;
+    } testSequence[] =
+    {
+        // { "BUSACK", TEST_OPT_PIN_FIXED, "", BR_BUSACK_BAR, OUTPUT, 0, false, "FAILED: BUSACK reads LOW - check Q4/Q5 for shorts", "" },
+        { "BUSACK", TEST_OPT_PIN_FIXED, "", BR_BUSACK_BAR, INPUT_PULLUP, 1, false, "FAILED: BUSACK reads LOW - check Q4/Q5 for shorts", "" },
+        { "BUSACK", TEST_OPT_PIN_FIXED, "Place a jumper: BUSACK to GND", BR_BUSACK_BAR, -1, 0, false, "FAILED: BUSACK reads HIGH - check Q4/Q5 for shorts", "BUSACK looks OK" },
+        { "MREQ", TEST_OPT_PIN_TO_PIN, "Place the same jumper: BUSACK to %s", BR_BUSACK_BAR, OUTPUT, BR_MREQ_BAR, true, "FAILED: %s not working check U1", "%s looks OK" },
+        { "WR", TEST_OPT_PIN_TO_PIN, "Place the same jumper: BUSACK to %s", BR_BUSACK_BAR, OUTPUT, BR_WR_BAR, true, "FAILED: %s not working check U1", "%s looks OK" },
+        { "RD", TEST_OPT_PIN_TO_PIN, "Place the same jumper: BUSACK to %s", BR_BUSACK_BAR, OUTPUT, BR_RD_BAR, true, "FAILED: %s not working check U1", "%s looks OK" },
+        { "IORQ", TEST_OPT_PIN_TO_PIN, "Place the same jumper: BUSACK to %s", BR_BUSACK_BAR, OUTPUT, BR_IORQ_BAR, true, "FAILED: %s not working check U1", "%s looks OK" },
+        { "ADDR", TEST_OPT_ADDR, "Next test address bus, remove jumper", BR_BUSACK_BAR, -1, 0, true, "", "Address bus is OK" },
+    };
+
+    uint32_t startUpdateTimeMs = millis();
+
+    int issueCount = 0;
+    uint32_t testSeqIdx = 0;
+    while (1)
+    {
+        // Service the comms channels and display updates
+        service();
+        // Timer polling
+        timer_poll();
+        // Service bus access
+        BusAccess::service();
+
+        // Check for keyboard keys
+        int asciiCode = 0;
+        if (_keyInfoBufferPos.canGet())
+        {
+            KeyInfo* pKeyInfo = &_keyInfoBuffer[_keyInfoBufferPos.posToGet()];
+            _keyInfoBufferPos.hasGot();
+            // LogWrite(FromBusRaiderApp, LOG_DEBUG, "Key %c", pKeyInfo->rawKeys[0]);
+            asciiCode = McTerminal::convertRawToAscii(pKeyInfo->modifiers, pKeyInfo->rawKeys);
+            char keyStr[2];
+            keyStr[0] = asciiCode;
+            keyStr[1] = 0;
+            if (rdisalpha(asciiCode) || rdisdigit(asciiCode) || rdisspace(asciiCode))
+                _display.consolePut(keyStr);
+        }
+
+        // Test for quit
+        if ((rdtolower(asciiCode) == 'q') || (asciiCode == 27))
+            testState = TEST_STATE_DONE;
+
+        // Test for time-out
+        if (isTimeout(millis(), startUpdateTimeMs, 60000))
+            {
+                testState = TEST_STATE_DONE;
+                _display.consolePut("\nTest timed-out, repeat if required\n");
+            }
+
+        // Check state
+        testSequence_type* pTestRec = &testSequence[testSeqIdx];
+        switch(testState)
+        {
+            case TEST_STATE_CONFIRM:
+            {
+                if (rdtolower(asciiCode) == 'y')
+                {
+                    _display.consolePut("\n");
+                    testState = TEST_STATE_SET_MC;
+                }
+                break;
+            }
+            case TEST_STATE_SET_MC:
+            {
+                bool mcSet = McManager::setMachineByName("Serial Terminal ANSI");
+                if (!mcSet)
+                {
+                    _display.consoleForeground(DISPLAY_FX_RED);
+                    _display.consolePut("FAILED to set machine Serial Terminal ANSI - maybe a name change?\n");
+                    _display.consoleForeground(DISPLAY_FX_WHITE);
+                    issueCount++;
+                }
+                testState = TEST_STATE_TEST_SEQUENCE;
+                testSeqIdx = 0;
+                startUpdateTimeMs = millis();
+                break;
+            }
+            case TEST_STATE_TEST_SEQUENCE:
+            {
+                if (strlen(pTestRec->msgBeforeTest) != 0)
+                {
+                    char outMsg[200];
+                    ee_sprintf(outMsg, pTestRec->msgBeforeTest, pTestRec->testPinName);
+                    _display.consolePut(outMsg);
+                    _display.consolePut(", then press SPACE BAR");
+                    startUpdateTimeMs = millis();
+                    testState = TEST_STATE_TEST_WAIT_FOR_KEY;
+                }
+                else
+                {
+                    testState = TEST_STATE_PREPPED;
+                }
+                break;
+            }
+            case TEST_STATE_TEST_WAIT_FOR_KEY:
+            {
+                if (asciiCode == ' ')
+                {
+                    _display.consolePut("\n");
+                    startUpdateTimeMs = millis();
+                    testState = TEST_STATE_PREPPED;
+                }
+                break;
+            }
+            case TEST_STATE_PREPPED:
+            {
+                // Handle bus test option
+                switch (pTestRec->testOption)
+                {
+                    case TEST_OPT_PIN_FIXED:
+                        testState = TEST_STATE_TEST_BUS_PIN;
+                        break;
+                    case TEST_OPT_PIN_TO_PIN:
+                        testState = TEST_STATE_TEST_PIN_TO_PIN;
+                        break;
+                    case TEST_OPT_ADDR:
+                        testState = TEST_STATE_TEST_ADDR;
+                        break;
+                    default:
+                        testState = TEST_STATE_DONE;
+                        break;
+                }
+                break;
+            }
+            case TEST_STATE_TEST_BUS_PIN:
+            {
+                // Set pinMode
+                if (pTestRec->pinMode >= 0)
+                {
+                    pinMode(pTestRec->pinToTest, pTestRec->pinMode);
+                    if (pTestRec->pinMode == OUTPUT)
+                        digitalWrite(pTestRec->pinToTest, pTestRec->levelToCheckFor);
+                }
+
+                // Check pin
+                testState = TEST_STATE_TEST_OK;
+                if (pTestRec->pinMode != OUTPUT)
+                {
+                    bool pinLevel = digitalRead(pTestRec->pinToTest);
+                    if (pinLevel != pTestRec->levelToCheckFor)
+                        testState = TEST_STATE_TEST_FAILED;
+                }
+                break;
+            }
+            case TEST_STATE_TEST_PIN_TO_PIN:
+            {
+                // Set pinModes
+                if (pTestRec->pinMode >= 0)
+                    pinMode(pTestRec->pinToTest, pTestRec->pinMode);
+
+                // Check pin can go low
+                testState = TEST_STATE_TEST_OK;
+                pinMode(pTestRec->levelToCheckFor, INPUT_PULLUP);
+                digitalWrite(pTestRec->pinToTest, 0);
+                microsDelay(500000);
+                if (digitalRead(pTestRec->levelToCheckFor) != 0)
+                    testState = TEST_STATE_TEST_FAILED;
+
+                // Check pin can go high
+                pinMode(pTestRec->levelToCheckFor, INPUT_PULLDOWN);
+                digitalWrite(pTestRec->pinToTest, 1);
+                microsDelay(500000);
+                if (digitalRead(pTestRec->levelToCheckFor) == 0)
+                    testState = TEST_STATE_TEST_FAILED;
+
+                // Restore
+                pinMode(pTestRec->levelToCheckFor, INPUT);
+                break;
+            }
+            case TEST_STATE_TEST_ADDR:
+            {
+                // pull BUSRQ and BUSACK low
+                pinMode(BR_BUSACK_BAR, OUTPUT);
+                digitalWrite(BR_BUSACK_BAR, 0);
+                digitalWrite(BR_BUSRQ_BAR, 0);
+                digitalWrite(BR_DATA_DIR_IN, 0);
+                uint32_t addrTestMask = 1;
+                uint32_t addrStuckHighMask = 0;
+                uint32_t addrStuckLowMask = 0;
+                uint32_t addrInteractionMask = 0;
+                for (int i = 0; i < 16; i++)
+                {
+                    BusAccess::rawBusControlSetAddress(addrTestMask);
+                    microsDelay(200000);
+
+                    // Data direction in before getting state of address bus
+                    digitalWrite(BR_DATA_DIR_IN, 0);
+
+                    // Debug
+                    uint32_t vv = 0;
+                    // BusAccess::rawBusControlMuxSet(BR_MUX_LADDR_OE_BAR);
+                    // // vv = BusAccess::rawBusControlReadPIB();
+                    // WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_INPUT);
+                    // vv = (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
+
+                    // Get the address and data bus
+                    uint32_t addr = 0, data = 0, ctrl = 0;
+                    BusAccess::rawBusControlReadAll(ctrl, addr, data);
+
+                    // Debug
+                    char ctrlStr[100];
+                    BusAccess::formatCtrlBus(ctrl, ctrlStr, 20);
+                    char testStr[100];
+                    ee_sprintf(testStr, "Awr %04x Ard %04x Ard2 %02x data %02x ctrl %s\n", addrTestMask, addr, vv, data, ctrlStr);
+                    LogWrite(FromBusRaiderApp, LOG_DEBUG, "%s", testStr);
+
+                    // Check correct
+                    if (addrTestMask != addr)
+                    {
+                        if ((addrTestMask & addr) == 0)
+                            addrStuckLowMask |= addrTestMask;
+                        else
+                            addrInteractionMask |= addrTestMask;
+                    }
+
+                    // Now set inverse of every address bit
+                    uint32_t inverseTestMask = (~addrTestMask & 0xffff);
+                    BusAccess::rawBusControlSetAddress(inverseTestMask);
+
+                    // Data direction in before getting state of address bus
+                    digitalWrite(BR_DATA_DIR_IN, 0);
+
+                    // Read address
+                    BusAccess::rawBusControlReadAll(ctrl, addr, data);
+
+                    // Debug
+                    BusAccess::formatCtrlBus(ctrl, ctrlStr, 20);
+                    ee_sprintf(testStr, "Awr %04x Ard %04x Ard2 %02x data %02x ctrl %s\n", inverseTestMask, addr, vv, data, ctrlStr);
+                    LogWrite(FromBusRaiderApp, LOG_DEBUG, "%s", testStr);
+
+                    // Check correct
+                    if (inverseTestMask != addr)
+                    {
+                        if ((inverseTestMask | addr) == 1)
+                            addrStuckHighMask |= addrTestMask;
+                        else
+                            addrInteractionMask |= addrTestMask;
+                    }
+                    // if ((~addrTestMask) != addr)
+                    // {
+                    //     addrFailMask |= addrTestMask;
+                    //     addrLevelMask |= (addr & addrTestMask);
+                    // }
+                    addrTestMask = addrTestMask << 1;
+                }
+
+                // Result
+                if ((addrStuckHighMask | addrStuckLowMask | addrInteractionMask) == 0)
+                {
+                    testState = TEST_STATE_TEST_OK;
+                }
+                else
+                {
+                    char stuckHighStr[100];
+                    stuckHighStr[0] = 0;
+                    char stuckLowStr[100];
+                    stuckLowStr[0] = 0;
+                    char interactStr[100];
+                    interactStr[0] = 0;
+                    uint32_t addrTestMask = 0x8000;                
+                    for (int i = 0; i < 16; i++)
+                    {
+                        char tmpStr[10];
+                        ee_sprintf(tmpStr, "%d", i);
+                        if (addrStuckHighMask & addrTestMask)
+                        {
+                            if (strlen(stuckHighStr) > 0)
+                                strlcat(stuckHighStr, ", ", 100);
+                            strlcat(stuckHighStr, tmpStr, 100);
+                        }
+                        else if (addrStuckLowMask & addrTestMask)
+                        {
+                            if (strlen(stuckLowStr) > 0)
+                                strlcat(stuckLowStr, ", ", 100);
+                            strlcat(stuckLowStr, tmpStr, 100);
+                        }
+                        else
+                        {
+                            if (strlen(interactStr) > 0)
+                                strlcat(interactStr, ", ", 100);
+                            strlcat(interactStr, tmpStr, 100);
+                        }
+                        addrTestMask = addrTestMask >> 1;
+                    }
+                    if (strlen(stuckHighStr) > 0)
+                    {
+                        _display.consolePut("FAILED Address bus lines stuck HIGH: ");
+                        _display.consolePut(stuckHighStr);
+                    }
+                    if (strlen(stuckLowStr) > 0)
+                    {
+                        _display.consolePut("FAILED Address bus lines stuck LOW: ");
+                        _display.consolePut(stuckLowStr);
+                    }
+                    if (strlen(interactStr) > 0)
+                    {
+                        _display.consolePut("FAILED Address bus lines bridged: ");
+                        _display.consolePut(interactStr);
+                    }
+                    _display.consolePut("\n");
+                    testState = TEST_STATE_TEST_FAILED;
+                }
+                digitalWrite(BR_BUSRQ_BAR, 1);
+                break;
+            }
+            case TEST_STATE_TEST_FAILED:
+            {
+                char outMsg[200];
+                _display.consoleForeground(DISPLAY_FX_RED);
+                ee_sprintf(outMsg, pTestRec->msgIfFailed, pTestRec->testPinName);
+                _display.consolePut(outMsg);
+                _display.consolePut("\n");
+                _display.consoleForeground(DISPLAY_FX_WHITE);
+                issueCount++;
+                if (!pTestRec->continueOnFail)
+                {
+                    _display.consoleForeground(DISPLAY_FX_RED);
+                    _display.consolePut("This issue needs to be resolved before testing again\n");
+                    _display.consoleForeground(DISPLAY_FX_WHITE);
+                    testState = TEST_STATE_DONE;
+                }
+                testState = TEST_STATE_NEXT;
+                break;
+            }
+            case TEST_STATE_TEST_OK:
+            {
+                char outMsg[200];
+                if (strlen(pTestRec->msgIfSucceeded) > 0)
+                {
+                    _display.consoleForeground(DISPLAY_FX_GREEN);
+                    ee_sprintf(outMsg, pTestRec->msgIfSucceeded, pTestRec->testPinName);
+                    _display.consolePut(outMsg);
+                    _display.consolePut("\n");
+                    _display.consoleForeground(DISPLAY_FX_WHITE);
+                }
+                testState = TEST_STATE_NEXT;
+                break;
+            }
+            case TEST_STATE_NEXT:
+            {
+                // Next test
+                testSeqIdx++;
+                if (testSeqIdx >= sizeof(testSequence)/sizeof(testSequence[0]))
+                    testState = TEST_STATE_DONE;
+                else
+                    testState = TEST_STATE_TEST_SEQUENCE;
+                break;
+            }
+            case TEST_STATE_DONE:
+            {
+                pinMode(BR_BUSRQ_BAR, OUTPUT);
+                digitalWrite(BR_BUSRQ_BAR, 1);
+                pinMode(BR_BUSACK_BAR, INPUT);
+                pinMode(BR_WR_BAR, INPUT);
+                pinMode(BR_RD_BAR, INPUT);
+                pinMode(BR_MREQ_BAR, INPUT);
+                pinMode(BR_IORQ_BAR, INPUT);
+                if (issueCount == 0)
+                {
+                    _display.consoleForeground(DISPLAY_FX_GREEN);
+                    _display.consolePut("Tests complete no issues found");
+                    _display.consoleForeground(DISPLAY_FX_WHITE);
+                }
+                else
+                {
+                    _display.consoleForeground(DISPLAY_FX_RED);
+                    char issueText[100];
+                    ee_sprintf(issueText, "Tests complete %d issue%s found",
+                                    issueCount, issueCount > 1 ? "s" : "");
+                    _display.consolePut(issueText);
+                    _display.consoleForeground(DISPLAY_FX_WHITE);
+                }
+                return;
+            }
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Self test - memory test
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusRaiderApp::testSelf_memory()
+{
+    _display.consoleForeground(DISPLAY_FX_BLUE);
+    _display.consolePut("\nMemory test\n");
+    _display.consoleForeground(DISPLAY_FX_WHITE);
+    _display.consolePut("CPU and RAM cards should be plugged into the bus\n");
+    _display.consolePut("CPU must have a working CLOCK signal\n");
+    _display.consolePut("The RC2014 will be RESET by this test\n");
+
+    enum testState_type
+    {
+        TEST_STATE_SET_MC,
+        TEST_STATE_CHECK_BUSRQ,
+        TEST_STATE_MEMORY_TEST_NEXT,
+        TEST_STATE_AWAIT_KEY,
+        TEST_STATE_PERFORM_BLOCK_TEST,
+        TEST_STATE_DONE_BLOCK_TEST,
+        TEST_STATE_DONE
+    } testState = TEST_STATE_SET_MC;
+
+    struct testSequence_type
+    {
+        uint32_t blockStart;
+        uint32_t blockLen;
+    } testSequence[] =
+    {
+        { 0x4000, 0x4000 },
+        { 0x8000, 0x4000 },
+        { 0xc000, 0x4000 },
+        { 0, 0x4000 }
+    };
+
+    // Loop here until tests done
+    uint32_t startUpdateTimeMs = millis();
+    int issueCount = 0;
+    uint32_t testSeqIdx = 0;
+    while (1)
+    {
+        // Service the comms channels and display updates
+        service();
+        // Timer polling
+        timer_poll();
+        // Service bus access
+        BusAccess::service();
+
+        // Check for keyboard keys
+        int asciiCode = 0;
+        if (_keyInfoBufferPos.canGet())
+        {
+            KeyInfo* pKeyInfo = &_keyInfoBuffer[_keyInfoBufferPos.posToGet()];
+            _keyInfoBufferPos.hasGot();
+            // LogWrite(FromBusRaiderApp, LOG_DEBUG, "Key %c", pKeyInfo->rawKeys[0]);
+            asciiCode = McTerminal::convertRawToAscii(pKeyInfo->modifiers, pKeyInfo->rawKeys);
+            char keyStr[2];
+            keyStr[0] = asciiCode;
+            keyStr[1] = 0;
+            if (rdisalpha(asciiCode) || rdisdigit(asciiCode) || rdisspace(asciiCode))
+                _display.consolePut(keyStr);
+        }
+
+        // Test for quit
+        if ((rdtolower(asciiCode) == 'q') || (asciiCode == 27))
+            testState = TEST_STATE_DONE;
+
+        // Test for time-out
+        if (isTimeout(millis(), startUpdateTimeMs, 60000))
+            {
+                testState = TEST_STATE_DONE;
+                _display.consolePut("\nTest timed-out, repeat if required\n");
+            }
+
+        // Check state
+        switch(testState)
+        {
+            case TEST_STATE_SET_MC:
+            {
+                bool mcSet = McManager::setMachineByName("Serial Terminal ANSI");
+                if (!mcSet)
+                {
+                    _display.consoleForeground(DISPLAY_FX_RED);
+                    _display.consolePut("FAILED to set machine Serial Terminal ANSI - maybe a name change?\n");
+                    _display.consoleForeground(DISPLAY_FX_WHITE);
+                    issueCount++;
+                }
+                testState = TEST_STATE_CHECK_BUSRQ;
+                break;
+            }
+            case TEST_STATE_CHECK_BUSRQ:
+            {
+                // Reset the machine
+                BusAccess::rawBusControlMuxSet(BR_MUX_RESET_Z80_BAR_LOW);
+                microsDelay(100000);
+                BusAccess::rawBusControlMuxClear();
+
+                // Check if BUSRQ works
+                BR_RETURN_TYPE busAckedRetc = BusAccess::controlRequestAndTake();
+                if (busAckedRetc != BR_OK)
+                {
+                    _display.consoleForeground(DISPLAY_FX_RED);
+                    _display.consolePut("FAILED to request Z80 bus: ");
+                    _display.consolePut(BusAccess::retcString(busAckedRetc));
+                    _display.consolePut("\nCheck: CLOCK jumper installed on BusRaider OR external clock\n");
+                    _display.consolePut("Use the test command to test the bus\n");
+                    _display.consolePut("Or if you have a scope/logic analyzer check:\n");
+                    _display.consolePut("- CLOCK line on the backplane - should be oscillating\n");
+                    _display.consolePut("- BUSRQ should pulse low during this test and BUSACK should follow\n");
+                    _display.consoleForeground(DISPLAY_FX_WHITE);
+                    issueCount++;
+                    testState = TEST_STATE_DONE;
+                }
+                else
+                {
+                    testState = TEST_STATE_MEMORY_TEST_NEXT;
+                }
+                break;
+            }
+            case TEST_STATE_MEMORY_TEST_NEXT:
+            {
+                char testStr[200];
+                ee_sprintf(testStr, "*** NOTE: Do not test FLASH or ROM blocks ***\nTest RAM %04x - %04x (length %d)? (y/n) ", 
+                                testSequence[testSeqIdx].blockStart,
+                                testSequence[testSeqIdx].blockStart + testSequence[testSeqIdx].blockLen-1,
+                                testSequence[testSeqIdx].blockLen);
+                _display.consolePut(testStr);
+                testState = TEST_STATE_AWAIT_KEY;
+                break;
+            }
+            case TEST_STATE_AWAIT_KEY:
+            {
+                // 
+                if (rdtolower(asciiCode) == 'y')
+                {
+                    _display.consolePut("... performing test\n");
+                    startUpdateTimeMs = millis();
+                    testState = TEST_STATE_PERFORM_BLOCK_TEST;
+                } else if (rdtolower(asciiCode) == 'n')
+                {
+                    _display.consolePut("... skipping test\n");
+                    startUpdateTimeMs = millis();
+                    testState = TEST_STATE_DONE_BLOCK_TEST;
+                }
+                break;
+            }
+            case TEST_STATE_PERFORM_BLOCK_TEST:
+            {
+                testState = TEST_STATE_DONE_BLOCK_TEST;
+
+                uint32_t blockStart = testSequence[testSeqIdx].blockStart;
+                uint32_t blockLen = testSequence[testSeqIdx].blockLen;
+
+                uint32_t rslt = memTestDevice(blockStart, blockLen);
+                bool blockTestFailed = false;
+                if (rslt != 0)
+                {
+                    _display.consoleForeground(DISPLAY_FX_RED);
+                    char outStr[100];
+                    ee_sprintf(outStr, "FAILED Memory test at address %04x - check memory card\n", rslt);
+                    _display.consolePut(outStr);
+                    _display.consoleForeground(DISPLAY_FX_WHITE);
+                    issueCount++;
+                    blockTestFailed = true;
+                }
+
+                if (!blockTestFailed)
+                {
+                    rslt = memTestAddressBus(blockStart, blockLen);
+                    if (rslt != 0)
+                    {
+                        _display.consoleForeground(DISPLAY_FX_RED);
+                        char outStr[100];
+                        ee_sprintf(outStr, "FAILED Address bus test at address %04x - check for shorts\n", rslt);
+                        _display.consolePut(outStr);
+                        _display.consoleForeground(DISPLAY_FX_WHITE);
+                        issueCount++;
+                    }
+
+                    rslt = memTestDataBus(blockStart);
+                    if (rslt != 0)
+                    {
+                        _display.consoleForeground(DISPLAY_FX_RED);
+                        char outStr[100];
+                        ee_sprintf(outStr, "FAILED Data bus test on data %02x - check for shorts\n", rslt);
+                        _display.consolePut(outStr);
+                        _display.consoleForeground(DISPLAY_FX_WHITE);
+                        issueCount++;
+                    }
+                }
+                break;
+            }
+            case TEST_STATE_DONE_BLOCK_TEST:
+            {
+                // Next test
+                testSeqIdx++;
+                if (testSeqIdx >= sizeof(testSequence)/sizeof(testSequence[0]))
+                    testState = TEST_STATE_DONE;
+                else
+                    testState = TEST_STATE_MEMORY_TEST_NEXT;
+                break;
+            }
+            case TEST_STATE_DONE:
+            {
+                BusAccess::controlRelease();
+                if (issueCount == 0)
+                {
+                    _display.consoleForeground(DISPLAY_FX_GREEN);
+                    _display.consolePut("Tests complete no issues found");
+                    _display.consoleForeground(DISPLAY_FX_WHITE);
+                }
+                else
+                {
+                    _display.consoleForeground(DISPLAY_FX_RED);
+                    char issueText[100];
+                    ee_sprintf(issueText, "Tests complete %d issue%s found",
+                                    issueCount, issueCount > 1 ? "s" : "");
+                    _display.consolePut(issueText);
+                    _display.consoleForeground(DISPLAY_FX_WHITE);
+                }
+                return;
+            }
+        }
+    }
+}

@@ -775,66 +775,7 @@ void BusAccess::waitHandleNew()
             // pinMode(BR_MREQ_BAR, INPUT);
             // pinMode(BR_IORQ_BAR, INPUT);
 
-        if (_hwVersionNumber == 17)
-        {
-            // Set data bus driver direction outward - so it doesn't conflict with the PIB
-            // if FF OE is set
-            WR32(ARM_GPIO_GPCLR0, BR_DATA_DIR_IN_MASK);            
-        }
-
-        // Set PIB to input
-        pibSetIn();
-
-        // Clear the mux to deactivate output enables
-        muxClear();
-        
-        // Enable the high address onto the PIB
-        muxSet(BR_MUX_HADDR_OE_BAR);
-
-        // Delay to allow data to settle
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_READ);
-
-        // Or in the high address
-        addr = (pibGetValue() & 0xff) << 8;
-
-        // Enable the low address onto the PIB
-        muxSet(BR_MUX_LADDR_OE_BAR);
-
-        // Delay to allow data to settle
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
-
-        // Get low address value
-        addr |= pibGetValue() & 0xff;
-
-        // Clear the mux to deactivate output enables
-        muxClear();
-
-        // Delay to allow data to settle
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
-
-        // Read the data bus
-        // If the target machine is writing then this will be the data it wants to write
-        // If reading then the memory/IO system may have placed its data onto the data bus 
-
-        // Due to hardware limitations reading from the data bus MUST be done last as the
-        // output of the data bus is latched onto the PIB (or out onto the data bus in the case
-        // where the ISR provides data for the processor to read)
-
-        // Set data bus driver direction inward - onto PIB
-        WR32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK);
-
-        // Set output enable on data bus driver by resetting flip-flop
-        // Note that the outputs of the data bus buffer are enabled from this point until
-        // a rising edge of IORQ or MREQ
-        // This can cause a bus conflict if BR_DATA_DIR_IN is set low before this happens
-        muxDataBusOutputEnable();
-
-        // Delay to allow data to settle
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
-
-        // Read the data bus values
-        dataBusVals = pibGetValue() & 0xff;
-
+        addrAndDataBusRead(addr, dataBusVals);
     }
 
     // Send this to all bus sockets

@@ -391,10 +391,10 @@ public:
         switch (retc)
         {
             case BR_OK: return "ok";
-            case BR_ERR: return "err";
+            case BR_ERR: return "general error";
             case BR_ALREADY_DONE: return "already paused";
-            case BR_NO_BUS_ACK: return "bus ack not received";
-            default: return "unknown";
+            case BR_NO_BUS_ACK: return "BUSACK not received";
+            default: return "unknown error";
         }
     }
 
@@ -420,6 +420,8 @@ public:
     static void rawBusControlSetAddress(uint32_t addr);
     static void rawBusControlSetData(uint32_t data);
     static uint32_t rawBusControlReadRaw();
+    static uint32_t rawBusControlReadCtrl();
+    static void rawBusControlReadAll(uint32_t& ctrl, uint32_t& addr, uint32_t& data);
     static void rawBusControlSetPin(uint32_t pinNumber, bool level);
     static bool rawBusControlGetPin(uint32_t pinNumber);
     static uint32_t rawBusControlReadPIB();
@@ -446,6 +448,7 @@ public:
     static void isrValue(int code, int val);
     static void isrPeak(int code, int val);
     static int isrAssertGetCount(int code);
+    static void formatCtrlBus(uint32_t ctrlBus, char* msgBuf, int maxMsgBufLen);
 
     // Bus request/ack
     static void controlRequest();
@@ -537,6 +540,7 @@ private:
 
     // Control bus read
     static uint32_t controlBusRead();
+    static void addrAndDataBusRead(uint32_t& addr, uint32_t& dataBusVals);
 
     // Control the PIB (bus used to transfer data to/from Pi)
     static inline void pibSetOut()
@@ -596,7 +600,9 @@ private:
         else
         {
 #ifdef V2_PROTO_USING_MUX_EN
-            // Clear first
+            // Disable mux initially
+            WR32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
+            // Clear all the mux bits
             WR32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
             // Now set bits required
             WR32(ARM_GPIO_GPSET0, muxVal << BR_MUX_LOW_BIT_POS);
