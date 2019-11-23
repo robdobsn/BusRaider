@@ -92,7 +92,8 @@ private:
     enum memOpts_t {
         MEM_OPT_OPT_NONE = 0x00,
         MEM_OPT_STAY_BANKED = 0x01,
-        MEM_OPT_EMULATE_LINEAR = 0x04
+        MEM_OPT_EMULATE_LINEAR = 0x04,
+        MEM_OPT_EMULATE_LINEAR_UPPER = 0x08
     };
     memOpts_t _memCardOpts;
 
@@ -115,7 +116,7 @@ private:
     // Access linear or banked memory
     BR_RETURN_TYPE physicalBlockAccess(uint32_t addr, const uint8_t* pBuf, uint32_t len,
             bool busRqAndRelease, bool iorq, bool write);
-    void setBanksToEmulate64KAddrSpace();
+    void setBanksToEmulate64KAddrSpace(bool upperChip);
     BR_RETURN_TYPE readWriteBankedMemory(uint32_t addr, uint8_t* pBuf, uint32_t len,
             bool iorq, bool write);
 

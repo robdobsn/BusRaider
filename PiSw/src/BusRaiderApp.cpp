@@ -176,7 +176,7 @@ void BusRaiderApp::service()
         {
             KeyInfo* pKeyInfo = &_keyInfoBuffer[_keyInfoBufferPos.posToGet()];
             _keyInfoBufferPos.hasGot();
-            LogWrite(FromBusRaiderApp, LOG_DEBUG, "Keyattop %02x %02x %02x", pKeyInfo->rawKeys[0], pKeyInfo->rawKeys[1], pKeyInfo->rawKeys[2]);
+            // LogWrite(FromBusRaiderApp, LOG_DEBUG, "Keyattop %02x %02x %02x", pKeyInfo->rawKeys[0], pKeyInfo->rawKeys[1], pKeyInfo->rawKeys[2]);
             _inKeyboardRoutine = true;
             if (_pApp)
                 _pApp->usbKeypressHandler(pKeyInfo->modifiers, pKeyInfo->rawKeys);
@@ -685,7 +685,7 @@ void BusRaiderApp::testSelf_readSetBus(bool readMode)
                 {
                     KeyInfo* pKeyInfo = &_keyInfoBuffer[_keyInfoBufferPos.posToGet()];
                     _keyInfoBufferPos.hasGot();
-                    LogWrite(FromBusRaiderApp, LOG_DEBUG, "Keyin %02x %02x %02x", pKeyInfo->rawKeys[0], pKeyInfo->rawKeys[1], pKeyInfo->rawKeys[2]);
+                    // LogWrite(FromBusRaiderApp, LOG_DEBUG, "Keyin %02x %02x %02x", pKeyInfo->rawKeys[0], pKeyInfo->rawKeys[1], pKeyInfo->rawKeys[2]);
                     int asciiCode = McTerminal::convertRawToAscii(pKeyInfo->modifiers, pKeyInfo->rawKeys);
                     char keyStr[2];
                     keyStr[0] = asciiCode;
@@ -1202,11 +1202,12 @@ void BusRaiderApp::testSelf_memory()
     _display.consoleForeground(DISPLAY_FX_WHITE);
     _display.consolePut("CPU and RAM cards should be plugged into the bus\n");
     _display.consolePut("CPU must have a working CLOCK signal\n");
-    _display.consolePut("The RC2014 will be RESET by this test\n");
 
     enum testState_type
     {
         TEST_STATE_SET_MC,
+        TEST_STATE_ASK_IF_RESET,
+        TEST_STATE_PERFORM_RESET,
         TEST_STATE_CHECK_BUSRQ,
         TEST_STATE_MEMORY_TEST_NEXT,
         TEST_STATE_AWAIT_KEY,
@@ -1271,24 +1272,45 @@ void BusRaiderApp::testSelf_memory()
         {
             case TEST_STATE_SET_MC:
             {
-                bool mcSet = McManager::setMachineByName("Serial Terminal ANSI");
-                if (!mcSet)
-                {
-                    _display.consoleForeground(DISPLAY_FX_RED);
-                    _display.consolePut("FAILED to set machine Serial Terminal ANSI - maybe a name change?\n");
-                    _display.consoleForeground(DISPLAY_FX_WHITE);
-                    issueCount++;
-                }
-                testState = TEST_STATE_CHECK_BUSRQ;
+                // bool mcSet = McManager::setMachineByName("Serial Terminal ANSI");
+                // if (!mcSet)
+                // {
+                //     _display.consoleForeground(DISPLAY_FX_RED);
+                //     _display.consolePut("FAILED to set machine Serial Terminal ANSI - maybe a name change?\n");
+                //     _display.consoleForeground(DISPLAY_FX_WHITE);
+                //     issueCount++;
+                // }
+                _display.consolePut("Do you want to reset the Z80 first (may be needed)? (y/n)");
+                testState = TEST_STATE_ASK_IF_RESET;
                 break;
             }
-            case TEST_STATE_CHECK_BUSRQ:
+            case TEST_STATE_ASK_IF_RESET:
+            {
+                // 
+                if (rdtolower(asciiCode) == 'y')
+                {
+                    _display.consolePut("\n");
+                    startUpdateTimeMs = millis();
+                    testState = TEST_STATE_PERFORM_RESET;
+                } else if (rdtolower(asciiCode) == 'n')
+                {
+                    _display.consolePut("\n");
+                    startUpdateTimeMs = millis();
+                    testState = TEST_STATE_CHECK_BUSRQ;
+                }
+                break;
+            }
+            case TEST_STATE_PERFORM_RESET:
             {
                 // Reset the machine
                 BusAccess::rawBusControlMuxSet(BR_MUX_RESET_Z80_BAR_LOW);
                 microsDelay(100000);
                 BusAccess::rawBusControlMuxClear();
-
+                testState = TEST_STATE_CHECK_BUSRQ;
+                break;
+            }
+            case TEST_STATE_CHECK_BUSRQ:
+            {
                 // Check if BUSRQ works
                 BR_RETURN_TYPE busAckedRetc = BusAccess::controlRequestAndTake();
                 if (busAckedRetc != BR_OK)
@@ -1369,6 +1391,7 @@ void BusRaiderApp::testSelf_memory()
                         _display.consolePut(outStr);
                         _display.consoleForeground(DISPLAY_FX_WHITE);
                         issueCount++;
+                        blockTestFailed = true;
                     }
 
                     rslt = memTestDataBus(blockStart);
@@ -1380,7 +1403,14 @@ void BusRaiderApp::testSelf_memory()
                         _display.consolePut(outStr);
                         _display.consoleForeground(DISPLAY_FX_WHITE);
                         issueCount++;
+                        blockTestFailed = true;
                     }
+                }
+                if (!blockTestFailed)
+                {
+                    _display.consoleForeground(DISPLAY_FX_GREEN);
+                    _display.consolePut("Test Passed\n");
+                    _display.consoleForeground(DISPLAY_FX_WHITE);
                 }
                 break;
             }

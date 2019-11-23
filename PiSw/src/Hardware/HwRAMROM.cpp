@@ -67,6 +67,8 @@ void HwRAMROM::configure([[maybe_unused]] const char* jsonConfig)
             _memCardOpts = MEM_OPT_STAY_BANKED;
         if (strcasecmp(paramStr, "EMULATELINEAR") == 0)
             _memCardOpts = MEM_OPT_EMULATE_LINEAR;
+        else if (strcasecmp(paramStr, "EMULATELINEARUPPER") == 0)
+            _memCardOpts = MEM_OPT_EMULATE_LINEAR_UPPER;
     }
 
     // Get pageOut param
@@ -212,11 +214,19 @@ void HwRAMROM::mirrorClone()
 // Emulate 64K linear memory with banked memory card
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void HwRAMROM::setBanksToEmulate64KAddrSpace()
+void HwRAMROM::setBanksToEmulate64KAddrSpace(bool upperChip)
 {
-    // Write consecutive bank numbers to all bank registers
-    const uint8_t bankNumData[] = { 0, 1, 2, 3 };
-    BusAccess::blockWrite(BANK_16K_BASE_ADDR, bankNumData, 4, false, true);
+    // Write consecutive bank numbers to all bank registers 
+    if (upperChip)
+    {
+        const uint8_t bankNumData[] = { 32, 33, 34, 35 };
+        BusAccess::blockWrite(BANK_16K_BASE_ADDR, bankNumData, 4, false, true);
+    }
+    else
+    {
+        const uint8_t bankNumData[] = { 0, 1, 2, 3 };
+        BusAccess::blockWrite(BANK_16K_BASE_ADDR, bankNumData, 4, false, true);
+    }
 
     // Enable register outputs
     const uint8_t setRegEn[] = { 1 };
@@ -355,8 +365,8 @@ BR_RETURN_TYPE HwRAMROM::physicalBlockAccess(uint32_t addr, const uint8_t* pBuf,
         readWriteBankedMemory(addr, const_cast<uint8_t*>(pBuf), len, iorq, write);
 
         // Check if banks should be set to emulate 64K linear address space
-        if (_memCardOpts & MEM_OPT_EMULATE_LINEAR)
-            setBanksToEmulate64KAddrSpace();
+        if ((_memCardOpts & MEM_OPT_EMULATE_LINEAR) || (_memCardOpts & MEM_OPT_EMULATE_LINEAR_UPPER))
+            setBanksToEmulate64KAddrSpace(_memCardOpts & MEM_OPT_EMULATE_LINEAR_UPPER);
     }
     return BR_NOT_HANDLED;
 }
@@ -537,9 +547,15 @@ void HwRAMROM::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType,
         case BR_BUS_ACTION_RESET:
             hwReset();
             // Request the bus again so we can change the mode of the card if required
-            if (_memCardOpts & MEM_OPT_STAY_BANKED)
+            if ((_memCardOpts & MEM_OPT_STAY_BANKED) || (_memCardOpts & MEM_OPT_EMULATE_LINEAR) || (_memCardOpts & MEM_OPT_EMULATE_LINEAR_UPPER))
+            // if (_memCardOpts & MEM_OPT_STAY_BANKED)
             {
-                // LogWrite(_logPrefix, LOG_DEBUG, "BUSRQ Opts %d Set to stay banked %d", _memCardOpts, _memCardOpts & MEM_OPT_STAY_BANKED);
+                // LogWrite(_logPrefix, LOG_DEBUG, "BUSRQ Opts %02x stayBanked %d, emuLinear %d, emuLinearUpper %d", 
+                //             _memCardOpts, 
+                //             _memCardOpts & MEM_OPT_STAY_BANKED,
+                //             _memCardOpts & MEM_OPT_EMULATE_LINEAR,
+                //             _memCardOpts & MEM_OPT_EMULATE_LINEAR_UPPER
+                //             );
                 BusAccess::targetReqBus(HwManager::getBusSocketId(), BR_BUS_ACTION_HW_ACTION);
             }
             break;
@@ -571,11 +587,18 @@ void HwRAMROM::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType,
             if (reason == BR_BUS_ACTION_HW_ACTION)
             {
                 // Switch card back to banked mode if required
-                // LogWrite(_logPrefix, LOG_DEBUG, "HWAction Opts %d Set to stay banked %d", _memCardOpts, _memCardOpts & MEM_OPT_STAY_BANKED);
                 if (_memCardOpts & MEM_OPT_STAY_BANKED)
                 {
                     const uint8_t setBankedMode[] = { 1 };
                     BusAccess::blockWrite(BANK_16K_LIN_TO_PAGE, setBankedMode, 1, true, true);
+                    // LogWrite(_logPrefix, LOG_DEBUG, "HWAction Staying banked");
+                }
+                // Check if banks should be set to emulate 64K linear address space
+                if ((_memCardOpts & MEM_OPT_EMULATE_LINEAR) || (_memCardOpts & MEM_OPT_EMULATE_LINEAR_UPPER))
+                {
+                    setBanksToEmulate64KAddrSpace(_memCardOpts & MEM_OPT_EMULATE_LINEAR_UPPER);
+                    // LogWrite(_logPrefix, LOG_DEBUG, "HWAction set to emulate 64K using %s 512K chip",
+                    //             _memCardOpts & MEM_OPT_EMULATE_LINEAR_UPPER ? "upper" : "lower");
                 }
             }
             break;
@@ -584,21 +607,21 @@ void HwRAMROM::handleBusActionComplete([[maybe_unused]]BR_BUS_ACTION actionType,
     }
 }
 
-// Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
+// Handle a request for memory or IO - or possibly something like an interrupt vector in Z80
 void HwRAMROM::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
         [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t& retVal)
 {
-    // Check emulation mode
-    if (_memoryEmulationMode || _mirrorMode)
+    // Memory requests
+    if (flags & BR_CTRL_BUS_MREQ_MASK)
     {
-        // Check mirror memory ok
-        uint8_t* pMemory = getMirrorMemory();
-        if (!pMemory)
-            return;
-
-        // Memory requests use mirror memory
-        if (flags & BR_CTRL_BUS_MREQ_MASK)
+        // Check emulation mode
+        if (_memoryEmulationMode || _mirrorMode)
         {
+            // Check mirror memory ok
+            uint8_t* pMemory = getMirrorMemory();
+            if (!pMemory)
+                return;
+
             if (flags & BR_CTRL_BUS_WR_MASK)
             {
                 pMemory[addr] = data;
@@ -611,22 +634,25 @@ void HwRAMROM::handleMemOrIOReq([[maybe_unused]] uint32_t addr, [[maybe_unused]]
         }
     }
 
-    // Check for address range used by this card
-    uint32_t ioAddr = (addr & 0xff);
-    if ((ioAddr >= _bankHwBaseIOAddr) && (ioAddr < _bankHwBaseIOAddr + NUM_BANKS))
+    // Check for IO address range used by this card
+    if (flags & BR_CTRL_BUS_IORQ_MASK)
     {
-        if(flags & BR_CTRL_BUS_WR_MASK)
+        uint32_t ioAddr = (addr & 0xff);
+        if ((ioAddr >= _bankHwBaseIOAddr) && (ioAddr < _bankHwBaseIOAddr + NUM_BANKS))
         {
-            _bankRegisters[ioAddr - _bankHwBaseIOAddr] = data;
-            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B + ioAddr - _bankHwBaseIOAddr, data);
+            if(flags & BR_CTRL_BUS_WR_MASK)
+            {
+                _bankRegisters[ioAddr - _bankHwBaseIOAddr] = data;
+                // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B + ioAddr - _bankHwBaseIOAddr, data);
+            }
         }
-    }
-    else if (ioAddr == _bankHwPageEnIOAddr)
-    {
-        if (flags & BR_CTRL_BUS_WR_MASK)
+        else if (ioAddr == _bankHwPageEnIOAddr)
         {
-            _bankRegisterOutputEnable = ((data & 0x01) != 0);
-            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_K, data);
+            if (flags & BR_CTRL_BUS_WR_MASK)
+            {
+                _bankRegisterOutputEnable = ((data & 0x01) != 0);
+                // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_K, data);
+            }
         }
     }
 }
