@@ -13,9 +13,12 @@
 #include "../TerminalEmulation/TermH19.h"
 #include "../TerminalEmulation/TermAnsi.h"
 
+#define USE_KEY_TRANSLATION_TABLE 1
+
 const char* McTerminal::_logPrefix = "McTerm";
 
 extern WgfxFont __p12x16Font;
+KeyConversion McTerminal::_keyConversion;
 
 McDescriptorTable McTerminal::_defaultDescriptorTables[] = {
     {
@@ -142,7 +145,18 @@ bool McTerminal::setupMachine(const char* mcName, const char* mcJson)
         if (!_emulate6850)
             getDescriptorTable()->monitorIORQ = false;
     }
-    LogWrite(_logPrefix, LOG_DEBUG, "setupMachine emulate6850 %s", _emulate6850 ? "Y" : "N");
+
+    // Keyboard type
+    static const int KEYBOARD_TYPE_STR_MAX = 100;
+    char keyboardTypeStr[KEYBOARD_TYPE_STR_MAX];
+    bool keyboardTypeValid = jsonGetValueForKey("keyboardType", mcJson, keyboardTypeStr, KEYBOARD_TYPE_STR_MAX);
+    if (keyboardTypeValid)
+    {
+        _keyConversion.setKeyboardTypeStr(keyboardTypeStr);
+    }
+    LogWrite(_logPrefix, LOG_DEBUG, "setupMachine emulate6850 %s keyboardType %s",
+             _emulate6850 ? "Y" : "N",
+             _keyConversion.getKeyboardTypeStr());
     return rslt;
 }
 
@@ -315,10 +329,24 @@ int McTerminal::convertRawToAscii(unsigned char ucModifiers, const unsigned char
     int rawKey = rawKeys[0];
     if ((rawKey >= 0x80) && (rawKeys[1] != 0))
         rawKey = rawKeys[1];
-    bool shiftPressed = (ucModifiers & KEY_MOD_LSHIFT) || (ucModifiers & KEY_MOD_RSHIFT);
-    bool ctrlPressed = (ucModifiers & KEY_MOD_LCTRL) || (ucModifiers & KEY_MOD_RCTRL);
     if ((rawKey == KEY_NONE) || (rawKey == KEY_ERR_OVF))
         return -1;
+
+#ifdef USE_KEY_TRANSLATION_TABLE
+
+    // Lookup
+    asciiCode = _keyConversion.lookupKey(ucModifiers, rawKey);
+    bool ctrlPressed = (ucModifiers & KEY_MOD_LCTRL) || (ucModifiers & KEY_MOD_RCTRL);
+    if (ctrlPressed)
+        asciiCode = asciiCode & 0x1f;
+
+    // LogWrite(_logPrefix, LOG_DEBUG, "ASCII %02x RAWKEY %02x %02x %02x %02x %02x %02x Mod %02x",
+    //                 asciiCode, rawKeys[0], rawKeys[1], rawKeys[2], rawKeys[3], rawKeys[4], rawKeys[5], ucModifiers);
+
+#else
+
+    bool shiftPressed = (ucModifiers & KEY_MOD_LSHIFT) || (ucModifiers & KEY_MOD_RSHIFT);
+    bool ctrlPressed = (ucModifiers & KEY_MOD_LCTRL) || (ucModifiers & KEY_MOD_RCTRL);
     if ((rawKey >= KEY_A) && (rawKey <= KEY_Z)) {
         if (ctrlPressed)
             return (rawKey-KEY_A+1);
@@ -404,6 +432,8 @@ int McTerminal::convertRawToAscii(unsigned char ucModifiers, const unsigned char
         // Handle Space
         asciiCode = 0x20;
     }
+#endif
+
     return asciiCode;
 }
 

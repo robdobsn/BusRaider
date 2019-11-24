@@ -4,6 +4,7 @@
 #include "McBase.h"
 #include "McManager.h"
 #include "../System/logging.h"
+#include "../System/KeyConversion.h"
 #include "../TerminalEmulation/TermEmu.h"
 
 class McTerminal : public McBase
@@ -70,6 +71,21 @@ public:
 
     // Convert raw USB code to ASCII
     static int convertRawToAscii(unsigned char ucModifiers, const unsigned char rawKeys[6]);
+
+    // Key conversion
+    static KeyConversion _keyConversion;
+    static uint32_t keyboardGetNumTypes()
+    {
+        return _keyConversion.getNumTypes();
+    }
+    static const char* keyboardGetTypeStr(uint32_t keyboardType)
+    {
+        return _keyConversion.getTypeStr(keyboardType);        
+    }
+    static void keyboardSetType(uint32_t keyboardType)
+    {
+        _keyConversion.setKeyboardType(keyboardType);
+    }
 
     // Get changes made since last mirror display update
     virtual uint32_t getMirrorChanges(uint8_t* pMirrorChangeBuf, uint32_t mirrorChangeMaxLen, bool forceGetAll);

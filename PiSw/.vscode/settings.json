@@ -18,7 +18,8 @@
         "utility": "cpp",
         "*.tcc": "cpp",
         "functional": "cpp",
-        "istream": "cpp"
+        "istream": "cpp",
+        "keymap.h": "c"
     },
     "python.testing.pytestArgs": [
         "."
