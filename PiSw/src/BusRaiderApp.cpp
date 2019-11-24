@@ -31,6 +31,9 @@ BusRaiderApp::KeyInfo BusRaiderApp::_keyInfoBuffer[MAX_USB_KEYS_BUFFERED];
 RingBufferPosn BusRaiderApp::_keyInfoBufferPos(BusRaiderApp::MAX_USB_KEYS_BUFFERED);
 bool BusRaiderApp::_inKeyboardRoutine = false;
 
+const uint32_t BusRaiderApp::_autoBaudRates[] = { 2000000, 1000000 };
+uint32_t BusRaiderApp::_autoBaudLastESP32CommsMs = 0;
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Comms socket
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -85,6 +88,12 @@ void BusRaiderApp::clear()
     _esp32LastMachineCmd[0] = 0;
     _esp32LastMachineValid = false;
     _esp32LastMachineReqUs = 0;
+
+    // Auto baud
+    _autoBaudLastESP32CommsMs = 0;
+    _autoBaudLastCheckMs = 0;
+    _autoBaudFailCount = 0;
+    _autoBaudCurBaudIdx = 0;
 }
 void BusRaiderApp::initUSB()
 {
@@ -183,6 +192,35 @@ void BusRaiderApp::service()
             _inKeyboardRoutine = false;
         }
     }
+
+    // Check for communication with the ESP32 - if this fails for an extended period then try different baud rates
+    if (isTimeout(millis(), _autoBaudLastCheckMs, _autoBaudCheckPeriodMs))
+    {
+        // _display.consolePut("Checking auto baud\n");
+        if (isTimeout(millis(), _autoBaudLastESP32CommsMs, _autoBaudMaxTimeBetweenESPCommsMs))
+        {
+            // _display.consolePut("Not connected\n");
+            // Not connected so count failures
+            _autoBaudFailCount++;
+            if (_autoBaudFailCount > _autoBaudFailCountToChangeBaud)
+            {
+                _autoBaudFailCount = 0;
+                
+                // Get next baud
+                _autoBaudCurBaudIdx++;
+                if (_autoBaudCurBaudIdx >= sizeof(_autoBaudRates)/sizeof(_autoBaudRates[0]))
+                    _autoBaudCurBaudIdx = 0;
+                
+                // Try this rate
+                _uart.setup(_autoBaudRates[_autoBaudCurBaudIdx]);
+                _uart.clear();
+                char outStr[200];
+                ee_sprintf(outStr, "Not connected to ESP32: trying baud rate %d\n", _autoBaudRates[_autoBaudCurBaudIdx]);
+                _display.consolePut(outStr);
+            }
+        }
+        _autoBaudLastCheckMs = millis();
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -192,6 +230,8 @@ void BusRaiderApp::service()
 bool BusRaiderApp::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t* pParams, [[maybe_unused]]int paramsLen,
                 char* pRespJson, int maxRespLen)
 {
+    _autoBaudLastESP32CommsMs = millis();
+
     // LogWrite(FromBusRaiderApp, LOG_DEBUG, "rxMsg %s", pCmdJson);
     #define MAX_CMD_NAME_STR 200
     char cmdName[MAX_CMD_NAME_STR+1];
@@ -251,7 +291,10 @@ void BusRaiderApp::statusDisplayUpdate()
             strlcat(statusStr, _esp32ESP32Version, MAX_STATUS_STR_LEN);
             strlcat(statusStr, BusAccess::getHwVersion() == 17 ? " (HW V1.7)" : " (HW V2.0)", MAX_STATUS_STR_LEN);
             strlcat(statusStr, "        ", MAX_STATUS_STR_LEN);
-            _display.statusPut(Display::STATUS_FIELD_ESP_VERSION, Display::STATUS_NORMAL, statusStr);
+            int dispStatus = Display::STATUS_NORMAL;
+            if (isTimeout(millis(), _autoBaudLastESP32CommsMs, _autoBaudMaxTimeBetweenESPCommsMs))
+                dispStatus = Display::STATUS_FAIL;
+            _display.statusPut(Display::STATUS_FIELD_ESP_VERSION, dispStatus, statusStr);
         }
 
         // WiFi status
@@ -786,6 +829,7 @@ void BusRaiderApp::testSelf_detailedBus()
         TEST_STATE_PREPPED,
         TEST_STATE_TEST_BUS_PIN,
         TEST_STATE_TEST_PIN_TO_PIN,
+        TEST_STATE_TEST_PIN_TO_MUX,
         TEST_STATE_TEST_ADDR,
         TEST_STATE_TEST_FAILED,
         TEST_STATE_TEST_OK,
@@ -797,6 +841,7 @@ void BusRaiderApp::testSelf_detailedBus()
     {
         TEST_OPT_PIN_FIXED,
         TEST_OPT_PIN_TO_PIN,
+        TEST_OPT_PIN_TO_MUX,
         TEST_OPT_ADDR
     };
 
@@ -816,6 +861,9 @@ void BusRaiderApp::testSelf_detailedBus()
         // { "BUSACK", TEST_OPT_PIN_FIXED, "", BR_BUSACK_BAR, OUTPUT, 0, false, "FAILED: BUSACK reads LOW - check Q4/Q5 for shorts", "" },
         { "BUSACK", TEST_OPT_PIN_FIXED, "", BR_BUSACK_BAR, INPUT_PULLUP, 1, false, "FAILED: BUSACK reads LOW - check Q4/Q5 for shorts", "" },
         { "BUSACK", TEST_OPT_PIN_FIXED, "Place a jumper: BUSACK to GND", BR_BUSACK_BAR, -1, 0, false, "FAILED: BUSACK reads HIGH - check Q4/Q5 for shorts", "BUSACK looks OK" },
+        { "RESET", TEST_OPT_PIN_TO_MUX, "Place the same jumper: BUSACK to %s", BR_BUSACK_BAR, INPUT_PULLUP, BR_MUX_RESET_Z80_BAR_LOW, true, "FAILED: %s not working check U5 & Q1", "%s looks OK" },
+        { "INT", TEST_OPT_PIN_TO_MUX, "Place the same jumper: BUSACK to %s", BR_BUSACK_BAR, INPUT_PULLUP, BR_MUX_IRQ_BAR_LOW, true, "FAILED: %s not working check U5 & Q2", "%s looks OK" },
+        { "NMI", TEST_OPT_PIN_TO_MUX, "Place the same jumper: BUSACK to %s", BR_BUSACK_BAR, INPUT_PULLUP, BR_MUX_NMI_BAR_LOW, true, "FAILED: %s not working check U5 & Q3 & NMI JUMPER", "%s looks OK" },
         { "MREQ", TEST_OPT_PIN_TO_PIN, "Place the same jumper: BUSACK to %s", BR_BUSACK_BAR, OUTPUT, BR_MREQ_BAR, true, "FAILED: %s not working check U1", "%s looks OK" },
         { "WR", TEST_OPT_PIN_TO_PIN, "Place the same jumper: BUSACK to %s", BR_BUSACK_BAR, OUTPUT, BR_WR_BAR, true, "FAILED: %s not working check U1", "%s looks OK" },
         { "RD", TEST_OPT_PIN_TO_PIN, "Place the same jumper: BUSACK to %s", BR_BUSACK_BAR, OUTPUT, BR_RD_BAR, true, "FAILED: %s not working check U1", "%s looks OK" },
@@ -928,6 +976,9 @@ void BusRaiderApp::testSelf_detailedBus()
                     case TEST_OPT_PIN_TO_PIN:
                         testState = TEST_STATE_TEST_PIN_TO_PIN;
                         break;
+                    case TEST_OPT_PIN_TO_MUX:
+                        testState = TEST_STATE_TEST_PIN_TO_MUX;
+                        break;
                     case TEST_OPT_ADDR:
                         testState = TEST_STATE_TEST_ADDR;
                         break;
@@ -980,6 +1031,43 @@ void BusRaiderApp::testSelf_detailedBus()
 
                 // Restore
                 pinMode(pTestRec->levelToCheckFor, INPUT);
+                break;
+            }
+            case TEST_STATE_TEST_PIN_TO_MUX:
+            {
+                // Set pinMode used for reading
+                if (pTestRec->pinMode >= 0)
+                {
+                    pinMode(pTestRec->pinToTest, pTestRec->pinMode);
+                }
+
+                // Clear mux
+                BusAccess::rawBusControlMuxClear();
+
+                // Check pin is high due to input pullup
+                microsDelay(100);
+                testState = TEST_STATE_TEST_OK;
+                bool pinLevel = digitalRead(pTestRec->pinToTest);
+                if (pinLevel == 0)
+                {
+                    testState = TEST_STATE_TEST_FAILED;
+                }
+
+                // Set mux
+                BusAccess::rawBusControlMuxSet(pTestRec->levelToCheckFor);
+
+                // Check pin is low due to mux signal
+                microsDelay(100);
+                pinLevel = digitalRead(pTestRec->pinToTest);
+                if (pinLevel != 0)
+                {
+                    testState = TEST_STATE_TEST_FAILED;
+                }
+
+                // Clear mux
+                BusAccess::rawBusControlMuxClear();
+                // Restore
+                pinMode(pTestRec->pinToTest, INPUT);
                 break;
             }
             case TEST_STATE_TEST_ADDR:
@@ -1134,7 +1222,10 @@ void BusRaiderApp::testSelf_detailedBus()
                     _display.consoleForeground(DISPLAY_FX_WHITE);
                     testState = TEST_STATE_DONE;
                 }
-                testState = TEST_STATE_NEXT;
+                else
+                {
+                    testState = TEST_STATE_NEXT;
+                }
                 break;
             }
             case TEST_STATE_TEST_OK:

@@ -25,8 +25,8 @@ public:
     UartMaxi();
     ~UartMaxi();
 
-    // Setup and clear
-    bool setup(unsigned int baudRate, int rxBufSize, int txBufSize);
+    // Setup, if buffer size is 0 then either use default size or, if previously set, leave as before
+    bool setup(unsigned int baudRate, uint32_t rxBufSize=0, uint32_t txBufSize=0);
     void clear();
 
     // Output
@@ -84,4 +84,9 @@ private:
 
     int writeBase(unsigned int c);
     void txPumpPrime();
+
+    // Fallback buffers
+    static const int FALLBACK_BUFFER_SIZE = 1000;
+    uint8_t rxFallbackBuffer[FALLBACK_BUFFER_SIZE];
+    uint8_t txFallbackBuffer[FALLBACK_BUFFER_SIZE];
 };

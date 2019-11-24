@@ -57,9 +57,9 @@ UartMaxi::~UartMaxi()
 // Setup
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool UartMaxi::setup(unsigned int baudRate, int rxBufSize, int txBufSize)
+bool UartMaxi::setup(unsigned int baudRate, uint32_t rxBufSize, uint32_t txBufSize)
 {
-        // Baud rate calculation
+    // Baud rate calculation
     uint32_t FUARTCLK_MAX = CMachineInfo::Get ()->GetMaxClockRate (CLOCK_ID_UART);
     CMachineInfo::Get ()->SetClockRate (CLOCK_ID_UART, 32000000, true);
     uint32_t FUARTCLK = CMachineInfo::Get ()->GetClockRate (CLOCK_ID_UART);
@@ -81,29 +81,78 @@ bool UartMaxi::setup(unsigned int baudRate, int rxBufSize, int txBufSize)
     LogWrite(FromUartMaxi, LOG_VERBOSE, "Baud rate %d (%d:%d)\n",
                         baudRate, intBaudDivisor, fracBaudDivisor);
 
-    // Deallocate buffers if required
-    if (_pRxBuffer)
-        nmalloc_free((void**)&_pRxBuffer);
-    _pRxBuffer = NULL;
-    if (_pTxBuffer)
-        nmalloc_free((void**)&_pTxBuffer);
-    _pTxBuffer = NULL;
+    // Deallocate and reallocate rx buffer if required
+    if (rxBufSize == 0)
+    {
+        if (!_pRxBuffer)
+        {
+            // Use the fallback buffer for rx
+            _pRxBuffer = rxFallbackBuffer;
 
-    // Allocate for buffers
-    _pRxBuffer = (uint8_t*)nmalloc_malloc(rxBufSize);
-    if (!_pRxBuffer)
-    {
-        // LogWrite(FromUartMaxi, LOG_DEBUG, "Cannot allocate for Rx buffer size %d\n", rxBufSize);
-        return false;
+            // Ring buffer position
+            _rxBufferPosn.init(FALLBACK_BUFFER_SIZE);
+        }
     }
-    _pTxBuffer = (uint8_t*)nmalloc_malloc(txBufSize);
-    if (!_pTxBuffer)
+    else if ((_pRxBuffer == NULL) || (_rxBufferPosn.size() != rxBufSize))
     {
-        // LogWrite(FromUartMaxi, LOG_DEBUG, "Cannot allocate for Tx buffer size %d\n", txBufSize);
-        return false;
+        if ((_pRxBuffer) && (_pRxBuffer != rxFallbackBuffer))
+            nmalloc_free((void**)&_pRxBuffer);
+        _pRxBuffer = NULL;
+
+        // Allocate for buffers
+        _pRxBuffer = (uint8_t*)nmalloc_malloc(rxBufSize);
+        if (!_pRxBuffer)
+        {
+            // Use the fallback buffer for rx
+            _pRxBuffer = rxFallbackBuffer;
+
+            // Ring buffer position
+            _rxBufferPosn.init(FALLBACK_BUFFER_SIZE);
+
+            LogWrite(FromUartMaxi, LOG_DEBUG, "Cannot allocate for Rx buffer size %d, using fallback\n", rxBufSize);
+        }
+        else
+        {
+            // Ring buffer position
+            _rxBufferPosn.init(rxBufSize);
+        }
     }
-    _rxBufferPosn.init(rxBufSize);
-    _txBufferPosn.init(txBufSize);
+
+    // Deallocate and reallocate rx buffer if required
+    if (txBufSize == 0)
+    {
+        if (!_pTxBuffer)
+        {
+            // Use the fallback buffer for rx
+            _pTxBuffer = txFallbackBuffer;
+
+            // Ring buffer position
+            _txBufferPosn.init(FALLBACK_BUFFER_SIZE);
+        }
+    }
+    else if ((_pTxBuffer == NULL) || (_txBufferPosn.size() != txBufSize))
+    {
+        if ((_pTxBuffer) && (_pTxBuffer != txFallbackBuffer))
+            nmalloc_free((void**)&_pTxBuffer);
+        _pTxBuffer = NULL;
+
+        _pTxBuffer = (uint8_t*)nmalloc_malloc(txBufSize);
+        if (!_pTxBuffer)
+        {
+            // Use the fallback buffer for rx
+            _pTxBuffer = txFallbackBuffer;
+
+            // Ring buffer position
+            _txBufferPosn.init(FALLBACK_BUFFER_SIZE);
+
+            LogWrite(FromUartMaxi, LOG_DEBUG, "Cannot allocate for Tx buffer size %d, using fallback\n", txBufSize);
+        }
+        else
+        {
+            // Ring buffer position
+            _txBufferPosn.init(txBufSize);
+        }
+    }
 
     // Rx/Tx pins
     pinMode(15, PINMODE_ALT0);

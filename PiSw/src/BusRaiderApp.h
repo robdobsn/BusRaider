@@ -19,6 +19,8 @@ public:
     void initUSB();
     void service();
 
+    uint32_t getDefaultAutoBaudRate() { return _autoBaudRates[0]; };
+
 private:
     bool _lastActivityTickerState;
 
@@ -103,4 +105,14 @@ private:
     static KeyInfo _keyInfoBuffer[MAX_USB_KEYS_BUFFERED];
     static RingBufferPosn _keyInfoBufferPos;
     static bool _inKeyboardRoutine;
+
+    // Auto-baud checks
+    uint32_t _autoBaudLastCheckMs;
+    uint32_t _autoBaudFailCount;
+    uint32_t _autoBaudCurBaudIdx;
+    static uint32_t _autoBaudLastESP32CommsMs;
+    static const uint32_t _autoBaudRates[];
+    static const uint32_t _autoBaudCheckPeriodMs = 1000;
+    static const uint32_t _autoBaudFailCountToChangeBaud = 10;
+    static const uint32_t _autoBaudMaxTimeBetweenESPCommsMs = 10000;
 };

@@ -23,7 +23,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Program details
-static const char* PROG_VERSION = "Bus Raider V2.0.031 (C) Rob Dobson 2018-2019";
+static const char* PROG_VERSION = "Bus Raider V2.0.032 (C) Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "https://robdobson.com/tag/raider";
 
 // Send log data to display (as opposed to merging in the ESP32 log output)
@@ -35,8 +35,7 @@ const char* FromMain = "Main";
 // Display
 Display display;
 
-// Baud rate
-#define MAIN_UART_BAUD_RATE 2000000
+// Main UART
 UartMaxi mainUart;
 
 // CommandHandler, StepTracer, BusController
@@ -64,7 +63,7 @@ void debugToDisplay(const char* pSeverity, const char* pSource, const char* pMsg
 extern "C" int main()
 {
     // Initialise UART
-    if (!mainUart.setup(MAIN_UART_BAUD_RATE, 1000000, 32768))
+    if (!mainUart.setup(busRaiderApp.getDefaultAutoBaudRate(), 1000000, 32768))
     {
         // display.statusPut(Display::STATUS_FIELD_ESP_VERSION, Display::STATUS_FAIL, "ESP32: Not Connected, UART Fail");
         microsDelay(5000000);
