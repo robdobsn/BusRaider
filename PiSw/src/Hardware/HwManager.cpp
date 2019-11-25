@@ -389,7 +389,7 @@ bool HwManager::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t*
         {
             if (!_pHw[i])
                 continue;
-            static const int MAX_HW_INFO_LEN = 200;
+            static const int MAX_HW_INFO_LEN = 1000;
             char hwInfoStr[MAX_HW_INFO_LEN];
             ee_sprintf(hwInfoStr, "{\"name\":\"%s\",\"enabled\":%d}", _pHw[i]->name(), _pHw[i]->isEnabled());
             if (commaNeeded)

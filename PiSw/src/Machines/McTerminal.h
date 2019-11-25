@@ -26,10 +26,6 @@ private:
 
     static McDescriptorTable _defaultDescriptorTables[];
 
-    // Shifted digits on keyboard
-    static const int SHIFT_DIGIT_KEY_MAP_LEN = 10;
-    static int _shiftDigitKeyMap[SHIFT_DIGIT_KEY_MAP_LEN];
-
     // Terminal emulation maintains an in-memory image of the screen
     TermEmu* _pTerminalEmulation;
 
@@ -69,8 +65,8 @@ public:
     // Bus action complete callback
     virtual void busActionCompleteCallback(BR_BUS_ACTION actionType);
 
-    // Convert raw USB code to ASCII
-    static int convertRawToAscii(unsigned char ucModifiers, const unsigned char rawKeys[6]);
+    // Convert raw USB code to key string
+    static const char* convertRawToKeyString(unsigned char ucModifiers, const unsigned char rawKeys[6]);
 
     // Key conversion
     static KeyConversion _keyConversion;

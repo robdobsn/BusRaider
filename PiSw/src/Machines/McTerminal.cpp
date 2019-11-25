@@ -13,8 +13,6 @@
 #include "../TerminalEmulation/TermH19.h"
 #include "../TerminalEmulation/TermAnsi.h"
 
-#define USE_KEY_TRANSLATION_TABLE 1
-
 const char* McTerminal::_logPrefix = "McTerm";
 
 extern WgfxFont __p12x16Font;
@@ -74,9 +72,6 @@ McDescriptorTable McTerminal::_defaultDescriptorTables[] = {
         .setRegistersCodeAddr = 0
     }
 };
-
-int McTerminal::_shiftDigitKeyMap[SHIFT_DIGIT_KEY_MAP_LEN] =
-    { '!', '"', '#', '$', '%', '^', '&', '*', '(', ')' };
 
 McTerminal::McTerminal() : 
     McBase(_defaultDescriptorTables, sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0])),
@@ -323,148 +318,71 @@ uint32_t McTerminal::getMirrorChanges(uint8_t* pMirrorChangeBuf, uint32_t mirror
     return (mirrorChangeStart == curPos) ? 0 : curPos;
 }
 
-int McTerminal::convertRawToAscii(unsigned char ucModifiers, const unsigned char rawKeys[6])
+const char* McTerminal::convertRawToKeyString(unsigned char ucModifiers, const unsigned char rawKeys[6])
 {
-    int asciiCode = -1;
+    static const char* emptyKeyStr = "";
+    static char singleKeyStr[2];
+    strcpy(singleKeyStr, " ");
     int rawKey = rawKeys[0];
     if ((rawKey >= 0x80) && (rawKeys[1] != 0))
         rawKey = rawKeys[1];
     if ((rawKey == KEY_NONE) || (rawKey == KEY_ERR_OVF))
-        return -1;
-
-#ifdef USE_KEY_TRANSLATION_TABLE
+        return emptyKeyStr;
 
     // Lookup
-    asciiCode = _keyConversion.lookupKey(ucModifiers, rawKey);
-    bool ctrlPressed = (ucModifiers & KEY_MOD_LCTRL) || (ucModifiers & KEY_MOD_RCTRL);
-    if (ctrlPressed)
-        asciiCode = asciiCode & 0x1f;
-
-    // LogWrite(_logPrefix, LOG_DEBUG, "ASCII %02x RAWKEY %02x %02x %02x %02x %02x %02x Mod %02x",
-    //                 asciiCode, rawKeys[0], rawKeys[1], rawKeys[2], rawKeys[3], rawKeys[4], rawKeys[5], ucModifiers);
-
-#else
-
-    bool shiftPressed = (ucModifiers & KEY_MOD_LSHIFT) || (ucModifiers & KEY_MOD_RSHIFT);
-    bool ctrlPressed = (ucModifiers & KEY_MOD_LCTRL) || (ucModifiers & KEY_MOD_RCTRL);
-    if ((rawKey >= KEY_A) && (rawKey <= KEY_Z)) {
-        if (ctrlPressed)
-            return (rawKey-KEY_A+1);
-        // Handle A-Z
-        asciiCode = (rawKey-KEY_A) + (shiftPressed ? 'A' : 'a');
-    } else if ((rawKey >= KEY_1) && (rawKey <= KEY_9)) {
-        // Handle 1..9
-        if (!shiftPressed)
-            asciiCode = (rawKey-KEY_1) + '1';
-        else
-            asciiCode = _shiftDigitKeyMap[rawKey-KEY_1];
-    } else if (rawKey == KEY_0) {
-        // Handle 0 )
-        asciiCode = shiftPressed ? _shiftDigitKeyMap[9] : '0';
-    } else if (rawKey == KEY_SEMICOLON) {
-        // Handle ; :
-        asciiCode = shiftPressed ? ':' : ';';
-    } else if (rawKey == KEY_APOSTROPHE) {
-        // Handle ' @
-        if (ctrlPressed)
-            return (0);
-        asciiCode = shiftPressed ? '@' : '\'';
-    } else if (rawKey == KEY_LEFTBRACE) {
-        // Handle ' [
-        if (ctrlPressed)
-            return (0x1b);
-        asciiCode = shiftPressed ? '{' : '[';
-    } else if (rawKey == KEY_BACKSLASH) {
-        // Handle backslash
-        if (ctrlPressed)
-            return (0x1c);
-        asciiCode = shiftPressed ? '|' : '\\';
-    } else if (rawKey == KEY_RIGHTBRACE) {
-        // Handle ' ]
-        if (ctrlPressed)
-            return (0x1d);
-        asciiCode = shiftPressed ? '}' : ']';
-    } else if (rawKey == KEY_COMMA) {
-        // Handle , <
-        asciiCode = shiftPressed ? '<' : ',';
-    } else if (rawKey == KEY_DOT) {
-        // Handle . >
-        asciiCode = shiftPressed ? '>' : '.';
-    } else if (rawKey == KEY_EQUAL) {
-        // Handle = +
-        asciiCode = shiftPressed ? '+' : '=';        
-    } else if (rawKey == KEY_MINUS) {
-        // Handle - _
-        if (ctrlPressed)
-            return (0x1f);
-        asciiCode = shiftPressed ? '_' : '-';        
-    } else if (rawKey == KEY_SLASH) {
-        // Handle / ?
-        asciiCode = shiftPressed ? '?' : '/';        
-    } else if (rawKey == KEY_ENTER) {
-        // Handle Enter
-        asciiCode = 0x0d;
-    } else if (rawKey == KEY_BACKSPACE) {
-        // Handle backspace
-        asciiCode = 0x08;
-    } else if (rawKey == KEY_ESC) {
-        // Handle ESC
-        asciiCode = 0x1b;        
-    } else if (rawKey == KEY_TAB) {
-        // Handle TAB
-        asciiCode = 0x09;
-    } else if (rawKey == KEY_DELETE) {
-        // Handle DELETE
-        asciiCode = 0x7F;
-    } else if (rawKey == KEY_UP) {
-        // Handle Up = Ctrl-E
-        asciiCode = 0x05;
-    } else if (rawKey == KEY_DOWN) {
-        // Handle Down = Ctrl-X
-        asciiCode = 0x18;
-    } else if (rawKey == KEY_LEFT) {
-        // Handle Left = Ctrl - S
-        asciiCode = 0x13;
-    } else if (rawKey == KEY_RIGHT) {
-        // Handle Right = Ctrl -D
-        asciiCode = 0x04;
-    } else if (rawKey == KEY_SPACE) {
-        // Handle Space
-        asciiCode = 0x20;
+    uint32_t convertedKeyCode = _keyConversion.lookupKey(ucModifiers, rawKey);
+    if ((convertedKeyCode >= KeySpace) && (convertedKeyCode < KeyMaxCode))
+    {
+        const char* pKeyStrToReturn = _keyConversion.s_KeyStrings[convertedKeyCode-KeySpace];
+        // LogWrite(_logPrefix, LOG_DEBUG, "KeyStr %s CODE %02x %02x RAWKEY %02x %02x %02x %02x %02x %02x Mod %02x",
+        //             pKeyStrToReturn, pKeyStrToReturn[0], pKeyStrToReturn[1], rawKeys[0], rawKeys[1], rawKeys[2], rawKeys[3], rawKeys[4], rawKeys[5], ucModifiers);
+        return pKeyStrToReturn;
     }
-#endif
+    else
+    {
+        bool ctrlPressed = (ucModifiers & KEY_MOD_LCTRL) || (ucModifiers & KEY_MOD_RCTRL);
+        if (ctrlPressed)
+            singleKeyStr[0] = convertedKeyCode & 0x1f;
+        else
+            singleKeyStr[0] = convertedKeyCode;
+        // LogWrite(_logPrefix, LOG_DEBUG, "KeyStr %s CODE %02x RAWKEY %02x %02x %02x %02x %02x %02x Mod %02x",
+        //             singleKeyStr, singleKeyStr[0], rawKeys[0], rawKeys[1], rawKeys[2], rawKeys[3], rawKeys[4], rawKeys[5], ucModifiers);
 
-    return asciiCode;
+        return singleKeyStr;
+    }
 }
 
 // Handle a key press
 void McTerminal::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_unused]] const unsigned char rawKeys[6])
 {
-    int asciiCode = convertRawToAscii(ucModifiers, rawKeys);
+    const char* pKeyStr = convertRawToKeyString(ucModifiers, rawKeys);
 
     // LogWrite(_logPrefix, LOG_DEBUG, "ASCII %02x RAWKEY %02x %02x %02x %02x %02x %02x Mod %02x",
     //                 asciiCode, rawKeys[0], rawKeys[1], rawKeys[2], rawKeys[3], rawKeys[4], rawKeys[5], ucModifiers);
 
     // Send chars to host
-    if (asciiCode < 0)
+    if (strlen(pKeyStr) == 0)
         return;
 
     // Send to host
     if (_emulate6850)
     {
-        if (_sendToTargetBufPos.canPut())
+        for (uint32_t i = 0; i < strlen(pKeyStr); i++)
         {
-            _sendToTargetBuf[_sendToTargetBufPos.posToPut()] = asciiCode;
-            _sendToTargetBufPos.hasPut();
+            if (_sendToTargetBufPos.canPut())
+            {
+                _sendToTargetBuf[_sendToTargetBufPos.posToPut()] = pKeyStr[i];
+                _sendToTargetBufPos.hasPut();
 
-            // Interrupt if enabled
-            if (_emulationInterruptOnRx)
-                McManager::targetIrq();
+                // Interrupt if enabled
+                if (_emulationInterruptOnRx)
+                    McManager::targetIrq();
+            }
         }
     }
     else
     {
-        McManager::sendKeyCodeToTargetStatic(asciiCode);
+        McManager::sendKeyStrToTargetStatic(pKeyStr);
     }
 }
 

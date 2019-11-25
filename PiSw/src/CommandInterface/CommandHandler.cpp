@@ -55,6 +55,9 @@ CommandHandler::CommandHandler() :
     // _rdpMsgCountIn = 0;
     // _rdpMsgCountOut = 0;
     // _rdpTimeUs = 0;
+
+    // Timeouts
+    _receivedFileLastBlockMs = 0;
 }
 
 CommandHandler::~CommandHandler()
@@ -399,6 +402,7 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
                     _receivedFileName, _receivedFileBufSize);
 
     }
+    _receivedFileLastBlockMs = millis();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -433,6 +437,9 @@ void CommandHandler::handleFileBlock(const char* pCmdJson, const uint8_t* pData,
 
     // Add to count of blocks
     _receivedBlockCount++;
+
+    // Update for timeouts
+    _receivedFileLastBlockMs = millis();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -447,9 +454,9 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
 
     // Check block count
     char blockCountStr[MAX_INT_ARG_STR_LEN+1];
-    if (!jsonGetValueForKey("blockCount", pCmdJson, blockCountStr, MAX_INT_ARG_STR_LEN))
-        return;
-    int blockCount = strtoul(blockCountStr, NULL, 10);
+    int blockCount = 0;
+    if (jsonGetValueForKey("blockCount", pCmdJson, blockCountStr, MAX_INT_ARG_STR_LEN))
+        blockCount = strtoul(blockCountStr, NULL, 10);
     char ackMsgJson[100];
     ee_sprintf(ackMsgJson, "\"rxCount\":%d, \"expCount\":%d", _receivedBlockCount, blockCount);
     if (blockCount != _receivedBlockCount)
@@ -457,30 +464,29 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
         LogWrite(FromCmdHandler, LOG_WARNING, "ufEnd File %s, blockCount rx %d != sent %d", 
                 _receivedFileName, _receivedBlockCount, blockCount);
         sendWithJSON("ufEndNotAck", ackMsgJson);
-        return;
     }
     else
     {
         sendWithJSON("ufEndAck", ackMsgJson);
-    }
 
-    // See if any sockets want to handle this
-    bool isFirmware = strcasecmp(_pReceivedFileType, "firmware") == 0;
-    if (isFirmware)
-    {
-        // Short delay to allow comms completion 
-        microsDelay(100000);
-        LogWrite(FromCmdHandler, LOG_DEBUG, "ufEnd IMG firmware update File %s, len %d", _receivedFileName, _receivedFileBytesRx);
+        // See if any sockets want to handle this
+        bool isFirmware = strcasecmp(_pReceivedFileType, "firmware") == 0;
+        if (isFirmware)
+        {
+            // Short delay to allow comms completion 
+            microsDelay(100000);
+            LogWrite(FromCmdHandler, LOG_DEBUG, "ufEnd IMG firmware update File %s, len %d", _receivedFileName, _receivedFileBytesRx);
+        }
+        else
+        {
+            // LogWrite(FromCmdHandler, LOG_VERBOSE, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
+        }
+        commsSocketHandleReceivedFile(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx, isFirmware);
+        LogWrite(FromCmdHandler, LOG_DEBUG, "ufEnd File %s, len %d Completed", _receivedFileName, _receivedFileBytesRx);
     }
-    else
-    {
-        // LogWrite(FromCmdHandler, LOG_VERBOSE, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
-    }
-    commsSocketHandleReceivedFile(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx, isFirmware);
-    LogWrite(FromCmdHandler, LOG_DEBUG, "ufEnd File %s, len %d Completed", _receivedFileName, _receivedFileBytesRx);
     
-    // File handling completed
-    _pReceivedFileDataPtr = NULL;
+    // Clear-down reception
+    fileReceiveCleardown();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -501,19 +507,22 @@ bool CommandHandler::getFileReceiveStatus(uint32_t& fileLen, uint32_t& filePos)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Send key code to target
-void CommandHandler::sendKeyCodeToTargetStatic(int keyCode)
+void CommandHandler::sendKeyStrToTargetStatic(const char* pKeyStr)
 {
     if (_pSingletonCommandHandler)
-        _pSingletonCommandHandler->sendKeyCodeToTarget(keyCode);
+        _pSingletonCommandHandler->sendKeyStrToTarget(pKeyStr);
 }
 
-void CommandHandler::sendKeyCodeToTarget(int keyCode)
+void CommandHandler::sendKeyStrToTarget(const char* pKeyStr)
 {
     // Place in ring buffer
-    if (_pSingletonCommandHandler->_usbKeyboardRingBufPos.canPut())
+    for (uint32_t i = 0; i < strlen(pKeyStr); i++)
     {
-        _usbKeyboardRingBuffer[_usbKeyboardRingBufPos.posToPut()] = keyCode;
-        _usbKeyboardRingBufPos.hasPut();
+        if (_pSingletonCommandHandler->_usbKeyboardRingBufPos.canPut())
+        {
+            _usbKeyboardRingBuffer[_usbKeyboardRingBufPos.posToPut()] = pKeyStr[i];
+            _usbKeyboardRingBufPos.hasPut();
+        }
     }
 }
 
@@ -659,4 +668,27 @@ void CommandHandler::service()
         ee_sprintf(keyStr, "{\"cmdName\":\"keyCode\",\"key\":%d}", keyCode);
         _miniHDLC.sendFrame((const uint8_t*)keyStr, strlen(keyStr)+1);
     }
+
+    // Check for file receive timeouts
+    if (_pReceivedFileDataPtr)
+    {
+        if (isTimeout(millis(), _receivedFileLastBlockMs, MAX_FILE_RECEIVE_BETWEEN_BLOCKS_MS))
+        {
+            LogWrite(FromCmdHandler, LOG_DEBUG, "Receive timed out");
+            fileReceiveCleardown();
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Cleardown file receive operation
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void CommandHandler::fileReceiveCleardown()
+{
+    // File handling completed
+    if (_pReceivedFileDataPtr != NULL)
+        nmalloc_free((void**)(&_pReceivedFileDataPtr));
+    _pReceivedFileDataPtr = NULL;
+    _receivedFileBufSize = 0;
 }

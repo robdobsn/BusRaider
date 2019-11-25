@@ -75,27 +75,27 @@ typedef enum
 }
 TSpecialKey;
 
-typedef enum
-{
-	ActionSwitchCapsLock = KeyMaxCode,
-	ActionSwitchNumLock,
-	ActionSwitchScrollLock,
-	ActionSelectConsole1,
-	ActionSelectConsole2,
-	ActionSelectConsole3,
-	ActionSelectConsole4,
-	ActionSelectConsole5,
-	ActionSelectConsole6,
-	ActionSelectConsole7,
-	ActionSelectConsole8,
-	ActionSelectConsole9,
-	ActionSelectConsole10,
-	ActionSelectConsole11,
-	ActionSelectConsole12,
-	ActionShutdown,
-	ActionNone
-}
-TSpecialAction;
+// typedef enum
+// {
+// 	ActionSwitchCapsLock = KeyMaxCode,
+// 	ActionSwitchNumLock,
+// 	ActionSwitchScrollLock,
+// 	ActionSelectConsole1,
+// 	ActionSelectConsole2,
+// 	ActionSelectConsole3,
+// 	ActionSelectConsole4,
+// 	ActionSelectConsole5,
+// 	ActionSelectConsole6,
+// 	ActionSelectConsole7,
+// 	ActionSelectConsole8,
+// 	ActionSelectConsole9,
+// 	ActionSelectConsole10,
+// 	ActionSelectConsole11,
+// 	ActionSelectConsole12,
+// 	ActionShutdown,
+// 	ActionNone
+// }
+// TSpecialAction;
 
 enum {
     KEYBOARD_TYPE_SEL_US = 0,
@@ -158,6 +158,8 @@ public:
         }
         return -1;
     }
+
+	static const char *s_KeyStrings[KeyMaxCode-KeySpace];
 
 };
 

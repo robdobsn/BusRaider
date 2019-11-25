@@ -79,8 +79,8 @@ public:
     static const int NUM_USB_KEYS_PASSED = 6;
 
     // Send key code to target
-    static void sendKeyCodeToTargetStatic(int keyCode);
-    void sendKeyCodeToTarget(int keyCode);
+    static void sendKeyStrToTargetStatic(const char* pKeyStr);
+    void sendKeyStrToTarget(const char* pKeyStr);
 
     // Num chars that can be sent
     static uint32_t getTxAvailable();
@@ -133,6 +133,9 @@ private:
     void handleStatusResponse(const char* pCmdJson);
     static void addressRxCallback(uint32_t addr);
 
+    // File receive utils
+    void fileReceiveCleardown();
+
     // Callbacks
     static CmdHandlerSerialPutStrFnType* _pHDLCSerialPutStrFunction;
     static CmdHandlerSerialTxAvailableFnType* _pHDLCSerialTxAvailableFunction;
@@ -145,7 +148,7 @@ private:
 
 private:
     // String lengths
-    static const int CMD_HANDLER_MAX_CMD_STR_LEN = 200;
+    static const int CMD_HANDLER_MAX_CMD_STR_LEN = 2000;
     static const int MAX_INT_ARG_STR_LEN = 20;
     static const int MAX_FILE_NAME_STR = 100;
     static const int MAX_FILE_TYPE_STR = 40;
@@ -168,6 +171,10 @@ private:
     uint8_t _usbKeyboardRingBuffer[MAX_USB_KEYBOARD_CHARS];
 
     static const uint32_t RDP_INDEX_NONE = 0xffffffff;
+
+    // Timeouts
+    uint32_t _receivedFileLastBlockMs;
+    static const uint32_t MAX_FILE_RECEIVE_BETWEEN_BLOCKS_MS = 3000;
 
     // // Last RDP message index value string
     // static const int MAX_RDP_INDEX_VAL_LEN = 20;

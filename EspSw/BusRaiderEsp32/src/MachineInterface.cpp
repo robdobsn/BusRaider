@@ -402,6 +402,7 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *frameBuffer, int frame
     {
         _cmdResponseNew = true;
         _cmdResponseBuf = pRxStr;
+        // Log.trace("RespMessageReceived %s\n", pRxStr);
     }
 
 }

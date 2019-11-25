@@ -255,7 +255,7 @@ bool BusRaiderApp::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8
     else if (strcasecmp(cmdName, "queryCurMcResp") == 0)
     {
         // Set machine
-        LogWrite(FromBusRaiderApp, LOG_DEBUG, "queryCurMcResp %s", pCmdJson);
+        // LogWrite(FromBusRaiderApp, LOG_DEBUG, "queryCurMcResp %s", pCmdJson);
         McManager::setupMachine(pCmdJson);
         // Got ok - no need to re-request
         _pApp->_esp32LastMachineValid = true;
@@ -503,17 +503,19 @@ void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned 
     {
         if (_immediateModeLineLen < IMM_MODE_LINE_MAXLEN)
         {
-            int asciiCode = McTerminal::convertRawToAscii(ucModifiers, rawKeys);
-            if (asciiCode < 0)
+            const char* pKeyStr = McTerminal::convertRawToKeyString(ucModifiers, rawKeys);
+            // LogWrite(FromBusRaiderApp, LOG_DEBUG, "KEY asc %02x mod %02x raw %02x %02x %02x",
+            //             pKeyStr[0], ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
+            if (strlen(pKeyStr) == 0)
                 return;
-            if (asciiCode == 0x08)
+            if (pKeyStr[0] == 0x08)
             {
                 if (_immediateModeLineLen > 0)
                     _immediateModeLineLen--;
-                _display.consolePut(asciiCode);
+                _display.consolePut(0x08);
                 _display.consolePut(' ');
             }
-            else if (asciiCode == 0x0d)
+            else if (pKeyStr[0] == 0x0d)
             {
                 _immediateMode = false;
                 _immediateModeLine[_immediateModeLineLen] = 0;
@@ -548,11 +550,11 @@ void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned 
                 _display.consolePut("\nNormal mode\n");
                 _immediateMode = false;
             }
-            else if ((asciiCode >= 32) && (asciiCode < 127))
+            else if ((pKeyStr[0] >= 32) && (pKeyStr[0] < 127))
             {
-                _immediateModeLine[_immediateModeLineLen++] = asciiCode;
+                _immediateModeLine[_immediateModeLineLen++] = pKeyStr[0];
+                _display.consolePut(pKeyStr[0]);
             }
-            _display.consolePut(asciiCode);
         }
         return;
     }
@@ -729,13 +731,10 @@ void BusRaiderApp::testSelf_readSetBus(bool readMode)
                     KeyInfo* pKeyInfo = &_keyInfoBuffer[_keyInfoBufferPos.posToGet()];
                     _keyInfoBufferPos.hasGot();
                     // LogWrite(FromBusRaiderApp, LOG_DEBUG, "Keyin %02x %02x %02x", pKeyInfo->rawKeys[0], pKeyInfo->rawKeys[1], pKeyInfo->rawKeys[2]);
-                    int asciiCode = McTerminal::convertRawToAscii(pKeyInfo->modifiers, pKeyInfo->rawKeys);
-                    char keyStr[2];
-                    keyStr[0] = asciiCode;
-                    keyStr[1] = 0;
-                    if (rdisalpha(asciiCode) || rdisdigit(asciiCode) || rdisspace(asciiCode))
-                        _display.consolePut(keyStr);
-                    if (rdtolower(asciiCode) == 'y')
+                    const char* pKeyStr = McTerminal::convertRawToKeyString(pKeyInfo->modifiers, pKeyInfo->rawKeys);
+                    if (rdisalpha(pKeyStr[0]) || rdisdigit(pKeyStr[0]) || rdisspace(pKeyStr[0]))
+                        _display.consolePut(pKeyStr);
+                    if (rdtolower(pKeyStr[0]) == 'y')
                     {
                         _display.consolePut("\n");
                         testState = TEST_STATE_SET_MC;
@@ -885,22 +884,19 @@ void BusRaiderApp::testSelf_detailedBus()
         BusAccess::service();
 
         // Check for keyboard keys
-        int asciiCode = 0;
+        const char* pKeyStr = "\0";
         if (_keyInfoBufferPos.canGet())
         {
             KeyInfo* pKeyInfo = &_keyInfoBuffer[_keyInfoBufferPos.posToGet()];
             _keyInfoBufferPos.hasGot();
             // LogWrite(FromBusRaiderApp, LOG_DEBUG, "Key %c", pKeyInfo->rawKeys[0]);
-            asciiCode = McTerminal::convertRawToAscii(pKeyInfo->modifiers, pKeyInfo->rawKeys);
-            char keyStr[2];
-            keyStr[0] = asciiCode;
-            keyStr[1] = 0;
-            if (rdisalpha(asciiCode) || rdisdigit(asciiCode) || rdisspace(asciiCode))
-                _display.consolePut(keyStr);
+            pKeyStr = McTerminal::convertRawToKeyString(pKeyInfo->modifiers, pKeyInfo->rawKeys);
+            if (rdisalpha(pKeyStr[0]) || rdisdigit(pKeyStr[0]) || rdisspace(pKeyStr[0]))
+                _display.consolePut(pKeyStr);
         }
 
         // Test for quit
-        if ((rdtolower(asciiCode) == 'q') || (asciiCode == 27))
+        if ((rdtolower(pKeyStr[0]) == 'q') || (pKeyStr[0] == 27))
             testState = TEST_STATE_DONE;
 
         // Test for time-out
@@ -916,7 +912,7 @@ void BusRaiderApp::testSelf_detailedBus()
         {
             case TEST_STATE_CONFIRM:
             {
-                if (rdtolower(asciiCode) == 'y')
+                if (rdtolower(pKeyStr[0]) == 'y')
                 {
                     _display.consolePut("\n");
                     testState = TEST_STATE_SET_MC;
@@ -957,7 +953,7 @@ void BusRaiderApp::testSelf_detailedBus()
             }
             case TEST_STATE_TEST_WAIT_FOR_KEY:
             {
-                if (asciiCode == ' ')
+                if (pKeyStr[0] == ' ')
                 {
                     _display.consolePut("\n");
                     startUpdateTimeMs = millis();
@@ -1333,22 +1329,19 @@ void BusRaiderApp::testSelf_memory()
         BusAccess::service();
 
         // Check for keyboard keys
-        int asciiCode = 0;
+        const char* pKeyStr = "\0";
         if (_keyInfoBufferPos.canGet())
         {
             KeyInfo* pKeyInfo = &_keyInfoBuffer[_keyInfoBufferPos.posToGet()];
             _keyInfoBufferPos.hasGot();
             // LogWrite(FromBusRaiderApp, LOG_DEBUG, "Key %c", pKeyInfo->rawKeys[0]);
-            asciiCode = McTerminal::convertRawToAscii(pKeyInfo->modifiers, pKeyInfo->rawKeys);
-            char keyStr[2];
-            keyStr[0] = asciiCode;
-            keyStr[1] = 0;
-            if (rdisalpha(asciiCode) || rdisdigit(asciiCode) || rdisspace(asciiCode))
-                _display.consolePut(keyStr);
+            pKeyStr = McTerminal::convertRawToKeyString(pKeyInfo->modifiers, pKeyInfo->rawKeys);
+            if (rdisalpha(pKeyStr[0]) || rdisdigit(pKeyStr[0]) || rdisspace(pKeyStr[0]))
+                _display.consolePut(pKeyStr);
         }
 
         // Test for quit
-        if ((rdtolower(asciiCode) == 'q') || (asciiCode == 27))
+        if ((rdtolower(pKeyStr[0]) == 'q') || (pKeyStr[0] == 27))
             testState = TEST_STATE_DONE;
 
         // Test for time-out
@@ -1378,12 +1371,12 @@ void BusRaiderApp::testSelf_memory()
             case TEST_STATE_ASK_IF_RESET:
             {
                 // 
-                if (rdtolower(asciiCode) == 'y')
+                if (rdtolower(pKeyStr[0]) == 'y')
                 {
                     _display.consolePut("\n");
                     startUpdateTimeMs = millis();
                     testState = TEST_STATE_PERFORM_RESET;
-                } else if (rdtolower(asciiCode) == 'n')
+                } else if (rdtolower(pKeyStr[0]) == 'n')
                 {
                     _display.consolePut("\n");
                     startUpdateTimeMs = millis();
@@ -1438,12 +1431,12 @@ void BusRaiderApp::testSelf_memory()
             case TEST_STATE_AWAIT_KEY:
             {
                 // 
-                if (rdtolower(asciiCode) == 'y')
+                if (rdtolower(pKeyStr[0]) == 'y')
                 {
                     _display.consolePut("... performing test\n");
                     startUpdateTimeMs = millis();
                     testState = TEST_STATE_PERFORM_BLOCK_TEST;
-                } else if (rdtolower(asciiCode) == 'n')
+                } else if (rdtolower(pKeyStr[0]) == 'n')
                 {
                     _display.consolePut("... skipping test\n");
                     startUpdateTimeMs = millis();

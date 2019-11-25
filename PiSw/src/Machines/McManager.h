@@ -46,7 +46,7 @@ public:
     static void hostSerialAddRxCharsToBuffer(const uint8_t* pRxChars, uint32_t rxLen);
     static uint32_t hostSerialNumChAvailable();
     static uint32_t hostSerialReadChars(uint8_t* pBuf, uint32_t bufMaxLen);
-    static void sendKeyCodeToTargetStatic(int asciiCode);
+    static void sendKeyStrToTargetStatic(const char* pKeyStr);
 
     // Target programming
     static void targetProgrammingStart(bool execAfterProgramming);

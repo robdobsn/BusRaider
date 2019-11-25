@@ -113,6 +113,6 @@ private:
     static uint32_t _autoBaudLastESP32CommsMs;
     static const uint32_t _autoBaudRates[];
     static const uint32_t _autoBaudCheckPeriodMs = 1000;
-    static const uint32_t _autoBaudFailCountToChangeBaud = 20;
+    static const uint32_t _autoBaudFailCountToChangeBaud = 30;
     static const uint32_t _autoBaudMaxTimeBetweenESPCommsMs = 10000;
 };

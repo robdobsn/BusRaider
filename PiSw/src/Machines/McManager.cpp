@@ -291,7 +291,7 @@ void McManager::add(McBase* pMachine)
 bool McManager::setMachineByName(const char* mcName)
 {
     // Setup json
-    static const int MAX_MC_JSON_LEN = 200;
+    static const int MAX_MC_JSON_LEN = 1000;
     char mcJson[MAX_MC_JSON_LEN];
     ee_sprintf(mcJson, "\"name\":\"%s\"", mcName);
     return McManager::setupMachine(mcJson);
@@ -504,9 +504,9 @@ uint32_t McManager::hostSerialReadChars(uint8_t* pBuf, uint32_t bufMaxLen)
     return charsToCopy;
 }
 
-void McManager::sendKeyCodeToTargetStatic(int asciiCode)
+void McManager::sendKeyStrToTargetStatic(const char* pKeyStr)
 {
-    CommandHandler::sendKeyCodeToTargetStatic(asciiCode);
+    CommandHandler::sendKeyStrToTargetStatic(pKeyStr);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -14,8 +14,10 @@ bool jsonGetValueForKey(const char* srchKey, const char* jsonStr, char* pOutStr,
     JSMNR_init(&parser);
     int tokenCountRslt = JSMNR_parse(&parser, jsonStr, strlen(jsonStr), tokens, MAX_TOKENS);
     if (tokenCountRslt < 0) {
-        LogWrite("rdutils", LOG_DEBUG, "parseJson result %d maxTokens %d jsonLen %d", 
-                        tokenCountRslt, MAX_TOKENS, strlen(jsonStr));
+        // LogWrite("rdutils", LOG_DEBUG, "jsonGetValueForKey keyStr %s jsonStr %s result %d maxTokens %d jsonLen %d", 
+        //                 srchKey, jsonStr, tokenCountRslt, MAX_TOKENS, strlen(jsonStr));
+        LogWrite("rdutils", LOG_DEBUG, "jsonGetValueForKey keyStr %s result %d maxTokens %d jsonLen %d", 
+                        srchKey, tokenCountRslt, MAX_TOKENS, strlen(jsonStr));
         return false;
     }
 
@@ -50,7 +52,7 @@ int jsonGetArrayLen(const char* jsonStr)
     JSMNR_init(&parser);
     int tokenCountRslt = JSMNR_parse(&parser, jsonStr, strlen(jsonStr), tokens, MAX_TOKENS);
     if (tokenCountRslt < 0) {
-        LogWrite("rdutils", LOG_DEBUG, "parseJson result %d maxTokens %d jsonLen %d", 
+        LogWrite("rdutils", LOG_DEBUG, "jsonGetArrayLen result %d maxTokens %d jsonLen %d", 
                         tokenCountRslt, MAX_TOKENS, strlen(jsonStr));
         return false;
     }
@@ -77,7 +79,7 @@ bool jsonGetArrayElem(uint32_t arrayIdx, const char* jsonStr, char* pOutStr, int
     JSMNR_init(&parser);
     int tokenCountRslt = JSMNR_parse(&parser, jsonStr, strlen(jsonStr), tokens, MAX_TOKENS);
     if (tokenCountRslt < 0) {
-        LogWrite("rdutils", LOG_DEBUG, "parseJson result %d maxTokens %d jsonLen %d", 
+        LogWrite("rdutils", LOG_DEBUG, "jsonGetArrayElem result %d maxTokens %d jsonLen %d", 
                         tokenCountRslt, MAX_TOKENS, strlen(jsonStr));
         return false;
     }
