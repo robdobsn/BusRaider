@@ -12,17 +12,17 @@ and [https://robdobson.com/2018/08/trs80-galaxy-invasion-on-rc2014/](https://rob
 ## How to run
 
 1. Format an SD-card with FAT32 filesystem.
-2. Copy ```PiSw/bin/kernel.img``` to the root of the SD card along with the files
-   ```config.txt```, ```start.elf``` and ```bootcode.bin``` that are commonly [distributed with
+2. Copy ```PiSw/bin/kernel.img``` and ```config.txt``` from the latest release to the root of the SD card.
+3. Add the following files ```start.elf``` and ```bootcode.bin``` that are commonly [distributed with
 the Raspberry Pi](https://github.com/raspberrypi/firmware/tree/master/boot)
-3. Insert the card and reboot the Pi on the Bus Raider PCB
+4. Insert the card and reboot the Pi on the Bus Raider PCB
 
 As soon as your BusRaider is turned on, the message "RC2014 Bus Raider V2.x.xxx" should be
 displayed on the HDMI video stream along with a display area for the Retro computer.
 
 ## Documentation
 
-For full documentation see the [BusRaider Current Manual.pdf](https://github.com/robdobsn/PiBusRaider/blob/master/Docs/BusRaider%20Current%20Manual.pdf)
+For full documentation see the [Documentation Wiki](https://github.com/robdobsn/PiBusRaider/wiki) or, since the Wiki is currently incomplete see the current manual [BusRaider Current Manual.pdf](https://github.com/robdobsn/PiBusRaider/blob/master/Docs/BusRaider%20Current%20Manual.pdf)
 
 ## License
 

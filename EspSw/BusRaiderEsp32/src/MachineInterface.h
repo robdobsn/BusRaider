@@ -86,10 +86,12 @@ private:
     void hdlcTxCharTCP(uint8_t ch);
 
     // Hardware version
-    static const int HW_VERSION_DETECT_IN_PIN = 12;
+    static const int HW_VERSION_DETECT_V20_IN_PIN = 12;
+    static const int HW_VERSION_DETECT_V22_IN_PIN = 5;
     static const int HW_VERSION_DETECT_OUT_PIN = 14;
     int _hwVersion;
     static const int ESP_HW_VERSION_DEFAULT = 20;
+    void detectHardwareVersion();
 
 public:
     MachineInterface();

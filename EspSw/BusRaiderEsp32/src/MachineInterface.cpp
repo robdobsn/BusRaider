@@ -45,6 +45,41 @@ MachineInterface::MachineInterface() :
     _hwVersion = ESP_HW_VERSION_DEFAULT;
 }
 
+// Detect hardware version
+void MachineInterface::detectHardwareVersion()
+{
+    // Test pins for each version
+    int testInPins[] = { HW_VERSION_DETECT_V22_IN_PIN, HW_VERSION_DETECT_V20_IN_PIN };
+    int testHwVersions[] { 22, 20 };
+
+    // V1.7 has no pins connected
+    _hwVersion = 17;
+
+    // Hardware version detection
+    pinMode(HW_VERSION_DETECT_OUT_PIN, OUTPUT);
+    for (uint32_t i = 0; i < sizeof(testInPins)/sizeof(testInPins[0]); i++)
+    {
+        digitalWrite(HW_VERSION_DETECT_OUT_PIN, 0);
+        pinMode(testInPins[i], INPUT_PULLUP);
+        bool hwIn0Value = digitalRead(testInPins[i]);
+        digitalWrite(HW_VERSION_DETECT_OUT_PIN, 1);
+        bool hwIn1Value = digitalRead(testInPins[i]);
+        pinMode(testInPins[i], INPUT);
+        // Check if IN and OUT pins tied together - if setting out to 0
+        // makes in 0 then they are (as input is pulled-up otherwise)
+        if ((hwIn0Value == 0) && (hwIn1Value == 1))
+        {
+            _hwVersion = testHwVersions[i];
+            Log.trace("%sHW%d version detect wrote 0 got %d wrote 1 got %d so hwVersion = %d\n", MODULE_PREFIX, 
+                    testHwVersions[i], hwIn0Value, hwIn1Value, _hwVersion);
+            break;
+        }
+    }
+
+    // Tidy up
+    pinMode(HW_VERSION_DETECT_OUT_PIN, INPUT);
+}
+
 // Setup
 void MachineInterface::setup(ConfigBase &config, 
             WebServer *pWebServer, 
@@ -68,24 +103,8 @@ void MachineInterface::setup(ConfigBase &config,
     _pRestAPIEndpoints = pRestAPIEndpoints;
     _pFileManager = pFileManager;
 
-    // Hardware version detection
-    pinMode(HW_VERSION_DETECT_IN_PIN, INPUT_PULLUP);
-    pinMode(HW_VERSION_DETECT_OUT_PIN, OUTPUT);
-    digitalWrite(HW_VERSION_DETECT_OUT_PIN, 0);
-    bool hwIn0Value = digitalRead(HW_VERSION_DETECT_IN_PIN);
-    digitalWrite(HW_VERSION_DETECT_OUT_PIN, 1);
-    bool hwIn1Value = digitalRead(HW_VERSION_DETECT_IN_PIN);
-    // Check if IN and OUT pins tied together - if setting out to 0
-    // makes in 0 then they are (as input is pulled-up otherwise)
-    _hwVersion = 17;
-    if (hwIn0Value != hwIn1Value)
-        _hwVersion = 20;
-    Log.trace("%sHW version detect wrote 1 got %d wrote 0 got %d so hwVersion = %d\n", MODULE_PREFIX, 
-            hwIn0Value, hwIn1Value, _hwVersion);
-
-    // Tidy up
-    pinMode(HW_VERSION_DETECT_IN_PIN, INPUT);
-    pinMode(HW_VERSION_DETECT_OUT_PIN, INPUT);
+    // Detect hardware version
+    detectHardwareVersion();
 
     // Set the telnet callback
     if (_pTelnetServer)

@@ -89,10 +89,6 @@ private:
     static bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
                 char* pRespJson, int maxRespLen);
     void storeESP32StatusInfo(const char* pCmdJson);
-    void testSelf_busrq();
-    void testSelf_readSetBus(bool readMode);
-    void testSelf_detailedBus();
-    void testSelf_memory();
 
     // Key info
     class KeyInfo
@@ -115,4 +111,21 @@ private:
     static const uint32_t _autoBaudCheckPeriodMs = 1000;
     static const uint32_t _autoBaudFailCountToChangeBaud = 30;
     static const uint32_t _autoBaudMaxTimeBetweenESPCommsMs = 10000;
+
+    // Tests
+    enum testCodeRet_type {
+        TEST_SELF_RET_OK,
+        TEST_SELF_RET_QUIT,
+        TEST_SELF_RET_TIMEOUT
+    };
+
+    void testSelf_busrq();
+    void testSelf_readSetBus(bool readMode);
+    void testSelf_detailedBus();
+    void testSelf_memory();
+    void testSelf_busBits();
+    testCodeRet_type testSelf_commonLoop();
+    int _testSelf_curKeyAscii;
+    uint32_t _testSelf_startUpdateTimeMs;
+
 };
