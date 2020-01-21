@@ -70,6 +70,9 @@ void RestAPISystem::setup(RestAPIEndpoints &endpoints)
     endpoints.addEndpoint("logcmd", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET, 
                     std::bind(&RestAPISystem::apiNetLogCmdSerial, this, std::placeholders::_1, std::placeholders::_2), 
                     "Set log to cmdSerial /enable/port");
+    endpoints.addEndpoint("logconfig", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET, 
+                    std::bind(&RestAPISystem::apiNetLogGetConfig, this, std::placeholders::_1, std::placeholders::_2), 
+                    "Get log configuration");
     endpoints.addEndpoint("ntp", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET, 
                     std::bind(&RestAPISystem::apiNTPSetConfig, this, std::placeholders::_1, std::placeholders::_2), 
                     "Set NTP to gmt/dst/server1/s2/s3");
@@ -337,6 +340,13 @@ void RestAPISystem::apiNetLogPT(String &reqStr, String &respStr)
                         onOffFlag.c_str(), hostName.c_str(), portStr.c_str());
     _netLog.setPapertrail(onOffFlag != "0", hostName.c_str(), portStr.c_str());
     Utils::setJsonBoolResult(respStr, true);
+}
+
+void RestAPISystem::apiNetLogGetConfig(String &reqStr, String &respStr)
+{
+    String configStr;
+    _netLog.getConfig(configStr);
+    Utils::setJsonBoolResult(respStr, true, configStr.c_str());    
 }
 
 void RestAPISystem::apiCmdSchedGetConfig(String &reqStr, String &respStr)

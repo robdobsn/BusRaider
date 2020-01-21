@@ -75,6 +75,14 @@ public:
         return RdJson::getLong(dataPath, defaultValue, _dataStrJSON.c_str());
     }
 
+    virtual bool contains(const char *dataPath)
+    {
+        int startPos = 0, strLen = 0;
+        jsmnrtype_t objType;
+        int objSize = 0;
+        return RdJson::getElement(dataPath, startPos, strLen, objType, objSize, _dataStrJSON.c_str());
+    }
+
     virtual void clear()
     {
     }

@@ -21,9 +21,6 @@ private:
     // List of callbacks on change of config
     std::vector<ConfigChangeCallbackType> _configChangeCallbacks;
 
-    // Register change callback
-    void registerChangeCallback(ConfigChangeCallbackType configChangeCallback);
-
 public:
     ConfigNVS(const char *configNamespace, int configMaxlen);
     ~ConfigNVS();
@@ -36,4 +33,8 @@ public:
 
     // Write configuration string
     bool writeConfig();
+
+    // Register change callback
+    void registerChangeCallback(ConfigChangeCallbackType configChangeCallback);
+
 };

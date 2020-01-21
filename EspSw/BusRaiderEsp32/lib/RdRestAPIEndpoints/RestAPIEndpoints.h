@@ -126,7 +126,7 @@ public:
     RestAPIEndpointDef *getEndpoint(const char *pEndpointStr);
 
     // Handle an API request
-    void handleApiRequest(const char *requestStr, String &retStr);
+    void handleApiRequest(const char *requestStr, String &retStr, bool retainedMessage = false);
 
     // Form a string from a char buffer with a fixed length
     static void formStringFromCharBuf(String &outStr, const char *pStr, int len);

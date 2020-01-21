@@ -65,9 +65,9 @@ void MQTTManager::onMqttMessage(char *topic, char *payload, AsyncMqttClientMessa
         len = MAX_PAYLOAD_LEN;
     }
 
-    Log.verbose("%srx topic %s qos %d dup %d retain %d len %d idx %d total %d\n", MODULE_PREFIX,
-                topic, properties.qos, properties.dup, properties.retain,
-                len, index, total);
+    // Log.trace("%srx topic %s qos %d dup %d retain %d len %d idx %d total %d\n", MODULE_PREFIX,
+    //             topic, properties.qos, properties.dup, properties.retain,
+    //             len, index, total);
 
     // Copy the message and ensure terminated
     char *payloadStr = new char[len + 1];
@@ -75,7 +75,7 @@ void MQTTManager::onMqttMessage(char *topic, char *payload, AsyncMqttClientMessa
     payloadStr[len] = 0;
     // Log.verbose("%srx payload: %s\n", MODULE_PREFIX, reqStr);
     String respStr;
-    _restAPIEndpoints.handleApiRequest(payloadStr, respStr);
+    _restAPIEndpoints.handleApiRequest(payloadStr, respStr, properties.retain);
 
 #ifdef STRESS_TEST_MQTT
     char* pHello = strstr(payloadStr, "Hello_");
@@ -215,12 +215,12 @@ void MQTTManager::setMQTTServer(String &mqttServer, String &mqttInTopic,
     }
 }
 
-void MQTTManager::reportJson(String& msg)
+void MQTTManager::reportJson(String& msg, bool retain)
 {
-    report(msg.c_str());
+    report(msg.c_str(), retain);
 }
 
-void MQTTManager::report(const char *reportStr)
+void MQTTManager::report(const char *reportStr, bool retain)
 {
     // Check if enabled
     if (!_mqttEnabled)
@@ -230,23 +230,23 @@ void MQTTManager::report(const char *reportStr)
     if (!_mqttClient.connected())
     {
         // Store until connected
-        if (_mqttMsgToSendWhenConnected.length() == 0)
+        if (retain && (_mqttMsgToSendWhenConnected.length() == 0))
             _mqttMsgToSendWhenConnected = reportStr;
         return;
     }
 
     // Send immediately
 #ifdef MQTT_USE_ASYNC_MQTT
-    int publishRslt = _mqttClient.publish(_mqttOutTopic.c_str(), 1, true, reportStr);
+    int publishRslt = _mqttClient.publish(_mqttOutTopic.c_str(), 1, retain, reportStr);
 #else
     int publishRslt = _mqttClient.publish(_mqttOutTopic.c_str(), reportStr, true);
 #endif
-    Log.verbose("%sPublished to %s at QoS 0, publishRslt %d\n", MODULE_PREFIX, _mqttOutTopic.c_str(), publishRslt);
+    Log.verbose("%sPublished to %s at QoS 1 retain %d, publishRslt %d\n", MODULE_PREFIX, _mqttOutTopic.c_str(), retain, publishRslt);
 }
 
 // Note do not put any Log messages in here as MQTT may be used for logging
 // and an infinite loop would result
-void MQTTManager::reportSilent(const char *reportStr)
+void MQTTManager::reportSilent(const char *reportStr, bool retain)
 {
     // Check if enabled
     if (!_mqttEnabled)
@@ -256,14 +256,14 @@ void MQTTManager::reportSilent(const char *reportStr)
     if (!_mqttClient.connected())
     {
         // Store until connected
-        if (_mqttMsgToSendWhenConnected.length() == 0)
+        if (retain && (_mqttMsgToSendWhenConnected.length() == 0))
             _mqttMsgToSendWhenConnected = reportStr;
         return;
     }
 
     // Send immediately
 #ifdef MQTT_USE_ASYNC_MQTT
-    _mqttClient.publish(_mqttOutTopic.c_str(), 1, true, reportStr);
+    _mqttClient.publish(_mqttOutTopic.c_str(), 1, retain, reportStr);
 #else
     _mqttClient.publish(_mqttOutTopic.c_str(), reportStr, true);
 #endif

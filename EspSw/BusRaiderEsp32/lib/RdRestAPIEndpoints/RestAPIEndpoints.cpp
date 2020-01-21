@@ -77,7 +77,7 @@ RestAPIEndpointDef* RestAPIEndpoints::getEndpoint(const char *pEndpointStr)
 }
 
 // Handle an API request
-void RestAPIEndpoints::handleApiRequest(const char *requestStr, String &retStr)
+void RestAPIEndpoints::handleApiRequest(const char *requestStr, String &retStr, bool retainedMessage)
 {
     // Get the command
     static char *emptyStr = (char *)"";
@@ -106,7 +106,7 @@ void RestAPIEndpoints::handleApiRequest(const char *requestStr, String &retStr)
         {
             continue;
         }
-        if (pEndpoint->_endpointType != RestAPIEndpointDef::ENDPOINT_CALLBACK)
+        if ((pEndpoint->_endpointType != RestAPIEndpointDef::ENDPOINT_CALLBACK) || (retainedMessage && pEndpoint->_noCache))
         {
             continue;
         }

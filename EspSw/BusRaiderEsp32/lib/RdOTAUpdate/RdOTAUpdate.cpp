@@ -395,7 +395,7 @@ void RdOTAUpdate::onDataReceived(uint8_t *pDataReceived, size_t dataReceivedLen)
                     String fileVersionStr = extractValueByName(_fileInfo, "version");
                     String fileName = extractValueByName(_fileInfo, "filename");
                     String fileMD5 = extractValueByName(_fileInfo, "MD5");
-                    Log.notice("%sLatestVersion %s, Filename %s, ND5 %s\n", MODULE_PREFIX, fileVersionStr.c_str(), fileName.c_str(), fileMD5.c_str());
+                    Log.notice("%sLatestVersion %s, Filename %s, MD5 %s\n", MODULE_PREFIX, fileVersionStr.c_str(), fileName.c_str(), fileMD5.c_str());
                     if (fileVersionStr.length() == 0)
                     {
                         Log.trace("%sCannot extract version from fileInfo\n", MODULE_PREFIX);

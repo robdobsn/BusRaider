@@ -109,9 +109,9 @@ public:
     void setup(ConfigBase& hwConfig, ConfigBase *pConfig);
     String formConfigStr();
     void setMQTTServer(String &mqttServer, String &mqttInTopic, String &mqttOutTopic, int mqttPort = DEFAULT_MQTT_PORT);
-    void reportJson(String& msg);
-    void report(const char *reportStr);
-    void reportSilent(const char *reportStr);
+    void reportJson(String& msg, bool retain = false);
+    void report(const char *reportStr, bool retain = false);
+    void reportSilent(const char *reportStr, bool retain = false);
     void service();
 };
 

@@ -69,6 +69,7 @@ public:
     void apiNetLogCmdSerial(String &reqStr, String &respStr);
     void apiNetLogHTTP(String &reqStr, String &respStr);
     void apiNetLogPT(String &reqStr, String &respStr);
+    void apiNetLogGetConfig(String &reqStr, String &respStr);
 
     // Command scheduler
     void apiCmdSchedGetConfig(String &reqStr, String &respStr);
