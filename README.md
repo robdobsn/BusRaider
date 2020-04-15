@@ -6,10 +6,16 @@ It uses a Raspberry Pi Zero and an ESP32 to snoop on the bus of a
 host vintage 8 bit CPU and provide things like a memory mapped display,
 WiFi connection, keyboard and single-step debugging
 
-More information is in the blog post [https://robdobson.com/2018/08/trs80-galaxy-invasion-on-rc2014/](https://robdobson.com/2018/08/trs80-galaxy-invasion-on-rc2014/)
+## Getting Started
+
+The following resources will help get started with BusRaider:
+* [Build Video](https://www.youtube.com/watch?v=00ZwtiLc9rM)
+* [Documentation](https://github.com/robdobsn/PiBusRaider)
+
+Some background information about why BusRaider exists is in the blog posts [https://robdobson.com/2018/08/trs80-galaxy-invasion-on-rc2014/](https://robdobson.com/2018/08/trs80-galaxy-invasion-on-rc2014/)
 and [https://robdobson.com/2018/08/trs80-galaxy-invasion-on-rc2014/](https://robdobson.com/2018/09/raid-the-bus-and-the-speccy-lives/)
 
-## How to run
+## How to run the Pi software
 
 1. Format an SD-card with FAT32 filesystem.
 2. Copy ```PiSw/bin/kernel.img``` and ```config.txt``` from the latest release to the root of the SD card.
@@ -22,7 +28,7 @@ displayed on the HDMI video stream along with a display area for the Retro compu
 
 ## Documentation
 
-For full documentation see the [Documentation Wiki](https://github.com/robdobsn/PiBusRaider/wiki) or, since the Wiki is currently incomplete see the current manual [BusRaider Current Manual.pdf](https://github.com/robdobsn/PiBusRaider/blob/master/Docs/BusRaider%20Current%20Manual.pdf)
+For full documentation see the [Documentation Wiki](https://github.com/robdobsn/PiBusRaider/wiki)
 
 ## License
 

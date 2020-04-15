@@ -17,8 +17,7 @@
             "type": "shell",
             "command": "curl",
             "args": [
-                "-F data=@./.pio/build/featheresp32/firmware.bin",
-                "http://192.168.86.123/espFirmwareUpdate"
+                "-F data=@./.pio/build/featheresp32/firmware.bin", "http://192.168.86.57/espFirmwareUpdate"
             ],
             "dependsOn": [
                 "BuildBusRaiderESP32"
