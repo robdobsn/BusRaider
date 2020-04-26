@@ -86,7 +86,7 @@ void TargetState::setTargetRegisters(const Z80Registers& regs)
 {
     _targetRegisters = regs;
     _targetRegsValid = true;
-    LogWrite(FromTargetState, LOG_VERBOSE, "SetTargetRegs PC=%04x SP=%04x", regs.PC, regs.SP);
+    LogWrite(FromTargetState, LOG_DEBUG, "SetTargetRegs PC=%04x SP=%04x", regs.PC, regs.SP);
 }
 
 bool TargetState::areRegistersValid()

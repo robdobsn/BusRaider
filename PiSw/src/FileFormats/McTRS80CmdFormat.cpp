@@ -39,7 +39,7 @@ void McTRS80CmdFormat::proc(FileParserDataCallback* pDataCallback,
                 else
                     length -= 2;
                 pDataCallback(addr, pData+pos, length);
-                // LogWrite(_logPrefix, LOG_DEBUG, "Code segment addr %04x len %04x", addr, length);
+                LogWrite(_logPrefix, LOG_DEBUG, "Code segment addr %04x len %04x", addr, length);
                 break;
             }
             case 2:

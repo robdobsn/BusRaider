@@ -117,6 +117,7 @@ void LogDumpMemory(const char* fromSource, int logLevel, unsigned char* start_ad
         {
             linPos = 0;
             LogWrite(fromSource, logLevel, outLine);
+            strcpy(outLine, "");
         }
     }
     if (linPos != 0)

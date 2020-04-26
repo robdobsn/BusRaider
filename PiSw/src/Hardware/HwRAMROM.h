@@ -97,6 +97,18 @@ private:
     };
     memOpts_t _memCardOpts;
 
+    // Mem card opts
+    const char* getMemCardOptStr(memOpts_t memOpt)
+    {
+        switch (memOpt)
+        {
+        case MEM_OPT_STAY_BANKED: return "StayBanked";
+        case MEM_OPT_EMULATE_LINEAR: return "EmulateLinear";
+        case MEM_OPT_EMULATE_LINEAR_UPPER: return "EmulateLinearUpper";
+        default: return "UnknownOption";
+        }
+    }
+    
     // Memory card using 74670 register files to bank 16K pages
     static const int NUM_BANKS = 4;
     uint8_t _bankRegisters[NUM_BANKS];
