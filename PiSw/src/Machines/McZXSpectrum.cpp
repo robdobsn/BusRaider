@@ -14,6 +14,7 @@
 #include "../FileFormats/McZXSpectrumSNAFormat.h"
 #include "../FileFormats/McZXSpectrumZ80Format.h"
 #include "../Fonts/SystemFont.h"
+#include "../System/PiWiring.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Vars
@@ -69,6 +70,7 @@ McZXSpectrum::McZXSpectrum() : McBase(_defaultDescriptorTables, sizeof(_defaultD
     _screenBufferRefreshX = 0;
     _screenBufferRefreshCount = 0;
     _pFrameBuffer = NULL;
+    _pfbSize = 0;
     _cellsY = _defaultDescriptorTables[0].displayPixelsY/_defaultDescriptorTables[0].displayPixelsY;
     _cellsX = _defaultDescriptorTables[0].displayPixelsX/_defaultDescriptorTables[0].displayPixelsX;
 
@@ -90,6 +92,7 @@ void McZXSpectrum::enable()
     _screenBufferRefreshX = 0;
     _screenBufferRefreshCount = 0;
     _pFrameBuffer = NULL;
+    _pfbSize = 0;
 }
 
 // Disable machine
@@ -175,6 +178,7 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
             FrameBufferInfo fbi;
             _pDisplay->getFramebuffer(fbi);
             _pFrameBuffer = fbi.pFBWindow;
+            _pfbSize = fbi.pixelsWidth * fbi.pixelsHeight * fbi.bytesPerPixel;
             _framePitch = fbi.pitch;
             _framePitchDiv4 = fbi.pitch / 4;
             _scaleX = _activeDescriptorTable.pixelScaleX;
@@ -198,7 +202,6 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
             if (_screenBufferRefreshY >= _cellsY)
             {
                 _screenBufferRefreshY = 0;
-                _screenCacheValid = true;
             }
         }
 
@@ -210,21 +213,45 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
 
         // Colours are the same for all pixels in cell
         int cellColourData = pScrnBuffer[colrIdx];
-        bool cellInvalid = !_screenCacheValid || (cellColourData != _screenCache[colrIdx]);
+        bool cellInvalid = (!_screenCacheValid) || (cellColourData != _screenCache[colrIdx]);
+
+        if ((_screenBufferRefreshX == 31) && (_screenBufferRefreshY == 23))
+            cellInvalid = true;
+
         if (cellInvalid)
         {
-            // Update colour cache
-            _screenCache[colrIdx] = pScrnBuffer[colrIdx];
+            if (colrIdx < ZXSPECTRUM_PIXEL_RAM_SIZE + ZXSPECTRUM_COLOUR_DATA_SIZE)
+            {
+                // Update colour cache
+                _screenCache[colrIdx] = pScrnBuffer[colrIdx];
+            }
+            else
+            {
+                if (!pixDisp)
+                    LogWrite(_logPrefix, LOG_DEBUG, "colrIdx out of bounds %d > %d", colrIdx, ZXSPECTRUM_PIXEL_RAM_SIZE + ZXSPECTRUM_COLOUR_DATA_SIZE);
+                pixDisp = true;
+                return;
+            }
         }
 
         // Lines of cell
+        // ZXSpectrum lines are not in sequential order!
         uint32_t pixByteIdx = cellX + (cellY & 0x07) * _cellsX + (cellY & 0x18) * _lineStride;
+
+        // Validate
+        if (pixByteIdx >= ZXSPECTRUM_PIXEL_RAM_SIZE + ZXSPECTRUM_COLOUR_DATA_SIZE)
+        {
+            if (!pixDisp)
+                LogWrite(_logPrefix, LOG_DEBUG, "pixByteIdx out of bounds %d > %d", pixByteIdx, ZXSPECTRUM_PIXEL_RAM_SIZE + ZXSPECTRUM_COLOUR_DATA_SIZE);
+            pixDisp = true;
+            return;
+        }
 
         // Check for cell pixel change
         uint32_t pixByteCheckIdx = pixByteIdx;
         for (uint32_t cellPixY = 0; cellPixY < _cellSizeY; cellPixY++)
         {
-            if (_screenCache[pixByteCheckIdx] != pScrnBuffer[pixByteCheckIdx])
+            if ((_screenCache[pixByteCheckIdx] != pScrnBuffer[pixByteCheckIdx]) && (pixByteCheckIdx < ZXSPECTRUM_PIXEL_RAM_SIZE))
             {
                 _screenCache[pixByteCheckIdx] = pScrnBuffer[pixByteCheckIdx];
                 cellInvalid = true;
@@ -248,10 +275,13 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
                     uint32_t pixColour = pixVal ? inkColour : paperColour;
                     uint32_t pixColourL = (pixColour << 24) + (pixColour << 16) + (pixColour << 8) + pixColour;
                     uint32_t* pBufL = pBufCell + pixIdx;
-                    for (uint32_t iy = 0; iy < _scaleY; iy++)
+                    if ((uint8_t*)(pBufL + _framePitchDiv4 * _scaleY) < _pFrameBuffer + _pfbSize)
                     {
-                        *pBufL = pixColourL;
-                        pBufL += _framePitchDiv4;
+                        for (uint32_t iy = 0; iy < _scaleY; iy++)
+                        {
+                            *pBufL = pixColourL;
+                            pBufL += _framePitchDiv4;
+                        }
                     }
                     // Bump the pixel mask
                     pixMask = pixMask >> 1;
@@ -261,63 +291,71 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
                 pixByteIdx += _lineStride;
             }
         }
+
+        if ((_screenBufferRefreshX == 0) && (_screenBufferRefreshY == 0))
+            _screenCacheValid = true;
     }
-    else
-    {
-        // Check for colour data change - refresh everything if changed
-        for (uint32_t colrIdx = ZXSPECTRUM_PIXEL_RAM_SIZE; colrIdx < ZXSPECTRUM_DISP_RAM_SIZE; colrIdx++)
-        {
-            if (pScrnBuffer[colrIdx] != _screenCache[colrIdx])
-            {
-                _screenCacheValid = false;
-                break;
-            }
-        }
+    // else
+    // {
+    //     LogWrite(_logPrefix, LOG_DEBUG, "PIXSCALEX %d", _activeDescriptorTable.pixelScaleX);
+    //     microsDelay(10000);
 
-        // Write to the display on the Pi Zero
-        int bytesPerRow = _activeDescriptorTable.displayPixelsX/8;
-        int colrCellsPerRow = _activeDescriptorTable.displayPixelsX/_activeDescriptorTable.displayCellX;
-        for (uint32_t bufIdx = 0; bufIdx < ZXSPECTRUM_PIXEL_RAM_SIZE; bufIdx++)
-        {
-            if (!_screenCacheValid || (_screenCache[bufIdx] != pScrnBuffer[bufIdx]))
-            {
-                // Save new version of screen buffer
-                _screenCache[bufIdx] = pScrnBuffer[bufIdx];
+    //     return;
 
-                // Get colour info for this location
-                int col = bufIdx % colrCellsPerRow;
-                int row = (bufIdx / colrCellsPerRow);
-                row = (row & 0x07) | ((row & 0xc0) >> 3);
-                int colrAddr = ZXSPECTRUM_PIXEL_RAM_SIZE + (row*colrCellsPerRow) + col;
+    //     // Check for colour data change - refresh everything if changed
+    //     for (uint32_t colrIdx = ZXSPECTRUM_PIXEL_RAM_SIZE; colrIdx < ZXSPECTRUM_DISP_RAM_SIZE; colrIdx++)
+    //     {
+    //         if (pScrnBuffer[colrIdx] != _screenCache[colrIdx])
+    //         {
+    //             _screenCacheValid = false;
+    //             break;
+    //         }
+    //     }
 
-                // Bits 0..2 are INK colour, 3..5 are PAPER colour, 6 = brightness, 7 = flash
-                int cellColourData = pScrnBuffer[colrAddr];
+    //     // Write to the display on the Pi Zero
+    //     int bytesPerRow = _activeDescriptorTable.displayPixelsX/8;
+    //     int colrCellsPerRow = _activeDescriptorTable.displayPixelsX/_activeDescriptorTable.displayCellX;
+    //     for (uint32_t bufIdx = 0; bufIdx < ZXSPECTRUM_PIXEL_RAM_SIZE; bufIdx++)
+    //     {
+    //         if (!_screenCacheValid || (_screenCache[bufIdx] != pScrnBuffer[bufIdx]))
+    //         {
+    //             // Save new version of screen buffer
+    //             _screenCache[bufIdx] = pScrnBuffer[bufIdx];
 
-                // Set the pixels in this byte
-                int pixMask = 0x80;
-                for (int i = 0; i < 8; i++)
-                {
-                    int x = ((bufIdx % bytesPerRow) * 8) + i;
-                    int y = bufIdx / bytesPerRow;
-                    // Munge y value for weird spectrum addressing
-                    y = ((y & 0x38) >> 3) | ((y & 0x07) << 3) | (y & 0xc0);
-                    // Get pixel colour
-                    bool pixVal = pScrnBuffer[bufIdx] & pixMask;
-                    DISPLAY_FX_COLOUR pixColour = colourLUT[((cellColourData & 0x38) >> 3) | ((cellColourData & 0x40) >> 3)];
-                    if (pixVal)
-                        pixColour = colourLUT[(cellColourData & 0x07) | ((cellColourData & 0x40) >> 3)]; 
-                    _pDisplay->setPixel(x, y, 1, pixColour);
-                    // Bump the pixel mask
-                    pixMask = pixMask >> 1;
-                }
-            }
-        }
+    //             // Get colour info for this location
+    //             int col = bufIdx % colrCellsPerRow;
+    //             int row = (bufIdx / colrCellsPerRow);
+    //             row = (row & 0x07) | ((row & 0xc0) >> 3);
+    //             int colrAddr = ZXSPECTRUM_PIXEL_RAM_SIZE + (row*colrCellsPerRow) + col;
 
-        // Save colour data for later checks
-        for (uint32_t colrIdx = ZXSPECTRUM_PIXEL_RAM_SIZE; colrIdx < ZXSPECTRUM_DISP_RAM_SIZE; colrIdx++)
-            _screenCache[colrIdx] = pScrnBuffer[colrIdx];
-        _screenCacheValid = true;
-    }
+    //             // Bits 0..2 are INK colour, 3..5 are PAPER colour, 6 = brightness, 7 = flash
+    //             int cellColourData = pScrnBuffer[colrAddr];
+
+    //             // Set the pixels in this byte
+    //             int pixMask = 0x80;
+    //             for (int i = 0; i < 8; i++)
+    //             {
+    //                 int x = ((bufIdx % bytesPerRow) * 8) + i;
+    //                 int y = bufIdx / bytesPerRow;
+    //                 // Munge y value for weird spectrum addressing
+    //                 y = ((y & 0x38) >> 3) | ((y & 0x07) << 3) | (y & 0xc0);
+    //                 // Get pixel colour
+    //                 bool pixVal = pScrnBuffer[bufIdx] & pixMask;
+    //                 DISPLAY_FX_COLOUR pixColour = colourLUT[((cellColourData & 0x38) >> 3) | ((cellColourData & 0x40) >> 3)];
+    //                 if (pixVal)
+    //                     pixColour = colourLUT[(cellColourData & 0x07) | ((cellColourData & 0x40) >> 3)]; 
+    //                 _pDisplay->setPixel(x, y, 1, pixColour);
+    //                 // Bump the pixel mask
+    //                 pixMask = pixMask >> 1;
+    //             }
+    //         }
+    //     }
+
+    //     // Save colour data for later checks
+    //     for (uint32_t colrIdx = ZXSPECTRUM_PIXEL_RAM_SIZE; colrIdx < ZXSPECTRUM_DISP_RAM_SIZE; colrIdx++)
+    //         _screenCache[colrIdx] = pScrnBuffer[colrIdx];
+    //     _screenCacheValid = true;
+    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -505,6 +543,7 @@ void McZXSpectrum::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unu
             // Kempston joystick - just say nothing pressed
             retVal = 0;
         }
+        // LogWrite(_logPrefix, LOG_DEBUG, "IO Read from %04x flags %04x data %02x retVal %02x", addr, flags, data, retVal);
 
     }
 

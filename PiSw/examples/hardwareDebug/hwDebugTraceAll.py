@@ -2,20 +2,20 @@
 import time, datetime, json, logging, os
 from SimpleHDLC import HDLC
 from SimpleTCP import SimpleTCP
+import argparse
 
 class Tracer:
 
     # Start trace
     def start(self):
         # Setup
-        self.setup("192.168.86.103", "./examples/logs", "TraceLong.txt")
+        self.setup(args.busRaiderIPAddr, "", args.logFileName)
 
         # Stop any previous tracer
         self.sendFrame("tracerStop", b"{\"cmdName\":\"tracerStop\"}\0")
 
-        # Set serial terminal machine (with emulated 6850) - to avoid conflicts with display updates, etc
-        mc = "Serial Terminal ANSI"
-        self.sendFrame("SetMachine", b"{\"cmdName\":\"setMcJson\"}\0"+b"{\"name\":\"Serial Terminal ANSI\",\"hw\":[],\"emulate6850\":{}}\0")
+        # Set machine
+        self.sendFrame("SetMachine", b"{\"cmdName\":\"setMcJson\"}\0"+b"{\"name\":\"" + bytes(machineName, 'utf-8') + b"\",\"hw\":[],\"emulate6850\":{}}\0")
         time.sleep(2)
 
         # Bus reset
@@ -89,10 +89,10 @@ class Tracer:
         busData = binContent[contentPos+2]
         retData = binContent[contentPos+3]
         flags = binContent[contentPos+4]
-        retData = f"{traceCount:08d} {addr:04x} {busData:02x} {self.formatFlags1(flags)}{self.formatFlags2(flags)}"
+        outData = f"{traceCount:08d} {addr:04x} {busData:02x} {self.formatFlags1(flags)}{self.formatFlags2(flags)}"
         if (flags & 0x80) != 0:
-              retData += f"{retData:02x}"
-        return retData
+              outData += f"{retData:02x}"
+        return outData
 
     def formatFlags1(self, busFlags):
         return self.flags1[(busFlags >> 3) & 0x03]
@@ -134,7 +134,7 @@ class Tracer:
                 else:
                     self.frameCallback(msgContent, binContent, self.logger)
         except Exception as excp:
-            self.logger.error(f"Failed to extract cmdName {fr}, {excp}")
+            self.logger.error(f"Failed to extract cmdName from {msgContent} frame {fr}, {excp}")
 
     # Check for using IP address
     def setup(self, ipAddrOrHostName, fileBase, dumpTraceFileName):
@@ -188,6 +188,29 @@ class Tracer:
         # Welcome
         self.logger.info(f"UnitTest BusRaider IP {ipAddrOrHostName} port {self.tcpHdlcPort}")
 
-# Create and start the tracer
-tracer = Tracer()
-tracer.start()
+if __name__ == "__main__":
+
+    # Handle arguments
+    argparser = argparse.ArgumentParser(description='Trace Execution')
+    argparser.add_argument('busRaiderIPAddr', action='store')
+    argparser.add_argument('machine', choices=['ANSI', 'H19', 'TRS80', 'Spectrum', 'Robs'], action='store')
+    argparser.add_argument('preloadProgram', action='store')
+    argparser.add_argument('testProgram', action='store')
+    argparser.add_argument('logFileName', action='store')
+    args = argparser.parse_args()
+
+    # Full machine name
+    if args.machine == 'ANSI':
+        machineName = "Serial Terminal ANSI"
+    elif args.machine == 'H19':
+        machineName = "Serial Terminal H19"
+    elif args.machine == 'TRS80':
+        machineName = "TRS80"
+    elif args.machine == 'Spectrum':
+        machineName = "ZX Spectrum"
+    elif args.machine == 'Robs':
+        machineName = "Rob's Z80"
+
+    # Create and start the tracer
+    tracer = Tracer()
+    tracer.start()

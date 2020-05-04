@@ -1,32 +1,37 @@
 {
-    // Verwendet IntelliSense zum Ermitteln möglicher Attribute.
-    // Zeigen Sie auf vorhandene Attribute, um die zugehörigen Beschreibungen anzuzeigen.
-    // Weitere Informationen finden Sie unter https://go.microsoft.com/fwlink/?linkid=830387
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "z80-debug",
+            "type": "dezog",
             "request": "launch",
-            "name": "Z80 Debugger",
-            "zhostname": "192.168.86.123",
-            // "zhostname": "localhost",
-            "zport": 10000,
+            "name": "DeZog",
+            "remoteType": "zsim",
+            "zsim": {
+                "loadZxRom": true
+            },
             "listFiles": [
-                { 
-                    "path": "Spectrum48KRom.list",
-                    "useFiles": true,
-                    "asm": "z80asm",
-                    "mainFile": "Spectrum48KRom.asm"
-                },
-                { 
-                    "path": "z80-sample-program.list", 
-                    "useFiles": true,
-                    "asm": "z80asm",
+                {
+                    "path": "z80-sample-program.list",
+                    "asm": "sjasmplus",
                     "mainFile": "main.asm"
-                }
+                },
+                /*
+                {
+                    "path": "rom48.list",
+                    "asm": "z80asm",
+                    "srcDirs": [], // Use list file directly
+                },
+                */
             ],
             "startAutomatically": false,
             "skipInterrupt": true,
+            "history": {
+                "reverseDebugInstructionCount": 10000,
+                "codeCoverageEnabled": true
+            },
             "commandsAfterLaunch": [
                 //"-sprites",
                 //"-patterns"
@@ -39,10 +44,6 @@
             "load": "z80-sample-program.sna",
             "smallValuesMaximum": 513,
             "tmpDir": ".tmp"
-            // ,
-            // "log": {
-            //     "filePath": "${workspaceFolder}/log.txt"
-            // }
        }
     ]
 }

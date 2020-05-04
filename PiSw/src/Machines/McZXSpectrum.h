@@ -19,6 +19,7 @@ private:
     bool _screenCacheValid;
 
     uint8_t* _pFrameBuffer;
+    uint32_t _pfbSize;
     uint32_t _framePitch;
     uint32_t _framePitchDiv4;
     uint32_t _scaleX;

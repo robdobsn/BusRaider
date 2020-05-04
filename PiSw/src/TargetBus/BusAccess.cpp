@@ -629,7 +629,7 @@ void BusAccess::stepTimerISR([[maybe_unused]] void* pParam)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Timer Interrupt Service Routine
+// Sevice bus activity
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void BusAccess::serviceWaitActivity()
@@ -639,9 +639,7 @@ void BusAccess::serviceWaitActivity()
 
     // Handle completion of any existing bus actions
     busActionHandleActive();
-    if (_busActionState == BUS_ACTION_STATE_ASSERTED)
-        return;
- 
+
     // Check if we are already in a wait
     if (!_waitAsserted)
     {

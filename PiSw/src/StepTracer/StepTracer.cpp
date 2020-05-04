@@ -455,7 +455,8 @@ void StepTracer::service()
     _serviceCount = 0;
 
     // Handle logging and tracing
-    char debugMsg[1000];
+    static const int DEBUG_MSG_MAX = 1000;
+    char debugMsg[DEBUG_MSG_MAX];
     debugMsg[0] = 0;
 
     // Logging
@@ -468,19 +469,26 @@ void StepTracer::service()
             uint32_t pos = _exceptionsPosn.posToGet();
             uint32_t flags = _exceptions[pos].flags;
             uint32_t expFlags = _exceptions[pos].expectedFlags;
-            ee_sprintf(debugMsg, "%07u got %04x %02x %c%c%c%c%c%c%c%c%c exp %04x %02x %c%c%c%c%c%c%c%c%c ToZ80 %02x",
+            ee_sprintf(debugMsg, "%07u got %04x %02x",
                         _exceptions[pos].stepCount,
                         _exceptions[pos].addr, 
-                        _exceptions[pos].dataFromZ80, 
+                        _exceptions[pos].dataFromZ80);
+            char tmpStr[100];
+            ee_sprintf(tmpStr, " %c%c%c%c%c%c%c%c%c",
                         flags & 0x01 ? 'R': ' ', flags & 0x02 ? 'W': ' ', flags & 0x04 ? 'M': ' ',
                         flags & 0x08 ? 'I': ' ', flags & 0x10 ? '1': ' ', flags & 0x20 ? 'T': ' ',
-                        flags & 0x40 ? 'X': ' ', flags & 0x80 ? 'Q': ' ', flags & 0x100 ? 'N': ' ',
+                        flags & 0x40 ? 'X': ' ', flags & 0x80 ? 'Q': ' ', flags & 0x100 ? 'N': ' ');
+            strlcpy(debugMsg, tmpStr, DEBUG_MSG_MAX);
+            ee_sprintf(tmpStr, "exp %04x %02x",
                         _exceptions[pos].expectedAddr, 
-                        _exceptions[pos].expectedData == 0xffff ? 0 : _exceptions[pos].expectedData, 
+                        _exceptions[pos].expectedData == 0xffff ? 0 : _exceptions[pos].expectedData);
+            strlcpy(debugMsg, tmpStr, DEBUG_MSG_MAX);
+            ee_sprintf(debugMsg, "%c%c%c%c%c%c%c%c%c ToZ80 %02x",
                         expFlags & 0x01 ? 'R': ' ', expFlags & 0x02 ? 'W': ' ', expFlags & 0x04 ? 'M': ' ',
                         expFlags & 0x08 ? 'I': ' ', expFlags & 0x10 ? '1': ' ', expFlags & 0x20 ? 'T': ' ',
                         expFlags & 0x40 ? 'X': ' ', expFlags & 0x80 ? 'Q': ' ', expFlags & 0x100 ? 'N': ' ',
                         _exceptions[pos].dataToZ80);
+            strlcpy(debugMsg, tmpStr, DEBUG_MSG_MAX);
             LogWrite(FromStepTracer, LOG_DEBUG, debugMsg);
         }
 
