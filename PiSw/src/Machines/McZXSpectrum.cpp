@@ -225,27 +225,27 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
                 // Update colour cache
                 _screenCache[colrIdx] = pScrnBuffer[colrIdx];
             }
-            else
-            {
-                if (!pixDisp)
-                    LogWrite(_logPrefix, LOG_DEBUG, "colrIdx out of bounds %d > %d", colrIdx, ZXSPECTRUM_PIXEL_RAM_SIZE + ZXSPECTRUM_COLOUR_DATA_SIZE);
-                pixDisp = true;
-                return;
-            }
+            // else
+            // {
+            //     if (!pixDisp)
+            //         LogWrite(_logPrefix, LOG_DEBUG, "colrIdx out of bounds %d > %d", colrIdx, ZXSPECTRUM_PIXEL_RAM_SIZE + ZXSPECTRUM_COLOUR_DATA_SIZE);
+            //     pixDisp = true;
+            //     return;
+            // }
         }
 
         // Lines of cell
         // ZXSpectrum lines are not in sequential order!
         uint32_t pixByteIdx = cellX + (cellY & 0x07) * _cellsX + (cellY & 0x18) * _lineStride;
 
-        // Validate
-        if (pixByteIdx >= ZXSPECTRUM_PIXEL_RAM_SIZE + ZXSPECTRUM_COLOUR_DATA_SIZE)
-        {
-            if (!pixDisp)
-                LogWrite(_logPrefix, LOG_DEBUG, "pixByteIdx out of bounds %d > %d", pixByteIdx, ZXSPECTRUM_PIXEL_RAM_SIZE + ZXSPECTRUM_COLOUR_DATA_SIZE);
-            pixDisp = true;
-            return;
-        }
+        // // Validate
+        // if (pixByteIdx >= ZXSPECTRUM_PIXEL_RAM_SIZE + ZXSPECTRUM_COLOUR_DATA_SIZE)
+        // {
+        //     if (!pixDisp)
+        //         LogWrite(_logPrefix, LOG_DEBUG, "pixByteIdx out of bounds %d > %d", pixByteIdx, ZXSPECTRUM_PIXEL_RAM_SIZE + ZXSPECTRUM_COLOUR_DATA_SIZE);
+        //     pixDisp = true;
+        //     return;
+        // }
 
         // Check for cell pixel change
         uint32_t pixByteCheckIdx = pixByteIdx;
