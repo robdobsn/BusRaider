@@ -124,6 +124,7 @@ private:
     void testSelf_detailedBus();
     void testSelf_memory();
     void testSelf_busBits();
+    bool testSelf_detailedBus_addr();
     testCodeRet_type testSelf_commonLoop();
     int _testSelf_curKeyAscii;
     uint32_t _testSelf_startUpdateTimeMs;

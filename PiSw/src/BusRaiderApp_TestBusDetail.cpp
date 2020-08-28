@@ -27,7 +27,7 @@ void BusRaiderApp::testSelf_detailedBus()
     _display.consolePut("\nThis test requires a male-male jumper wire but\n");
     _display.consolePut("but don't plug anything into the bus until asked to do so\n");
     _display.consolePut("Install ONLY BusRaider (and logic analyzer etc) ...\n");
-    _display.consolePut("Ready to start test? (y/n) ...");
+    _display.consolePut("Ready to start test? (y/n) ... ");
 
     enum testState_type
     {
@@ -258,138 +258,10 @@ void BusRaiderApp::testSelf_detailedBus()
             }
             case TEST_STATE_TEST_ADDR:
             {
-                // pull BUSRQ and BUSACK low
-                pinMode(BR_BUSACK_BAR, OUTPUT);
-                digitalWrite(BR_BUSACK_BAR, 0);
-                digitalWrite(BR_BUSRQ_BAR, 0);
-                digitalWrite(BR_DATA_DIR_IN, 0);
-                uint32_t addrTestMask = 1;
-                uint32_t addrStuckHighMask = 0;
-                uint32_t addrStuckLowMask = 0;
-                uint32_t addrInteractionMask = 0;
-                for (int i = 0; i < 16; i++)
-                {
-                    BusAccess::rawBusControlSetAddress(addrTestMask);
-                    microsDelay(200000);
-
-                    // Data direction in before getting state of address bus
-                    digitalWrite(BR_DATA_DIR_IN, 0);
-
-                    // Debug
-                    uint32_t vv = 0;
-                    // BusAccess::rawBusControlMuxSet(BR_MUX_LADDR_OE_BAR);
-                    // // vv = BusAccess::rawBusControlReadPIB();
-                    // WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_INPUT);
-                    // vv = (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
-
-                    // Get the address and data bus
-                    uint32_t addr = 0, data = 0, ctrl = 0;
-                    BusAccess::rawBusControlReadAll(ctrl, addr, data);
-
-                    // Debug
-                    char ctrlStr[100];
-                    BusAccess::formatCtrlBus(ctrl, ctrlStr, 20);
-                    char testStr[100];
-                    ee_sprintf(testStr, "Awr %04x Ard %04x Ard2 %02x data %02x ctrl %s\n", addrTestMask, addr, vv, data, ctrlStr);
-                    LogWrite(FromBusRaiderTests, LOG_DEBUG, "%s", testStr);
-
-                    // Check correct
-                    if (addrTestMask != addr)
-                    {
-                        if ((addrTestMask & addr) == 0)
-                            addrStuckLowMask |= addrTestMask;
-                        else
-                            addrInteractionMask |= addrTestMask;
-                    }
-
-                    // Now set inverse of every address bit
-                    uint32_t inverseTestMask = (~addrTestMask & 0xffff);
-                    BusAccess::rawBusControlSetAddress(inverseTestMask);
-
-                    // Data direction in before getting state of address bus
-                    digitalWrite(BR_DATA_DIR_IN, 0);
-
-                    // Read address
-                    BusAccess::rawBusControlReadAll(ctrl, addr, data);
-
-                    // Debug
-                    BusAccess::formatCtrlBus(ctrl, ctrlStr, 20);
-                    ee_sprintf(testStr, "Awr %04x Ard %04x Ard2 %02x data %02x ctrl %s\n", inverseTestMask, addr, vv, data, ctrlStr);
-                    LogWrite(FromBusRaiderTests, LOG_DEBUG, "%s", testStr);
-
-                    // Check correct
-                    if (inverseTestMask != addr)
-                    {
-                        if ((inverseTestMask | addr) == 1)
-                            addrStuckHighMask |= addrTestMask;
-                        else
-                            addrInteractionMask |= addrTestMask;
-                    }
-                    // if ((~addrTestMask) != addr)
-                    // {
-                    //     addrFailMask |= addrTestMask;
-                    //     addrLevelMask |= (addr & addrTestMask);
-                    // }
-                    addrTestMask = addrTestMask << 1;
-                }
-
-                // Result
-                if ((addrStuckHighMask | addrStuckLowMask | addrInteractionMask) == 0)
-                {
+                if (testSelf_detailedBus_addr())
                     testState = TEST_STATE_TEST_OK;
-                }
                 else
-                {
-                    char stuckHighStr[100];
-                    stuckHighStr[0] = 0;
-                    char stuckLowStr[100];
-                    stuckLowStr[0] = 0;
-                    char interactStr[100];
-                    interactStr[0] = 0;
-                    uint32_t addrTestMask = 0x8000;                
-                    for (int i = 0; i < 16; i++)
-                    {
-                        char tmpStr[10];
-                        ee_sprintf(tmpStr, "%d", i);
-                        if (addrStuckHighMask & addrTestMask)
-                        {
-                            if (strlen(stuckHighStr) > 0)
-                                strlcat(stuckHighStr, ", ", 100);
-                            strlcat(stuckHighStr, tmpStr, 100);
-                        }
-                        else if (addrStuckLowMask & addrTestMask)
-                        {
-                            if (strlen(stuckLowStr) > 0)
-                                strlcat(stuckLowStr, ", ", 100);
-                            strlcat(stuckLowStr, tmpStr, 100);
-                        }
-                        else
-                        {
-                            if (strlen(interactStr) > 0)
-                                strlcat(interactStr, ", ", 100);
-                            strlcat(interactStr, tmpStr, 100);
-                        }
-                        addrTestMask = addrTestMask >> 1;
-                    }
-                    if (strlen(stuckHighStr) > 0)
-                    {
-                        _display.consolePut("FAILED Address bus lines stuck HIGH: ");
-                        _display.consolePut(stuckHighStr);
-                    }
-                    if (strlen(stuckLowStr) > 0)
-                    {
-                        _display.consolePut("FAILED Address bus lines stuck LOW: ");
-                        _display.consolePut(stuckLowStr);
-                    }
-                    if (strlen(interactStr) > 0)
-                    {
-                        _display.consolePut("FAILED Address bus lines bridged: ");
-                        _display.consolePut(interactStr);
-                    }
-                    _display.consolePut("\n");
                     testState = TEST_STATE_TEST_FAILED;
-                }
-                digitalWrite(BR_BUSRQ_BAR, 1);
                 break;
             }
             case TEST_STATE_TEST_FAILED:
@@ -468,3 +340,139 @@ void BusRaiderApp::testSelf_detailedBus()
     }
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool BusRaiderApp::testSelf_detailedBus_addr()
+{
+    // pull BUSRQ and BUSACK low
+    pinMode(BR_BUSACK_BAR, OUTPUT);
+    digitalWrite(BR_BUSACK_BAR, 0);
+    digitalWrite(BR_BUSRQ_BAR, 0);
+    digitalWrite(BR_DATA_DIR_IN, 0);
+    uint32_t addrTestMask = 1;
+    uint32_t addrStuckHighMask = 0;
+    uint32_t addrStuckLowMask = 0;
+    uint32_t addrInteractionMask = 0;
+    for (int i = 0; i < 16; i++)
+    {
+        BusAccess::rawBusControlSetAddress(addrTestMask);
+        microsDelay(200000);
+
+        // Data direction in before getting state of address bus
+        digitalWrite(BR_DATA_DIR_IN, 0);
+
+        // Debug
+        uint32_t vv = 0;
+        // BusAccess::rawBusControlMuxSet(BR_MUX_LADDR_OE_BAR);
+        // // vv = BusAccess::rawBusControlReadPIB();
+        // WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_INPUT);
+        // vv = (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
+
+        // Get the address and data bus
+        uint32_t addr = 0, data = 0, ctrl = 0;
+        BusAccess::rawBusControlReadAll(ctrl, addr, data);
+
+        // Debug
+        char ctrlStr[100];
+        BusAccess::formatCtrlBus(ctrl, ctrlStr, 20);
+        char testStr[100];
+        ee_sprintf(testStr, "Awr %04x Ard %04x Ard2 %02x data %02x ctrl %s\n", addrTestMask, addr, vv, data, ctrlStr);
+        LogWrite(FromBusRaiderTests, LOG_DEBUG, "%s", testStr);
+
+        // Check correct
+        if (addrTestMask != addr)
+        {
+            if ((addrTestMask & addr) == 0)
+                addrStuckLowMask |= addrTestMask;
+            else
+                addrInteractionMask |= addrTestMask;
+        }
+
+        // Now set inverse of every address bit
+        uint32_t inverseTestMask = (~addrTestMask & 0xffff);
+        BusAccess::rawBusControlSetAddress(inverseTestMask);
+
+        // Data direction in before getting state of address bus
+        digitalWrite(BR_DATA_DIR_IN, 0);
+
+        // Read address
+        BusAccess::rawBusControlReadAll(ctrl, addr, data);
+
+        // Debug
+        BusAccess::formatCtrlBus(ctrl, ctrlStr, 20);
+        ee_sprintf(testStr, "Awr %04x Ard %04x Ard2 %02x data %02x ctrl %s\n", inverseTestMask, addr, vv, data, ctrlStr);
+        LogWrite(FromBusRaiderTests, LOG_DEBUG, "%s", testStr);
+
+        // Check correct
+        if (inverseTestMask != addr)
+        {
+            if ((inverseTestMask | addr) == 1)
+                addrStuckHighMask |= addrTestMask;
+            else
+                addrInteractionMask |= addrTestMask;
+        }
+        // if ((~addrTestMask) != addr)
+        // {
+        //     addrFailMask |= addrTestMask;
+        //     addrLevelMask |= (addr & addrTestMask);
+        // }
+        addrTestMask = addrTestMask << 1;
+    }
+
+    // Result
+    bool rsltOk = (addrStuckHighMask | addrStuckLowMask | addrInteractionMask) == 0;
+    if (!rsltOk)
+    {
+        char stuckHighStr[100];
+        stuckHighStr[0] = 0;
+        char stuckLowStr[100];
+        stuckLowStr[0] = 0;
+        char interactStr[100];
+        interactStr[0] = 0;
+        uint32_t addrTestMask = 0x8000;                
+        for (int i = 0; i < 16; i++)
+        {
+            char tmpStr[10];
+            ee_sprintf(tmpStr, "%d", i);
+            if (addrStuckHighMask & addrTestMask)
+            {
+                if (strlen(stuckHighStr) > 0)
+                    strlcat(stuckHighStr, ", ", 100);
+                strlcat(stuckHighStr, tmpStr, 100);
+            }
+            else if (addrStuckLowMask & addrTestMask)
+            {
+                if (strlen(stuckLowStr) > 0)
+                    strlcat(stuckLowStr, ", ", 100);
+                strlcat(stuckLowStr, tmpStr, 100);
+            }
+            else
+            {
+                if (strlen(interactStr) > 0)
+                    strlcat(interactStr, ", ", 100);
+                strlcat(interactStr, tmpStr, 100);
+            }
+            addrTestMask = addrTestMask >> 1;
+        }
+        if (strlen(stuckHighStr) > 0)
+        {
+            _display.consolePut("FAILED Address bus lines stuck HIGH: ");
+            _display.consolePut(stuckHighStr);
+        }
+        if (strlen(stuckLowStr) > 0)
+        {
+            _display.consolePut("FAILED Address bus lines stuck LOW: ");
+            _display.consolePut(stuckLowStr);
+        }
+        if (strlen(interactStr) > 0)
+        {
+            _display.consolePut("FAILED Address bus lines bridged: ");
+            _display.consolePut(interactStr);
+        }
+        _display.consolePut("\n");
+    }
+    digitalWrite(BR_BUSRQ_BAR, 1);
+    return rsltOk;
+}
