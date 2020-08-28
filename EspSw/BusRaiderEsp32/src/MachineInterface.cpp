@@ -185,9 +185,9 @@ void MachineInterface::setup(ConfigBase &config,
         }
         else if (_targetSerialPortNum == 2)
         {
-            _pTargetSerial->begin(_targetSerialBaudRate, SERIAL_8N1, 26, 25, false);
+            _pTargetSerial->begin(_targetSerialBaudRate, SERIAL_8N1, 26, 27, false);
             Log.trace("%sportNum %d, baudRate %d, rxPin %d, txPin %d\n",
-                        MODULE_PREFIX, _targetSerialPortNum, _targetSerialBaudRate, 26, 25);
+                        MODULE_PREFIX, _targetSerialPortNum, _targetSerialBaudRate, 26, 27);
             // Make rx pin a pullup to avoid noise if link unconnected
             pinMode(26, INPUT_PULLUP);
         }
