@@ -26,7 +26,7 @@ void BusRaiderApp::testSelf_detailedBus()
     _display.consoleForeground(DISPLAY_FX_WHITE);
     _display.consolePut("\nThis test requires a male-male jumper wire but\n");
     _display.consolePut("but don't plug anything into the bus until asked to do so\n");
-    _display.consolePut("ONLY BusRaider (and logic analyzer etc) is installed ...");
+    _display.consolePut("Install ONLY BusRaider (and logic analyzer etc) ...\n");
     _display.consolePut("Ready to start test? (y/n) ...");
 
     enum testState_type

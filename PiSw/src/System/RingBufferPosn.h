@@ -36,7 +36,7 @@ public:
         return _putPos;
     }
 
-    bool canPut()
+    inline bool canPut()
     {
         if (_bufLen == 0)
             return false;
@@ -56,19 +56,19 @@ public:
         return false;
     }
 
-    bool canGet()
+    inline bool canGet()
     {
         return _putPos != _getPos;
     }
 
-    void hasPut()
+    inline void hasPut()
     {
         _putPos++;
         if (_putPos >= _bufLen)
             _putPos = 0;
     }
 
-    void hasGot()
+    inline void hasGot()
     {
         _getPos++;
         if (_getPos >= _bufLen)

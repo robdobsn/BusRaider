@@ -228,7 +228,7 @@ void CommandSerial::sendFileStartRecord(const char* fileType, const String& req,
 
 void CommandSerial::sendFileBlock(size_t index, uint8_t *data, size_t len)
 {
-   String header = "{\"cmdName\":\"ufBlock\",\"index\":" + String(index) + ",\"len\":" + String(len) + "}";
+    String header = "{\"cmdName\":\"ufBlock\",\"index\":" + String(index) + ",\"len\":" + String(len) + "}";
     int headerLen = header.length();
     uint8_t* pFrameBuf = new uint8_t[headerLen + len + 1];
     memcpy(pFrameBuf, header.c_str(), headerLen);

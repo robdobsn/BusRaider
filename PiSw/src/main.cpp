@@ -23,7 +23,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Program details
-static const char* PROG_VERSION = "Bus Raider V2.2.051  (C) Rob Dobson 2018-2019";
+static const char* PROG_VERSION = "Bus Raider V2.2.061  (C) Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "https://robdobson.com/tag/raider";
 
 // Send log data to display (as opposed to merging in the ESP32 log output)

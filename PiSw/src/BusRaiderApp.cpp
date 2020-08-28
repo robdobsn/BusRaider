@@ -29,7 +29,7 @@ BusRaiderApp::KeyInfo BusRaiderApp::_keyInfoBuffer[MAX_USB_KEYS_BUFFERED];
 RingBufferPosn BusRaiderApp::_keyInfoBufferPos(BusRaiderApp::MAX_USB_KEYS_BUFFERED);
 bool BusRaiderApp::_inKeyboardRoutine = false;
 
-const uint32_t BusRaiderApp::_autoBaudRates[] = { 2000000, 1000000 };
+const uint32_t BusRaiderApp::_autoBaudRates[] = { 1000000, 2000000 };
 uint32_t BusRaiderApp::_autoBaudLastESP32CommsMs = 0;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
