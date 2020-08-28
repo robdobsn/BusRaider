@@ -43,9 +43,9 @@ private:
     // Telnet server
     AsyncTelnetServer* _pTelnetServer;
 
-    // TCP interfaces for ZEsarUX and TCP-HDLC
-    RemoteDebugProtocolServer* _pZEsarUXTCPServer;
-    uint32_t _zesaruxCommandIndex;
+    // TCP interfaces for DeZog and TCP-HDLC
+    RemoteDebugProtocolServer* _DeZogTCPServer;
+    uint32_t _DeZogCommandIndex;
     RemoteDebugProtocolServer* _pTCPHDLCServer;
     uint32_t _rdpCommandIndex;
     // HDLC processor for RDP
@@ -101,7 +101,7 @@ public:
                 WebServer *pWebServer, 
                 CommandSerial* pCommandSerial,
                 AsyncTelnetServer* pTelnetServer, 
-                RemoteDebugProtocolServer* pZEsarUXTCPServer, 
+                RemoteDebugProtocolServer* pDeZogTCPServer, 
                 RemoteDebugProtocolServer* pTCPHDLCServer, 
                 RestAPIEndpoints* pRestAPIEndpoints, 
                 FileManager* pFileManager);

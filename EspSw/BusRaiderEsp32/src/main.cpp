@@ -103,9 +103,9 @@ AsyncTelnetServer telnetServer(TELNET_PORT);
 
 // TCP access to BusRaider
 #include "RemoteDebugProtocol.h"
-const int ZEsarUX_TCP_PORT = 10000;
-static const char* _ZEsarUXWelcomeMessage = "Welcome to BusRaider\ncommand> ";
-RemoteDebugProtocolServer _ZEsarUXTCPServer(ZEsarUX_TCP_PORT, _ZEsarUXWelcomeMessage);
+const int DEZOG_TCP_PORT = 11000;
+static const char* _DeZogWelcomeMessage = "";
+RemoteDebugProtocolServer _DeZogTCPServer(DEZOG_TCP_PORT, _DeZogWelcomeMessage);
 const int HDLC_TCP_PORT = 10001;
 static const char* _TCPHDLCWelcomeMessage = "";
 RemoteDebugProtocolServer _TCPHDLCServer(HDLC_TCP_PORT, _TCPHDLCWelcomeMessage);
@@ -259,7 +259,7 @@ void setup()
     telnetServer.begin();
 
     // TCP IF servers
-    _ZEsarUXTCPServer.begin();
+    _DeZogTCPServer.begin();
     _TCPHDLCServer.begin();
 
     // Machine interface
@@ -267,7 +267,7 @@ void setup()
                 &webServer, 
                 &commandSerial, 
                 &telnetServer, 
-                &_ZEsarUXTCPServer, 
+                &_DeZogTCPServer, 
                 &_TCPHDLCServer, 
                 &restAPIEndpoints, 
                 &fileManager);
