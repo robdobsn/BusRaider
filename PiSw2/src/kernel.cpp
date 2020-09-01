@@ -59,7 +59,8 @@ CKernel::CKernel (void)
 #endif
 	// m_I2CMonitor(&m_Interrupt, m_CommsManager),
 	// m_CommsManager(&m_Serial, AppSerialIF - derived)
-	m_CommsManager(&m_Serial, NULL)
+	m_CommsManager(&m_Serial, NULL),
+	m_BusAccess()
 {
 	m_pKernel = this;
 	// m_ActLED.Blink (5);	// show we are alive

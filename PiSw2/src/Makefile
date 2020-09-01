@@ -15,9 +15,10 @@ LIBS	= 	$(CIRCLEHOME)/lib/usb/libusb.a \
 			$(CIRCLEHOME)/lib/libcircle.a \
 			system/brsys.a \
 			comms/brcomms.a \
-			web/brweb.a
+			web/brweb.a \
+			TargetBus/brTargetBus.a
 
-INCLUDE	+= -I system -I comms -I web
+INCLUDE	+= -I system -I comms -I web -I TargetBus
 
 include Rules.mk
 

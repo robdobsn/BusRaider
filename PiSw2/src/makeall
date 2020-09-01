@@ -14,4 +14,8 @@ cd web
 $make $1 $2 || exit
 cd ..
 
+cd TargetBus
+$make $1 $2 || exit
+cd ..
+
 $make $1 $2 || exit

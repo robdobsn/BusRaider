@@ -17,7 +17,7 @@
 #include <circle/sched/scheduler.h>
 #include <circle/net/netsubsystem.h>
 #include <circle/types.h>
-// #include "I2CMonitor.h"
+#include "TargetBus/BusAccess.h"
 #include "comms/CommsManager.h"
 
 enum TShutdownMode
@@ -56,11 +56,11 @@ private:
 	// Pointer to singleton kernel
 	static CKernel* m_pKernel;
 
-	// // I2CMonitor
-	// I2CMonitor m_I2CMonitor;
-
 	// Comms Manager
 	CommsManager m_CommsManager;
+
+	// BusAccess
+	BusAccess m_BusAccess;
 };
 
 #endif

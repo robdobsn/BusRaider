@@ -4,11 +4,12 @@
 
 CIRCLEHOME = ../../circle
 
-OBJS	= FastScreen.o UartMaxiSerialDevice.o \
-			lowlib.o rdutils.o jsmnR.o Utils.o \
-			PiWiring.o lowlev.o
+OBJS	= BusAccess.o BusAccess_Control.o TargetBreakpoints.o \
+		TargetCPUZ80.o TargetProgrammer.o
 
-brsys.a: $(OBJS)
+INCLUDE	+= -I ../system
+
+brTargetBus.a: $(OBJS)
 	@echo "  AR    $@"
 	@rm -f $@
 	@$(AR) cr $@ $(OBJS)
