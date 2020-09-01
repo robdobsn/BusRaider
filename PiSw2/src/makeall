@@ -1,0 +1,17 @@
+#!/bin/bash
+
+make="${MAKE:-make}"
+
+cd system
+$make $1 $2 || exit
+cd ..
+
+cd comms
+$make $1 $2 || exit
+cd ..
+
+cd web
+$make $1 $2 || exit
+cd ..
+
+$make $1 $2 || exit
