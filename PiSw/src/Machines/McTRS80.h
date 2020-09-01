@@ -7,24 +7,9 @@
 
 class McTRS80 : public McBase
 {
-private:
-    static const char* _logPrefix;
-    static constexpr uint32_t TRS80_KEYBOARD_ADDR = 0x3800;
-    static constexpr uint32_t TRS80_KEYBOARD_RAM_SIZE = 0x0100;
-    static constexpr uint32_t TRS80_DISP_RAM_ADDR = 0x3c00;
-    static constexpr uint32_t TRS80_DISP_RAM_SIZE = 0x400;
-    uint8_t _screenBuffer[TRS80_DISP_RAM_SIZE];
-    bool _screenBufferValid;
-    uint8_t _keyBuffer[TRS80_KEYBOARD_RAM_SIZE];
-    bool _keyBufferDirty;
-
-    static McDescriptorTable _defaultDescriptorTables[];
-
-    // static void handleRegisters(Z80Registers& regs);
-
 public:
 
-    McTRS80();
+    McTRS80(McManager& mcManager);
 
     // Enable machine
     virtual void enable();
@@ -50,4 +35,18 @@ public:
 private:
     void updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen);
     void handleWD1771DiskController(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
+
+private:
+    static constexpr uint32_t TRS80_KEYBOARD_ADDR = 0x3800;
+    static constexpr uint32_t TRS80_KEYBOARD_RAM_SIZE = 0x0100;
+    static constexpr uint32_t TRS80_DISP_RAM_ADDR = 0x3c00;
+    static constexpr uint32_t TRS80_DISP_RAM_SIZE = 0x400;
+    uint8_t _screenBuffer[TRS80_DISP_RAM_SIZE];
+    bool _screenBufferValid;
+    uint8_t _keyBuffer[TRS80_KEYBOARD_RAM_SIZE];
+    bool _keyBufferDirty;
+
+    static McVariantTable _defaultDescriptorTables[];
+
+    // static void handleRegisters(Z80Registers& regs);
 };

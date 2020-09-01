@@ -9,37 +9,9 @@
 
 class McTerminal : public McBase
 {
-private:
-    static const char* _logPrefix;
-    TermChar _screenCache[TermEmu::MAX_ROWS * TermEmu::MAX_COLS];
-    TermChar _screenMirrorCache[TermEmu::MAX_ROWS * TermEmu::MAX_COLS];
-    uint32_t _cursorBlinkLastUs;
-    uint32_t _cursorBlinkRateMs;
-    bool _cursorIsShown;
-    TermCursor _cursorInfo;
-
-    // Emulated UARTS
-    bool _emulate6850;
-    bool _emulation6850NeedsReset;
-    bool _emulation6850NotSetup;
-    bool _emulationInterruptOnRx;
-
-    static McDescriptorTable _defaultDescriptorTables[];
-
-    // Terminal emulation maintains an in-memory image of the screen
-    TermEmu* _pTerminalEmulation;
-
-    // Helpers
-    void invalidateScreenCaches(bool mirrorOnly);
-
-    // Buffer for chars to send to target
-    static const int MAX_SEND_TO_TARGET_CHARS = 5000;
-    RingBufferPosn _sendToTargetBufPos;
-    uint8_t _sendToTargetBuf[MAX_SEND_TO_TARGET_CHARS];
-
 public:
 
-    McTerminal();
+    McTerminal(McManager& mcManager);
 
     // Enable machine
     virtual void enable();
@@ -85,4 +57,31 @@ public:
 
     // Get changes made since last mirror display update
     virtual uint32_t getMirrorChanges(uint8_t* pMirrorChangeBuf, uint32_t mirrorChangeMaxLen, bool forceGetAll);
+
+private:
+    TermChar _screenCache[TermEmu::MAX_ROWS * TermEmu::MAX_COLS];
+    TermChar _screenMirrorCache[TermEmu::MAX_ROWS * TermEmu::MAX_COLS];
+    uint32_t _cursorBlinkLastUs;
+    uint32_t _cursorBlinkRateMs;
+    bool _cursorIsShown;
+    TermCursor _cursorInfo;
+
+    // Emulated UARTS
+    bool _emulate6850;
+    bool _emulation6850NeedsReset;
+    bool _emulation6850NotSetup;
+    bool _emulationInterruptOnRx;
+
+    static McVariantTable _defaultDescriptorTables[];
+
+    // Terminal emulation maintains an in-memory image of the screen
+    TermEmu* _pTerminalEmulation;
+
+    // Helpers
+    void invalidateScreenCaches(bool mirrorOnly);
+
+    // Buffer for chars to send to target
+    static const int MAX_SEND_TO_TARGET_CHARS = 5000;
+    RingBufferPosn _sendToTargetBufPos;
+    uint8_t _sendToTargetBuf[MAX_SEND_TO_TARGET_CHARS];
 };

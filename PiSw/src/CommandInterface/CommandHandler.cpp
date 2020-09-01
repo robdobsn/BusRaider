@@ -9,6 +9,7 @@
 #include "../System/rdutils.h"
 #include "../System/RdStdCpp.h"
 #include "../System/lowlib.h"
+#include "../System/Utils.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -17,11 +18,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Module name
-static const char FromCmdHandler[] = "CommandHandler";
-
-// Comms sockets
-CommsSocketInfo CommandHandler::_commsSockets[MAX_COMMS_SOCKETS];
-int CommandHandler::_commsSocketCount = 0;
+static const char MODULE_PREFIX[] = "CommandHandler";
 
 // Callbacks
 CmdHandlerSerialPutStrFnType* CommandHandler::_pHDLCSerialPutStrFunction = NULL;
@@ -42,6 +39,9 @@ CommandHandler::CommandHandler() :
     // Singleton
     _pSingletonCommandHandler = this;
 
+    // Sockets
+    _commsSocketCount = 0;
+    
     // File reception
     _receivedFileName[0] = 0;
     _pReceivedFileType[0] = 0;
@@ -69,14 +69,18 @@ CommandHandler::~CommandHandler()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Add a comms socket
-int CommandHandler::commsSocketAdd(CommsSocketInfo& commsSocketInfo)
+int CommandHandler::commsSocketAdd(void* pSourceObject, 
+                bool enabled, 
+                CmdHandlerHandleRxMsgFnType* handleRxMsg, 
+                CmdHandlerOTAUpdateFnType* otaUpdateFn,
+                CmdHandlerTargetFileFnType* receivedFileFn)
 {
     // Check if all used
     if (_commsSocketCount >= MAX_COMMS_SOCKETS)
         return -1;
 
     // Add in available space
-    _commsSockets[_commsSocketCount] = commsSocketInfo;
+    _commsSockets[_commsSocketCount].set(pSourceObject, enabled, handleRxMsg, otaUpdateFn, receivedFileFn);
     int tmpCount = _commsSocketCount++;
 
     return tmpCount;
@@ -118,7 +122,7 @@ void CommandHandler::hdlcFrameRxStatic(const uint8_t *frameBuffer, int frameLeng
 
 void CommandHandler::hdlcPutChStatic(uint8_t ch)
 {
-    // LogWrite(FromCmdHandler, LOG_VERBOSE, "hdlcPutChStatic");
+    // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "hdlcPutChStatic");
 
     if (_pSingletonCommandHandler)
         _pSingletonCommandHandler->hdlcPutCh(ch);
@@ -140,7 +144,7 @@ uint32_t CommandHandler::hdlcTxAvailableStatic()
 // This is a ascii character string (null terminated) followed by a byte buffer containing parameters
 void CommandHandler::hdlcFrameRx(const uint8_t *pFrame, int frameLength)
 {
-    // LogWrite(FromCmdHandler, LOG_VERBOSE, "Rx %d bytes", frameLength);
+    // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "Rx %d bytes", frameLength);
 
     // Handle the frame - extract command string
     char commandString[CMD_HANDLER_MAX_CMD_STR_LEN+1];
@@ -173,12 +177,12 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     jsonGetValueForKey("msgIdx", pCmdJson, msgIdxStr, MAX_MSGIDX_STR_LEN);
 
     // Debug
-    // LogWrite(FromCmdHandler, LOG_DEBUG, "processCommand JSON %s cmdName %s paramsLen %d", pCmdJson, cmdName, paramsLen); 
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "processCommand JSON %s cmdName %s paramsLen %d", pCmdJson, cmdName, paramsLen); 
 
     // Handle commands
     if (strcasecmp(cmdName, "ufStart") == 0)
     {
-        LogWrite(FromCmdHandler, LOG_VERBOSE, "processCommand fileStart"); 
+        LogWrite(MODULE_PREFIX, LOG_VERBOSE, "processCommand fileStart"); 
         handleFileStart(pCmdJson);
         return;
     }
@@ -200,7 +204,7 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     uint32_t rdpIndex = 0;
     if (strcasecmp(cmdName, "rdp") == 0)
     {
-        // LogWrite(FromCmdHandler, LOG_DEBUG, "RDP message rx cmd %s cmdLen %d paramsStr %s paramslen %d", 
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "RDP message rx cmd %s cmdLen %d paramsStr %s paramslen %d", 
         //             pCmdJson, strlen(pCmdJson), pParams, paramsLen);
         // Rdp msg idx is the outer msgIdx
         rdpIndex = strtol(msgIdxStr, NULL, 10);
@@ -222,7 +226,7 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
         // TODO
         // if (strcasecmp(cmdName, "tracerStatus") == 0)
         //     _rdpMsgCountIn++;
-        // LogWrite(FromCmdHandler, LOG_DEBUG, "RDPRX cmd %s cmdLen %d paramsStr %s paramslen %d rdCountIn %d this %d", 
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "RDPRX cmd %s cmdLen %d paramsStr %s paramslen %d rdCountIn %d this %d", 
         //             pCmdJson, strlen(pCmdJson), pParams, paramsLen, _rdpMsgCountIn, this);
     }
               
@@ -232,7 +236,7 @@ void CommandHandler::processCommand(const char* pCmdJson, const uint8_t* pParams
     commsSocketHandleRxMsg(pCmdJson, pParams, paramsLen, respJson, MAX_DATAFRAME_LEN);
 
     // if (rdpMessage)
-    //     LogWrite(FromCmdHandler, LOG_DEBUG, "CMDMSG rx cmd %s cmdLen %d paramsStr %s paramslen %d respJson %s", 
+    //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "CMDMSG rx cmd %s cmdLen %d paramsStr %s paramslen %d respJson %s", 
     //             pCmdJson, strlen(pCmdJson), pParams, paramsLen, respJson);
 
     // Form response cmdName
@@ -293,24 +297,25 @@ void CommandHandler::commsSocketHandleRxMsg(const char* pCmdJson, const uint8_t*
                     char* pRespJson, int maxRespLen)
 {
     if (_commsSocketCount < 3)
-        LogWrite(FromCmdHandler, LOG_DEBUG, "RxMsg fewer sockets than expected %d", _commsSocketCount);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "RxMsg fewer sockets than expected %d", _commsSocketCount);
     bool messageHandled = false;
     // Iterate the comms sockets
     for (int i = 0; i < _commsSocketCount; i++)
     {
         if (!_commsSockets[i].enabled)
         {
-            LogWrite(FromCmdHandler, LOG_DEBUG, "RxMsg sock disabled %d", i);
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "RxMsg sock disabled %d", i);
             continue;
         }
         if (_commsSockets[i].handleRxMsg)
         {
-            messageHandled = _commsSockets[i].handleRxMsg(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+            messageHandled = _commsSockets[i].handleRxMsg(_commsSockets[i].pSourceObject,
+                             pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
         }
         else
         {
             if (i != 0)
-               LogWrite(FromCmdHandler, LOG_DEBUG, "RxMsg sock null %d", i);
+               LogWrite(MODULE_PREFIX, LOG_DEBUG, "RxMsg sock null %d", i);
         }
         
         if (messageHandled)
@@ -333,9 +338,9 @@ void CommandHandler::commsSocketHandleReceivedFile(const char* fileStartInfo, ui
         }
         else
         {
-            // LogWrite(FromCmdHandler, LOG_DEBUG, "CommsSocket %d rxFile %d", i, _commsSockets[i].receivedFileFn);
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "CommsSocket %d rxFile %d", i, _commsSockets[i].receivedFileFn);
             if (_commsSockets[i].receivedFileFn)
-                messageHandled = _commsSockets[i].receivedFileFn(fileStartInfo, rxData, rxBytes);
+                messageHandled = _commsSockets[i].receivedFileFn(_commsSockets[i].pSourceObject, fileStartInfo, rxData, rxBytes);
         }
         if (messageHandled)
             break;
@@ -353,14 +358,14 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
     if (!jsonGetValueForKey("fileName", pCmdJson, _receivedFileName, MAX_FILE_NAME_STR))
         return;
 
-    // LogWrite(FromCmdHandler, LOG_DEBUG, "ufStart File %s, toPtr %08x", 
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "ufStart File %s, toPtr %08x", 
     //             _receivedFileName, _pReceivedFileDataPtr);
 
     // Get file type
     if (!jsonGetValueForKey("fileType", pCmdJson, _pReceivedFileType, MAX_FILE_TYPE_STR))
         return;
 
-    // LogWrite(FromCmdHandler, LOG_DEBUG, "ufStart FileType %s", 
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "ufStart FileType %s", 
     //             _receivedFileName);
 
     // Get file length
@@ -368,13 +373,13 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
     if (!jsonGetValueForKey("fileLen", pCmdJson, fileLenStr, MAX_INT_ARG_STR_LEN))
         return;
 
-    // LogWrite(FromCmdHandler, LOG_VERBOSE, "ufStart FileLenStr %s", 
+    // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ufStart FileLenStr %s", 
     //             fileLenStr);
 
     int fileLen = strtol(fileLenStr, NULL, 10);
     if (fileLen <= 0)
         return;
-    // LogWrite(FromCmdHandler, LOG_VERBOSE, "ufStart FileLen %d", 
+    // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ufStart FileLen %d", 
     //             fileLen);
 
     // Copy start info
@@ -392,13 +397,13 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
         _receivedFileBufSize = fileLen;
 
         // Debug
-        // LogWrite(FromCmdHandler, LOG_DEBUG, "ufStart File %s, toPtr %08x, bufSize %d", 
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "ufStart File %s, toPtr %08x, bufSize %d", 
         //             _receivedFileName, _pReceivedFileDataPtr, _receivedFileBufSize);
     }
     else
     {
         _receivedFileBufSize = 0;
-        LogWrite(FromCmdHandler, LOG_WARNING, "ufStart unable to allocate memory for file %s, bufSize %d", 
+        LogWrite(MODULE_PREFIX, LOG_WARNING, "ufStart unable to allocate memory for file %s, bufSize %d", 
                     _receivedFileName, _receivedFileBufSize);
 
     }
@@ -423,7 +428,7 @@ void CommandHandler::handleFileBlock(const char* pCmdJson, const uint8_t* pData,
     if (blockStart < 0)
         return;
 
-    // LogWrite(FromCmdHandler, LOG_DEBUG, "efBlock, len %d, blocks %d %s", 
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "efBlock, len %d, blocks %d %s", 
     //            _receivedFileBytesRx, _receivedBlockCount,
     //            (blockStart + dataLen > _receivedFileBufSize) ? "TOO LONG" : "");
 
@@ -461,7 +466,7 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
     ee_sprintf(ackMsgJson, "\"rxCount\":%d, \"expCount\":%d", _receivedBlockCount, blockCount);
     if (blockCount != _receivedBlockCount)
     {
-        LogWrite(FromCmdHandler, LOG_WARNING, "ufEnd File %s, blockCount rx %d != sent %d", 
+        LogWrite(MODULE_PREFIX, LOG_WARNING, "ufEnd File %s, blockCount rx %d != sent %d", 
                 _receivedFileName, _receivedBlockCount, blockCount);
         sendWithJSON("ufEndNotAck", ackMsgJson);
     }
@@ -475,14 +480,14 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
         {
             // Short delay to allow comms completion 
             microsDelay(100000);
-            LogWrite(FromCmdHandler, LOG_DEBUG, "ufEnd IMG firmware update File %s, len %d", _receivedFileName, _receivedFileBytesRx);
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "ufEnd IMG firmware update File %s, len %d", _receivedFileName, _receivedFileBytesRx);
         }
         else
         {
-            // LogWrite(FromCmdHandler, LOG_VERBOSE, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
+            // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
         }
         commsSocketHandleReceivedFile(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx, isFirmware);
-        LogWrite(FromCmdHandler, LOG_DEBUG, "ufEnd File %s, len %d Completed", _receivedFileName, _receivedFileBytesRx);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "ufEnd File %s, len %d Completed", _receivedFileName, _receivedFileBytesRx);
     }
     
     // Clear-down reception
@@ -566,14 +571,21 @@ void CommandHandler::sendWithJSON(const char* cmdName, const char* cmdJson, uint
     strlcat(dataFrame, ",\"dataLen\":", MAX_DATAFRAME_LEN);
     strlcat(dataFrame, lenStr, MAX_DATAFRAME_LEN);
     strlcat(dataFrame, "}", MAX_DATAFRAME_LEN);
-    // Allow for two terminators (one after JSON and one at end of binary section)
+    // Allow for terminator after JSON
     uint32_t dataFrameBinaryPos = strlen(dataFrame)+1;
-    uint32_t dataFrameTotalLen = dataFrameBinaryPos+dataLen+1; 
-    // LogWrite(FromCmdHandler, LOG_DEBUG, "SEND DATA cmd %s dataFr %s dataFrameLen %d tooLong %d msg %s",
-    //             cmdName, dataFrame, dataFrameLen, dataFrameLen >= MAX_DATAFRAME_LEN, (pData ? pData : ""));
+    uint32_t dataFrameTotalLen = dataFrameBinaryPos+dataLen;
+    // if (strcasecmp(cmdName, "dezog") == 0)
+    // {
+    //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "SEND DATA cmd %s dataFr %s dataFrameLen %d tooLong %d",
+    //                 cmdName, dataFrame, dataFrameTotalLen, dataFrameTotalLen >= MAX_DATAFRAME_LEN);
+    //     if (dataLen < 64)
+    //         Utils::logHexBuf(pData, dataLen, MODULE_PREFIX, LOG_DEBUG, "DeZog Resp");
+    //     else
+    //         Utils::logHexBuf(pData, 64, MODULE_PREFIX, LOG_DEBUG, "DeZog Resp SHORTENED");
+    // }
     if (dataFrameTotalLen >= MAX_DATAFRAME_LEN)
     {
-        LogWrite(FromCmdHandler, LOG_DEBUG, "Frame too long");
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Frame too long");
         return;
     }
     if (dataLen > 0)
@@ -583,11 +595,15 @@ void CommandHandler::sendWithJSON(const char* cmdName, const char* cmdJson, uint
         else
             return;
     }
-    // Terminate the binary portion too (belt-and-braces!)
-    dataFrame[dataFrameTotalLen-1] = 0;
+    // Send frame
     if (_pSingletonCommandHandler)
         _pSingletonCommandHandler->_miniHDLC.sendFrame((const uint8_t*)dataFrame, dataFrameTotalLen);
 }
+
+// void CommandHandler::sendWithJSONTest(const char* cmdName, const char* cmdJson, uint32_t msgIdx, 
+//             const uint8_t* pData, uint32_t dataLen)
+// {
+// }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Send an API request
@@ -674,7 +690,7 @@ void CommandHandler::service()
     {
         if (isTimeout(millis(), _receivedFileLastBlockMs, MAX_FILE_RECEIVE_BETWEEN_BLOCKS_MS))
         {
-            LogWrite(FromCmdHandler, LOG_DEBUG, "Receive timed out");
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "Receive timed out");
             fileReceiveCleardown();
         }
     }

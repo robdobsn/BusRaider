@@ -3,7 +3,8 @@
 
 #include "HwManager.h"
 #include <string.h>
-#include "../TargetBus/TargetState.h"
+#include "../Machines/McManager.h"
+#include "../TargetBus/TargetProgrammer.h"
 #include "../TargetBus/BusAccess.h"
 #include "../TargetBus/TargetTracker.h"
 #include "../System/rdutils.h"
@@ -17,52 +18,9 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Module name
-static const char FromHwManager[] = "HwManager";
+static const char MODULE_PREFIX[] = "HwManager";
 
-// Sockets
-int HwManager::_busSocketId = -1;
-BusSocketInfo HwManager::_busSocketInfo = 
-{
-    true,
-    HwManager::handleWaitInterruptStatic,
-    HwManager::busActionCompleteStatic,
-    false,
-    false,
-    // Reset
-    false,
-    0,
-    // NMI
-    false,
-    0,
-    // IRQ
-    false,
-    0,
-    false,
-    BR_BUS_ACTION_GENERAL,
-    false
-};
-
-int HwManager::_commsSocketId = -1;
-// Main comms socket - to wire up command handler
-CommsSocketInfo HwManager::_commsSocketInfo =
-{
-    true,
-    HwManager::handleRxMsg,
-    NULL,
-    NULL
-};
-
-// Memory emulation flag
-bool HwManager::_memoryEmulationMode = false;
-
-// Memory paging mode
-bool HwManager::_memoryPagingEnable = false;
-
-// Opcode injection mode
-bool HwManager::_opcodeInjectEnable = false;
-
-// Mirror mode
-bool HwManager::_mirrorMode = false;
+HwManager* HwManager::_pThisInstance = NULL;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Statics
@@ -78,13 +36,26 @@ RingBufferPosn HwManager::_debugIOPortPosn(DEBUG_MAX_IO_PORT_ACCESSES);
 // Hardware
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Hardware list
-HwBase* HwManager::_pHw[HwManager::MAX_HARDWARE];
-int HwManager::_numHardware = 0;
-
 // Default hardware list - to use if no hardware specified
 const char* HwManager::_pDefaultHardwareList = 
         "[{\"name\":\"RAMROM\",\"enable\":1,\"pageOut\":\"busPAGE\",\"bankHw\":\"LINEAR\",\"memSizeK\":1024}]";
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Constructor
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+HwManager::HwManager(CommandHandler& commandHandler, McManager& mcManager) :
+    _commandHandler(commandHandler), _mcManager(mcManager)
+{
+    _pThisInstance = this;
+    _busSocketId = -1;
+    _commsSocketId = -1;
+    _memoryEmulationMode = false;
+    _memoryPagingEnable = false;
+    _opcodeInjectEnable = false;
+    _mirrorMode = false;
+    _numHardware = 0;
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Init
@@ -94,14 +65,33 @@ void HwManager::init()
 {
     // Connect to the bus socket
     if (_busSocketId < 0)
-        _busSocketId = BusAccess::busSocketAdd(_busSocketInfo);
+        _busSocketId = _mcManager.getBusAccess().busSocketAdd(
+            true,
+            HwManager::handleWaitInterruptStatic,
+            HwManager::busActionCompleteStatic,
+            false,
+            false,
+            // Reset
+            false,
+            0,
+            // NMI
+            false,
+            0,
+            // IRQ
+            false,
+            0,
+            false,
+            BR_BUS_ACTION_GENERAL,
+            false,
+            this
+        );
 
     // Connect to the comms socket
     if (_commsSocketId < 0)
-        _commsSocketId = CommandHandler::commsSocketAdd(_commsSocketInfo);
+        _commsSocketId = _commandHandler.commsSocketAdd(this, true, handleRxMsgStatic, NULL, NULL);
 
     // Add hardware - HwBase constructor adds to HwManager
-    new HwRAMROM();
+    new HwRAMROM(*this, _mcManager.getBusAccess());
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -129,18 +119,17 @@ void HwManager::service()
     if (strlen(debugJson) != 0)
         McManager::logDebugMessage(debugJson);
 #endif
-
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Manage Machine List
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void HwManager::add(HwBase* pHw)
+void HwManager::addHardwareElementStatic(HwBase* pHw)
 {
-    if (_numHardware >= MAX_HARDWARE)
+    if (_pThisInstance->_numHardware >= MAX_HARDWARE)
         return;
-    _pHw[_numHardware++] = pHw;
+    _pThisInstance->_pHw[_pThisInstance->_numHardware++] = pHw;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -151,7 +140,7 @@ void HwManager::add(HwBase* pHw)
 void HwManager::setMemoryEmulationMode(bool val)
 {
     // Debug
-    LogWrite(FromHwManager, LOG_DEBUG, "setMemoryEmulationMode %s", val ? "Y" : "N");
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "setMemoryEmulationMode %s", val ? "Y" : "N");
 
     // Iterate hardware
     for (int i = 0; i < _numHardware; i++)
@@ -167,7 +156,7 @@ void HwManager::setMemoryEmulationMode(bool val)
 // Page out RAM/ROM for opcode injection
 void HwManager::pageOutForInjection(bool pageOut)
 {
-    // LogWrite(FromHwManager, LOG_DEBUG, "pageOutForInjection %s numHw %d", pageOut ? "Y" : "N", _numHardware);
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "pageOutForInjection %s numHw %d", pageOut ? "Y" : "N", _numHardware);
 
     // Iterate hardware
     for (int i = 0; i < _numHardware; i++)
@@ -181,7 +170,7 @@ void HwManager::pageOutForInjection(bool pageOut)
 void HwManager::setMemoryPagingEnable(bool val)
 {
     // Debug
-    // LogWrite(FromHwManager, LOG_DEBUG, "setMemoryPagingEnable %s", val ? "Y" : "N");
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "setMemoryPagingEnable %s", val ? "Y" : "N");
 
     // Iterate hardware
     for (int i = 0; i < _numHardware; i++)
@@ -198,7 +187,7 @@ void HwManager::setMemoryPagingEnable(bool val)
 void HwManager::setOpcodeInjectEnable(bool val)
 {
     // Debug
-    LogWrite(FromHwManager, LOG_DEBUG, "setOpcodeInjectEnable %s", val ? "Y" : "N");
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "setOpcodeInjectEnable %s", val ? "Y" : "N");
 
     // Set
     _opcodeInjectEnable = val;
@@ -241,10 +230,10 @@ uint32_t HwManager::getMaxAddress()
 BR_RETURN_TYPE HwManager::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, 
                 bool busRqAndRelease, bool iorq, bool forceMirrorAccess)
 {
-    // LogWrite(FromHwManager, LOG_DEBUG, "blockWrite");
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "blockWrite");
 
     // Check if bus access is available
-    forceMirrorAccess = forceMirrorAccess || (!TargetTracker::busAccessAvailable());
+    forceMirrorAccess = forceMirrorAccess || (!_mcManager.getTargetTracker().busAccessAvailable());
 
     // Iterate hardware
     BR_RETURN_TYPE retVal = BR_OK;
@@ -261,10 +250,10 @@ BR_RETURN_TYPE HwManager::blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_
 
 BR_RETURN_TYPE HwManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, bool busRqAndRelease, bool iorq, bool forceMirrorAccess)
 {
-    // LogWrite(FromHwManager, LOG_DEBUG, "blockRead");
-
     // Check if bus access is available
-    forceMirrorAccess = forceMirrorAccess || (!TargetTracker::busAccessAvailable());
+    forceMirrorAccess = forceMirrorAccess || (!_mcManager.getTargetTracker().busAccessAvailable());
+
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "blockRead forceMirrorAccess %d", forceMirrorAccess);
 
     // Iterate hardware
     BR_RETURN_TYPE retVal = BR_OK;
@@ -274,7 +263,7 @@ BR_RETURN_TYPE HwManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, 
         {
             BR_RETURN_TYPE newRet = _pHw[i]->blockRead(addr, pBuf, len, busRqAndRelease, iorq, forceMirrorAccess);
             retVal = (newRet == BR_OK || newRet == BR_NOT_HANDLED) ? retVal : newRet;
-            // LogWrite(FromHwManager, LOG_DEBUG, "blkrd %d %d", i, retVal);
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "blkrd %d %d", i, retVal);
         }
     }
     return retVal;
@@ -346,6 +335,15 @@ void HwManager::tracerHandleAccess(uint32_t addr, uint32_t data,
 // Received message handler
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+bool HwManager::handleRxMsgStatic(void* pObject, const char* pCmdJson, 
+                [[maybe_unused]]const uint8_t* pParams, [[maybe_unused]]int paramsLen,
+                [[maybe_unused]]char* pRespJson, [[maybe_unused]]int maxRespLen)
+{
+    if (!pObject)
+        return false;
+    return ((HwManager*)pObject)->handleRxMsg(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+}
+
 bool HwManager::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t* pParams, [[maybe_unused]]int paramsLen,
                 [[maybe_unused]]char* pRespJson, [[maybe_unused]]int maxRespLen)
 {
@@ -409,9 +407,16 @@ bool HwManager::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t*
 // Callbacks/Hooks
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void HwManager::busActionCompleteStatic(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason)
+void HwManager::busActionCompleteStatic(void* pObject, BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason)
 {
-    // LogWrite(FromHwManager, LOG_DEBUG, "busActionComplete %d numHw %d en %s reason %d", actionType, _numHardware,
+    if (!pObject)
+        return;
+    ((HwManager*)pObject)->busActionComplete(actionType, reason);
+}
+
+void HwManager::busActionComplete(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason)
+{
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionComplete %d numHw %d en %s reason %d", actionType, _numHardware,
     //         (_numHardware > 0) ? (_pHw[0]->isEnabled() ? "Y" : "N") : "X", reason);
  
     // Iterate hardware
@@ -420,7 +425,15 @@ void HwManager::busActionCompleteStatic(BR_BUS_ACTION actionType, BR_BUS_ACTION_
             _pHw[i]->handleBusActionComplete(actionType, reason);
 }
 
-void HwManager::handleWaitInterruptStatic(uint32_t addr, uint32_t data, 
+void HwManager::handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t data, 
+        uint32_t flags, uint32_t& retVal)
+{
+    if (!pObject)
+        return;
+    ((HwManager*)pObject)->handleWaitInterrupt(addr, data, flags, retVal);
+}
+
+void HwManager::handleWaitInterrupt(uint32_t addr, uint32_t data, 
         uint32_t flags, uint32_t& retVal)
 {
     // Iterate hardware
@@ -511,7 +524,7 @@ void HwManager::setupFromJson(const char* jsonKey, const char* hwJson)
         pJsonHwListToUse = _pDefaultHardwareList;
 
     int hwListLen = jsonGetArrayLen(pJsonHwListToUse);
-    LogWrite(FromHwManager, LOG_DEBUG, "Hardware list len %d", hwListLen);
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "Hardware list len %d", hwListLen);
 
     // Iterate through hardware
     for (int hwIdx = 0; hwIdx < hwListLen; hwIdx++)
@@ -520,7 +533,7 @@ void HwManager::setupFromJson(const char* jsonKey, const char* hwJson)
         static const int HW_DEF_MAXLEN = 1000;
         char hwDefJson[HW_DEF_MAXLEN];
         bool valid = jsonGetArrayElem(hwIdx, pJsonHwListToUse, hwDefJson, HW_DEF_MAXLEN);
-        LogWrite(FromHwManager, LOG_DEBUG, "Hardware item valid %d elem %s", valid, hwDefJson);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Hardware item valid %d elem %s", valid, hwDefJson);
         if (!valid)
             continue;
 
@@ -529,7 +542,7 @@ void HwManager::setupFromJson(const char* jsonKey, const char* hwJson)
         char hwName[HW_NAME_MAXLEN];
         if (!jsonGetValueForKey("name", hwDefJson, hwName, HW_NAME_MAXLEN))
             continue;
-        LogWrite(FromHwManager, LOG_DEBUG, "Hardware %d Name %s", hwIdx, hwName);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Hardware %d Name %s", hwIdx, hwName);
 
         // Get enable
         static const int HW_ENABLE_MAXLEN = 100;
@@ -546,7 +559,7 @@ void HwManager::setupFromJson(const char* jsonKey, const char* hwJson)
         // Enable/Disable
         enableHw(hwName, en);
 
-        LogWrite(FromHwManager, LOG_DEBUG, "Hardware %d Name %s Enable %d", hwIdx, hwName, en);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Hardware %d Name %s Enable %d", hwIdx, hwName, en);
 
         // Configure hardware
         configureHw(hwName, hwDefJson);

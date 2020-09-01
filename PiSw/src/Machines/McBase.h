@@ -5,52 +5,24 @@
 #include <stdint.h>
 #include "../System/DisplayBase.h"
 #include "../TargetBus/TargetCPU.h"
+#include "../Machines/McVariantTable.h"
 
 static const int MC_WINDOW_NUMBER = 0;
 
 struct WgfxFont;
-
-class McDescriptorTable
-{
-public:
-    enum PROCESSOR_TYPE { PROCESSOR_Z80 };
-
-public:
-    // Name
-    static const int MAX_MACHINE_NAME_LEN = 100;
-    char machineName[MAX_MACHINE_NAME_LEN];
-    // Processor type
-    PROCESSOR_TYPE processorType;
-    // Display
-    int displayRefreshRatePerSec;
-    int displayPixelsX;
-    int displayPixelsY;
-    int displayCellX;
-    int displayCellY;
-    int pixelScaleX;
-    int pixelScaleY;
-    WgfxFont* pFont;
-    int displayForeground;
-    int displayBackground;
-    bool displayMemoryMapped;
-    // Clock
-    uint32_t clockFrequencyHz;
-    // Interrupt rate per second
-    uint32_t irqRate;
-    // Bus monitor modes
-    bool monitorIORQ;
-    bool monitorMREQ;
-    uint32_t setRegistersCodeAddr;
-};
+class HwManager;
+class BusAccess;
+class McManager;
+class TargetProgrammer;
 
 class McBase
 {
 public:
 
-    McBase(McDescriptorTable* pDefaultTables, int numTables);
+    McBase(McManager& mcManager, const McVariantTable* pVariantTables, uint32_t numVariants);
 
     // Check if name is a valid one for this machine
-    virtual bool isCalled(const char* mcName);
+    virtual bool isCalled(const char* mcName, uint32_t& machineVariant);
 
     // Check if machine can process a file type
     virtual bool canProcFileType(const char* fileType);
@@ -59,13 +31,13 @@ public:
     virtual const char* getMachineName();
 
     // Get active machine name or comma separated list of all supported machine names
-    virtual void getMachineNames(char* mcNamesCommaSep, int maxLen);
+    virtual void getMachineNames(char* mcNamesCommaSep, uint32_t maxLen);
 
     // Setup machine from JSON
     virtual bool setupMachine(const char* mcName, const char* mcJson);
 
-    // Get descriptor table for the machine (-1 for current subType)
-    virtual McDescriptorTable* getDescriptorTable();
+    // Get machine descriptor table
+    virtual const McVariantTable& getDescriptorTable();
 
     // Enable machine
     virtual void enable() = 0;
@@ -112,12 +84,72 @@ public:
         return 0;
     }
 
+    // Check state of monitoring MREQ and IORQ
+    virtual bool isMonitorIORQEnabled()
+    {
+        return _machineDescriptor.monitorIORQ;
+    }
+    virtual bool isMonitorMREQEnabled()
+    {
+        return _machineDescriptor.monitorMREQ;
+    }
+
+    // Set state of monitoring MREQ / IORQ
+    virtual void setMonitorIORQEnabled(bool en)
+    {
+        _machineDescriptor.monitorIORQ = en;
+    }
+    virtual void setMonitorMREQEnabled(bool en)
+    {
+        _machineDescriptor.monitorMREQ = en;
+    }
+
+    // Display refresh rate
+    virtual uint32_t getDisplayRefreshRatePerSec()
+    {
+        return _machineDescriptor.displayRefreshRatePerSec;
+    }
+
+    // Get address for setRegistersCode
+    virtual uint32_t getSetRegistersCodeAddr()
+    {
+        return _machineDescriptor.setRegistersCodeAddr;
+    }
+
+    // Check if display is memory mapped
+    virtual bool isDisplayMemoryMapped()
+    {
+        return _machineDescriptor.displayMemoryMapped;
+    }
+
+    // Get HWManager
+    virtual HwManager& getHwManager();
+
+    // Get Target Programmer
+    virtual TargetProgrammer& getTargetProgrammer();
+
+    // Get display
+    virtual DisplayBase* getDisplay()
+    {
+        return _pDisplay;
+    }
+
 protected:
-    // Descriptor tables
-    McDescriptorTable _activeDescriptorTable;
-    McDescriptorTable* _pDefaultDescriptorTables;
-    int _defaultDescriptorTablesLen;
-    int _activeSubType;
+    // Machine manager
+    McManager& _mcManager;
+
+private:
+    // Machine descriptor
+    McVariantTable _machineDescriptor;
+
+    // Machine variant tables
+    static const uint32_t MAX_VARIANTS_FOR_MACHINE = 10;
+    const McVariantTable* _pVariantTables[MAX_VARIANTS_FOR_MACHINE];
+    uint32_t _variantTableCount;
+    uint32_t _activeVariantIdx;
+
+    // Default variant table
+    static McVariantTable _defaultVariantTable;
 
     // Display
     DisplayBase* _pDisplay;

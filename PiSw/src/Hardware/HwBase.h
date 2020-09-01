@@ -5,11 +5,14 @@
 #include <stdint.h>
 #include "../TargetBus/TargetCPU.h"
 
+class HwManager;
+class BusAccess;
+
 class HwBase
 {
 public:
 
-    HwBase();
+    HwBase(HwManager& hwManager, BusAccess& busAccess);
 
     // Handle a completed bus action
     virtual void handleBusActionComplete(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
@@ -72,6 +75,8 @@ public:
     }
 
 protected:
+    HwManager& _hwManager;
+    BusAccess& _busAccess;
     bool _enabled;
     const char* _pName;
 };

@@ -6,7 +6,7 @@
 class HwRAMROM : public HwBase
 {
 public:
-    HwRAMROM();
+    HwRAMROM(HwManager& hwManager, BusAccess& busAccess);
 
     // Configure
     virtual void configure(const char* jsonConfig);
@@ -54,8 +54,6 @@ public:
     }
 
 private:
-    static const char* _logPrefix;
-
     // Paging hardware support
     bool _memoryEmulationMode;
     bool _pageOutEnabled;

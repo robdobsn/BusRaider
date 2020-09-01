@@ -11,28 +11,32 @@
 #include "../System/ee_sprintf.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Variables
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Bus under BusRaider control
-volatile bool BusAccess::_busIsUnderControl = false;
-
-// Clock generator
-TargetClockGenerator BusAccess::_clockGenerator;
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Bus Sockets
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Add a bus socket
-int BusAccess::busSocketAdd(BusSocketInfo& busSocketInfo)
+int BusAccess::busSocketAdd(bool enabled, BusAccessCBFnType* busAccessCallback,
+            BusActionCBFnType* busActionCallback, 
+            bool waitOnMemory, bool waitOnIO,
+            bool resetPending, uint32_t resetDurationTStates,
+            bool nmiPending, uint32_t nmiDurationTStates,
+            bool irqPending, uint32_t irqDurationTStates,
+            bool busMasterRequest, BR_BUS_ACTION_REASON busMasterReason,
+            bool holdInWaitReq, void* pSourceObject)
 {
     // Check if all used
     if (_busSocketCount >= MAX_BUS_SOCKETS)
         return -1;
 
     // Add in available space
-    _busSockets[_busSocketCount] = busSocketInfo;
+    _busSockets[_busSocketCount].set(
+            enabled, busAccessCallback, busActionCallback, 
+            waitOnMemory, waitOnIO,
+            resetPending, resetDurationTStates,
+            nmiPending, nmiDurationTStates,
+            irqPending, irqDurationTStates,
+            busMasterRequest, busMasterReason,
+            holdInWaitReq, pSourceObject);
     int tmpCount = _busSocketCount++;
 
     // Update wait state generation
@@ -1041,7 +1045,8 @@ void BusAccess::busAccessCallbackPageIn()
     for (int i = 0; i < _busSocketCount; i++)
     {
         if (_busSockets[i].enabled)
-            _busSockets[i].busActionCallback(BR_BUS_ACTION_PAGE_IN_FOR_INJECT, BR_BUS_ACTION_GENERAL);
+            _busSockets[i].busActionCallback(_busSockets[i].pSourceObject,
+                         BR_BUS_ACTION_PAGE_IN_FOR_INJECT, BR_BUS_ACTION_GENERAL);
     }
 }
 

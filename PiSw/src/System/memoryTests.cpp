@@ -20,7 +20,7 @@
  *              A non-zero result is the first pattern that failed.
  *
  **********************************************************************/
-uint8_t memTestDataBus(uint32_t address)
+uint8_t memTestDataBus(uint32_t address, BusAccess& busAccess)
 {
     uint8_t pattern;
     /*
@@ -31,13 +31,13 @@ uint8_t memTestDataBus(uint32_t address)
         /*
          * Write the test pattern.
          */
-        BusAccess::blockWrite(address, &pattern, 1, false, false);
+        busAccess.blockWrite(address, &pattern, 1, false, false);
 
         /*
          * Read it back (immediately is okay for this test).
          */
         uint8_t readPattern;
-        BusAccess::blockRead(address, &readPattern, 1, false, false);
+        busAccess.blockRead(address, &readPattern, 1, false, false);
         if (readPattern != pattern) 
         {
             return pattern;
@@ -73,7 +73,7 @@ uint8_t memTestDataBus(uint32_t address)
  *
  **********************************************************************/
 
-uint32_t memTestAddressBus(uint32_t baseAddress, unsigned long nBytes)
+uint32_t memTestAddressBus(uint32_t baseAddress, unsigned long nBytes, BusAccess& busAccess)
 {
     unsigned long addressMask = (nBytes/sizeof(uint8_t) - 1);
     unsigned long offset;
@@ -88,19 +88,19 @@ uint32_t memTestAddressBus(uint32_t baseAddress, unsigned long nBytes)
      */
     for (offset = 1; (offset & addressMask) != 0; offset <<= 1)
     {
-        BusAccess::blockWrite(baseAddress + offset, &pattern, 1, false, false);
+        busAccess.blockWrite(baseAddress + offset, &pattern, 1, false, false);
     }
 
     /* 
      * Check for address bits stuck high.
      */
     testOffset = 0;
-    BusAccess::blockWrite(baseAddress + testOffset, &antipattern, 1, false, false);
+    busAccess.blockWrite(baseAddress + testOffset, &antipattern, 1, false, false);
 
     for (offset = 1; (offset & addressMask) != 0; offset <<= 1)
     {
         uint8_t readPattern;
-        BusAccess::blockRead(baseAddress + offset, &readPattern, 1, false, false);
+        busAccess.blockRead(baseAddress + offset, &readPattern, 1, false, false);
 
         if (readPattern != pattern)
         {
@@ -108,17 +108,17 @@ uint32_t memTestAddressBus(uint32_t baseAddress, unsigned long nBytes)
         }
     }
 
-    BusAccess::blockWrite(baseAddress + testOffset, &pattern, 1, false, false);
+    busAccess.blockWrite(baseAddress + testOffset, &pattern, 1, false, false);
 
     /*
      * Check for address bits stuck low or shorted.
      */
     for (testOffset = 1; (testOffset & addressMask) != 0; testOffset <<= 1)
     {
-        BusAccess::blockWrite(baseAddress + testOffset, &antipattern, 1, false, false);
+        busAccess.blockWrite(baseAddress + testOffset, &antipattern, 1, false, false);
 
         uint8_t readPattern;
-        BusAccess::blockRead(baseAddress, &readPattern, 1, false, false);
+        busAccess.blockRead(baseAddress, &readPattern, 1, false, false);
 		if (readPattern != pattern)
 		{
 			return (baseAddress + testOffset);
@@ -127,7 +127,7 @@ uint32_t memTestAddressBus(uint32_t baseAddress, unsigned long nBytes)
         for (offset = 1; (offset & addressMask) != 0; offset <<= 1)
         {
             uint8_t readPattern;
-            BusAccess::blockRead(baseAddress + offset, &readPattern, 1, false, false);
+            busAccess.blockRead(baseAddress + offset, &readPattern, 1, false, false);
 
             if ((readPattern != pattern) && (offset != testOffset))
             {
@@ -135,7 +135,7 @@ uint32_t memTestAddressBus(uint32_t baseAddress, unsigned long nBytes)
             }
         }
 
-        BusAccess::blockWrite(baseAddress + testOffset, &pattern, 1, false, false);
+        busAccess.blockWrite(baseAddress + testOffset, &pattern, 1, false, false);
     }
 
     return 0;
@@ -163,7 +163,7 @@ uint32_t memTestAddressBus(uint32_t baseAddress, unsigned long nBytes)
  *              additional information about the problem.
  *
  **********************************************************************/
-uint32_t memTestDevice(uint32_t baseAddress, unsigned long nBytes)	
+uint32_t memTestDevice(uint32_t baseAddress, unsigned long nBytes, BusAccess& busAccess)	
 {
     unsigned long offset;
     unsigned long nWords = nBytes / sizeof(uint8_t);
@@ -176,7 +176,7 @@ uint32_t memTestDevice(uint32_t baseAddress, unsigned long nBytes)
      */
     for (pattern = 1, offset = 0; offset < nWords; pattern++, offset++)
     {
-        BusAccess::blockWrite(baseAddress + offset, &pattern, 1, false, false);
+        busAccess.blockWrite(baseAddress + offset, &pattern, 1, false, false);
     }
 
     /*
@@ -185,14 +185,14 @@ uint32_t memTestDevice(uint32_t baseAddress, unsigned long nBytes)
     for (pattern = 1, offset = 0; offset < nWords; pattern++, offset++)
     {
         uint8_t readPattern;
-        BusAccess::blockRead(baseAddress + offset, &readPattern, 1, false, false);
+        busAccess.blockRead(baseAddress + offset, &readPattern, 1, false, false);
         if (readPattern != pattern)
         {
             return (baseAddress + offset);
         }
 
         antipattern = ~pattern;
-        BusAccess::blockWrite(baseAddress + offset, &antipattern, 1, false, false);
+        busAccess.blockWrite(baseAddress + offset, &antipattern, 1, false, false);
     }
 
     /*
@@ -202,7 +202,7 @@ uint32_t memTestDevice(uint32_t baseAddress, unsigned long nBytes)
     {
         antipattern = ~pattern;
         uint8_t readPattern;
-        BusAccess::blockRead(baseAddress + offset, &readPattern, 1, false, false);
+        busAccess.blockRead(baseAddress + offset, &readPattern, 1, false, false);
         if (readPattern != antipattern)
         {
             return (baseAddress + offset);
@@ -214,7 +214,7 @@ uint32_t memTestDevice(uint32_t baseAddress, unsigned long nBytes)
 }   /* memTestDevice() */
 
 // // Memory test block
-// int memTestAll(uint32_t baseAddress, uint32_t numBytes)
+// int memTestAll(uint32_t baseAddress, uint32_t numBytes, BusAccess& busAccess)
 // {
 //     if ((memTestDataBus(baseAddress) != 0) ||
 //         (memTestAddressBus(baseAddress, numBytes) != NULL) ||

@@ -8,22 +8,22 @@
 #include "../System/nmalloc.h"
 #include "../System/lowlib.h"
 #include "../TargetBus/BusAccess.h"
-#include "../TargetBus/TargetState.h"
+#include "../TargetBus/TargetProgrammer.h"
 #include "../Hardware/HwManager.h"
 #include "../TerminalEmulation/TermH19.h"
 #include "../TerminalEmulation/TermAnsi.h"
 
-const char* McTerminal::_logPrefix = "McTerm";
+static const char* MODULE_PREFIX = "McTerm";
 
 extern WgfxFont __p12x16Font;
 KeyConversion McTerminal::_keyConversion;
 
-McDescriptorTable McTerminal::_defaultDescriptorTables[] = {
+McVariantTable McTerminal::_defaultDescriptorTables[] = {
     {
         // Machine name
         "Serial Terminal ANSI",
         // Processor
-        McDescriptorTable::PROCESSOR_Z80,
+        McVariantTable::PROCESSOR_Z80,
         // Required display refresh rate
         .displayRefreshRatePerSec = 30,
         .displayPixelsX = 80*12,
@@ -49,7 +49,7 @@ McDescriptorTable McTerminal::_defaultDescriptorTables[] = {
         // Machine name
         "Serial Terminal H19",
         // Processor
-        McDescriptorTable::PROCESSOR_Z80,
+        McVariantTable::PROCESSOR_Z80,
         // Required display refresh rate
         .displayRefreshRatePerSec = 30,
         .displayPixelsX = 80*12,
@@ -73,8 +73,9 @@ McDescriptorTable McTerminal::_defaultDescriptorTables[] = {
     }
 };
 
-McTerminal::McTerminal() : 
-    McBase(_defaultDescriptorTables, sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0])),
+McTerminal::McTerminal(McManager& mcManager) : 
+    McBase(mcManager, _defaultDescriptorTables, 
+            sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0])),
     _sendToTargetBufPos(MAX_SEND_TO_TARGET_CHARS)
 {
     // Emulation
@@ -104,13 +105,15 @@ void McTerminal::enable()
     _pTerminalEmulation = NULL;
 
     // Emulation
-    if (_activeSubType == 0)
+    if (strstr(getMachineName(), "H19") == NULL)
         _pTerminalEmulation = new TermAnsi();
     else
         _pTerminalEmulation = new TermH19();
     if (_pTerminalEmulation)
-        _pTerminalEmulation->init(_activeDescriptorTable.displayPixelsX/_activeDescriptorTable.displayCellX, 
-                    _activeDescriptorTable.displayPixelsY/_activeDescriptorTable.displayCellY);
+        _pTerminalEmulation->init(
+                    getDescriptorTable().displayPixelsX/getDescriptorTable().displayCellX, 
+                    getDescriptorTable().displayPixelsY/getDescriptorTable().displayCellY
+                    );
 
     // Invalidate screen caches
     invalidateScreenCaches(false);
@@ -130,7 +133,7 @@ bool McTerminal::setupMachine(const char* mcName, const char* mcJson)
     // Check for variations
     _emulate6850 = true;
     _emulationInterruptOnRx = false;
-    getDescriptorTable()->monitorIORQ = true;
+    setMonitorIORQEnabled(true);
     static const int MAX_UART_EMULATION_STR = 100;
     char emulUartStr[MAX_UART_EMULATION_STR];
     bool emulUartValid = jsonGetValueForKey("emulate6850", mcJson, emulUartStr, MAX_UART_EMULATION_STR);
@@ -138,7 +141,7 @@ bool McTerminal::setupMachine(const char* mcName, const char* mcJson)
     {
         _emulate6850 = (strtol(emulUartStr, NULL, 10) != 0);
         if (!_emulate6850)
-            getDescriptorTable()->monitorIORQ = false;
+            setMonitorIORQEnabled(false);
     }
 
     // Keyboard type
@@ -149,7 +152,7 @@ bool McTerminal::setupMachine(const char* mcName, const char* mcJson)
     {
         _keyConversion.setKeyboardTypeStr(keyboardTypeStr);
     }
-    LogWrite(_logPrefix, LOG_DEBUG, "setupMachine emulate6850 %s keyboardType %s",
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "setupMachine emulate6850 %s keyboardType %s",
              _emulate6850 ? "Y" : "N",
              _keyConversion.getKeyboardTypeStr());
     return rslt;
@@ -158,12 +161,13 @@ bool McTerminal::setupMachine(const char* mcName, const char* mcJson)
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
 void McTerminal::displayRefreshFromMirrorHw()
 {
-    if (!_pDisplay)
+    DisplayBase* pDisplay = getDisplay();
+    if (!pDisplay)
         return;
 
     // Use this to get keys from host and display
     // bool screenChanged = false;
-    int numCharsAvailable = McManager::hostSerialNumChAvailable();
+    int numCharsAvailable = _mcManager.hostSerialNumChAvailable();
     if (numCharsAvailable != 0)
     {
         // Get chars
@@ -172,8 +176,8 @@ void McTerminal::displayRefreshFromMirrorHw()
         if (numCharsAvailable > MAX_CHARS_AT_A_TIME)
             numCharsAvailable = MAX_CHARS_AT_A_TIME;
         // screenChanged = true;
-        uint32_t gotChars = McManager::hostSerialReadChars(charBuf, numCharsAvailable);
-        // LogWrite(_logPrefix, LOG_DEBUG, "Got Rx Chars act len = %d\n", gotChars);
+        uint32_t gotChars = _mcManager.hostSerialReadChars(charBuf, numCharsAvailable);
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Got Rx Chars act len = %d\n", gotChars);
         
         // Handle each char
         for (uint32_t i = 0; i < gotChars; i++)
@@ -190,7 +194,7 @@ void McTerminal::displayRefreshFromMirrorHw()
         if (_pTerminalEmulation->hasChanged())
         {
             if (_cursorIsShown)
-                _pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._replacedChar);
+                pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._replacedChar);
             for (uint32_t k = 0; k < _pTerminalEmulation->_rows; k++) 
             {
                 for (uint32_t i = 0; i < _pTerminalEmulation->_cols; i++)
@@ -200,15 +204,15 @@ void McTerminal::displayRefreshFromMirrorHw()
                     {
                         if (_pTerminalEmulation->_pCharBuffer[cellIdx]._attribs & TermChar::TERM_ATTR_REVERSE)
                         {
-                            _pDisplay->foreground((DISPLAY_FX_COLOUR) _pTerminalEmulation->_pCharBuffer[cellIdx]._backColour);
-                            _pDisplay->background((DISPLAY_FX_COLOUR) _pTerminalEmulation->_pCharBuffer[cellIdx]._foreColour);
+                            pDisplay->foreground((DISPLAY_FX_COLOUR) _pTerminalEmulation->_pCharBuffer[cellIdx]._backColour);
+                            pDisplay->background((DISPLAY_FX_COLOUR) _pTerminalEmulation->_pCharBuffer[cellIdx]._foreColour);
                         }
                         else
                         {
-                            _pDisplay->foreground((DISPLAY_FX_COLOUR) _pTerminalEmulation->_pCharBuffer[cellIdx]._foreColour);
-                            _pDisplay->background((DISPLAY_FX_COLOUR) _pTerminalEmulation->_pCharBuffer[cellIdx]._backColour);
+                            pDisplay->foreground((DISPLAY_FX_COLOUR) _pTerminalEmulation->_pCharBuffer[cellIdx]._foreColour);
+                            pDisplay->background((DISPLAY_FX_COLOUR) _pTerminalEmulation->_pCharBuffer[cellIdx]._backColour);
                         }
-                        _pDisplay->write(i, k, _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode);
+                        pDisplay->write(i, k, _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode);
                         _screenCache[cellIdx] = _pTerminalEmulation->_pCharBuffer[cellIdx];
                     }
                 }
@@ -220,7 +224,7 @@ void McTerminal::displayRefreshFromMirrorHw()
                 int cellIdx = _cursorInfo._row * _pTerminalEmulation->_cols + _cursorInfo._col;
                 _cursorInfo._replacedChar = _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode;
                 // Show cursor
-                _pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._cursorChar);
+                pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._cursorChar);
             }
         }
         _pTerminalEmulation->_cursor._updated = false;
@@ -237,12 +241,12 @@ void McTerminal::displayRefreshFromMirrorHw()
                     int cellIdx = _cursorInfo._row * _pTerminalEmulation->_cols + _cursorInfo._col;
                     _cursorInfo._replacedChar = _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode;
                     // Show cursor
-                    _pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._cursorChar);
+                    pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._cursorChar);
                 }
                 else
                 {
                     // Replace cursor
-                    _pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._replacedChar);
+                    pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._replacedChar);
                 }
                 _cursorIsShown = !_cursorIsShown;
                 _cursorBlinkLastUs = micros();
@@ -251,7 +255,7 @@ void McTerminal::displayRefreshFromMirrorHw()
         else
         {
             if (_cursorIsShown)
-                _pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._replacedChar);
+                pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._replacedChar);
             _cursorIsShown = false;
         }
     }
@@ -311,7 +315,7 @@ uint32_t McTerminal::getMirrorChanges(uint8_t* pMirrorChangeBuf, uint32_t mirror
             }
         }
     }
-    // LogWrite(_logPrefix, LOG_DEBUG, "BufMax %d Packing %d rows %d cols %d packedElemSize %d mirrorChangeStart %d curPos %d buf[0] %x buf[1] %x buf[2] %x buf[3] %x", 
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "BufMax %d Packing %d rows %d cols %d packedElemSize %d mirrorChangeStart %d curPos %d buf[0] %x buf[1] %x buf[2] %x buf[3] %x", 
     //             mirrorChangeMaxLen, sizeof(_screenMirrorCache), _pTerminalEmulation->_rows, _pTerminalEmulation->_cols, 
     //             sizeof(changeElemPacked), mirrorChangeStart, curPos, pMirrorChangeBuf[0], pMirrorChangeBuf[1], pMirrorChangeBuf[2], pMirrorChangeBuf[3]);
 
@@ -334,7 +338,7 @@ const char* McTerminal::convertRawToKeyString(unsigned char ucModifiers, const u
     if ((convertedKeyCode >= KeySpace) && (convertedKeyCode < KeyMaxCode))
     {
         const char* pKeyStrToReturn = _keyConversion.s_KeyStrings[convertedKeyCode-KeySpace];
-        // LogWrite(_logPrefix, LOG_DEBUG, "KeyStr %s CODE %02x %02x RAWKEY %02x %02x %02x %02x %02x %02x Mod %02x",
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "KeyStr %s CODE %02x %02x RAWKEY %02x %02x %02x %02x %02x %02x Mod %02x",
         //             pKeyStrToReturn, pKeyStrToReturn[0], pKeyStrToReturn[1], rawKeys[0], rawKeys[1], rawKeys[2], rawKeys[3], rawKeys[4], rawKeys[5], ucModifiers);
         return pKeyStrToReturn;
     }
@@ -345,7 +349,7 @@ const char* McTerminal::convertRawToKeyString(unsigned char ucModifiers, const u
             singleKeyStr[0] = convertedKeyCode & 0x1f;
         else
             singleKeyStr[0] = convertedKeyCode;
-        // LogWrite(_logPrefix, LOG_DEBUG, "KeyStr %s CODE %02x RAWKEY %02x %02x %02x %02x %02x %02x Mod %02x",
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "KeyStr %s CODE %02x RAWKEY %02x %02x %02x %02x %02x %02x Mod %02x",
         //             singleKeyStr, singleKeyStr[0], rawKeys[0], rawKeys[1], rawKeys[2], rawKeys[3], rawKeys[4], rawKeys[5], ucModifiers);
 
         return singleKeyStr;
@@ -357,7 +361,7 @@ void McTerminal::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_
 {
     const char* pKeyStr = convertRawToKeyString(ucModifiers, rawKeys);
 
-    // LogWrite(_logPrefix, LOG_DEBUG, "ASCII %02x RAWKEY %02x %02x %02x %02x %02x %02x Mod %02x",
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "ASCII %02x RAWKEY %02x %02x %02x %02x %02x %02x Mod %02x",
     //                 asciiCode, rawKeys[0], rawKeys[1], rawKeys[2], rawKeys[3], rawKeys[4], rawKeys[5], ucModifiers);
 
     // Send chars to host
@@ -376,13 +380,13 @@ void McTerminal::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_
 
                 // Interrupt if enabled
                 if (_emulationInterruptOnRx)
-                    McManager::targetIrq();
+                    _mcManager.targetIrq();
             }
         }
     }
     else
     {
-        McManager::sendKeyStrToTargetStatic(pKeyStr);
+        _mcManager.sendKeyStrToTargetStatic(pKeyStr);
     }
 }
 
@@ -407,8 +411,8 @@ bool McTerminal::fileHandler(const char* pFileInfo, const uint8_t* pFileData, in
     char baseAddrStr[MAX_VALUE_STR+1];
     if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
         baseAddr = strtol(baseAddrStr, NULL, 16);
-    LogWrite(_logPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
-    TargetState::addMemoryBlock(baseAddr, pFileData, fileLen);
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
+    getTargetProgrammer().addMemoryBlock(baseAddr, pFileData, fileLen);
     return true;
 }
 
@@ -445,7 +449,7 @@ void McTerminal::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unuse
                     else if (_emulation6850NotSetup)
                         retVal = 0;
         
-                    // LogWrite(_logPrefix, LOG_DEBUG, "IORQ READ %04x returning %02x", addr, retVal);
+                    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "IORQ READ %04x returning %02x", addr, retVal);
                 }
                 else
                 {
@@ -458,7 +462,7 @@ void McTerminal::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unuse
 
                         // Interrupt if chars still available
                         if ((_emulationInterruptOnRx) && _sendToTargetBufPos.canGet())
-                            McManager::targetIrq();
+                            _mcManager.targetIrq();
                     }
                     _emulation6850NeedsReset = false;
                 }
@@ -490,7 +494,7 @@ void McTerminal::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unuse
             }
             // if (debugCount < 50)
             // {
-            // LogWrite(_logPrefix, LOG_DEBUG, "IORQ %s %04x data %02x retVal %02x irq %d",
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "IORQ %s %04x data %02x retVal %02x irq %d",
             //         (flags & BR_CTRL_BUS_RD_MASK) ? "RD" : ((flags & BR_CTRL_BUS_WR_MASK) ? "WR" : "??"),
             //         addr, 
             //         data,

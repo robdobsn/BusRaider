@@ -18,6 +18,7 @@
 
 void BusRaiderApp::testSelf_busBits()
 {
+    BusAccess& busAccess = _mcManager.getBusAccess();
     _display.consoleForeground(DISPLAY_FX_BLUE);
     _display.consolePut("\nBits test\n");
     _display.consoleForeground(DISPLAY_FX_WHITE);
@@ -95,7 +96,7 @@ void BusRaiderApp::testSelf_busBits()
         {
             case TEST_STATE_SET_MC:
             {
-                bool mcSet = McManager::setMachineByName("Serial Terminal ANSI");
+                bool mcSet = _mcManager.setMachineByName("Serial Terminal ANSI");
                 if (!mcSet)
                 {
                     _display.consoleForeground(DISPLAY_FX_RED);
@@ -119,9 +120,9 @@ void BusRaiderApp::testSelf_busBits()
                     pinMode(BR_BUSACK_BAR, OUTPUT);
                     digitalWrite(BR_BUSACK_BAR, 0);
                     digitalWrite(BR_BUSRQ_BAR, 0);
-                    BusAccess::rawBusControlMuxSet(BR_MUX_DATA_OE_BAR_LOW);
+                    busAccess.rawBusControlMuxSet(BR_MUX_DATA_OE_BAR_LOW);
                     microsDelay(1);
-                    BusAccess::rawBusControlMuxClear();
+                    busAccess.rawBusControlMuxClear();
 
                 } else if (rdtolower(_testSelf_curKeyAscii) == 'n')
                 {
@@ -143,12 +144,12 @@ void BusRaiderApp::testSelf_busBits()
                     {
                         case TEST_BUS_ADDR:
                         {
-                            BusAccess::rawBusControlSetAddress(testSequence[testSeqIdx].val);
+                            busAccess.rawBusControlSetAddress(testSequence[testSeqIdx].val);
                             break;
                         }
                         case TEST_BUS_DATA:
                         {
-                            BusAccess::rawBusControlSetData(testSequence[testSeqIdx].val);
+                            busAccess.rawBusControlSetData(testSequence[testSeqIdx].val);
                             break;
                         }
                     }
@@ -180,7 +181,7 @@ void BusRaiderApp::testSelf_busBits()
                 // Clear bus outputs
                 pinMode(BR_BUSACK_BAR, INPUT);
                 digitalWrite(BR_BUSRQ_BAR, 1);
-                BusAccess::rawBusControlMuxClear();
+                busAccess.rawBusControlMuxClear();
                 _display.consolePut("Tests complete");
                 return;
             }

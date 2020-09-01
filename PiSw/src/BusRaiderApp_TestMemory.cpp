@@ -18,6 +18,7 @@
 
 void BusRaiderApp::testSelf_memory()
 {
+    BusAccess& busAccess = _mcManager.getBusAccess();
     _display.consoleForeground(DISPLAY_FX_BLUE);
     _display.consolePut("\nMemory test\n");
     _display.consoleForeground(DISPLAY_FX_WHITE);
@@ -95,21 +96,21 @@ void BusRaiderApp::testSelf_memory()
             case TEST_STATE_PERFORM_RESET:
             {
                 // Reset the machine
-                BusAccess::rawBusControlMuxSet(BR_MUX_RESET_Z80_BAR_LOW);
+                busAccess.rawBusControlMuxSet(BR_MUX_RESET_Z80_BAR_LOW);
                 microsDelay(100000);
-                BusAccess::rawBusControlMuxClear();
+                busAccess.rawBusControlMuxClear();
                 testState = TEST_STATE_CHECK_BUSRQ;
                 break;
             }
             case TEST_STATE_CHECK_BUSRQ:
             {
                 // Check if BUSRQ works
-                BR_RETURN_TYPE busAckedRetc = BusAccess::controlRequestAndTake();
+                BR_RETURN_TYPE busAckedRetc = busAccess.controlRequestAndTake();
                 if (busAckedRetc != BR_OK)
                 {
                     _display.consoleForeground(DISPLAY_FX_RED);
                     _display.consolePut("FAILED to request Z80 bus: ");
-                    _display.consolePut(BusAccess::retcString(busAckedRetc));
+                    _display.consolePut(busAccess.retcString(busAckedRetc));
                     _display.consolePut("\nCheck: CLOCK jumper installed on BusRaider OR external clock\n");
                     _display.consolePut("Use the test command to test the bus\n");
                     _display.consolePut("Or if you have a scope/logic analyzer check:\n");
@@ -159,7 +160,7 @@ void BusRaiderApp::testSelf_memory()
                 uint32_t blockStart = testSequence[testSeqIdx].blockStart;
                 uint32_t blockLen = testSequence[testSeqIdx].blockLen;
 
-                uint32_t rslt = memTestDevice(blockStart, blockLen);
+                uint32_t rslt = memTestDevice(blockStart, blockLen, busAccess);
                 bool blockTestFailed = false;
                 if (rslt != 0)
                 {
@@ -174,7 +175,7 @@ void BusRaiderApp::testSelf_memory()
 
                 if (!blockTestFailed)
                 {
-                    rslt = memTestAddressBus(blockStart, blockLen);
+                    rslt = memTestAddressBus(blockStart, blockLen, busAccess);
                     if (rslt != 0)
                     {
                         _display.consoleForeground(DISPLAY_FX_RED);
@@ -186,7 +187,7 @@ void BusRaiderApp::testSelf_memory()
                         blockTestFailed = true;
                     }
 
-                    rslt = memTestDataBus(blockStart);
+                    rslt = memTestDataBus(blockStart, busAccess);
                     if (rslt != 0)
                     {
                         _display.consoleForeground(DISPLAY_FX_RED);
@@ -218,7 +219,7 @@ void BusRaiderApp::testSelf_memory()
             }
             case TEST_STATE_DONE:
             {
-                BusAccess::controlRelease();
+                busAccess.controlRelease();
                 if (issueCount == 0)
                 {
                     _display.consoleForeground(DISPLAY_FX_GREEN);

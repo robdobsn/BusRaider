@@ -19,11 +19,12 @@
 BusRaiderApp::testCodeRet_type BusRaiderApp::testSelf_commonLoop()
 {
     // Service the comms channels and display updates
+    BusAccess& busAccess = _mcManager.getBusAccess();
     service();
     // Timer polling
     timer_poll();
     // Service bus access
-    BusAccess::service();
+    busAccess.service();
 
     // Check for keyboard keys
     const char* pKeyStr = "\0";
@@ -60,6 +61,7 @@ BusRaiderApp::testCodeRet_type BusRaiderApp::testSelf_commonLoop()
 
 void BusRaiderApp::testSelf_busrq()
 {
+    BusAccess& busAccess = _mcManager.getBusAccess();
     _display.consolePut("\nSelf-testing\n");
     _display.consolePut("Make sure CPU and RAM are plugged in ...\n");
 
@@ -83,7 +85,7 @@ void BusRaiderApp::testSelf_busrq()
         {
             case TEST_STATE_SET_MC:
             {
-                bool mcSet = McManager::setMachineByName("Serial Terminal ANSI");
+                bool mcSet = _mcManager.setMachineByName("Serial Terminal ANSI");
                 if (!mcSet)
                 {
                     _display.consoleForeground(DISPLAY_FX_RED);
@@ -97,12 +99,12 @@ void BusRaiderApp::testSelf_busrq()
             case TEST_STATE_CHECK_BUSRQ:
             {
                 // Check if BUSRQ works
-                BR_RETURN_TYPE busAckedRetc = BusAccess::controlRequestAndTake();
+                BR_RETURN_TYPE busAckedRetc = busAccess.controlRequestAndTake();
                 if (busAckedRetc != BR_OK)
                 {
                     _display.consoleForeground(DISPLAY_FX_RED);
                     _display.consolePut("FAILED to request Z80 bus: ");
-                    _display.consolePut(BusAccess::retcString(busAckedRetc));
+                    _display.consolePut(busAccess.retcString(busAckedRetc));
                     _display.consolePut("\nCheck CLOCK jumper installed on BusRaider OR external clock\n");
                     _display.consolePut("Use bustest command to test the bus slowly\n");
                     _display.consolePut("Or if you have a scope/logic analyzer check:\n");
@@ -116,7 +118,7 @@ void BusRaiderApp::testSelf_busrq()
             }
             case TEST_STATE_DONE:
             {
-                BusAccess::controlRelease();
+                busAccess.controlRelease();
                 if (issueCount == 0)
                 {
                     _display.consoleForeground(DISPLAY_FX_GREEN);
@@ -144,6 +146,7 @@ void BusRaiderApp::testSelf_busrq()
 
 void BusRaiderApp::testSelf_readSetBus(bool readMode)
 {
+    BusAccess& busAccess = _mcManager.getBusAccess();
     _display.consolePut("\nSelf-testing show bus values\n");
     _display.consolePut("Confirm ONLY BusRaider installed (y/n) ...");
 
@@ -194,7 +197,7 @@ void BusRaiderApp::testSelf_readSetBus(bool readMode)
             }
             case TEST_STATE_SET_MC:
             {
-                bool mcSet = McManager::setMachineByName("Serial Terminal ANSI");
+                bool mcSet = _mcManager.setMachineByName("Serial Terminal ANSI");
                 if (!mcSet)
                 {
                     _display.consoleForeground(DISPLAY_FX_RED);
@@ -210,13 +213,13 @@ void BusRaiderApp::testSelf_readSetBus(bool readMode)
             {
                 if (isTimeout(millis(), lastUpdateTimeMs, 1000))
                 {
-                    uint32_t rawVals = BusAccess::rawBusControlReadRaw();
+                    uint32_t rawVals = busAccess.rawBusControlReadRaw();
                     uint32_t addr = 0, data = 0, ctrl = 0;
                     WR32(ARM_GPIO_GPCLR0, BR_DATA_DIR_IN_MASK);
-                    BusAccess::rawBusControlReadAll(ctrl, addr, data);
+                    busAccess.rawBusControlReadAll(ctrl, addr, data);
                     char busInfo[100];
                     char ctrlBusStr[20];
-                    BusAccess::formatCtrlBus(ctrl, ctrlBusStr, 20);
+                    busAccess.formatCtrlBus(ctrl, ctrlBusStr, 20);
                     ee_sprintf(busInfo, "BUS Addr: %04x Data: %02x, Ctrl: %s%c%c (%08x)\n", 
                                 addr, data, 
                                 ctrlBusStr,
@@ -226,9 +229,9 @@ void BusRaiderApp::testSelf_readSetBus(bool readMode)
                     _display.consolePut(busInfo);
                     lastUpdateTimeMs = millis();
                     // Toggle MREQ to ensure bus control is cleared
-                    BusAccess::rawBusControlSetPin(BR_CTRL_BUS_MREQ_BITNUM, 0);
+                    busAccess.rawBusControlSetPin(BR_CTRL_BUS_MREQ_BITNUM, 0);
                     microsDelay(1);
-                    BusAccess::rawBusControlSetPin(BR_CTRL_BUS_MREQ_BITNUM, 1);
+                    busAccess.rawBusControlSetPin(BR_CTRL_BUS_MREQ_BITNUM, 1);
                 }
                 if (isTimeout(millis(), _testSelf_startUpdateTimeMs, 60000))
                 {
@@ -244,7 +247,7 @@ void BusRaiderApp::testSelf_readSetBus(bool readMode)
             }
             case TEST_STATE_DONE:
             {
-                BusAccess::controlRelease();
+                busAccess.controlRelease();
                 return;
             }
         }

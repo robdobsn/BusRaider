@@ -6,17 +6,16 @@
 class McRobsZ80 : public McBase
 {
 private:
-    static const char* _logPrefix;
     static constexpr uint32_t ROBSZ80_DISP_RAM_ADDR = 0x4000;
     static constexpr uint32_t ROBSZ80_DISP_RAM_SIZE = 0x4000;
     uint8_t _screenBuffer[ROBSZ80_DISP_RAM_SIZE];
     bool _screenBufferValid;
 
-    static McDescriptorTable _defaultDescriptorTables[];
+    static McVariantTable _defaultDescriptorTables[];
 
 public:
 
-    McRobsZ80();
+    McRobsZ80(McManager& mcManager);
 
     // Enable machine
     virtual void enable();

@@ -18,6 +18,8 @@
 #include "../Hardware/HwManager.h"
 #endif
 
+class McManager;
+
 // Stats
 class StepTracerStats
 {
@@ -75,13 +77,13 @@ public:
 class StepTracer
 {
 public:
-    StepTracer();
+    StepTracer(CommandHandler& _commandHandler, McManager& mcManager);
     void init();
 
     // Control
     void start(bool logging, bool recordAll, bool compareToEmulated, bool primeFromMem);
     void stop(bool logging);
-    static void stopAll(bool logging);
+    void stopAll(bool logging);
     
     // Service
     void service();
@@ -109,16 +111,22 @@ private:
     // Singleton instance
     static StepTracer* _pThisInstance;
 
+    // Command Handler
+    CommandHandler& _commandHandler;
+
+    // Machine manager
+    McManager& _mcManager;
+
     // Bus socket we're attached to
-    static int _busSocketId;
-    static BusSocketInfo _busSocketInfo;
+    int _busSocketId;
 
     // Comms socket we're attached to
-    static int _commsSocketId;
-    static CommsSocketInfo _commsSocketInfo;
+    int _commsSocketId;
 
     // Handle messages (telling us to start/stop)
-    static bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
+    static bool handleRxMsgStatic(void* pObject, const char* pCmdJson, const uint8_t* pParams, int paramsLen,
+                    char* pRespJson, int maxRespLen);
+    bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
                     char* pRespJson, int maxRespLen);
 
     // Get status
@@ -129,26 +137,27 @@ private:
     void getTraceBin();
 
     // Reset complete callback
-    static void busActionCompleteStatic(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
+    static void busActionCompleteStatic(void* pObject, BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
+    void busActionComplete(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
     void resetComplete();
 
     // Wait interrupt handler
-    static void handleWaitInterruptStatic(uint32_t addr, uint32_t data, 
+    static void handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t data, 
             uint32_t flags, uint32_t& retVal);
     void handleWaitInterrupt(uint32_t addr, uint32_t data, 
             uint32_t flags, uint32_t& retVal);
 
     // Memory and IO functions
-    static byte mem_read(int param, ushort address);
-    static void mem_write(int param, ushort address, byte data);
-    static byte io_read(int param, ushort address);
-    static void io_write(int param, ushort address, byte data);
+    static byte mem_read(int param, ushort address, void* pTracer);
+    static void mem_write(int param, ushort address, byte data, void* pTracer);
+    static byte io_read(int param, ushort address, void* pTracer);
+    static void io_write(int param, ushort address, byte data, void* pTracer);
 
     // Record step information for instruction
     static const int MAX_STEP_CYCLES_FOR_INSTR = 10;
-    static StepTracerCycle _stepCycles[MAX_STEP_CYCLES_FOR_INSTR];
-    static int _stepCycleCount;
-    static int _stepCyclePos;
+    StepTracerCycle _stepCycles[MAX_STEP_CYCLES_FOR_INSTR];
+    int _stepCycleCount;
+    int _stepCyclePos;
 
     // Exception list
     static const int NUM_DEBUG_VALS = 20;

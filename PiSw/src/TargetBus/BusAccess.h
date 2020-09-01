@@ -9,220 +9,15 @@
 #include "TargetCPU.h"
 #include "../System/BCM2835.h"
 #include "../System/lowlib.h"
+#include "BusSocketInfo.h"
+#include "BusAccessDefs.h"
+#include "../TargetBus/TargetClockGenerator.h"
 
 // #define ISR_TEST 1
 
 #define V2_PROTO_USING_MUX_EN 1
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Defs
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Multiplexer
-// Wiring is a little off as A0, A1, A2 on 74HC138 are Pi 11, 9, 10 respectively
-// Pi GPIO0    74HC138      CTRL Value
-// 11 10 09    A2 A1 A0     
-//  0  0  0     0  0  0     PI_HADDR_SER
-//  0  0  1     0  1  0     PI_DATA_OE_BAR
-//  0  1  0     1  0  0     PI_IRQ_BAR
-//  0  1  1     1  1  0     PI_LADDR_OE_BAR
-//  1  0  0     0  0  1     PI_LADDR_CLR_BAR
-//  1  0  1     0  1  1     PI_RESET_Z80_BAR
-//  1  1  0     1  0  1     PI_NMI_BAR
-//  1  1  1     1  1  1     PI_HADDR_OE_BAR
-#define BR_MUX_LOW_BIT_POS 9
-#define BR_MUX_CTRL_BIT_MASK (0x07 << BR_MUX_LOW_BIT_POS)
-#define BR_MUX_LADDR_CLK 0x00
-#define BR_MUX_LADDR_CLR_BAR_LOW 0x04
-#define BR_MUX_DATA_OE_BAR_LOW 0x01
-#define BR_MUX_RESET_Z80_BAR_LOW 0x05
-#define BR_MUX_IRQ_BAR_LOW 0x02
-#define BR_MUX_NMI_BAR_LOW 0x06
-#define BR_MUX_LADDR_OE_BAR 0x03
-#define BR_MUX_HADDR_OE_BAR 0x07
-
-// Pi pins used for control of host bus
-#define BR_BUSRQ_BAR 19 // SPI1 MISO
-#define BR_BUSACK_BAR 2 // SDA
-#define BR_MUX_0 11 // SPI0 SCLK
-#define BR_MUX_1 9 // SPI0 MISO
-#define BR_MUX_2 10 // SPI0 MOSI
-#define BR_MUX_EN_BAR 16 // SPI1 CE2
-#define BR_IORQ_WAIT_EN 12 // GPIO12
-#define BR_MREQ_WAIT_EN 13 // GPIO13
-#define BR_WR_BAR 17 // SPI1 CE1
-#define BR_RD_BAR 18 // SPI1 CE0
-#define BR_MREQ_BAR 0 // ID_SD
-#define BR_IORQ_BAR 1 // ID_SC
-#define BR_DATA_BUS 20 // GPIO20..27
-#define BR_HADDR_CK 7 // SPI0 CE1
-#define BR_DATA_DIR_IN 6
-#define BR_WAIT_BAR_PIN 5 // GPIO5
-#define BR_CLOCK_PIN 4 // GPIO4
-#define BR_PAGING_RAM_PIN 8 // CPI CE0
-
-// V1.7 hardware pins
-#define BR_V17_LADDR_CK 16 // SPI1 CE2
-#define BR_V17_LADDR_CK_MASK (1 << BR_V17_LADDR_CK)
-#define BR_V17_M1_PIB_BAR 20 // Piggy backing on the PIB (with resistor to avoid conflict)
-#define BR_V17_PUSH_ADDR_BAR 3 // SCL
-#define BR_V17_M1_PIB_BAR_MASK (1 << BR_V17_M1_PIB_BAR)
-#define BR_V17_M1_PIB_DATA_LINE 0
-#define BR_V17_MUX_HADDR_SER_LOW 0x00
-#define BR_V17_MUX_HADDR_SER_HIGH BR_MUX_LADDR_CLR_BAR_LOW 
-
-// V2.0 hardware pins
-#define BR_V20_M1_BAR 3 // SCL
-#define BR_V20_M1_BAR_MASK (1 << BR_V20_M1_BAR)
-
-// Masks for above
-#define BR_BUSRQ_BAR_MASK (1 << BR_BUSRQ_BAR)
-#define BR_MUX_EN_BAR_MASK (1 << BR_MUX_EN_BAR)
-#define BR_IORQ_WAIT_EN_MASK (1 << BR_IORQ_WAIT_EN)
-#define BR_MREQ_WAIT_EN_MASK (1 << BR_MREQ_WAIT_EN)
-#define BR_MREQ_BAR_MASK (1 << BR_MREQ_BAR)
-#define BR_IORQ_BAR_MASK (1 << BR_IORQ_BAR)
-#define BR_WR_BAR_MASK (1 << BR_WR_BAR)
-#define BR_RD_BAR_MASK (1 << BR_RD_BAR)
-#define BR_BUSACK_BAR_MASK (1 << BR_BUSACK_BAR)
-#define BR_WAIT_BAR_MASK (1 << BR_WAIT_BAR_PIN)
-#define BR_DATA_DIR_IN_MASK (1 << BR_DATA_DIR_IN)
-#define BR_ANY_EDGE_MASK 0xffffffff
-
-// Pi debug pin
-#define BR_DEBUG_PI_SPI0_CE0 8 // SPI0 CE0
-#define BR_DEBUG_PI_SPI0_CE0_MASK (1 << BR_DEBUG_PI_SPI0_CE0) // SPI0 CE0
-
-// Direct access to Pi PIB (used for data transfer to/from host data bus)
-#define BR_PIB_MASK (~((uint32_t)0xff << BR_DATA_BUS))
-#define BR_PIB_GPF_REG ARM_GPIO_GPFSEL2
-#define BR_PIB_GPF_MASK 0xff000000
-#define BR_PIB_GPF_INPUT 0x00000000
-#define BR_PIB_GPF_OUTPUT 0x00249249
-
-// Debug code for ISR
-#define ISR_ASSERT(code) BusAccess::isrAssert(code)
-#define ISR_VALUE(code, val) BusAccess::isrValue(code, val)
-#define ISR_PEAK(code, val) BusAccess::isrPeak(code, val)
-#define ISR_ASSERT_CODE_NONE 0
-#define ISR_ASSERT_CODE_DEBUG_A 1
-#define ISR_ASSERT_CODE_DEBUG_B 2
-#define ISR_ASSERT_CODE_DEBUG_C 3
-#define ISR_ASSERT_CODE_DEBUG_D 4
-#define ISR_ASSERT_CODE_DEBUG_E 5
-#define ISR_ASSERT_CODE_DEBUG_F 6
-#define ISR_ASSERT_CODE_DEBUG_G 7
-#define ISR_ASSERT_CODE_DEBUG_H 8
-#define ISR_ASSERT_CODE_DEBUG_I 9
-#define ISR_ASSERT_CODE_DEBUG_J 10
-#define ISR_ASSERT_CODE_DEBUG_K 11
-#define ISR_ASSERT_NUM_CODES 12
-
-// Timing of a reset, NMI, IRQ and wait for BUSACK
-#define BR_RESET_PULSE_T_STATES 100
-#define BR_NMI_PULSE_T_STATES 32
-#define BR_IRQ_PULSE_T_STATES 32
-#define BR_MAX_WAIT_FOR_BUSACK_T_STATES 1000
-
-// Max time bound in service function
-#define BR_MAX_TIME_IN_SERVICE_LOOP_US 10000
-#define BR_MAX_TIME_IN_READ_LOOP_US 10000
-
-// Clock frequency for debug
-#define BR_TARGET_DEBUG_CLOCK_HZ 500000
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Callback types
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Callback types
-typedef void BusAccessCBFnType(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& curRetVal);
-typedef void BusActionCBFnType(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Bus Socket Info - this is used to plug-in to the BusAccess layer
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class BusSocketInfo
-{
-public:
-    // Socket enablement
-    bool enabled;
-
-    // Callbacks
-    BusAccessCBFnType* busAccessCallback;
-    BusActionCBFnType* busActionCallback;
-
-    // Flags
-    bool waitOnMemory;
-    bool waitOnIO;
-
-    // Bus actions and duration
-    volatile bool resetPending;
-    volatile uint32_t resetDurationTStates;
-    volatile bool nmiPending;
-    volatile uint32_t nmiDurationTStates;
-    volatile bool irqPending;
-    volatile uint32_t irqDurationTStates;
-
-    // Bus master request and reason
-    volatile bool busMasterRequest;
-    volatile BR_BUS_ACTION_REASON busMasterReason;
-
-    // Bus hold in wait
-    volatile bool holdInWaitReq;
-
-    // Get type of bus action
-    BR_BUS_ACTION getType()
-    {
-        if (busMasterRequest)
-            return BR_BUS_ACTION_BUSRQ;
-        if (resetPending)
-            return BR_BUS_ACTION_RESET;
-        if (nmiPending)
-            return BR_BUS_ACTION_NMI;
-        if (irqPending)
-            return BR_BUS_ACTION_IRQ;
-        return BR_BUS_ACTION_NONE;
-    }
-
-    void clearDown(BR_BUS_ACTION type)
-    {
-        if (type == BR_BUS_ACTION_BUSRQ)
-            busMasterRequest = false;
-        else if (type == BR_BUS_ACTION_RESET)
-            resetPending = false;
-        else if (type == BR_BUS_ACTION_NMI)
-            nmiPending = false;
-        else if (type == BR_BUS_ACTION_IRQ)
-            irqPending = false;
-    }
-
-    // Time calc
-    static uint32_t getUsFromTStates(uint32_t tStates, uint32_t clockFreqHz, uint32_t defaultTStates = 1)
-    {
-        uint32_t tS = tStates >= 1 ? tStates : defaultTStates;
-        uint32_t uS = 1000000 * tS / clockFreqHz;
-        if (uS <= 0)
-            uS = 1;
-        return uS;
-    }
-
-    uint32_t getAssertUs(BR_BUS_ACTION type, uint32_t clockFreqHz)
-    {
-        if (type == BR_BUS_ACTION_BUSRQ)
-            return getUsFromTStates(BR_MAX_WAIT_FOR_BUSACK_T_STATES, clockFreqHz);
-        else if (type == BR_BUS_ACTION_RESET)
-            return getUsFromTStates(resetDurationTStates, clockFreqHz, BR_RESET_PULSE_T_STATES);
-        else if (type == BR_BUS_ACTION_NMI)
-            return getUsFromTStates(nmiDurationTStates, clockFreqHz, BR_NMI_PULSE_T_STATES);
-        else if (type == BR_BUS_ACTION_IRQ)
-            return getUsFromTStates(irqDurationTStates, clockFreqHz, BR_IRQ_PULSE_T_STATES);
-        return 0;
-    }
-};
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Status Info
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -338,55 +133,62 @@ public:
 // Bus Access
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class TargetClockGenerator;
-
 class BusAccess
 {
 public:
+    BusAccess();
+
     // Initialise the bus raider
-    static void init();
-    static void busAccessReset();
+    void init();
+    void busAccessReset();
 
     // Bus Sockets - used to hook things like waitInterrupts, busControl, etc
-    static int busSocketAdd(BusSocketInfo& busSocketInfo);
-    static void busSocketEnable(int busSocket, bool enable);
-    static bool busSocketIsEnabled(int busSocket);
+    int busSocketAdd(bool enabled, BusAccessCBFnType* busAccessCallback,
+            BusActionCBFnType* busActionCallback, 
+            bool waitOnMemory, bool waitOnIO,
+            bool resetPending, uint32_t resetDurationTStates,
+            bool nmiPending, uint32_t nmiDurationTStates,
+            bool irqPending, uint32_t irqDurationTStates,
+            bool busMasterRequest, BR_BUS_ACTION_REASON busMasterReason,
+            bool holdInWaitReq, void* pSourceObject);
+    void busSocketEnable(int busSocket, bool enable);
+    bool busSocketIsEnabled(int busSocket);
 
     // Wait state enablement
-    static void waitOnMemory(int busSocket, bool isOn);
-    static void waitOnIO(int busSocket, bool isOn);
-    static bool waitIsOnMemory();
+    void waitOnMemory(int busSocket, bool isOn);
+    void waitOnIO(int busSocket, bool isOn);
+    bool waitIsOnMemory();
 
     // Min cycle Us when in waitOnMemory mode
-    static void waitSetCycleUs(uint32_t cycleUs);
+    void waitSetCycleUs(uint32_t cycleUs);
 
     // Reset, NMI and IRQ on target
-    static void targetReqReset(int busSocket, int durationTStates = -1);
-    static void targetReqNMI(int busSocket, int durationTStates = -1);
-    static void targetReqIRQ(int busSocket, int durationTStates = -1);
-    static void targetReqBus(int busSocket, BR_BUS_ACTION_REASON busMasterReason);
-    static void targetPageForInjection(int busSocket, bool pageOut);
+    void targetReqReset(int busSocket, int durationTStates = -1);
+    void targetReqNMI(int busSocket, int durationTStates = -1);
+    void targetReqIRQ(int busSocket, int durationTStates = -1);
+    void targetReqBus(int busSocket, BR_BUS_ACTION_REASON busMasterReason);
+    void targetPageForInjection(int busSocket, bool pageOut);
 
     // Bus control
-    static bool isUnderControl();
+    bool isUnderControl();
     
     // Read and write blocks
-    static BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, bool busRqAndRelease, bool iorq);
-    static BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pData, uint32_t len, bool busRqAndRelease, bool iorq);
+    BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, bool busRqAndRelease, bool iorq);
+    BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pData, uint32_t len, bool busRqAndRelease, bool iorq);
 
     // Wait hold and release
-    static void waitRelease();
-    static bool waitIsHeld();
-    static void waitHold(int busSocket, bool hold);
+    void waitRelease();
+    bool waitIsHeld();
+    void waitHold(int busSocket, bool hold);
 
     // Suspend bus detail for one cycle - used to fix a PIB contention issue
-    static void waitSuspendBusDetailOneCycle();
+    void waitSuspendBusDetailOneCycle();
 
     // Service
-    static void service();
+    void service();
 
     // Get return type string
-    static const char* retcString(BR_RETURN_TYPE retc)
+    const char* retcString(BR_RETURN_TYPE retc)
     {
         switch (retc)
         {
@@ -399,108 +201,108 @@ public:
     }
 
     // Clock
-    static void clockSetup();
-    static void clockSetFreqHz(uint32_t freqHz);
-    static void clockEnable(bool en);
-    static uint32_t clockCurFreqHz();
-    static uint32_t clockGetMinFreqHz();
-    static uint32_t clockGetMaxFreqHz();
+    void clockSetup();
+    void clockSetFreqHz(uint32_t freqHz);
+    void clockEnable(bool en);
+    uint32_t clockCurFreqHz();
+    uint32_t clockGetMinFreqHz();
+    uint32_t clockGetMaxFreqHz();
 
     // Status
-    static void getStatus(BusAccessStatusInfo& statusInfo);
-    static void clearStatus();
+    void getStatus(BusAccessStatusInfo& statusInfo);
+    void clearStatus();
 
     // External API low-level bus control
-    static void rawBusControlEnable(bool en);
-    static void rawBusControlClearWait();
-    static void rawBusControlWaitDisable();
-    static void rawBusControlClockEnable(bool en);
-    static bool rawBusControlTakeBus();
-    static void rawBusControlReleaseBus();
-    static void rawBusControlSetAddress(uint32_t addr);
-    static void rawBusControlSetData(uint32_t data);
-    static uint32_t rawBusControlReadRaw();
-    static uint32_t rawBusControlReadCtrl();
-    static void rawBusControlReadAll(uint32_t& ctrl, uint32_t& addr, uint32_t& data);
-    static void rawBusControlSetPin(uint32_t pinNumber, bool level);
-    static bool rawBusControlGetPin(uint32_t pinNumber);
-    static uint32_t rawBusControlReadPIB();
-    static void rawBusControlWritePIB(uint32_t val);
-    static void rawBusControlMuxSet(uint32_t val);
-    static void rawBusControlMuxClear();
+    void rawBusControlEnable(bool en);
+    void rawBusControlClearWait();
+    void rawBusControlWaitDisable();
+    void rawBusControlClockEnable(bool en);
+    bool rawBusControlTakeBus();
+    void rawBusControlReleaseBus();
+    void rawBusControlSetAddress(uint32_t addr);
+    void rawBusControlSetData(uint32_t data);
+    uint32_t rawBusControlReadRaw();
+    uint32_t rawBusControlReadCtrl();
+    void rawBusControlReadAll(uint32_t& ctrl, uint32_t& addr, uint32_t& data);
+    void rawBusControlSetPin(uint32_t pinNumber, bool level);
+    bool rawBusControlGetPin(uint32_t pinNumber);
+    uint32_t rawBusControlReadPIB();
+    void rawBusControlWritePIB(uint32_t val);
+    void rawBusControlMuxSet(uint32_t val);
+    void rawBusControlMuxClear();
 
     // Version
     static const int HW_VERSION_DEFAULT = 20;
-    static int getHwVersion()
+    int getHwVersion()
     {
         return _hwVersionNumber;
     }
-    static void setHwVersion(int hwVersion)
+    void setHwVersion(int hwVersion)
     {
         _hwVersionNumber = hwVersion;
     }
 
     // Control of bus paging pin
-    static void busPagePinSetActive(bool active);
+    void busPagePinSetActive(bool active);
 
     // Debug
-    static void isrAssert(int code);
-    static void isrValue(int code, int val);
-    static void isrPeak(int code, int val);
-    static int isrAssertGetCount(int code);
-    static void formatCtrlBus(uint32_t ctrlBus, char* msgBuf, int maxMsgBufLen);
+    void isrAssert(int code);
+    void isrValue(int code, int val);
+    void isrPeak(int code, int val);
+    int isrAssertGetCount(int code);
+    void formatCtrlBus(uint32_t ctrlBus, char* msgBuf, int maxMsgBufLen);
 
     // Bus request/ack
-    static void controlRequest();
-    static BR_RETURN_TYPE controlRequestAndTake();
-    static void controlRelease();
-    static void controlTake();
-    static bool waitForBusAck(bool ack);
+    void controlRequest();
+    BR_RETURN_TYPE controlRequestAndTake();
+    void controlRelease();
+    void controlTake();
+    bool waitForBusAck(bool ack);
 
 private:
     // Hardware version
     // V1.7 ==> 17, V2.0 ==> 20
-    static int _hwVersionNumber;
+    int _hwVersionNumber;
     
     // Bus Sockets
     static const int MAX_BUS_SOCKETS = 10;
-    static BusSocketInfo _busSockets[MAX_BUS_SOCKETS];
-    static int _busSocketCount;
+    BusSocketInfo _busSockets[MAX_BUS_SOCKETS];
+    int _busSocketCount;
 
     // Bus service active
-    static bool _busServiceEnabled;
+    bool _busServiceEnabled;
 
     // Current wait state flags
-    static bool _waitOnMemory;
-    static bool _waitOnIO;
+    bool _waitOnMemory;
+    bool _waitOnIO;
 
     // Wait currently asserted
-    static volatile bool _waitAsserted;
+    volatile bool _waitAsserted;
 
     // Outputs enabled to allow target read
-    static volatile bool _targetReadInProgress;
-
+    volatile bool _targetReadInProgress;
+    
     // Paging
-    static volatile bool _targetPageInOnReadComplete;
+    volatile bool _targetPageInOnReadComplete;
 
     // Rate at which wait is released when free-cycling
-    static volatile uint32_t _waitCycleLengthUs;
-    static volatile uint32_t _waitAssertedStartUs;
+    volatile uint32_t _waitCycleLengthUs;
+    volatile uint32_t _waitAssertedStartUs;
 
     // Hold in wait state
-    static volatile bool _waitHold;
+    volatile bool _waitHold;
 
     // Suspend bus detail for one cycle
-    static volatile bool _waitSuspendBusDetailOneCycle;
+    volatile bool _waitSuspendBusDetailOneCycle;
 
     // Action requested for next wait and parameter
-    static volatile int _busActionSocket;
-    static volatile BR_BUS_ACTION _busActionType;
-    static volatile uint32_t _busActionInProgressStartUs;
-    static volatile uint32_t _busActionAssertedStartUs;
-    static volatile uint32_t _busActionAssertedMaxUs;
-    static volatile bool _busActionSyncWithWait;
-    static const int TIMER_ISR_PERIOD_US = 100;
+    volatile int _busActionSocket;
+    volatile BR_BUS_ACTION _busActionType;
+    volatile uint32_t _busActionInProgressStartUs;
+    volatile uint32_t _busActionAssertedStartUs;
+    volatile uint32_t _busActionAssertedMaxUs;
+    volatile bool _busActionSyncWithWait;
+    const int TIMER_ISR_PERIOD_US = 100;
 
     // Bus access state
     enum BUS_ACTION_STATE
@@ -509,51 +311,51 @@ private:
         BUS_ACTION_STATE_PENDING,
         BUS_ACTION_STATE_ASSERTED
     };
-    static volatile BUS_ACTION_STATE _busActionState;
+    volatile BUS_ACTION_STATE _busActionState;
 
     // Bus currently under BusRaider control
-    static volatile bool _busIsUnderControl;
+    volatile bool _busIsUnderControl;
 
     // Debug
-    static volatile int _isrAssertCounts[ISR_ASSERT_NUM_CODES];
+    volatile int _isrAssertCounts[ISR_ASSERT_NUM_CODES];
 
     // Clock generator
-    static TargetClockGenerator _clockGenerator;
+    TargetClockGenerator _clockGenerator;
 
     // Status info
-    static BusAccessStatusInfo _statusInfo; 
+    BusAccessStatusInfo _statusInfo; 
 
 private:
     // Bus actions
-    static void busActionCheck();
-    static bool busActionHandleStart();
-    static void busActionHandleActive();
-    static void busActionClearFlags();
-    static void busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REASON reason);
-    static bool busAccessHandleIrqAck();
+    void busActionCheck();
+    bool busActionHandleStart();
+    void busActionHandleActive();
+    void busActionClearFlags();
+    void busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REASON reason);
+    bool busAccessHandleIrqAck();
 
     // Set address
-    static void addrLowSet(uint32_t lowAddrByte);
-    static void addrLowInc();
-    static void addrHighSet(uint32_t highAddrByte);
-    static void addrSet(unsigned int addr);
+    void addrLowSet(uint32_t lowAddrByte);
+    void addrLowInc();
+    void addrHighSet(uint32_t highAddrByte);
+    void addrSet(unsigned int addr);
 
     // Control bus read
-    static uint32_t controlBusRead();
-    static void addrAndDataBusRead(uint32_t& addr, uint32_t& dataBusVals);
+    uint32_t controlBusRead();
+    void addrAndDataBusRead(uint32_t& addr, uint32_t& dataBusVals);
 
     // Control the PIB (bus used to transfer data to/from Pi)
-    static inline void pibSetOut()
+    inline void pibSetOut()
     {
         WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_OUTPUT);
     }
 
-    static inline void pibSetIn()
+    inline void pibSetIn()
     {
         WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_INPUT);
     }
 
-    static inline void pibSetValue(uint8_t val)
+    inline void pibSetValue(uint8_t val)
     {
         uint32_t setBits = ((uint32_t)val) << BR_DATA_BUS;
         uint32_t clrBits = (~(((uint32_t)val) << BR_DATA_BUS)) & (~BR_PIB_MASK);
@@ -562,33 +364,33 @@ private:
     }
  
     // Get a value from the PIB (pins used for data/address bus access)
-    static inline uint8_t pibGetValue()
+    inline uint8_t pibGetValue()
     {
         return (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
     }
 
     // Check if bus request has been acknowledged
-    static inline bool controlBusReqAcknowledged()
+    inline bool controlBusReqAcknowledged()
     {
         return (RD32(ARM_GPIO_GPLEV0) & BR_BUSACK_BAR_MASK) == 0;
     }
 
     // Check if WAIT asserted
-    static inline bool controlBusWaitAsserted()
+    inline bool controlBusWaitAsserted()
     {
         return (RD32(ARM_GPIO_GPLEV0) & BR_WAIT_BAR_MASK) == 0;
     }
 
     // Interrupt service routine for wait states
-    static void stepTimerISR(void* pParam);
-    static void serviceWaitActivity();
+    void stepTimerISR(void* pParam);
+    void serviceWaitActivity();
 
     // Pin IO
-    static void setPinOut(int pinNumber, bool val);
-    static void setPinIn(int pinNumber);
+    void setPinOut(int pinNumber, bool val);
+    void setPinIn(int pinNumber);
 
     // Set the MUX
-    static inline void muxSet(int muxVal)
+    inline void muxSet(int muxVal)
     {
         if (_hwVersionNumber == 17)
         {
@@ -618,7 +420,7 @@ private:
     }
 
     // Clear the MUX
-    static inline void muxClear()
+    inline void muxClear()
     {
         if (_hwVersionNumber == 17)
         {
@@ -640,7 +442,7 @@ private:
     }
 
     // Mux set data bus driver output enable
-    static inline void muxDataBusOutputEnable()
+    inline void muxDataBusOutputEnable()
     {
         if (_hwVersionNumber == 17)
         {
@@ -674,7 +476,7 @@ private:
     }
 
     // Mux clear low address
-    static inline void muxClearLowAddr()
+    inline void muxClearLowAddr()
     {
         if (_hwVersionNumber == 17)
         {
@@ -707,23 +509,23 @@ private:
     }
 
     // Set signal (RESET/IRQ/NMI)
-    static void setSignal(BR_BUS_ACTION busAction, bool assert);
+    void setSignal(BR_BUS_ACTION busAction, bool assert);
 
     // Wait control
-    static void waitSetupMREQAndIORQEnables();
-    static void waitResetFlipFlops(bool forceClear = false);
-    static void waitClearDetected();
-    static void waitHandleNew();
-    static void waitEnablementUpdate();
-    static void waitGenerationDisable();
-    static void waitHandleReadRelease();
+    void waitSetupMREQAndIORQEnables();
+    void waitResetFlipFlops(bool forceClear = false);
+    void waitClearDetected();
+    void waitHandleNew();
+    void waitEnablementUpdate();
+    void waitGenerationDisable();
+    void waitHandleReadRelease();
 
     // Paging
-    static void busAccessCallbackPageIn();
+    void busAccessCallbackPageIn();
 
     // Read and write bytes
-    static void byteWrite(uint32_t byte, int iorq);
-    static uint8_t byteRead(int iorq);
+    void byteWrite(uint32_t byte, int iorq);
+    uint8_t byteRead(int iorq);
 
 private:
     // Timeouts

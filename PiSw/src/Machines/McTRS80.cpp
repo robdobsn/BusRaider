@@ -6,21 +6,21 @@
 #include "usb_hid_keys.h"
 #include "../System/rdutils.h"
 #include "../TargetBus/BusAccess.h"
-#include "../TargetBus/TargetState.h"
+#include "../TargetBus/TargetProgrammer.h"
 #include "../Machines/McManager.h"
 #include "../FileFormats/McTRS80CmdFormat.h"
 #include "../Hardware/HwManager.h"
 
-const char* McTRS80::_logPrefix = "TRS80";
+static const char* MODULE_PREFIX = "TRS80";
 
 extern WgfxFont __TRS80Level3Font;
 
-McDescriptorTable McTRS80::_defaultDescriptorTables[] = {
+McVariantTable McTRS80::_defaultDescriptorTables[] = {
     {
         // Machine name
         "TRS80",
         // Processor
-        McDescriptorTable::PROCESSOR_Z80,
+        McVariantTable::PROCESSOR_Z80,
         // Required display refresh rate
         .displayRefreshRatePerSec = 50,
         .displayPixelsX = 8 * 64,
@@ -44,7 +44,9 @@ McDescriptorTable McTRS80::_defaultDescriptorTables[] = {
     }
 };
 
-McTRS80::McTRS80() : McBase(_defaultDescriptorTables, sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0]))
+McTRS80::McTRS80(McManager& mcManager) : 
+        McBase(mcManager, _defaultDescriptorTables, 
+                sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0]))
 {
     // Clear keyboard buffer
     for (uint32_t i = 0; i < TRS80_KEYBOARD_RAM_SIZE; i++)
@@ -75,8 +77,8 @@ void McTRS80::disable()
 //     // Handle the execution address
 //     uint32_t execAddr = regs.PC;
 //     uint8_t jumpCmd[3] = { 0xc3, uint8_t(execAddr & 0xff), uint8_t((execAddr >> 8) & 0xff) };
-//     TargetState::addMemoryBlock(0, jumpCmd, 3);
-//     LogWrite(_logPrefix, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
+//     TargetProgrammer::addMemoryBlock(0, jumpCmd, 3);
+//     LogWrite(MODULE_PREFIX, LOG_DEBUG, "Added JMP %04x at 0000", execAddr);
 // }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
@@ -84,26 +86,27 @@ void McTRS80::displayRefreshFromMirrorHw()
 {
     // Read mirror memory of RC2014 at the location of the TRS80 memory mapped screen
     unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
-    if (HwManager::blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, false, 0, true) == BR_OK)
+    if (getHwManager().blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, false, 0, true) == BR_OK)
         updateDisplayFromBuffer(pScrnBuffer, TRS80_DISP_RAM_SIZE);
 
     // Check for key presses and send to the TRS80 if necessary
     // Only send to mirror if we are in emulation mode, otherwise store up changes for later
-    if (_keyBufferDirty && HwManager::getMemoryEmulationMode())
+    if (_keyBufferDirty && getHwManager().getMemoryEmulationMode())
     {
-        HwManager::blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, false, 0, true);
+        getHwManager().blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, false, 0, true);
         _keyBufferDirty = false;
     }
 }
 
 void McTRS80::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen)
 {
-    if (!_pDisplay || (bufLen < TRS80_DISP_RAM_SIZE))
+    DisplayBase* pDisplay = getDisplay();
+    if (!pDisplay || (bufLen < TRS80_DISP_RAM_SIZE))
         return;
 
     // Write to the display on the Pi Zero
-    int cols = _activeDescriptorTable.displayPixelsX / _activeDescriptorTable.displayCellX; 
-    int rows = _activeDescriptorTable.displayPixelsY / _activeDescriptorTable.displayCellY;
+    int cols = getDescriptorTable().displayPixelsX / getDescriptorTable().displayCellX; 
+    int rows = getDescriptorTable().displayPixelsY / getDescriptorTable().displayCellY;
     for (int k = 0; k < rows; k++) 
     {
         for (int i = 0; i < cols; i++)
@@ -111,7 +114,7 @@ void McTRS80::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen)
             int cellIdx = k * cols + i;
             if (!_screenBufferValid || (_screenBuffer[cellIdx] != pScrnBuffer[cellIdx]))
             {
-                _pDisplay->write(i, k, (char)pScrnBuffer[cellIdx]);
+                pDisplay->write(i, k, (char)pScrnBuffer[cellIdx]);
                 _screenBuffer[cellIdx] = pScrnBuffer[cellIdx];
             }
         }
@@ -294,7 +297,7 @@ void McTRS80::keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[
 // Handle a file
 bool McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
 {
-    LogWrite(_logPrefix, LOG_DEBUG, "fileHandler %s", pFileInfo);
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "fileHandler %s", pFileInfo);
 
     // Get the file type (extension of file name)
     #define MAX_VALUE_STR 30
@@ -302,7 +305,7 @@ bool McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
     char fileName[MAX_FILE_NAME_STR+1];
     if (!jsonGetValueForKey("fileName", pFileInfo, fileName, MAX_FILE_NAME_STR))
     {
-        LogWrite(_logPrefix, LOG_DEBUG, "failed to get key fileName");
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "failed to get key fileName");
         return false;
     }
     // Check type of file (assume extension is delimited by .)
@@ -314,8 +317,10 @@ bool McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
     {
         // TRS80 command file
         McTRS80CmdFormat cmdFormat;
-        LogWrite(_logPrefix, LOG_DEBUG, "Processing TRS80 CMD file len %d", fileLen);
-        cmdFormat.proc(TargetState::addMemoryBlock, TargetState::setTargetRegisters, pFileData, fileLen);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing TRS80 CMD file len %d", fileLen);
+        cmdFormat.proc(getTargetProgrammer().addMemoryBlockStatic, 
+                    getTargetProgrammer().setTargetRegistersStatic, 
+                    &getTargetProgrammer(), pFileData, fileLen);
     }
     else
     {
@@ -324,8 +329,8 @@ bool McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
         char baseAddrStr[MAX_VALUE_STR+1];
         if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
             baseAddr = strtol(baseAddrStr, NULL, 16);
-        LogWrite(_logPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
-        TargetState::addMemoryBlock(baseAddr, pFileData, fileLen);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
+        getTargetProgrammer().addMemoryBlock(baseAddr, pFileData, fileLen);
     }
     return true;
 }
@@ -335,7 +340,7 @@ void McTRS80::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unused]]
             [[maybe_unused]] uint32_t flags, [[maybe_unused]] uint32_t& retVal)
 {
     // if (flags & BR_CTRL_BUS_IORQ_MASK)
-    //     LogWrite(_logPrefix, LOG_DEBUG, "IORQ %s from %04x %02x", 
+    //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "IORQ %s from %04x %02x", 
     //             (flags & BR_CTRL_BUS_RD_MASK) ? "RD" : ((flags & BR_CTRL_BUS_WR_MASK) ? "WR" : "??"),
     //             addr, 
     //             (flags & BR_CTRL_BUS_WR_MASK) ? data : retVal);
@@ -368,17 +373,17 @@ void McTRS80::busActionCompleteCallback(BR_BUS_ACTION actionType)
     {
         // Read memory of RC2014 at the location of the TRS80 memory mapped screen
         unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
-        if (HwManager::blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, false, false, false) == BR_OK)
+        if (getHwManager().blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, false, false, false) == BR_OK)
             updateDisplayFromBuffer(pScrnBuffer, TRS80_DISP_RAM_SIZE);
 
         // Check for key presses and send to the TRS80 if necessary
         if (_keyBufferDirty)
         {
             if (_keyBufferDirty)
-                LogWrite(_logPrefix, LOG_DEBUG, "KB Dirty %02x %02x %02x %02x %02x %02x %02x %02x",
+                LogWrite(MODULE_PREFIX, LOG_DEBUG, "KB Dirty %02x %02x %02x %02x %02x %02x %02x %02x",
                     _keyBuffer[0], _keyBuffer[1], _keyBuffer[2], _keyBuffer[4], 
                     _keyBuffer[8], _keyBuffer[16], _keyBuffer[32], _keyBuffer[64], _keyBuffer[128]);
-            HwManager::blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, false, false, false);
+            getHwManager().blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, false, false, false);
             _keyBufferDirty = false;
         }
     }

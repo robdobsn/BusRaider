@@ -6,5 +6,5 @@
 #include <stdint.h>
 #include "../TargetBus/TargetRegisters.h"
 
-typedef void FileParserDataCallback(uint32_t addr, const uint8_t* pData, uint32_t len);
-typedef void FileParserRegsCallback(const Z80Registers& regs);
+typedef void FileParserDataCallback(uint32_t addr, const uint8_t* pData, uint32_t len, void* pParam);
+typedef void FileParserRegsCallback(const Z80Registers& regs, void* pParam);

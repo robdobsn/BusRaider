@@ -133,7 +133,7 @@ struct Z80OpcodeTable
 static void write8 (Z80Context* ctx, ushort addr, byte val)
 {
 	ctx->tstates += 3;
-	ctx->memWrite(ctx->memParam, addr, val);	
+	ctx->memWrite(ctx->memParam, addr, val, ctx->_pTracer);	
 }
 
 
@@ -147,7 +147,7 @@ static void write16 (Z80Context* ctx, ushort addr, ushort val)
 static byte read8 (Z80Context* ctx, ushort addr)
 {
 	ctx->tstates += 3;
-	return ctx->memRead(ctx->memParam, addr);	
+	return ctx->memRead(ctx->memParam, addr, ctx->_pTracer);	
 }
 
 
@@ -162,14 +162,14 @@ static ushort read16 (Z80Context* ctx, ushort addr)
 static byte ioRead (Z80Context* ctx, ushort addr)
 {
 	ctx->tstates += 4;
-	return ctx->ioRead(ctx->ioParam, addr);
+	return ctx->ioRead(ctx->ioParam, addr, ctx->_pTracer);
 }
 
 
 static void ioWrite (Z80Context* ctx, ushort addr, byte val)
 {
 	ctx->tstates += 4;
-	ctx->ioWrite(ctx->ioParam, addr, val);
+	ctx->ioWrite(ctx->ioParam, addr, val, ctx->_pTracer);
 }
 
 

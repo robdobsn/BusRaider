@@ -10,114 +10,169 @@
 #include "../TargetBus/BusAccess.h"
 #include "../CommandInterface/CommandHandler.h"
 
+class StepTracer;
+class TargetTracker;
+class TargetProgrammer;
+
 class McManager
 {
 public:
+    // Constuction
+    McManager(CommandHandler& commandHandler);
+
     // Init
-    static void init(DisplayBase* pDisplay);
+    void init(DisplayBase* pDisplay, HwManager& hwManager, 
+                BusAccess& busAccess, StepTracer& stepTracer, 
+                TargetTracker& targetTracker, TargetProgrammer& targetProgrammer);
 
     // Service
-    static void service();
+    void service();
 
     // Manage machines
-    static void add(McBase* pMachine);
-    static bool setupMachine(const char* mcJson);
-    static bool setMachineByName(const char* mcName);
+    void add(McBase* pMachine);
+    bool setupMachine(const char* mcJson);
+    bool setMachineByName(const char* mcName);
 
     // Machine access
-    static int getNumMachines();
-    static McBase* getMachine();
-    static const char* getMachineJSON();
-    static int getMachineClock();
-    static const char* getMachineName();
-    static int getDisplayRefreshRate();
-    static const char* getMachineForFileType(const char* fileType);
+    int getNumMachines();
+    McBase* getMachine();
+    const char* getMachineJSON();
+    int getMachineClock();
+    const char* getMachineName();
+    int getDisplayRefreshRate();
+    const char* getMachineForFileType(const char* fileType);
 
     // Display updates
-    static void displayRefresh();
+    void displayRefresh();
 
     // Heartbeat
-    static void machineHeartbeat();
-
-    // Current machine descriptor table
-    static McDescriptorTable* getDescriptorTable();
+    void machineHeartbeat();
 
     // Handle communication with machine
-    static void hostSerialAddRxCharsToBuffer(const uint8_t* pRxChars, uint32_t rxLen);
-    static uint32_t hostSerialNumChAvailable();
-    static uint32_t hostSerialReadChars(uint8_t* pBuf, uint32_t bufMaxLen);
-    static void sendKeyStrToTargetStatic(const char* pKeyStr);
+    void hostSerialAddRxCharsToBuffer(const uint8_t* pRxChars, uint32_t rxLen);
+    uint32_t hostSerialNumChAvailable();
+    uint32_t hostSerialReadChars(uint8_t* pBuf, uint32_t bufMaxLen);
+    void sendKeyStrToTargetStatic(const char* pKeyStr);
 
     // Target programming
-    static void targetProgrammingStart(bool execAfterProgramming);
+    void targetProgrammingStart(bool execAfterProgramming);
 
     // Target control
-    static void targetReset();
+    void targetReset();
 
     // Handle target files
-    static bool targetFileHandler(const char* rxFileInfo, const uint8_t* pData, int dataLen);
+    static bool targetFileHandlerStatic(void* pObject, const char* rxFileInfo, const uint8_t* pData, int dataLen);
+    bool targetFileHandler(const char* rxFileInfo, const uint8_t* pData, int dataLen);
 
-    static void targetIrq(int durationTStates = -1);
+    void targetIrq(int durationTStates = -1);
+
+    // Access to hardware manager
+    HwManager& getHwManager()
+    {
+        return *_pHwManager;
+    }
+
+    // Access to bus
+    BusAccess& getBusAccess()
+    {
+        return *_pBusAccess;
+    }
+
+    // Access to target tracker
+    TargetTracker& getTargetTracker()
+    {
+        return *_pTargetTracker;
+    }
+
+    // Access to step tracer
+    StepTracer& getStepTracer()
+    {
+        return *_pStepTracer;
+    }
+
+    // Access to target programmer
+    TargetProgrammer& getTargetProgrammer()
+    {
+        return *_pTargetProgrammer;
+    }
 
 private:
-    static McDescriptorTable defaultDescriptorTable;
+    // Singleton
+    static McManager* _pMcManager;
+
+    // CommandHandler
+    CommandHandler& _commandHandler;
+
+    // HwManager
+    HwManager* _pHwManager;
+
+    // BusAccess
+    BusAccess* _pBusAccess;
+
+    // Step tracer
+    StepTracer* _pStepTracer;
+
+    // TargetTracker
+    TargetTracker* _pTargetTracker;
+
+    // TargetProgrammer
+    TargetProgrammer* _pTargetProgrammer;
 
     // Bus socket we're attached to and setup info
-    static int _busSocketId;
-    static BusSocketInfo _busSocketInfo;
+    int _busSocketId;
 
     // Comms socket we're attached to and setup info
-    static int _commsSocketId;
-    static CommsSocketInfo _commsSocketInfo;
+    int _commsSocketId;
 
     // Handle messages (telling us to start/stop)
-    static bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
+    static bool handleRxMsgStatic(void* pObject, const char* pCmdJson, const uint8_t* pParams, int paramsLen,
+                    char* pRespJson, int maxRespLen);
+    bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
                     char* pRespJson, int maxRespLen);
 
     // Exec program on target
-    static void targetExec();
+    void targetExec();
     
     // Bus action complete callback
-    static void busActionCompleteStatic(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
+    static void busActionCompleteStatic(void* pObject, BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
+    void busActionComplete(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
 
     // Wait interrupt handler
-    static void handleWaitInterruptStatic(uint32_t addr, uint32_t data, 
+    static void handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t data, 
             uint32_t flags, uint32_t& retVal);
             
     // Characters received from the host
     static const uint32_t MAX_RX_HOST_CHARS = 10000;
-    static uint8_t _rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];
-    static uint32_t _rxHostCharsBufferLen;
+    uint8_t _rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];
+    uint32_t _rxHostCharsBufferLen;
 
     // Display
-    static DisplayBase* _pDisplay;
+    DisplayBase* _pDisplay;
 
     // Machines
     static const int MAX_MACHINES = 10;
     static const int MAX_MACHINE_NAME_LEN = 100;
-    static McBase* _pMachines[MAX_MACHINES];
-    static int _numMachines;
-    static char _currentMachineName[MAX_MACHINE_NAME_LEN];
-    static McBase* _pCurMachine;
+    McBase* _pMachines[MAX_MACHINES];
+    int _numMachines;
+    McBase* _pCurMachine;
 
     // Pending actions
-    static bool _busActionPendingProgramTarget;
-    static bool _busActionPendingExecAfterProgram;
-    static bool _busActionPendingDisplayRefresh;
-    static bool _busActionCodeWrittenAtResetVector;
+    bool _busActionPendingProgramTarget;
+    bool _busActionPendingExecAfterProgram;
+    bool _busActionPendingDisplayRefresh;
+    bool _busActionCodeWrittenAtResetVector;
 
     // Display refresh
-    static const int REFRESH_RATE_WINDOW_SIZE_MS = 1000;
-    static uint32_t _refreshCount;
-    static int _refreshRate;
-    static uint32_t _refreshLastUpdateUs;
-    static uint32_t _refreshLastCountResetUs;
+    const int REFRESH_RATE_WINDOW_SIZE_MS = 1000;
+    uint32_t _refreshCount;
+    int _refreshRate;
+    uint32_t _refreshLastUpdateUs;
+    uint32_t _refreshLastCountResetUs;
 
     // Screen mirroring
-    static const int SCREEN_MIRROR_REFRESH_US = 100000;
-    static bool _screenMirrorOut;
-    static uint32_t _screenMirrorLastUs;
-    static const int SCREEN_MIRROR_FULL_REFRESH_COUNT = 500;
-    static uint32_t _screenMirrorCount;
-
+    const int SCREEN_MIRROR_REFRESH_US = 100000;
+    bool _screenMirrorOut;
+    uint32_t _screenMirrorLastUs;
+    const uint32_t SCREEN_MIRROR_FULL_REFRESH_COUNT = 500;
+    uint32_t _screenMirrorCount;
 };

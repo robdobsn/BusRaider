@@ -11,6 +11,7 @@
 #include "System/Display.h"
 #include "TargetBus/BusAccess.h"
 #include "TargetBus/TargetTracker.h"
+#include "TargetBus/TargetProgrammer.h"
 #include "Hardware/HwManager.h"
 #include "Machines/McManager.h"
 #include "BusController/BusController.h"
@@ -23,7 +24,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Program details
-static const char* PROG_VERSION = "Bus Raider V2.2.061  (C) Rob Dobson 2018-2019";
+const char* PROG_VERSION = "Bus Raider V2.2.62  (C) Rob Dobson 2018-2019";
 static const char* PROG_LINKS_1 = "https://robdobson.com/tag/raider";
 
 // Send log data to display (as opposed to merging in the ESP32 log output)
@@ -39,13 +40,18 @@ Display display;
 UartMaxi mainUart;
 
 // CommandHandler, StepTracer, BusController
-StepTracer stepTracer;
-BusController busController;
-DeZogInterface _DeZogInterface;
-McManager mcManager;
+CommandHandler commandHandler;
+McManager mcManager(commandHandler);
+StepTracer stepTracer(commandHandler, mcManager);
+BusController busController(commandHandler, mcManager);
+DeZogInterface deZogInterface(commandHandler, mcManager);
+BusAccess busAccess;
+TargetTracker targetTracker(mcManager);
+TargetProgrammer targetProgrammer;
+HwManager hwManager(commandHandler, mcManager);
 
 // Bus Raider app
-BusRaiderApp busRaiderApp(display, mainUart);
+BusRaiderApp busRaiderApp(display, mainUart, commandHandler, mcManager);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Debug to display
@@ -54,6 +60,15 @@ BusRaiderApp busRaiderApp(display, mainUart);
 void debugToDisplay(const char* pSeverity, const char* pSource, const char* pMsg)
 {
     display.logDebug(pSeverity, pSource, pMsg);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Debug to ESP32
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void debugToESP32(const char* pSeverity, const char* pSource, const char* pMsg)
+{
+    commandHandler.logDebug(pSeverity, pSource, pMsg);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -71,7 +86,7 @@ extern "C" int main()
 
     // Logging
     LogSetLevel(LOG_DEBUG);
-    LogSetOutMsgFn(CommandHandler::logDebug);
+    LogSetOutMsgFn(debugToESP32);
     LogWrite(FromMain, LOG_NOTICE, "Startup ...");
 
     // Init timers
@@ -90,21 +105,24 @@ extern "C" int main()
     #endif
 
     // Bus raider setup
-    BusAccess::init();
+    busAccess.init();
 
     // Hardware manager
-    HwManager::init();
+    hwManager.init();
 
     // Target tracker
-    TargetTracker::init();
+    targetTracker.init();
+
+    // Target programmer
+    targetProgrammer.init();
 
     // BusController, StepTracer
     busController.init();
     stepTracer.init();
-    _DeZogInterface.init();
+    deZogInterface.init();
 
     // Init machine manager
-    mcManager.init(&display);
+    mcManager.init(&display, hwManager, busAccess, stepTracer, targetTracker, targetProgrammer);
 
     // USB and status
     busRaiderApp.initUSB();
@@ -117,13 +135,13 @@ extern "C" int main()
 
 
     LogWrite(FromMain, LOG_DEBUG, "StepTracer %08x %u DeZogInterface %08x %u",
-            &stepTracer, &stepTracer, &_DeZogInterface, &_DeZogInterface);
+            &stepTracer, &stepTracer, &deZogInterface, &deZogInterface);
 
     // Loop forever
     while(1)
     {
         // Handle target machine display updates
-        McManager::displayRefresh();
+        mcManager.displayRefresh();
 
         // Service the comms channels and display updates
         busRaiderApp.service();
@@ -132,20 +150,23 @@ extern "C" int main()
         timer_poll();
 
         // Service bus access
-        BusAccess::service();
+        busAccess.service();
 
         // Service hardware manager
-        HwManager::service();
+        hwManager.service();
 
         // Target tracker
-        TargetTracker::service();
+        targetTracker.service();
+
+        // Target programmer
+        targetProgrammer.service();
 
         // Service machine manager
-        McManager::service();
+        mcManager.service();
 
         // BusController, StepTracer
         busController.service();
         stepTracer.service();
-        _DeZogInterface.service();
+        deZogInterface.service();
     }
 }

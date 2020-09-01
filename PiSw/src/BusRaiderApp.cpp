@@ -25,34 +25,22 @@ const char* FromBusRaiderApp = "BusRaiderApp";
 
 BusRaiderApp* BusRaiderApp::_pApp = NULL;
 
-BusRaiderApp::KeyInfo BusRaiderApp::_keyInfoBuffer[MAX_USB_KEYS_BUFFERED];
-RingBufferPosn BusRaiderApp::_keyInfoBufferPos(BusRaiderApp::MAX_USB_KEYS_BUFFERED);
-bool BusRaiderApp::_inKeyboardRoutine = false;
-
 const uint32_t BusRaiderApp::_autoBaudRates[] = { 1000000, 2000000 };
-uint32_t BusRaiderApp::_autoBaudLastESP32CommsMs = 0;
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Comms socket
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Main comms socket - to wire up OTA updates
-CommsSocketInfo BusRaiderApp::_commsSocket =
-{
-    true,
-    BusRaiderApp::handleRxMsg,
-    OTAUpdate::performUpdate,
-    NULL
-};
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Init
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-BusRaiderApp::BusRaiderApp(Display& display, UartMaxi& uart) :
-    _display(display), _uart(uart)
+BusRaiderApp::BusRaiderApp(Display& display, UartMaxi& uart, 
+                CommandHandler& commandHandler, McManager& mcManager) :
+    _display(display), _uart(uart), 
+    _commandHandler(commandHandler), _mcManager(mcManager), 
+    _keyInfoBufferPos(BusRaiderApp::MAX_USB_KEYS_BUFFERED)
+    
 {
     _pApp = this;
+    _inKeyboardRoutine = false;
+    _autoBaudLastESP32CommsMs = 0;
     clear();
 }
 
@@ -62,7 +50,7 @@ void BusRaiderApp::init()
 
     // Command Handler
     _commandHandler.setPutToSerialCallback(serialPutStr, serialTxAvailable);
-    _commandHandler.commsSocketAdd(_commsSocket);
+    _commandHandler.commsSocketAdd(this, true, BusRaiderApp::handleRxMsgStatic, OTAUpdate::performUpdate, NULL);
 
 }
 
@@ -107,7 +95,7 @@ void BusRaiderApp::initUSB()
 
         if (USPiKeyboardAvailable()) 
         {
-            USPiKeyboardRegisterKeyStatusHandlerRaw(usbKeypressHandlerStatic);
+            USPiKeyboardRegisterKeyStatusHandlerRaw(addUSBKeypressToBufferStatic);
             _display.statusPut(Display::STATUS_FIELD_KEYBOARD, Display::STATUS_HILITE, "Keyboard OK, F2 for Settings");
         } 
         else 
@@ -190,8 +178,7 @@ void BusRaiderApp::service()
             _keyInfoBufferPos.hasGot();
             // LogWrite(FromBusRaiderApp, LOG_DEBUG, "Keyattop %02x %02x %02x", pKeyInfo->rawKeys[0], pKeyInfo->rawKeys[1], pKeyInfo->rawKeys[2]);
             _inKeyboardRoutine = true;
-            if (_pApp)
-                _pApp->usbKeypressHandler(pKeyInfo->modifiers, pKeyInfo->rawKeys);
+            _pApp->handleUSBKeypress(pKeyInfo->modifiers, pKeyInfo->rawKeys);
             _inKeyboardRoutine = false;
         }
     }
@@ -230,8 +217,17 @@ void BusRaiderApp::service()
 // Received message handler
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool BusRaiderApp::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t* pParams, [[maybe_unused]]int paramsLen,
+bool BusRaiderApp::handleRxMsgStatic(void* pObject, const char* pCmdJson, 
+                const uint8_t* pParams, int paramsLen,
                 char* pRespJson, int maxRespLen)
+{
+    if (!pObject)
+        return false;
+    return ((BusRaiderApp*)pObject)->handleRxMsg(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+}
+
+bool BusRaiderApp::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t* pParams, 
+                [[maybe_unused]]int paramsLen, char* pRespJson, int maxRespLen)
 {
     _autoBaudLastESP32CommsMs = millis();
 
@@ -259,7 +255,7 @@ bool BusRaiderApp::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8
     {
         // Set machine
         // LogWrite(FromBusRaiderApp, LOG_DEBUG, "queryCurMcResp %s", pCmdJson);
-        McManager::setupMachine(pCmdJson);
+        _mcManager.setupMachine(pCmdJson);
         // Got ok - no need to re-request
         _pApp->_esp32LastMachineValid = true;
         return true;
@@ -274,6 +270,7 @@ bool BusRaiderApp::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8
 static inline int locmin ( int a, int b ) { return a < b ? a : b; }
 void BusRaiderApp::statusDisplayUpdate()
 {
+    BusAccess& busAccess = _mcManager.getBusAccess();
     // Update status
     if (isTimeout(micros(), _statusUpdateStartUs, STATUS_UPDATE_TIME_MS * 1000)) 
     {
@@ -293,7 +290,7 @@ void BusRaiderApp::statusDisplayUpdate()
         {
             strlcat(statusStr, _esp32ESP32Version, MAX_STATUS_STR_LEN);
             char tmpStr[10];
-            int hwVers = BusAccess::getHwVersion();
+            int hwVers = busAccess.getHwVersion();
             ee_sprintf(tmpStr, " (HW V%d.%d)", hwVers / 10, hwVers %10);
             strlcat(statusStr, tmpStr, MAX_STATUS_STR_LEN);
             strlcat(statusStr, "        ", MAX_STATUS_STR_LEN);
@@ -322,12 +319,12 @@ void BusRaiderApp::statusDisplayUpdate()
 
         // Machine name
         strlcpy(statusStr, "M/C: ", MAX_STATUS_STR_LEN);
-        strlcat(statusStr, McManager::getMachineName(), MAX_STATUS_STR_LEN);
+        strlcat(statusStr, _mcManager.getMachineName(), MAX_STATUS_STR_LEN);
         strlcat(statusStr, "                       ", locmin(MAX_STATUS_STR_LEN, 40));
         _display.statusPut(Display::STATUS_FIELD_CUR_MACHINE, Display::STATUS_NORMAL, statusStr);
 
         // Speed
-        int clockSpeed = McManager::getMachineClock();
+        int clockSpeed = _mcManager.getMachineClock();
         int mhz = clockSpeed/1000000;
         int khz = (clockSpeed - mhz*1000000)/1000;
         ee_sprintf(statusStr, "Clock: %d.%s%s%dMHz",
@@ -341,18 +338,18 @@ void BusRaiderApp::statusDisplayUpdate()
         // BusAccess status
         statusStr[0] = 0;
         strlcpy(statusStr, "Bus: ", MAX_STATUS_STR_LEN);
-        if (TargetTracker::isTrackingActive())
+        if (_mcManager.getTargetTracker().isTrackingActive())
             strlcat(statusStr, "Debug       ", MAX_STATUS_STR_LEN);
-        else if (BusAccess::waitIsHeld())
+        else if (busAccess.waitIsHeld())
             strlcat(statusStr, "Paused      ", MAX_STATUS_STR_LEN);
         else
             strlcat(statusStr, "Free Running", MAX_STATUS_STR_LEN);
-        if (BusAccess::isUnderControl())
+        if (busAccess.isUnderControl())
             strlcat(statusStr, " & PiControl   ", MAX_STATUS_STR_LEN);
         _display.statusPut(Display::STATUS_FIELD_BUS_ACCESS, Display::STATUS_NORMAL, statusStr);
 
         // Refresh rate
-        int refreshRate = McManager::getDisplayRefreshRate();
+        int refreshRate = _mcManager.getDisplayRefreshRate();
         const int MAX_REFRESH_STR_LEN = 40;
         const char* refreshText = "Refresh: ";
         char refreshStr[MAX_REFRESH_STR_LEN+1];
@@ -400,7 +397,7 @@ void BusRaiderApp::statusDisplayUpdate()
         }
         for (int i = 0; i < ISR_ASSERT_NUM_CODES; i++)
         {
-            int cnt = BusAccess::isrAssertGetCount(i);
+            int cnt = busAccess.isrAssertGetCount(i);
             if (cnt > 0)
             {
                 ee_sprintf(refreshStr, "[%c]=%d,", i+'A'-1, cnt);
@@ -468,25 +465,27 @@ void BusRaiderApp::serviceGetFromSerial()
         int ch = _pApp->_uart.read();
         uint8_t buf[2];
         buf[0] = ch;
-        CommandHandler::handleHDLCReceivedChars(buf, 1);
+        _pApp->_commandHandler.handleHDLCReceivedChars(buf, 1);
     }    
 }
 
-void BusRaiderApp::usbKeypressHandlerStatic(unsigned char ucModifiers, const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED])
+void BusRaiderApp::addUSBKeypressToBufferStatic(unsigned char ucModifiers, 
+                    const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED])
 {
     // Place in ring buffer
-    if (_keyInfoBufferPos.canPut())
+    if (_pApp->_keyInfoBufferPos.canPut())
     {
-        KeyInfo* pKeyInfo = (&_keyInfoBuffer[_keyInfoBufferPos.posToPut()]);
+        KeyInfo* pKeyInfo = (&_pApp->_keyInfoBuffer[_pApp->_keyInfoBufferPos.posToPut()]);
         for (int i = 0; i < CommandHandler::NUM_USB_KEYS_PASSED; i++)
             pKeyInfo->rawKeys[i] = rawKeys[i];
         pKeyInfo->modifiers = ucModifiers;
-        _keyInfoBufferPos.hasPut();
+        _pApp->_keyInfoBufferPos.hasPut();
         // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_C);
     }
 }
 
-void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED])
+void BusRaiderApp::handleUSBKeypress(unsigned char ucModifiers, 
+                const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED])
 {
     // Check for immediate mode
     if (rawKeys[0] == KEY_F2)
@@ -552,7 +551,7 @@ void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned 
                     else
                     {
                         // Send other commands to ESP32
-                        CommandHandler::sendAPIReq(_immediateModeLine);
+                        _pApp->_commandHandler.sendAPIReq(_immediateModeLine);
                         _display.consolePut("\nSent request to ESP32:");
                         _display.consolePut(_immediateModeLine);
                         _display.consolePut("\n");
@@ -573,7 +572,7 @@ void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned 
 
     // Send to the target machine to process
     // LogWrite(FromBusRaiderApp, LOG_DEBUG, "KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
-    McBase* pMc = McManager::getMachine();
+    McBase* pMc = _mcManager.getMachine();
     if (pMc)
         pMc->keyHandler(ucModifiers, rawKeys);
 }
@@ -584,7 +583,7 @@ void BusRaiderApp::usbKeypressHandler(unsigned char ucModifiers, const unsigned 
 
 void BusRaiderApp::getPiStatus(char* pRespJson, int maxRespLen)
 {
-    const char* mcJSON = McManager::getMachineJSON();
+    const char* mcJSON = _mcManager.getMachineJSON();
     if (pRespJson)
         strlcpy(pRespJson, mcJSON, maxRespLen);
 }
@@ -611,7 +610,7 @@ void BusRaiderApp::storeESP32StatusInfo(const char* pCmdJson)
     jsonGetValueForKey("espHWV", espHealthJson, espHwVersStr, MAX_ESP_VERSION_STR);
     if (strlen(espHwVersStr) != 0)
         espHwVersion = atoi(espHwVersStr);
-    BusAccess::setHwVersion(espHwVersion);
+    _mcManager.getBusAccess().setHwVersion(espHwVersion);
     // LogWrite(FromBusRaiderApp, LOG_DEBUG, "Ip Address %s", _esp32IPAddress);
 }
 

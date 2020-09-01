@@ -14,37 +14,31 @@
 // Callback types
 typedef void CmdHandlerSerialPutStrFnType(const uint8_t* pBytes, int numBytes);
 typedef uint32_t CmdHandlerSerialTxAvailableFnType();
-typedef bool CmdHandlerHandleRxMsgFnType(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
+typedef bool CmdHandlerHandleRxMsgFnType(void* pObject, const char* pCmdJson, const uint8_t* pParams, int paramsLen,
                     char* pRespJson, int maxRespLen);
 typedef bool CmdHandlerOTAUpdateFnType(const uint8_t* pData, int dataLen);
-typedef bool CmdHandlerTargetFileFnType(const char* rxFileInfo, const uint8_t* pData, int dataLen);
+typedef bool CmdHandlerTargetFileFnType(void* pObject, const char* rxFileInfo, const uint8_t* pData, int dataLen);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Comms Socket Info - this is used to plug-in to the CommmandHandler layer
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class CommsSocketInfo
-{
-public:
-    // Socket enablement
-    bool enabled;
-
-    // Callbacks
-    CmdHandlerHandleRxMsgFnType* handleRxMsg;
-    CmdHandlerOTAUpdateFnType* otaUpdateFn;
-    CmdHandlerTargetFileFnType* receivedFileFn;
-};
-
 // Handles commands from ESP32
 class CommandHandler
 {
 public:
+    static const int MAX_DATAFRAME_LEN = 5000;
+
     CommandHandler();
     ~CommandHandler();
 
     // Comms Sockets - used to hook things like received message handling
-    static int commsSocketAdd(CommsSocketInfo& commsSocketInfo);
-    static void commsSocketEnable(int commsSocket, bool enable);
+    int commsSocketAdd(void* pSourceObject, 
+                bool enabled, 
+                CmdHandlerHandleRxMsgFnType* handleRxMsg, 
+                CmdHandlerOTAUpdateFnType* otaUpdateFn,
+                CmdHandlerTargetFileFnType* receivedFileFn);
+    void commsSocketEnable(int commsSocket, bool enable);
 
     // Callback when command handler wants to send on serial channel to ESP32
     void setPutToSerialCallback(CmdHandlerSerialPutStrFnType* pSerialPutStrFunction,
@@ -55,7 +49,7 @@ public:
     }
 
     // Handle data received from ESP32 via serial connection
-    static void handleHDLCReceivedChars(const uint8_t* pBytes, int numBytes);
+    void handleHDLCReceivedChars(const uint8_t* pBytes, int numBytes);
 
     // Service the command handler
     void service();
@@ -67,7 +61,7 @@ public:
     }
 
     // File transfer
-    static bool isFileTransferInProgress()
+    bool isFileTransferInProgress()
     {
         return _pSingletonCommandHandler->_pReceivedFileDataPtr != NULL;
     }
@@ -83,14 +77,16 @@ public:
     void sendKeyStrToTarget(const char* pKeyStr);
 
     // Num chars that can be sent
-    static uint32_t getTxAvailable();
+    uint32_t getTxAvailable();
 
     // Send
-    static void sendWithJSON(const char* cmdName, const char* cmdJson, uint32_t msgIdx = 0, 
+    void sendWithJSON(const char* cmdName, const char* cmdJson, uint32_t msgIdx = 0, 
             const uint8_t* pData = NULL, uint32_t dataLen = 0);
-    static void sendAPIReq(const char* reqLine);
+    // static void sendWithJSONTest(const char* cmdName, const char* cmdJson, uint32_t msgIdx = 0, 
+    //         const uint8_t* pData = NULL, uint32_t dataLen = 0);
+    void sendAPIReq(const char* reqLine);
     // Send unnumbered message
-    static void sendUnnumberedMsg(const char* pCmdName, const char* pMsgJson);
+    void sendUnnumberedMsg(const char* pCmdName, const char* pMsgJson);
 
     // Get status
     void getStatusResponse(bool* pIPAddressValid, char** pIPAddress, char** pWifiConnStr, 
@@ -100,30 +96,60 @@ public:
     // Logging
     void logDebugMessage(const char* pStr);
     void logDebugJson(const char* pStr);
-    static void logDebug(const char* pSeverity, const char* pSource, const char* pMsg);
+    void logDebug(const char* pSeverity, const char* pSource, const char* pMsg);
 
     // File Receive Status
     bool getFileReceiveStatus(uint32_t& fileLen, uint32_t& filePos);
 
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Comms Socket Info - this is used to plug-in to the CommmandHandler layer
+    /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class CommsSocketInfo
+    {
+    public:
+        void set(void* pSourceObject,
+                    bool enabled, CmdHandlerHandleRxMsgFnType* handleRxMsg, 
+                    CmdHandlerOTAUpdateFnType* otaUpdateFn,
+                    CmdHandlerTargetFileFnType* receivedFileFn)
+        {
+            this->pSourceObject = pSourceObject;
+            this->enabled = enabled;
+            this->handleRxMsg = handleRxMsg;
+            this->otaUpdateFn = otaUpdateFn;
+            this->receivedFileFn = receivedFileFn;
+        }
+
+        // Source object
+        void* pSourceObject;
+
+        // Socket enablement
+        bool enabled;
+
+        // Callbacks
+        CmdHandlerHandleRxMsgFnType* handleRxMsg;
+        CmdHandlerOTAUpdateFnType* otaUpdateFn;
+        CmdHandlerTargetFileFnType* receivedFileFn;
+    };
 
 private:
     // Comms Sockets
     static const int MAX_COMMS_SOCKETS = 10;
-    static CommsSocketInfo _commsSockets[MAX_COMMS_SOCKETS];
-    static int _commsSocketCount;
+    CommsSocketInfo _commsSockets[MAX_COMMS_SOCKETS];
+    int _commsSocketCount;
     void commsSocketHandleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
                     char* pRespJson, int maxRespLen);
     void commsSocketHandleReceivedFile(const char* fileStartInfo, uint8_t* rxData, int rxBytes, bool isFirmware);
 
     // HDLC
     static void hdlcPutChStatic(uint8_t ch);
-    static uint32_t hdlcTxAvailableStatic();
+    uint32_t hdlcTxAvailableStatic();
     static void hdlcFrameRxStatic(const uint8_t *frameBuffer, int frameLength);
     void hdlcPutCh(uint8_t ch);
     void hdlcFrameRx(const uint8_t *frameBuffer, int frameLength);
 
     // RDP
-    static void sendRDPMsg(uint32_t msgIdx, const char* pCmdName, const char* pMsgJson);
+    void sendRDPMsg(uint32_t msgIdx, const char* pCmdName, const char* pMsgJson);
 
     // Command processing
     void processCommand(const char* pCmdJson, const uint8_t* pParams, int paramsLen);
@@ -152,7 +178,6 @@ private:
     static const int MAX_INT_ARG_STR_LEN = 20;
     static const int MAX_FILE_NAME_STR = 100;
     static const int MAX_FILE_TYPE_STR = 40;
-    static const int MAX_DATAFRAME_LEN = 5000;
 
     // File name and type
     char _receivedFileName[MAX_FILE_NAME_STR+1];

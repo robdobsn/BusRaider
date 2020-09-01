@@ -5,40 +5,187 @@
 #include "McManager.h"
 #include "../System/rdutils.h"
 #include "../Hardware/HwManager.h"
+#include "../Fonts/SystemFont.h"
 #include <stdlib.h>
 
-McBase::McBase(McDescriptorTable* pDefaultTables, int numTables)
+static const char MODULE_PREFIX[] = "McBase";
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Default variant table
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+McVariantTable McBase::_defaultVariantTable = {
+    // Machine name
+    "Default",
+    // Processor
+    McVariantTable::PROCESSOR_Z80,
+    // Required display refresh rate
+    .displayRefreshRatePerSec = 30,
+    .displayPixelsX = 8 * 80,
+    .displayPixelsY = 16 * 25,
+    .displayCellX = 8,
+    .displayCellY = 16,
+    .pixelScaleX = 2,
+    .pixelScaleY = 1,
+    .pFont = &__systemFont,
+    .displayForeground = DISPLAY_FX_WHITE,
+    .displayBackground = DISPLAY_FX_BLACK,
+    .displayMemoryMapped = false,
+    // Clock
+    .clockFrequencyHz = 1000000,
+    // Interrupt rate per second
+    .irqRate = 0,
+    // Bus monitor
+    .monitorIORQ = false,
+    .monitorMREQ = false,
+    .setRegistersCodeAddr = 0
+};
+
+McBase::McBase(McManager& mcManager, const McVariantTable* pVariantTables, uint32_t numVariants) :
+        _mcManager(mcManager)
 {
-    // Copy descriptor table info
-    _pDefaultDescriptorTables = pDefaultTables;
-    _defaultDescriptorTablesLen = numTables;
-    _activeDescriptorTable = pDefaultTables[0];
+    // Clear machine variant table info
+    for (uint32_t i = 0; i < numVariants && i < MAX_VARIANTS_FOR_MACHINE; i++)
+        _pVariantTables[i] = &pVariantTables[i];
+    _variantTableCount = numVariants;
     _pDisplay = NULL;
-    _activeSubType = 0;
+    _activeVariantIdx = 0;
+    if (numVariants > 0)
+        _machineDescriptor = *pVariantTables;
+    else
+        _machineDescriptor = _defaultVariantTable;
 
     // Add to machine manager
-    McManager::add(this);
+    _mcManager.add(this);
 }
 
-// Get descriptor table for the machine (-1 for current subType)
-McDescriptorTable* McBase::getDescriptorTable()
+// Get machine descriptor table for the machine
+const McVariantTable& McBase::getDescriptorTable()
 {
-    return &_activeDescriptorTable;
+    return _machineDescriptor;
+}
+
+// Get current machine name
+const char* McBase::getMachineName()
+{
+    return _machineDescriptor.machineName;
+}
+
+// Check if name is a valid one for this machine
+bool McBase::isCalled(const char* mcName, uint32_t& variantIdx)
+{
+    for (uint32_t i = 0; i < _variantTableCount; i++)
+    {
+        // Check against supported names
+        if (strcasecmp(_pVariantTables[i]->machineName, mcName) == 0)
+        {
+            variantIdx = i;
+            return true;
+        }
+    }
+    return false;
+}
+
+// Get comma separated list of machine names
+void McBase::getMachineNames(char* mcNameStr, uint32_t maxLen)
+{
+    mcNameStr[0] = 0;
+    bool firstItem = true;
+    for (uint32_t j = 0; j < _variantTableCount; j++)
+    {
+        if (!firstItem)
+            strlcat(mcNameStr,",", maxLen);
+        firstItem = false;
+        strlcat(mcNameStr,"\"", maxLen);
+        strlcat(mcNameStr, _pVariantTables[j]->machineName, maxLen);
+        strlcat(mcNameStr,"\"", maxLen);
+    }
+}
+
+// Setup machine from JSON
+bool McBase::setupMachine(const char* mcName, const char* mcJson)
+{
+    // Check if name is valid
+    uint32_t variantIdx = 0;
+    bool isValid = isCalled(mcName, variantIdx);
+    if (!isValid)
+    {
+        LogWrite(MODULE_PREFIX, LOG_WARNING, "setupMachine name %s not supported", mcName);
+        return false;
+    }
+
+    // Store new variant idx and table
+    _activeVariantIdx = variantIdx;
+    _machineDescriptor = *_pVariantTables[variantIdx];
+
+    // Disable machine first
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "Disabling %s", getMachineName());
+    disable();
+    
+    // Disable hardware initially
+    getHwManager().disableAll();
+
+    // Setup hardware
+    getHwManager().setupFromJson("hw", mcJson);
+
+    // Setup clock
+    uint32_t clockFreqHz = _machineDescriptor.clockFrequencyHz;
+
+    // Check if clock specified in json
+    static const int MAX_CLOCK_SET_STR = 100;
+    char clockSpeedStr[MAX_CLOCK_SET_STR];
+    BusAccess& busAccess = _mcManager.getBusAccess();
+    bool clockValid = jsonGetValueForKey("clockHz", mcJson, clockSpeedStr, MAX_CLOCK_SET_STR);
+    if (clockValid)
+    {
+        uint32_t clockHz = strtol(clockSpeedStr, NULL, 10);
+        if ((clockHz >= busAccess.clockGetMinFreqHz()) && 
+                        (clockHz <= busAccess.clockGetMaxFreqHz()))
+            clockFreqHz = clockHz;
+    }
+    if ((clockFreqHz >= busAccess.clockGetMinFreqHz()) && 
+                        (clockFreqHz <= busAccess.clockGetMaxFreqHz()))
+    {
+        busAccess.clockSetup();
+        busAccess.clockSetFreqHz(clockFreqHz);
+        busAccess.clockEnable(true);
+    }
+    else
+    {
+        busAccess.clockEnable(false);
+    }
+
+    // Enable machine
+    enable();
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "Enabling %s", getMachineName());
+    return true;
+}
+
+// Setup display
+void McBase::setupDisplay(DisplayBase* pDisplay)
+{
+    _pDisplay = pDisplay;
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "setupDisplay ResX %d ResY %d",
+                _machineDescriptor.displayPixelsX, _machineDescriptor.displayPixelsY);
+    if (!pDisplay)
+        return;
+    // Layout display for machine
+    pDisplay->targetLayout(
+        _machineDescriptor.displayPixelsX, _machineDescriptor.displayPixelsY,
+        _machineDescriptor.displayCellX, _machineDescriptor.displayCellY,
+        _machineDescriptor.pixelScaleX, _machineDescriptor.pixelScaleY,
+        _machineDescriptor.pFont, 
+        _machineDescriptor.displayForeground, _machineDescriptor.displayBackground);
+}
+
+// Machine heartbeat
+void McBase::machineHeartbeat()
+{
 }
 
 // Handle reset for the machine - if false returned then the bus raider will issue a hardware reset
 bool McBase::reset([[maybe_unused]] bool restoreWaitDefaults, [[maybe_unused]] bool holdInReset)
 {
-    return false;
-}
-
-// Check if name is a valid one for this machine
-bool McBase::isCalled(const char* mcName)
-{
-    for (int i = 0; i < _defaultDescriptorTablesLen; i++)
-        // Check against supported names
-        if (strcasecmp(_pDefaultDescriptorTables[i].machineName, mcName) == 0)
-            return true;
     return false;
 }
 
@@ -48,110 +195,15 @@ bool McBase::canProcFileType([[maybe_unused]] const char* fileType)
     return false;
 }
 
-// Get current machine name
-const char* McBase::getMachineName()
+// Get HwManager
+HwManager& McBase::getHwManager()
 {
-    return _activeDescriptorTable.machineName;
+    return _mcManager.getHwManager();
 }
 
-// Get comma separated list of machine names
-void McBase::getMachineNames(char* mcNameStr, int maxLen)
+// Get Target Programmer
+TargetProgrammer& McBase::getTargetProgrammer()
 {
-    mcNameStr[0] = 0;
-    bool firstItem = true;
-    for (int j = 0; j < _defaultDescriptorTablesLen; j++)
-    {
-        if (!firstItem)
-            strlcat(mcNameStr,",", maxLen);
-        firstItem = false;
-        strlcat(mcNameStr,"\"", maxLen);
-        strlcat(mcNameStr, _pDefaultDescriptorTables[j].machineName, maxLen);
-        strlcat(mcNameStr,"\"", maxLen);
-    }
+    return _mcManager.getTargetProgrammer();
 }
 
-// Setup machine from JSON
-bool McBase::setupMachine(const char* mcName, const char* mcJson)
-{
-    // Disable machine first
-    LogWrite("McBase", LOG_DEBUG, "Disabling %s", getMachineName());
-    disable();
-
-    // Get machine sub type
-    int mcSubType = -1;
-    for (int i = 0; i < _defaultDescriptorTablesLen; i++)
-    {
-        // Check against supported names
-        if (strcasecmp(_pDefaultDescriptorTables[i].machineName, mcName) == 0)
-        {
-            mcSubType = i;
-            break;
-        }
-    }
-    if (mcSubType < 0)
-    {
-        LogWrite("McBase", LOG_DEBUG, "Subtype invalid %d", mcSubType);
-        return false;
-    }
-
-    // Copy descriptor
-    _activeDescriptorTable = _pDefaultDescriptorTables[mcSubType];
-    _activeSubType = mcSubType;
-
-    // Disable initially
-    HwManager::disableAll();
-
-    // Setup hardware
-    HwManager::setupFromJson("hw", mcJson);
-
-    // Setup clock
-    uint32_t clockFreqHz = _activeDescriptorTable.clockFrequencyHz;
-
-    // Check if clock specified in json
-    static const int MAX_CLOCK_SET_STR = 100;
-    char clockSpeedStr[MAX_CLOCK_SET_STR];
-    bool clockValid = jsonGetValueForKey("clockHz", mcJson, clockSpeedStr, MAX_CLOCK_SET_STR);
-    if (clockValid)
-    {
-        uint32_t clockHz = strtol(clockSpeedStr, NULL, 10);
-        if ((clockHz >= BusAccess::clockGetMinFreqHz()) && (clockHz <= BusAccess::clockGetMaxFreqHz()))
-            clockFreqHz = clockHz;
-    }
-    if ((clockFreqHz >= BusAccess::clockGetMinFreqHz()) && (clockFreqHz <= BusAccess::clockGetMaxFreqHz()))
-    {
-        BusAccess::clockSetup();
-        BusAccess::clockSetFreqHz(clockFreqHz);
-        BusAccess::clockEnable(true);
-    }
-    else
-    {
-        BusAccess::clockEnable(false);
-    }
-
-    // Enable machine
-    enable();
-    LogWrite("McBase", LOG_DEBUG, "Enabling %s", getMachineName());
-    return true;
-}
-
-// Setup display
-void McBase::setupDisplay(DisplayBase* pDisplay)
-{
-    _pDisplay = pDisplay;
-    LogWrite("McBase", LOG_DEBUG, "setupDisplay ResX %d ResY %d",
-                _activeDescriptorTable.displayPixelsX, _activeDescriptorTable.displayPixelsY);
-    if (!pDisplay)
-        return;
-    // Layout display for machine
-    pDisplay->targetLayout(
-        _activeDescriptorTable.displayPixelsX, _activeDescriptorTable.displayPixelsY,
-        _activeDescriptorTable.displayCellX, _activeDescriptorTable.displayCellY,
-        _activeDescriptorTable.pixelScaleX, _activeDescriptorTable.pixelScaleY,
-        _activeDescriptorTable.pFont, 
-        _activeDescriptorTable.displayForeground, _activeDescriptorTable.displayBackground);
-}
-
-// Machine heartbeat
-void McBase::machineHeartbeat()
-{
-}

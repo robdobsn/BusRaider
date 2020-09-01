@@ -38,11 +38,11 @@ typedef unsigned char byte;
 
 
 /** Function type to emulate data read. */
-typedef byte (*Z80DataIn) 	(int param, ushort address);
+typedef byte (*Z80DataIn) 	(int param, ushort address, void* pTracer);
 
 
 /** Function type to emulate data write. */
-typedef void (*Z80DataOut)	(int param, ushort address, byte data);
+typedef void (*Z80DataOut)	(int param, ushort address, byte data, void* pTracer);
 
 
 /** 
@@ -134,6 +134,9 @@ typedef struct
 
 	byte exec_int_vector;
 
+	// Tracer pointer
+	void* _pTracer;
+	
 } Z80Context;
 
 

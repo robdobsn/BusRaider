@@ -7,9 +7,10 @@
 
 static const char* _baseName = "UNDEFINED";
 
-HwBase::HwBase()
+HwBase::HwBase(HwManager& hwManager, BusAccess& busAccess) : 
+        _hwManager(hwManager), _busAccess(busAccess)
 {
-    HwManager::add(this);
+    HwManager::addHardwareElementStatic(this);
     _enabled = false;
     _pName = _baseName;
 }

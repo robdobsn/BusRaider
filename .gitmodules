@@ -2,3 +2,6 @@
 	path = PiSw/uspi
 	url = https://github.com/rsta2/uspi
     ignore = dirty
+[submodule "PiSw2/circle"]
+	path = PiSw2/circle
+	url = https://github.com/rsta2/circle.git

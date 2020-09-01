@@ -7,6 +7,7 @@
 #include "../System/ee_sprintf.h"
 #include "../System/logging.h"
 #include "../System/rdutils.h"
+#include "../Machines/McManager.h"
 #include "libz80/z80.h"
 
 // Uncomment the following line to use SPI0 CE0 of the Pi as a debug pin
@@ -17,45 +18,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Module name
-static const char FromStepTracer[] = "StepTracer";
-
-// Main comms socket - to wire up command handler
-CommsSocketInfo StepTracer::_commsSocketInfo =
-{
-    true,
-    StepTracer::handleRxMsg,
-    NULL,
-    NULL
-};
-
-// Sockets
-int StepTracer::_busSocketId = -1;
-int StepTracer::_commsSocketId = -1;
-
-// Step tracer
-StepTracerCycle StepTracer::_stepCycles[MAX_STEP_CYCLES_FOR_INSTR];
-int StepTracer::_stepCycleCount = 0;
-int StepTracer::_stepCyclePos = 0;
-BusSocketInfo StepTracer::_busSocketInfo = 
-{
-    false,
-    StepTracer::handleWaitInterruptStatic,
-    StepTracer::busActionCompleteStatic,
-    false,
-    false,
-    // Reset
-    false,
-    0,
-    // NMI
-    false,
-    0,
-    // IRQ
-    false,
-    0,
-    false,
-    BR_BUS_ACTION_GENERAL,
-    false
-};
+static const char MODULE_PREFIX[] = "StepTracer";
 
 // This instance
 StepTracer* StepTracer::_pThisInstance = NULL;
@@ -65,7 +28,8 @@ StepTracer* StepTracer::_pThisInstance = NULL;
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Constructor
-StepTracer::StepTracer() : 
+StepTracer::StepTracer(CommandHandler& commandHandler, McManager& mcManager) : 
+        _commandHandler(commandHandler), _mcManager(mcManager),
         _exceptionsPosn(NUM_DEBUG_VALS), _tracesPosn(NUM_TRACE_VALS)
 {
     // Vars
@@ -79,6 +43,8 @@ StepTracer::StepTracer() :
     _primeFromMemPending = false;
     _serviceCount = 0;
     _recordIsHoldingTarget = false;
+    _busSocketId = -1;
+    _commsSocketId = -1;
 
     // Tracer memory as required
 #ifdef STEP_VAL_WITHOUT_HW_MANAGER
@@ -91,6 +57,7 @@ StepTracer::StepTracer() :
 	_cpu_z80.ioWrite = io_write;
 	_cpu_z80.memRead = mem_read;
 	_cpu_z80.memWrite = mem_write;
+    _cpu_z80._pTracer = (void*)this;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -107,12 +74,22 @@ void StepTracer::init()
 
     // Connect to the comms socket
     if (_commsSocketId < 0)
-        _commsSocketId = CommandHandler::commsSocketAdd(_commsSocketInfo);
+        _commsSocketId = _commandHandler.commsSocketAdd(this, true, StepTracer::handleRxMsgStatic, NULL, NULL);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Handle CommandInterface message
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool StepTracer::handleRxMsgStatic(void* pObject,
+                const char* pCmdJson, [[maybe_unused]]const uint8_t* pParams, [[maybe_unused]]int paramsLen,
+                [[maybe_unused]]char* pRespJson, [[maybe_unused]]int maxRespLen)
+{
+    if (!pObject)
+        return false;
+    StepTracer* pTracer = (StepTracer*)pObject;
+    return pTracer->handleRxMsg(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);    
+}
 
 bool StepTracer::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t* pParams, [[maybe_unused]]int paramsLen,
                 [[maybe_unused]]char* pRespJson, [[maybe_unused]]int maxRespLen)
@@ -172,7 +149,7 @@ bool StepTracer::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t
         if (_pThisInstance)
             _pThisInstance->getStatus(statusStr, MAX_STATUS_RESP_LEN, statusIdxStr);
         strlcpy(pRespJson, statusStr, maxRespLen);
-        // LogWrite(FromStepTracer, LOG_DEBUG, "TracerStatus %s", statusStr);
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "TracerStatus %s", statusStr);
         return true;
     }
     else if (strcasecmp(cmdName, "tracerGetLong") == 0)
@@ -202,13 +179,33 @@ void StepTracer::start(bool logging, bool recordAll, bool compareToEmulated, boo
     _recordAll = recordAll;
     _compareToEmulated = compareToEmulated;
     if (_logging)
-        LogWrite(FromStepTracer, LOG_DEBUG, "TracerStart logging %d record %d compare %d",
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "TracerStart logging %d record %d compare %d",
                     _logging, _recordAll, _compareToEmulated);
 
     // Connect to the bus socket
+    BusAccess& busAccess = _mcManager.getBusAccess();
     if (_busSocketId < 0)
-        _busSocketId = BusAccess::busSocketAdd(_busSocketInfo);
-    BusAccess::busSocketEnable(_busSocketId, true);
+        _busSocketId = busAccess.busSocketAdd(
+            false,
+            StepTracer::handleWaitInterruptStatic,
+            StepTracer::busActionCompleteStatic,
+            false,
+            false,
+            // Reset
+            false,
+            0,
+            // NMI
+            false,
+            0,
+            // IRQ
+            false,
+            0,
+            false,
+            BR_BUS_ACTION_GENERAL,
+            false,
+            this
+        );
+    busAccess.busSocketEnable(_busSocketId, true);
 
     // Prime from memory if required
     if (primeFromMem)
@@ -216,16 +213,16 @@ void StepTracer::start(bool logging, bool recordAll, bool compareToEmulated, boo
 #ifdef STEP_VAL_WITHOUT_HW_MANAGER
         // Grab all of normal memory
         uint8_t* pBuf = new uint8_t[STD_TARGET_MEMORY_LEN];
-        int blockReadResult = BusAccess::blockRead(0, pBuf, STD_TARGET_MEMORY_LEN, true, false);
+        int blockReadResult = busAccess.blockRead(0, pBuf, STD_TARGET_MEMORY_LEN, true, false);
         if (blockReadResult != BR_OK)
-            LogWrite(FromStepTracer, LOG_DEBUG, "Block read for tracer failed %d", blockReadResult);
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "Block read for tracer failed %d", blockReadResult);
         uint32_t maxLen = (_tracerMemoryLen < STD_TARGET_MEMORY_LEN) ? _tracerMemoryLen : STD_TARGET_MEMORY_LEN;
         if (_pTracerMemory)
             memcopyfast(_pTracerMemory, pBuf, maxLen);
         delete [] pBuf;
 #else
-        LogWrite(FromStepTracer, LOG_DEBUG, "Tracer prime from memory");
-        BusAccess::targetReqBus(_busSocketId, BR_BUS_ACTION_MIRROR);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Tracer prime from memory");
+        busAccess.targetReqBus(_busSocketId, BR_BUS_ACTION_MIRROR);
         _primeFromMemPending = true;
 #endif
     }
@@ -233,30 +230,30 @@ void StepTracer::start(bool logging, bool recordAll, bool compareToEmulated, boo
 
 void StepTracer::stopAll(bool logging)
 {
-    if (_pThisInstance)
-        _pThisInstance->stop(logging);
+    stop(logging);
 }
 
 void StepTracer::stop(bool logging)
 {
     _logging = logging;
     if (_logging)
-        LogWrite(FromStepTracer, LOG_DEBUG, "TracerStop");
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "TracerStop");
 
     // Remove wait on memory and IO
-    BusAccess::waitOnMemory(_busSocketId, false);
-    BusAccess::waitOnIO(_busSocketId, false);
+    BusAccess& busAccess = _mcManager.getBusAccess();
+    busAccess.waitOnMemory(_busSocketId, false);
+    busAccess.waitOnIO(_busSocketId, false);
 
     // Clear wait
-    BusAccess::waitHold(_busSocketId, false);
+    busAccess.waitHold(_busSocketId, false);
 
     // Clear bus hold
-    BusAccess::waitRelease();
+    busAccess.waitRelease();
 
     // Turn off the bus socket but don't set _busSocketId to -1
     // or all sockets will be used up
     if (_busSocketId >= 0)
-        BusAccess::busSocketEnable(_busSocketId, false);
+        busAccess.busSocketEnable(_busSocketId, false);
     _isActive = false;
 
     // Clear log buffers
@@ -272,7 +269,14 @@ void StepTracer::stop(bool logging)
 // Callbacks/Hooks
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void StepTracer::busActionCompleteStatic([[maybe_unused]]BR_BUS_ACTION actionType, [[maybe_unused]] BR_BUS_ACTION_REASON reason)
+void StepTracer::busActionCompleteStatic(void* pObject, [[maybe_unused]]BR_BUS_ACTION actionType, [[maybe_unused]] BR_BUS_ACTION_REASON reason)
+{
+    if (!pObject)
+        return;
+    ((StepTracer*)pObject)->busActionComplete(actionType, reason);
+}
+
+void StepTracer::busActionComplete([[maybe_unused]]BR_BUS_ACTION actionType, [[maybe_unused]] BR_BUS_ACTION_REASON reason)
 {
     if ((actionType == BR_BUS_ACTION_RESET) && _pThisInstance)
     {
@@ -283,17 +287,18 @@ void StepTracer::busActionCompleteStatic([[maybe_unused]]BR_BUS_ACTION actionTyp
         if (_pThisInstance->_primeFromMemPending)
         {
             // Clone the system's memory
-            HwManager::tracerClone();
+            _mcManager.getHwManager().tracerClone();
             _pThisInstance->_primeFromMemPending = false;
             // Add wait on memory and IO
-            BusAccess::waitOnMemory(_busSocketId, true);
-            BusAccess::waitOnIO(_busSocketId, true);
+            BusAccess& busAccess = _mcManager.getBusAccess();
+            busAccess.waitOnMemory(_busSocketId, true);
+            busAccess.waitOnIO(_busSocketId, true);
             // Clear wait
-            BusAccess::waitHold(_busSocketId, false);
+            busAccess.waitHold(_busSocketId, false);
             // Clear bus hold
-            BusAccess::waitRelease();
+            busAccess.waitRelease();
             // Reset target - becomes active when reset acknowledge signal is received
-            BusAccess::targetReqReset(_busSocketId);
+            busAccess.targetReqReset(_busSocketId);
         }
     }
 }
@@ -325,7 +330,7 @@ void StepTracer::resetComplete()
     #endif
     
     if (_logging)
-        LogWrite(FromStepTracer, LOG_DEBUG, "Reset");
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Reset");
 #ifdef USE_PI_SPI0_CE0_AS_DEBUG_PIN
     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
     microsDelay(1);
@@ -334,11 +339,12 @@ void StepTracer::resetComplete()
 
 }
 
-void StepTracer::handleWaitInterruptStatic(uint32_t addr, uint32_t data, 
+void StepTracer::handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t data, 
         uint32_t flags, uint32_t& retVal)
 {
-    if (_pThisInstance)
-        _pThisInstance->handleWaitInterrupt(addr, data, flags, retVal);
+    if (!pObject)
+        return;
+    ((StepTracer*)pObject)->handleWaitInterrupt(addr, data, flags, retVal);
 }
 
 void StepTracer::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unused]] uint32_t data, 
@@ -434,7 +440,8 @@ void StepTracer::handleWaitInterrupt([[maybe_unused]] uint32_t addr, [[maybe_unu
             {
                 // Hold the bus
                 _recordIsHoldingTarget = true;
-                BusAccess::waitHold(_busSocketId, true);
+                BusAccess& busAccess = _mcManager.getBusAccess();
+                busAccess.waitHold(_busSocketId, true);
             }
         }
     }
@@ -489,7 +496,7 @@ void StepTracer::service()
                         expFlags & 0x40 ? 'X': ' ', expFlags & 0x80 ? 'Q': ' ', expFlags & 0x100 ? 'N': ' ',
                         _exceptions[pos].dataToZ80);
             strlcpy(debugMsg, tmpStr, DEBUG_MSG_MAX);
-            LogWrite(FromStepTracer, LOG_DEBUG, debugMsg);
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, debugMsg);
         }
 
         // No longer need exception
@@ -528,8 +535,9 @@ void StepTracer::getTraceLong(char* pRespJson, int maxRespLen)
     if (_recordIsHoldingTarget && (_tracesPosn.size() - _tracesPosn.count() > MIN_SPACES_IN_TRACES))
     {
         _recordIsHoldingTarget = false;
-        BusAccess::waitHold(_busSocketId, false);
-        BusAccess::waitRelease();
+        BusAccess& busAccess = _mcManager.getBusAccess();
+        busAccess.waitHold(_busSocketId, false);
+        busAccess.waitRelease();
     }
 }
 
@@ -540,7 +548,7 @@ void StepTracer::getTraceLong(char* pRespJson, int maxRespLen)
 void StepTracer::getTraceBin()
 {
     // Check if we would be able to transmit without issues
-    uint32_t txAvailable = CommandHandler::getTxAvailable();
+    uint32_t txAvailable = _commandHandler.getTxAvailable();
     if (txAvailable < MIN_TX_AVAILABLE_FOR_BIN_FRAME)
     {
         // TODO
@@ -599,18 +607,19 @@ void StepTracer::getTraceBin()
     // Copy binary to end of buffer
     memcopyfast(jsonFrame+strlen(jsonFrame)+1, (uint8_t*)binElems, binDataLen);
 
-    CommandHandler::sendWithJSON("rdp", "", 0, (const uint8_t*)jsonFrame, strlen(jsonFrame)+1+binDataLen);
+    _commandHandler.sendWithJSON("rdp", "", 0, (const uint8_t*)jsonFrame, strlen(jsonFrame)+1+binDataLen);
 
     // TODO
-    txAvailable = CommandHandler::getTxAvailable();
+    txAvailable = _commandHandler.getTxAvailable();
     ISR_VALUE(ISR_ASSERT_CODE_DEBUG_J, txAvailable);
 
     // No longer hold
     if (_recordIsHoldingTarget && (_tracesPosn.size() - _tracesPosn.count() > MIN_SPACES_IN_TRACES))
     {
         _recordIsHoldingTarget = false;
-        BusAccess::waitHold(_busSocketId, false);
-        BusAccess::waitRelease();
+        BusAccess& busAccess = _mcManager.getBusAccess();
+        busAccess.waitHold(_busSocketId, false);
+        busAccess.waitRelease();
     }
 }
 
@@ -619,79 +628,85 @@ void StepTracer::getTraceBin()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Memory and IO functions
-byte StepTracer::mem_read([[maybe_unused]] int param, [[maybe_unused]] ushort address)
+byte StepTracer::mem_read([[maybe_unused]] int param, [[maybe_unused]] ushort address, void* pTracer)
 {
-    if (!_pThisInstance)
+    if (!pTracer)
         return 0;
+    StepTracer* pStepTracer = (StepTracer*)pTracer;
     uint32_t dataVal = 0; 
 #ifdef STEP_VAL_WITHOUT_HW_MANAGER
-    if (_pThisInstance->_pTracerMemory && (address < _pThisInstance->_tracerMemoryLen))
-        dataVal = _pThisInstance->_pTracerMemory[address];
+    if (pStepTracer->_pTracerMemory && (address < pStepTracer->_tracerMemoryLen))
+        dataVal = pStepTracer->_pTracerMemory[address];
 #else
-    HwManager::tracerHandleAccess(address, 0, BR_CTRL_BUS_MREQ_MASK | BR_CTRL_BUS_RD_MASK, dataVal);
+    pStepTracer->_mcManager.getHwManager().tracerHandleAccess(address, 0, BR_CTRL_BUS_MREQ_MASK | BR_CTRL_BUS_RD_MASK, dataVal);
 #endif
-    if (_stepCycleCount < MAX_STEP_CYCLES_FOR_INSTR)
+    if (pStepTracer->_stepCycleCount < MAX_STEP_CYCLES_FOR_INSTR)
     {
-        _stepCycles[_stepCycleCount].addr = address;
-        _stepCycles[_stepCycleCount].data = dataVal;
-        _stepCycles[_stepCycleCount].flags = (_pThisInstance->_cpu_z80.M1 ? BR_CTRL_BUS_M1_MASK : 0) |
+        pStepTracer->_stepCycles[pStepTracer->_stepCycleCount].addr = address;
+        pStepTracer->_stepCycles[pStepTracer->_stepCycleCount].data = dataVal;
+        pStepTracer->_stepCycles[pStepTracer->_stepCycleCount].flags = (_pThisInstance->_cpu_z80.M1 ? BR_CTRL_BUS_M1_MASK : 0) |
                         BR_CTRL_BUS_RD_MASK | BR_CTRL_BUS_MREQ_MASK;
-        _stepCycleCount++;
+        pStepTracer->_stepCycleCount++;
     }
     return dataVal;
 }
 
-void StepTracer::mem_write([[maybe_unused]] int param, [[maybe_unused]] ushort address, [[maybe_unused]] byte data)
+void StepTracer::mem_write([[maybe_unused]] int param, [[maybe_unused]] ushort address, 
+            [[maybe_unused]] byte data, void* pTracer)
 {
-    if (!_pThisInstance)
+    if (!pTracer)
         return;
-    if (_stepCycleCount < MAX_STEP_CYCLES_FOR_INSTR)
+    StepTracer* pStepTracer = (StepTracer*)pTracer;
+    if (pStepTracer->_stepCycleCount < MAX_STEP_CYCLES_FOR_INSTR)
     {
-        _stepCycles[_stepCycleCount].addr = address;
-        _stepCycles[_stepCycleCount].data = data;
-        _stepCycles[_stepCycleCount].flags = BR_CTRL_BUS_WR_MASK | BR_CTRL_BUS_MREQ_MASK;
-        _stepCycleCount++;
+        pStepTracer->_stepCycles[pStepTracer->_stepCycleCount].addr = address;
+        pStepTracer->_stepCycles[pStepTracer->_stepCycleCount].data = data;
+        pStepTracer->_stepCycles[pStepTracer->_stepCycleCount].flags = BR_CTRL_BUS_WR_MASK | BR_CTRL_BUS_MREQ_MASK;
+        pStepTracer->_stepCycleCount++;
     }
 #ifdef STEP_VAL_WITHOUT_HW_MANAGER
-    if (_pThisInstance->_pTracerMemory && (address < _pThisInstance->_tracerMemoryLen))
-        _pThisInstance->_pTracerMemory[address] = data;
+    if (pStepTracer->_pTracerMemory && (address < pStepTracer->_tracerMemoryLen))
+        pStepTracer->_pTracerMemory[address] = data;
 #else
     uint32_t retVal = 0;
-    HwManager::tracerHandleAccess(address, data, BR_CTRL_BUS_MREQ_MASK | BR_CTRL_BUS_WR_MASK, retVal);
+    pStepTracer->_mcManager.getHwManager().tracerHandleAccess(address, data, BR_CTRL_BUS_MREQ_MASK | BR_CTRL_BUS_WR_MASK, retVal);
 #endif
 }
 
-byte StepTracer::io_read([[maybe_unused]] int param, [[maybe_unused]] ushort address)
+byte StepTracer::io_read([[maybe_unused]] int param, [[maybe_unused]] ushort address, void* pTracer)
 {
-    if (!_pThisInstance)
+    if (!pTracer)
         return 0;
+    StepTracer* pStepTracer = (StepTracer*)pTracer;
     uint32_t dataVal = 0x80; // TODO - really need to find a way to make this the value returned on the BUS to keep validity
 #ifndef STEP_VAL_WITHOUT_HW_MANAGER
-    HwManager::tracerHandleAccess(address, 0, BR_CTRL_BUS_IORQ_MASK | BR_CTRL_BUS_RD_MASK, dataVal);
+    pStepTracer->_mcManager.getHwManager().tracerHandleAccess(address, 0, BR_CTRL_BUS_IORQ_MASK | BR_CTRL_BUS_RD_MASK, dataVal);
 #endif
-    if (_stepCycleCount < MAX_STEP_CYCLES_FOR_INSTR)
+    if (pStepTracer->_stepCycleCount < MAX_STEP_CYCLES_FOR_INSTR)
     {
-        _stepCycles[_stepCycleCount].addr = address;
-        _stepCycles[_stepCycleCount].data = dataVal;
-        _stepCycles[_stepCycleCount].flags = BR_CTRL_BUS_RD_MASK | BR_CTRL_BUS_IORQ_MASK;
-        _stepCycleCount++;
+        pStepTracer->_stepCycles[pStepTracer->_stepCycleCount].addr = address;
+        pStepTracer->_stepCycles[pStepTracer->_stepCycleCount].data = dataVal;
+        pStepTracer->_stepCycles[pStepTracer->_stepCycleCount].flags = BR_CTRL_BUS_RD_MASK | BR_CTRL_BUS_IORQ_MASK;
+        pStepTracer->_stepCycleCount++;
     }
     return dataVal;
 }
 
-void StepTracer::io_write([[maybe_unused]] int param, [[maybe_unused]] ushort address, [[maybe_unused]] byte data)
+void StepTracer::io_write([[maybe_unused]] int param, [[maybe_unused]] ushort address, 
+        [[maybe_unused]] byte data, void* pTracer)
 {
-    if (!_pThisInstance)
+    if (!pTracer)
         return;
-    if (_stepCycleCount < MAX_STEP_CYCLES_FOR_INSTR)
+    StepTracer* pStepTracer = (StepTracer*)pTracer;
+    if (pStepTracer->_stepCycleCount < MAX_STEP_CYCLES_FOR_INSTR)
     {
-        _stepCycles[_stepCycleCount].addr = address;
-        _stepCycles[_stepCycleCount].data = data;
-        _stepCycles[_stepCycleCount].flags = BR_CTRL_BUS_WR_MASK | BR_CTRL_BUS_IORQ_MASK;
-        _stepCycleCount++;
+        pStepTracer->_stepCycles[pStepTracer->_stepCycleCount].addr = address;
+        pStepTracer->_stepCycles[pStepTracer->_stepCycleCount].data = data;
+        pStepTracer->_stepCycles[pStepTracer->_stepCycleCount].flags = BR_CTRL_BUS_WR_MASK | BR_CTRL_BUS_IORQ_MASK;
+        pStepTracer->_stepCycleCount++;
     }
 #ifndef STEP_VAL_WITHOUT_HW_MANAGER
     uint32_t retVal = 0;
-    HwManager::tracerHandleAccess(address, data, BR_CTRL_BUS_IORQ_MASK | BR_CTRL_BUS_WR_MASK, retVal);
+    pStepTracer->_mcManager.getHwManager().tracerHandleAccess(address, data, BR_CTRL_BUS_IORQ_MASK | BR_CTRL_BUS_WR_MASK, retVal);
 #endif
 }

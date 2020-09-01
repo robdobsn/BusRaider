@@ -5,11 +5,11 @@
 #include <stdint.h>
 #include <stddef.h>
 
-uint8_t memTestDataBus(uint32_t address);
+uint8_t memTestDataBus(uint32_t address, BusAccess& busAccess);
 
-uint32_t memTestAddressBus(uint32_t baseAddress, unsigned long nBytes);
+uint32_t memTestAddressBus(uint32_t baseAddress, unsigned long nBytes, BusAccess& busAccess);
 
-uint32_t memTestDevice(uint32_t baseAddress, unsigned long nBytes);
+uint32_t memTestDevice(uint32_t baseAddress, unsigned long nBytes, BusAccess& busAccess);
 
-// int memTestAll(uint32_t baseAddress, uint32_t numBytes);
+// int memTestAll(uint32_t baseAddress, uint32_t numBytes, BusAccess& busAccess);
 

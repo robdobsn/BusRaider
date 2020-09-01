@@ -5,6 +5,8 @@
 
 #include "stdint.h"
 #include "CommandInterface/CommandHandler.h"
+#include "TargetBus/BusAccess.h"
+#include "Machines/McManager.h"
 
 class Display;
 class UartMaxi;
@@ -13,7 +15,8 @@ class BusRaiderApp
 {
 public:
 
-    BusRaiderApp(Display& display, UartMaxi& uart);
+    BusRaiderApp(Display& display, UartMaxi& uart, 
+            CommandHandler& commandHandler, McManager& mcManager);
 
     void init();
     void initUSB();
@@ -22,6 +25,7 @@ public:
     uint32_t getDefaultAutoBaudRate() { return _autoBaudRates[0]; };
 
 private:
+   
     bool _lastActivityTickerState;
 
     // Status update rate and last timer
@@ -37,17 +41,17 @@ private:
     // ESP32 status update
     uint32_t _esp32StatusUpdateStartUs;
 
-    // Comms socket
-    static CommsSocketInfo _commsSocket;
-
-    // CommandHandler
-    CommandHandler _commandHandler;
-
     // Display
     Display& _display;
 
     // UART
     UartMaxi& _uart;
+
+    // CommandHandler
+    CommandHandler& _commandHandler;
+
+    // Machine manager
+    McManager& _mcManager;
 
     // Singleton
     static BusRaiderApp* _pApp;
@@ -84,9 +88,11 @@ private:
     static void serialPutStr(const uint8_t* pBuf, int len);
     static uint32_t serialTxAvailable();
     static void serviceGetFromSerial();
-    static void usbKeypressHandlerStatic(unsigned char ucModifiers, const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED]);
-    void usbKeypressHandler(unsigned char ucModifiers, const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED]);
-    static bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
+    static void addUSBKeypressToBufferStatic(unsigned char ucModifiers, const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED]);
+    void handleUSBKeypress(unsigned char ucModifiers, const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED]);
+    static bool handleRxMsgStatic(void* pObject, const char* pCmdJson, const uint8_t* pParams, int paramsLen,
+                char* pRespJson, int maxRespLen);
+    bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
                 char* pRespJson, int maxRespLen);
     void storeESP32StatusInfo(const char* pCmdJson);
 
@@ -98,19 +104,19 @@ private:
         uint32_t modifiers;
     };
     static const int MAX_USB_KEYS_BUFFERED = 100;
-    static KeyInfo _keyInfoBuffer[MAX_USB_KEYS_BUFFERED];
-    static RingBufferPosn _keyInfoBufferPos;
-    static bool _inKeyboardRoutine;
+    KeyInfo _keyInfoBuffer[MAX_USB_KEYS_BUFFERED];
+    RingBufferPosn _keyInfoBufferPos;
+    bool _inKeyboardRoutine;
 
     // Auto-baud checks
     uint32_t _autoBaudLastCheckMs;
     uint32_t _autoBaudFailCount;
     uint32_t _autoBaudCurBaudIdx;
-    static uint32_t _autoBaudLastESP32CommsMs;
+    uint32_t _autoBaudLastESP32CommsMs;
     static const uint32_t _autoBaudRates[];
-    static const uint32_t _autoBaudCheckPeriodMs = 1000;
-    static const uint32_t _autoBaudFailCountToChangeBaud = 30;
-    static const uint32_t _autoBaudMaxTimeBetweenESPCommsMs = 10000;
+    const uint32_t _autoBaudCheckPeriodMs = 1000;
+    const uint32_t _autoBaudFailCountToChangeBaud = 30;
+    const uint32_t _autoBaudMaxTimeBetweenESPCommsMs = 10000;
 
     // Tests
     enum testCodeRet_type {

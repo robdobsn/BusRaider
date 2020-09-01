@@ -21,55 +21,56 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Module name
-static const char FromBusAccess[] = "BusAccess";
+static const char MODULE_PREFIX[] = "BusAccess";
 
-// Hardware version
-int BusAccess::_hwVersionNumber = HW_VERSION_DEFAULT;
+// Constructor
 
-// Bus sockets
-BusSocketInfo BusAccess::_busSockets[MAX_BUS_SOCKETS];
-int BusAccess::_busSocketCount = 0;
+BusAccess::BusAccess()
+{
+    // Hardware version
+    _hwVersionNumber = HW_VERSION_DEFAULT;
 
-// Bus service enabled - can be disabled to allow external API to completely control bus
-bool BusAccess::_busServiceEnabled = true;
+    // Bus sockets
+    _busSocketCount = 0;
 
-// Wait state enables
-bool BusAccess::_waitOnMemory = false;
-bool BusAccess::_waitOnIO = false;
+    // Bus service enabled - can be disabled to allow external API to completely control bus
+    _busServiceEnabled = true;
 
-// Wait is asserted (processor held)
-bool volatile BusAccess::_waitAsserted = false;
+    // Wait state enables
+    _waitOnMemory = false;
+    _waitOnIO = false;
 
-// Rate at which wait is released when free-cycling
-volatile uint32_t BusAccess::_waitCycleLengthUs = 1;
-volatile uint32_t BusAccess::_waitAssertedStartUs = 0;
+    // Wait is asserted (processor held)
+    _waitAsserted = false;
 
-// Held in wait state
-volatile bool BusAccess::_waitHold = false;
+    // Rate at which wait is released when free-cycling
+    _waitCycleLengthUs = 1;
+    _waitAssertedStartUs = 0;
 
-// Wait suspend bus detail for one cycle
-volatile bool BusAccess::_waitSuspendBusDetailOneCycle = false;
+    // Held in wait state
+    _waitHold = false;
 
-// Bus action handling
-volatile int BusAccess::_busActionSocket = 0;
-volatile BR_BUS_ACTION BusAccess::_busActionType = BR_BUS_ACTION_NONE;
-volatile uint32_t BusAccess::_busActionInProgressStartUs = 0;
-volatile uint32_t BusAccess::_busActionAssertedStartUs = 0;
-volatile uint32_t BusAccess::_busActionAssertedMaxUs = 0;
-volatile BusAccess::BUS_ACTION_STATE BusAccess::_busActionState = BUS_ACTION_STATE_NONE;
-volatile bool BusAccess::_busActionSyncWithWait = false;
+    // Wait suspend bus detail for one cycle
+    _waitSuspendBusDetailOneCycle = false;
 
-// Status
-BusAccessStatusInfo BusAccess::_statusInfo;
+    // Bus action handling
+    _busActionSocket = 0;
+    _busActionType = BR_BUS_ACTION_NONE;
+    _busActionInProgressStartUs = 0;
+    _busActionAssertedStartUs = 0;
+    _busActionAssertedMaxUs = 0;
+    _busActionState = BUS_ACTION_STATE_NONE;
+    _busActionSyncWithWait = false;
 
-// Paging
-bool volatile BusAccess::_targetPageInOnReadComplete = false;
+    // Paging
+    _targetPageInOnReadComplete = false;
 
-// Debug
-int volatile BusAccess::_isrAssertCounts[ISR_ASSERT_NUM_CODES];
+    // Target read in progress
+    _targetReadInProgress = false;
 
-// Target read in progress
-bool volatile BusAccess::_targetReadInProgress = false;
+    // Bus under BusRaider control
+    _busIsUnderControl = false;
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Initialisation
@@ -328,7 +329,8 @@ void BusAccess::targetPageForInjection([[maybe_unused]]int busSocket, bool pageO
         {
             if (_busSockets[i].enabled)
             {
-                _busSockets[i].busActionCallback(BR_BUS_ACTION_PAGE_OUT_FOR_INJECT, BR_BUS_ACTION_GENERAL);
+                _busSockets[i].busActionCallback(_busSockets[i].pSourceObject, 
+                        BR_BUS_ACTION_PAGE_OUT_FOR_INJECT, BR_BUS_ACTION_GENERAL);
             }
         }
     }
@@ -415,7 +417,7 @@ bool BusAccess::busActionHandleStart()
 
     // TODO
     // if (_busActionType == BR_BUS_ACTION_RESET)
-    //     LogWrite(FromBusAccess, LOG_DEBUG, "RESET start %u", micros());
+    //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "RESET start %u", micros());
 
     // Set start timer
     _busActionAssertedStartUs = micros();
@@ -515,7 +517,7 @@ void BusAccess::busActionHandleActive()
         if (isTimeout(micros(), _busActionInProgressStartUs, MAX_WAIT_FOR_PENDING_ACTION_US))
         {
             // Cancel the request
-            // LogWrite(FromBusAccess, LOG_DEBUG, "Timeout on bus action %u type %d _waitAsserted %d", micros(), _busActionType, _waitAsserted);
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Timeout on bus action %u type %d _waitAsserted %d", micros(), _busActionType, _waitAsserted);
             setSignal(_busActionType, false);
             busActionClearFlags();
         }
@@ -592,7 +594,7 @@ void BusAccess::busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REA
             continue;
         // Inform all active sockets of the bus action completion
         if (_busSockets[i].busActionCallback)
-            _busSockets[i].busActionCallback(busActionType, reason);
+            _busSockets[i].busActionCallback(_busSockets[i].pSourceObject, busActionType, reason);
     }
 
     // If we just programmed then call again for mirroring
@@ -603,7 +605,7 @@ void BusAccess::busActionCallback(BR_BUS_ACTION busActionType, BR_BUS_ACTION_REA
             if (!_busSockets[i].enabled)
                 continue;
             if (_busSockets[i].busActionCallback)
-                _busSockets[i].busActionCallback(busActionType, BR_BUS_ACTION_MIRROR);
+                _busSockets[i].busActionCallback(_busSockets[i].pSourceObject, busActionType, BR_BUS_ACTION_MIRROR);
         }
     }
 }
@@ -782,7 +784,8 @@ void BusAccess::waitHandleNew()
     {
         if (_busSockets[sockIdx].enabled && _busSockets[sockIdx].busAccessCallback)
         {
-            _busSockets[sockIdx].busAccessCallback(addr, dataBusVals, ctrlBusVals, retVal);
+            _busSockets[sockIdx].busAccessCallback(_busSockets[sockIdx].pSourceObject,
+                             addr, dataBusVals, ctrlBusVals, retVal);
             // TODO
             // if (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK)
             //     LogWrite("BA", LOG_DEBUG, "%d IORQ %s from %04x %02x", sockIdx,

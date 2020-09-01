@@ -8,19 +8,19 @@
 #include "../System/rdutils.h"
 #include "../System/logging.h"
 #include "../TargetBus/BusAccess.h"
-#include "../TargetBus/TargetState.h"
+#include "../TargetBus/TargetProgrammer.h"
 #include "../Machines/McManager.h"
 #include "../Hardware/HwManager.h"
 #include "../Fonts/SystemFont.h"
 
-const char* McRobsZ80::_logPrefix = "RobsZ80";
+static const char* MODULE_PREFIX = "RobsZ80";
 
-McDescriptorTable McRobsZ80::_defaultDescriptorTables[] = {
+McVariantTable McRobsZ80::_defaultDescriptorTables[] = {
     {
         // Machine name
         "Rob's Z80",
         // Processor
-        McDescriptorTable::PROCESSOR_Z80,
+        McVariantTable::PROCESSOR_Z80,
         // Required display refresh rate
         .displayRefreshRatePerSec = 30,
         .displayPixelsX = 512,
@@ -44,7 +44,10 @@ McDescriptorTable McRobsZ80::_defaultDescriptorTables[] = {
     }
 };
 
-McRobsZ80::McRobsZ80() : McBase(_defaultDescriptorTables, sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0]))
+McRobsZ80::McRobsZ80(McManager& mcManager) : 
+        McBase(mcManager, 
+            _defaultDescriptorTables, 
+            sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0]))
 {
     _screenBufferValid = false;
 }
@@ -65,17 +68,18 @@ void McRobsZ80::displayRefreshFromMirrorHw()
 {
     // Read mirror memory at the location of the memory mapped screen
     uint8_t pScrnBuffer[ROBSZ80_DISP_RAM_SIZE];
-    if (HwManager::blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, false, false, true) == BR_OK)
+    if (getHwManager().blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, false, false, true) == BR_OK)
         updateDisplayFromBuffer(pScrnBuffer, ROBSZ80_DISP_RAM_SIZE);
 }
 
 void McRobsZ80::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen)
 {
-    if (!_pDisplay || (bufLen < ROBSZ80_DISP_RAM_SIZE))
+    DisplayBase* pDisplay = getDisplay();
+    if (!pDisplay || (bufLen < ROBSZ80_DISP_RAM_SIZE))
         return;
 
     // Write to the display on the Pi Zero
-    int bytesPerRow = _activeDescriptorTable.displayPixelsX/8;
+    int bytesPerRow = getDescriptorTable().displayPixelsX/8;
     for (uint32_t bufIdx = 0; bufIdx < ROBSZ80_DISP_RAM_SIZE; bufIdx++)
     {
         if (!_screenBufferValid || (_screenBuffer[bufIdx] != pScrnBuffer[bufIdx]))
@@ -87,7 +91,7 @@ void McRobsZ80::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen)
             {
                 int x = ((bufIdx % bytesPerRow) * 8) + i;
                 int y = bufIdx / bytesPerRow;
-                _pDisplay->setPixel(x, y, (pScrnBuffer[bufIdx] & pixMask) ? 1 : 0, DISPLAY_FX_DEFAULT);
+                pDisplay->setPixel(x, y, (pScrnBuffer[bufIdx] & pixMask) ? 1 : 0, DISPLAY_FX_DEFAULT);
                 pixMask = pixMask >> 1;
             }
         }
@@ -121,8 +125,8 @@ bool McRobsZ80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int
     char baseAddrStr[MAX_VALUE_STR+1];
     if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
         baseAddr = strtol(baseAddrStr, NULL, 16);
-    LogWrite(_logPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
-    TargetState::addMemoryBlock(baseAddr, pFileData, fileLen);
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
+    getTargetProgrammer().addMemoryBlock(baseAddr, pFileData, fileLen);
     return true;
 }
 
@@ -140,7 +144,7 @@ void McRobsZ80::busActionCompleteCallback(BR_BUS_ACTION actionType)
     {
         // Read memory at the location of the memory mapped screen
         uint8_t pScrnBuffer[ROBSZ80_DISP_RAM_SIZE];
-        if (HwManager::blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, false, false, false) == BR_OK)
+        if (getHwManager().blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, false, false, false) == BR_OK)
             updateDisplayFromBuffer(pScrnBuffer, ROBSZ80_DISP_RAM_SIZE);
     }
 }

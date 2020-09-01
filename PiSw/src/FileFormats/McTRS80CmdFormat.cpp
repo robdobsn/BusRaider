@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdint.h>
 
-const char *McTRS80CmdFormat::_logPrefix = "McTRS80Cmd";
+static const char* MODULE_PREFIX = "McTRS80Cmd";
 
 McTRS80CmdFormat::McTRS80CmdFormat()
 {
@@ -14,6 +14,7 @@ McTRS80CmdFormat::McTRS80CmdFormat()
 
 void McTRS80CmdFormat::proc(FileParserDataCallback* pDataCallback, 
             FileParserRegsCallback* pRegsCallback, 
+            void* pCallbackParam,
             const uint8_t* pData, int dataLen)
 {
     int pos = 0;
@@ -38,8 +39,8 @@ void McTRS80CmdFormat::proc(FileParserDataCallback* pDataCallback,
                     length += 0xfe;
                 else
                     length -= 2;
-                pDataCallback(addr, pData+pos, length);
-                LogWrite(_logPrefix, LOG_DEBUG, "Code segment addr %04x len %04x", addr, length);
+                pDataCallback(addr, pData+pos, length, pCallbackParam);
+                LogWrite(MODULE_PREFIX, LOG_DEBUG, "Code segment addr %04x len %04x", addr, length);
                 break;
             }
             case 2:
@@ -49,42 +50,42 @@ void McTRS80CmdFormat::proc(FileParserDataCallback* pDataCallback,
                 {
                     Z80Registers regs;
                     regs.PC = pData[pos];
-                    pRegsCallback(regs);
-                    LogWrite(_logPrefix, LOG_DEBUG, "ExecAddr8 %04x", regs.PC);
+                    pRegsCallback(regs, pCallbackParam);
+                    LogWrite(MODULE_PREFIX, LOG_DEBUG, "ExecAddr8 %04x", regs.PC);
                 }
                 else if (length == 2)
                 {
                     Z80Registers regs;
                     regs.PC = pData[pos] + (((uint32_t)pData[pos+1]) << 8);
                     pos+=2;
-                    pRegsCallback(regs);
-                    LogWrite(_logPrefix, LOG_DEBUG, "ExecAddr16 %04x", regs.PC);
+                    pRegsCallback(regs, pCallbackParam);
+                    LogWrite(MODULE_PREFIX, LOG_DEBUG, "ExecAddr16 %04x", regs.PC);
                 }
                 else
                 {
-                    LogWrite(_logPrefix, LOG_DEBUG, "Error in exec addr");
+                    LogWrite(MODULE_PREFIX, LOG_DEBUG, "Error in exec addr");
                 }
                 break;
             }
             case 3:
             {
                 // Non exec marker
-                LogWrite(_logPrefix, LOG_DEBUG, "Non exec marker");
+                LogWrite(MODULE_PREFIX, LOG_DEBUG, "Non exec marker");
                 return;
             }
             case 4:
             {
-                LogWrite(_logPrefix, LOG_DEBUG, "End of partitioned data");
+                LogWrite(MODULE_PREFIX, LOG_DEBUG, "End of partitioned data");
                 break;
             }
             case 5:
             {
-                LogWrite(_logPrefix, LOG_DEBUG, "Title");
+                LogWrite(MODULE_PREFIX, LOG_DEBUG, "Title");
                 break;
             }
             default:
             {
-                LogWrite(_logPrefix, LOG_DEBUG, "Undecoded block %02x", code);
+                LogWrite(MODULE_PREFIX, LOG_DEBUG, "Undecoded block %02x", code);
                 break;
             }
         }

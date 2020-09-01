@@ -7,12 +7,10 @@
 
 class McTRS80CmdFormat
 {
-  private:
-    static const char* _logPrefix;
-
   public:
   	McTRS80CmdFormat();
   	void proc(FileParserDataCallback* pDataCallback,
   			FileParserRegsCallback* pRegsCallback,
+			void* pCallbackParam,
   			const uint8_t* pData, int dataLen);
 };

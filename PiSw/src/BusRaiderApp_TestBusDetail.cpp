@@ -21,6 +21,7 @@ static const char* FromBusRaiderTests = "BusRaiderTests";
 
 void BusRaiderApp::testSelf_detailedBus()
 {
+    BusAccess& busAccess = _mcManager.getBusAccess();
     _display.consoleForeground(DISPLAY_FX_BLUE);
     _display.consolePut("\nDetailed bus test\n");
     _display.consoleForeground(DISPLAY_FX_WHITE);
@@ -105,7 +106,7 @@ void BusRaiderApp::testSelf_detailedBus()
             }
             case TEST_STATE_SET_MC:
             {
-                bool mcSet = McManager::setMachineByName("Serial Terminal ANSI");
+                bool mcSet = _mcManager.setMachineByName("Serial Terminal ANSI");
                 if (!mcSet)
                 {
                     _display.consoleForeground(DISPLAY_FX_RED);
@@ -228,7 +229,7 @@ void BusRaiderApp::testSelf_detailedBus()
                 }
 
                 // Clear mux
-                BusAccess::rawBusControlMuxClear();
+                busAccess.rawBusControlMuxClear();
 
                 // Check pin is high due to input pullup
                 microsDelay(100);
@@ -240,7 +241,7 @@ void BusRaiderApp::testSelf_detailedBus()
                 }
 
                 // Set mux
-                BusAccess::rawBusControlMuxSet(pTestRec->levelToCheckFor);
+                busAccess.rawBusControlMuxSet(pTestRec->levelToCheckFor);
 
                 // Check pin is low due to mux signal
                 microsDelay(100);
@@ -251,7 +252,7 @@ void BusRaiderApp::testSelf_detailedBus()
                 }
 
                 // Clear mux
-                BusAccess::rawBusControlMuxClear();
+                busAccess.rawBusControlMuxClear();
                 // Restore
                 pinMode(pTestRec->pinToTest, INPUT);
                 break;
@@ -346,6 +347,7 @@ void BusRaiderApp::testSelf_detailedBus()
 
 bool BusRaiderApp::testSelf_detailedBus_addr()
 {
+    BusAccess& busAccess = _mcManager.getBusAccess();
     // pull BUSRQ and BUSACK low
     pinMode(BR_BUSACK_BAR, OUTPUT);
     digitalWrite(BR_BUSACK_BAR, 0);
@@ -357,7 +359,7 @@ bool BusRaiderApp::testSelf_detailedBus_addr()
     uint32_t addrInteractionMask = 0;
     for (int i = 0; i < 16; i++)
     {
-        BusAccess::rawBusControlSetAddress(addrTestMask);
+        busAccess.rawBusControlSetAddress(addrTestMask);
         microsDelay(200000);
 
         // Data direction in before getting state of address bus
@@ -365,18 +367,18 @@ bool BusRaiderApp::testSelf_detailedBus_addr()
 
         // Debug
         uint32_t vv = 0;
-        // BusAccess::rawBusControlMuxSet(BR_MUX_LADDR_OE_BAR);
-        // // vv = BusAccess::rawBusControlReadPIB();
+        // busAccess.rawBusControlMuxSet(BR_MUX_LADDR_OE_BAR);
+        // // vv = busAccess.rawBusControlReadPIB();
         // WR32(BR_PIB_GPF_REG, (RD32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_INPUT);
         // vv = (RD32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
 
         // Get the address and data bus
         uint32_t addr = 0, data = 0, ctrl = 0;
-        BusAccess::rawBusControlReadAll(ctrl, addr, data);
+        busAccess.rawBusControlReadAll(ctrl, addr, data);
 
         // Debug
         char ctrlStr[100];
-        BusAccess::formatCtrlBus(ctrl, ctrlStr, 20);
+        busAccess.formatCtrlBus(ctrl, ctrlStr, 20);
         char testStr[100];
         ee_sprintf(testStr, "Awr %04x Ard %04x Ard2 %02x data %02x ctrl %s\n", addrTestMask, addr, vv, data, ctrlStr);
         LogWrite(FromBusRaiderTests, LOG_DEBUG, "%s", testStr);
@@ -392,16 +394,16 @@ bool BusRaiderApp::testSelf_detailedBus_addr()
 
         // Now set inverse of every address bit
         uint32_t inverseTestMask = (~addrTestMask & 0xffff);
-        BusAccess::rawBusControlSetAddress(inverseTestMask);
+        busAccess.rawBusControlSetAddress(inverseTestMask);
 
         // Data direction in before getting state of address bus
         digitalWrite(BR_DATA_DIR_IN, 0);
 
         // Read address
-        BusAccess::rawBusControlReadAll(ctrl, addr, data);
+        busAccess.rawBusControlReadAll(ctrl, addr, data);
 
         // Debug
-        BusAccess::formatCtrlBus(ctrl, ctrlStr, 20);
+        busAccess.formatCtrlBus(ctrl, ctrlStr, 20);
         ee_sprintf(testStr, "Awr %04x Ard %04x Ard2 %02x data %02x ctrl %s\n", inverseTestMask, addr, vv, data, ctrlStr);
         LogWrite(FromBusRaiderTests, LOG_DEBUG, "%s", testStr);
 

@@ -7,7 +7,7 @@
 #include "../System/rdutils.h"
 #include "../System/lowlib.h"
 #include "../TargetBus/BusAccess.h"
-#include "../TargetBus/TargetState.h"
+#include "../TargetBus/TargetProgrammer.h"
 #include "../Machines/McManager.h"
 #include "../Hardware/HwManager.h"
 #include "../FileFormats/McZXSpectrumTZXFormat.h"
@@ -25,15 +25,15 @@ extern WgfxFont __pZXSpectrumFont;
 // Uncomment the following line to use SPI0 CE0 of the Pi as a debug pin
 // #define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
 
-const char* McZXSpectrum::_logPrefix = "ZXSpectrum";
+static const char* MODULE_PREFIX = "ZXSpectrum";
 
 uint8_t McZXSpectrum::_spectrumKeyboardIOBitMap[ZXSPECTRUM_KEYBOARD_NUM_ROWS];
 
-McDescriptorTable McZXSpectrum::_defaultDescriptorTables[] = {
+McVariantTable McZXSpectrum::_defaultDescriptorTables[] = {
     {
         // Machine name
         "ZX Spectrum",
-        McDescriptorTable::PROCESSOR_Z80,
+        McVariantTable::PROCESSOR_Z80,
         // Required display refresh rate
         .displayRefreshRatePerSec = 50,
         .displayPixelsX = 256,
@@ -61,7 +61,9 @@ McDescriptorTable McZXSpectrum::_defaultDescriptorTables[] = {
 // Construction
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-McZXSpectrum::McZXSpectrum() : McBase(_defaultDescriptorTables, sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0]))
+McZXSpectrum::McZXSpectrum(McManager& mcManager) : 
+            McBase(mcManager, _defaultDescriptorTables, 
+            sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0]))
 {
     // Screen needs redrawing
     _screenBufferValid = false;
@@ -107,7 +109,7 @@ void McZXSpectrum::disable()
 void McZXSpectrum::machineHeartbeat()
 {
     // Generate a maskable interrupt to trigger Spectrum's ISR
-    McManager::targetIrq();
+    _mcManager.targetIrq();
 }
 
 void McZXSpectrum::service()
@@ -135,16 +137,17 @@ void McZXSpectrum::service()
 void McZXSpectrum::displayRefreshFromMirrorHw()
 {
     // Read mirror memory at the location of the memory mapped screen
-    if (HwManager::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, false, false, true) == BR_OK)
+    if (getHwManager().blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, false, false, true) == BR_OK)
     {
         _screenBufferValid = true;
-        // LogWrite(_logPrefix, LOG_DEBUG, "DISP REF %d %02x %02x", pScrnBuffer, pScrnBuffer[0x1800], pScrnBuffer[0x1801]);
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "DISP REF %d %02x %02x", pScrnBuffer, pScrnBuffer[0x1800], pScrnBuffer[0x1801]);
     }
 }
 
 void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen)
 {    
-    if (!_pDisplay || (bufLen < ZXSPECTRUM_DISP_RAM_SIZE))
+    DisplayBase* pDisplay = getDisplay();
+    if (!pDisplay || (bufLen < ZXSPECTRUM_DISP_RAM_SIZE))
         return;
 
     // Colour lookup table
@@ -169,27 +172,27 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
     };
 
     // Check for X scale == 4 (fast implementation if so)
-    if (_activeDescriptorTable.pixelScaleX == 4)
+    if (getDescriptorTable().pixelScaleX == 4)
     {
         // Check valid frame buffer
         if (!_pFrameBuffer)
         {
             // Get the raw screen access
             FrameBufferInfo fbi;
-            _pDisplay->getFramebuffer(fbi);
+            pDisplay->getFramebuffer(fbi);
             _pFrameBuffer = fbi.pFBWindow;
             _pfbSize = fbi.pixelsWidth * fbi.pixelsHeight * fbi.bytesPerPixel;
             _framePitch = fbi.pitch;
             _framePitchDiv4 = fbi.pitch / 4;
-            _scaleX = _activeDescriptorTable.pixelScaleX;
-            _scaleY = _activeDescriptorTable.pixelScaleY;
-            _lineStride = _activeDescriptorTable.displayCellY * _activeDescriptorTable.displayPixelsX / _activeDescriptorTable.displayCellX;
-            _cellSizeY = _activeDescriptorTable.displayCellY;
-            _cellSizeX = _activeDescriptorTable.displayCellX;
-            _scaledStrideY = _activeDescriptorTable.displayCellY * _scaleY * _framePitch;
+            _scaleX = getDescriptorTable().pixelScaleX;
+            _scaleY = getDescriptorTable().pixelScaleY;
+            _lineStride = getDescriptorTable().displayCellY * getDescriptorTable().displayPixelsX / getDescriptorTable().displayCellX;
+            _cellSizeY = getDescriptorTable().displayCellY;
+            _cellSizeX = getDescriptorTable().displayCellX;
+            _scaledStrideY = getDescriptorTable().displayCellY * _scaleY * _framePitch;
             _scaledStrideX = _cellSizeX * _scaleX;
-            _cellsX = _activeDescriptorTable.displayPixelsX / _activeDescriptorTable.displayCellX;
-            _cellsY = _activeDescriptorTable.displayPixelsY / _activeDescriptorTable.displayCellY;
+            _cellsX = getDescriptorTable().displayPixelsX / getDescriptorTable().displayCellX;
+            _cellsY = getDescriptorTable().displayPixelsY / getDescriptorTable().displayCellY;
         }
 
         // Cell index
@@ -228,7 +231,7 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
             // else
             // {
             //     if (!pixDisp)
-            //         LogWrite(_logPrefix, LOG_DEBUG, "colrIdx out of bounds %d > %d", colrIdx, ZXSPECTRUM_PIXEL_RAM_SIZE + ZXSPECTRUM_COLOUR_DATA_SIZE);
+            //         LogWrite(MODULE_PREFIX, LOG_DEBUG, "colrIdx out of bounds %d > %d", colrIdx, ZXSPECTRUM_PIXEL_RAM_SIZE + ZXSPECTRUM_COLOUR_DATA_SIZE);
             //     pixDisp = true;
             //     return;
             // }
@@ -242,7 +245,7 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
         // if (pixByteIdx >= ZXSPECTRUM_PIXEL_RAM_SIZE + ZXSPECTRUM_COLOUR_DATA_SIZE)
         // {
         //     if (!pixDisp)
-        //         LogWrite(_logPrefix, LOG_DEBUG, "pixByteIdx out of bounds %d > %d", pixByteIdx, ZXSPECTRUM_PIXEL_RAM_SIZE + ZXSPECTRUM_COLOUR_DATA_SIZE);
+        //         LogWrite(MODULE_PREFIX, LOG_DEBUG, "pixByteIdx out of bounds %d > %d", pixByteIdx, ZXSPECTRUM_PIXEL_RAM_SIZE + ZXSPECTRUM_COLOUR_DATA_SIZE);
         //     pixDisp = true;
         //     return;
         // }
@@ -297,7 +300,7 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
     }
     // else
     // {
-    //     LogWrite(_logPrefix, LOG_DEBUG, "PIXSCALEX %d", _activeDescriptorTable.pixelScaleX);
+    //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "PIXSCALEX %d", getDescriptorTable().pixelScaleX);
     //     microsDelay(10000);
 
     //     return;
@@ -313,8 +316,8 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
     //     }
 
     //     // Write to the display on the Pi Zero
-    //     int bytesPerRow = _activeDescriptorTable.displayPixelsX/8;
-    //     int colrCellsPerRow = _activeDescriptorTable.displayPixelsX/_activeDescriptorTable.displayCellX;
+    //     int bytesPerRow = getDescriptorTable().displayPixelsX/8;
+    //     int colrCellsPerRow = getDescriptorTable().displayPixelsX/getDescriptorTable().displayCellX;
     //     for (uint32_t bufIdx = 0; bufIdx < ZXSPECTRUM_PIXEL_RAM_SIZE; bufIdx++)
     //     {
     //         if (!_screenCacheValid || (_screenCache[bufIdx] != pScrnBuffer[bufIdx]))
@@ -344,7 +347,7 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
     //                 DISPLAY_FX_COLOUR pixColour = colourLUT[((cellColourData & 0x38) >> 3) | ((cellColourData & 0x40) >> 3)];
     //                 if (pixVal)
     //                     pixColour = colourLUT[(cellColourData & 0x07) | ((cellColourData & 0x40) >> 3)]; 
-    //                 _pDisplay->setPixel(x, y, 1, pixColour);
+    //                 pDisplay->setPixel(x, y, 1, pixColour);
     //                 // Bump the pixel mask
     //                 pixMask = pixMask >> 1;
     //             }
@@ -362,7 +365,8 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
 // Keyboard handling
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-uint32_t McZXSpectrum::getKeyBitmap(const int* keyCodes, int keyCodesLen, const uint8_t currentKeyPresses[MAX_KEYS])
+uint32_t McZXSpectrum::getKeyBitmap(const int* keyCodes, int keyCodesLen, 
+            const uint8_t* currentKeyPresses)
 {
     uint32_t retVal = 0xff;
     for (int i = 0; i < MAX_KEYS; i++)
@@ -379,7 +383,8 @@ uint32_t McZXSpectrum::getKeyBitmap(const int* keyCodes, int keyCodesLen, const 
 }
 
 // Handle a key press
-void McZXSpectrum::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[maybe_unused]] const unsigned char rawKeys[MAX_KEYS])
+void McZXSpectrum::keyHandler([[maybe_unused]] unsigned char ucModifiers, 
+                [[maybe_unused]] const unsigned char* rawKeys)
 {
     // Clear key bitmap
     for (int i = 0; i < ZXSPECTRUM_KEYBOARD_NUM_ROWS; i++)
@@ -427,7 +432,7 @@ void McZXSpectrum::keyHandler([[maybe_unused]] unsigned char ucModifiers, [[mayb
     if (((ucModifiers & KEY_MOD_LCTRL) != 0) || ((ucModifiers & KEY_MOD_RCTRL) != 0))
         _spectrumKeyboardIOBitMap[7] &= 0xfd;
 
-    // LogWrite(_logPrefix, LOG_DEBUG, "KeyBits %02x %02x %02x %02x %02x %02x %02x %02x", 
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "KeyBits %02x %02x %02x %02x %02x %02x %02x %02x", 
     //                 _spectrumKeyboardIOBitMap[0],
     //                 _spectrumKeyboardIOBitMap[1],
     //                 _spectrumKeyboardIOBitMap[2],
@@ -477,24 +482,33 @@ bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
     {
         // TZX
         McZXSpectrumTZXFormat formatHandler;
-        LogWrite(_logPrefix, LOG_DEBUG, "Processing TZX file len %d", fileLen);
-        formatHandler.proc(TargetState::addMemoryBlock, TargetState::setTargetRegisters, pFileData, fileLen);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing TZX file len %d", fileLen);
+        formatHandler.proc(getTargetProgrammer().addMemoryBlockStatic, 
+                getTargetProgrammer().setTargetRegistersStatic,
+                &getTargetProgrammer(),
+                pFileData, fileLen);
     }
     else if (strcasecmp(pFileType, ".z80") == 0)
     {
         // .Z80
         McZXSpectrumZ80Format formatHandler;
-        LogWrite(_logPrefix, LOG_DEBUG, "Processing Z80 file len %d", fileLen);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing Z80 file len %d", fileLen);
         // Handle registers and injecting RET
-        formatHandler.proc(TargetState::addMemoryBlock, TargetState::setTargetRegisters, pFileData, fileLen);
+        formatHandler.proc(getTargetProgrammer().addMemoryBlockStatic, 
+                getTargetProgrammer().setTargetRegistersStatic,
+                &getTargetProgrammer(),
+                pFileData, fileLen);
     }
     else if (strcasecmp(pFileType, ".sna") == 0)
     {
         // SNA
         McZXSpectrumSNAFormat formatHandler;
-        LogWrite(_logPrefix, LOG_DEBUG, "Processing SNA file len %d", fileLen);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing SNA file len %d", fileLen);
         // Handle the format
-        formatHandler.proc(TargetState::addMemoryBlock, TargetState::setTargetRegisters, pFileData, fileLen);
+        formatHandler.proc(getTargetProgrammer().addMemoryBlockStatic, 
+                getTargetProgrammer().setTargetRegistersStatic,
+                &getTargetProgrammer(),
+                pFileData, fileLen);
     }
     else
     {
@@ -503,8 +517,8 @@ bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         char baseAddrStr[MAX_VALUE_STR+1];
         if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
             baseAddr = strtol(baseAddrStr, NULL, 16);
-        LogWrite(_logPrefix, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
-        TargetState::addMemoryBlock(baseAddr, pFileData, fileLen);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
+        getTargetProgrammer().addMemoryBlock(baseAddr, pFileData, fileLen);
     }
     return true;
 }
@@ -543,7 +557,7 @@ void McZXSpectrum::busAccessCallback([[maybe_unused]] uint32_t addr, [[maybe_unu
             // Kempston joystick - just say nothing pressed
             retVal = 0;
         }
-        // LogWrite(_logPrefix, LOG_DEBUG, "IO Read from %04x flags %04x data %02x retVal %02x", addr, flags, data, retVal);
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "IO Read from %04x flags %04x data %02x retVal %02x", addr, flags, data, retVal);
 
     }
 
@@ -563,7 +577,7 @@ void McZXSpectrum::busActionCompleteCallback(BR_BUS_ACTION actionType)
     if (actionType == BR_BUS_ACTION_BUSRQ)
     {
         // Read memory at the location of the memory mapped screen
-        if (HwManager::blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, false, false, false) == BR_OK)
+        if (getHwManager().blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, false, false, false) == BR_OK)
             _screenBufferValid = true;
 
         // // TODO
@@ -582,13 +596,13 @@ void McZXSpectrum::busActionCompleteCallback(BR_BUS_ACTION actionType)
         //         strlcat(buf2, buf1, 100);
         //         if (i % 0x10 == 0x0f)
         //         {
-        //             _pDisplay->write(0, lineIdx, buf2);
+        //             pDisplay->write(0, lineIdx, buf2);
         //             lineIdx++;
         //             buf2[0] = 0;
         //         }
         //     }
         //     if (strlen(buf2) > 0)
-        //         _pDisplay->write(0, lineIdx, buf2);
+        //         pDisplay->write(0, lineIdx, buf2);
         // }
 
     }
