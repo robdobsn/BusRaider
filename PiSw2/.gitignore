@@ -81,6 +81,7 @@ $RECYCLE.BIN/
 *.img
 *.lst
 *.map
+*.a
 Config.mk
 Config2.mk
 
@@ -93,3 +94,4 @@ tmp/
 # Other
 # ----------------------------------------------
 /circle.geany
+/circle
