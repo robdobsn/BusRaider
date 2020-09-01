@@ -22,7 +22,7 @@
 
 static const char* EMUPI_VERSION = "0.1.1";
 
-#define IMPLEMENT_NETWORK_CONN
+// #define IMPLEMENT_NETWORK_CONN
 
 #ifdef IMPLEMENT_NETWORK_CONN
 #define HTTP_BOOT_PORT		8080

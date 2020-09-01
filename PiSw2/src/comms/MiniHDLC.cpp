@@ -15,10 +15,9 @@
 #include "string.h"
 #include <circle/logger.h>
 
-// #define DEBUG_HDLC
+#define DEBUG_HDLC
 
 #ifdef DEBUG_HDLC
-#include <Logger.h>
 static const char* MODULE_PREFIX = "MiniHDLC";
 #endif
 
@@ -206,7 +205,7 @@ void MiniHDLC::handleChar(uint8_t ch)
             else
             {
 #ifdef DEBUG_HDLC
-                LOG_W(MODULE_PREFIX, "CRC Error");
+                CLogger::Get()->Write (MODULE_PREFIX, LogNotice, "CRC Error");
 #endif
                 _stats._frameCRCErrCount++;
             }

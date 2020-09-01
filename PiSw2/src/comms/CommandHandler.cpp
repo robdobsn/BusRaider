@@ -57,6 +57,11 @@ CommandHandler::CommandHandler() :
 
     // Timeouts
     _receivedFileLastBlockMs = 0;
+
+#ifdef DEBUG_FILE_BLOCKS
+    _debugBlockRxCount = 0;
+    _debugBlockFirstCh = true;
+#endif
 }
 
 CommandHandler::~CommandHandler()
@@ -394,6 +399,11 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
 
     }
     _receivedFileLastBlockMs = millis();
+
+#ifdef DEBUG_FILE_BLOCKS
+    _debugBlockRxCount = 0;
+#endif
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -429,6 +439,12 @@ void CommandHandler::handleFileBlock(const char* pCmdJson, const uint8_t* pData,
 
     // Update for timeouts
     _receivedFileLastBlockMs = millis();
+
+#ifdef DEBUG_FILE_BLOCKS
+    _debugBlockStart[_debugBlockRxCount] = blockStart;
+    _debugBlockLen[_debugBlockRxCount] = dataLen;
+    _debugBlockRxCount++;
+#endif
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -478,6 +494,19 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
     
     // Clear-down reception
     fileReceiveCleardown();
+
+#ifdef DEBUG_FILE_BLOCKS
+    uint32_t curPos = 0;
+    for (uint32_t i = 0; i < _debugBlockRxCount; i++)
+    {
+        if (curPos != _debugBlockStart[i])
+        {
+            CLogger::Get()->Write(FromCmdHandler, LogDebug, "efEnd block %d missing at pos %d block start %d len %d", 
+                            i, curPos, _debugBlockStart[i], _debugBlockLen[i]);
+        }
+        curPos = _debugBlockStart[i] + _debugBlockLen[i];
+    }
+#endif
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
