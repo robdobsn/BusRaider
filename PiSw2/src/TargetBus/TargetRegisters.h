@@ -4,10 +4,8 @@
 #pragma once
 
 #include <stdio.h>
-#include <stdint.h>
-#include <stddef.h>
-#include <string.h>
-#include <stdlib.h>
+#include "lowlib.h"
+#include <circle/util.h>
 
 class Z80Registers
 {
@@ -44,35 +42,34 @@ public:
     }
     void format(char* pResponse, int maxLen)
     {
-        // TODO
-        // char tmpStr[200];
-        // snprintf(tmpStr, sizeof(tmpStr), "PC=%04x SP=%04x BC=%04x AF=%04x HL=%04x DE=%04x IX=%04x IY=%04x",
-        //         PC, SP, BC, AF, HL, DE, IX, IY);
-        // strlcpy(pResponse, tmpStr, maxLen);
-        // snprintf(tmpStr, sizeof(tmpStr), " AF'=%04x BC'=%04x HL'=%04x DE'=%04x I=%02x R=%02x",
-        //         AFDASH, BCDASH, HLDASH, DEDASH, I, R);
-        // strlcat(pResponse, tmpStr, maxLen);
-        // snprintf(tmpStr, sizeof(tmpStr), "  F=%c%c-%c-%c%c%c",
-        //         (AF & 0x80) ? 'S' : '-',
-        //         (AF & 0x40) ? 'Z' : '-',
-        //         (AF & 0x10) ? 'H' : '-',
-        //         (AF & 0x04) ? 'P' : '-',
-        //         (AF & 0x02) ? 'N' : '-',
-        //         (AF & 0x01) ? 'C' : '-');
-        // strlcat(pResponse, tmpStr, maxLen);
-        // snprintf(tmpStr, sizeof(tmpStr), " F'=%c%c--%c-%c%c%c",
-        //         (AFDASH & 0x80) ? 'S' : '-',
-        //         (AFDASH & 0x40) ? 'Z' : '-',
-        //         (AFDASH & 0x10) ? 'H' : '-',
-        //         (AFDASH & 0x04) ? 'P' : '-',
-        //         (AFDASH & 0x02) ? 'N' : '-',
-        //         (AFDASH & 0x01) ? 'C' : '-');
-        // strlcat(pResponse, tmpStr, maxLen);
-        // snprintf(tmpStr, sizeof(tmpStr), " MEMPTR=%04x IM%d IFF%c%c VPS: %d",
-        //         MEMPTR, INTMODE, 
-        //         INTENABLED ? '1' : ' ', 
-        //         INTENABLED ? '2' : ' ', 
-        //         VPS );
-        // strlcat(pResponse, tmpStr, maxLen);
+        char tmpStr[200];
+        snprintf(tmpStr, sizeof(tmpStr), "PC=%04x SP=%04x BC=%04x AF=%04x HL=%04x DE=%04x IX=%04x IY=%04x",
+                PC, SP, BC, AF, HL, DE, IX, IY);
+        strlcpy(pResponse, tmpStr, maxLen);
+        snprintf(tmpStr, sizeof(tmpStr), " AF'=%04x BC'=%04x HL'=%04x DE'=%04x I=%02x R=%02x",
+                AFDASH, BCDASH, HLDASH, DEDASH, I, R);
+        strlcat(pResponse, tmpStr, maxLen);
+        snprintf(tmpStr, sizeof(tmpStr), "  F=%c%c-%c-%c%c%c",
+                (AF & 0x80) ? 'S' : '-',
+                (AF & 0x40) ? 'Z' : '-',
+                (AF & 0x10) ? 'H' : '-',
+                (AF & 0x04) ? 'P' : '-',
+                (AF & 0x02) ? 'N' : '-',
+                (AF & 0x01) ? 'C' : '-');
+        strlcat(pResponse, tmpStr, maxLen);
+        snprintf(tmpStr, sizeof(tmpStr), " F'=%c%c--%c-%c%c%c",
+                (AFDASH & 0x80) ? 'S' : '-',
+                (AFDASH & 0x40) ? 'Z' : '-',
+                (AFDASH & 0x10) ? 'H' : '-',
+                (AFDASH & 0x04) ? 'P' : '-',
+                (AFDASH & 0x02) ? 'N' : '-',
+                (AFDASH & 0x01) ? 'C' : '-');
+        strlcat(pResponse, tmpStr, maxLen);
+        snprintf(tmpStr, sizeof(tmpStr), " MEMPTR=%04x IM%d IFF%c%c VPS: %d",
+                MEMPTR, INTMODE, 
+                INTENABLED ? '1' : ' ', 
+                INTENABLED ? '2' : ' ', 
+                VPS );
+        strlcat(pResponse, tmpStr, maxLen);
     }
 };

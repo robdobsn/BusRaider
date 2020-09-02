@@ -5,8 +5,9 @@
 #pragma once
 #include "MiniHDLC.h"
 #include <stdint.h>
-#include "../system/RingBufferPosn.h"
+#include "RingBufferPosn.h"
 #include "lowlib.h"
+#include "CommsSocketInfo.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Callback types
@@ -15,37 +16,31 @@
 // Callback types
 typedef void CmdHandlerSerialPutBytesFnType(const uint8_t* pBytes, unsigned numBytes);
 typedef uint32_t CmdHandlerSerialTxAvailableFnType();
-typedef bool CmdHandlerHandleRxMsgFnType(const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
+typedef bool CmdHandlerHandleRxMsgFnType(void* pObject, const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
                     char* pRespJson, unsigned maxRespLen);
 typedef bool CmdHandlerOTAUpdateFnType(const uint8_t* pData, unsigned dataLen);
-typedef bool CmdHandlerTargetFileFnType(const char* rxFileInfo, const uint8_t* pData, unsigned dataLen);
+typedef bool CmdHandlerTargetFileFnType(void* pObject, const char* rxFileInfo, const uint8_t* pData, unsigned dataLen);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Comms Socket Info - this is used to plug-in to the CommmandHandler layer
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-class CommsSocketInfo
-{
-public:
-    // Socket enablement
-    bool enabled;
-
-    // Callbacks
-    CmdHandlerHandleRxMsgFnType* handleRxMsg;
-    CmdHandlerOTAUpdateFnType* otaUpdateFn;
-    CmdHandlerTargetFileFnType* receivedFileFn;
-};
-
 // Handles commands from ESP32
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 class CommandHandler
 {
 public:
     CommandHandler();
     ~CommandHandler();
+    void init()
+    {
+    }
 
     // Comms Sockets - used to hook things like received message handling
-    static int commsSocketAdd(CommsSocketInfo& commsSocketInfo);
-    static void commsSocketEnable(unsigned commsSocket, bool enable);
+    int commsSocketAdd(void* pSourceObject, 
+                bool enabled, 
+                CmdHandlerHandleRxMsgFnType* handleRxMsg, 
+                CmdHandlerOTAUpdateFnType* otaUpdateFn,
+                CmdHandlerTargetFileFnType* receivedFileFn);
+    void commsSocketEnable(unsigned commsSocket, bool enable);
 
     // Callback when command handler wants to send on serial channel to ESP32
     void setPutToSerialCallback(CmdHandlerSerialPutBytesFnType* pSerialPutBytesFunction,
@@ -56,7 +51,7 @@ public:
     }
 
     // Handle data received from ESP32 via serial connection
-    static void handleHDLCReceivedChars(const uint8_t* pBytes, unsigned numBytes);
+    void handleHDLCReceivedChars(const uint8_t* pBytes, unsigned numBytes);
 
     // Service the command handler
     void service();
@@ -68,7 +63,7 @@ public:
     }
 
     // File transfer
-    static bool isFileTransferInProgress()
+    bool isFileTransferInProgress()
     {
         return _pSingletonCommandHandler->_pReceivedFileDataPtr != NULL;
     }
@@ -80,18 +75,18 @@ public:
     static const int NUM_USB_KEYS_PASSED = 6;
 
     // Send key code to target
-    static void sendKeyStrToTargetStatic(const char* pKeyStr);
+    void sendKeyStrToTargetStatic(const char* pKeyStr);
     void sendKeyStrToTarget(const char* pKeyStr);
 
     // Num chars that can be sent
-    static uint32_t getTxAvailable();
+    uint32_t getTxAvailable();
 
     // Send
-    static void sendWithJSON(const char* cmdName, const char* cmdJson, uint32_t msgIdx = 0, 
+    void sendWithJSON(const char* cmdName, const char* cmdJson, uint32_t msgIdx = 0, 
             const uint8_t* pData = NULL, uint32_t dataLen = 0);
-    static void sendAPIReq(const char* reqLine);
+    void sendAPIReq(const char* reqLine);
     // Send unnumbered message
-    static void sendUnnumberedMsg(const char* pCmdName, const char* pMsgJson);
+    void sendUnnumberedMsg(const char* pCmdName, const char* pMsgJson);
 
     // Get status
     void getStatusResponse(bool* pIPAddressValid, char** pIPAddress, char** pWifiConnStr, 
@@ -101,30 +96,29 @@ public:
     // Logging
     void logDebugMessage(const char* pStr);
     void logDebugJson(const char* pStr);
-    static void logDebug(const char* pSeverity, const char* pSource, const char* pMsg);
+    void logDebug(const char* pSeverity, const char* pSource, const char* pMsg);
 
     // File Receive Status
     bool getFileReceiveStatus(uint32_t& fileLen, uint32_t& filePos);
 
-
 private:
     // Comms Sockets
     static const unsigned MAX_COMMS_SOCKETS = 10;
-    static CommsSocketInfo _commsSockets[MAX_COMMS_SOCKETS];
-    static unsigned _commsSocketCount;
+    CommsSocketInfo _commsSockets[MAX_COMMS_SOCKETS];
+    unsigned _commsSocketCount;
     void commsSocketHandleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
                     char* pRespJson, int maxRespLen);
     void commsSocketHandleReceivedFile(const char* fileStartInfo, uint8_t* rxData, int rxBytes, bool isFirmware);
 
     // HDLC
-    static void hdlcPutChStatic(uint8_t ch);
-    static uint32_t hdlcTxAvailableStatic();
+    void hdlcPutChStatic(uint8_t ch);
+    uint32_t hdlcTxAvailableStatic();
     static void hdlcFrameRxStatic(const uint8_t *frameBuffer, unsigned frameLength);
     static void hdlcFrameTxStatic(const uint8_t *frameBuffer, unsigned frameLength);
     void hdlcFrameRx(const uint8_t *frameBuffer, unsigned frameLength);
 
     // RDP
-    static void sendRDPMsg(uint32_t msgIdx, const char* pCmdName, const char* pMsgJson);
+    void sendRDPMsg(uint32_t msgIdx, const char* pCmdName, const char* pMsgJson);
 
     // Command processing
     void processRxCmd(const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen);
@@ -132,7 +126,7 @@ private:
     void handleFileBlock(const char* pCmdJson, const uint8_t* pData, unsigned dataLen);
     void handleFileEnd(const char* pCmdJson);
     void handleStatusResponse(const char* pCmdJson);
-    static void addressRxCallback(uint32_t addr);
+    void addressRxCallback(uint32_t addr);
 
     // File receive utils
     void fileReceiveCleardown();
@@ -186,7 +180,7 @@ private:
     // int _rdpMsgCountOut;
     // uint32_t _rdpTimeUs;
 
-#define DEBUG_FILE_BLOCKS
+// #define DEBUG_FILE_BLOCKS
 #ifdef DEBUG_FILE_BLOCKS
     uint32_t _debugBlockStart[1000];
     uint32_t _debugBlockLen[1000];

@@ -153,14 +153,6 @@ void TargetTracker::enable(bool en, bool waitHold)
     }
 }
 
-// Check if bus can be accessed directly
-bool TargetTracker::busAccessAvailable()
-{
-    BusAccess& busAccess = _mcManager.getBusAccess();
-    return !(busAccess.waitIsHeld() || _mcManager.getHwManager().getMemoryEmulationMode() || 
-                    busAccess.busSocketIsEnabled(_busSocketId));
-}
-
 bool TargetTracker::isPaused()
 {
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busSocketIsEnabled %d %d", 

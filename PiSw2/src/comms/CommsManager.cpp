@@ -2,6 +2,7 @@
 #include "AppSerialIF.h"
 #include <circle/logger.h>
 #include <circle/chainboot.h>
+#include "logging.h"
 
 static const char* MODULE_PREFIX = "CommsManager";
 
@@ -11,15 +12,6 @@ CommsManager* CommsManager::_pCommsManager = 0;
 // Comms socket
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Main comms socket - to wire up OTA updates
-CommsSocketInfo CommsManager::_commsSocket =
-{
-    true,
-    CommsManager::handleRxMsg,
-    CommsManager::performUpdate,
-    NULL
-};
-
 CommsManager::CommsManager(CUartMaxiSerialDevice* pSerial, AppSerialIF* pAppSerialIF) :
     _pSerial(pSerial), _pAppSerialIF(pAppSerialIF)
 {
@@ -28,7 +20,9 @@ CommsManager::CommsManager(CUartMaxiSerialDevice* pSerial, AppSerialIF* pAppSeri
 
 	// Setup command handler
 	_commandHandler.setPutToSerialCallback(serialPutStr, serialTxAvailable);
-    _commandHandler.commsSocketAdd(_commsSocket);
+
+    // Add a comms socket (should have index 0)
+    _commandHandler.commsSocketAdd(this, true, handleRxMsg, performUpdate, NULL);
 }
 
 CommsManager::~CommsManager()
@@ -117,7 +111,7 @@ void CommsManager::serviceGetFromSerial()
 	if (rxCount > 0)
 	{
 		// 	m_Logger.Write (MODULE_PREFIX, LogNotice, "RxCount %d", rxCount);
-		CommandHandler::handleHDLCReceivedChars(serialRxBuf, rxCount);
+		_commandHandler.handleHDLCReceivedChars(serialRxBuf, rxCount);
 	}
 }
 
@@ -125,14 +119,15 @@ void CommsManager::serviceGetFromSerial()
 // Received message handler
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool CommsManager::handleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
+bool CommsManager::handleRxMsg(void* pObject, const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
                 char* pRespJson, unsigned maxRespLen)
 {
     // CLogger::Get()->Write (MODULE_PREFIX, LogNotice, "RxMsg %s", pCmdJson);
 
     // Offer to app-serial
-    if (_pCommsManager && _pCommsManager->_pAppSerialIF)
-        _pCommsManager->_pAppSerialIF->handleRxCmd(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+    CommsManager* pSourceCommsManager = (CommsManager*)pObject;
+    if (pSourceCommsManager && pSourceCommsManager->_pAppSerialIF)
+        pSourceCommsManager->_pAppSerialIF->handleRxCmd(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
 
     // // LogWrite(FromBusRaiderApp, LOG_DEBUG, "rxMsg %s", pCmdJson);
     // #define MAX_CMD_NAME_STR 200
@@ -157,7 +152,10 @@ bool CommsManager::handleRxMsg(const char* pCmdJson, const uint8_t* pParams, uns
 
 bool CommsManager::performUpdate(const uint8_t* pData, unsigned dataLen)
 {
-	CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "performUpdate dataLen %d firstByte 0x%02x last 0x%02x", dataLen, pData[0], pData[dataLen-1]);
+	CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "performUpdate dataLen %d firstByte 0x%02x last 0x%02x", 
+            dataLen, pData[0], pData[dataLen-1]);
+
+    microsDelay(100000);
 
 	EnableChainBoot(pData, dataLen);
 	return true;

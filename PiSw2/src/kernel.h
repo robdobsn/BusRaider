@@ -17,8 +17,11 @@
 #include <circle/sched/scheduler.h>
 #include <circle/net/netsubsystem.h>
 #include <circle/types.h>
-#include "TargetBus/BusAccess.h"
 #include "comms/CommsManager.h"
+#include "comms/CommandHandler.h"
+#include "Hardware/HwManager.h"
+#include "TargetBus/BusAccess.h"
+#include "BusControlAPI/BusControlAPI.h"
 
 enum TShutdownMode
 {
@@ -61,6 +64,12 @@ private:
 
 	// BusAccess
 	BusAccess m_BusAccess;
+
+	// Hardware manager
+	HwManager m_HwManager;
+
+	// BusControlAPI
+	BusControlAPI m_BusControlAPI;
 };
 
 #endif

@@ -18,4 +18,12 @@ cd TargetBus
 $make $1 $2 || exit
 cd ..
 
+cd Hardware
+$make $1 $2 || exit
+cd ..
+
+cd BusControlAPI
+$make $1 $2 || exit
+cd ..
+
 $make $1 $2 || exit

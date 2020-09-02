@@ -42,9 +42,6 @@ public:
     };
     void getRegsFormatted(char* pBuf, int len);
     
-    // Check if bus can be accessed directly
-    bool busAccessAvailable();
-
     // Get mode
     bool isPaused(); 
     bool isTrackingActive();

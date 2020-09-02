@@ -23,6 +23,12 @@ public:
     void sendWithJSON(const char* cmdName, const char* cmdJson, uint32_t msgIdx, 
             const uint8_t* pData, uint32_t dataLen);
 
+    // Get command handler
+    CommandHandler& getCommandHandler()
+    {
+        return _commandHandler;
+    }
+    
 private:
     // Singleton pointer
     static CommsManager* _pCommsManager;
@@ -51,7 +57,7 @@ private:
     // Helpers
 	static void serialPutStr(const uint8_t* pBuf, unsigned len);
     static uint32_t serialTxAvailable();
-	static bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
+	static bool handleRxMsg(void* pObject, const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
                 char* pRespJson, unsigned maxRespLen);
 	static bool performUpdate(const uint8_t* pData, unsigned dataLen);
 };

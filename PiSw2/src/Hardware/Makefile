@@ -1,0 +1,18 @@
+#
+# Makefile
+#
+
+CIRCLEHOME = ../../circle
+
+OBJS	= HwManager.o HwBase.o
+
+INCLUDE	+= -I ../system -I ../TargetBus -I ../comms
+
+brHardware.a: $(OBJS)
+	@echo "  AR    $@"
+	@rm -f $@
+	@$(AR) cr $@ $(OBJS)
+
+include ../Rules.mk
+
+-include $(DEPS)

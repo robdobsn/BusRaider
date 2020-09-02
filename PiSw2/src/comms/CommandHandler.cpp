@@ -7,20 +7,16 @@
 #include <circle/util.h>
 #include "MiniHDLC.h"
 #include <string.h>
-// #include <stdio.h>
 #include <stdlib.h>
 #include "rdutils.h"
+#include "logging.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Variables
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Module name
-static const char FromCmdHandler[] = "CommandHandler";
-
-// Comms sockets
-CommsSocketInfo CommandHandler::_commsSockets[MAX_COMMS_SOCKETS];
-unsigned CommandHandler::_commsSocketCount = 0;
+static const char MODULE_PREFIX[] = "CommandHandler";
 
 // Callbacks
 CmdHandlerSerialPutBytesFnType* CommandHandler::_pHDLCSerialPutBytesFunction = NULL;
@@ -28,6 +24,11 @@ CmdHandlerSerialTxAvailableFnType* CommandHandler::_pHDLCSerialTxAvailableFuncti
 
 // Singleton command handler
 CommandHandler* CommandHandler::_pSingletonCommandHandler = NULL;
+
+// Debug
+// #define DEBUG_COMMAND_HANDLER
+// #define DEBUG_COMMAND_HANDLER_RDP
+// #define DEBUG_COMMAND_HANDLER_SOCKETS
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Init
@@ -41,6 +42,9 @@ CommandHandler::CommandHandler() :
     // Singleton
     _pSingletonCommandHandler = this;
 
+    // Sockets
+    _commsSocketCount = 0;
+    
     // File reception
     _receivedFileName[0] = 0;
     _pReceivedFileType[0] = 0;
@@ -73,14 +77,18 @@ CommandHandler::~CommandHandler()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Add a comms socket
-int CommandHandler::commsSocketAdd(CommsSocketInfo& commsSocketInfo)
+int CommandHandler::commsSocketAdd(void* pSourceObject, 
+                bool enabled, 
+                CmdHandlerHandleRxMsgFnType* handleRxMsg, 
+                CmdHandlerOTAUpdateFnType* otaUpdateFn,
+                CmdHandlerTargetFileFnType* receivedFileFn)
 {
     // Check if all used
     if (_commsSocketCount >= MAX_COMMS_SOCKETS)
         return -1;
 
     // Add in available space
-    _commsSockets[_commsSocketCount] = commsSocketInfo;
+    _commsSockets[_commsSocketCount].set(pSourceObject, enabled, handleRxMsg, otaUpdateFn, receivedFileFn);
     int tmpCount = _commsSocketCount++;
 
     return tmpCount;
@@ -106,15 +114,18 @@ void CommandHandler::handleHDLCReceivedChars(const uint8_t* pBytes, unsigned num
 
 void CommandHandler::hdlcFrameRxStatic(const uint8_t *frameBuffer, unsigned frameLength)
 {
-    // CLogger::Get()->Write(FromCmdHandler, LogDebug, "hdlcFrameRxStatic len %d fn %08x", frameLength, _pSingletonCommandHandler); 
+#ifdef DEBUG_COMMAND_HANDLER
+    CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "hdlcFrameRxStatic len %d fn %08x", frameLength, _pSingletonCommandHandler); 
+#endif
     if (_pSingletonCommandHandler)
         _pSingletonCommandHandler->hdlcFrameRx(frameBuffer, frameLength);
 }
 
 void CommandHandler::hdlcFrameTxStatic(const uint8_t *frameBuffer, unsigned frameLength)
 {
-    // LogWrite(FromCmdHandler, LOG_VERBOSE, "hdlcPutChStatic");
-
+#ifdef DEBUG_COMMAND_HANDLER
+    CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "hdlcFrameTxStatic len %d", frameLength); 
+#endif
     if (_pSingletonCommandHandler)
         if (_pSingletonCommandHandler->_pHDLCSerialPutBytesFunction)
             _pSingletonCommandHandler->_pHDLCSerialPutBytesFunction(frameBuffer, frameLength);
@@ -136,7 +147,7 @@ uint32_t CommandHandler::hdlcTxAvailableStatic()
 // This is a ascii character string (null terminated) followed by a byte buffer containing parameters
 void CommandHandler::hdlcFrameRx(const uint8_t *pFrame, unsigned frameLength)
 {
-    // LogWrite(FromCmdHandler, LOG_VERBOSE, "Rx %d bytes", frameLength);
+    // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "Rx %d bytes", frameLength);
 
     // Handle the frame - extract command string
     char commandString[CMD_HANDLER_MAX_CMD_STR_LEN+1];
@@ -168,8 +179,15 @@ void CommandHandler::processRxCmd(const char* pCmdJson, const uint8_t* pParams, 
     msgIdxStr[0] = 0;
     jsonGetValueForKey("msgIdx", pCmdJson, msgIdxStr, MAX_MSGIDX_STR_LEN);
 
+    // Remote protocol 
+    char pCommandString[CMD_HANDLER_MAX_CMD_STR_LEN+1];
+    pCommandString[0] = 0;
+    bool rdpMessage = false;
+    // Rdp msg idx is the outer msgIdx
+    uint32_t rdpIndex = strtoul(msgIdxStr, NULL, 10);
+
     // Debug
-    // CLogger::Get()->Write(FromCmdHandler, LogDebug, "processRxCmd JSON %s cmdName %s paramsLen %d", pCmdJson, cmdName, paramsLen); 
+    // CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "processRxCmd JSON %s cmdName %s paramsLen %d", pCmdJson, cmdName, paramsLen); 
 
     // Handle commands
     if (strcasecmp(cmdName, "ufStart") == 0)
@@ -187,19 +205,17 @@ void CommandHandler::processRxCmd(const char* pCmdJson, const uint8_t* pParams, 
         handleFileEnd(pCmdJson);
         return;
     }
-
-    // Remote protocol 
-    char pCommandString[CMD_HANDLER_MAX_CMD_STR_LEN+1];
-    pCommandString[0] = 0;
-    bool rdpMessage = false;
-    uint32_t rdpIndex = 0;
-    if (strcasecmp(cmdName, "rdp") == 0)
+    else if (strcasecmp(cmdName, "comtest") == 0)
     {
-        // LogWrite(FromCmdHandler, LOG_DEBUG, "RDP message rx cmd %s cmdLen %d paramsStr %s paramslen %d", 
-        //             pCmdJson, strlen(pCmdJson), pParams, paramsLen);
-        // Rdp msg idx is the outer msgIdx
-        rdpIndex = strtoul(msgIdxStr, NULL, 10);
-
+        sendWithJSON("comtestResp", R"("rslt":"ok")", rdpIndex);
+        return;
+    }
+    else if (strcasecmp(cmdName, "rdp") == 0)
+    {
+#ifdef DEBUG_COMMAND_HANDLER_RDP
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "RDP message rx cmd %s cmdLen %d paramsStr %s paramslen %d", 
+                    pCmdJson, strlen(pCmdJson), pParams, paramsLen);
+#endif
         // Handle the rdp frame - extract command string
         strlcpy(pCommandString, (const char*)pParams, CMD_HANDLER_MAX_CMD_STR_LEN);
         int commandStringLen = strlen(pCommandString);
@@ -217,7 +233,7 @@ void CommandHandler::processRxCmd(const char* pCmdJson, const uint8_t* pParams, 
         // TODO
         // if (strcasecmp(cmdName, "tracerStatus") == 0)
         //     _rdpMsgCountIn++;
-        // LogWrite(FromCmdHandler, LOG_DEBUG, "RDPRX cmd %s cmdLen %d paramsStr %s paramslen %d rdCountIn %d this %d", 
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "RDPRX cmd %s cmdLen %d paramsStr %s paramslen %d rdCountIn %d this %d", 
         //             pCmdJson, strlen(pCmdJson), pParams, paramsLen, _rdpMsgCountIn, this);
     }
               
@@ -227,7 +243,7 @@ void CommandHandler::processRxCmd(const char* pCmdJson, const uint8_t* pParams, 
     commsSocketHandleRxMsg(pCmdJson, pParams, paramsLen, respJson, MAX_DATAFRAME_LEN);
 
     // if (rdpMessage)
-    //     LogWrite(FromCmdHandler, LOG_DEBUG, "CMDMSG rx cmd %s cmdLen %d paramsStr %s paramslen %d respJson %s", 
+    //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "CMDMSG rx cmd %s cmdLen %d paramsStr %s paramslen %d respJson %s", 
     //             pCmdJson, strlen(pCmdJson), pParams, paramsLen, respJson);
 
     // Form response cmdName
@@ -289,26 +305,30 @@ void CommandHandler::sendRDPMsg(uint32_t msgIdx, const char* pCmdName, const cha
 void CommandHandler::commsSocketHandleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
                     char* pRespJson, int maxRespLen)
 {
-    // CLogger::Get()->Write(FromCmdHandler, LogDebug, "commsSocketHandleRxMsg msg %s paramsLen %d", pCmdJson, paramsLen);
-    if (_commsSocketCount < 1)
-        CLogger::Get()->Write(FromCmdHandler, LogDebug, "commsSocketHandleRxMsg fewer sockets than expected %d", _commsSocketCount);
+    // CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "commsSocketHandleRxMsg msg %s paramsLen %d", pCmdJson, paramsLen);
+    if (_commsSocketCount == 0)
+        CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "commsSocketHandleRxMsg no comms sockets");
     bool messageHandled = false;
     // Iterate the comms sockets
     for (unsigned i = 0; i < _commsSocketCount; i++)
     {
         if (!_commsSockets[i].enabled)
         {
-            CLogger::Get()->Write(FromCmdHandler, LogDebug, "RxMsg sock disabled %d", i);
+            CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "RxMsg sock disabled %d", i);
             continue;
         }
         if (_commsSockets[i].handleRxMsg)
         {
-            messageHandled = _commsSockets[i].handleRxMsg(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+#ifdef DEBUG_COMMAND_HANDLER_SOCKETS
+        CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "commsSocketHandleRxMsg %s params len %d", pCmdJson, paramsLen);
+#endif
+            messageHandled = _commsSockets[i].handleRxMsg(_commsSockets[i].pSourceObject,
+                            pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
         }
         else
         {
             if (i != 0)
-                CLogger::Get()->Write(FromCmdHandler, LogDebug, "RxMsg sock null %d", i);
+                CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "RxMsg sock null %d", i);
         }
         
         if (messageHandled)
@@ -326,14 +346,15 @@ void CommandHandler::commsSocketHandleReceivedFile(const char* fileStartInfo, ui
             continue;
         if (isFirmware)
         {
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "CommsSocket %d firmwareupdate %d", i, (unsigned)_commsSockets[i].otaUpdateFn);
             if(_commsSockets[i].otaUpdateFn)
                 messageHandled = _commsSockets[i].otaUpdateFn(rxData, rxBytes);                
         }
         else
         {
-            // LogWrite(FromCmdHandler, LOG_DEBUG, "CommsSocket %d rxFile %d", i, _commsSockets[i].receivedFileFn);
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "CommsSocket %d rxFile %d", i, _commsSockets[i].receivedFileFn);
             if (_commsSockets[i].receivedFileFn)
-                messageHandled = _commsSockets[i].receivedFileFn(fileStartInfo, rxData, rxBytes);
+                messageHandled = _commsSockets[i].receivedFileFn(_commsSockets[i].pSourceObject, fileStartInfo, rxData, rxBytes);
         }
         if (messageHandled)
             break;
@@ -351,14 +372,14 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
     if (!jsonGetValueForKey("fileName", pCmdJson, _receivedFileName, MAX_FILE_NAME_STR))
         return;
 
-    // CLogger::Get()->Write(FromCmdHandler, LogDebug, "ufStart File %s, toPtr %08x", 
+    // CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufStart File %s, toPtr %08x", 
     //             _receivedFileName, _pReceivedFileDataPtr);
 
     // Get file type
     if (!jsonGetValueForKey("fileType", pCmdJson, _pReceivedFileType, MAX_FILE_TYPE_STR))
         return;
 
-    // CLogger::Get()->Write(FromCmdHandler, LogDebug, "ufStart FileType %s", 
+    // CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufStart FileType %s", 
     //             _receivedFileName);
 
     // Get file length
@@ -366,11 +387,11 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
     if (!jsonGetValueForKey("fileLen", pCmdJson, fileLenStr, MAX_INT_ARG_STR_LEN))
         return;
 
-    // CLogger::Get()->Write(FromCmdHandler, LogDebug, "ufStart FileLenStr %s", 
+    // CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufStart FileLenStr %s", 
     //             fileLenStr);
 
     unsigned long fileLen = strtoul(fileLenStr, NULL, 10);
-    // CLogger::Get()->Write(FromCmdHandler, LogDebug, "ufStart FileLen %d", 
+    // CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufStart FileLen %d", 
     //             fileLen);
 
     // Copy start info
@@ -388,13 +409,13 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
         _receivedFileBufSize = fileLen;
 
         // Debug
-        CLogger::Get()->Write(FromCmdHandler, LogDebug, "ufStart File %s, toPtr %08x, bufSize %d", 
+        CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufStart File %s, toPtr %08x, bufSize %d", 
                     _receivedFileName, _pReceivedFileDataPtr, _receivedFileBufSize);
     }
     else
     {
         _receivedFileBufSize = 0;
-        CLogger::Get()->Write(FromCmdHandler, LogDebug, "ufStart unable to allocate memory for file %s, bufSize %d", 
+        CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufStart unable to allocate memory for file %s, bufSize %d", 
                     _receivedFileName, _receivedFileBufSize);
 
     }
@@ -422,7 +443,7 @@ void CommandHandler::handleFileBlock(const char* pCmdJson, const uint8_t* pData,
         return;
     unsigned blockStart = strtoul(blockStartStr, NULL, 10);
 
-    // CLogger::Get()->Write(FromCmdHandler, LogDebug, "ufBlock, newDataLen %d prevLen %d, blocks %d %s", 
+    // CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufBlock, newDataLen %d prevLen %d, blocks %d %s", 
     //            dataLen, _receivedFileBytesRx, _receivedBlockCount,
     //            (blockStart + dataLen > _receivedFileBufSize) ? "TOO LONG" : "");
 
@@ -466,7 +487,7 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
     snprintf(ackMsgJson, sizeof(ackMsgJson), "\"rxCount\":%d, \"expCount\":%d", _receivedBlockCount, blockCount);
     if (blockCount != _receivedBlockCount)
     {
-        CLogger::Get()->Write(FromCmdHandler, LogWarning, "ufEnd File %s, blockCount rx %d != sent %d", 
+        CLogger::Get()->Write(MODULE_PREFIX, LogWarning, "ufEnd File %s, blockCount rx %d != sent %d", 
                 _receivedFileName, _receivedBlockCount, blockCount);
         sendWithJSON("ufEndNotAck", ackMsgJson);
     }
@@ -479,17 +500,17 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
         if (isFirmware)
         {
             unsigned rxCRC = MiniHDLC::computeCRC16(_pReceivedFileDataPtr, _receivedFileBytesRx);
-            CLogger::Get()->Write(FromCmdHandler, LogDebug, "ufEnd IMG firmware update File %s, len %d rxCRC %04x", 
+            CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufEnd IMG firmware update File %s, len %d rxCRC %04x", 
                         _receivedFileName, _receivedFileBytesRx, rxCRC);
             // Short delay to allow comms completion 
             microsDelay(100000);
         }
         else
         {
-            CLogger::Get()->Write(FromCmdHandler, LogDebug, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
+            CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
         }
         commsSocketHandleReceivedFile(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx, isFirmware);
-        CLogger::Get()->Write(FromCmdHandler, LogDebug, "ufEnd File %s, len %d Completed", _receivedFileName, _receivedFileBytesRx);
+        CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufEnd File %s, len %d Completed", _receivedFileName, _receivedFileBytesRx);
     }
     
     // Clear-down reception
@@ -501,7 +522,7 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
     {
         if (curPos != _debugBlockStart[i])
         {
-            CLogger::Get()->Write(FromCmdHandler, LogDebug, "efEnd block %d missing at pos %d block start %d len %d", 
+            CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "efEnd block %d missing at pos %d block start %d len %d", 
                             i, curPos, _debugBlockStart[i], _debugBlockLen[i]);
         }
         curPos = _debugBlockStart[i] + _debugBlockLen[i];
@@ -588,11 +609,11 @@ void CommandHandler::sendWithJSON(const char* cmdName, const char* cmdJson, uint
     // Allow for two terminators (one after JSON and one at end of binary section)
     uint32_t dataFrameBinaryPos = strlen(dataFrame)+1;
     uint32_t dataFrameTotalLen = dataFrameBinaryPos+dataLen+1; 
-    // LogWrite(FromCmdHandler, LOG_DEBUG, "SEND DATA cmd %s dataFr %s dataFrameLen %d tooLong %d msg %s",
-    //             cmdName, dataFrame, dataFrameLen, dataFrameLen >= MAX_DATAFRAME_LEN, (pData ? pData : ""));
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "SEND DATA cmd %s dataFr %s dataFrameLen %d tooLong %d",
+    //             cmdName, dataFrame, dataFrameTotalLen, dataFrameTotalLen >= MAX_DATAFRAME_LEN);
     if (dataFrameTotalLen >= MAX_DATAFRAME_LEN)
     {
-        CLogger::Get()->Write(FromCmdHandler, LogWarning, "Frame too long");
+        CLogger::Get()->Write(MODULE_PREFIX, LogWarning, "Frame too long");
         return;
     }
     if (dataLen > 0)
@@ -693,7 +714,7 @@ void CommandHandler::service()
     {
         if (isTimeout(millis(), _receivedFileLastBlockMs, MAX_FILE_RECEIVE_BETWEEN_BLOCKS_MS))
         {
-            CLogger::Get()->Write(FromCmdHandler, LogDebug, "Receive timed out");
+            CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "Receive timed out");
             fileReceiveCleardown();
         }
     }

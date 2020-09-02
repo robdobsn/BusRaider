@@ -60,7 +60,9 @@ CKernel::CKernel (void)
 	// m_I2CMonitor(&m_Interrupt, m_CommsManager),
 	// m_CommsManager(&m_Serial, AppSerialIF - derived)
 	m_CommsManager(&m_Serial, NULL),
-	m_BusAccess()
+	m_BusAccess(),
+	m_HwManager(m_CommsManager.getCommandHandler(), m_BusAccess),
+	m_BusControlAPI(m_CommsManager.getCommandHandler(), m_HwManager, m_BusAccess)
 {
 	m_pKernel = this;
 	// m_ActLED.Blink (5);	// show we are alive
@@ -126,6 +128,9 @@ boolean CKernel::Initialize (void)
 	if (bOK)
 	{
 		bOK = m_CommsManager.setup();
+		m_BusAccess.init();
+		m_HwManager.init();
+		m_BusControlAPI.init();
 	}
 
 	// if (bOK)
@@ -163,13 +168,16 @@ TShutdownMode CKernel::Run (void)
 #endif
 
 	// Main loop
-	for (unsigned nCount = 0; !IsChainBootEnabled (); nCount++)
+	for (unsigned nCount = 0; !IsChainBootEnabled(); nCount++)
 	{
 		// Screen alive indicator
 		m_Screen.Rotor (0, micros() / 100000);
 
 		// Service comms
 		m_CommsManager.service();
+		m_BusAccess.service();
+		m_HwManager.service();
+		m_BusControlAPI.service();
 
 		// // I2C Service
 		// m_I2CMonitor.service();

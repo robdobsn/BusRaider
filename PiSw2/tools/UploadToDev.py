@@ -66,8 +66,7 @@ def sendFile(fileName):
         # Read firmware
         binaryImage = f.read()
         binaryImageLen = len(binaryImage)
-        fileCRC = calcCRC(binaryImage)
-        print(f"File {fileName} is {binaryImageLen} bytes long crc 0x{fileCRC[0]*256+fileCRC[1]:04x}")
+        print(f"File {fileName} is {binaryImageLen} bytes long")
 
         # Frames follow the approach used in the web interface start, block..., end
         startFrame = bytearray(b"{\"cmdName\":\"ufStart\",\"fileName\":\"kernel.img\",\"fileType\":\"firmware\",\"fileLen\":\"" + \
@@ -86,6 +85,10 @@ def sendFile(fileName):
         # End frame            
         endFrame = bytearray(b"{\"cmdName\":\"ufEnd\",\"blockCount\":\"" + bytes(str(numBlocks),"ascii") + b"\"}\0")
         emulatorConn.send(endFrame)
+
+        # Calc CRC
+        fileCRC = calcCRC(binaryImage)
+        print(f"File {fileName} is {binaryImageLen} bytes long crc 0x{fileCRC[0]*256+fileCRC[1]:04x}")
 
         # Check for end frame acknowledged
         prevTime = time.time()

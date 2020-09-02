@@ -16,7 +16,9 @@ LIBS	= 	$(CIRCLEHOME)/lib/usb/libusb.a \
 			system/brsys.a \
 			comms/brcomms.a \
 			web/brweb.a \
-			TargetBus/brTargetBus.a
+			TargetBus/brTargetBus.a \
+			Hardware/brHardware.a \
+			BusControlAPI/brBusAPI.a
 
 INCLUDE	+= -I system -I comms -I web -I TargetBus
 
