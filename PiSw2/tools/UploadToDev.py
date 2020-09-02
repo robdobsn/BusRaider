@@ -8,10 +8,12 @@ import argparse
 from LikeCommsSerial import LikeCommsSerial
 from LikeHDLC import calcCRC
 
-# This is a program for uploading firmware to the I2CEmu
-# It requires a serial connection to the I2CEmulator and running the I2CEmulator s/w
+# This is a program for uploading firmware to BusRaider
+# It requires either:
+# - a standard BusRaider with ESP32 running BusRaider ESP firmware and on Wifi talking to a Pi running BusRaider s/w v3+
+# - a direct serial connection to the Pi (maybe using Adafruit PiUART) and running the BusRaider s/w V3+
 
-class I2CEmulatorConn:
+class BusRaiderConn:
     uploadAcked = False
 
     def __init__(self):
@@ -101,11 +103,13 @@ def sendFile(fileName):
 argparser = argparse.ArgumentParser(description='UploadToI2CEmulator')
 DEFAULT_SERIAL_PORT = "COM7"
 DEFAULT_SERIAL_BAUD = 921600
+DEFAULT_IP_ADDRESS = ""
 argparser.add_argument('fileName', help='File Name')
 argparser.add_argument('--port', help='Serial Port', default=DEFAULT_SERIAL_PORT)
 argparser.add_argument('--baud', help='Serial Baud', default=DEFAULT_SERIAL_BAUD)
+argparser.add_argument('--ipaddr', help='IP Address', default=DEFAULT_IP_ADDRESS)
 args = argparser.parse_args()
-emulatorConn = I2CEmulatorConn()
+emulatorConn = BusRaiderConn()
 emulatorConn.open({"serialPort":args.port,"serialBaud":args.baud})
 emulatorConn.uploadStart()
 print("Upload Started")

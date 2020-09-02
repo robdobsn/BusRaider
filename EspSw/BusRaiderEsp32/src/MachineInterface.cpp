@@ -20,7 +20,8 @@ static const char* demoModeControlFileName = "demo.json";
 static const int demoModeControlFileMaxlen = 2000;
 
 MachineInterface::MachineInterface() : 
-        _miniHDLCForRDPTCP(std::bind(&MachineInterface::hdlcTxCharTCP, this, std::placeholders::_1), 
+        _miniHDLCForRDPTCP(20000,
+            std::bind(&MachineInterface::hdlcTxCharTCP, this, std::placeholders::_1), 
             std::bind(&MachineInterface::hdlcRxFrameTCP, this, std::placeholders::_1, std::placeholders::_2),
             true, false)
 {
@@ -32,13 +33,13 @@ MachineInterface::MachineInterface() :
     _pFileManager = NULL;
     _pTelnetServer = NULL;
     _pTCPHDLCServer = NULL;
-    _pZEsarUXTCPServer = NULL;
+    _DeZogTCPServer = NULL;
     _pRestAPIEndpoints = NULL;
     _demoState = DEMO_STATE_IDLE;
     _demoPreloadFileIdx = 0;
     _demoProgramIdx = 0;
     _rdpCommandIndex = 0;
-    _zesaruxCommandIndex = 0;
+    _DeZogCommandIndex = 0;
     _cachedStatusRequestMs = 0;
     _cmdResponseNew = false;
     // Assume hardware version until detected
@@ -85,7 +86,7 @@ void MachineInterface::setup(ConfigBase &config,
             WebServer *pWebServer, 
             CommandSerial* pCommandSerial,
             AsyncTelnetServer* pTelnetServer, 
-            RemoteDebugProtocolServer* pZEsarUXTCPServer, 
+            RemoteDebugProtocolServer* pDeZogTCPServer, 
             RemoteDebugProtocolServer* pTCPHDLCServer, 
             RestAPIEndpoints* pRestAPIEndpoints, 
             FileManager* pFileManager)
@@ -98,7 +99,7 @@ void MachineInterface::setup(ConfigBase &config,
     _pWebServer = pWebServer;
     _pCommandSerial = pCommandSerial;
     _pTelnetServer = pTelnetServer;
-    _pZEsarUXTCPServer = pZEsarUXTCPServer;
+    _DeZogTCPServer = pDeZogTCPServer;
     _pTCPHDLCServer = pTCPHDLCServer;
     _pRestAPIEndpoints = pRestAPIEndpoints;
     _pFileManager = pFileManager;
@@ -138,15 +139,15 @@ void MachineInterface::setup(ConfigBase &config,
     }
 
     // Callback for TCP-HDLC server
-    if (_pZEsarUXTCPServer)
+    if (_DeZogTCPServer)
     {
-        _pZEsarUXTCPServer->onData([this](void* cbArg, const uint8_t* pData, int dataLen) 
+        _DeZogTCPServer->onData([this](void* cbArg, const uint8_t* pData, int dataLen) 
         {
             (void)cbArg;
 
             if (_pCommandSerial)
-                _pCommandSerial->sendTargetData("zesarux", pData, dataLen, 
-                            _zesaruxCommandIndex++);
+                _pCommandSerial->sendTargetData("dezog", pData, dataLen, 
+                            _DeZogCommandIndex++);
         }, this);
     }
 
@@ -370,7 +371,7 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *frameBuffer, int frame
             }
         }
     }
-    else if ((cmdName.equalsIgnoreCase("rdp")) || (cmdName.equalsIgnoreCase("zesarux")))
+    else if ((cmdName.equalsIgnoreCase("rdp")) || (cmdName.equalsIgnoreCase("dezog")))
     {
         // Payload is after a string terminator
         int headerJsonEndPos = strlen(pRxStr);
@@ -398,10 +399,10 @@ void MachineInterface::handleFrameRxFromPi(const uint8_t *frameBuffer, int frame
         }
         else
         {
-            // Log.trace("%szesarux <- %s payloadLen %d payload ¬¬%s¬¬\n", 
+            // Log.trace("%sdezog <- %s payloadLen %d payload ¬¬%s¬¬\n", 
             //             MODULE_PREFIX, pRxStr, payloadLen,
             //             payloadStr.c_str());
-            _pZEsarUXTCPServer->sendChars(frameBuffer+payloadStartPos, dataLen);
+            _DeZogTCPServer->sendChars(frameBuffer+payloadStartPos, dataLen);
         }
     }
     else if (cmdName.equalsIgnoreCase("log"))
@@ -502,7 +503,7 @@ void MachineInterface::handleDemoModeButtonPress(int buttonValue)
     _demoProgramIdx++;
 }
 
-void MachineInterface::hdlcRxFrameTCP(const uint8_t *framebuffer, int framelength)
+void MachineInterface::hdlcRxFrameTCP(const uint8_t *framebuffer, unsigned framelength)
 {
     // Send it to Pi
     if (_pCommandSerial)

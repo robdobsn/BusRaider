@@ -7,7 +7,8 @@
 static const char* MODULE_PREFIX = "CommandSerial: ";
 
 CommandSerial::CommandSerial(FileManager& fileManager) : 
-        _miniHDLC(std::bind(&CommandSerial::sendCharToCmdPort, this, std::placeholders::_1), 
+        _miniHDLC(20000,
+            std::bind(&CommandSerial::sendCharToCmdPort, this, std::placeholders::_1), 
             std::bind(&CommandSerial::frameHandler, this, std::placeholders::_1, std::placeholders::_2),
             true, false),
         _fileManager(fileManager)
@@ -380,7 +381,7 @@ void CommandSerial::sendCharToCmdPort(uint8_t ch)
     _statsTxCh++;
 }
 
-void CommandSerial::frameHandler(const uint8_t *framebuffer, int framelength)
+void CommandSerial::frameHandler(const uint8_t *framebuffer, unsigned framelength)
 {
     // Handle received frames
     if (_frameRxCallback)

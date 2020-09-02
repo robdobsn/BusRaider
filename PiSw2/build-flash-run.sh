@@ -7,6 +7,7 @@ cd ../src &&\
 ./makeall &&\
 # arm-none-eabi-objcopy kernel7.elf -O ihex kernel7.hex &&\
 cd .. &&\
-python.exe tools/UploadToDev.py src/kernel.img --port $1 
+# python.exe tools/UploadToDev.py src/kernel.img --port $1 
+curl -F "file=@./src/kernel.img" http://192.168.86.40/uploadpisw
 # &&\
 # python.exe I2CEmulatorMonitor.py --port $1

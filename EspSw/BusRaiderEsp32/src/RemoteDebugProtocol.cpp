@@ -101,6 +101,8 @@ void RemoteDebugProtocolSession::forceClose()
 
 void RemoteDebugProtocolSession::sendChars(const uint8_t* pData, int dataLen)
 {
+    // Log.trace("%sdata to socket %d\n", MODULE_PREFIX, dataLen);
+    
     // Check if session open
     if (_pClient && _pClient->connected() && _pClient->canSend())
     {
@@ -209,7 +211,7 @@ void RemoteDebugProtocolServer::_handleDisconnect(RemoteDebugProtocolSession *pS
 
 void RemoteDebugProtocolServer::_handleData(const uint8_t* pData, int dataLen)
 {
-    // Log.trace("%sdata rx %d\n", MODULE_PREFIX, dataLen);
+    // Log.trace("%sdata from socket %d\n", MODULE_PREFIX, dataLen);
 
     // Check if a callback is set
     if (_rxDataCallback)
