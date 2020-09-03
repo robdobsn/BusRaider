@@ -9,9 +9,7 @@
 #include "lowlib.h"
 #include "PiWiring.h"
 #include <circle/util.h>
-
-// TODO
-// #include "HwRAMROM.h"
+#include "HwRAMROM.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Variables
@@ -98,8 +96,7 @@ void HwManager::init()
 #endif
     }
     // Add hardware - HwBase constructor adds to HwManager
-// TODO 
-//    new HwRAMROM(*this, _busAccess);
+   new HwRAMROM(*this, _busAccess);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

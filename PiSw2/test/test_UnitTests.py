@@ -59,6 +59,49 @@ def test_Comms():
     for i in range(testRepeatCount):
         assert(testStats["msgRx"][i] == True)
 
+def test_SetMc():
+
+    def frameCallback(msgContent, logger):
+        if msgContent['cmdName'] == "busStatusResp":
+            testStats['clrMaxUs'] = max(testStats['clrMaxUs'], msgContent['clrMaxUs'])
+        elif msgContent['cmdName'] == "getStatusResp":
+            testStats['mcList'] = msgContent['machineList']
+            if curMachine != "":
+                assert(msgContent['machineCur'] == curMachine)
+                testStats['mcCount'] += 1
+        elif msgContent['cmdName'][:10] == "SetMachine":
+            pass
+        else:
+            testStats["unknownMsgCount"] += 1
+            logger.info(f"Unknown message {msgContent}")
+
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    commonTest = setupTests("SetMc", frameCallback)
+    testRepeatCount = 2
+    testStats = {"unknownMsgCount":0, "clrMaxUs":0, "mcList":[], "mcCount":0}
+
+    # Get list of machines
+    curMachine = ""
+    commonTest.sendFrame("getStatus", b"{\"cmdName\":\"getStatus\"}\0")
+    time.sleep(1)
+
+    # Set machines alternately
+    for i in range(testRepeatCount):
+        for mc in testStats['mcList']:
+            logger.debug(f"Setting machine {mc}")
+            commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
+            time.sleep(2)
+            curMachine = mc
+            commonTest.sendFrame("getStatus", b"{\"cmdName\":\"getStatus\"}\0")
+            time.sleep(.1)
+    time.sleep(1)
+
+    # Wait for test end and cleardown
+    commonTest.cleardown()
+    assert(testStats["unknownMsgCount"] == 0)
+    assert(testStats["mcCount"] >= 4)
+
 def test_MemRW():
 
     def frameCallback(msgContent, logger):
@@ -243,49 +286,6 @@ def test_BankedMemRW():
     assert(testStats["msgWrRespErrMissingCount"] == 0)
     assert(testStats["unknownMsgCount"] == 0)
     assert(testStats["clockSetOk"] == True)
-
-def test_SetMc():
-
-    def frameCallback(msgContent, logger):
-        if msgContent['cmdName'] == "busStatusResp":
-            testStats['clrMaxUs'] = max(testStats['clrMaxUs'], msgContent['clrMaxUs'])
-        elif msgContent['cmdName'] == "getStatusResp":
-            testStats['mcList'] = msgContent['machineList']
-            if curMachine != "":
-                assert(msgContent['machineCur'] == curMachine)
-                testStats['mcCount'] += 1
-        elif msgContent['cmdName'][:10] == "SetMachine":
-            pass
-        else:
-            testStats["unknownMsgCount"] += 1
-            logger.info(f"Unknown message {msgContent}")
-
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-    commonTest = setupTests("SetMc", frameCallback)
-    testRepeatCount = 2
-    testStats = {"unknownMsgCount":0, "clrMaxUs":0, "mcList":[], "mcCount":0}
-
-    # Get list of machines
-    curMachine = ""
-    commonTest.sendFrame("getStatus", b"{\"cmdName\":\"getStatus\"}\0")
-    time.sleep(1)
-
-    # Set machines alternately
-    for i in range(testRepeatCount):
-        for mc in testStats['mcList']:
-            logger.debug(f"Setting machine {mc}")
-            commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
-            time.sleep(2)
-            curMachine = mc
-            commonTest.sendFrame("getStatus", b"{\"cmdName\":\"getStatus\"}\0")
-            time.sleep(.1)
-    time.sleep(1)
-
-    # Wait for test end and cleardown
-    commonTest.cleardown()
-    assert(testStats["unknownMsgCount"] == 0)
-    assert(testStats["mcCount"] >= 4)
 
 def test_TraceJMP000():
 

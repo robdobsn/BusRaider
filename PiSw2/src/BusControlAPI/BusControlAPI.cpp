@@ -24,7 +24,9 @@ BusControlAPI* BusControlAPI::_pThisInstance = NULL;
 
 // Debug
 // #define DEBUG_RX_FRAME
-#define DEBUG_COMMS_SOCKET
+// #define DEBUG_COMMS_SOCKET
+// #define DEBUG_API_BLOCK_ACCESS_SYNC
+#define DEBUG_BUS_ACTION_COMPLETE
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Construction
@@ -120,7 +122,7 @@ bool BusControlAPI::handleRxMsg(const char* pCmdJson,
     BusAccess& busAccess = _busAccess;
     if (strcasecmp(cmdName, "Rd") == 0)
     {
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Rd %s", pCmdJson);
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Rd %s %04x", pCmdJson, read32(ARM_GPIO_GPLEV0));
 
         // Get params
         uint32_t addr = 0;
@@ -160,8 +162,8 @@ bool BusControlAPI::handleRxMsg(const char* pCmdJson,
         // Format data to send
         static const int MAX_MEM_READ_RESP = MAX_MEM_BLOCK_READ_WRITE*2+100; 
         char jsonResp[MAX_MEM_READ_RESP];
-        snprintf(jsonResp, sizeof(jsonResp), "\"err\":\"ok\",\"len\":%d,\"addr\":\"0x%04x\",\"isIo\":%s,\"data\":\"", 
-                    (int)dataLen, (unsigned int)addr, isIo ? "Y" : "N");
+        snprintf(jsonResp, sizeof(jsonResp), "\"err\":\"ok\",\"len\":%d,\"addr\":\"0x%04x\",\"isIo\":%d,\"data\":\"", 
+                    (int)dataLen, (unsigned int)addr, isIo);
         int pos = strlen(jsonResp);
         for (uint32_t i = 0; i < dataLen; i++)
         {
@@ -868,6 +870,10 @@ void BusControlAPI::busActionCompleteStatic(void* pObject, BR_BUS_ACTION actionT
 
 void BusControlAPI::busActionComplete(BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASON reason)
 {
+#ifdef DEBUG_BUS_ACTION_COMPLETE
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionComplete type %d reason %d", actionType, reason);
+#endif
+
     HwManager& hwManager = _hwManager;
     if ((actionType == BR_BUS_ACTION_BUSRQ) && _memAccessPending)
     {
@@ -937,15 +943,29 @@ BR_RETURN_TYPE BusControlAPI::blockAccessSync(uint32_t addr, uint8_t* pData, uin
     static const uint32_t MAX_WAIT_FOR_BUS_ACCESS_US = 50000;
     uint32_t busAccessReqStart = micros();
 
+#ifdef DEBUG_API_BLOCK_ACCESS_SYNC
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "busControlAPI busRequestMade");
+#endif
+
     while(!isTimeout(micros(), busAccessReqStart, MAX_WAIT_FOR_BUS_ACCESS_US))
     {
         // Finished?
         if (!_memAccessPending)
+        {
+#ifdef DEBUG_API_BLOCK_ACCESS_SYNC
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "busControlAPI memAccess no longer pending");
+#endif
             break;
+        }
         // Service the bus access - the actual read/write operation occurs in a
         // callback during this function call
         busAccess.service();
     }
+
+#ifdef DEBUG_API_BLOCK_ACCESS_SYNC
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "busControlAPI busRequestDone");
+#endif
+
     // Check if completed ok
     if (_memAccessPending)
     {
