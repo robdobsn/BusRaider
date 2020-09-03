@@ -138,7 +138,7 @@ bool McTerminal::setupMachine(const char* mcName, const char* mcJson)
     bool emulUartValid = jsonGetValueForKey("emulate6850", mcJson, emulUartStr, MAX_UART_EMULATION_STR);
     if (emulUartValid)
     {
-        _emulate6850 = (strtol(emulUartStr, NULL, 10) != 0);
+        _emulate6850 = (strtoul(emulUartStr, NULL, 10) != 0);
         if (!_emulate6850)
             setMonitorIORQEnabled(false);
     }
@@ -409,7 +409,7 @@ bool McTerminal::fileHandler(const char* pFileInfo, const uint8_t* pFileData, in
     uint16_t baseAddr = 0;
     char baseAddrStr[MAX_VALUE_STR+1];
     if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
-        baseAddr = strtol(baseAddrStr, NULL, 16);
+        baseAddr = strtoul(baseAddrStr, NULL, 16);
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
     getTargetProgrammer().addMemoryBlock(baseAddr, pFileData, fileLen);
     return true;

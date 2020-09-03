@@ -516,7 +516,7 @@ bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         uint16_t baseAddr = 0;
         char baseAddrStr[MAX_VALUE_STR+1];
         if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
-            baseAddr = strtol(baseAddrStr, NULL, 16);
+            baseAddr = strtoul(baseAddrStr, NULL, 16);
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
         getTargetProgrammer().addMemoryBlock(baseAddr, pFileData, fileLen);
     }

@@ -42,4 +42,8 @@ cd FileFormats
 $make $1 $2 || exit
 cd ..
 
+cd Display
+$make $1 $2 || exit
+cd ..
+
 $make $1 $2 || exit

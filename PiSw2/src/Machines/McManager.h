@@ -11,16 +11,17 @@
 #include "CommandHandler.h"
 
 class TargetProgrammer;
+class DisplayBase;
 
 class McManager
 {
 public:
     // Constuction
-    McManager(CommandHandler& commandHandler);
+    McManager(DisplayBase* pDisplay, CommandHandler& commandHandler, HwManager& hwManager, 
+                BusAccess& busAccess, TargetProgrammer& targetProgrammer);
 
     // Init
-    void init(DisplayBase* pDisplay, HwManager& hwManager, 
-                BusAccess& busAccess, TargetProgrammer& targetProgrammer);
+    void init();
 
     // Service
     void service();
@@ -66,36 +67,39 @@ public:
     // Access to hardware manager
     HwManager& getHwManager()
     {
-        return *_pHwManager;
+        return _hwManager;
     }
 
     // Access to bus
     BusAccess& getBusAccess()
     {
-        return *_pBusAccess;
+        return _busAccess;
     }
 
     // Access to target programmer
     TargetProgrammer& getTargetProgrammer()
     {
-        return *_pTargetProgrammer;
+        return _targetProgrammer;
     }
 
 private:
     // Singleton
     static McManager* _pMcManager;
 
+    // Display
+    DisplayBase* _pDisplay;
+
     // CommandHandler
     CommandHandler& _commandHandler;
 
     // HwManager
-    HwManager* _pHwManager;
+    HwManager& _hwManager;
 
     // BusAccess
-    BusAccess* _pBusAccess;
+    BusAccess& _busAccess;
 
     // TargetProgrammer
-    TargetProgrammer* _pTargetProgrammer;
+    TargetProgrammer& _targetProgrammer;
 
     // Bus socket we're attached to and setup info
     int _busSocketId;
@@ -124,9 +128,6 @@ private:
     static const uint32_t MAX_RX_HOST_CHARS = 10000;
     uint8_t _rxHostCharsBuffer[MAX_RX_HOST_CHARS+1];
     uint32_t _rxHostCharsBufferLen;
-
-    // Display
-    DisplayBase* _pDisplay;
 
     // Machines
     static const int MAX_MACHINES = 10;

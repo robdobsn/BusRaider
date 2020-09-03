@@ -56,7 +56,7 @@ extern void lowlev_cycleDelay(unsigned int cycles);
 // #define lowlev_mem_2cached(X) ((((unsigned int)X) & 0x0FFFFFFF))
 
 // Fast memcpy
-// TODO
+// TODO 2020
 #define memcopyfast memcpy
 // void *memcopyfast(void *pDest, const void *pSrc, uint32_t nLength);
 

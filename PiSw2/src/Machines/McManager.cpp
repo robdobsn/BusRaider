@@ -26,12 +26,17 @@ static const char MODULE_PREFIX[] = "McManager";
 // Singleton
 McManager* McManager::_pMcManager = NULL;
 
-McManager::McManager(CommandHandler& commandHandler) : _commandHandler(commandHandler)
+McManager::McManager(DisplayBase* pDisplay, CommandHandler& commandHandler, HwManager& hwManager, 
+                BusAccess& busAccess, TargetProgrammer& targetProgrammer) :
+            _pDisplay(pDisplay),
+            _commandHandler(commandHandler), 
+            _hwManager(hwManager),
+            _busAccess(busAccess),
+            _targetProgrammer(targetProgrammer)
 {
     _pMcManager = this;
     _numMachines = 0;
     _pCurMachine = NULL;
-    _pDisplay = NULL;
     _rxHostCharsBufferLen = 0;
     _refreshCount = 0;
     _refreshLastUpdateUs = 0;
@@ -40,27 +45,17 @@ McManager::McManager(CommandHandler& commandHandler) : _commandHandler(commandHa
     _screenMirrorOut = false;
     _screenMirrorCount = 0;
     _screenMirrorLastUs = 0;
-    _pHwManager = NULL;
-    _pBusAccess = NULL;
-    _pTargetProgrammer = NULL;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Init
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void McManager::init(DisplayBase* pDisplay, HwManager& hwManager, 
-                BusAccess& busAccess, TargetProgrammer& targetProgrammer)
+void McManager::init()
 {
-    // Display, etc
-    _pDisplay = pDisplay;
-    _pHwManager = &hwManager;
-    _pBusAccess = &busAccess;
-    _pTargetProgrammer = &targetProgrammer;
-    
     // Connect to the bus socket
     if (_busSocketId < 0)
-        _busSocketId = busAccess.busSocketAdd(
+        _busSocketId = _busAccess.busSocketAdd(
             true,
             handleWaitInterruptStatic,
             busActionCompleteStatic,

@@ -17,10 +17,26 @@
 #include "string.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Consts
+// System Name and Version
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static const char* EMUPI_VERSION = "0.1.1";
+#define SYSTEM_NAME "BusRaider"
+#define SYSTEM_VERSION "3.0.1"
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Globals
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Program details
+static const char* PROG_VERSION = SYSTEM_NAME " " SYSTEM_VERSION " (C) Rob Dobson 2018-2019";
+static const char* PROG_LINKS_1 = "https://robdobson.com/tag/raider";
+
+// Send log data to display (as opposed to merging in the ESP32 log output)
+// #define LOG_TO_DISPLAY 1
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Consts
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // #define IMPLEMENT_NETWORK_CONN
 
@@ -47,7 +63,8 @@ CKernel* CKernel::m_pKernel = 0;
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 CKernel::CKernel (void)
-:	m_Screen (m_Options.GetWidth (), m_Options.GetHeight ()),
+:	m_Display(),
+	m_Screen (m_Options.GetWidth (), m_Options.GetHeight ()),
 	m_Serial (&m_Interrupt, false),
 	m_Timer (&m_Interrupt),
 	m_Logger (m_Options.GetLogLevel (), &m_Timer),
@@ -57,12 +74,13 @@ CKernel::CKernel (void)
 	, m_Net (IPAddress, NetMask, DefaultGateway, DNSServer)
 #endif
 #endif
-	// m_I2CMonitor(&m_Interrupt, m_CommsManager),
-	// m_CommsManager(&m_Serial, AppSerialIF - derived)
 	m_CommsManager(&m_Serial, NULL),
 	m_BusAccess(),
+	m_TargetProgrammer(),
 	m_HwManager(m_CommsManager.getCommandHandler(), m_BusAccess),
-	m_BusControlAPI(m_CommsManager.getCommandHandler(), m_HwManager, m_BusAccess)
+	m_BusControlAPI(m_CommsManager.getCommandHandler(), m_HwManager, m_BusAccess),
+	m_McManager(&m_Display, m_CommsManager.getCommandHandler(), m_HwManager, m_BusAccess, m_TargetProgrammer),
+	m_BusRaiderApp(m_Display, m_CommsManager, m_McManager)
 {
 	m_pKernel = this;
 	// m_ActLED.Blink (5);	// show we are alive
@@ -100,7 +118,7 @@ boolean CKernel::Initialize (void)
 
 		bOK = m_Logger.Initialize (pTarget);
 		if (bOK)
-			m_Logger.Write("****** BusRaider", LogNotice, "%s Rob Dobson 2020 ******", EMUPI_VERSION);
+			m_Logger.Write("Main", LogNotice, PROG_VERSION);
 	}
 
 	if (bOK)
@@ -131,6 +149,7 @@ boolean CKernel::Initialize (void)
 		m_BusAccess.init();
 		m_HwManager.init();
 		m_BusControlAPI.init();
+		m_BusRaiderApp.init();
 	}
 
 	// if (bOK)
@@ -178,6 +197,7 @@ TShutdownMode CKernel::Run (void)
 		m_BusAccess.service();
 		m_HwManager.service();
 		m_BusControlAPI.service();
+		m_BusRaiderApp.service();
 
 		// // I2C Service
 		// m_I2CMonitor.service();

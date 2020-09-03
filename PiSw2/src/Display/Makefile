@@ -4,11 +4,11 @@
 
 CIRCLEHOME = ../../circle
 
-OBJS	= UartMaxiSerialDevice.o \
-			lowlib.o rdutils.o jsmnR.o Utils.o \
-			PiWiring.o lowlev.o KeyConversion.o
+OBJS	= FastScreen.o Display.o DisplayFX.o
 
-brsys.a: $(OBJS)
+INCLUDE	+= -I ../system -I ../fonts
+
+brDisplay.a: $(OBJS)
 	@echo "  AR    $@"
 	@rm -f $@
 	@$(AR) cr $@ $(OBJS)

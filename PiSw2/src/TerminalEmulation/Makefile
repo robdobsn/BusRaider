@@ -6,7 +6,7 @@ CIRCLEHOME = ../../circle
 
 OBJS	= TermAnsi.o TermEmu.o TermH19.o
 
-INCLUDE	+= -I ../system
+INCLUDE	+= -I ../system -I ../Display
 
 brTermEmu.a: $(OBJS)
 	@echo "  AR    $@"

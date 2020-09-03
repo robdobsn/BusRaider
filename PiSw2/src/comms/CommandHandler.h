@@ -103,7 +103,7 @@ public:
 
 private:
     // Comms Sockets
-    static const unsigned MAX_COMMS_SOCKETS = 10;
+    static const unsigned MAX_COMMS_SOCKETS = 20;
     CommsSocketInfo _commsSockets[MAX_COMMS_SOCKETS];
     unsigned _commsSocketCount;
     void commsSocketHandleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,

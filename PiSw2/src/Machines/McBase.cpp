@@ -138,7 +138,7 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
     bool clockValid = jsonGetValueForKey("clockHz", mcJson, clockSpeedStr, MAX_CLOCK_SET_STR);
     if (clockValid)
     {
-        uint32_t clockHz = strtol(clockSpeedStr, NULL, 10);
+        uint32_t clockHz = strtoul(clockSpeedStr, NULL, 10);
         if ((clockHz >= busAccess.clockGetMinFreqHz()) && 
                         (clockHz <= busAccess.clockGetMaxFreqHz()))
             clockFreqHz = clockHz;

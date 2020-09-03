@@ -4,7 +4,7 @@
 
 CIRCLEHOME = ../circle
 
-OBJS	= 	main.o kernel.o
+OBJS	= 	main.o kernel.o BusRaiderApp.o
 
 LIBS	= 	$(CIRCLEHOME)/lib/usb/libusb.a \
 			$(CIRCLEHOME)/lib/input/libinput.a \
@@ -22,9 +22,10 @@ LIBS	= 	$(CIRCLEHOME)/lib/usb/libusb.a \
 			Machines/brMachines.a \
 			fonts/brFonts.a \
 			TerminalEmulation/brTermEmu.a \
-			FileFormats/brFileFormats.a
+			FileFormats/brFileFormats.a \
+			Display/brDisplay.a
 
-INCLUDE	+= -I system -I comms -I web -I TargetBus
+INCLUDE	+= -I system -I comms -I web -I TargetBus -I Display -I Machines -I TerminalEmulation
 
 include Rules.mk
 
