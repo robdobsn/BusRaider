@@ -18,7 +18,11 @@ LIBS	= 	$(CIRCLEHOME)/lib/usb/libusb.a \
 			web/brweb.a \
 			TargetBus/brTargetBus.a \
 			Hardware/brHardware.a \
-			BusControlAPI/brBusAPI.a
+			BusControlAPI/brBusAPI.a \
+			Machines/brMachines.a \
+			fonts/brFonts.a \
+			TerminalEmulation/brTermEmu.a \
+			FileFormats/brFileFormats.a
 
 INCLUDE	+= -I system -I comms -I web -I TargetBus
 

@@ -26,4 +26,20 @@ cd BusControlAPI
 $make $1 $2 || exit
 cd ..
 
+cd Machines
+$make $1 $2 || exit
+cd ..
+
+cd fonts
+$make $1 $2 || exit
+cd ..
+
+cd TerminalEmulation
+$make $1 $2 || exit
+cd ..
+
+cd FileFormats
+$make $1 $2 || exit
+cd ..
+
 $make $1 $2 || exit

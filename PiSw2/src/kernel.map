@@ -3183,6 +3183,10 @@ LOAD web/brweb.a
 LOAD TargetBus/brTargetBus.a
 LOAD Hardware/brHardware.a
 LOAD BusControlAPI/brBusAPI.a
+LOAD Machines/brMachines.a
+LOAD fonts/brFonts.a
+LOAD TerminalEmulation/brTermEmu.a
+LOAD FileFormats/brFileFormats.a
 LOAD /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a
 LOAD /usr/lib/gcc/arm-none-eabi/6.3.1/../../../arm-none-eabi/lib/libm.a
 END GROUP

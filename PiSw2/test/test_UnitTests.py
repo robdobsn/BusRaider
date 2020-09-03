@@ -216,7 +216,7 @@ def test_BankedMemRW():
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
     commonTest = setupTests("BankedMemRW", frameCallback)
-    testRepeatCount = 5
+    testRepeatCount = 1
     numTestBlocks = 20
     # Test data
     writtenData = []

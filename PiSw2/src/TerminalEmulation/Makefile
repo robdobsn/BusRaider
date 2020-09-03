@@ -4,11 +4,11 @@
 
 CIRCLEHOME = ../../circle
 
-OBJS	= FastScreen.o UartMaxiSerialDevice.o \
-			lowlib.o rdutils.o jsmnR.o Utils.o \
-			PiWiring.o lowlev.o KeyConversion.o
+OBJS	= TermAnsi.o TermEmu.o TermH19.o
 
-brsys.a: $(OBJS)
+INCLUDE	+= -I ../system
+
+brTermEmu.a: $(OBJS)
 	@echo "  AR    $@"
 	@rm -f $@
 	@$(AR) cr $@ $(OBJS)
