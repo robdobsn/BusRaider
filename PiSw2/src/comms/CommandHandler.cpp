@@ -205,11 +205,6 @@ void CommandHandler::processRxCmd(const char* pCmdJson, const uint8_t* pParams, 
         handleFileEnd(pCmdJson);
         return;
     }
-    else if (strcasecmp(cmdName, "comtest") == 0)
-    {
-        sendWithJSON("comtestResp", R"("rslt":"ok")", rdpIndex);
-        return;
-    }
     else if (strcasecmp(cmdName, "rdp") == 0)
     {
 #ifdef DEBUG_COMMAND_HANDLER_RDP
@@ -230,6 +225,14 @@ void CommandHandler::processRxCmd(const char* pCmdJson, const uint8_t* pParams, 
         jsonGetValueForKey("msgIdx", pCmdJson, msgIdxStr, MAX_MSGIDX_STR_LEN);
         rdpMessage = true;
 
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "RDP cmdName %s rdpIndex %d msgIdx %s", cmdName, rdpIndex, msgIdxStr);
+
+        if (strcasecmp(cmdName, "comtest") == 0)
+        {
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "comtest msgIdx %d", rdpIndex);
+            sendRDPMsg(strtoul(msgIdxStr, NULL, 10), "comtestResp", R"("rslt":"ok")");
+            return;
+        }
         // TODO
         // if (strcasecmp(cmdName, "tracerStatus") == 0)
         //     _rdpMsgCountIn++;

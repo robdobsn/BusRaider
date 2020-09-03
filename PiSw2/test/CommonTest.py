@@ -94,9 +94,6 @@ class CommonTest:
         if useIP:
             self.tcpHdlcPort = 10001
 
-            def sendDataToTCP(dataToSend):
-                self.rdpTCP.sendFrame(dataToSend)
-
             # Frame handler
             def onTCPFrame(fr):
                 # Send to HDLC
@@ -134,12 +131,16 @@ class CommonTest:
         # for b in frame:
         #     print(hex(b)+" ",end='')
         # print()
-        try:
-            self.commsSerial.send(frame)
-            if self.logSends and len(comment) > 0: 
-                self.logger.debug(f"Sent {comment}")
-        except Exception as excp:
-            self.logger.error(f"Failed to send frame {comment}, {excp}")
+        if self.useIP:
+            frameEncoded = self.commsSerial._hdlc._encode(frame)
+            self.rdpTCP.sendFrame(frameEncoded)
+        else:
+            try:
+                self.commsSerial.send(frame)
+                if self.logSends and len(comment) > 0: 
+                    self.logger.debug(f"Sent {comment}")
+            except Exception as excp:
+                self.logger.error(f"Failed to send frame {comment}, {excp}")
 
     def awaitResponse(self, maxWaitMs):
         if self.respAwaited is not None:

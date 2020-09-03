@@ -17,13 +17,17 @@ import json
 readDataExpected = b""
 
 def setupTests(testName, frameCallback):
+    curWorkingFolder = os.getcwd()
+    testBaseFolder = curWorkingFolder
+    if not curWorkingFolder.endswith("test"):
+        testBaseFolder = os.path.join(curWorkingFolder, "test")
     return CommonTest(
             testName = testName,
-            testBaseFolder = ".",
-            useIP = False, 
+            testBaseFolder = testBaseFolder,
+            useIP = True, 
             serialPort = "COM6", 
             serialBaud = 921600, 
-            ipAddrOrHostName = "192.168.86.123",
+            ipAddrOrHostName = "192.168.86.40",
             dumpTextFileName = testName + ".log",
             dumpBinFileName = testName + ".bin",
             frameCallback = frameCallback

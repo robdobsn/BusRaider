@@ -354,7 +354,7 @@ Address of section .init set to 0x8000
  .init          0x0000000000008000       0x64 ../circle/lib/libcircle.a(startup.o)
                 0x0000000000008000                _start
 
-.text           0x0000000000008068    0x303fc
+.text           0x0000000000008068    0x303f0
  *(.text*)
  .text          0x0000000000008068        0x0 main.o
  .text.startup  0x0000000000008068       0x58 main.o
@@ -1920,7 +1920,7 @@ Address of section .init set to 0x8000
                 0x000000000002e60c                CommsManager::sendWithJSON(char const*, char const*, unsigned long, unsigned char const*, unsigned long)
                 0x000000000002e610                CommsManager::serviceGetFromSerial()
                 0x000000000002e654                CommsManager::service()
- .text          0x000000000002e66c     0x11d0 comms/brcomms.a(CommandHandler.o)
+ .text          0x000000000002e66c     0x11c4 comms/brcomms.a(CommandHandler.o)
                 0x000000000002e66c                CommandHandler::hdlcFrameTxStatic(unsigned char const*, unsigned int)
                 0x000000000002e690                CommandHandler::CommandHandler()
                 0x000000000002e690                CommandHandler::CommandHandler()
@@ -1941,1149 +1941,1149 @@ Address of section .init set to 0x8000
                 0x000000000002ef40                CommandHandler::sendUnnumberedMsg(char const*, char const*)
                 0x000000000002f120                CommandHandler::handleFileEnd(char const*)
                 0x000000000002f130                CommandHandler::processRxCmd(char const*, unsigned char const*, unsigned int)
-                0x000000000002f40c                CommandHandler::hdlcFrameRx(unsigned char const*, unsigned int)
-                0x000000000002f468                CommandHandler::hdlcFrameRxStatic(unsigned char const*, unsigned int)
-                0x000000000002f48c                CommandHandler::sendAPIReq(char const*)
-                0x000000000002f520                CommandHandler::logDebugMessage(char const*)
-                0x000000000002f5a8                CommandHandler::logDebugJson(char const*)
-                0x000000000002f5d4                CommandHandler::logDebug(char const*, char const*, char const*)
-                0x000000000002f718                CommandHandler::service()
-                0x000000000002f7fc                CommandHandler::fileReceiveCleardown()
-                0x000000000002f824                CommandHandler::~CommandHandler()
-                0x000000000002f824                CommandHandler::~CommandHandler()
- .text          0x000000000002f83c      0x7fc comms/brcomms.a(MiniHDLC.o)
-                0x000000000002f83c                MiniHDLC::~MiniHDLC()
-                0x000000000002f83c                MiniHDLC::~MiniHDLC()
-                0x000000000002f878                MiniHDLC::~MiniHDLC()
-                0x000000000002f898                MiniHDLC::MiniHDLC(unsigned long, void (*)(unsigned char), void (*)(unsigned char const*, unsigned int), bool, bool)
-                0x000000000002f898                MiniHDLC::MiniHDLC(unsigned long, void (*)(unsigned char), void (*)(unsigned char const*, unsigned int), bool, bool)
-                0x000000000002f920                MiniHDLC::MiniHDLC(void (*)(unsigned char const*, unsigned int), void (*)(unsigned char const*, unsigned int), unsigned long, unsigned long, bool, bool)
-                0x000000000002f920                MiniHDLC::MiniHDLC(void (*)(unsigned char const*, unsigned int), void (*)(unsigned char const*, unsigned int), unsigned long, unsigned long, bool, bool)
-                0x000000000002f9a4                MiniHDLC::clear()
-                0x000000000002fa04                MiniHDLC::crcUpdateCCITT(unsigned short, unsigned char)
-                0x000000000002fa24                MiniHDLC::checkRxBufferAllocation(unsigned long)
-                0x000000000002fab0                MiniHDLC::handleChar(unsigned char)
-                0x000000000002fc84                MiniHDLC::handleBit(unsigned char)
-                0x000000000002fcf4                MiniHDLC::handleBuffer(unsigned char const*, unsigned int)
-                0x000000000002fd24                MiniHDLC::setFrameRxMaxLen(unsigned long)
-                0x000000000002fd34                MiniHDLC::putCharToFrame(unsigned char)
-                0x000000000002fe14                MiniHDLC::sendChar(unsigned char)
-                0x000000000002fe50                MiniHDLC::sendCharWithStuffing(unsigned char)
-                0x000000000002fec8                MiniHDLC::sendEscaped(unsigned char)
-                0x000000000002fefc                MiniHDLC::sendFrame(unsigned char const*, unsigned int)
-                0x000000000002ffec                MiniHDLC::computeCRC16(unsigned char const*, unsigned int)
- .text          0x0000000000030038     0x11b8 TargetBus/brTargetBus.a(BusAccess.o)
-                0x000000000003020c                BusAccess::BusAccess()
-                0x000000000003020c                BusAccess::BusAccess()
-                0x00000000000302e0                BusAccess::init()
-                0x00000000000303ac                BusAccess::busAccessReset()
-                0x0000000000030454                BusAccess::waitOnMemory(int, bool)
-                0x0000000000030478                BusAccess::waitOnIO(int, bool)
-                0x000000000003049c                BusAccess::waitIsOnMemory()
-                0x00000000000304a4                BusAccess::waitSetCycleUs(unsigned long)
-                0x00000000000304ac                BusAccess::waitIsHeld()
-                0x00000000000304b4                BusAccess::waitHold(int, bool)
-                0x000000000003052c                BusAccess::targetReqReset(int, int)
-                0x0000000000030580                BusAccess::targetReqNMI(int, int)
-                0x00000000000305b4                BusAccess::targetReqIRQ(int, int)
-                0x00000000000305e8                BusAccess::targetReqBus(int, BR_BUS_ACTION_REASON)
-                0x000000000003068c                BusAccess::targetPageForInjection(int, bool)
-                0x000000000003070c                BusAccess::busActionCheck()
-                0x000000000003071c                BusAccess::busActionHandleStart()
-                0x0000000000030734                BusAccess::busAccessHandleIrqAck()
-                0x00000000000307f4                BusAccess::busActionClearFlags()
-                0x0000000000030878                BusAccess::busActionCallback(BR_BUS_ACTION, BR_BUS_ACTION_REASON)
-                0x0000000000030938                BusAccess::busActionHandleActive()
-                0x0000000000030c4c                BusAccess::stepTimerISR(void*)
-                0x0000000000030c50                BusAccess::waitHandleReadRelease()
-                0x0000000000030ce0                BusAccess::waitRelease()
-                0x0000000000030cfc                BusAccess::waitHandleNew()
-                0x0000000000030fac                BusAccess::serviceWaitActivity()
-                0x00000000000310b8                BusAccess::service()
-                0x000000000003112c                BusAccessStatusInfo::getJson()
- .text          0x00000000000311f0     0x2238 TargetBus/brTargetBus.a(BusAccess_Control.o)
-                0x00000000000311f0                BusAccess::busSocketIsEnabled(int)
-                0x000000000003121c                BusAccess::getStatus(BusAccessStatusInfo&)
-                0x0000000000031238                BusAccess::clearStatus()
-                0x000000000003128c                BusAccess::isUnderControl()
-                0x0000000000031294                BusAccess::controlRequest()
-                0x00000000000312bc                BusAccess::waitForBusAck(bool)
-                0x0000000000031384                BusAccess::controlBusRead()
-                0x00000000000314b8                BusAccess::addrAndDataBusRead(unsigned long&, unsigned long&)
-                0x0000000000031634                BusAccess::addrLowSet(unsigned long)
-                0x0000000000031754                BusAccess::addrLowInc()
-                0x00000000000317b0                BusAccess::addrHighSet(unsigned long)
-                0x0000000000031918                BusAccess::addrSet(unsigned int)
-                0x000000000003193c                BusAccess::byteWrite(unsigned long, int)
-                0x0000000000031a18                BusAccess::byteRead(int)
-                0x0000000000031acc                BusAccess::clockSetup()
-                0x0000000000031cb0                BusAccess::clockSetFreqHz(unsigned long)
-                0x0000000000031ed0                BusAccess::clockEnable(bool)
-                0x000000000003209c                BusAccess::clockCurFreqHz()
-                0x00000000000320a4                BusAccess::clockGetMinFreqHz()
-                0x00000000000320ac                BusAccess::clockGetMaxFreqHz()
-                0x00000000000320b8                BusAccess::waitEnablementUpdate()
-                0x0000000000032164                BusAccess::busSocketAdd(bool, void (*)(void*, unsigned long, unsigned long, unsigned long, unsigned long&), void (*)(void*, BR_BUS_ACTION, BR_BUS_ACTION_REASON), bool, bool, bool, unsigned long, bool, unsigned long, bool, unsigned long, bool, BR_BUS_ACTION_REASON, bool, void*)
-                0x0000000000032218                BusAccess::busSocketEnable(int, bool)
-                0x000000000003223c                BusAccess::controlRelease()
-                0x0000000000032420                BusAccess::waitSetupMREQAndIORQEnables()
-                0x0000000000032534                BusAccess::waitResetFlipFlops(bool)
-                0x00000000000325cc                BusAccess::waitClearDetected()
-                0x00000000000325d0                BusAccess::waitSuspendBusDetailOneCycle()
-                0x00000000000325e4                BusAccess::setPinOut(int, bool)
-                0x0000000000032618                BusAccess::controlTake()
-                0x00000000000326d4                BusAccess::controlRequestAndTake()
-                0x0000000000032734                BusAccess::blockWrite(unsigned long, unsigned char const*, unsigned long, bool, bool)
-                0x0000000000032878                BusAccess::blockRead(unsigned long, unsigned char*, unsigned long, bool, bool)
-                0x00000000000329c0                BusAccess::isrAssert(int)
-                0x00000000000329d8                BusAccess::isrAssertGetCount(int)
-                0x00000000000329f0                BusAccess::isrValue(int, int)
-                0x0000000000032a04                BusAccess::isrPeak(int, int)
-                0x0000000000032a20                BusAccess::setSignal(BR_BUS_ACTION, bool)
-                0x0000000000032b5c                BusAccess::busAccessCallbackPageIn()
-                0x0000000000032bc8                BusAccess::busPagePinSetActive(bool)
-                0x0000000000032bdc                BusAccess::rawBusControlEnable(bool)
-                0x0000000000032bf8                BusAccess::rawBusControlClearWait()
-                0x0000000000032c0c                BusAccess::rawBusControlWaitDisable()
-                0x0000000000032c28                BusAccess::waitGenerationDisable()
-                0x0000000000032c2c                BusAccess::rawBusControlClockEnable(bool)
-                0x00000000000331c8                BusAccess::rawBusControlTakeBus()
-                0x00000000000331dc                BusAccess::rawBusControlReleaseBus()
-                0x00000000000331e0                BusAccess::rawBusControlSetAddress(unsigned long)
-                0x00000000000331e4                BusAccess::rawBusControlSetData(unsigned long)
-                0x0000000000033270                BusAccess::rawBusControlReadRaw()
-                0x0000000000033280                BusAccess::rawBusControlReadCtrl()
-                0x0000000000033284                BusAccess::rawBusControlReadAll(unsigned long&, unsigned long&, unsigned long&)
-                0x00000000000332b4                BusAccess::rawBusControlSetPin(unsigned long, bool)
-                0x00000000000332c0                BusAccess::rawBusControlGetPin(unsigned long)
-                0x00000000000332d8                BusAccess::rawBusControlReadPIB()
-                0x00000000000332fc                BusAccess::rawBusControlWritePIB(unsigned long)
-                0x0000000000033338                BusAccess::rawBusControlMuxSet(unsigned long)
-                0x0000000000033384                BusAccess::rawBusControlMuxClear()
-                0x00000000000333b0                BusAccess::formatCtrlBus(unsigned long, char*, int)
- .text          0x0000000000033428     0x11dc Hardware/brHardware.a(HwManager.o)
-                0x0000000000033428                HwManager::HwManager(CommandHandler&, BusAccess&)
-                0x0000000000033428                HwManager::HwManager(CommandHandler&, BusAccess&)
-                0x0000000000033464                HwManager::init()
-                0x0000000000033540                HwManager::service()
-                0x0000000000033544                HwManager::addHardwareElementStatic(HwBase*)
-                0x000000000003356c                HwManager::setMemoryEmulationMode(bool)
-                0x000000000003364c                HwManager::pageOutForInjection(bool)
-                0x00000000000336e8                HwManager::setMemoryPagingEnable(bool)
-                0x0000000000033788                HwManager::setOpcodeInjectEnable(bool)
-                0x00000000000337dc                HwManager::setMirrorMode(bool)
-                0x000000000003387c                HwManager::getMaxAddress()
-                0x0000000000033930                HwManager::getMirrorMemForAddr(unsigned long)
-                0x00000000000339cc                HwManager::mirrorClone()
-                0x0000000000033a60                HwManager::tracerClone()
-                0x0000000000033af4                HwManager::tracerHandleAccess(unsigned long, unsigned long, unsigned long, unsigned long&)
-                0x0000000000033bb0                HwManager::busActionComplete(BR_BUS_ACTION, BR_BUS_ACTION_REASON)
-                0x0000000000033c54                HwManager::busActionCompleteStatic(void*, BR_BUS_ACTION, BR_BUS_ACTION_REASON)
-                0x0000000000033c60                HwManager::handleWaitInterrupt(unsigned long, unsigned long, unsigned long, unsigned long&)
-                0x0000000000033d1c                HwManager::handleWaitInterruptStatic(void*, unsigned long, unsigned long, unsigned long, unsigned long&)
-                0x0000000000033d28                HwManager::enableHw(char const*, bool)
-                0x0000000000033df8                HwManager::disableAll()
-                0x0000000000033e6c                HwManager::configureHw(char const*, char const*)
-                0x0000000000033f10                HwManager::handleRxMsg(char const*, unsigned char const*, unsigned int, char*, unsigned int)
-                0x0000000000034140                HwManager::handleRxMsgStatic(void*, char const*, unsigned char const*, unsigned int, char*, unsigned int)
-                0x0000000000034158                HwManager::setupFromJson(char const*, char const*)
-                0x00000000000343a0                HwManager::busAccessAvailable()
-                0x00000000000343e4                HwManager::blockWrite(unsigned long, unsigned char const*, unsigned long, bool, bool, bool)
-                0x00000000000344c8                HwManager::blockRead(unsigned long, unsigned char*, unsigned long, bool, bool, bool)
+                0x000000000002f400                CommandHandler::hdlcFrameRx(unsigned char const*, unsigned int)
+                0x000000000002f45c                CommandHandler::hdlcFrameRxStatic(unsigned char const*, unsigned int)
+                0x000000000002f480                CommandHandler::sendAPIReq(char const*)
+                0x000000000002f514                CommandHandler::logDebugMessage(char const*)
+                0x000000000002f59c                CommandHandler::logDebugJson(char const*)
+                0x000000000002f5c8                CommandHandler::logDebug(char const*, char const*, char const*)
+                0x000000000002f70c                CommandHandler::service()
+                0x000000000002f7f0                CommandHandler::fileReceiveCleardown()
+                0x000000000002f818                CommandHandler::~CommandHandler()
+                0x000000000002f818                CommandHandler::~CommandHandler()
+ .text          0x000000000002f830      0x7fc comms/brcomms.a(MiniHDLC.o)
+                0x000000000002f830                MiniHDLC::~MiniHDLC()
+                0x000000000002f830                MiniHDLC::~MiniHDLC()
+                0x000000000002f86c                MiniHDLC::~MiniHDLC()
+                0x000000000002f88c                MiniHDLC::MiniHDLC(unsigned long, void (*)(unsigned char), void (*)(unsigned char const*, unsigned int), bool, bool)
+                0x000000000002f88c                MiniHDLC::MiniHDLC(unsigned long, void (*)(unsigned char), void (*)(unsigned char const*, unsigned int), bool, bool)
+                0x000000000002f914                MiniHDLC::MiniHDLC(void (*)(unsigned char const*, unsigned int), void (*)(unsigned char const*, unsigned int), unsigned long, unsigned long, bool, bool)
+                0x000000000002f914                MiniHDLC::MiniHDLC(void (*)(unsigned char const*, unsigned int), void (*)(unsigned char const*, unsigned int), unsigned long, unsigned long, bool, bool)
+                0x000000000002f998                MiniHDLC::clear()
+                0x000000000002f9f8                MiniHDLC::crcUpdateCCITT(unsigned short, unsigned char)
+                0x000000000002fa18                MiniHDLC::checkRxBufferAllocation(unsigned long)
+                0x000000000002faa4                MiniHDLC::handleChar(unsigned char)
+                0x000000000002fc78                MiniHDLC::handleBit(unsigned char)
+                0x000000000002fce8                MiniHDLC::handleBuffer(unsigned char const*, unsigned int)
+                0x000000000002fd18                MiniHDLC::setFrameRxMaxLen(unsigned long)
+                0x000000000002fd28                MiniHDLC::putCharToFrame(unsigned char)
+                0x000000000002fe08                MiniHDLC::sendChar(unsigned char)
+                0x000000000002fe44                MiniHDLC::sendCharWithStuffing(unsigned char)
+                0x000000000002febc                MiniHDLC::sendEscaped(unsigned char)
+                0x000000000002fef0                MiniHDLC::sendFrame(unsigned char const*, unsigned int)
+                0x000000000002ffe0                MiniHDLC::computeCRC16(unsigned char const*, unsigned int)
+ .text          0x000000000003002c     0x11b8 TargetBus/brTargetBus.a(BusAccess.o)
+                0x0000000000030200                BusAccess::BusAccess()
+                0x0000000000030200                BusAccess::BusAccess()
+                0x00000000000302d4                BusAccess::init()
+                0x00000000000303a0                BusAccess::busAccessReset()
+                0x0000000000030448                BusAccess::waitOnMemory(int, bool)
+                0x000000000003046c                BusAccess::waitOnIO(int, bool)
+                0x0000000000030490                BusAccess::waitIsOnMemory()
+                0x0000000000030498                BusAccess::waitSetCycleUs(unsigned long)
+                0x00000000000304a0                BusAccess::waitIsHeld()
+                0x00000000000304a8                BusAccess::waitHold(int, bool)
+                0x0000000000030520                BusAccess::targetReqReset(int, int)
+                0x0000000000030574                BusAccess::targetReqNMI(int, int)
+                0x00000000000305a8                BusAccess::targetReqIRQ(int, int)
+                0x00000000000305dc                BusAccess::targetReqBus(int, BR_BUS_ACTION_REASON)
+                0x0000000000030680                BusAccess::targetPageForInjection(int, bool)
+                0x0000000000030700                BusAccess::busActionCheck()
+                0x0000000000030710                BusAccess::busActionHandleStart()
+                0x0000000000030728                BusAccess::busAccessHandleIrqAck()
+                0x00000000000307e8                BusAccess::busActionClearFlags()
+                0x000000000003086c                BusAccess::busActionCallback(BR_BUS_ACTION, BR_BUS_ACTION_REASON)
+                0x000000000003092c                BusAccess::busActionHandleActive()
+                0x0000000000030c40                BusAccess::stepTimerISR(void*)
+                0x0000000000030c44                BusAccess::waitHandleReadRelease()
+                0x0000000000030cd4                BusAccess::waitRelease()
+                0x0000000000030cf0                BusAccess::waitHandleNew()
+                0x0000000000030fa0                BusAccess::serviceWaitActivity()
+                0x00000000000310ac                BusAccess::service()
+                0x0000000000031120                BusAccessStatusInfo::getJson()
+ .text          0x00000000000311e4     0x2238 TargetBus/brTargetBus.a(BusAccess_Control.o)
+                0x00000000000311e4                BusAccess::busSocketIsEnabled(int)
+                0x0000000000031210                BusAccess::getStatus(BusAccessStatusInfo&)
+                0x000000000003122c                BusAccess::clearStatus()
+                0x0000000000031280                BusAccess::isUnderControl()
+                0x0000000000031288                BusAccess::controlRequest()
+                0x00000000000312b0                BusAccess::waitForBusAck(bool)
+                0x0000000000031378                BusAccess::controlBusRead()
+                0x00000000000314ac                BusAccess::addrAndDataBusRead(unsigned long&, unsigned long&)
+                0x0000000000031628                BusAccess::addrLowSet(unsigned long)
+                0x0000000000031748                BusAccess::addrLowInc()
+                0x00000000000317a4                BusAccess::addrHighSet(unsigned long)
+                0x000000000003190c                BusAccess::addrSet(unsigned int)
+                0x0000000000031930                BusAccess::byteWrite(unsigned long, int)
+                0x0000000000031a0c                BusAccess::byteRead(int)
+                0x0000000000031ac0                BusAccess::clockSetup()
+                0x0000000000031ca4                BusAccess::clockSetFreqHz(unsigned long)
+                0x0000000000031ec4                BusAccess::clockEnable(bool)
+                0x0000000000032090                BusAccess::clockCurFreqHz()
+                0x0000000000032098                BusAccess::clockGetMinFreqHz()
+                0x00000000000320a0                BusAccess::clockGetMaxFreqHz()
+                0x00000000000320ac                BusAccess::waitEnablementUpdate()
+                0x0000000000032158                BusAccess::busSocketAdd(bool, void (*)(void*, unsigned long, unsigned long, unsigned long, unsigned long&), void (*)(void*, BR_BUS_ACTION, BR_BUS_ACTION_REASON), bool, bool, bool, unsigned long, bool, unsigned long, bool, unsigned long, bool, BR_BUS_ACTION_REASON, bool, void*)
+                0x000000000003220c                BusAccess::busSocketEnable(int, bool)
+                0x0000000000032230                BusAccess::controlRelease()
+                0x0000000000032414                BusAccess::waitSetupMREQAndIORQEnables()
+                0x0000000000032528                BusAccess::waitResetFlipFlops(bool)
+                0x00000000000325c0                BusAccess::waitClearDetected()
+                0x00000000000325c4                BusAccess::waitSuspendBusDetailOneCycle()
+                0x00000000000325d8                BusAccess::setPinOut(int, bool)
+                0x000000000003260c                BusAccess::controlTake()
+                0x00000000000326c8                BusAccess::controlRequestAndTake()
+                0x0000000000032728                BusAccess::blockWrite(unsigned long, unsigned char const*, unsigned long, bool, bool)
+                0x000000000003286c                BusAccess::blockRead(unsigned long, unsigned char*, unsigned long, bool, bool)
+                0x00000000000329b4                BusAccess::isrAssert(int)
+                0x00000000000329cc                BusAccess::isrAssertGetCount(int)
+                0x00000000000329e4                BusAccess::isrValue(int, int)
+                0x00000000000329f8                BusAccess::isrPeak(int, int)
+                0x0000000000032a14                BusAccess::setSignal(BR_BUS_ACTION, bool)
+                0x0000000000032b50                BusAccess::busAccessCallbackPageIn()
+                0x0000000000032bbc                BusAccess::busPagePinSetActive(bool)
+                0x0000000000032bd0                BusAccess::rawBusControlEnable(bool)
+                0x0000000000032bec                BusAccess::rawBusControlClearWait()
+                0x0000000000032c00                BusAccess::rawBusControlWaitDisable()
+                0x0000000000032c1c                BusAccess::waitGenerationDisable()
+                0x0000000000032c20                BusAccess::rawBusControlClockEnable(bool)
+                0x00000000000331bc                BusAccess::rawBusControlTakeBus()
+                0x00000000000331d0                BusAccess::rawBusControlReleaseBus()
+                0x00000000000331d4                BusAccess::rawBusControlSetAddress(unsigned long)
+                0x00000000000331d8                BusAccess::rawBusControlSetData(unsigned long)
+                0x0000000000033264                BusAccess::rawBusControlReadRaw()
+                0x0000000000033274                BusAccess::rawBusControlReadCtrl()
+                0x0000000000033278                BusAccess::rawBusControlReadAll(unsigned long&, unsigned long&, unsigned long&)
+                0x00000000000332a8                BusAccess::rawBusControlSetPin(unsigned long, bool)
+                0x00000000000332b4                BusAccess::rawBusControlGetPin(unsigned long)
+                0x00000000000332cc                BusAccess::rawBusControlReadPIB()
+                0x00000000000332f0                BusAccess::rawBusControlWritePIB(unsigned long)
+                0x000000000003332c                BusAccess::rawBusControlMuxSet(unsigned long)
+                0x0000000000033378                BusAccess::rawBusControlMuxClear()
+                0x00000000000333a4                BusAccess::formatCtrlBus(unsigned long, char*, int)
+ .text          0x000000000003341c     0x11dc Hardware/brHardware.a(HwManager.o)
+                0x000000000003341c                HwManager::HwManager(CommandHandler&, BusAccess&)
+                0x000000000003341c                HwManager::HwManager(CommandHandler&, BusAccess&)
+                0x0000000000033458                HwManager::init()
+                0x0000000000033534                HwManager::service()
+                0x0000000000033538                HwManager::addHardwareElementStatic(HwBase*)
+                0x0000000000033560                HwManager::setMemoryEmulationMode(bool)
+                0x0000000000033640                HwManager::pageOutForInjection(bool)
+                0x00000000000336dc                HwManager::setMemoryPagingEnable(bool)
+                0x000000000003377c                HwManager::setOpcodeInjectEnable(bool)
+                0x00000000000337d0                HwManager::setMirrorMode(bool)
+                0x0000000000033870                HwManager::getMaxAddress()
+                0x0000000000033924                HwManager::getMirrorMemForAddr(unsigned long)
+                0x00000000000339c0                HwManager::mirrorClone()
+                0x0000000000033a54                HwManager::tracerClone()
+                0x0000000000033ae8                HwManager::tracerHandleAccess(unsigned long, unsigned long, unsigned long, unsigned long&)
+                0x0000000000033ba4                HwManager::busActionComplete(BR_BUS_ACTION, BR_BUS_ACTION_REASON)
+                0x0000000000033c48                HwManager::busActionCompleteStatic(void*, BR_BUS_ACTION, BR_BUS_ACTION_REASON)
+                0x0000000000033c54                HwManager::handleWaitInterrupt(unsigned long, unsigned long, unsigned long, unsigned long&)
+                0x0000000000033d10                HwManager::handleWaitInterruptStatic(void*, unsigned long, unsigned long, unsigned long, unsigned long&)
+                0x0000000000033d1c                HwManager::enableHw(char const*, bool)
+                0x0000000000033dec                HwManager::disableAll()
+                0x0000000000033e60                HwManager::configureHw(char const*, char const*)
+                0x0000000000033f04                HwManager::handleRxMsg(char const*, unsigned char const*, unsigned int, char*, unsigned int)
+                0x0000000000034134                HwManager::handleRxMsgStatic(void*, char const*, unsigned char const*, unsigned int, char*, unsigned int)
+                0x000000000003414c                HwManager::setupFromJson(char const*, char const*)
+                0x0000000000034394                HwManager::busAccessAvailable()
+                0x00000000000343d8                HwManager::blockWrite(unsigned long, unsigned char const*, unsigned long, bool, bool, bool)
+                0x00000000000344bc                HwManager::blockRead(unsigned long, unsigned char*, unsigned long, bool, bool, bool)
  .text._ZN6HwBase9isEnabledEv
-                0x0000000000034604        0x8 Hardware/brHardware.a(HwManager.o)
-                0x0000000000034604                HwBase::isEnabled()
+                0x00000000000345f8        0x8 Hardware/brHardware.a(HwManager.o)
+                0x00000000000345f8                HwBase::isEnabled()
  .text._ZN6HwBase6enableEb
-                0x000000000003460c        0x8 Hardware/brHardware.a(HwManager.o)
-                0x000000000003460c                HwBase::enable(bool)
+                0x0000000000034600        0x8 Hardware/brHardware.a(HwManager.o)
+                0x0000000000034600                HwBase::enable(bool)
  .text._ZN6HwBase4nameEv
-                0x0000000000034614        0x8 Hardware/brHardware.a(HwManager.o)
-                0x0000000000034614                HwBase::name()
+                0x0000000000034608        0x8 Hardware/brHardware.a(HwManager.o)
+                0x0000000000034608                HwBase::name()
  .text._ZN6HwBase13getMaxAddressEv
-                0x000000000003461c        0x8 Hardware/brHardware.a(HwManager.o)
-                0x000000000003461c                HwBase::getMaxAddress()
- .text          0x0000000000034624     0x17d4 BusControlAPI/brBusAPI.a(BusControlAPI.o)
-                0x0000000000034624                BusControlAPI::handleWaitInterruptStatic(void*, unsigned long, unsigned long, unsigned long, unsigned long&)
-                0x0000000000034628                BusControlAPI::BusControlAPI(CommandHandler&, HwManager&, BusAccess&)
-                0x0000000000034628                BusControlAPI::BusControlAPI(CommandHandler&, HwManager&, BusAccess&)
-                0x0000000000034674                BusControlAPI::init()
-                0x0000000000034750                BusControlAPI::getArg(char const*, int, char const*, unsigned long&, char*, unsigned long, bool)
-                0x0000000000034938                BusControlAPI::busLineHandler(char const*)
-                0x0000000000034c54                BusControlAPI::muxLineHandler(char const*)
-                0x0000000000034e2c                BusControlAPI::busLinesRead(char*, int)
-                0x0000000000034eec                BusControlAPI::busActionComplete(BR_BUS_ACTION, BR_BUS_ACTION_REASON)
-                0x0000000000034f78                BusControlAPI::busActionCompleteStatic(void*, BR_BUS_ACTION, BR_BUS_ACTION_REASON)
-                0x0000000000034f84                BusControlAPI::handleWaitInterrupt(unsigned long, unsigned long, unsigned long, unsigned long&)
-                0x0000000000034f88                BusControlAPI::service()
-                0x0000000000034f8c                BusControlAPI::blockAccessSync(unsigned long, unsigned char*, unsigned long, bool, bool)
-                0x0000000000035078                BusControlAPI::handleRxMsg(char const*, unsigned char const*, unsigned int, char*, unsigned int)
-                0x0000000000035de0                BusControlAPI::handleRxMsgStatic(void*, char const*, unsigned char const*, unsigned int, char*, unsigned int)
- .text          0x0000000000035df8      0x114 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivsi3.o)
-                0x0000000000035df8                __udivsi3
-                0x0000000000035df8                __aeabi_uidiv
-                0x0000000000035eec                __aeabi_uidivmod
- .text          0x0000000000035f0c        0x4 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_dvmd_tls.o)
-                0x0000000000035f0c                __aeabi_ldiv0
-                0x0000000000035f0c                __aeabi_idiv0
- .text          0x0000000000035f10       0x3c /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_aeabi_uldivmod.o)
-                0x0000000000035f10                __aeabi_uldivmod
- .text          0x0000000000035f4c      0x12c /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivmoddi4.o)
-                0x0000000000035f4c                __udivmoddi4
- .text          0x0000000000036078       0x28 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzdi2.o)
-                0x0000000000036078                __clzdi2
- .text          0x00000000000360a0       0x48 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzsi2.o)
-                0x00000000000360a0                __clzsi2
- .text          0x00000000000360e8      0x4dc ../circle/lib/libcircle.a(bcmframebuffer.o)
-                0x00000000000361a4                CBcmFrameBuffer::CBcmFrameBuffer(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int)
-                0x00000000000361a4                CBcmFrameBuffer::CBcmFrameBuffer(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int)
-                0x00000000000362e0                CBcmFrameBuffer::~CBcmFrameBuffer()
-                0x00000000000362e0                CBcmFrameBuffer::~CBcmFrameBuffer()
-                0x00000000000362fc                CBcmFrameBuffer::SetPalette(unsigned char, unsigned short)
-                0x0000000000036354                CBcmFrameBuffer::SetPalette32(unsigned char, unsigned int)
-                0x000000000003638c                CBcmFrameBuffer::Initialize()
-                0x0000000000036450                CBcmFrameBuffer::GetWidth() const
-                0x0000000000036458                CBcmFrameBuffer::GetHeight() const
-                0x0000000000036460                CBcmFrameBuffer::GetVirtWidth() const
-                0x0000000000036468                CBcmFrameBuffer::GetVirtHeight() const
-                0x0000000000036470                CBcmFrameBuffer::GetPitch() const
-                0x0000000000036478                CBcmFrameBuffer::GetDepth() const
-                0x0000000000036480                CBcmFrameBuffer::GetBuffer() const
-                0x0000000000036488                CBcmFrameBuffer::GetSize() const
-                0x0000000000036490                CBcmFrameBuffer::UpdatePalette()
-                0x00000000000364a8                CBcmFrameBuffer::SetVirtualOffset(unsigned int, unsigned int)
-                0x0000000000036524                CBcmFrameBuffer::WaitForVerticalSync()
-                0x0000000000036570                CBcmFrameBuffer::SetBacklightBrightness(unsigned int)
- .text          0x00000000000365c4       0x94 ../circle/lib/libcircle.a(chargenerator.o)
-                0x00000000000365c4                CCharGenerator::CCharGenerator()
-                0x00000000000365c4                CCharGenerator::CCharGenerator()
-                0x00000000000365d0                CCharGenerator::~CCharGenerator()
-                0x00000000000365d0                CCharGenerator::~CCharGenerator()
-                0x00000000000365d4                CCharGenerator::GetCharWidth() const
-                0x00000000000365dc                CCharGenerator::GetCharHeight() const
-                0x00000000000365e4                CCharGenerator::GetUnderline() const
-                0x00000000000365ec                CCharGenerator::GetPixel(char, unsigned int, unsigned int) const
- .text          0x0000000000036658      0xd4c ../circle/lib/libcircle.a(dmachannel.o)
-                0x0000000000036658                CDMAChannel::CDMAChannel(unsigned int, CInterruptSystem*)
-                0x0000000000036658                CDMAChannel::CDMAChannel(unsigned int, CInterruptSystem*)
-                0x000000000003675c                CDMAChannel::~CDMAChannel()
-                0x000000000003675c                CDMAChannel::~CDMAChannel()
-                0x0000000000036854                CDMAChannel::SetupMemCopy(void*, void const*, unsigned int, unsigned int, bool)
-                0x0000000000036a2c                CDMAChannel::SetupIORead(void*, unsigned int, unsigned int, TDREQ)
-                0x0000000000036bb4                CDMAChannel::SetupIOWrite(unsigned int, void const*, unsigned int, TDREQ)
-                0x0000000000036d48                CDMAChannel::SetupMemCopy2D(void*, void const*, unsigned int, unsigned int, unsigned int, unsigned int)
-                0x0000000000036f6c                CDMAChannel::SetCompletionRoutine(void (*)(unsigned int, bool, void*), void*)
-                0x0000000000037010                CDMAChannel::Start()
-                0x0000000000037178                CDMAChannel::Wait()
-                0x0000000000037218                CDMAChannel::GetStatus()
-                0x0000000000037270                CDMAChannel::InterruptHandler()
-                0x000000000003737c                CDMAChannel::InterruptStub(void*)
- .text          0x00000000000373a4      0x50c system/brsys.a(rdutils.o)
-                0x00000000000373a4                jsonGetValueForKey
-                0x0000000000037488                jsonGetArrayLen
-                0x00000000000374f8                jsonGetArrayElem
-                0x0000000000037650                jsonEscape
-                0x0000000000037720                rdisspace
-                0x0000000000037744                rdisdigit
-                0x0000000000037758                rdisupper
-                0x000000000003776c                rdislower
-                0x0000000000037780                rdtolower
-                0x0000000000037798                rdtoupper
-                0x00000000000377b0                rdisalpha
-                0x00000000000377c8                rdstrrev
-                0x0000000000037810                rditoa
- .text          0x00000000000378b0      0x6fc system/brsys.a(jsmnR.o)
-                0x00000000000378b0                JSMNR_init
-                0x00000000000378c8                JSMNR_logLongStr
-                0x0000000000037920                JSMNR_parse
- .text          0x0000000000037fac      0x1a4 system/brsys.a(PiWiring.o)
-                0x0000000000037fac                convModeToVal
-                0x0000000000037fcc                pinMode
-                0x00000000000380cc                digitalWrite
-                0x0000000000038124                digitalRead
- .text          0x0000000000038150      0x1cc system/brsys.a(lowlev.o)
-                0x0000000000038150                lowlev_enable_irq
-                0x0000000000038160                lowlev_disable_irq
-                0x0000000000038168                lowlev_enable_fiq
-                0x0000000000038178                lowlev_disable_fiq
-                0x0000000000038180                lowlev_cycleDelay
-                0x0000000000038198                membarrier
-                0x00000000000381b8                disable_mmu_and_cache
-                0x0000000000038204                blinkCE0
-                0x000000000003824c                blinkLEDForever
-                0x0000000000038290                lowlev_blockCopyExecRelocatable
-                0x00000000000382ac                lowlev_blockCopyExecRelocatableLen
-                0x00000000000382b0                lowlev_goto
-                0x00000000000382b4                lowlev_store_abs8
-                0x00000000000382bc                memcopyfast
- .text          0x000000000003831c      0x148 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_divsi3.o)
-                0x000000000003831c                __aeabi_idiv
-                0x000000000003831c                __divsi3
-                0x0000000000038444                __aeabi_idivmod
-                0x0000000000038464                _etext = .
+                0x0000000000034610        0x8 Hardware/brHardware.a(HwManager.o)
+                0x0000000000034610                HwBase::getMaxAddress()
+ .text          0x0000000000034618     0x17d4 BusControlAPI/brBusAPI.a(BusControlAPI.o)
+                0x0000000000034618                BusControlAPI::handleWaitInterruptStatic(void*, unsigned long, unsigned long, unsigned long, unsigned long&)
+                0x000000000003461c                BusControlAPI::BusControlAPI(CommandHandler&, HwManager&, BusAccess&)
+                0x000000000003461c                BusControlAPI::BusControlAPI(CommandHandler&, HwManager&, BusAccess&)
+                0x0000000000034668                BusControlAPI::init()
+                0x0000000000034744                BusControlAPI::getArg(char const*, int, char const*, unsigned long&, char*, unsigned long, bool)
+                0x000000000003492c                BusControlAPI::busLineHandler(char const*)
+                0x0000000000034c48                BusControlAPI::muxLineHandler(char const*)
+                0x0000000000034e20                BusControlAPI::busLinesRead(char*, int)
+                0x0000000000034ee0                BusControlAPI::busActionComplete(BR_BUS_ACTION, BR_BUS_ACTION_REASON)
+                0x0000000000034f6c                BusControlAPI::busActionCompleteStatic(void*, BR_BUS_ACTION, BR_BUS_ACTION_REASON)
+                0x0000000000034f78                BusControlAPI::handleWaitInterrupt(unsigned long, unsigned long, unsigned long, unsigned long&)
+                0x0000000000034f7c                BusControlAPI::service()
+                0x0000000000034f80                BusControlAPI::blockAccessSync(unsigned long, unsigned char*, unsigned long, bool, bool)
+                0x000000000003506c                BusControlAPI::handleRxMsg(char const*, unsigned char const*, unsigned int, char*, unsigned int)
+                0x0000000000035dd4                BusControlAPI::handleRxMsgStatic(void*, char const*, unsigned char const*, unsigned int, char*, unsigned int)
+ .text          0x0000000000035dec      0x114 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivsi3.o)
+                0x0000000000035dec                __udivsi3
+                0x0000000000035dec                __aeabi_uidiv
+                0x0000000000035ee0                __aeabi_uidivmod
+ .text          0x0000000000035f00        0x4 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_dvmd_tls.o)
+                0x0000000000035f00                __aeabi_ldiv0
+                0x0000000000035f00                __aeabi_idiv0
+ .text          0x0000000000035f04       0x3c /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_aeabi_uldivmod.o)
+                0x0000000000035f04                __aeabi_uldivmod
+ .text          0x0000000000035f40      0x12c /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivmoddi4.o)
+                0x0000000000035f40                __udivmoddi4
+ .text          0x000000000003606c       0x28 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzdi2.o)
+                0x000000000003606c                __clzdi2
+ .text          0x0000000000036094       0x48 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzsi2.o)
+                0x0000000000036094                __clzsi2
+ .text          0x00000000000360dc      0x4dc ../circle/lib/libcircle.a(bcmframebuffer.o)
+                0x0000000000036198                CBcmFrameBuffer::CBcmFrameBuffer(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int)
+                0x0000000000036198                CBcmFrameBuffer::CBcmFrameBuffer(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int)
+                0x00000000000362d4                CBcmFrameBuffer::~CBcmFrameBuffer()
+                0x00000000000362d4                CBcmFrameBuffer::~CBcmFrameBuffer()
+                0x00000000000362f0                CBcmFrameBuffer::SetPalette(unsigned char, unsigned short)
+                0x0000000000036348                CBcmFrameBuffer::SetPalette32(unsigned char, unsigned int)
+                0x0000000000036380                CBcmFrameBuffer::Initialize()
+                0x0000000000036444                CBcmFrameBuffer::GetWidth() const
+                0x000000000003644c                CBcmFrameBuffer::GetHeight() const
+                0x0000000000036454                CBcmFrameBuffer::GetVirtWidth() const
+                0x000000000003645c                CBcmFrameBuffer::GetVirtHeight() const
+                0x0000000000036464                CBcmFrameBuffer::GetPitch() const
+                0x000000000003646c                CBcmFrameBuffer::GetDepth() const
+                0x0000000000036474                CBcmFrameBuffer::GetBuffer() const
+                0x000000000003647c                CBcmFrameBuffer::GetSize() const
+                0x0000000000036484                CBcmFrameBuffer::UpdatePalette()
+                0x000000000003649c                CBcmFrameBuffer::SetVirtualOffset(unsigned int, unsigned int)
+                0x0000000000036518                CBcmFrameBuffer::WaitForVerticalSync()
+                0x0000000000036564                CBcmFrameBuffer::SetBacklightBrightness(unsigned int)
+ .text          0x00000000000365b8       0x94 ../circle/lib/libcircle.a(chargenerator.o)
+                0x00000000000365b8                CCharGenerator::CCharGenerator()
+                0x00000000000365b8                CCharGenerator::CCharGenerator()
+                0x00000000000365c4                CCharGenerator::~CCharGenerator()
+                0x00000000000365c4                CCharGenerator::~CCharGenerator()
+                0x00000000000365c8                CCharGenerator::GetCharWidth() const
+                0x00000000000365d0                CCharGenerator::GetCharHeight() const
+                0x00000000000365d8                CCharGenerator::GetUnderline() const
+                0x00000000000365e0                CCharGenerator::GetPixel(char, unsigned int, unsigned int) const
+ .text          0x000000000003664c      0xd4c ../circle/lib/libcircle.a(dmachannel.o)
+                0x000000000003664c                CDMAChannel::CDMAChannel(unsigned int, CInterruptSystem*)
+                0x000000000003664c                CDMAChannel::CDMAChannel(unsigned int, CInterruptSystem*)
+                0x0000000000036750                CDMAChannel::~CDMAChannel()
+                0x0000000000036750                CDMAChannel::~CDMAChannel()
+                0x0000000000036848                CDMAChannel::SetupMemCopy(void*, void const*, unsigned int, unsigned int, bool)
+                0x0000000000036a20                CDMAChannel::SetupIORead(void*, unsigned int, unsigned int, TDREQ)
+                0x0000000000036ba8                CDMAChannel::SetupIOWrite(unsigned int, void const*, unsigned int, TDREQ)
+                0x0000000000036d3c                CDMAChannel::SetupMemCopy2D(void*, void const*, unsigned int, unsigned int, unsigned int, unsigned int)
+                0x0000000000036f60                CDMAChannel::SetCompletionRoutine(void (*)(unsigned int, bool, void*), void*)
+                0x0000000000037004                CDMAChannel::Start()
+                0x000000000003716c                CDMAChannel::Wait()
+                0x000000000003720c                CDMAChannel::GetStatus()
+                0x0000000000037264                CDMAChannel::InterruptHandler()
+                0x0000000000037370                CDMAChannel::InterruptStub(void*)
+ .text          0x0000000000037398      0x50c system/brsys.a(rdutils.o)
+                0x0000000000037398                jsonGetValueForKey
+                0x000000000003747c                jsonGetArrayLen
+                0x00000000000374ec                jsonGetArrayElem
+                0x0000000000037644                jsonEscape
+                0x0000000000037714                rdisspace
+                0x0000000000037738                rdisdigit
+                0x000000000003774c                rdisupper
+                0x0000000000037760                rdislower
+                0x0000000000037774                rdtolower
+                0x000000000003778c                rdtoupper
+                0x00000000000377a4                rdisalpha
+                0x00000000000377bc                rdstrrev
+                0x0000000000037804                rditoa
+ .text          0x00000000000378a4      0x6fc system/brsys.a(jsmnR.o)
+                0x00000000000378a4                JSMNR_init
+                0x00000000000378bc                JSMNR_logLongStr
+                0x0000000000037914                JSMNR_parse
+ .text          0x0000000000037fa0      0x1a4 system/brsys.a(PiWiring.o)
+                0x0000000000037fa0                convModeToVal
+                0x0000000000037fc0                pinMode
+                0x00000000000380c0                digitalWrite
+                0x0000000000038118                digitalRead
+ .text          0x0000000000038144      0x1cc system/brsys.a(lowlev.o)
+                0x0000000000038144                lowlev_enable_irq
+                0x0000000000038154                lowlev_disable_irq
+                0x000000000003815c                lowlev_enable_fiq
+                0x000000000003816c                lowlev_disable_fiq
+                0x0000000000038174                lowlev_cycleDelay
+                0x000000000003818c                membarrier
+                0x00000000000381ac                disable_mmu_and_cache
+                0x00000000000381f8                blinkCE0
+                0x0000000000038240                blinkLEDForever
+                0x0000000000038284                lowlev_blockCopyExecRelocatable
+                0x00000000000382a0                lowlev_blockCopyExecRelocatableLen
+                0x00000000000382a4                lowlev_goto
+                0x00000000000382a8                lowlev_store_abs8
+                0x00000000000382b0                memcopyfast
+ .text          0x0000000000038310      0x148 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_divsi3.o)
+                0x0000000000038310                __aeabi_idiv
+                0x0000000000038310                __divsi3
+                0x0000000000038438                __aeabi_idivmod
+                0x0000000000038458                _etext = .
 
-.glue_7         0x0000000000038464        0x0
- .glue_7        0x0000000000038464        0x0 linker stubs
+.glue_7         0x0000000000038458        0x0
+ .glue_7        0x0000000000038458        0x0 linker stubs
 
-.glue_7t        0x0000000000038464        0x0
- .glue_7t       0x0000000000038464        0x0 linker stubs
+.glue_7t        0x0000000000038458        0x0
+ .glue_7t       0x0000000000038458        0x0 linker stubs
 
-.vfp11_veneer   0x0000000000038464        0x0
- .vfp11_veneer  0x0000000000038464        0x0 linker stubs
+.vfp11_veneer   0x0000000000038458        0x0
+ .vfp11_veneer  0x0000000000038458        0x0 linker stubs
 
-.v4_bx          0x0000000000038464        0x0
- .v4_bx         0x0000000000038464        0x0 linker stubs
+.v4_bx          0x0000000000038458        0x0
+ .v4_bx         0x0000000000038458        0x0 linker stubs
 
-.iplt           0x0000000000038464        0x0
- .iplt          0x0000000000038464        0x0 main.o
+.iplt           0x0000000000038458        0x0
+ .iplt          0x0000000000038458        0x0 main.o
 
-.rodata         0x0000000000038464     0x9009
+.rodata         0x0000000000038458     0x9009
  *(.rodata*)
- .rodata        0x0000000000038464        0x4 main.o
- .rodata        0x0000000000038468        0xb kernel.o
- *fill*         0x0000000000038473        0x1 
+ .rodata        0x0000000000038458        0x4 main.o
+ .rodata        0x000000000003845c        0xb kernel.o
+ *fill*         0x0000000000038467        0x1 
  .rodata.str1.4
-                0x0000000000038474       0x76 kernel.o
- *fill*         0x00000000000384ea        0x2 
- .rodata        0x00000000000384ec       0x23 ../circle/lib/usb/libusb.a(dwhcidevice.o)
-                0x00000000000384f4                vtable for CDWHCIDevice
- *fill*         0x000000000003850f        0x1 
+                0x0000000000038468       0x76 kernel.o
+ *fill*         0x00000000000384de        0x2 
+ .rodata        0x00000000000384e0       0x23 ../circle/lib/usb/libusb.a(dwhcidevice.o)
+                0x00000000000384e8                vtable for CDWHCIDevice
+ *fill*         0x0000000000038503        0x1 
  .rodata.str1.4
-                0x0000000000038510      0x57b ../circle/lib/usb/libusb.a(dwhcidevice.o)
+                0x0000000000038504      0x57b ../circle/lib/usb/libusb.a(dwhcidevice.o)
                                         0x57f (size before relaxing)
- *fill*         0x0000000000038a8b        0x1 
- .rodata        0x0000000000038a8c       0x24 ../circle/lib/usb/libusb.a(dwhciframeschednper.o)
-                0x0000000000038a8c                vtable for CDWHCIFrameSchedulerNonPeriodic
+ *fill*         0x0000000000038a7f        0x1 
+ .rodata        0x0000000000038a80       0x24 ../circle/lib/usb/libusb.a(dwhciframeschednper.o)
+                0x0000000000038a80                vtable for CDWHCIFrameSchedulerNonPeriodic
  .rodata.str1.4
-                0x0000000000038ab0       0xd4 ../circle/lib/usb/libusb.a(dwhciframeschednper.o)
+                0x0000000000038aa4       0xd4 ../circle/lib/usb/libusb.a(dwhciframeschednper.o)
                                          0xe8 (size before relaxing)
- .rodata        0x0000000000038b84       0x24 ../circle/lib/usb/libusb.a(dwhciframeschednsplit.o)
-                0x0000000000038b84                vtable for CDWHCIFrameSchedulerNoSplit
+ .rodata        0x0000000000038b78       0x24 ../circle/lib/usb/libusb.a(dwhciframeschednsplit.o)
+                0x0000000000038b78                vtable for CDWHCIFrameSchedulerNoSplit
  .rodata.str1.4
-                0x0000000000038ba8       0x68 ../circle/lib/usb/libusb.a(dwhciframeschednsplit.o)
+                0x0000000000038b9c       0x68 ../circle/lib/usb/libusb.a(dwhciframeschednsplit.o)
                                          0x94 (size before relaxing)
- .rodata        0x0000000000038c10       0x24 ../circle/lib/usb/libusb.a(dwhciframeschedper.o)
-                0x0000000000038c10                vtable for CDWHCIFrameSchedulerPeriodic
+ .rodata        0x0000000000038c04       0x24 ../circle/lib/usb/libusb.a(dwhciframeschedper.o)
+                0x0000000000038c04                vtable for CDWHCIFrameSchedulerPeriodic
  .rodata.str1.4
-                0x0000000000038c34       0x85 ../circle/lib/usb/libusb.a(dwhciframeschedper.o)
+                0x0000000000038c28       0x85 ../circle/lib/usb/libusb.a(dwhciframeschedper.o)
                                         0x101 (size before relaxing)
- *fill*         0x0000000000038cb9        0x3 
+ *fill*         0x0000000000038cad        0x3 
  .rodata.str1.4
-                0x0000000000038cbc       0x7d ../circle/lib/usb/libusb.a(dwhciregister.o)
- *fill*         0x0000000000038d39        0x3 
- .rodata        0x0000000000038d3c       0x1f ../circle/lib/usb/libusb.a(dwhcirootport.o)
-                0x0000000000038d3c                vtable for CDWHCIRootPort
- *fill*         0x0000000000038d5b        0x1 
+                0x0000000000038cb0       0x7d ../circle/lib/usb/libusb.a(dwhciregister.o)
+ *fill*         0x0000000000038d2d        0x3 
+ .rodata        0x0000000000038d30       0x1f ../circle/lib/usb/libusb.a(dwhcirootport.o)
+                0x0000000000038d30                vtable for CDWHCIRootPort
+ *fill*         0x0000000000038d4f        0x1 
  .rodata.str1.4
-                0x0000000000038d5c       0xc3 ../circle/lib/usb/libusb.a(dwhcirootport.o)
- *fill*         0x0000000000038e1f        0x1 
+                0x0000000000038d50       0xc3 ../circle/lib/usb/libusb.a(dwhcirootport.o)
+ *fill*         0x0000000000038e13        0x1 
  .rodata.str1.4
-                0x0000000000038e20      0x1dc ../circle/lib/usb/libusb.a(dwhcixferstagedata.o)
+                0x0000000000038e14      0x1dc ../circle/lib/usb/libusb.a(dwhcixferstagedata.o)
                                         0x208 (size before relaxing)
- .rodata        0x0000000000038ffc       0x1f ../circle/lib/usb/libusb.a(usbdevice.o)
-                0x0000000000038ffc                vtable for CUSBDevice
- *fill*         0x000000000003901b        0x1 
+ .rodata        0x0000000000038ff0       0x1f ../circle/lib/usb/libusb.a(usbdevice.o)
+                0x0000000000038ff0                vtable for CUSBDevice
+ *fill*         0x000000000003900f        0x1 
  .rodata.str1.4
-                0x000000000003901c      0x3de ../circle/lib/usb/libusb.a(usbdevice.o)
+                0x0000000000039010      0x3de ../circle/lib/usb/libusb.a(usbdevice.o)
                                         0x3f2 (size before relaxing)
- *fill*         0x00000000000393fa        0x2 
+ *fill*         0x00000000000393ee        0x2 
  .rodata.str1.4
-                0x00000000000393fc      0x16e ../circle/lib/usb/libusb.a(usbdevicefactory.o)
+                0x00000000000393f0      0x16e ../circle/lib/usb/libusb.a(usbdevicefactory.o)
                                         0x17a (size before relaxing)
- *fill*         0x000000000003956a        0x2 
+ *fill*         0x000000000003955e        0x2 
  .rodata.str1.4
-                0x000000000003956c      0x127 ../circle/lib/usb/libusb.a(usbendpoint.o)
+                0x0000000000039560      0x127 ../circle/lib/usb/libusb.a(usbendpoint.o)
                                         0x13b (size before relaxing)
- *fill*         0x0000000000039693        0x1 
- .rodata        0x0000000000039694       0x33 ../circle/lib/usb/libusb.a(usbfunction.o)
-                0x0000000000039694                vtable for CUSBFunction
- *fill*         0x00000000000396c7        0x1 
+ *fill*         0x0000000000039687        0x1 
+ .rodata        0x0000000000039688       0x33 ../circle/lib/usb/libusb.a(usbfunction.o)
+                0x0000000000039688                vtable for CUSBFunction
+ *fill*         0x00000000000396bb        0x1 
  .rodata.str1.4
-                0x00000000000396c8       0x9d ../circle/lib/usb/libusb.a(usbfunction.o)
+                0x00000000000396bc       0x9d ../circle/lib/usb/libusb.a(usbfunction.o)
                                          0xcd (size before relaxing)
- *fill*         0x0000000000039765        0x3 
- .rodata        0x0000000000039768       0xc4 ../circle/lib/usb/libusb.a(usbgamepadps3.o)
-                0x0000000000039768                vtable for CUSBGamePadPS3Device
-                0x00000000000397c0                CUSBGamePadPS3Device::s_CommandDefault
+ *fill*         0x0000000000039759        0x3 
+ .rodata        0x000000000003975c       0xc4 ../circle/lib/usb/libusb.a(usbgamepadps3.o)
+                0x000000000003975c                vtable for CUSBGamePadPS3Device
+                0x00000000000397b4                CUSBGamePadPS3Device::s_CommandDefault
  .rodata.str1.4
-                0x000000000003982c       0x7d ../circle/lib/usb/libusb.a(usbgamepadps3.o)
+                0x0000000000039820       0x7d ../circle/lib/usb/libusb.a(usbgamepadps3.o)
                                          0x81 (size before relaxing)
- *fill*         0x00000000000398a9        0x3 
- .rodata        0x00000000000398ac       0x7a ../circle/lib/usb/libusb.a(usbgamepadps4.o)
-                0x00000000000398d0                vtable for CUSBGamePadPS4Device
- *fill*         0x0000000000039926        0x2 
+ *fill*         0x000000000003989d        0x3 
+ .rodata        0x00000000000398a0       0x7a ../circle/lib/usb/libusb.a(usbgamepadps4.o)
+                0x00000000000398c4                vtable for CUSBGamePadPS4Device
+ *fill*         0x000000000003991a        0x2 
  .rodata.str1.4
-                0x0000000000039928       0x47 ../circle/lib/usb/libusb.a(usbgamepadps4.o)
+                0x000000000003991c       0x47 ../circle/lib/usb/libusb.a(usbgamepadps4.o)
                                          0x68 (size before relaxing)
- *fill*         0x000000000003996f        0x1 
- .rodata        0x0000000000039970       0x56 ../circle/lib/usb/libusb.a(usbgamepadstandard.o)
-                0x0000000000039970                vtable for CUSBGamePadStandardDevice
- *fill*         0x00000000000399c6        0x2 
+ *fill*         0x0000000000039963        0x1 
+ .rodata        0x0000000000039964       0x56 ../circle/lib/usb/libusb.a(usbgamepadstandard.o)
+                0x0000000000039964                vtable for CUSBGamePadStandardDevice
+ *fill*         0x00000000000399ba        0x2 
  .rodata.str1.4
-                0x00000000000399c8       0x6c ../circle/lib/usb/libusb.a(usbgamepadstandard.o)
+                0x00000000000399bc       0x6c ../circle/lib/usb/libusb.a(usbgamepadstandard.o)
                                          0x8c (size before relaxing)
- .rodata        0x0000000000039a34       0x72 ../circle/lib/usb/libusb.a(usbgamepadswitchpro.o)
-                0x0000000000039a34                vtable for CUSBGamePadSwitchProDevice
- *fill*         0x0000000000039aa6        0x2 
+ .rodata        0x0000000000039a28       0x72 ../circle/lib/usb/libusb.a(usbgamepadswitchpro.o)
+                0x0000000000039a28                vtable for CUSBGamePadSwitchProDevice
+ *fill*         0x0000000000039a9a        0x2 
  .rodata.str1.4
-                0x0000000000039aa8       0xfa ../circle/lib/usb/libusb.a(usbgamepadswitchpro.o)
+                0x0000000000039a9c       0xfa ../circle/lib/usb/libusb.a(usbgamepadswitchpro.o)
                                         0x11a (size before relaxing)
- *fill*         0x0000000000039ba2        0x2 
- .rodata        0x0000000000039ba4       0xba ../circle/lib/usb/libusb.a(usbgamepadxbox360.o)
-                0x0000000000039ba4                vtable for CUSBGamePadXbox360Device
- *fill*         0x0000000000039c5e        0x2 
+ *fill*         0x0000000000039b96        0x2 
+ .rodata        0x0000000000039b98       0xba ../circle/lib/usb/libusb.a(usbgamepadxbox360.o)
+                0x0000000000039b98                vtable for CUSBGamePadXbox360Device
+ *fill*         0x0000000000039c52        0x2 
  .rodata.str1.4
-                0x0000000000039c60       0x39 ../circle/lib/usb/libusb.a(usbgamepadxbox360.o)
+                0x0000000000039c54       0x39 ../circle/lib/usb/libusb.a(usbgamepadxbox360.o)
                                          0x70 (size before relaxing)
- *fill*         0x0000000000039c99        0x3 
- .rodata        0x0000000000039c9c       0x81 ../circle/lib/usb/libusb.a(usbgamepadxboxone.o)
-                0x0000000000039c9c                vtable for CUSBGamePadXboxOneDevice
- *fill*         0x0000000000039d1d        0x3 
+ *fill*         0x0000000000039c8d        0x3 
+ .rodata        0x0000000000039c90       0x81 ../circle/lib/usb/libusb.a(usbgamepadxboxone.o)
+                0x0000000000039c90                vtable for CUSBGamePadXboxOneDevice
+ *fill*         0x0000000000039d11        0x3 
  .rodata.str1.4
-                0x0000000000039d20       0x42 ../circle/lib/usb/libusb.a(usbgamepadxboxone.o)
+                0x0000000000039d14       0x42 ../circle/lib/usb/libusb.a(usbgamepadxboxone.o)
                                          0x66 (size before relaxing)
- *fill*         0x0000000000039d62        0x2 
- .rodata        0x0000000000039d64       0x38 ../circle/lib/usb/libusb.a(usbhiddevice.o)
-                0x0000000000039d6c                vtable for CUSBHIDDevice
+ *fill*         0x0000000000039d56        0x2 
+ .rodata        0x0000000000039d58       0x38 ../circle/lib/usb/libusb.a(usbhiddevice.o)
+                0x0000000000039d60                vtable for CUSBHIDDevice
  .rodata.str1.4
-                0x0000000000039d9c      0x103 ../circle/lib/usb/libusb.a(usbhiddevice.o)
+                0x0000000000039d90      0x103 ../circle/lib/usb/libusb.a(usbhiddevice.o)
                                         0x143 (size before relaxing)
- *fill*         0x0000000000039e9f        0x1 
- .rodata        0x0000000000039ea0       0x18 ../circle/lib/usb/libusb.a(usbhostcontroller.o)
-                0x0000000000039ea0                vtable for CUSBHostController
- .rodata        0x0000000000039eb8       0x3f ../circle/lib/usb/libusb.a(usbkeyboard.o)
-                0x0000000000039eb8                vtable for CUSBKeyboardDevice
- *fill*         0x0000000000039ef7        0x1 
+ *fill*         0x0000000000039e93        0x1 
+ .rodata        0x0000000000039e94       0x18 ../circle/lib/usb/libusb.a(usbhostcontroller.o)
+                0x0000000000039e94                vtable for CUSBHostController
+ .rodata        0x0000000000039eac       0x3f ../circle/lib/usb/libusb.a(usbkeyboard.o)
+                0x0000000000039eac                vtable for CUSBKeyboardDevice
+ *fill*         0x0000000000039eeb        0x1 
  .rodata.str1.4
-                0x0000000000039ef8       0x5e ../circle/lib/usb/libusb.a(usbkeyboard.o)
- *fill*         0x0000000000039f56        0x2 
- .rodata        0x0000000000039f58       0x31 ../circle/lib/usb/libusb.a(usbmassdevice.o)
-                0x0000000000039f58                vtable for CUSBBulkOnlyMassStorageDevice
- *fill*         0x0000000000039f89        0x3 
+                0x0000000000039eec       0x5e ../circle/lib/usb/libusb.a(usbkeyboard.o)
+ *fill*         0x0000000000039f4a        0x2 
+ .rodata        0x0000000000039f4c       0x31 ../circle/lib/usb/libusb.a(usbmassdevice.o)
+                0x0000000000039f4c                vtable for CUSBBulkOnlyMassStorageDevice
+ *fill*         0x0000000000039f7d        0x3 
  .rodata.str1.4
-                0x0000000000039f8c      0x2a6 ../circle/lib/usb/libusb.a(usbmassdevice.o)
+                0x0000000000039f80      0x2a6 ../circle/lib/usb/libusb.a(usbmassdevice.o)
                                         0x2e1 (size before relaxing)
- *fill*         0x000000000003a232        0x2 
- .rodata        0x000000000003a234       0x72 ../circle/lib/usb/libusb.a(usbmidi.o)
-                0x000000000003a234                vtable for CUSBMIDIDevice
- *fill*         0x000000000003a2a6        0x2 
+ *fill*         0x000000000003a226        0x2 
+ .rodata        0x000000000003a228       0x72 ../circle/lib/usb/libusb.a(usbmidi.o)
+                0x000000000003a228                vtable for CUSBMIDIDevice
+ *fill*         0x000000000003a29a        0x2 
  .rodata.str1.4
-                0x000000000003a2a8       0xe4 ../circle/lib/usb/libusb.a(usbmidi.o)
+                0x000000000003a29c       0xe4 ../circle/lib/usb/libusb.a(usbmidi.o)
                                         0x130 (size before relaxing)
- .rodata        0x000000000003a38c       0x37 ../circle/lib/usb/libusb.a(usbmouse.o)
-                0x000000000003a38c                vtable for CUSBMouseDevice
+ .rodata        0x000000000003a380       0x37 ../circle/lib/usb/libusb.a(usbmouse.o)
+                0x000000000003a380                vtable for CUSBMouseDevice
  .rodata.str1.4
-                0x000000000003a3c3       0x40 ../circle/lib/usb/libusb.a(usbmouse.o)
- *fill*         0x000000000003a3c3        0x1 
- .rodata        0x000000000003a3c4       0x31 ../circle/lib/usb/libusb.a(usbprinter.o)
-                0x000000000003a3c4                vtable for CUSBPrinterDevice
- *fill*         0x000000000003a3f5        0x3 
+                0x000000000003a3b7       0x40 ../circle/lib/usb/libusb.a(usbmouse.o)
+ *fill*         0x000000000003a3b7        0x1 
+ .rodata        0x000000000003a3b8       0x31 ../circle/lib/usb/libusb.a(usbprinter.o)
+                0x000000000003a3b8                vtable for CUSBPrinterDevice
+ *fill*         0x000000000003a3e9        0x3 
  .rodata.str1.4
-                0x000000000003a3f8       0x43 ../circle/lib/usb/libusb.a(usbprinter.o)
+                0x000000000003a3ec       0x43 ../circle/lib/usb/libusb.a(usbprinter.o)
                                          0x77 (size before relaxing)
- *fill*         0x000000000003a43b        0x1 
+ *fill*         0x000000000003a42f        0x1 
  .rodata.str1.4
-                0x000000000003a43c       0xcc ../circle/lib/usb/libusb.a(usbrequest.o)
+                0x000000000003a430       0xcc ../circle/lib/usb/libusb.a(usbrequest.o)
                                         0x108 (size before relaxing)
- .rodata        0x000000000003a508       0x33 ../circle/lib/usb/libusb.a(usbstandardhub.o)
-                0x000000000003a508                vtable for CUSBStandardHub
- *fill*         0x000000000003a53b        0x1 
+ .rodata        0x000000000003a4fc       0x33 ../circle/lib/usb/libusb.a(usbstandardhub.o)
+                0x000000000003a4fc                vtable for CUSBStandardHub
+ *fill*         0x000000000003a52f        0x1 
  .rodata.str1.4
-                0x000000000003a53c      0x210 ../circle/lib/usb/libusb.a(usbstandardhub.o)
+                0x000000000003a530      0x210 ../circle/lib/usb/libusb.a(usbstandardhub.o)
                                         0x234 (size before relaxing)
- .rodata        0x000000000003a74c       0x78 ../circle/lib/usb/libusb.a(lan7800.o)
-                0x000000000003a74c                vtable for CLAN7800Device
+ .rodata        0x000000000003a740       0x78 ../circle/lib/usb/libusb.a(lan7800.o)
+                0x000000000003a740                vtable for CLAN7800Device
  .rodata.str1.4
-                0x000000000003a7c4      0x1a9 ../circle/lib/usb/libusb.a(lan7800.o)
+                0x000000000003a7b8      0x1a9 ../circle/lib/usb/libusb.a(lan7800.o)
                                         0x1d1 (size before relaxing)
- *fill*         0x000000000003a96d        0x3 
- .rodata        0x000000000003a970       0x82 ../circle/lib/usb/libusb.a(smsc951x.o)
-                0x000000000003a970                vtable for CSMSC951xDevice
- *fill*         0x000000000003a9f2        0x2 
+ *fill*         0x000000000003a961        0x3 
+ .rodata        0x000000000003a964       0x82 ../circle/lib/usb/libusb.a(smsc951x.o)
+                0x000000000003a964                vtable for CSMSC951xDevice
+ *fill*         0x000000000003a9e6        0x2 
  .rodata.str1.4
-                0x000000000003a9f4      0x12c ../circle/lib/usb/libusb.a(smsc951x.o)
+                0x000000000003a9e8      0x12c ../circle/lib/usb/libusb.a(smsc951x.o)
                                         0x228 (size before relaxing)
- .rodata        0x000000000003ab20       0x32 ../circle/lib/usb/libusb.a(usbbluetooth.o)
-                0x000000000003ab20                vtable for CUSBBluetoothDevice
- *fill*         0x000000000003ab52        0x2 
+ .rodata        0x000000000003ab14       0x32 ../circle/lib/usb/libusb.a(usbbluetooth.o)
+                0x000000000003ab14                vtable for CUSBBluetoothDevice
+ *fill*         0x000000000003ab46        0x2 
  .rodata.str1.4
-                0x000000000003ab54       0x96 ../circle/lib/usb/libusb.a(usbbluetooth.o)
+                0x000000000003ab48       0x96 ../circle/lib/usb/libusb.a(usbbluetooth.o)
                                          0xfa (size before relaxing)
- *fill*         0x000000000003abea        0x2 
- .rodata        0x000000000003abec       0x70 ../circle/lib/usb/libusb.a(usbcdcethernet.o)
-                0x000000000003abec                vtable for CUSBCDCEthernetDevice
+ *fill*         0x000000000003abde        0x2 
+ .rodata        0x000000000003abe0       0x70 ../circle/lib/usb/libusb.a(usbcdcethernet.o)
+                0x000000000003abe0                vtable for CUSBCDCEthernetDevice
  .rodata.str1.4
-                0x000000000003ac5c       0x44 ../circle/lib/usb/libusb.a(usbcdcethernet.o)
+                0x000000000003ac50       0x44 ../circle/lib/usb/libusb.a(usbcdcethernet.o)
                                          0xd9 (size before relaxing)
  .rodata.str1.4
-                0x000000000003aca0       0x9b ../circle/lib/usb/libusb.a(usbconfigparser.o)
+                0x000000000003ac94       0x9b ../circle/lib/usb/libusb.a(usbconfigparser.o)
                                          0xb7 (size before relaxing)
- *fill*         0x000000000003ad3b        0x1 
- .rodata        0x000000000003ad3c       0x5c ../circle/lib/usb/libusb.a(usbgamepad.o)
-                0x000000000003ad4c                vtable for CUSBGamePadDevice
+ *fill*         0x000000000003ad2f        0x1 
+ .rodata        0x000000000003ad30       0x5c ../circle/lib/usb/libusb.a(usbgamepad.o)
+                0x000000000003ad40                vtable for CUSBGamePadDevice
  .rodata.str1.4
-                0x000000000003ad98       0x3e ../circle/lib/usb/libusb.a(usbgamepad.o)
+                0x000000000003ad8c       0x3e ../circle/lib/usb/libusb.a(usbgamepad.o)
                                          0x70 (size before relaxing)
- *fill*         0x000000000003add6        0x2 
+ *fill*         0x000000000003adca        0x2 
  .rodata.str1.4
-                0x000000000003add8       0x5e ../circle/lib/usb/libusb.a(usbstring.o)
+                0x000000000003adcc       0x5e ../circle/lib/usb/libusb.a(usbstring.o)
                                          0x7e (size before relaxing)
- *fill*         0x000000000003ae36        0x2 
+ *fill*         0x000000000003ae2a        0x2 
  .rodata.str1.4
-                0x000000000003ae38       0x77 ../circle/lib/input/libinput.a(keyboardbehaviour.o)
+                0x000000000003ae2c       0x77 ../circle/lib/input/libinput.a(keyboardbehaviour.o)
                                          0x93 (size before relaxing)
- *fill*         0x000000000003aeaf        0x1 
- .rodata        0x000000000003aeb0     0x1800 ../circle/lib/input/libinput.a(keymap.o)
-                0x000000000003aeb0                CKeyMap::s_DefaultMap
+ *fill*         0x000000000003aea3        0x1 
+ .rodata        0x000000000003aea4     0x1800 ../circle/lib/input/libinput.a(keymap.o)
+                0x000000000003aea4                CKeyMap::s_DefaultMap
  .rodata.str1.4
-                0x000000000003c6b0      0x10a ../circle/lib/input/libinput.a(keymap.o)
+                0x000000000003c6a4      0x10a ../circle/lib/input/libinput.a(keymap.o)
                                         0x126 (size before relaxing)
- *fill*         0x000000000003c7ba        0x2 
- .rodata        0x000000000003c7bc       0x26 ../circle/lib/input/libinput.a(mouse.o)
-                0x000000000003c7bc                vtable for CMouseDevice
- *fill*         0x000000000003c7e2        0x2 
+ *fill*         0x000000000003c7ae        0x2 
+ .rodata        0x000000000003c7b0       0x26 ../circle/lib/input/libinput.a(mouse.o)
+                0x000000000003c7b0                vtable for CMouseDevice
+ *fill*         0x000000000003c7d6        0x2 
  .rodata.str1.4
-                0x000000000003c7e4        0xa ../circle/lib/input/libinput.a(mouse.o)
+                0x000000000003c7d8        0xa ../circle/lib/input/libinput.a(mouse.o)
                                          0x3a (size before relaxing)
- *fill*         0x000000000003c7ee        0x2 
- .rodata        0x000000000003c7f0      0x400 ../circle/lib/input/libinput.a(mousebehaviour.o)
+ *fill*         0x000000000003c7e2        0x2 
+ .rodata        0x000000000003c7e4      0x400 ../circle/lib/input/libinput.a(mousebehaviour.o)
  .rodata.str1.4
-                0x000000000003cbf0       0xb6 ../circle/lib/input/libinput.a(mousebehaviour.o)
+                0x000000000003cbe4       0xb6 ../circle/lib/input/libinput.a(mousebehaviour.o)
                                          0xce (size before relaxing)
- *fill*         0x000000000003cca6        0x2 
- .rodata        0x000000000003cca8        0x6 ../circle/lib/fs/libfs.a(partitionmanager.o)
- *fill*         0x000000000003ccae        0x2 
+ *fill*         0x000000000003cc9a        0x2 
+ .rodata        0x000000000003cc9c        0x6 ../circle/lib/fs/libfs.a(partitionmanager.o)
+ *fill*         0x000000000003cca2        0x2 
  .rodata.str1.4
-                0x000000000003ccb0       0x80 ../circle/lib/fs/libfs.a(partitionmanager.o)
- .rodata        0x000000000003cd30       0x20 ../circle/lib/fs/libfs.a(partition.o)
-                0x000000000003cd30                vtable for CPartition
+                0x000000000003cca4       0x80 ../circle/lib/fs/libfs.a(partitionmanager.o)
+ .rodata        0x000000000003cd24       0x20 ../circle/lib/fs/libfs.a(partition.o)
+                0x000000000003cd24                vtable for CPartition
  .rodata.str1.4
-                0x000000000003cd50        0xe ../circle/lib/fs/libfs.a(partition.o)
+                0x000000000003cd44        0xe ../circle/lib/fs/libfs.a(partition.o)
                                          0x1f (size before relaxing)
- *fill*         0x000000000003cd5e        0x2 
+ *fill*         0x000000000003cd52        0x2 
  .rodata.str1.4
-                0x000000000003cd60       0x59 ../circle/lib/net/libnet.a(netsubsystem.o)
+                0x000000000003cd54       0x59 ../circle/lib/net/libnet.a(netsubsystem.o)
                                          0x5d (size before relaxing)
- *fill*         0x000000000003cdb9        0x3 
- .rodata        0x000000000003cdbc       0x14 ../circle/lib/net/libnet.a(nettask.o)
-                0x000000000003cdbc                vtable for CNetTask
+ *fill*         0x000000000003cdad        0x3 
+ .rodata        0x000000000003cdb0       0x14 ../circle/lib/net/libnet.a(nettask.o)
+                0x000000000003cdb0                vtable for CNetTask
  .rodata.str1.4
-                0x000000000003cdd0       0x21 ../circle/lib/net/libnet.a(nettask.o)
- *fill*         0x000000000003cdf1        0x3 
+                0x000000000003cdc4       0x21 ../circle/lib/net/libnet.a(nettask.o)
+ *fill*         0x000000000003cde5        0x3 
  .rodata.str1.4
-                0x000000000003cdf4       0xa8 ../circle/lib/net/libnet.a(transportlayer.o)
+                0x000000000003cde8       0xa8 ../circle/lib/net/libnet.a(transportlayer.o)
                                          0xb5 (size before relaxing)
  .rodata.str1.4
-                0x000000000003ce9c      0x119 ../circle/lib/net/libnet.a(networklayer.o)
+                0x000000000003ce90      0x119 ../circle/lib/net/libnet.a(networklayer.o)
                                         0x15d (size before relaxing)
- *fill*         0x000000000003cfb5        0x3 
+ *fill*         0x000000000003cfa9        0x3 
  .rodata.str1.4
-                0x000000000003cfb8       0xcb ../circle/lib/net/libnet.a(linklayer.o)
+                0x000000000003cfac       0xcb ../circle/lib/net/libnet.a(linklayer.o)
                                         0x153 (size before relaxing)
- *fill*         0x000000000003d083        0x1 
- .rodata        0x000000000003d084        0x7 ../circle/lib/net/libnet.a(netdevlayer.o)
- *fill*         0x000000000003d08b        0x1 
+ *fill*         0x000000000003d077        0x1 
+ .rodata        0x000000000003d078        0x7 ../circle/lib/net/libnet.a(netdevlayer.o)
+ *fill*         0x000000000003d07f        0x1 
  .rodata.str1.4
-                0x000000000003d08c       0x56 ../circle/lib/net/libnet.a(netdevlayer.o)
+                0x000000000003d080       0x56 ../circle/lib/net/libnet.a(netdevlayer.o)
                                          0x97 (size before relaxing)
- *fill*         0x000000000003d0e2        0x2 
- .rodata        0x000000000003d0e4       0x14 ../circle/lib/net/libnet.a(phytask.o)
-                0x000000000003d0e4                vtable for CPHYTask
+ *fill*         0x000000000003d0d6        0x2 
+ .rodata        0x000000000003d0d8       0x14 ../circle/lib/net/libnet.a(phytask.o)
+                0x000000000003d0d8                vtable for CPHYTask
  .rodata.str1.4
-                0x000000000003d0f8        0xc ../circle/lib/net/libnet.a(phytask.o)
+                0x000000000003d0ec        0xc ../circle/lib/net/libnet.a(phytask.o)
                                          0x1b (size before relaxing)
  .rodata.str1.4
-                0x000000000003d104       0xa2 ../circle/lib/net/libnet.a(arphandler.o)
+                0x000000000003d0f8       0xa2 ../circle/lib/net/libnet.a(arphandler.o)
                                         0x116 (size before relaxing)
- *fill*         0x000000000003d1a6        0x2 
- .rodata        0x000000000003d1a8        0x5 ../circle/lib/net/libnet.a(icmphandler.o)
- *fill*         0x000000000003d1ad        0x3 
+ *fill*         0x000000000003d19a        0x2 
+ .rodata        0x000000000003d19c        0x5 ../circle/lib/net/libnet.a(icmphandler.o)
+ *fill*         0x000000000003d1a1        0x3 
  .rodata.str1.4
-                0x000000000003d1b0      0x266 ../circle/lib/net/libnet.a(icmphandler.o)
+                0x000000000003d1a4      0x266 ../circle/lib/net/libnet.a(icmphandler.o)
                                         0x2b2 (size before relaxing)
- *fill*         0x000000000003d416        0x2 
+ *fill*         0x000000000003d40a        0x2 
  .rodata.str1.4
-                0x000000000003d418       0x3c ../circle/lib/net/libnet.a(routecache.o)
- .rodata        0x000000000003d454       0x44 ../circle/lib/net/libnet.a(netconnection.o)
-                0x000000000003d454                vtable for CNetConnection
+                0x000000000003d40c       0x3c ../circle/lib/net/libnet.a(routecache.o)
+ .rodata        0x000000000003d448       0x44 ../circle/lib/net/libnet.a(netconnection.o)
+                0x000000000003d448                vtable for CNetConnection
  .rodata.str1.4
-                0x000000000003d498       0x24 ../circle/lib/net/libnet.a(netconnection.o)
+                0x000000000003d48c       0x24 ../circle/lib/net/libnet.a(netconnection.o)
                                          0x50 (size before relaxing)
- .rodata        0x000000000003d4bc       0x44 ../circle/lib/net/libnet.a(udpconnection.o)
-                0x000000000003d4bc                vtable for CUDPConnection
+ .rodata        0x000000000003d4b0       0x44 ../circle/lib/net/libnet.a(udpconnection.o)
+                0x000000000003d4b0                vtable for CUDPConnection
  .rodata.str1.4
-                0x000000000003d500       0x25 ../circle/lib/net/libnet.a(udpconnection.o)
+                0x000000000003d4f4       0x25 ../circle/lib/net/libnet.a(udpconnection.o)
                                          0x6d (size before relaxing)
- *fill*         0x000000000003d525        0x3 
- .rodata        0x000000000003d528       0x74 ../circle/lib/net/libnet.a(tcpconnection.o)
-                0x000000000003d528                vtable for CTCPConnection
+ *fill*         0x000000000003d519        0x3 
+ .rodata        0x000000000003d51c       0x74 ../circle/lib/net/libnet.a(tcpconnection.o)
+                0x000000000003d51c                vtable for CTCPConnection
  .rodata.str1.4
-                0x000000000003d59c      0x226 ../circle/lib/net/libnet.a(tcpconnection.o)
+                0x000000000003d590      0x226 ../circle/lib/net/libnet.a(tcpconnection.o)
                                         0x2d2 (size before relaxing)
- *fill*         0x000000000003d7c2        0x2 
+ *fill*         0x000000000003d7b6        0x2 
  .rodata.str1.4
-                0x000000000003d7c4       0xa8 ../circle/lib/net/libnet.a(retransmissionqueue.o)
+                0x000000000003d7b8       0xa8 ../circle/lib/net/libnet.a(retransmissionqueue.o)
                                          0xc4 (size before relaxing)
  .rodata.str1.4
-                0x000000000003d86c       0x17 ../circle/lib/net/libnet.a(retranstimeoutcalc.o)
+                0x000000000003d860       0x17 ../circle/lib/net/libnet.a(retranstimeoutcalc.o)
                                          0x26 (size before relaxing)
- *fill*         0x000000000003d883        0x1 
- .rodata        0x000000000003d884       0x44 ../circle/lib/net/libnet.a(tcprejector.o)
-                0x000000000003d884                vtable for CTCPRejector
+ *fill*         0x000000000003d877        0x1 
+ .rodata        0x000000000003d878       0x44 ../circle/lib/net/libnet.a(tcprejector.o)
+                0x000000000003d878                vtable for CTCPRejector
  .rodata.str1.4
-                0x000000000003d8c8       0x29 ../circle/lib/net/libnet.a(tcprejector.o)
+                0x000000000003d8bc       0x29 ../circle/lib/net/libnet.a(tcprejector.o)
                                          0x66 (size before relaxing)
- *fill*         0x000000000003d8f1        0x3 
- .rodata        0x000000000003d8f4        0x4 ../circle/lib/net/libnet.a(netconfig.o)
+ *fill*         0x000000000003d8e5        0x3 
+ .rodata        0x000000000003d8e8        0x4 ../circle/lib/net/libnet.a(netconfig.o)
  .rodata.str1.4
-                0x000000000003d8f8       0x82 ../circle/lib/net/libnet.a(ipaddress.o)
+                0x000000000003d8ec       0x82 ../circle/lib/net/libnet.a(ipaddress.o)
                                          0x9e (size before relaxing)
- *fill*         0x000000000003d97a        0x2 
+ *fill*         0x000000000003d96e        0x2 
  .rodata.str1.4
-                0x000000000003d97c       0x71 ../circle/lib/net/libnet.a(netqueue.o)
+                0x000000000003d970       0x71 ../circle/lib/net/libnet.a(netqueue.o)
                                          0xb9 (size before relaxing)
- *fill*         0x000000000003d9ed        0x3 
+ *fill*         0x000000000003d9e1        0x3 
  .rodata.str1.4
-                0x000000000003d9f0       0x3a ../circle/lib/net/libnet.a(checksumcalculator.o)
+                0x000000000003d9e4       0x3a ../circle/lib/net/libnet.a(checksumcalculator.o)
                                          0x55 (size before relaxing)
- *fill*         0x000000000003da2a        0x2 
- .rodata        0x000000000003da2c       0x44 ../circle/lib/net/libnet.a(dhcpclient.o)
-                0x000000000003da2c                vtable for CDHCPClient
-                0x000000000003da60                CDHCPClient::s_TimeoutHZ
+ *fill*         0x000000000003da1e        0x2 
+ .rodata        0x000000000003da20       0x44 ../circle/lib/net/libnet.a(dhcpclient.o)
+                0x000000000003da20                vtable for CDHCPClient
+                0x000000000003da54                CDHCPClient::s_TimeoutHZ
  .rodata.str1.4
-                0x000000000003da70      0x336 ../circle/lib/net/libnet.a(dhcpclient.o)
+                0x000000000003da64      0x336 ../circle/lib/net/libnet.a(dhcpclient.o)
                                         0x38e (size before relaxing)
- *fill*         0x000000000003dda6        0x2 
- .rodata        0x000000000003dda8       0x3c ../circle/lib/net/libnet.a(socket.o)
-                0x000000000003dda8                vtable for CSocket
+ *fill*         0x000000000003dd9a        0x2 
+ .rodata        0x000000000003dd9c       0x3c ../circle/lib/net/libnet.a(socket.o)
+                0x000000000003dd9c                vtable for CSocket
  .rodata.str1.4
-                0x000000000003dde4       0xdc ../circle/lib/net/libnet.a(socket.o)
+                0x000000000003ddd8       0xdc ../circle/lib/net/libnet.a(socket.o)
                                         0x124 (size before relaxing)
- .rodata        0x000000000003dec0       0x48 ../circle/lib/net/libnet.a(netsocket.o)
-                0x000000000003decc                vtable for CNetSocket
+ .rodata        0x000000000003deb4       0x48 ../circle/lib/net/libnet.a(netsocket.o)
+                0x000000000003dec0                vtable for CNetSocket
  .rodata.str1.4
-                0x000000000003df08       0x47 ../circle/lib/net/libnet.a(netsocket.o)
+                0x000000000003defc       0x47 ../circle/lib/net/libnet.a(netsocket.o)
                                          0x6b (size before relaxing)
- *fill*         0x000000000003df4f        0x1 
+ *fill*         0x000000000003df43        0x1 
  .rodata.str1.4
-                0x000000000003df50       0x8d ../circle/lib/net/libnet.a(dnsclient.o)
+                0x000000000003df44       0x8d ../circle/lib/net/libnet.a(dnsclient.o)
                                          0xa9 (size before relaxing)
- *fill*         0x000000000003dfdd        0x3 
- .rodata        0x000000000003dfe0       0x14 ../circle/lib/sched/libsched.a(task.o)
-                0x000000000003dfe0                vtable for CTask
+ *fill*         0x000000000003dfd1        0x3 
+ .rodata        0x000000000003dfd4       0x14 ../circle/lib/sched/libsched.a(task.o)
+                0x000000000003dfd4                vtable for CTask
  .rodata.str1.4
-                0x000000000003dff4       0x6c ../circle/lib/sched/libsched.a(task.o)
+                0x000000000003dfe8       0x6c ../circle/lib/sched/libsched.a(task.o)
                                          0x7c (size before relaxing)
- .rodata        0x000000000003e060        0x6 ../circle/lib/sched/libsched.a(scheduler.o)
- *fill*         0x000000000003e066        0x2 
+ .rodata        0x000000000003e054        0x6 ../circle/lib/sched/libsched.a(scheduler.o)
+ *fill*         0x000000000003e05a        0x2 
  .rodata.str1.4
-                0x000000000003e068      0x176 ../circle/lib/sched/libsched.a(scheduler.o)
+                0x000000000003e05c      0x176 ../circle/lib/sched/libsched.a(scheduler.o)
                                         0x199 (size before relaxing)
- *fill*         0x000000000003e1de        0x2 
+ *fill*         0x000000000003e1d2        0x2 
  .rodata.str1.4
-                0x000000000003e1e0       0x39 ../circle/lib/sched/libsched.a(synchronizationevent.o)
- *fill*         0x000000000003e219        0x3 
+                0x000000000003e1d4       0x39 ../circle/lib/sched/libsched.a(synchronizationevent.o)
+ *fill*         0x000000000003e20d        0x3 
  .rodata.str1.4
-                0x000000000003e21c       0x1d ../circle/lib/libcircle.a(assert.o)
- *fill*         0x000000000003e239        0x3 
- .rodata        0x000000000003e23c       0x97 ../circle/lib/libcircle.a(bcmpropertytags.o)
- *fill*         0x000000000003e2d3        0x1 
+                0x000000000003e210       0x1d ../circle/lib/libcircle.a(assert.o)
+ *fill*         0x000000000003e22d        0x3 
+ .rodata        0x000000000003e230       0x97 ../circle/lib/libcircle.a(bcmpropertytags.o)
+ *fill*         0x000000000003e2c7        0x1 
  .rodata.str1.4
-                0x000000000003e2d4       0xed ../circle/lib/libcircle.a(classallocator.o)
- *fill*         0x000000000003e3c1        0x3 
- .rodata        0x000000000003e3c4        0x6 ../circle/lib/libcircle.a(debug.o)
- *fill*         0x000000000003e3ca        0x2 
+                0x000000000003e2c8       0xed ../circle/lib/libcircle.a(classallocator.o)
+ *fill*         0x000000000003e3b5        0x3 
+ .rodata        0x000000000003e3b8        0x6 ../circle/lib/libcircle.a(debug.o)
+ *fill*         0x000000000003e3be        0x2 
  .rodata.str1.4
-                0x000000000003e3cc       0x93 ../circle/lib/libcircle.a(debug.o)
- *fill*         0x000000000003e45f        0x1 
- .rodata        0x000000000003e460       0x20 ../circle/lib/libcircle.a(device.o)
-                0x000000000003e460                vtable for CDevice
+                0x000000000003e3c0       0x93 ../circle/lib/libcircle.a(debug.o)
+ *fill*         0x000000000003e453        0x1 
+ .rodata        0x000000000003e454       0x20 ../circle/lib/libcircle.a(device.o)
+                0x000000000003e454                vtable for CDevice
  .rodata.str1.4
-                0x000000000003e480       0x87 ../circle/lib/libcircle.a(devicenameservice.o)
+                0x000000000003e474       0x87 ../circle/lib/libcircle.a(devicenameservice.o)
                                          0x96 (size before relaxing)
- *fill*         0x000000000003e507        0x1 
- .rodata        0x000000000003e508      0x2e5 ../circle/lib/libcircle.a(gpiopin.o)
-                0x000000000003e508                vtable for CGPIOPin
- *fill*         0x000000000003e7ed        0x3 
+ *fill*         0x000000000003e4fb        0x1 
+ .rodata        0x000000000003e4fc      0x2e5 ../circle/lib/libcircle.a(gpiopin.o)
+                0x000000000003e4fc                vtable for CGPIOPin
+ *fill*         0x000000000003e7e1        0x3 
  .rodata.str1.4
-                0x000000000003e7f0       0x8a ../circle/lib/libcircle.a(koptions.o)
+                0x000000000003e7e4       0x8a ../circle/lib/libcircle.a(koptions.o)
                                          0x8e (size before relaxing)
- *fill*         0x000000000003e87a        0x2 
- .rodata        0x000000000003e87c       0x3e ../circle/lib/libcircle.a(logger.o)
- *fill*         0x000000000003e8ba        0x2 
- .rodata        0x000000000003e8bc      0x1df ../circle/lib/libcircle.a(machineinfo.o)
- *fill*         0x000000000003ea9b        0x1 
+ *fill*         0x000000000003e86e        0x2 
+ .rodata        0x000000000003e870       0x3e ../circle/lib/libcircle.a(logger.o)
+ *fill*         0x000000000003e8ae        0x2 
+ .rodata        0x000000000003e8b0      0x1df ../circle/lib/libcircle.a(machineinfo.o)
+ *fill*         0x000000000003ea8f        0x1 
  .rodata.str1.4
-                0x000000000003ea9c       0x95 ../circle/lib/libcircle.a(ptrarray.o)
- *fill*         0x000000000003eb31        0x3 
- .rodata        0x000000000003eb34       0x10 ../circle/lib/libcircle.a(string.o)
-                0x000000000003eb34                vtable for CString
+                0x000000000003ea90       0x95 ../circle/lib/libcircle.a(ptrarray.o)
+ *fill*         0x000000000003eb25        0x3 
+ .rodata        0x000000000003eb28       0x10 ../circle/lib/libcircle.a(string.o)
+                0x000000000003eb28                vtable for CString
  .rodata.str1.4
-                0x000000000003eb44       0x13 ../circle/lib/libcircle.a(string.o)
+                0x000000000003eb38       0x13 ../circle/lib/libcircle.a(string.o)
                                          0x17 (size before relaxing)
- *fill*         0x000000000003eb57        0x1 
- .rodata        0x000000000003eb58       0x36 ../circle/lib/libcircle.a(timer.o)
-                0x000000000003eb58                CTimer::s_nDaysOfMonth
- *fill*         0x000000000003eb8e        0x2 
+ *fill*         0x000000000003eb4b        0x1 
+ .rodata        0x000000000003eb4c       0x36 ../circle/lib/libcircle.a(timer.o)
+                0x000000000003eb4c                CTimer::s_nDaysOfMonth
+ *fill*         0x000000000003eb82        0x2 
  .rodata.str1.4
-                0x000000000003eb90      0x13c ../circle/lib/libcircle.a(timer.o)
+                0x000000000003eb84      0x13c ../circle/lib/libcircle.a(timer.o)
                                         0x19c (size before relaxing)
- .rodata        0x000000000003eccc       0x30 ../circle/lib/libcircle.a(virtualgpiopin.o)
-                0x000000000003eccc                vtable for CVirtualGPIOPin
+ .rodata        0x000000000003ecc0       0x30 ../circle/lib/libcircle.a(virtualgpiopin.o)
+                0x000000000003ecc0                vtable for CVirtualGPIOPin
  .rodata.str1.4
-                0x000000000003ecfc       0x2e ../circle/lib/libcircle.a(macaddress.o)
+                0x000000000003ecf0       0x2e ../circle/lib/libcircle.a(macaddress.o)
                                          0x6a (size before relaxing)
- *fill*         0x000000000003ed2a        0x2 
+ *fill*         0x000000000003ed1e        0x2 
  .rodata.str1.4
-                0x000000000003ed2c       0x97 ../circle/lib/libcircle.a(netdevice.o)
- *fill*         0x000000000003edc3        0x1 
+                0x000000000003ed20       0x97 ../circle/lib/libcircle.a(netdevice.o)
+ *fill*         0x000000000003edb7        0x1 
  .rodata.str1.4
-                0x000000000003edc4       0x7b ../circle/lib/libcircle.a(heapallocator.o)
- *fill*         0x000000000003ee3f        0x1 
- .rodata        0x000000000003ee40        0x7 ../circle/lib/libcircle.a(exceptionhandler.o)
- *fill*         0x000000000003ee47        0x1 
+                0x000000000003edb8       0x7b ../circle/lib/libcircle.a(heapallocator.o)
+ *fill*         0x000000000003ee33        0x1 
+ .rodata        0x000000000003ee34        0x7 ../circle/lib/libcircle.a(exceptionhandler.o)
+ *fill*         0x000000000003ee3b        0x1 
  .rodata.str1.4
-                0x000000000003ee48       0xaf ../circle/lib/libcircle.a(exceptionhandler.o)
+                0x000000000003ee3c       0xaf ../circle/lib/libcircle.a(exceptionhandler.o)
                                          0xe4 (size before relaxing)
- *fill*         0x000000000003eef7        0x1 
- .rodata        0x000000000003eef8       0x8e ../circle/lib/libcircle.a(memory.o)
- *fill*         0x000000000003ef86        0x2 
+ *fill*         0x000000000003eeeb        0x1 
+ .rodata        0x000000000003eeec       0x8e ../circle/lib/libcircle.a(memory.o)
+ *fill*         0x000000000003ef7a        0x2 
  .rodata.str1.4
-                0x000000000003ef88       0xb5 ../circle/lib/libcircle.a(synchronize.o)
- *fill*         0x000000000003f03d        0x3 
+                0x000000000003ef7c       0xb5 ../circle/lib/libcircle.a(synchronize.o)
+ *fill*         0x000000000003f031        0x3 
  .rodata.str1.4
-                0x000000000003f040       0x9e ../circle/lib/libcircle.a(interrupt.o)
+                0x000000000003f034       0x9e ../circle/lib/libcircle.a(interrupt.o)
                                          0xbd (size before relaxing)
- *fill*         0x000000000003f0de        0x2 
+ *fill*         0x000000000003f0d2        0x2 
  .rodata.str1.4
-                0x000000000003f0e0        0xd ../circle/lib/libcircle.a(purecall.o)
+                0x000000000003f0d4        0xd ../circle/lib/libcircle.a(purecall.o)
                                          0x12 (size before relaxing)
- *fill*         0x000000000003f0ed        0x3 
- .rodata        0x000000000003f0f0       0x1d ../circle/lib/libcircle.a(alloc.o)
- *fill*         0x000000000003f10d        0x3 
+ *fill*         0x000000000003f0e1        0x3 
+ .rodata        0x000000000003f0e4       0x1d ../circle/lib/libcircle.a(alloc.o)
+ *fill*         0x000000000003f101        0x3 
  .rodata.str1.4
-                0x000000000003f110       0x23 ../circle/lib/libcircle.a(bcmmailbox.o)
- *fill*         0x000000000003f133        0x1 
+                0x000000000003f104       0x23 ../circle/lib/libcircle.a(bcmmailbox.o)
+ *fill*         0x000000000003f127        0x1 
  .rodata.str1.4
-                0x000000000003f134       0x8f ../circle/lib/libcircle.a(gpiomanager.o)
+                0x000000000003f128       0x8f ../circle/lib/libcircle.a(gpiomanager.o)
                                          0x9c (size before relaxing)
- *fill*         0x000000000003f1c3        0x1 
+ *fill*         0x000000000003f1b7        0x1 
  .rodata.str1.4
-                0x000000000003f1c4      0x176 ../circle/lib/libcircle.a(ptrlist.o)
- *fill*         0x000000000003f33a        0x2 
- .rodata        0x000000000003f33c       0x48 ../circle/lib/libcircle.a(pageallocator.o)
- .rodata        0x000000000003f384       0x25 system/brsys.a(FastScreen.o)
-                0x000000000003f384                vtable for FastScreen
+                0x000000000003f1b8      0x176 ../circle/lib/libcircle.a(ptrlist.o)
+ *fill*         0x000000000003f32e        0x2 
+ .rodata        0x000000000003f330       0x48 ../circle/lib/libcircle.a(pageallocator.o)
+ .rodata        0x000000000003f378       0x25 system/brsys.a(FastScreen.o)
+                0x000000000003f378                vtable for FastScreen
  .rodata.str1.4
-                0x000000000003f3a9        0x5 system/brsys.a(FastScreen.o)
- *fill*         0x000000000003f3a9        0x3 
- .rodata        0x000000000003f3ac      0x194 system/brsys.a(UartMaxiSerialDevice.o)
-                0x000000000003f3b8                vtable for CUartMaxiSerialDevice
+                0x000000000003f39d        0x5 system/brsys.a(FastScreen.o)
+ *fill*         0x000000000003f39d        0x3 
+ .rodata        0x000000000003f3a0      0x194 system/brsys.a(UartMaxiSerialDevice.o)
+                0x000000000003f3ac                vtable for CUartMaxiSerialDevice
  .rodata.str1.4
-                0x000000000003f540       0x64 comms/brcomms.a(CommsManager.o)
- .rodata        0x000000000003f5a4        0xf comms/brcomms.a(CommandHandler.o)
- *fill*         0x000000000003f5b3        0x1 
+                0x000000000003f534       0x64 comms/brcomms.a(CommsManager.o)
+ .rodata        0x000000000003f598        0xf comms/brcomms.a(CommandHandler.o)
+ *fill*         0x000000000003f5a7        0x1 
  .rodata.str1.4
-                0x000000000003f5b4      0x296 comms/brcomms.a(CommandHandler.o)
+                0x000000000003f5a8      0x296 comms/brcomms.a(CommandHandler.o)
                                         0x2a6 (size before relaxing)
- *fill*         0x000000000003f84a        0x2 
- .rodata        0x000000000003f84c      0x210 comms/brcomms.a(MiniHDLC.o)
-                0x000000000003f84c                vtable for MiniHDLC
-                0x000000000003f85c                MiniHDLC::_CRCTable
+ *fill*         0x000000000003f83e        0x2 
+ .rodata        0x000000000003f840      0x210 comms/brcomms.a(MiniHDLC.o)
+                0x000000000003f840                vtable for MiniHDLC
+                0x000000000003f850                MiniHDLC::_CRCTable
  .rodata.str1.4
-                0x000000000003fa5c       0x15 comms/brcomms.a(MiniHDLC.o)
- *fill*         0x000000000003fa71        0x3 
+                0x000000000003fa50       0x15 comms/brcomms.a(MiniHDLC.o)
+ *fill*         0x000000000003fa65        0x3 
  .rodata.str1.4
-                0x000000000003fa74      0x136 TargetBus/brTargetBus.a(BusAccess.o)
- *fill*         0x000000000003fbaa        0x2 
+                0x000000000003fa68      0x136 TargetBus/brTargetBus.a(BusAccess.o)
+ *fill*         0x000000000003fb9e        0x2 
  .rodata.str1.4
-                0x000000000003fbac       0xe3 TargetBus/brTargetBus.a(BusAccess_Control.o)
+                0x000000000003fba0       0xe3 TargetBus/brTargetBus.a(BusAccess_Control.o)
                                          0xef (size before relaxing)
- *fill*         0x000000000003fc8f        0x1 
- .rodata        0x000000000003fc90        0xa Hardware/brHardware.a(HwManager.o)
- *fill*         0x000000000003fc9a        0x2 
+ *fill*         0x000000000003fc83        0x1 
+ .rodata        0x000000000003fc84        0xa Hardware/brHardware.a(HwManager.o)
+ *fill*         0x000000000003fc8e        0x2 
  .rodata.str1.4
-                0x000000000003fc9c      0x1bd Hardware/brHardware.a(HwManager.o)
+                0x000000000003fc90      0x1bd Hardware/brHardware.a(HwManager.o)
                                         0x1d1 (size before relaxing)
- *fill*         0x000000000003fe59        0x3 
- .rodata        0x000000000003fe5c        0xe BusControlAPI/brBusAPI.a(BusControlAPI.o)
- *fill*         0x000000000003fe6a        0x2 
+ *fill*         0x000000000003fe4d        0x3 
+ .rodata        0x000000000003fe50        0xe BusControlAPI/brBusAPI.a(BusControlAPI.o)
+ *fill*         0x000000000003fe5e        0x2 
  .rodata.str1.4
-                0x000000000003fe6c      0x488 BusControlAPI/brBusAPI.a(BusControlAPI.o)
+                0x000000000003fe60      0x488 BusControlAPI/brBusAPI.a(BusControlAPI.o)
                                         0x4c0 (size before relaxing)
- .rodata        0x00000000000402f4      0xdf0 ../circle/lib/libcircle.a(chargenerator.o)
+ .rodata        0x00000000000402e8      0xdf0 ../circle/lib/libcircle.a(chargenerator.o)
  .rodata.str1.4
-                0x00000000000410e4       0x29 ../circle/lib/libcircle.a(chargenerator.o)
- *fill*         0x000000000004110d        0x3 
- .rodata        0x0000000000041110      0x33f ../circle/lib/libcircle.a(dmachannel.o)
+                0x00000000000410d8       0x29 ../circle/lib/libcircle.a(chargenerator.o)
+ *fill*         0x0000000000041101        0x3 
+ .rodata        0x0000000000041104      0x33f ../circle/lib/libcircle.a(dmachannel.o)
  .rodata.str1.4
-                0x000000000004144f        0x1 system/brsys.a(rdutils.o)
- *fill*         0x000000000004144f        0x1 
+                0x0000000000041443        0x1 system/brsys.a(rdutils.o)
+ *fill*         0x0000000000041443        0x1 
  .rodata.str1.4
-                0x0000000000041450       0x14 system/brsys.a(jsmnR.o)
+                0x0000000000041444       0x14 system/brsys.a(jsmnR.o)
                                          0x12 (size before relaxing)
- .rodata        0x0000000000041464        0x9 system/brsys.a(PiWiring.o)
+ .rodata        0x0000000000041458        0x9 system/brsys.a(PiWiring.o)
 
-.ARM.extab      0x000000000004146d        0x0
- .ARM.extab     0x000000000004146d        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivmoddi4.o)
+.ARM.extab      0x0000000000041461        0x0
+ .ARM.extab     0x0000000000041461        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivmoddi4.o)
 
-.init_array     0x0000000000041470        0xc
-                0x0000000000041470                __init_start = .
+.init_array     0x0000000000041464        0xc
+                0x0000000000041464                __init_start = .
  *(.init_array*)
- .init_array    0x0000000000041470        0x4 ../circle/lib/libcircle.a(gpiopin.o)
- .init_array    0x0000000000041474        0x4 ../circle/lib/libcircle.a(virtualgpiopin.o)
- .init_array    0x0000000000041478        0x4 ../circle/lib/libcircle.a(bcmmailbox.o)
-                0x000000000004147c                __init_end = .
+ .init_array    0x0000000000041464        0x4 ../circle/lib/libcircle.a(gpiopin.o)
+ .init_array    0x0000000000041468        0x4 ../circle/lib/libcircle.a(virtualgpiopin.o)
+ .init_array    0x000000000004146c        0x4 ../circle/lib/libcircle.a(bcmmailbox.o)
+                0x0000000000041470                __init_end = .
 
-.ARM.exidx      0x000000000004147c        0x8
-                0x000000000004147c                __exidx_start = .
+.ARM.exidx      0x0000000000041470        0x8
+                0x0000000000041470                __exidx_start = .
  *(.ARM.exidx*)
- .ARM.exidx     0x000000000004147c        0x8 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivmoddi4.o)
-                0x0000000000041484                __exidx_end = .
+ .ARM.exidx     0x0000000000041470        0x8 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivmoddi4.o)
+                0x0000000000041478                __exidx_end = .
 
-.rel.dyn        0x0000000000041484        0x0
- .rel.iplt      0x0000000000041484        0x0 main.o
+.rel.dyn        0x0000000000041478        0x0
+ .rel.iplt      0x0000000000041478        0x0 main.o
 
 .eh_frame
  *(.eh_frame*)
 
-.data           0x0000000000041484      0x48c
+.data           0x0000000000041478      0x48c
  *(.data*)
- .data          0x0000000000041484        0x0 main.o
- .data          0x0000000000041484        0x4 kernel.o
- .data          0x0000000000041488        0x0 ../circle/lib/usb/libusb.a(dwhcidevice.o)
- .data          0x0000000000041488        0x0 ../circle/lib/usb/libusb.a(dwhciframeschednper.o)
- .data          0x0000000000041488        0x0 ../circle/lib/usb/libusb.a(dwhciframeschednsplit.o)
- .data          0x0000000000041488        0x0 ../circle/lib/usb/libusb.a(dwhciframeschedper.o)
- .data          0x0000000000041488        0x0 ../circle/lib/usb/libusb.a(dwhciregister.o)
- .data          0x0000000000041488        0x0 ../circle/lib/usb/libusb.a(dwhcirootport.o)
- .data          0x0000000000041488        0x0 ../circle/lib/usb/libusb.a(dwhcixferstagedata.o)
- .data          0x0000000000041488        0x0 ../circle/lib/usb/libusb.a(usbdevice.o)
- .data          0x0000000000041488        0x0 ../circle/lib/usb/libusb.a(usbdevicefactory.o)
- .data          0x0000000000041488        0x0 ../circle/lib/usb/libusb.a(usbendpoint.o)
- .data          0x0000000000041488        0x0 ../circle/lib/usb/libusb.a(usbfunction.o)
- .data          0x0000000000041488        0x0 ../circle/lib/usb/libusb.a(usbgamepadps3.o)
- .data          0x0000000000041488        0x1 ../circle/lib/usb/libusb.a(usbgamepadps4.o)
-                0x0000000000041488                CUSBGamePadPS4Device::s_bTouchpadEnabled
- .data          0x0000000000041489        0x0 ../circle/lib/usb/libusb.a(usbgamepadstandard.o)
- .data          0x0000000000041489        0x0 ../circle/lib/usb/libusb.a(usbgamepadswitchpro.o)
- .data          0x0000000000041489        0x0 ../circle/lib/usb/libusb.a(usbgamepadxbox360.o)
- .data          0x0000000000041489        0x0 ../circle/lib/usb/libusb.a(usbgamepadxboxone.o)
- .data          0x0000000000041489        0x0 ../circle/lib/usb/libusb.a(usbhiddevice.o)
- .data          0x0000000000041489        0x0 ../circle/lib/usb/libusb.a(usbhostcontroller.o)
- *fill*         0x0000000000041489        0x3 
- .data          0x000000000004148c        0x4 ../circle/lib/usb/libusb.a(usbkeyboard.o)
-                0x000000000004148c                CUSBKeyboardDevice::s_nDeviceNumber
- .data          0x0000000000041490        0x0 ../circle/lib/usb/libusb.a(usbmassdevice.o)
- .data          0x0000000000041490        0x4 ../circle/lib/usb/libusb.a(usbmidi.o)
-                0x0000000000041490                CUSBMIDIDevice::s_nDeviceNumber
- .data          0x0000000000041494        0x0 ../circle/lib/usb/libusb.a(usbmouse.o)
- .data          0x0000000000041494        0x4 ../circle/lib/usb/libusb.a(usbprinter.o)
-                0x0000000000041494                CUSBPrinterDevice::s_nDeviceNumber
- .data          0x0000000000041498        0x0 ../circle/lib/usb/libusb.a(usbrequest.o)
- .data          0x0000000000041498        0x4 ../circle/lib/usb/libusb.a(usbstandardhub.o)
-                0x0000000000041498                CUSBStandardHub::s_nDeviceNumber
- .data          0x000000000004149c        0x0 ../circle/lib/usb/libusb.a(lan7800.o)
- .data          0x000000000004149c        0x0 ../circle/lib/usb/libusb.a(smsc951x.o)
- .data          0x000000000004149c        0x4 ../circle/lib/usb/libusb.a(usbbluetooth.o)
-                0x000000000004149c                CUSBBluetoothDevice::s_nDeviceNumber
- .data          0x00000000000414a0        0x0 ../circle/lib/usb/libusb.a(usbcdcethernet.o)
- .data          0x00000000000414a0        0x0 ../circle/lib/usb/libusb.a(usbconfigparser.o)
- .data          0x00000000000414a0        0x4 ../circle/lib/usb/libusb.a(usbgamepad.o)
-                0x00000000000414a0                CUSBGamePadDevice::s_nDeviceNumber
- .data          0x00000000000414a4        0x0 ../circle/lib/usb/libusb.a(usbstring.o)
- .data          0x00000000000414a4        0x0 ../circle/lib/input/libinput.a(keyboardbehaviour.o)
- .data          0x00000000000414a4       0xe8 ../circle/lib/input/libinput.a(keymap.o)
-                0x00000000000414a4                CKeyMap::s_KeyStrings
-                0x0000000000041570                CKeyMap::s_MapDirectory
- .data          0x000000000004158c        0x4 ../circle/lib/input/libinput.a(mouse.o)
-                0x000000000004158c                CMouseDevice::s_nDeviceNumber
- .data          0x0000000000041590        0x0 ../circle/lib/input/libinput.a(mousebehaviour.o)
- .data          0x0000000000041590        0x0 ../circle/lib/fs/libfs.a(partitionmanager.o)
- .data          0x0000000000041590        0x0 ../circle/lib/fs/libfs.a(partition.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(netsubsystem.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(nettask.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(transportlayer.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(networklayer.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(linklayer.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(netdevlayer.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(phytask.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(arphandler.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(icmphandler.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(routecache.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(netconnection.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(udpconnection.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(tcpconnection.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(retransmissionqueue.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(retranstimeoutcalc.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(tcprejector.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(netconfig.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(ipaddress.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(netqueue.o)
- .data          0x0000000000041590        0x0 ../circle/lib/net/libnet.a(checksumcalculator.o)
- .data          0x0000000000041590       0x18 ../circle/lib/net/libnet.a(dhcpclient.o)
- .data          0x00000000000415a8        0x0 ../circle/lib/net/libnet.a(socket.o)
- .data          0x00000000000415a8        0x0 ../circle/lib/net/libnet.a(netsocket.o)
- .data          0x00000000000415a8        0x2 ../circle/lib/net/libnet.a(dnsclient.o)
-                0x00000000000415a8                CDNSClient::s_nXID
- .data          0x00000000000415aa        0x0 ../circle/lib/sched/libsched.a(task.o)
- .data          0x00000000000415aa        0x0 ../circle/lib/sched/libsched.a(scheduler.o)
- .data          0x00000000000415aa        0x0 ../circle/lib/sched/libsched.a(taskswitch.o)
- .data          0x00000000000415aa        0x0 ../circle/lib/sched/libsched.a(synchronizationevent.o)
- .data          0x00000000000415aa        0x0 ../circle/lib/libcircle.a(actled.o)
- .data          0x00000000000415aa        0x0 ../circle/lib/libcircle.a(assert.o)
- .data          0x00000000000415aa        0x0 ../circle/lib/libcircle.a(bcmpropertytags.o)
- .data          0x00000000000415aa        0x0 ../circle/lib/libcircle.a(classallocator.o)
- .data          0x00000000000415aa        0x0 ../circle/lib/libcircle.a(debug.o)
- .data          0x00000000000415aa        0x0 ../circle/lib/libcircle.a(device.o)
- .data          0x00000000000415aa        0x0 ../circle/lib/libcircle.a(devicenameservice.o)
- .data          0x00000000000415aa        0x0 ../circle/lib/libcircle.a(gpiopin.o)
- .data          0x00000000000415aa        0x0 ../circle/lib/libcircle.a(koptions.o)
- .data          0x00000000000415aa        0x0 ../circle/lib/libcircle.a(logger.o)
- *fill*         0x00000000000415aa        0x2 
- .data          0x00000000000415ac      0x254 ../circle/lib/libcircle.a(machineinfo.o)
- .data          0x0000000000041800        0x0 ../circle/lib/libcircle.a(ptrarray.o)
- .data          0x0000000000041800        0x0 ../circle/lib/libcircle.a(string.o)
- .data          0x0000000000041800        0x0 ../circle/lib/libcircle.a(sysinit.o)
- .data          0x0000000000041800       0x30 ../circle/lib/libcircle.a(timer.o)
-                0x0000000000041800                CTimer::s_pMonthName
- .data          0x0000000000041830        0x0 ../circle/lib/libcircle.a(util.o)
- .data          0x0000000000041830        0x0 ../circle/lib/libcircle.a(util_fast.o)
- .data          0x0000000000041830        0x0 ../circle/lib/libcircle.a(virtualgpiopin.o)
- .data          0x0000000000041830        0x0 ../circle/lib/libcircle.a(chainboot.o)
- .data          0x0000000000041830        0x0 ../circle/lib/libcircle.a(macaddress.o)
- .data          0x0000000000041830       0x18 ../circle/lib/libcircle.a(netdevice.o)
-                0x0000000000041830                CNetDevice::s_SpeedString
- .data          0x0000000000041848        0x0 ../circle/lib/libcircle.a(new.o)
- .data          0x0000000000041848       0x1c ../circle/lib/libcircle.a(heapallocator.o)
-                0x0000000000041848                CHeapAllocator::s_nBucketSize
- .data          0x0000000000041864       0x14 ../circle/lib/libcircle.a(exceptionhandler.o)
-                0x0000000000041864                CExceptionHandler::s_pExceptionName
- .data          0x0000000000041878       0x10 ../circle/lib/libcircle.a(exceptionstub.o)
-                0x0000000000041878                FIQData
-                0x0000000000041884                IRQReturnAddress
- .data          0x0000000000041888        0x0 ../circle/lib/libcircle.a(memory.o)
- .data          0x0000000000041888        0x0 ../circle/lib/libcircle.a(pagetable.o)
- .data          0x0000000000041888        0x0 ../circle/lib/libcircle.a(startup.o)
- .data          0x0000000000041888        0x0 ../circle/lib/libcircle.a(synchronize.o)
- .data          0x0000000000041888        0x0 ../circle/lib/libcircle.a(interrupt.o)
- .data          0x0000000000041888        0x0 ../circle/lib/libcircle.a(purecall.o)
- .data          0x0000000000041888        0x0 ../circle/lib/libcircle.a(alloc.o)
- .data          0x0000000000041888        0x0 ../circle/lib/libcircle.a(bcmmailbox.o)
- .data          0x0000000000041888        0x0 ../circle/lib/libcircle.a(delayloop.o)
- .data          0x0000000000041888        0x0 ../circle/lib/libcircle.a(gpiomanager.o)
- .data          0x0000000000041888        0x0 ../circle/lib/libcircle.a(ptrlist.o)
- .data          0x0000000000041888        0x0 ../circle/lib/libcircle.a(pageallocator.o)
- .data          0x0000000000041888        0x0 system/brsys.a(FastScreen.o)
- .data          0x0000000000041888       0x14 system/brsys.a(UartMaxiSerialDevice.o)
- .data          0x000000000004189c        0x0 system/brsys.a(lowlib.o)
- .data          0x000000000004189c        0x0 comms/brcomms.a(CommsManager.o)
- .data          0x000000000004189c        0x0 comms/brcomms.a(CommandHandler.o)
- .data          0x000000000004189c        0x0 comms/brcomms.a(MiniHDLC.o)
- .data          0x000000000004189c        0x0 TargetBus/brTargetBus.a(BusAccess.o)
- .data          0x000000000004189c        0x0 TargetBus/brTargetBus.a(BusAccess_Control.o)
- .data          0x000000000004189c        0x4 Hardware/brHardware.a(HwManager.o)
-                0x000000000004189c                HwManager::_pDefaultHardwareList
- .data          0x00000000000418a0        0x0 BusControlAPI/brBusAPI.a(BusControlAPI.o)
- .data          0x00000000000418a0        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivsi3.o)
- .data          0x00000000000418a0        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_dvmd_tls.o)
- .data          0x00000000000418a0        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_aeabi_uldivmod.o)
- .data          0x00000000000418a0        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivmoddi4.o)
- .data          0x00000000000418a0        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzdi2.o)
- .data          0x00000000000418a0        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzsi2.o)
- .data          0x00000000000418a0       0x70 ../circle/lib/libcircle.a(bcmframebuffer.o)
-                0x00000000000418a0                CBcmFrameBuffer::s_InitTags
- .data          0x0000000000041910        0x0 ../circle/lib/libcircle.a(chargenerator.o)
- .data          0x0000000000041910        0x0 ../circle/lib/libcircle.a(dmachannel.o)
- .data          0x0000000000041910        0x0 system/brsys.a(rdutils.o)
- .data          0x0000000000041910        0x0 system/brsys.a(jsmnR.o)
- .data          0x0000000000041910        0x0 system/brsys.a(PiWiring.o)
- .data          0x0000000000041910        0x0 system/brsys.a(lowlev.o)
- .data          0x0000000000041910        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_divsi3.o)
+ .data          0x0000000000041478        0x0 main.o
+ .data          0x0000000000041478        0x4 kernel.o
+ .data          0x000000000004147c        0x0 ../circle/lib/usb/libusb.a(dwhcidevice.o)
+ .data          0x000000000004147c        0x0 ../circle/lib/usb/libusb.a(dwhciframeschednper.o)
+ .data          0x000000000004147c        0x0 ../circle/lib/usb/libusb.a(dwhciframeschednsplit.o)
+ .data          0x000000000004147c        0x0 ../circle/lib/usb/libusb.a(dwhciframeschedper.o)
+ .data          0x000000000004147c        0x0 ../circle/lib/usb/libusb.a(dwhciregister.o)
+ .data          0x000000000004147c        0x0 ../circle/lib/usb/libusb.a(dwhcirootport.o)
+ .data          0x000000000004147c        0x0 ../circle/lib/usb/libusb.a(dwhcixferstagedata.o)
+ .data          0x000000000004147c        0x0 ../circle/lib/usb/libusb.a(usbdevice.o)
+ .data          0x000000000004147c        0x0 ../circle/lib/usb/libusb.a(usbdevicefactory.o)
+ .data          0x000000000004147c        0x0 ../circle/lib/usb/libusb.a(usbendpoint.o)
+ .data          0x000000000004147c        0x0 ../circle/lib/usb/libusb.a(usbfunction.o)
+ .data          0x000000000004147c        0x0 ../circle/lib/usb/libusb.a(usbgamepadps3.o)
+ .data          0x000000000004147c        0x1 ../circle/lib/usb/libusb.a(usbgamepadps4.o)
+                0x000000000004147c                CUSBGamePadPS4Device::s_bTouchpadEnabled
+ .data          0x000000000004147d        0x0 ../circle/lib/usb/libusb.a(usbgamepadstandard.o)
+ .data          0x000000000004147d        0x0 ../circle/lib/usb/libusb.a(usbgamepadswitchpro.o)
+ .data          0x000000000004147d        0x0 ../circle/lib/usb/libusb.a(usbgamepadxbox360.o)
+ .data          0x000000000004147d        0x0 ../circle/lib/usb/libusb.a(usbgamepadxboxone.o)
+ .data          0x000000000004147d        0x0 ../circle/lib/usb/libusb.a(usbhiddevice.o)
+ .data          0x000000000004147d        0x0 ../circle/lib/usb/libusb.a(usbhostcontroller.o)
+ *fill*         0x000000000004147d        0x3 
+ .data          0x0000000000041480        0x4 ../circle/lib/usb/libusb.a(usbkeyboard.o)
+                0x0000000000041480                CUSBKeyboardDevice::s_nDeviceNumber
+ .data          0x0000000000041484        0x0 ../circle/lib/usb/libusb.a(usbmassdevice.o)
+ .data          0x0000000000041484        0x4 ../circle/lib/usb/libusb.a(usbmidi.o)
+                0x0000000000041484                CUSBMIDIDevice::s_nDeviceNumber
+ .data          0x0000000000041488        0x0 ../circle/lib/usb/libusb.a(usbmouse.o)
+ .data          0x0000000000041488        0x4 ../circle/lib/usb/libusb.a(usbprinter.o)
+                0x0000000000041488                CUSBPrinterDevice::s_nDeviceNumber
+ .data          0x000000000004148c        0x0 ../circle/lib/usb/libusb.a(usbrequest.o)
+ .data          0x000000000004148c        0x4 ../circle/lib/usb/libusb.a(usbstandardhub.o)
+                0x000000000004148c                CUSBStandardHub::s_nDeviceNumber
+ .data          0x0000000000041490        0x0 ../circle/lib/usb/libusb.a(lan7800.o)
+ .data          0x0000000000041490        0x0 ../circle/lib/usb/libusb.a(smsc951x.o)
+ .data          0x0000000000041490        0x4 ../circle/lib/usb/libusb.a(usbbluetooth.o)
+                0x0000000000041490                CUSBBluetoothDevice::s_nDeviceNumber
+ .data          0x0000000000041494        0x0 ../circle/lib/usb/libusb.a(usbcdcethernet.o)
+ .data          0x0000000000041494        0x0 ../circle/lib/usb/libusb.a(usbconfigparser.o)
+ .data          0x0000000000041494        0x4 ../circle/lib/usb/libusb.a(usbgamepad.o)
+                0x0000000000041494                CUSBGamePadDevice::s_nDeviceNumber
+ .data          0x0000000000041498        0x0 ../circle/lib/usb/libusb.a(usbstring.o)
+ .data          0x0000000000041498        0x0 ../circle/lib/input/libinput.a(keyboardbehaviour.o)
+ .data          0x0000000000041498       0xe8 ../circle/lib/input/libinput.a(keymap.o)
+                0x0000000000041498                CKeyMap::s_KeyStrings
+                0x0000000000041564                CKeyMap::s_MapDirectory
+ .data          0x0000000000041580        0x4 ../circle/lib/input/libinput.a(mouse.o)
+                0x0000000000041580                CMouseDevice::s_nDeviceNumber
+ .data          0x0000000000041584        0x0 ../circle/lib/input/libinput.a(mousebehaviour.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/fs/libfs.a(partitionmanager.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/fs/libfs.a(partition.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(netsubsystem.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(nettask.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(transportlayer.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(networklayer.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(linklayer.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(netdevlayer.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(phytask.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(arphandler.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(icmphandler.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(routecache.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(netconnection.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(udpconnection.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(tcpconnection.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(retransmissionqueue.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(retranstimeoutcalc.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(tcprejector.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(netconfig.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(ipaddress.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(netqueue.o)
+ .data          0x0000000000041584        0x0 ../circle/lib/net/libnet.a(checksumcalculator.o)
+ .data          0x0000000000041584       0x18 ../circle/lib/net/libnet.a(dhcpclient.o)
+ .data          0x000000000004159c        0x0 ../circle/lib/net/libnet.a(socket.o)
+ .data          0x000000000004159c        0x0 ../circle/lib/net/libnet.a(netsocket.o)
+ .data          0x000000000004159c        0x2 ../circle/lib/net/libnet.a(dnsclient.o)
+                0x000000000004159c                CDNSClient::s_nXID
+ .data          0x000000000004159e        0x0 ../circle/lib/sched/libsched.a(task.o)
+ .data          0x000000000004159e        0x0 ../circle/lib/sched/libsched.a(scheduler.o)
+ .data          0x000000000004159e        0x0 ../circle/lib/sched/libsched.a(taskswitch.o)
+ .data          0x000000000004159e        0x0 ../circle/lib/sched/libsched.a(synchronizationevent.o)
+ .data          0x000000000004159e        0x0 ../circle/lib/libcircle.a(actled.o)
+ .data          0x000000000004159e        0x0 ../circle/lib/libcircle.a(assert.o)
+ .data          0x000000000004159e        0x0 ../circle/lib/libcircle.a(bcmpropertytags.o)
+ .data          0x000000000004159e        0x0 ../circle/lib/libcircle.a(classallocator.o)
+ .data          0x000000000004159e        0x0 ../circle/lib/libcircle.a(debug.o)
+ .data          0x000000000004159e        0x0 ../circle/lib/libcircle.a(device.o)
+ .data          0x000000000004159e        0x0 ../circle/lib/libcircle.a(devicenameservice.o)
+ .data          0x000000000004159e        0x0 ../circle/lib/libcircle.a(gpiopin.o)
+ .data          0x000000000004159e        0x0 ../circle/lib/libcircle.a(koptions.o)
+ .data          0x000000000004159e        0x0 ../circle/lib/libcircle.a(logger.o)
+ *fill*         0x000000000004159e        0x2 
+ .data          0x00000000000415a0      0x254 ../circle/lib/libcircle.a(machineinfo.o)
+ .data          0x00000000000417f4        0x0 ../circle/lib/libcircle.a(ptrarray.o)
+ .data          0x00000000000417f4        0x0 ../circle/lib/libcircle.a(string.o)
+ .data          0x00000000000417f4        0x0 ../circle/lib/libcircle.a(sysinit.o)
+ .data          0x00000000000417f4       0x30 ../circle/lib/libcircle.a(timer.o)
+                0x00000000000417f4                CTimer::s_pMonthName
+ .data          0x0000000000041824        0x0 ../circle/lib/libcircle.a(util.o)
+ .data          0x0000000000041824        0x0 ../circle/lib/libcircle.a(util_fast.o)
+ .data          0x0000000000041824        0x0 ../circle/lib/libcircle.a(virtualgpiopin.o)
+ .data          0x0000000000041824        0x0 ../circle/lib/libcircle.a(chainboot.o)
+ .data          0x0000000000041824        0x0 ../circle/lib/libcircle.a(macaddress.o)
+ .data          0x0000000000041824       0x18 ../circle/lib/libcircle.a(netdevice.o)
+                0x0000000000041824                CNetDevice::s_SpeedString
+ .data          0x000000000004183c        0x0 ../circle/lib/libcircle.a(new.o)
+ .data          0x000000000004183c       0x1c ../circle/lib/libcircle.a(heapallocator.o)
+                0x000000000004183c                CHeapAllocator::s_nBucketSize
+ .data          0x0000000000041858       0x14 ../circle/lib/libcircle.a(exceptionhandler.o)
+                0x0000000000041858                CExceptionHandler::s_pExceptionName
+ .data          0x000000000004186c       0x10 ../circle/lib/libcircle.a(exceptionstub.o)
+                0x000000000004186c                FIQData
+                0x0000000000041878                IRQReturnAddress
+ .data          0x000000000004187c        0x0 ../circle/lib/libcircle.a(memory.o)
+ .data          0x000000000004187c        0x0 ../circle/lib/libcircle.a(pagetable.o)
+ .data          0x000000000004187c        0x0 ../circle/lib/libcircle.a(startup.o)
+ .data          0x000000000004187c        0x0 ../circle/lib/libcircle.a(synchronize.o)
+ .data          0x000000000004187c        0x0 ../circle/lib/libcircle.a(interrupt.o)
+ .data          0x000000000004187c        0x0 ../circle/lib/libcircle.a(purecall.o)
+ .data          0x000000000004187c        0x0 ../circle/lib/libcircle.a(alloc.o)
+ .data          0x000000000004187c        0x0 ../circle/lib/libcircle.a(bcmmailbox.o)
+ .data          0x000000000004187c        0x0 ../circle/lib/libcircle.a(delayloop.o)
+ .data          0x000000000004187c        0x0 ../circle/lib/libcircle.a(gpiomanager.o)
+ .data          0x000000000004187c        0x0 ../circle/lib/libcircle.a(ptrlist.o)
+ .data          0x000000000004187c        0x0 ../circle/lib/libcircle.a(pageallocator.o)
+ .data          0x000000000004187c        0x0 system/brsys.a(FastScreen.o)
+ .data          0x000000000004187c       0x14 system/brsys.a(UartMaxiSerialDevice.o)
+ .data          0x0000000000041890        0x0 system/brsys.a(lowlib.o)
+ .data          0x0000000000041890        0x0 comms/brcomms.a(CommsManager.o)
+ .data          0x0000000000041890        0x0 comms/brcomms.a(CommandHandler.o)
+ .data          0x0000000000041890        0x0 comms/brcomms.a(MiniHDLC.o)
+ .data          0x0000000000041890        0x0 TargetBus/brTargetBus.a(BusAccess.o)
+ .data          0x0000000000041890        0x0 TargetBus/brTargetBus.a(BusAccess_Control.o)
+ .data          0x0000000000041890        0x4 Hardware/brHardware.a(HwManager.o)
+                0x0000000000041890                HwManager::_pDefaultHardwareList
+ .data          0x0000000000041894        0x0 BusControlAPI/brBusAPI.a(BusControlAPI.o)
+ .data          0x0000000000041894        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivsi3.o)
+ .data          0x0000000000041894        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_dvmd_tls.o)
+ .data          0x0000000000041894        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_aeabi_uldivmod.o)
+ .data          0x0000000000041894        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivmoddi4.o)
+ .data          0x0000000000041894        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzdi2.o)
+ .data          0x0000000000041894        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzsi2.o)
+ .data          0x0000000000041894       0x70 ../circle/lib/libcircle.a(bcmframebuffer.o)
+                0x0000000000041894                CBcmFrameBuffer::s_InitTags
+ .data          0x0000000000041904        0x0 ../circle/lib/libcircle.a(chargenerator.o)
+ .data          0x0000000000041904        0x0 ../circle/lib/libcircle.a(dmachannel.o)
+ .data          0x0000000000041904        0x0 system/brsys.a(rdutils.o)
+ .data          0x0000000000041904        0x0 system/brsys.a(jsmnR.o)
+ .data          0x0000000000041904        0x0 system/brsys.a(PiWiring.o)
+ .data          0x0000000000041904        0x0 system/brsys.a(lowlev.o)
+ .data          0x0000000000041904        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_divsi3.o)
 
-.igot.plt       0x0000000000041910        0x0
- .igot.plt      0x0000000000041910        0x0 main.o
+.igot.plt       0x0000000000041904        0x0
+ .igot.plt      0x0000000000041904        0x0 main.o
 
-.bss            0x0000000000041910      0x388
-                0x0000000000041910                __bss_start = .
+.bss            0x0000000000041908      0x388
+                0x0000000000041908                __bss_start = .
  *(.bss*)
- .bss           0x0000000000041910        0x0 main.o
- .bss           0x0000000000041910        0x4 kernel.o
-                0x0000000000041910                CKernel::m_pKernel
- .bss           0x0000000000041914        0x0 ../circle/lib/usb/libusb.a(dwhcidevice.o)
- .bss           0x0000000000041914        0x4 ../circle/lib/usb/libusb.a(dwhciframeschednper.o)
-                0x0000000000041914                CDWHCIFrameSchedulerNonPeriodic::s_pAllocator
- .bss           0x0000000000041918        0x4 ../circle/lib/usb/libusb.a(dwhciframeschednsplit.o)
-                0x0000000000041918                CDWHCIFrameSchedulerNoSplit::s_pAllocator
- .bss           0x000000000004191c        0x4 ../circle/lib/usb/libusb.a(dwhciframeschedper.o)
-                0x000000000004191c                CDWHCIFrameSchedulerPeriodic::s_pAllocator
- .bss           0x0000000000041920        0x0 ../circle/lib/usb/libusb.a(dwhciregister.o)
- .bss           0x0000000000041920        0x0 ../circle/lib/usb/libusb.a(dwhcirootport.o)
- .bss           0x0000000000041920        0x4 ../circle/lib/usb/libusb.a(dwhcixferstagedata.o)
-                0x0000000000041920                CDWHCITransferStageData::s_pAllocator
- *fill*         0x0000000000041924        0x4 
- .bss           0x0000000000041928        0x8 ../circle/lib/usb/libusb.a(usbdevice.o)
-                0x0000000000041928                CUSBDevice::s_nDeviceAddressMap
- .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbdevicefactory.o)
- .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbendpoint.o)
- .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbfunction.o)
- .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbgamepadps3.o)
- .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbgamepadps4.o)
- .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbgamepadstandard.o)
- .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbgamepadswitchpro.o)
- .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbgamepadxbox360.o)
- .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbgamepadxboxone.o)
- .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbhiddevice.o)
- .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbhostcontroller.o)
- .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbkeyboard.o)
- .bss           0x0000000000041930        0x4 ../circle/lib/usb/libusb.a(usbmassdevice.o)
-                0x0000000000041930                CUSBBulkOnlyMassStorageDevice::s_nDeviceNumberMap
- .bss           0x0000000000041934        0x0 ../circle/lib/usb/libusb.a(usbmidi.o)
- .bss           0x0000000000041934        0x0 ../circle/lib/usb/libusb.a(usbmouse.o)
- .bss           0x0000000000041934        0x0 ../circle/lib/usb/libusb.a(usbprinter.o)
- .bss           0x0000000000041934        0x4 ../circle/lib/usb/libusb.a(usbrequest.o)
-                0x0000000000041934                CUSBRequest::s_pAllocator
- .bss           0x0000000000041938        0x0 ../circle/lib/usb/libusb.a(usbstandardhub.o)
- .bss           0x0000000000041938        0x0 ../circle/lib/usb/libusb.a(lan7800.o)
- .bss           0x0000000000041938        0x0 ../circle/lib/usb/libusb.a(smsc951x.o)
- .bss           0x0000000000041938        0x0 ../circle/lib/usb/libusb.a(usbbluetooth.o)
- .bss           0x0000000000041938        0x0 ../circle/lib/usb/libusb.a(usbcdcethernet.o)
- .bss           0x0000000000041938        0x0 ../circle/lib/usb/libusb.a(usbconfigparser.o)
- .bss           0x0000000000041938        0x0 ../circle/lib/usb/libusb.a(usbgamepad.o)
- .bss           0x0000000000041938        0x0 ../circle/lib/usb/libusb.a(usbstring.o)
- .bss           0x0000000000041938        0x0 ../circle/lib/input/libinput.a(keyboardbehaviour.o)
- .bss           0x0000000000041938        0x0 ../circle/lib/input/libinput.a(keymap.o)
- .bss           0x0000000000041938        0x0 ../circle/lib/input/libinput.a(mouse.o)
- .bss           0x0000000000041938        0x0 ../circle/lib/input/libinput.a(mousebehaviour.o)
- .bss           0x0000000000041938        0x0 ../circle/lib/fs/libfs.a(partitionmanager.o)
- .bss           0x0000000000041938        0x0 ../circle/lib/fs/libfs.a(partition.o)
- .bss           0x0000000000041938        0x4 ../circle/lib/net/libnet.a(netsubsystem.o)
-                0x0000000000041938                CNetSubSystem::s_pThis
- .bss           0x000000000004193c        0x0 ../circle/lib/net/libnet.a(nettask.o)
- .bss           0x000000000004193c        0x0 ../circle/lib/net/libnet.a(transportlayer.o)
- .bss           0x000000000004193c        0x0 ../circle/lib/net/libnet.a(networklayer.o)
- .bss           0x000000000004193c        0x0 ../circle/lib/net/libnet.a(linklayer.o)
- .bss           0x000000000004193c        0x0 ../circle/lib/net/libnet.a(netdevlayer.o)
- .bss           0x000000000004193c        0x0 ../circle/lib/net/libnet.a(phytask.o)
- .bss           0x000000000004193c        0x0 ../circle/lib/net/libnet.a(arphandler.o)
- .bss           0x000000000004193c        0x0 ../circle/lib/net/libnet.a(icmphandler.o)
- .bss           0x000000000004193c        0x0 ../circle/lib/net/libnet.a(routecache.o)
- .bss           0x000000000004193c        0x0 ../circle/lib/net/libnet.a(netconnection.o)
- .bss           0x000000000004193c        0x0 ../circle/lib/net/libnet.a(udpconnection.o)
- .bss           0x000000000004193c        0x4 ../circle/lib/net/libnet.a(tcpconnection.o)
-                0x000000000004193c                CTCPConnection::s_nConnections
- .bss           0x0000000000041940        0x0 ../circle/lib/net/libnet.a(retransmissionqueue.o)
- .bss           0x0000000000041940        0x0 ../circle/lib/net/libnet.a(retranstimeoutcalc.o)
- .bss           0x0000000000041940        0x0 ../circle/lib/net/libnet.a(tcprejector.o)
- .bss           0x0000000000041940        0x0 ../circle/lib/net/libnet.a(netconfig.o)
- .bss           0x0000000000041940        0x0 ../circle/lib/net/libnet.a(ipaddress.o)
- .bss           0x0000000000041940        0x0 ../circle/lib/net/libnet.a(netqueue.o)
- .bss           0x0000000000041940        0x0 ../circle/lib/net/libnet.a(checksumcalculator.o)
- .bss           0x0000000000041940        0x0 ../circle/lib/net/libnet.a(dhcpclient.o)
- .bss           0x0000000000041940        0x0 ../circle/lib/net/libnet.a(socket.o)
- .bss           0x0000000000041940        0x0 ../circle/lib/net/libnet.a(netsocket.o)
- .bss           0x0000000000041940        0x0 ../circle/lib/net/libnet.a(dnsclient.o)
- .bss           0x0000000000041940        0x0 ../circle/lib/sched/libsched.a(task.o)
- .bss           0x0000000000041940        0x4 ../circle/lib/sched/libsched.a(scheduler.o)
-                0x0000000000041940                CScheduler::s_pThis
- .bss           0x0000000000041944        0x0 ../circle/lib/sched/libsched.a(taskswitch.o)
- .bss           0x0000000000041944        0x0 ../circle/lib/sched/libsched.a(synchronizationevent.o)
- .bss           0x0000000000041944        0x4 ../circle/lib/libcircle.a(actled.o)
-                0x0000000000041944                CActLED::s_pThis
- .bss           0x0000000000041948        0x0 ../circle/lib/libcircle.a(assert.o)
- .bss           0x0000000000041948        0x0 ../circle/lib/libcircle.a(bcmpropertytags.o)
- .bss           0x0000000000041948        0x0 ../circle/lib/libcircle.a(classallocator.o)
- .bss           0x0000000000041948        0x0 ../circle/lib/libcircle.a(debug.o)
- .bss           0x0000000000041948        0x0 ../circle/lib/libcircle.a(device.o)
- .bss           0x0000000000041948        0x4 ../circle/lib/libcircle.a(devicenameservice.o)
-                0x0000000000041948                CDeviceNameService::s_This
- .bss           0x000000000004194c        0x4 ../circle/lib/libcircle.a(gpiopin.o)
-                0x000000000004194c                CGPIOPin::s_SpinLock
- .bss           0x0000000000041950        0x4 ../circle/lib/libcircle.a(koptions.o)
-                0x0000000000041950                CKernelOptions::s_pThis
- .bss           0x0000000000041954        0x4 ../circle/lib/libcircle.a(logger.o)
-                0x0000000000041954                CLogger::s_pThis
- .bss           0x0000000000041958        0x4 ../circle/lib/libcircle.a(machineinfo.o)
-                0x0000000000041958                CMachineInfo::s_pThis
- .bss           0x000000000004195c        0x0 ../circle/lib/libcircle.a(ptrarray.o)
- .bss           0x000000000004195c        0x0 ../circle/lib/libcircle.a(string.o)
- .bss           0x000000000004195c        0xc ../circle/lib/libcircle.a(sysinit.o)
-                0x000000000004195c                __dso_handle
- .bss           0x0000000000041968        0x4 ../circle/lib/libcircle.a(timer.o)
-                0x0000000000041968                CTimer::s_pThis
- .bss           0x000000000004196c        0x0 ../circle/lib/libcircle.a(util.o)
- .bss           0x000000000004196c        0x0 ../circle/lib/libcircle.a(util_fast.o)
- .bss           0x000000000004196c        0x8 ../circle/lib/libcircle.a(virtualgpiopin.o)
-                0x000000000004196c                CVirtualGPIOPin::s_nGPIOBaseAddress
-                0x0000000000041970                CVirtualGPIOPin::s_SpinLock
- .bss           0x0000000000041974        0x8 ../circle/lib/libcircle.a(chainboot.o)
- .bss           0x000000000004197c        0x0 ../circle/lib/libcircle.a(macaddress.o)
- .bss           0x000000000004197c       0x18 ../circle/lib/libcircle.a(netdevice.o)
-                0x000000000004197c                CNetDevice::s_nDeviceNumber
-                0x0000000000041980                CNetDevice::s_pDevice
- .bss           0x0000000000041994        0x0 ../circle/lib/libcircle.a(new.o)
- .bss           0x0000000000041994        0x0 ../circle/lib/libcircle.a(heapallocator.o)
- .bss           0x0000000000041994        0x4 ../circle/lib/libcircle.a(exceptionhandler.o)
-                0x0000000000041994                CExceptionHandler::s_pThis
- .bss           0x0000000000041998        0x0 ../circle/lib/libcircle.a(exceptionstub.o)
- .bss           0x0000000000041998        0x4 ../circle/lib/libcircle.a(memory.o)
-                0x0000000000041998                CMemorySystem::s_pThis
- .bss           0x000000000004199c        0x0 ../circle/lib/libcircle.a(pagetable.o)
- .bss           0x000000000004199c        0x0 ../circle/lib/libcircle.a(startup.o)
- .bss           0x000000000004199c       0x54 ../circle/lib/libcircle.a(synchronize.o)
- .bss           0x00000000000419f0        0x4 ../circle/lib/libcircle.a(interrupt.o)
-                0x00000000000419f0                CInterruptSystem::s_pThis
- .bss           0x00000000000419f4        0x0 ../circle/lib/libcircle.a(purecall.o)
- .bss           0x00000000000419f4        0x0 ../circle/lib/libcircle.a(alloc.o)
- .bss           0x00000000000419f4        0x4 ../circle/lib/libcircle.a(bcmmailbox.o)
-                0x00000000000419f4                CBcmMailBox::s_SpinLock
- .bss           0x00000000000419f8        0x0 ../circle/lib/libcircle.a(delayloop.o)
- .bss           0x00000000000419f8        0x0 ../circle/lib/libcircle.a(gpiomanager.o)
- .bss           0x00000000000419f8        0x0 ../circle/lib/libcircle.a(ptrlist.o)
- .bss           0x00000000000419f8        0x0 ../circle/lib/libcircle.a(pageallocator.o)
- .bss           0x00000000000419f8        0x0 system/brsys.a(FastScreen.o)
- .bss           0x00000000000419f8       0x24 system/brsys.a(UartMaxiSerialDevice.o)
-                0x00000000000419f8                testVal
-                0x00000000000419fc                testVal2
-                0x0000000000041a00                testVal3
-                0x0000000000041a04                isrRegCheck1
-                0x0000000000041a08                CUartMaxiSerialDevice::s_nInterruptUseCount
-                0x0000000000041a0c                CUartMaxiSerialDevice::s_pInterruptSystem
-                0x0000000000041a10                CUartMaxiSerialDevice::s_bUseFIQ
-                0x0000000000041a14                CUartMaxiSerialDevice::s_nInterruptDeviceMask
-                0x0000000000041a18                CUartMaxiSerialDevice::s_pThis
- .bss           0x0000000000041a1c        0x0 system/brsys.a(lowlib.o)
- .bss           0x0000000000041a1c        0x8 comms/brcomms.a(CommsManager.o)
-                0x0000000000041a1c                CommsManager::_pCommsManager
- .bss           0x0000000000041a24        0xc comms/brcomms.a(CommandHandler.o)
-                0x0000000000041a24                CommandHandler::_pSingletonCommandHandler
-                0x0000000000041a28                CommandHandler::_pHDLCSerialPutBytesFunction
-                0x0000000000041a2c                CommandHandler::_pHDLCSerialTxAvailableFunction
- .bss           0x0000000000041a30        0x8 comms/brcomms.a(MiniHDLC.o)
-                0x0000000000041a30                MiniHDLC::_frameTxFn
-                0x0000000000041a34                MiniHDLC::_frameRxFn
- .bss           0x0000000000041a38      0x258 TargetBus/brTargetBus.a(BusAccess.o)
-                0x0000000000041a38                BusAccessStatusInfo::_jsonBuf
- .bss           0x0000000000041c90        0x0 TargetBus/brTargetBus.a(BusAccess_Control.o)
- .bss           0x0000000000041c90        0x4 Hardware/brHardware.a(HwManager.o)
-                0x0000000000041c90                HwManager::_pThisInstance
- .bss           0x0000000000041c94        0x4 BusControlAPI/brBusAPI.a(BusControlAPI.o)
-                0x0000000000041c94                BusControlAPI::_pThisInstance
- .bss           0x0000000000041c98        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivsi3.o)
- .bss           0x0000000000041c98        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_dvmd_tls.o)
- .bss           0x0000000000041c98        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_aeabi_uldivmod.o)
- .bss           0x0000000000041c98        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivmoddi4.o)
- .bss           0x0000000000041c98        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzdi2.o)
- .bss           0x0000000000041c98        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzsi2.o)
- .bss           0x0000000000041c98        0x0 ../circle/lib/libcircle.a(bcmframebuffer.o)
- .bss           0x0000000000041c98        0x0 ../circle/lib/libcircle.a(chargenerator.o)
- .bss           0x0000000000041c98        0x0 ../circle/lib/libcircle.a(dmachannel.o)
- .bss           0x0000000000041c98        0x0 system/brsys.a(rdutils.o)
- .bss           0x0000000000041c98        0x0 system/brsys.a(jsmnR.o)
- .bss           0x0000000000041c98        0x0 system/brsys.a(PiWiring.o)
- .bss           0x0000000000041c98        0x0 system/brsys.a(lowlev.o)
- .bss           0x0000000000041c98        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_divsi3.o)
+ .bss           0x0000000000041908        0x0 main.o
+ .bss           0x0000000000041908        0x4 kernel.o
+                0x0000000000041908                CKernel::m_pKernel
+ .bss           0x000000000004190c        0x0 ../circle/lib/usb/libusb.a(dwhcidevice.o)
+ .bss           0x000000000004190c        0x4 ../circle/lib/usb/libusb.a(dwhciframeschednper.o)
+                0x000000000004190c                CDWHCIFrameSchedulerNonPeriodic::s_pAllocator
+ .bss           0x0000000000041910        0x4 ../circle/lib/usb/libusb.a(dwhciframeschednsplit.o)
+                0x0000000000041910                CDWHCIFrameSchedulerNoSplit::s_pAllocator
+ .bss           0x0000000000041914        0x4 ../circle/lib/usb/libusb.a(dwhciframeschedper.o)
+                0x0000000000041914                CDWHCIFrameSchedulerPeriodic::s_pAllocator
+ .bss           0x0000000000041918        0x0 ../circle/lib/usb/libusb.a(dwhciregister.o)
+ .bss           0x0000000000041918        0x0 ../circle/lib/usb/libusb.a(dwhcirootport.o)
+ .bss           0x0000000000041918        0x4 ../circle/lib/usb/libusb.a(dwhcixferstagedata.o)
+                0x0000000000041918                CDWHCITransferStageData::s_pAllocator
+ *fill*         0x000000000004191c        0x4 
+ .bss           0x0000000000041920        0x8 ../circle/lib/usb/libusb.a(usbdevice.o)
+                0x0000000000041920                CUSBDevice::s_nDeviceAddressMap
+ .bss           0x0000000000041928        0x0 ../circle/lib/usb/libusb.a(usbdevicefactory.o)
+ .bss           0x0000000000041928        0x0 ../circle/lib/usb/libusb.a(usbendpoint.o)
+ .bss           0x0000000000041928        0x0 ../circle/lib/usb/libusb.a(usbfunction.o)
+ .bss           0x0000000000041928        0x0 ../circle/lib/usb/libusb.a(usbgamepadps3.o)
+ .bss           0x0000000000041928        0x0 ../circle/lib/usb/libusb.a(usbgamepadps4.o)
+ .bss           0x0000000000041928        0x0 ../circle/lib/usb/libusb.a(usbgamepadstandard.o)
+ .bss           0x0000000000041928        0x0 ../circle/lib/usb/libusb.a(usbgamepadswitchpro.o)
+ .bss           0x0000000000041928        0x0 ../circle/lib/usb/libusb.a(usbgamepadxbox360.o)
+ .bss           0x0000000000041928        0x0 ../circle/lib/usb/libusb.a(usbgamepadxboxone.o)
+ .bss           0x0000000000041928        0x0 ../circle/lib/usb/libusb.a(usbhiddevice.o)
+ .bss           0x0000000000041928        0x0 ../circle/lib/usb/libusb.a(usbhostcontroller.o)
+ .bss           0x0000000000041928        0x0 ../circle/lib/usb/libusb.a(usbkeyboard.o)
+ .bss           0x0000000000041928        0x4 ../circle/lib/usb/libusb.a(usbmassdevice.o)
+                0x0000000000041928                CUSBBulkOnlyMassStorageDevice::s_nDeviceNumberMap
+ .bss           0x000000000004192c        0x0 ../circle/lib/usb/libusb.a(usbmidi.o)
+ .bss           0x000000000004192c        0x0 ../circle/lib/usb/libusb.a(usbmouse.o)
+ .bss           0x000000000004192c        0x0 ../circle/lib/usb/libusb.a(usbprinter.o)
+ .bss           0x000000000004192c        0x4 ../circle/lib/usb/libusb.a(usbrequest.o)
+                0x000000000004192c                CUSBRequest::s_pAllocator
+ .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbstandardhub.o)
+ .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(lan7800.o)
+ .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(smsc951x.o)
+ .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbbluetooth.o)
+ .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbcdcethernet.o)
+ .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbconfigparser.o)
+ .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbgamepad.o)
+ .bss           0x0000000000041930        0x0 ../circle/lib/usb/libusb.a(usbstring.o)
+ .bss           0x0000000000041930        0x0 ../circle/lib/input/libinput.a(keyboardbehaviour.o)
+ .bss           0x0000000000041930        0x0 ../circle/lib/input/libinput.a(keymap.o)
+ .bss           0x0000000000041930        0x0 ../circle/lib/input/libinput.a(mouse.o)
+ .bss           0x0000000000041930        0x0 ../circle/lib/input/libinput.a(mousebehaviour.o)
+ .bss           0x0000000000041930        0x0 ../circle/lib/fs/libfs.a(partitionmanager.o)
+ .bss           0x0000000000041930        0x0 ../circle/lib/fs/libfs.a(partition.o)
+ .bss           0x0000000000041930        0x4 ../circle/lib/net/libnet.a(netsubsystem.o)
+                0x0000000000041930                CNetSubSystem::s_pThis
+ .bss           0x0000000000041934        0x0 ../circle/lib/net/libnet.a(nettask.o)
+ .bss           0x0000000000041934        0x0 ../circle/lib/net/libnet.a(transportlayer.o)
+ .bss           0x0000000000041934        0x0 ../circle/lib/net/libnet.a(networklayer.o)
+ .bss           0x0000000000041934        0x0 ../circle/lib/net/libnet.a(linklayer.o)
+ .bss           0x0000000000041934        0x0 ../circle/lib/net/libnet.a(netdevlayer.o)
+ .bss           0x0000000000041934        0x0 ../circle/lib/net/libnet.a(phytask.o)
+ .bss           0x0000000000041934        0x0 ../circle/lib/net/libnet.a(arphandler.o)
+ .bss           0x0000000000041934        0x0 ../circle/lib/net/libnet.a(icmphandler.o)
+ .bss           0x0000000000041934        0x0 ../circle/lib/net/libnet.a(routecache.o)
+ .bss           0x0000000000041934        0x0 ../circle/lib/net/libnet.a(netconnection.o)
+ .bss           0x0000000000041934        0x0 ../circle/lib/net/libnet.a(udpconnection.o)
+ .bss           0x0000000000041934        0x4 ../circle/lib/net/libnet.a(tcpconnection.o)
+                0x0000000000041934                CTCPConnection::s_nConnections
+ .bss           0x0000000000041938        0x0 ../circle/lib/net/libnet.a(retransmissionqueue.o)
+ .bss           0x0000000000041938        0x0 ../circle/lib/net/libnet.a(retranstimeoutcalc.o)
+ .bss           0x0000000000041938        0x0 ../circle/lib/net/libnet.a(tcprejector.o)
+ .bss           0x0000000000041938        0x0 ../circle/lib/net/libnet.a(netconfig.o)
+ .bss           0x0000000000041938        0x0 ../circle/lib/net/libnet.a(ipaddress.o)
+ .bss           0x0000000000041938        0x0 ../circle/lib/net/libnet.a(netqueue.o)
+ .bss           0x0000000000041938        0x0 ../circle/lib/net/libnet.a(checksumcalculator.o)
+ .bss           0x0000000000041938        0x0 ../circle/lib/net/libnet.a(dhcpclient.o)
+ .bss           0x0000000000041938        0x0 ../circle/lib/net/libnet.a(socket.o)
+ .bss           0x0000000000041938        0x0 ../circle/lib/net/libnet.a(netsocket.o)
+ .bss           0x0000000000041938        0x0 ../circle/lib/net/libnet.a(dnsclient.o)
+ .bss           0x0000000000041938        0x0 ../circle/lib/sched/libsched.a(task.o)
+ .bss           0x0000000000041938        0x4 ../circle/lib/sched/libsched.a(scheduler.o)
+                0x0000000000041938                CScheduler::s_pThis
+ .bss           0x000000000004193c        0x0 ../circle/lib/sched/libsched.a(taskswitch.o)
+ .bss           0x000000000004193c        0x0 ../circle/lib/sched/libsched.a(synchronizationevent.o)
+ .bss           0x000000000004193c        0x4 ../circle/lib/libcircle.a(actled.o)
+                0x000000000004193c                CActLED::s_pThis
+ .bss           0x0000000000041940        0x0 ../circle/lib/libcircle.a(assert.o)
+ .bss           0x0000000000041940        0x0 ../circle/lib/libcircle.a(bcmpropertytags.o)
+ .bss           0x0000000000041940        0x0 ../circle/lib/libcircle.a(classallocator.o)
+ .bss           0x0000000000041940        0x0 ../circle/lib/libcircle.a(debug.o)
+ .bss           0x0000000000041940        0x0 ../circle/lib/libcircle.a(device.o)
+ .bss           0x0000000000041940        0x4 ../circle/lib/libcircle.a(devicenameservice.o)
+                0x0000000000041940                CDeviceNameService::s_This
+ .bss           0x0000000000041944        0x4 ../circle/lib/libcircle.a(gpiopin.o)
+                0x0000000000041944                CGPIOPin::s_SpinLock
+ .bss           0x0000000000041948        0x4 ../circle/lib/libcircle.a(koptions.o)
+                0x0000000000041948                CKernelOptions::s_pThis
+ .bss           0x000000000004194c        0x4 ../circle/lib/libcircle.a(logger.o)
+                0x000000000004194c                CLogger::s_pThis
+ .bss           0x0000000000041950        0x4 ../circle/lib/libcircle.a(machineinfo.o)
+                0x0000000000041950                CMachineInfo::s_pThis
+ .bss           0x0000000000041954        0x0 ../circle/lib/libcircle.a(ptrarray.o)
+ .bss           0x0000000000041954        0x0 ../circle/lib/libcircle.a(string.o)
+ .bss           0x0000000000041954        0xc ../circle/lib/libcircle.a(sysinit.o)
+                0x0000000000041954                __dso_handle
+ .bss           0x0000000000041960        0x4 ../circle/lib/libcircle.a(timer.o)
+                0x0000000000041960                CTimer::s_pThis
+ .bss           0x0000000000041964        0x0 ../circle/lib/libcircle.a(util.o)
+ .bss           0x0000000000041964        0x0 ../circle/lib/libcircle.a(util_fast.o)
+ .bss           0x0000000000041964        0x8 ../circle/lib/libcircle.a(virtualgpiopin.o)
+                0x0000000000041964                CVirtualGPIOPin::s_nGPIOBaseAddress
+                0x0000000000041968                CVirtualGPIOPin::s_SpinLock
+ .bss           0x000000000004196c        0x8 ../circle/lib/libcircle.a(chainboot.o)
+ .bss           0x0000000000041974        0x0 ../circle/lib/libcircle.a(macaddress.o)
+ .bss           0x0000000000041974       0x18 ../circle/lib/libcircle.a(netdevice.o)
+                0x0000000000041974                CNetDevice::s_nDeviceNumber
+                0x0000000000041978                CNetDevice::s_pDevice
+ .bss           0x000000000004198c        0x0 ../circle/lib/libcircle.a(new.o)
+ .bss           0x000000000004198c        0x0 ../circle/lib/libcircle.a(heapallocator.o)
+ .bss           0x000000000004198c        0x4 ../circle/lib/libcircle.a(exceptionhandler.o)
+                0x000000000004198c                CExceptionHandler::s_pThis
+ .bss           0x0000000000041990        0x0 ../circle/lib/libcircle.a(exceptionstub.o)
+ .bss           0x0000000000041990        0x4 ../circle/lib/libcircle.a(memory.o)
+                0x0000000000041990                CMemorySystem::s_pThis
+ .bss           0x0000000000041994        0x0 ../circle/lib/libcircle.a(pagetable.o)
+ .bss           0x0000000000041994        0x0 ../circle/lib/libcircle.a(startup.o)
+ .bss           0x0000000000041994       0x54 ../circle/lib/libcircle.a(synchronize.o)
+ .bss           0x00000000000419e8        0x4 ../circle/lib/libcircle.a(interrupt.o)
+                0x00000000000419e8                CInterruptSystem::s_pThis
+ .bss           0x00000000000419ec        0x0 ../circle/lib/libcircle.a(purecall.o)
+ .bss           0x00000000000419ec        0x0 ../circle/lib/libcircle.a(alloc.o)
+ .bss           0x00000000000419ec        0x4 ../circle/lib/libcircle.a(bcmmailbox.o)
+                0x00000000000419ec                CBcmMailBox::s_SpinLock
+ .bss           0x00000000000419f0        0x0 ../circle/lib/libcircle.a(delayloop.o)
+ .bss           0x00000000000419f0        0x0 ../circle/lib/libcircle.a(gpiomanager.o)
+ .bss           0x00000000000419f0        0x0 ../circle/lib/libcircle.a(ptrlist.o)
+ .bss           0x00000000000419f0        0x0 ../circle/lib/libcircle.a(pageallocator.o)
+ .bss           0x00000000000419f0        0x0 system/brsys.a(FastScreen.o)
+ .bss           0x00000000000419f0       0x24 system/brsys.a(UartMaxiSerialDevice.o)
+                0x00000000000419f0                testVal
+                0x00000000000419f4                testVal2
+                0x00000000000419f8                testVal3
+                0x00000000000419fc                isrRegCheck1
+                0x0000000000041a00                CUartMaxiSerialDevice::s_nInterruptUseCount
+                0x0000000000041a04                CUartMaxiSerialDevice::s_pInterruptSystem
+                0x0000000000041a08                CUartMaxiSerialDevice::s_bUseFIQ
+                0x0000000000041a0c                CUartMaxiSerialDevice::s_nInterruptDeviceMask
+                0x0000000000041a10                CUartMaxiSerialDevice::s_pThis
+ .bss           0x0000000000041a14        0x0 system/brsys.a(lowlib.o)
+ .bss           0x0000000000041a14        0x8 comms/brcomms.a(CommsManager.o)
+                0x0000000000041a14                CommsManager::_pCommsManager
+ .bss           0x0000000000041a1c        0xc comms/brcomms.a(CommandHandler.o)
+                0x0000000000041a1c                CommandHandler::_pSingletonCommandHandler
+                0x0000000000041a20                CommandHandler::_pHDLCSerialPutBytesFunction
+                0x0000000000041a24                CommandHandler::_pHDLCSerialTxAvailableFunction
+ .bss           0x0000000000041a28        0x8 comms/brcomms.a(MiniHDLC.o)
+                0x0000000000041a28                MiniHDLC::_frameTxFn
+                0x0000000000041a2c                MiniHDLC::_frameRxFn
+ .bss           0x0000000000041a30      0x258 TargetBus/brTargetBus.a(BusAccess.o)
+                0x0000000000041a30                BusAccessStatusInfo::_jsonBuf
+ .bss           0x0000000000041c88        0x0 TargetBus/brTargetBus.a(BusAccess_Control.o)
+ .bss           0x0000000000041c88        0x4 Hardware/brHardware.a(HwManager.o)
+                0x0000000000041c88                HwManager::_pThisInstance
+ .bss           0x0000000000041c8c        0x4 BusControlAPI/brBusAPI.a(BusControlAPI.o)
+                0x0000000000041c8c                BusControlAPI::_pThisInstance
+ .bss           0x0000000000041c90        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivsi3.o)
+ .bss           0x0000000000041c90        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_dvmd_tls.o)
+ .bss           0x0000000000041c90        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_aeabi_uldivmod.o)
+ .bss           0x0000000000041c90        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivmoddi4.o)
+ .bss           0x0000000000041c90        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzdi2.o)
+ .bss           0x0000000000041c90        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzsi2.o)
+ .bss           0x0000000000041c90        0x0 ../circle/lib/libcircle.a(bcmframebuffer.o)
+ .bss           0x0000000000041c90        0x0 ../circle/lib/libcircle.a(chargenerator.o)
+ .bss           0x0000000000041c90        0x0 ../circle/lib/libcircle.a(dmachannel.o)
+ .bss           0x0000000000041c90        0x0 system/brsys.a(rdutils.o)
+ .bss           0x0000000000041c90        0x0 system/brsys.a(jsmnR.o)
+ .bss           0x0000000000041c90        0x0 system/brsys.a(PiWiring.o)
+ .bss           0x0000000000041c90        0x0 system/brsys.a(lowlev.o)
+ .bss           0x0000000000041c90        0x0 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_divsi3.o)
  *(COMMON)
-                0x0000000000041c98                _end = .
+                0x0000000000041c90                _end = .
 LOAD main.o
 LOAD kernel.o
 START GROUP
@@ -3105,7 +3105,7 @@ LOAD /usr/lib/gcc/arm-none-eabi/6.3.1/../../../arm-none-eabi/lib/libm.a
 END GROUP
 OUTPUT(kernel.elf elf32-littlearm)
 
-.debug_info     0x0000000000000000    0xd4c8c
+.debug_info     0x0000000000000000    0xd4c94
  .debug_info    0x0000000000000000     0x6d3f main.o
  .debug_info    0x0000000000006d3f     0x73a9 kernel.o
  .debug_info    0x000000000000e0e8     0x7221 ../circle/lib/usb/libusb.a(dwhcidevice.o)
@@ -3211,25 +3211,25 @@ OUTPUT(kernel.elf elf32-littlearm)
  .debug_info    0x00000000000aaccc     0x2d91 system/brsys.a(UartMaxiSerialDevice.o)
  .debug_info    0x00000000000ada5d     0x184b system/brsys.a(lowlib.o)
  .debug_info    0x00000000000af2a8     0x2175 comms/brcomms.a(CommsManager.o)
- .debug_info    0x00000000000b141d     0x427a comms/brcomms.a(CommandHandler.o)
- .debug_info    0x00000000000b5697     0x2670 comms/brcomms.a(MiniHDLC.o)
- .debug_info    0x00000000000b7d07     0x3de3 TargetBus/brTargetBus.a(BusAccess.o)
- .debug_info    0x00000000000bbaea     0x7b55 TargetBus/brTargetBus.a(BusAccess_Control.o)
- .debug_info    0x00000000000c363f     0x51bf Hardware/brHardware.a(HwManager.o)
- .debug_info    0x00000000000c87fe     0x6134 BusControlAPI/brBusAPI.a(BusControlAPI.o)
- .debug_info    0x00000000000ce932       0xae /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivsi3.o)
- .debug_info    0x00000000000ce9e0       0xae /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_dvmd_tls.o)
- .debug_info    0x00000000000cea8e       0xaa /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_aeabi_uldivmod.o)
- .debug_info    0x00000000000ceb38      0x947 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivmoddi4.o)
- .debug_info    0x00000000000cf47f       0xae /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzdi2.o)
- .debug_info    0x00000000000cf52d       0xae /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzsi2.o)
- .debug_info    0x00000000000cf5db      0xf28 ../circle/lib/libcircle.a(bcmframebuffer.o)
- .debug_info    0x00000000000d0503      0x3ab ../circle/lib/libcircle.a(chargenerator.o)
- .debug_info    0x00000000000d08ae     0x20ee ../circle/lib/libcircle.a(dmachannel.o)
- .debug_info    0x00000000000d299c      0xfbd system/brsys.a(rdutils.o)
- .debug_info    0x00000000000d3959      0xe62 system/brsys.a(jsmnR.o)
- .debug_info    0x00000000000d47bb      0x423 system/brsys.a(PiWiring.o)
- .debug_info    0x00000000000d4bde       0xae /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_divsi3.o)
+ .debug_info    0x00000000000b141d     0x4282 comms/brcomms.a(CommandHandler.o)
+ .debug_info    0x00000000000b569f     0x2670 comms/brcomms.a(MiniHDLC.o)
+ .debug_info    0x00000000000b7d0f     0x3de3 TargetBus/brTargetBus.a(BusAccess.o)
+ .debug_info    0x00000000000bbaf2     0x7b55 TargetBus/brTargetBus.a(BusAccess_Control.o)
+ .debug_info    0x00000000000c3647     0x51bf Hardware/brHardware.a(HwManager.o)
+ .debug_info    0x00000000000c8806     0x6134 BusControlAPI/brBusAPI.a(BusControlAPI.o)
+ .debug_info    0x00000000000ce93a       0xae /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivsi3.o)
+ .debug_info    0x00000000000ce9e8       0xae /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_dvmd_tls.o)
+ .debug_info    0x00000000000cea96       0xaa /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_aeabi_uldivmod.o)
+ .debug_info    0x00000000000ceb40      0x947 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivmoddi4.o)
+ .debug_info    0x00000000000cf487       0xae /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzdi2.o)
+ .debug_info    0x00000000000cf535       0xae /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzsi2.o)
+ .debug_info    0x00000000000cf5e3      0xf28 ../circle/lib/libcircle.a(bcmframebuffer.o)
+ .debug_info    0x00000000000d050b      0x3ab ../circle/lib/libcircle.a(chargenerator.o)
+ .debug_info    0x00000000000d08b6     0x20ee ../circle/lib/libcircle.a(dmachannel.o)
+ .debug_info    0x00000000000d29a4      0xfbd system/brsys.a(rdutils.o)
+ .debug_info    0x00000000000d3961      0xe62 system/brsys.a(jsmnR.o)
+ .debug_info    0x00000000000d47c3      0x423 system/brsys.a(PiWiring.o)
+ .debug_info    0x00000000000d4be6       0xae /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_divsi3.o)
 
 .debug_abbrev   0x0000000000000000    0x1f09a
  .debug_abbrev  0x0000000000000000      0x5ef main.o
@@ -3357,7 +3357,7 @@ OUTPUT(kernel.elf elf32-littlearm)
  .debug_abbrev  0x000000000001eec1      0x1c5 system/brsys.a(PiWiring.o)
  .debug_abbrev  0x000000000001f086       0x14 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_divsi3.o)
 
-.debug_loc      0x0000000000000000    0x36cb6
+.debug_loc      0x0000000000000000    0x36cf6
  .debug_loc     0x0000000000000000       0x13 main.o
  .debug_loc     0x0000000000000013      0x148 kernel.o
  .debug_loc     0x000000000000015b     0x1b78 ../circle/lib/usb/libusb.a(dwhcidevice.o)
@@ -3462,19 +3462,19 @@ OUTPUT(kernel.elf elf32-littlearm)
  .debug_loc     0x0000000000028bd1     0x121d system/brsys.a(UartMaxiSerialDevice.o)
  .debug_loc     0x0000000000029dee      0x4f7 system/brsys.a(lowlib.o)
  .debug_loc     0x000000000002a2e5      0x4e7 comms/brcomms.a(CommsManager.o)
- .debug_loc     0x000000000002a7cc      0xe8f comms/brcomms.a(CommandHandler.o)
- .debug_loc     0x000000000002b65b      0x8b3 comms/brcomms.a(MiniHDLC.o)
- .debug_loc     0x000000000002bf0e     0x1504 TargetBus/brTargetBus.a(BusAccess.o)
- .debug_loc     0x000000000002d412     0x4f96 TargetBus/brTargetBus.a(BusAccess_Control.o)
- .debug_loc     0x00000000000323a8     0x1224 Hardware/brHardware.a(HwManager.o)
- .debug_loc     0x00000000000335cc      0x91c BusControlAPI/brBusAPI.a(BusControlAPI.o)
- .debug_loc     0x0000000000033ee8      0x19e /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivmoddi4.o)
- .debug_loc     0x0000000000034086      0x428 ../circle/lib/libcircle.a(bcmframebuffer.o)
- .debug_loc     0x00000000000344ae      0x194 ../circle/lib/libcircle.a(chargenerator.o)
- .debug_loc     0x0000000000034642     0x132a ../circle/lib/libcircle.a(dmachannel.o)
- .debug_loc     0x000000000003596c      0x7b7 system/brsys.a(rdutils.o)
- .debug_loc     0x0000000000036123      0x611 system/brsys.a(jsmnR.o)
- .debug_loc     0x0000000000036734      0x582 system/brsys.a(PiWiring.o)
+ .debug_loc     0x000000000002a7cc      0xecf comms/brcomms.a(CommandHandler.o)
+ .debug_loc     0x000000000002b69b      0x8b3 comms/brcomms.a(MiniHDLC.o)
+ .debug_loc     0x000000000002bf4e     0x1504 TargetBus/brTargetBus.a(BusAccess.o)
+ .debug_loc     0x000000000002d452     0x4f96 TargetBus/brTargetBus.a(BusAccess_Control.o)
+ .debug_loc     0x00000000000323e8     0x1224 Hardware/brHardware.a(HwManager.o)
+ .debug_loc     0x000000000003360c      0x91c BusControlAPI/brBusAPI.a(BusControlAPI.o)
+ .debug_loc     0x0000000000033f28      0x19e /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivmoddi4.o)
+ .debug_loc     0x00000000000340c6      0x428 ../circle/lib/libcircle.a(bcmframebuffer.o)
+ .debug_loc     0x00000000000344ee      0x194 ../circle/lib/libcircle.a(chargenerator.o)
+ .debug_loc     0x0000000000034682     0x132a ../circle/lib/libcircle.a(dmachannel.o)
+ .debug_loc     0x00000000000359ac      0x7b7 system/brsys.a(rdutils.o)
+ .debug_loc     0x0000000000036163      0x611 system/brsys.a(jsmnR.o)
+ .debug_loc     0x0000000000036774      0x582 system/brsys.a(PiWiring.o)
 
 .debug_aranges  0x0000000000000000     0x1140
  .debug_aranges
@@ -3726,7 +3726,7 @@ OUTPUT(kernel.elf elf32-littlearm)
  .debug_aranges
                 0x0000000000001120       0x20 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_divsi3.o)
 
-.debug_ranges   0x0000000000000000     0x58b8
+.debug_ranges   0x0000000000000000     0x58d0
  .debug_ranges  0x0000000000000000       0x10 main.o
  .debug_ranges  0x0000000000000010       0x30 kernel.o
  .debug_ranges  0x0000000000000040      0x318 ../circle/lib/usb/libusb.a(dwhcidevice.o)
@@ -3805,19 +3805,19 @@ OUTPUT(kernel.elf elf32-littlearm)
  .debug_ranges  0x0000000000003208      0x370 system/brsys.a(UartMaxiSerialDevice.o)
  .debug_ranges  0x0000000000003578       0x40 system/brsys.a(lowlib.o)
  .debug_ranges  0x00000000000035b8       0x20 comms/brcomms.a(CommsManager.o)
- .debug_ranges  0x00000000000035d8       0xd0 comms/brcomms.a(CommandHandler.o)
- .debug_ranges  0x00000000000036a8      0x128 comms/brcomms.a(MiniHDLC.o)
- .debug_ranges  0x00000000000037d0      0x500 TargetBus/brTargetBus.a(BusAccess.o)
- .debug_ranges  0x0000000000003cd0     0x14e0 TargetBus/brTargetBus.a(BusAccess_Control.o)
- .debug_ranges  0x00000000000051b0      0x2a8 Hardware/brHardware.a(HwManager.o)
- .debug_ranges  0x0000000000005458       0x78 BusControlAPI/brBusAPI.a(BusControlAPI.o)
- .debug_ranges  0x00000000000054d0       0x60 ../circle/lib/libcircle.a(bcmframebuffer.o)
- .debug_ranges  0x0000000000005530       0xc8 ../circle/lib/libcircle.a(dmachannel.o)
- .debug_ranges  0x00000000000055f8       0x18 system/brsys.a(rdutils.o)
- .debug_ranges  0x0000000000005610      0x1d0 system/brsys.a(jsmnR.o)
- .debug_ranges  0x00000000000057e0       0xd8 system/brsys.a(PiWiring.o)
+ .debug_ranges  0x00000000000035d8       0xe8 comms/brcomms.a(CommandHandler.o)
+ .debug_ranges  0x00000000000036c0      0x128 comms/brcomms.a(MiniHDLC.o)
+ .debug_ranges  0x00000000000037e8      0x500 TargetBus/brTargetBus.a(BusAccess.o)
+ .debug_ranges  0x0000000000003ce8     0x14e0 TargetBus/brTargetBus.a(BusAccess_Control.o)
+ .debug_ranges  0x00000000000051c8      0x2a8 Hardware/brHardware.a(HwManager.o)
+ .debug_ranges  0x0000000000005470       0x78 BusControlAPI/brBusAPI.a(BusControlAPI.o)
+ .debug_ranges  0x00000000000054e8       0x60 ../circle/lib/libcircle.a(bcmframebuffer.o)
+ .debug_ranges  0x0000000000005548       0xc8 ../circle/lib/libcircle.a(dmachannel.o)
+ .debug_ranges  0x0000000000005610       0x18 system/brsys.a(rdutils.o)
+ .debug_ranges  0x0000000000005628      0x1d0 system/brsys.a(jsmnR.o)
+ .debug_ranges  0x00000000000057f8       0xd8 system/brsys.a(PiWiring.o)
 
-.debug_line     0x0000000000000000    0x1485b
+.debug_line     0x0000000000000000    0x1485e
  .debug_line    0x0000000000000000      0x454 main.o
  .debug_line    0x0000000000000454      0x523 kernel.o
  .debug_line    0x0000000000000977      0x991 ../circle/lib/usb/libusb.a(dwhcidevice.o)
@@ -3923,25 +3923,25 @@ OUTPUT(kernel.elf elf32-littlearm)
  .debug_line    0x000000000000fd21      0x751 system/brsys.a(UartMaxiSerialDevice.o)
  .debug_line    0x0000000000010472      0x211 system/brsys.a(lowlib.o)
  .debug_line    0x0000000000010683      0x241 comms/brcomms.a(CommsManager.o)
- .debug_line    0x00000000000108c4      0x4d8 comms/brcomms.a(CommandHandler.o)
- .debug_line    0x0000000000010d9c      0x3f9 comms/brcomms.a(MiniHDLC.o)
- .debug_line    0x0000000000011195      0x717 TargetBus/brTargetBus.a(BusAccess.o)
- .debug_line    0x00000000000118ac     0x136b TargetBus/brTargetBus.a(BusAccess_Control.o)
- .debug_line    0x0000000000012c17      0x68f Hardware/brHardware.a(HwManager.o)
- .debug_line    0x00000000000132a6      0x55d BusControlAPI/brBusAPI.a(BusControlAPI.o)
- .debug_line    0x0000000000013803       0x78 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivsi3.o)
- .debug_line    0x000000000001387b       0x5b /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_dvmd_tls.o)
- .debug_line    0x00000000000138d6       0x5b /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_aeabi_uldivmod.o)
- .debug_line    0x0000000000013931      0x11a /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivmoddi4.o)
- .debug_line    0x0000000000013a4b       0x65 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzdi2.o)
- .debug_line    0x0000000000013ab0       0x68 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzsi2.o)
- .debug_line    0x0000000000013b18      0x17c ../circle/lib/libcircle.a(bcmframebuffer.o)
- .debug_line    0x0000000000013c94       0xbc ../circle/lib/libcircle.a(chargenerator.o)
- .debug_line    0x0000000000013d50      0x4d3 ../circle/lib/libcircle.a(dmachannel.o)
- .debug_line    0x0000000000014223      0x1db system/brsys.a(rdutils.o)
- .debug_line    0x00000000000143fe      0x297 system/brsys.a(jsmnR.o)
- .debug_line    0x0000000000014695      0x142 system/brsys.a(PiWiring.o)
- .debug_line    0x00000000000147d7       0x84 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_divsi3.o)
+ .debug_line    0x00000000000108c4      0x4db comms/brcomms.a(CommandHandler.o)
+ .debug_line    0x0000000000010d9f      0x3f9 comms/brcomms.a(MiniHDLC.o)
+ .debug_line    0x0000000000011198      0x717 TargetBus/brTargetBus.a(BusAccess.o)
+ .debug_line    0x00000000000118af     0x136b TargetBus/brTargetBus.a(BusAccess_Control.o)
+ .debug_line    0x0000000000012c1a      0x68f Hardware/brHardware.a(HwManager.o)
+ .debug_line    0x00000000000132a9      0x55d BusControlAPI/brBusAPI.a(BusControlAPI.o)
+ .debug_line    0x0000000000013806       0x78 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivsi3.o)
+ .debug_line    0x000000000001387e       0x5b /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_dvmd_tls.o)
+ .debug_line    0x00000000000138d9       0x5b /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_aeabi_uldivmod.o)
+ .debug_line    0x0000000000013934      0x11a /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_udivmoddi4.o)
+ .debug_line    0x0000000000013a4e       0x65 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzdi2.o)
+ .debug_line    0x0000000000013ab3       0x68 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_clzsi2.o)
+ .debug_line    0x0000000000013b1b      0x17c ../circle/lib/libcircle.a(bcmframebuffer.o)
+ .debug_line    0x0000000000013c97       0xbc ../circle/lib/libcircle.a(chargenerator.o)
+ .debug_line    0x0000000000013d53      0x4d3 ../circle/lib/libcircle.a(dmachannel.o)
+ .debug_line    0x0000000000014226      0x1db system/brsys.a(rdutils.o)
+ .debug_line    0x0000000000014401      0x297 system/brsys.a(jsmnR.o)
+ .debug_line    0x0000000000014698      0x142 system/brsys.a(PiWiring.o)
+ .debug_line    0x00000000000147da       0x84 /usr/lib/gcc/arm-none-eabi/6.3.1/libgcc.a(_divsi3.o)
 
 .debug_str      0x0000000000000000    0x1b3a5
  .debug_str     0x0000000000000000     0x7c61 main.o
