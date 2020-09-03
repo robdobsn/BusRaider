@@ -7,8 +7,11 @@
 #include "wgfxfont.h"
 #include "stdint.h"
 #include "stddef.h"
+#include <circle/screen.h>
 
 extern "C" WgfxFont __systemFont;
+
+#define DEPTH	16		// can be: 8, 16 or 32
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Window
@@ -148,21 +151,20 @@ private:
     static const int DISPLAY_FX_MAX_WINDOWS = 5;
     DisplayWindow _windows[DISPLAY_FX_MAX_WINDOWS];
 
+    // BCM frame buffer
+    CBcmFrameBuffer* _pBCMFrameBuffer;
+
     // Screen
     int _screenWidth;
     int _screenHeight;
     int _pitch;
     int _size;
-    uint8_t* _pfb;
+    uint8_t* _pRawFrameBuffer;
     DISPLAY_FX_COLOUR _screenBackground;
     DISPLAY_FX_COLOUR _screenForeground;
 
     // Console window
     int _consoleWinIdx;
-
-    // Set framebuffer
-    void setFramebuffer(uint8_t* p_framebuffer, int width, int height,
-                int pitch, int size);
 
     // Get framebuffer
     uint8_t* windowGetPFB(int winIdx, int col, int row);

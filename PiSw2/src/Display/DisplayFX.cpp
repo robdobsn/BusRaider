@@ -7,13 +7,14 @@
 #include "lowlib.h"
 #include "lowlev.h"
 
-DisplayFX::DisplayFX()
+DisplayFX::DisplayFX() :
+    _pBCMFrameBuffer(NULL)
 {
     _screenWidth = 0;
     _screenHeight = 0;
     _pitch = 0;
     _size = 0;
-    _pfb = NULL;
+    _pRawFrameBuffer = NULL;
     _consoleWinIdx = 0;
     _screenBackground = DISPLAY_FX_BLACK;
     _screenForeground = DISPLAY_FX_WHITE;
@@ -21,36 +22,72 @@ DisplayFX::DisplayFX()
 
 DisplayFX::~DisplayFX()
 {
-
+	delete _pBCMFrameBuffer;
 }
 
 bool DisplayFX::init(int displayWidth, int displayHeight)
 {
-    // Initialize framebuffer
-    microsDelay(10000);
-    // TODO 2020
-    // fb_release();
+    _pBCMFrameBuffer = new CBcmFrameBuffer (displayWidth, displayHeight, DEPTH);
+#if DEPTH == 8
+    m_pFrameBuffer->SetPalette (NORMAL_COLOR, NORMAL_COLOR16);
+    m_pFrameBuffer->SetPalette (HIGH_COLOR,   HIGH_COLOR16);
+    m_pFrameBuffer->SetPalette (HALF_COLOR,   HALF_COLOR16);
+#endif
+    if ((!_pBCMFrameBuffer) || (!_pBCMFrameBuffer->Initialize ()))
+    {
+        return FALSE;
+    }
 
-    uint8_t* p_fb = 0;
-    unsigned int fbsize = 0;
-    unsigned int pitch = 0;
+    if (_pBCMFrameBuffer->GetDepth () != DEPTH)
+    {
+        return FALSE;
+    }
 
-    unsigned int p_w = displayWidth;
-    unsigned int p_h = displayHeight;
-    unsigned int v_w = p_w;
-    unsigned int v_h = p_h;
+    _pRawFrameBuffer = (uint8_t*)_pBCMFrameBuffer->GetBuffer ();
+    _size   = _pBCMFrameBuffer->GetSize ();
+    _pitch  = _pBCMFrameBuffer->GetPitch ();
+    _screenWidth  = _pBCMFrameBuffer->GetWidth ();
+    _screenHeight = _pBCMFrameBuffer->GetHeight ();
 
-    // TODO 2020
-    // fb_init(p_w, p_h, v_w, v_h, 8, (void**)&p_fb, &fbsize, &pitch);
-    // fb_set_xterm_palette();
-    // if (fb_get_physical_buffer_size(&p_w, &p_h) != FB_SUCCESS) {
-    //     // uart_printf("fb_get_physical_buffer_size error\n");
-    // }
-    // uart_printf("physical fb size %dx%d\n", p_w, p_h);
+    // Ensure that each row is word-aligned so that we can safely use memcpyblk()
+    if (_pitch % sizeof (u32) != 0)
+    {
+        return FALSE;
+    }
+    _pitch /= sizeof (uint8_t);
 
-    microsDelay(10000);
-    setFramebuffer(p_fb, v_w, v_h, pitch, fbsize);
     screenClear();
+
+
+    // TODO 2020
+    // // Initialize framebuffer
+    // microsDelay(10000);
+    // // TODO 2020
+    // // fb_release();
+
+    // uint8_t* p_fb = 0;
+    // unsigned int fbsize = 0;
+    // unsigned int pitch = 0;
+
+    // unsigned int p_w = displayWidth;
+    // unsigned int p_h = displayHeight;
+    // unsigned int v_w = p_w;
+    // unsigned int v_h = p_h;
+
+    // // TODO 2020
+    // // fb_init(p_w, p_h, v_w, v_h, 8, (void**)&p_fb, &fbsize, &pitch);
+    // // fb_set_xterm_palette();
+    // // if (fb_get_physical_buffer_size(&p_w, &p_h) != FB_SUCCESS) {
+    // //     // uart_printf("fb_get_physical_buffer_size error\n");
+    // // }
+    // // uart_printf("physical fb size %dx%d\n", p_w, p_h);
+
+    // microsDelay(10000);
+    // setFramebuffer(p_fb, v_w, v_h, pitch, fbsize);
+    // screenClear();
+
+    // Initial full-screen window
+    windowSetup(0, 0, 0, displayWidth, displayHeight, -1, -1, 2, 2, NULL, -1, -1, 0, 0);
 
     // Reset window validity
     for (int i = 0; i < DISPLAY_FX_MAX_WINDOWS; i++)
@@ -64,8 +101,8 @@ bool DisplayFX::init(int displayWidth, int displayHeight)
 
 void DisplayFX::screenClear()
 {
-    uint8_t* pFrameBuf = _pfb;
-    uint8_t* pFBEnd = _pfb + _size;
+    uint8_t* pFrameBuf = _pRawFrameBuffer;
+    uint8_t* pFBEnd = pFrameBuf + _size;
     while (pFrameBuf < pFBEnd)
         *pFrameBuf++ = _screenBackground;
 }
@@ -201,7 +238,7 @@ void DisplayFX::windowSetPixel(int winIdx, int x, int y, int value, DISPLAY_FX_C
 
 void DisplayFX::getFramebuffer(int winIdx, FrameBufferInfo& frameBufferInfo)
 {
-    frameBufferInfo.pFB = _pfb;
+    frameBufferInfo.pFB = _pRawFrameBuffer;
     frameBufferInfo.pixelsWidth = _screenWidth;
     frameBufferInfo.pixelsHeight = _screenWidth;
     frameBufferInfo.pitch = _pitch;
@@ -215,26 +252,26 @@ void DisplayFX::getFramebuffer(int winIdx, FrameBufferInfo& frameBufferInfo)
 // Frame buffer
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void DisplayFX::setFramebuffer(uint8_t* p_framebuffer, int width, int height,
-                    int pitch, int size)
-{
-#ifdef USE_DMA_FOR_SCROLL
-    dma_init();
-#endif
+// void DisplayFX::setFramebuffer(uint8_t* p_framebuffer, int width, int height,
+//                     int pitch, int size)
+// {
+// #ifdef USE_DMA_FOR_SCROLL
+//     dma_init();
+// #endif
 
-    _pfb = p_framebuffer;
-    _screenWidth = width;
-    _screenHeight = height;
-    _pitch = pitch;
-    _size = size;
+//     _pfb = p_framebuffer;
+//     _screenWidth = width;
+//     _screenHeight = height;
+//     _pitch = pitch;
+//     _size = size;
 
-    // Initial full-screen window
-    windowSetup(0, 0, 0, width, height, -1, -1, 2, 2, NULL, -1, -1, 0, 0);
+//     // Initial full-screen window
+//     windowSetup(0, 0, 0, width, height, -1, -1, 2, 2, NULL, -1, -1, 0, 0);
 
-//TODO
-    // Render the cursor in console window
-    // cursorRender();
-}
+// //TODO
+//     // Render the cursor in console window
+//     // cursorRender();
+// }
 
 void DisplayFX::windowSetup(int winIdx, int tlx, int tly, int width, int height,
     int cellWidth, int cellHeight, int xPixScale, int yPixScale,
@@ -341,18 +378,18 @@ void DisplayFX::windowClear(int winIdx)
 
 uint8_t* DisplayFX::windowGetPFB(int winIdx, int col, int row)
 {
-    return _pfb + ((row * _windows[winIdx].cellHeight * _windows[winIdx].yPixScale) + _windows[winIdx].tly) * _pitch + 
+    return _pRawFrameBuffer + ((row * _windows[winIdx].cellHeight * _windows[winIdx].yPixScale) + _windows[winIdx].tly) * _pitch + 
             (col * _windows[winIdx].cellWidth * _windows[winIdx].xPixScale) + _windows[winIdx].tlx;
 }
 
 uint8_t* DisplayFX::screenGetPFBXY(int x, int y)
 {
-    return _pfb + y * _pitch + x;
+    return _pRawFrameBuffer + y * _pitch + x;
 }
 
 uint8_t* DisplayFX::windowGetPFBXY(int winIdx, int x, int y)
 {
-    return _pfb + 
+    return _pRawFrameBuffer + 
             ((y * _windows[winIdx].yPixScale) + _windows[winIdx].tly) * _pitch + 
             (x * _windows[winIdx].xPixScale) + _windows[winIdx].tlx;
 }
