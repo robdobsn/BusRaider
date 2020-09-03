@@ -155,8 +155,10 @@ bool CommsManager::performUpdate(const uint8_t* pData, unsigned dataLen)
 	CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "performUpdate dataLen %d firstByte 0x%02x last 0x%02x", 
             dataLen, pData[0], pData[dataLen-1]);
 
+    // Allow debug message to be output - maybe needs longer if sent to display
     microsDelay(100000);
 
+    // Restart with new firmware
 	EnableChainBoot(pData, dataLen);
 	return true;
 }

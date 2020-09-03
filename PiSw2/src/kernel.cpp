@@ -147,8 +147,10 @@ boolean CKernel::Initialize (void)
 	{
 		bOK = m_CommsManager.setup();
 		m_BusAccess.init();
+		m_TargetProgrammer.init();
 		m_HwManager.init();
 		m_BusControlAPI.init();
+		m_McManager.init();
 		m_BusRaiderApp.init();
 	}
 
@@ -195,8 +197,10 @@ TShutdownMode CKernel::Run (void)
 		// Service comms
 		m_CommsManager.service();
 		m_BusAccess.service();
+		m_TargetProgrammer.service();
 		m_HwManager.service();
 		m_BusControlAPI.service();
+		m_McManager.service();
 		m_BusRaiderApp.service();
 
 		// // I2C Service

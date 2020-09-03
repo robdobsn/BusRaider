@@ -20,8 +20,6 @@ public:
     void initUSB();
     void service();
 
-    uint32_t getDefaultAutoBaudRate() { return _autoBaudRates[0]; };
-
 private:
    
     bool _lastActivityTickerState;
@@ -80,15 +78,18 @@ private:
     static const int STATUS_UPDATE_TIME_MS = 1000;
     void clear();
     void statusDisplayUpdate();
-    static void serialPutStr(const uint8_t* pBuf, int len);
-    static uint32_t serialTxAvailable();
-    static void serviceGetFromSerial();
+
+    // Keyboard
     static void addUSBKeypressToBufferStatic(unsigned char ucModifiers, const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED]);
     void handleUSBKeypress(unsigned char ucModifiers, const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED]);
+
+    // Msg Rx from ESP32
     static bool handleRxMsgStatic(void* pObject, const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
                 char* pRespJson, unsigned maxRespLen);
     bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
                 char* pRespJson, unsigned maxRespLen);
+
+    // Status info from ESP32
     void storeESP32StatusInfo(const char* pCmdJson);
 
     // Key info
@@ -103,16 +104,6 @@ private:
     RingBufferPosn _keyInfoBufferPos;
     bool _inKeyboardRoutine;
 
-    // Auto-baud checks
-    uint32_t _autoBaudLastCheckMs;
-    uint32_t _autoBaudFailCount;
-    uint32_t _autoBaudCurBaudIdx;
-    uint32_t _autoBaudLastESP32CommsMs;
-    static const uint32_t _autoBaudRates[];
-    const uint32_t _autoBaudCheckPeriodMs = 1000;
-    const uint32_t _autoBaudFailCountToChangeBaud = 30;
-    const uint32_t _autoBaudMaxTimeBetweenESPCommsMs = 10000;
-
     // Tests
     enum testCodeRet_type {
         TEST_SELF_RET_OK,
@@ -120,14 +111,15 @@ private:
         TEST_SELF_RET_TIMEOUT
     };
 
-    void testSelf_busrq();
-    void testSelf_readSetBus(bool readMode);
-    void testSelf_detailedBus();
-    void testSelf_memory();
-    void testSelf_busBits();
-    bool testSelf_detailedBus_addr();
-    testCodeRet_type testSelf_commonLoop();
-    int _testSelf_curKeyAscii;
-    uint32_t _testSelf_startUpdateTimeMs;
+    // TODO 2020
+    // void testSelf_busrq();
+    // void testSelf_readSetBus(bool readMode);
+    // void testSelf_detailedBus();
+    // void testSelf_memory();
+    // void testSelf_busBits();
+    // bool testSelf_detailedBus_addr();
+    // testCodeRet_type testSelf_commonLoop();
+    // int _testSelf_curKeyAscii;
+    // uint32_t _testSelf_startUpdateTimeMs;
 
 };

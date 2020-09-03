@@ -20,8 +20,6 @@ static const char* MODULE_PREFIX = "BusRaiderApp";
 
 BusRaiderApp* BusRaiderApp::_pApp = NULL;
 
-const uint32_t BusRaiderApp::_autoBaudRates[] = { 1000000, 2000000 };
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Init
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -35,7 +33,6 @@ BusRaiderApp::BusRaiderApp(Display& display, CommsManager& commsManager, McManag
 {
     _pApp = this;
     _inKeyboardRoutine = false;
-    _autoBaudLastESP32CommsMs = 0;
     clear();
 }
 
@@ -43,8 +40,7 @@ void BusRaiderApp::init()
 {
     clear();
 
-    // Command Handler
-    // _commsManager.getCommandHandler().setPutToSerialCallback(serialPutStr, serialTxAvailable);
+    // Add socket for status handling
     _commsManager.getCommandHandler().commsSocketAdd(this, true, BusRaiderApp::handleRxMsgStatic, NULL, NULL);
 
 }
@@ -70,15 +66,10 @@ void BusRaiderApp::clear()
     _esp32LastMachineValid = false;
     _esp32LastMachineReqUs = 0;
 
-    // Auto baud
-    _autoBaudLastESP32CommsMs = 0;
-    _autoBaudLastCheckMs = 0;
-    _autoBaudFailCount = 0;
-    _autoBaudCurBaudIdx = 0;
-
-    // Tests
-    _testSelf_curKeyAscii = -1;
-    _testSelf_startUpdateTimeMs = 0;
+    // TODO 2020
+    // // Tests
+    // _testSelf_curKeyAscii = -1;
+    // _testSelf_startUpdateTimeMs = 0;
 }
 
 void BusRaiderApp::initUSB()
@@ -156,15 +147,8 @@ void BusRaiderApp::service()
         }
     }
 
-    // TODO 2020
-    // // Pump the characters from the UART to Command Handler
-    // serviceGetFromSerial();
-
     // Display status update
     statusDisplayUpdate();
-
-    // Service commmand handler
-    commandHandler.service();
 
     // Service keyboard
     if (!_inKeyboardRoutine)
@@ -176,40 +160,10 @@ void BusRaiderApp::service()
             _keyInfoBufferPos.hasGot();
             // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Keyattop %02x %02x %02x", pKeyInfo->rawKeys[0], pKeyInfo->rawKeys[1], pKeyInfo->rawKeys[2]);
             _inKeyboardRoutine = true;
-            _pApp->handleUSBKeypress(pKeyInfo->modifiers, pKeyInfo->rawKeys);
+            handleUSBKeypress(pKeyInfo->modifiers, pKeyInfo->rawKeys);
             _inKeyboardRoutine = false;
         }
     }
-
-    // TODO 2020
-    // // Check for communication with the ESP32 - if this fails for an extended period then try different baud rates
-    // if (isTimeout(millis(), _autoBaudLastCheckMs, _autoBaudCheckPeriodMs))
-    // {
-    //     // _display.consolePut("Checking auto baud\n");
-    //     if (isTimeout(millis(), _autoBaudLastESP32CommsMs, _autoBaudMaxTimeBetweenESPCommsMs))
-    //     {
-    //         // _display.consolePut("Not connected\n");
-    //         // Not connected so count failures
-    //         _autoBaudFailCount++;
-    //         if (_autoBaudFailCount > _autoBaudFailCountToChangeBaud)
-    //         {
-    //             _autoBaudFailCount = 0;
-                
-    //             // Get next baud
-    //             _autoBaudCurBaudIdx++;
-    //             if (_autoBaudCurBaudIdx >= sizeof(_autoBaudRates)/sizeof(_autoBaudRates[0]))
-    //                 _autoBaudCurBaudIdx = 0;
-                
-    //             // Try this rate
-    //             _uart.setup(_autoBaudRates[_autoBaudCurBaudIdx]);
-    //             _uart.clear();
-    //             char outStr[200];
-    //             ee_sprintf(outStr, "Not connected to ESP32: trying baud rate %d\n", _autoBaudRates[_autoBaudCurBaudIdx]);
-    //             _display.consolePut(outStr);
-    //         }
-    //     }
-    //     _autoBaudLastCheckMs = millis();
-    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -228,8 +182,6 @@ bool BusRaiderApp::handleRxMsgStatic(void* pObject, const char* pCmdJson,
 bool BusRaiderApp::handleRxMsg(const char* pCmdJson, const uint8_t* pParams, 
                 unsigned paramsLen, char* pRespJson, unsigned maxRespLen)
 {
-    _autoBaudLastESP32CommsMs = millis();
-
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "rxMsg %s", pCmdJson);
     #define MAX_CMD_NAME_STR 200
     char cmdName[MAX_CMD_NAME_STR+1];
@@ -241,13 +193,13 @@ bool BusRaiderApp::handleRxMsg(const char* pCmdJson, const uint8_t* pParams,
     if (strcasecmp(cmdName, "getStatus") == 0)
     {
         // Return the status of the Pi app
-        _pApp->getPiStatus(pRespJson, maxRespLen);
+        getPiStatus(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "queryESPHealthResp") == 0)
     {
         // Store ESP32 status info
-        _pApp->storeESP32StatusInfo(pCmdJson);
+        storeESP32StatusInfo(pCmdJson);
         return true;
     }
     else if (strcasecmp(cmdName, "queryCurMcResp") == 0)
@@ -256,7 +208,7 @@ bool BusRaiderApp::handleRxMsg(const char* pCmdJson, const uint8_t* pParams,
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "queryCurMcResp %s", pCmdJson);
         _mcManager.setupMachine(pCmdJson);
         // Got ok - no need to re-request
-        _pApp->_esp32LastMachineValid = true;
+        _esp32LastMachineValid = true;
         return true;
     }
     return false;
@@ -295,8 +247,6 @@ void BusRaiderApp::statusDisplayUpdate()
             strlcat(statusStr, tmpStr, MAX_STATUS_STR_LEN);
             strlcat(statusStr, "        ", MAX_STATUS_STR_LEN);
             int dispStatus = Display::STATUS_NORMAL;
-            if (isTimeout(millis(), _autoBaudLastESP32CommsMs, _autoBaudMaxTimeBetweenESPCommsMs))
-                dispStatus = Display::STATUS_FAIL;
             _display.statusPut(Display::STATUS_FIELD_ESP_VERSION, dispStatus, statusStr);
         }
 
@@ -441,50 +391,24 @@ void BusRaiderApp::statusDisplayUpdate()
     }
 }
 
-// TODO 2020
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// // Callbacks
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// // Function to send to uart from command handler
-// void BusRaiderApp::serialPutStr(const uint8_t* pBuf, int len)
-// {
-//     for (int i = 0; i < len; i++)
-//         _pApp->_uart.write(pBuf[i]);
-// }
-
-// uint32_t BusRaiderApp::serialTxAvailable()
-// {
-//     return _pApp->_uart.txAvailable();
-// }
-
-// void BusRaiderApp::serviceGetFromSerial()
-// {
-//     // Handle serial communication
-//     for (int rxCtr = 0; rxCtr < 10000; rxCtr++) {
-//         if (!_pApp->_uart.poll())
-//             break;
-//         // Handle char
-//         int ch = _pApp->_uart.read();
-//         uint8_t buf[2];
-//         buf[0] = ch;
-//         _pApp->_commandHandler.handleHDLCReceivedChars(buf, 1);
-//     }    
-// }
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// USB Keyboard
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void BusRaiderApp::addUSBKeypressToBufferStatic(unsigned char ucModifiers, 
                     const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED])
 {
-    // Place in ring buffer
-    if (_pApp->_keyInfoBufferPos.canPut())
-    {
-        KeyInfo* pKeyInfo = (&_pApp->_keyInfoBuffer[_pApp->_keyInfoBufferPos.posToPut()]);
-        for (int i = 0; i < CommandHandler::NUM_USB_KEYS_PASSED; i++)
-            pKeyInfo->rawKeys[i] = rawKeys[i];
-        pKeyInfo->modifiers = ucModifiers;
-        _pApp->_keyInfoBufferPos.hasPut();
-        // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_C);
-    }
+    // TODO 2020
+    // // Place in ring buffer
+    // if (_pApp->_keyInfoBufferPos.canPut())
+    // {
+    //     KeyInfo* pKeyInfo = (&_pApp->_keyInfoBuffer[_pApp->_keyInfoBufferPos.posToPut()]);
+    //     for (int i = 0; i < CommandHandler::NUM_USB_KEYS_PASSED; i++)
+    //         pKeyInfo->rawKeys[i] = rawKeys[i];
+    //     pKeyInfo->modifiers = ucModifiers;
+    //     _pApp->_keyInfoBufferPos.hasPut();
+    //     // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_C);
+    // }
 }
 
 void BusRaiderApp::handleUSBKeypress(unsigned char ucModifiers, 
