@@ -118,7 +118,10 @@ boolean CKernel::Initialize (void)
 
 		bOK = m_Logger.Initialize (pTarget);
 		if (bOK)
+		{
 			m_Logger.Write("Main", LogNotice, PROG_VERSION);
+		}
+
 	}
 
 	if (bOK)
@@ -145,7 +148,8 @@ boolean CKernel::Initialize (void)
 
 	if (bOK)
 	{
-		bOK = m_CommsManager.setup();
+		bOK = m_Display.init();
+		m_CommsManager.setup();
 		m_BusAccess.init();
 		m_TargetProgrammer.init();
 		m_HwManager.init();
@@ -154,11 +158,6 @@ boolean CKernel::Initialize (void)
 		m_BusRaiderApp.init();
 	}
 
-	// if (bOK)
-	// {
-	// 	bOK = m_I2CMonitor.setup();
-	// }
-	
 	return bOK;
 }
 
@@ -168,25 +167,7 @@ boolean CKernel::Initialize (void)
 
 TShutdownMode CKernel::Run (void)
 {
-	m_Logger.Write (MODULE_PREFIX, LogNotice, "Compile time: " __DATE__ " " __TIME__);
-
-	// Start I2CMonitor
-	// m_I2CMonitor.start();
-
-	// Opening message
-#ifdef IMPLEMENT_NETWORK_CONN
-	CString IPString;
-	m_Net.GetConfig ()->GetIPAddress ()->Format (&IPString);
-	m_Logger.Write (MODULE_PREFIX, LogNotice, "Open \"http://%s:%u/\" in your web browser!",
-			(const char *) IPString, HTTP_BOOT_PORT);
-	m_Logger.Write (MODULE_PREFIX, LogNotice,
-			"Try \"tftp -m binary %s -c put kernel.img\" from another computer!",
-			(const char *) IPString);
-
-	// Servers
-	new CHTTPBootServer (&m_Net, HTTP_BOOT_PORT, KERNEL_MAX_SIZE + 2000);
-	new CTFTPBootServer (&m_Net, KERNEL_MAX_SIZE);
-#endif
+	m_Logger.Write(MODULE_PREFIX, LogNotice, "Compile time: " __DATE__ " " __TIME__);
 
 	// Main loop
 	for (unsigned nCount = 0; !IsChainBootEnabled(); nCount++)
@@ -202,9 +183,6 @@ TShutdownMode CKernel::Run (void)
 		m_BusControlAPI.service();
 		m_McManager.service();
 		m_BusRaiderApp.service();
-
-		// // I2C Service
-		// m_I2CMonitor.service();
 	}
 
 	m_Logger.Write (MODULE_PREFIX, LogNotice, "Rebooting ...");

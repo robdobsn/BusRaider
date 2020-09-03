@@ -29,9 +29,9 @@ bool DisplayFX::init(int displayWidth, int displayHeight)
 {
     _pBCMFrameBuffer = new CBcmFrameBuffer (displayWidth, displayHeight, DEPTH);
 #if DEPTH == 8
-    m_pFrameBuffer->SetPalette (NORMAL_COLOR, NORMAL_COLOR16);
-    m_pFrameBuffer->SetPalette (HIGH_COLOR,   HIGH_COLOR16);
-    m_pFrameBuffer->SetPalette (HALF_COLOR,   HALF_COLOR16);
+    _pBCMFrameBuffer->SetPalette (NORMAL_COLOR, NORMAL_COLOR16);
+    _pBCMFrameBuffer->SetPalette (HIGH_COLOR,   HIGH_COLOR16);
+    _pBCMFrameBuffer->SetPalette (HALF_COLOR,   HALF_COLOR16);
 #endif
     if ((!_pBCMFrameBuffer) || (!_pBCMFrameBuffer->Initialize ()))
     {
@@ -54,37 +54,9 @@ bool DisplayFX::init(int displayWidth, int displayHeight)
     {
         return FALSE;
     }
-    _pitch /= sizeof (uint8_t);
+    // _pitch /= sizeof (uint8_t);
 
     screenClear();
-
-
-    // TODO 2020
-    // // Initialize framebuffer
-    // microsDelay(10000);
-    // // TODO 2020
-    // // fb_release();
-
-    // uint8_t* p_fb = 0;
-    // unsigned int fbsize = 0;
-    // unsigned int pitch = 0;
-
-    // unsigned int p_w = displayWidth;
-    // unsigned int p_h = displayHeight;
-    // unsigned int v_w = p_w;
-    // unsigned int v_h = p_h;
-
-    // // TODO 2020
-    // // fb_init(p_w, p_h, v_w, v_h, 8, (void**)&p_fb, &fbsize, &pitch);
-    // // fb_set_xterm_palette();
-    // // if (fb_get_physical_buffer_size(&p_w, &p_h) != FB_SUCCESS) {
-    // //     // uart_printf("fb_get_physical_buffer_size error\n");
-    // // }
-    // // uart_printf("physical fb size %dx%d\n", p_w, p_h);
-
-    // microsDelay(10000);
-    // setFramebuffer(p_fb, v_w, v_h, pitch, fbsize);
-    // screenClear();
 
     // Initial full-screen window
     windowSetup(0, 0, 0, displayWidth, displayHeight, -1, -1, 2, 2, NULL, -1, -1, 0, 0);
@@ -247,31 +219,6 @@ void DisplayFX::getFramebuffer(int winIdx, FrameBufferInfo& frameBufferInfo)
     frameBufferInfo.pixelsHeightWindow = _windows[winIdx].height;
     frameBufferInfo.bytesPerPixel = 1;
 }
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Frame buffer
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// void DisplayFX::setFramebuffer(uint8_t* p_framebuffer, int width, int height,
-//                     int pitch, int size)
-// {
-// #ifdef USE_DMA_FOR_SCROLL
-//     dma_init();
-// #endif
-
-//     _pfb = p_framebuffer;
-//     _screenWidth = width;
-//     _screenHeight = height;
-//     _pitch = pitch;
-//     _size = size;
-
-//     // Initial full-screen window
-//     windowSetup(0, 0, 0, width, height, -1, -1, 2, 2, NULL, -1, -1, 0, 0);
-
-// //TODO
-//     // Render the cursor in console window
-//     // cursorRender();
-// }
 
 void DisplayFX::windowSetup(int winIdx, int tlx, int tly, int width, int height,
     int cellWidth, int cellHeight, int xPixScale, int yPixScale,

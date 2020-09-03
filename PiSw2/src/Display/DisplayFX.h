@@ -7,11 +7,51 @@
 #include "wgfxfont.h"
 #include "stdint.h"
 #include "stddef.h"
-#include <circle/screen.h>
+#include <circle/bcmframebuffer.h>
+#include <circle/types.h>
 
 extern "C" WgfxFont __systemFont;
 
 #define DEPTH	16		// can be: 8, 16 or 32
+
+// really ((green) & 0x3F) << 5, but to have a 0-31 range for all colors
+#define COLOR16(red, green, blue)	  (((red) & 0x1F) << 11 \
+					| ((green) & 0x1F) << 6 \
+					| ((blue) & 0x1F))
+
+// BGRA (was RGBA with older firmware)
+#define COLOR32(red, green, blue, alpha)  (((blue) & 0xFF)       \
+					| ((green) & 0xFF) << 8  \
+					| ((red) & 0xFF)   << 16 \
+					| ((alpha) & 0xFF) << 24)
+
+#define BLACK_COLOR	0
+
+#if DEPTH == 8
+	typedef u8 TScreenColor;
+
+	#define NORMAL_COLOR16			COLOR16 (31, 31, 31)
+	#define HIGH_COLOR16			COLOR16 (31, 0, 0)
+	#define HALF_COLOR16			COLOR16 (0, 0, 31)
+
+	#define NORMAL_COLOR			1
+	#define HIGH_COLOR			2
+	#define HALF_COLOR			3
+#elif DEPTH == 16
+	typedef u16 TScreenColor;
+
+	#define NORMAL_COLOR			COLOR16 (31, 31, 31)
+	#define HIGH_COLOR			COLOR16 (31, 0, 0)
+	#define HALF_COLOR			COLOR16 (0, 0, 31)
+#elif DEPTH == 32
+	typedef u32 TScreenColor;
+
+	#define NORMAL_COLOR			COLOR32 (255, 255, 255, 255)
+	#define HIGH_COLOR			COLOR32 (255, 0, 0, 255)
+	#define HALF_COLOR			COLOR32 (0, 0, 255, 255)
+#else
+	#error DEPTH must be 8, 16 or 32
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Window
