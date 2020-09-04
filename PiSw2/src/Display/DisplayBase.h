@@ -6,6 +6,7 @@
 #include "stddef.h"
 #include "stdint.h"
 #include "wgfxfont.h"
+#include <circle/device.h>
 
 enum DISPLAY_FX_COLOUR
 {
@@ -41,21 +42,39 @@ public:
     int bytesPerPixel;
 };
 
-class DisplayBase
+class DisplayBase : public CDevice
 {
 public:
-    virtual void foreground(DISPLAY_FX_COLOUR colour) = 0;
-    virtual void background(DISPLAY_FX_COLOUR colour) = 0;
-    virtual void write(int col, int row, const char* pStr) = 0;
-    virtual void write(int col, int row, int ch) = 0;
-    virtual void setPixel(int x, int y, int value, DISPLAY_FX_COLOUR colour) = 0;
-    virtual void getFramebuffer(FrameBufferInfo& frameBufferInfo) = 0;
+    virtual ~DisplayBase()
+    {
+    }
+    virtual void foreground(DISPLAY_FX_COLOUR colour)
+    {
+    }
+    virtual void background(DISPLAY_FX_COLOUR colour)
+    {
+    }
+    virtual void write(int col, int row, const char* pStr)
+    {
+    }
+    virtual void write(int col, int row, int ch)
+    {
+    }
+    virtual void setPixel(int x, int y, int value, DISPLAY_FX_COLOUR colour)
+    {
+    }
+    virtual void getFrameBufferInfo(FrameBufferInfo& frameBufferInfo)
+    {
+    }
+    
     // Target
     virtual void targetLayout(
                     int pixX, int pixY, 
                     int cellX, int cellY, 
                     int xScale, int yScale,
                     WgfxFont* pFont, 
-                    int foreColour, int backColour);
+                    int foreColour, int backColour)
+    {
+    }
 
 };

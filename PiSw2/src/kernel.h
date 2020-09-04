@@ -15,7 +15,6 @@
 #include <circle/sched/scheduler.h>
 #include <circle/net/netsubsystem.h>
 #include <circle/types.h>
-#include "FastScreen.h"
 #include "UartMaxiSerialDevice.h"
 #include "CommsManager.h"
 #include "CommandHandler.h"
@@ -53,7 +52,6 @@ private:
 	CActLED			m_ActLED;
 	CKernelOptions		m_Options;
 	CDeviceNameService	m_DeviceNameService;
-	FastScreen		m_Screen;
 	CExceptionHandler	m_ExceptionHandler;
 	CInterruptSystem	m_Interrupt;
 	CUartMaxiSerialDevice		m_Serial;

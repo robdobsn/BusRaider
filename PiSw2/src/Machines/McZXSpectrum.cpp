@@ -179,7 +179,7 @@ void McZXSpectrum::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen
         {
             // Get the raw screen access
             FrameBufferInfo fbi;
-            pDisplay->getFramebuffer(fbi);
+            pDisplay->getFrameBufferInfo(fbi);
             _pFrameBuffer = fbi.pFBWindow;
             _pfbSize = fbi.pixelsWidth * fbi.pixelsHeight * fbi.bytesPerPixel;
             _framePitch = fbi.pitch;

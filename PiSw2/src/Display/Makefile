@@ -4,7 +4,7 @@
 
 CIRCLEHOME = ../../circle
 
-OBJS	= FastScreen.o Display.o DisplayFX.o
+OBJS	= Display.o DisplayFX.o
 
 INCLUDE	+= -I ../system -I ../fonts
 

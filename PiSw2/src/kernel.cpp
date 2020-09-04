@@ -64,7 +64,6 @@ CKernel* CKernel::m_pKernel = 0;
 
 CKernel::CKernel (void)
 :	m_Display(),
-	m_Screen (m_Options.GetWidth (), m_Options.GetHeight ()),
 	m_Serial (&m_Interrupt, false),
 	m_Timer (&m_Interrupt),
 	m_Logger (m_Options.GetLogLevel (), &m_Timer),
@@ -105,7 +104,7 @@ boolean CKernel::Initialize (void)
 
 	if (bOK)
 	{
-		bOK = m_Screen.Initialize ();
+		bOK = m_Display.init();
 	}
 
 	if (bOK)
@@ -113,7 +112,7 @@ boolean CKernel::Initialize (void)
 		CDevice *pTarget = m_DeviceNameService.GetDevice (m_Options.GetLogDevice (), FALSE);
 		if (pTarget == 0)
 		{
-			pTarget = &m_Screen;
+			pTarget = &m_Display;
 		}
 
 		bOK = m_Logger.Initialize (pTarget);
@@ -148,8 +147,7 @@ boolean CKernel::Initialize (void)
 
 	if (bOK)
 	{
-		bOK = m_Display.init();
-		m_CommsManager.setup();
+		bOK = m_CommsManager.setup();
 		m_BusAccess.init();
 		m_TargetProgrammer.init();
 		m_HwManager.init();
@@ -173,7 +171,7 @@ TShutdownMode CKernel::Run (void)
 	for (unsigned nCount = 0; !IsChainBootEnabled(); nCount++)
 	{
 		// Screen alive indicator
-		m_Screen.Rotor (0, micros() / 100000);
+		m_Display.rotor (0, micros() / 100000);
 
 		// Service comms
 		m_CommsManager.service();

@@ -38,7 +38,6 @@ Display::Display()
 
 Display::~Display()
 {
-
 }
 
 bool Display::init()
@@ -197,7 +196,7 @@ void Display::setPixel(int x, int y, int value, DISPLAY_FX_COLOUR colour)
     windowSetPixel(DISPLAY_WINDOW_TARGET, x, y, value, colour);
 }
 
-void Display::getFramebuffer(FrameBufferInfo& frameBufferInfo)
+void Display::getFrameBufferInfo(FrameBufferInfo& frameBufferInfo)
 {
     _displayFX.getFramebuffer(DISPLAY_WINDOW_TARGET, frameBufferInfo);
 }
@@ -218,6 +217,13 @@ void Display::consolePut(int ch)
     if (!_displayStarted)
         return; 
     _displayFX.consolePut(ch);
+}
+
+void Display::consolePut(const char* pBuffer, unsigned count)
+{
+    if (!_displayStarted)
+        return;
+    _displayFX.consolePut(pBuffer, count);
 }
 
 void Display::consoleForeground(DISPLAY_FX_COLOUR colour)
@@ -251,3 +257,10 @@ void Display::logDebug(const char* pSeverity, const char* pSource, const char* p
     consolePut(pMsg);
     consolePut("\n");
 }    
+
+// Implementation of CDevice base class
+int Display::Write(const void *pBuffer, size_t nCount)
+{
+    consolePut((const char*)pBuffer, nCount);
+    return nCount;
+}

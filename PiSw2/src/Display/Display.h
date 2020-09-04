@@ -43,7 +43,7 @@ public:
                     int cellX, int cellY, 
                     int xScale, int yScale,
                     WgfxFont* pFont, 
-                    int foreColour, int backColour);
+                    int foreColour, int backColour) override;
 
     // Status
     void statusPut(int statusElement, int statusType, const char* pStr);
@@ -58,6 +58,7 @@ public:
     // Console
     void consolePut(const char* pStr);
     void consolePut(int ch);
+    void consolePut(const char* pBuffer, unsigned count);
     void consoleForeground(DISPLAY_FX_COLOUR colour);
     int consoleGetWidth();
  
@@ -65,14 +66,24 @@ public:
     void logDebug(const char* pSeverity, const char* pSource, const char* pMsg);
 
     // Target window
-    void foreground(DISPLAY_FX_COLOUR colour);
-    void background(DISPLAY_FX_COLOUR colour);
-    void write(int col, int row, const char* pStr);
-    void write(int col, int row, int ch);
-    void setPixel(int x, int y, int value, DISPLAY_FX_COLOUR colour);
+    void foreground(DISPLAY_FX_COLOUR colour) override;
+    void background(DISPLAY_FX_COLOUR colour) override;
+    void write(int col, int row, const char* pStr) override;
+    void write(int col, int row, int ch) override;
+    void setPixel(int x, int y, int value, DISPLAY_FX_COLOUR colour) override;
+
+    // Implementations of CDevice base class
+    int Write(const void *pBuffer, size_t nCount);
 
     // RAW access
-    void getFramebuffer(FrameBufferInfo& frameBufferInfo);
+    void getFrameBufferInfo(FrameBufferInfo& frameBufferInfo) override;
+
+	/// \brief Displays rotating symbols in the upper right corner of the screen
+	/// \param nIndex Index of the rotor to be displayed (0..3)
+	/// \param nCount Phase (angle) of the current rotor symbol (0..3)
+	void rotor(unsigned nIndex, unsigned nCount)
+    {
+    }
 
 private:
 
