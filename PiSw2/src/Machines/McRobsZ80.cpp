@@ -53,13 +53,13 @@ McRobsZ80::McRobsZ80(McManager& mcManager) :
 }
 
 // Enable machine
-void McRobsZ80::enable()
+void McRobsZ80::enableMachine()
 {
     _screenBufferValid = false;
 }
 
 // Disable machine
-void McRobsZ80::disable()
+void McRobsZ80::disableMachine()
 {
 }
 

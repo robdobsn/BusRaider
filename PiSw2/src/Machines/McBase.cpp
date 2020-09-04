@@ -120,7 +120,7 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
 
     // Disable machine first
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "Disabling %s", getMachineName());
-    disable();
+    disableMachine();
     
     // Disable hardware initially
     getHwManager().disableAll();
@@ -156,7 +156,7 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
     }
 
     // Enable machine
-    enable();
+    enableMachine();
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "Enabling %s", getMachineName());
     return true;
 }

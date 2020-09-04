@@ -69,7 +69,7 @@ def test_SetMc():
             if curMachine != "":
                 assert(msgContent['machineCur'] == curMachine)
                 testStats['mcCount'] += 1
-        elif msgContent['cmdName'][:10] == "SetMachine":
+        elif msgContent['cmdName'] == "SetMcJsonResp":
             pass
         else:
             testStats["unknownMsgCount"] += 1
@@ -90,7 +90,7 @@ def test_SetMc():
     for i in range(testRepeatCount):
         for mc in testStats['mcList']:
             logger.debug(f"Setting machine {mc}")
-            commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
+            commonTest.sendFrame("SetMcJson", b"{\"cmdName\":\"SetMcJson\"}\0{\"name\":\"" + bytes(mc,'utf-8') + b"\"}\0")
             time.sleep(2)
             curMachine = mc
             commonTest.sendFrame("getStatus", b"{\"cmdName\":\"getStatus\"}\0")
@@ -126,7 +126,7 @@ def test_MemRW():
                 testStats["msgWrRespErrMissingCount"] += 1
         elif msgContent['cmdName'] == "busInitResp":
             pass
-        elif msgContent['cmdName'][:10] == "SetMachine":
+        elif msgContent['cmdName'] == "SetMcJsonResp":
             pass
         elif msgContent['cmdName'] == "clockHzSetResp":
             testStats["clockSetOk"] = True
@@ -144,7 +144,7 @@ def test_MemRW():
     testStats = {"msgRdOk": True, "msgRdRespCount":0, "msgWrRespCount": 0, "msgWrRespErrCount":0, "msgWrRespErrMissingCount":0, "unknownMsgCount":0, "clockSetOk":False}
     # Set serial terminal machine - to avoid conflicts with display updates, etc
     mc = "Serial Terminal ANSI"
-    commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
+    commonTest.sendFrame("SetMcJson", b"{\"cmdName\":\"SetMcJson\"}\0{\"name\":\"" + bytes(mc,'utf-8') + b"\"}\0")
     time.sleep(1)
     # Processor clock
     commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":250000}\0")
@@ -203,7 +203,7 @@ def test_BankedMemRW():
         elif msgContent['cmdName'] == "hwListResp" or \
             msgContent['cmdName'] == "hwEnableResp":
             pass
-        elif msgContent['cmdName'][:10] == "SetMachine":
+        elif msgContent['cmdName'] == "SetMcJsonResp":
             pass
         elif msgContent['cmdName'] == "ResetTargetResp":
             pass
@@ -223,7 +223,7 @@ def test_BankedMemRW():
     testStats = {"msgRdOk": True, "msgRdRespCount":0, "msgWrRespCount": 0, "msgWrRespErrCount":0, "msgWrRespErrMissingCount":0, "unknownMsgCount":0, "clockSetOk":False}
     # Set serial terminal machine - to avoid conflicts with display updates, etc
     mc = "Serial Terminal ANSI"
-    commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
+    commonTest.sendFrame("SetMcJson", b"{\"cmdName\":\"SetMcJson\"}\0{\"name\":\"" + bytes(mc,'utf-8') + b"\"}\0")
     time.sleep(1)
     # Processor clock
     commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":250000}\0")
@@ -308,7 +308,7 @@ def test_TraceJMP000():
                 testStats["msgWrRespErrMissingCount"] += 1
         elif msgContent['cmdName'] == "busInitResp":
             pass
-        elif msgContent['cmdName'][:10] == "SetMachine":
+        elif msgContent['cmdName'] == "SetMcJsonResp":
             pass
         elif msgContent['cmdName'] == "clockHzSetResp":
             testStats["clockSetOk"] = True
@@ -343,7 +343,7 @@ def test_TraceJMP000():
                  "unknownMsgCount":0, "isrCount":0, "tracerErrCount":0, "clrMaxUs":0, "tracerRespCount":0}
     # Set serial terminal machine - to avoid conflicts with display updates, etc
     mc = "Serial Terminal ANSI"
-    commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
+    commonTest.sendFrame("SetMcJson", b"{\"cmdName\":\"SetMcJson\"}\0{\"name\":\"" + bytes(mc,'utf-8') + b"\"}\0")
     time.sleep(1)
     # Processor clock
     commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":250000}\0")
@@ -430,7 +430,7 @@ def test_TraceJMP000():
 #                 testStats["msgWrRespErrMissingCount"] += 1
 #         elif msgContent['cmdName'] == "busInitResp":
 #             pass
-#         elif msgContent['cmdName'][:10] == "SetMachine":
+#         elif msgContent['cmdName'] == "SetMcJsonResp":
 #             pass
 #         elif msgContent['cmdName'] == "clockHzSetResp":
 #             testStats["clockSetOk"] = True
@@ -467,7 +467,7 @@ def test_TraceJMP000():
 
 #     # Set ZXSpectrum
 #     mc = "ZX Spectrum"
-#     commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\" }\0")
+#     commonTest.sendFrame("SetMcJson", b"{\"cmdName\":\"SetMcJson\"}\0{\"name\":\"" + bytes(mc,'utf-8') + b"\"}\0")
 #     time.sleep(1)
 
 #     # Check hardware list and set RAM
@@ -539,7 +539,7 @@ def test_TRS80Level1RomExec():
     def frameCallback(msgContent, logger):
         if msgContent['cmdName'] == "busStatusResp":
             testStats['clrMaxUs'] = max(testStats['clrMaxUs'], msgContent['clrMaxUs'])
-        elif "SetMachine=" in msgContent['cmdName'] or \
+        elif "SetMcJsonResp" in msgContent['cmdName'] or \
                     msgContent['cmdName'] == 'ClearTargetResp' or \
                     msgContent['cmdName'] == 'FileTargetResp':
             assert(msgContent['err'] == 'ok')
@@ -574,7 +574,7 @@ def test_TRS80Level1RomExec():
     # Set TRS80
     mc = "TRS80"
     TRS80ScreenAddr = '3c40'
-    commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\"}\0")
+    commonTest.sendFrame("SetMcJson", b"{\"cmdName\":\"SetMcJson\"}\0{\"name\":\"" + bytes(mc,'utf-8') + b"\"}\0")
     time.sleep(1)
 
     # Processor clock
@@ -635,7 +635,7 @@ def test_GalaxiansExec():
             testStats['clrMaxUs'] = max(testStats['clrMaxUs'], msgContent['clrMaxUs'])
             testStats['iorqWr'] = msgContent['iorqWr']
             logger.debug(msgContent)
-        elif "SetMachine=" in msgContent['cmdName'] or \
+        elif "SetMcJsonResp" in msgContent['cmdName'] or \
                     msgContent['cmdName'] == 'ClearTargetResp' or \
                     msgContent['cmdName'] == 'FileTargetResp':
             assert(msgContent['err'] == 'ok')
@@ -674,7 +674,7 @@ def test_GalaxiansExec():
     # Set TRS80
     mc = "TRS80"
     TRS80ScreenAddr = '3c40'
-    commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\"}\0")
+    commonTest.sendFrame("SetMcJson", b"{\"cmdName\":\"SetMcJson\"}\0{\"name\":\"" + bytes(mc,'utf-8') + b"\"}\0")
     time.sleep(1)
 
     # Processor clock
@@ -751,7 +751,7 @@ def test_stepSingle_RequiresPaging():
             testStats['mreqWr'] = msgContent['mreqWr']
             testStats['mreqRd'] = msgContent['mreqRd']
             logger.debug(msgContent)
-        elif "SetMachine=" in msgContent['cmdName'] or \
+        elif "SetMcJsonResp" in msgContent['cmdName'] or \
                     msgContent['cmdName'] == 'ClearTargetResp' or \
                     msgContent['cmdName'] == 'targetResetResp' or \
                     msgContent['cmdName'] == 'targetTrackerOnResp' or \
@@ -802,7 +802,7 @@ def test_stepSingle_RequiresPaging():
             "iorqRd":0, "iorqWr":0, "mreqRd":0, "mreqWr":0, "AFOK": False, "regsOk": False, "stepCount":0}
 
     mc = "Serial Terminal ANSI"
-    commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\"}\0")
+    commonTest.sendFrame("SetMcJson", b"{\"cmdName\":\"SetMcJson\"}\0{\"name\":\"" + bytes(mc,'utf-8') + b"\"}\0")
     time.sleep(.2)
 
     # Send program and check it
@@ -861,7 +861,7 @@ def test_regGetTest_requiresPaging():
             testStats['mreqWr'] = msgContent['mreqWr']
             testStats['mreqRd'] = msgContent['mreqRd']
             logger.debug(msgContent)
-        elif "SetMachine=" in msgContent['cmdName'] or \
+        elif "SetMcJsonResp" in msgContent['cmdName'] or \
                     msgContent['cmdName'] == 'ClearTargetResp' or \
                     msgContent['cmdName'] == 'targetResetResp' or \
                     msgContent['cmdName'] == 'targetTrackerOnResp' or \
@@ -935,7 +935,7 @@ def test_regGetTest_requiresPaging():
             "iorqRd":0, "iorqWr":0, "mreqRd":0, "mreqWr":0, "regsOk": True}
 
     mc = "Serial Terminal ANSI"
-    commonTest.sendFrame("SetMachine", b"{\"cmdName\":\"SetMachine=" + bytes(mc,'utf-8') + b"\"}\0")
+    commonTest.sendFrame("SetMcJson", b"{\"cmdName\":\"SetMcJson\"}\0{\"name\":\"" + bytes(mc,'utf-8') + b"\"}\0")
     time.sleep(1.5)
 
     # Send program

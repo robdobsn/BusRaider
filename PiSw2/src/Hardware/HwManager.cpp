@@ -49,6 +49,7 @@ HwManager::HwManager(CommandHandler& commandHandler, BusAccess& busAccess) :
     _commandHandler(commandHandler), _busAccess(busAccess)
 {
     _pThisInstance = this;
+    // Sockets
     _busSocketId = -1;
     _commsSocketId = -1;
     _memoryEmulationMode = false;
@@ -258,7 +259,7 @@ BR_RETURN_TYPE HwManager::blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, 
     // Check if bus access is available
     forceMirrorAccess = forceMirrorAccess || (!busAccessAvailable());
 
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "blockRead forceMirrorAccess %d", forceMirrorAccess);
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "blockRead forceMirrorAccess %d", forceMirrorAccess);
 
     // Iterate hardware
     BR_RETURN_TYPE retVal = BR_OK;

@@ -8,6 +8,13 @@
 class TermH19 : public TermEmu
 {
 public:
+    TermH19();
+    virtual ~TermH19();
+    virtual void init(uint32_t cols, uint32_t rows) override;
+    virtual void putChar(uint32_t ch) override;
+    virtual void reset() override;
+
+private:
     enum InputMode
     {
         Normal,
@@ -42,9 +49,6 @@ public:
     bool _ansiMode;
     uint32_t _rowsMain;
 
-    virtual void init(uint32_t cols, uint32_t rows);
-    virtual void putChar(uint32_t ch);
-    virtual void reset();
     virtual void setAnsiMode(bool on);
 
     // character handling
@@ -53,14 +57,11 @@ public:
 
     inline virtual void scroll()
     {
-        if (!_pCharBuffer)
-            return;
-        
         for (unsigned int y = 0; y < (_rowsMain - 1); ++y)
         {
             for (unsigned int x = 0; x < _cols; ++x)
             {
-                _pCharBuffer[y*_cols+x] = _pCharBuffer[(y + 1)*_cols+x];
+                getTermChar(y*_cols+x) = getTermChar((y + 1)*_cols+x);
             }
         }
 

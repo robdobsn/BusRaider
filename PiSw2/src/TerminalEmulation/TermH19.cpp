@@ -5,7 +5,15 @@
 #include "ascii.h"
 
 // Log string
-const char *FromTermH19 = "TermH19";
+static const char *MODULE_PREFIX = "TermH19";
+
+TermH19::TermH19()
+{
+}
+
+TermH19::~TermH19()
+{
+}
 
 void TermH19::init(uint32_t cols, uint32_t rows)
 {
@@ -322,7 +330,7 @@ void TermH19::putChar(uint32_t ch)
             break;
 
         default:
-            LogWrite(FromTermH19, LOG_DEBUG, "UnhandledESC %02x", ch);
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "UnhandledESC %02x", ch);
             break;
         }
     }
@@ -451,7 +459,7 @@ void TermH19::putChar(uint32_t ch)
             else
             {
                 /// \todo check to see how a real h19 handles this.
-                LogWrite(FromTermH19, LOG_DEBUG, "DCA invalid Y: %d\n", pos);
+                LogWrite(MODULE_PREFIX, LOG_DEBUG, "DCA invalid Y: %d\n", pos);
             }
 
             mode_m = DCA_2;
@@ -505,7 +513,7 @@ void TermH19::processCR()
 /// \todo - verify line 25 handling. make sure it doesn't clear line 25.
 void TermH19::processLF()
 {
-    // LogWrite(FromTermH19, LOG_DEBUG, "processLF row %d col %d rowsMain %d", _cursor._row, _cursor._col, _rowsMain);
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "processLF row %d col %d rowsMain %d", _cursor._row, _cursor._col, _rowsMain);
     if (onLine25())
     {
         // On line 25, don't do anything
@@ -609,9 +617,6 @@ void TermH19::cursorUp()
 ///
 void TermH19::reverseIndex()
 {
-    if (!_pCharBuffer)
-        return;
-
     // Check for being on line 25
     if (onLine25())
     {
@@ -632,7 +637,7 @@ void TermH19::reverseIndex()
         {
             for (unsigned int x = 0; x < _cols; ++x)
             {
-                _pCharBuffer[y * _cols + x] = _pCharBuffer[(y - 1) * _cols + x];
+                getTermChar(y * _cols + x) = getTermChar((y - 1) * _cols + x);
             }
         }
 
@@ -745,14 +750,11 @@ void TermH19::eraseEL()
 ///
 void TermH19::eraseBOL()
 {
-    if (!_pCharBuffer)
-        return;
-
     int x = _cursor._col;
 
     do
     {
-        _pCharBuffer[_cursor._row * _cols + x]._charCode = ascii::SP;
+        getTermChar(_cursor._row * _cols + x)._charCode = ascii::SP;
         x--;
     } while (x >= 0);
 
@@ -763,13 +765,11 @@ void TermH19::eraseBOL()
 ///
 void TermH19::eraseEOL()
 {
-    if (!_pCharBuffer)
-        return;
     unsigned int x = _cursor._col;
 
     do
     {
-        _pCharBuffer[_cursor._row * _cols + x]._charCode = ascii::SP;
+        getTermChar(_cursor._row * _cols + x)._charCode = ascii::SP;
         x++;
     } while (x < _cols);
 
@@ -780,9 +780,6 @@ void TermH19::eraseEOL()
 ///
 void TermH19::insertLine()
 {
-    if (!_pCharBuffer)
-        return;
-
     /// \todo - Determine how the REAL H89 does this on Line 25, the ROM listing is not clear.
     /// - a real H19 messes up with either an insert or delete line on line 25.
     /// - note tested with early H19, newer H19 roms should have this fixed.
@@ -790,7 +787,7 @@ void TermH19::insertLine()
     {
         for (unsigned int x = 0; x < _cols; ++x)
         {
-            _pCharBuffer[y * _cols + x] = _pCharBuffer[(y - 1) * _cols + x];
+            getTermChar(y * _cols + x) = getTermChar((y - 1) * _cols + x);
         }
     }
 
@@ -808,9 +805,6 @@ void TermH19::insertLine()
 /// - note tested with early H19, newer H19 roms should have this fixed.
 void TermH19::deleteLine()
 {
-    if (!_pCharBuffer)
-        return;
-
     // Go to the beginning of line
     _cursor._col = 0;
 
@@ -819,7 +813,7 @@ void TermH19::deleteLine()
     {
         for (unsigned int x = 0; x < _cols; ++x)
         {
-            _pCharBuffer[y * _cols + x] = _pCharBuffer[(y + 1) * _cols + x];
+            getTermChar(y * _cols + x) = getTermChar((y + 1) * _cols + x);
         }
     }
 
@@ -832,30 +826,25 @@ void TermH19::deleteLine()
 ///
 void TermH19::deleteChar()
 {
-    if (!_pCharBuffer)
-        return;
-
     // move all character in.
     for (unsigned int x = _cursor._col; x < (_cols - 1); x++)
     {
-        _pCharBuffer[_cursor._row * _cols + x] = _pCharBuffer[_cursor._row * _cols + x + 1];
+        getTermChar(_cursor._row * _cols + x) = getTermChar(_cursor._row * _cols + x + 1);
     }
 
     // clear the last column
-    _pCharBuffer[_cursor._row * _cols + _cols - 1]._charCode = ascii::SP;
+    getTermChar(_cursor._row * _cols + _cols - 1)._charCode = ascii::SP;
     _cursor._updated = true;
 }
 
 void TermH19::eraseLine(unsigned int line)
 {
-    if (!_pCharBuffer)
-        return;
     if (line >= _rows)
         return;
 
     for (unsigned int x = 0; x < _cols; ++x)
     {
-        _pCharBuffer[line * _cols + x]._charCode = ascii::SP;
+        getTermChar(line * _cols + x)._charCode = ascii::SP;
     }
 };
 
@@ -869,9 +858,6 @@ void TermH19::processEnableLine25()
 
 void TermH19::displayCharacter(unsigned int ch)
 {
-    if (!_pCharBuffer)
-        return;
-
     // when in graphic mode, use this lookup table to determine character to display,
     // note: although entries 0 to 31 are defined, they are not used, since the control
     // characters are specifically checked in the switch statement.
@@ -886,12 +872,13 @@ void TermH19::displayCharacter(unsigned int ch)
             0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
             16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 32};
 
-    unsigned int symbol;
+    unsigned int symbol = 0;
 
     if (graphicMode_m)
     {
         // Look up symbol
-        symbol = graphicLookup[ch];
+        if (ch < sizeof(graphicLookup))
+            symbol = graphicLookup[ch];
     }
     else
     {
@@ -907,7 +894,7 @@ void TermH19::displayCharacter(unsigned int ch)
 
     if (!((_cursor._col <= _cols) && (_cursor._row < _rows)))
     {
-        LogWrite(FromTermH19, LOG_ERROR, "Invalid X, Y: %d, %d\n", _cursor._col, _cursor._row);
+        LogWrite(MODULE_PREFIX, LOG_ERROR, "Invalid X, Y: %d, %d\n", _cursor._col, _cursor._row);
         _cursor._col = 0;
         _cursor._row = 0;
     }
@@ -916,7 +903,7 @@ void TermH19::displayCharacter(unsigned int ch)
     {
         for (unsigned int x = (_cols - 1); x > _cursor._col; --x)
         {
-            _pCharBuffer[_cursor._row * _cols + x] = _pCharBuffer[_cursor._row * _cols + x - 1];
+            getTermChar(_cursor._row * _cols + x) = getTermChar(_cursor._row * _cols + x - 1);
         }
     }
 
@@ -947,7 +934,7 @@ void TermH19::displayCharacter(unsigned int ch)
         }
     }
 
-    _pCharBuffer[_cursor._row * _cols + _cursor._col]._charCode = symbol;
+    getTermChar(_cursor._row * _cols + _cursor._col)._charCode = symbol;
     _cursor._col++;
 
     _cursor._updated = true;

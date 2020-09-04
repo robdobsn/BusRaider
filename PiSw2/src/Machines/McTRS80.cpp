@@ -60,7 +60,7 @@ McTRS80::McTRS80(McManager& mcManager) :
 }
 
 // Enable machine
-void McTRS80::enable()
+void McTRS80::enableMachine()
 {
     // Invalidate screen buffer
     _screenBufferValid = false;
@@ -68,7 +68,7 @@ void McTRS80::enable()
 }
 
 // Disable machine
-void McTRS80::disable()
+void McTRS80::disableMachine()
 {
 }
 

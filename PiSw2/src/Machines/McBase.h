@@ -41,10 +41,14 @@ public:
     virtual const McVariantTable& getDescriptorTable();
 
     // Enable machine
-    virtual void enable() = 0;
+    virtual void enableMachine()
+    {
+    };
 
     // Disable machine
-    virtual void disable() = 0;
+    virtual void disableMachine()
+    {
+    };
 
     // Service
     virtual void service()

@@ -104,11 +104,36 @@ public:
     {
         // LogWrite("TermEmu", LOG_DEBUG, "%s", pStr);
     }
+
+    inline TermChar& getTermChar(uint32_t idx)
+    {
+        if (idx >= _charBufferSize)
+            return _fallbackTermChar;
+        return _pCharBuffer[idx];
+    }
+
+    //     const TermChar& getTermChar(uint32_t idx)
+    // {
+    //     static const TermChar defaultChar;
+    //     if (idx >= _charBufferSize)
+    //         return defaultChar;
+    //     return _pCharBuffer[idx];
+    // }
+
+    // void setTermChar(uint32_t idx, TermChar& termChar)
+    // {
+    //     static TermChar defaultChar;
+    //     if (idx >= _charBufferSize)
+    //         return defaultChar;
+    //     return _pCharBuffer[idx];
+    // }
+
     
 public:
     TermChar* _pCharBuffer;
+    uint32_t _charBufferSize;
     uint32_t _cols;
     uint32_t _rows;
     TermCursor _cursor;
-
+    TermChar _fallbackTermChar;
 };

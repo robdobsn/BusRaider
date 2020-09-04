@@ -91,6 +91,9 @@ int CommandHandler::commsSocketAdd(void* pSourceObject,
     _commsSockets[_commsSocketCount].set(pSourceObject, enabled, handleRxMsg, otaUpdateFn, receivedFileFn);
     int tmpCount = _commsSocketCount++;
 
+    // if (_commsSocketCount > 1)
+    //     LogWrite(MODULE_PREFIX, LogDebug, "COMMS SOCKET ADDED %d", tmpCount);
+
     return tmpCount;
 }
 

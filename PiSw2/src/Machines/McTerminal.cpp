@@ -96,30 +96,30 @@ McTerminal::McTerminal(McManager& mcManager) :
 }
 
 // Enable machine
-void McTerminal::enable()
+void McTerminal::enableMachine()
 {
-    // Check for change in terminal type
-    if (_pTerminalEmulation)
-        delete _pTerminalEmulation;
-    _pTerminalEmulation = NULL;
+    // // Check for change in terminal type
+    // if (_pTerminalEmulation)
+    //     delete _pTerminalEmulation;
+    // _pTerminalEmulation = NULL;
 
-    // Emulation
-    if (strstr(getMachineName(), "H19") == NULL)
-        _pTerminalEmulation = new TermAnsi();
-    else
-        _pTerminalEmulation = new TermH19();
-    if (_pTerminalEmulation)
-        _pTerminalEmulation->init(
-                    getDescriptorTable().displayPixelsX/getDescriptorTable().displayCellX, 
-                    getDescriptorTable().displayPixelsY/getDescriptorTable().displayCellY
-                    );
+    // // Emulation
+    // if (strstr(getMachineName(), "H19") == NULL)
+    //     _pTerminalEmulation = new TermAnsi();
+    // else
+    //     _pTerminalEmulation = new TermH19();
+    // if (_pTerminalEmulation)
+    //     _pTerminalEmulation->init(
+    //                 getDescriptorTable().displayPixelsX/getDescriptorTable().displayCellX, 
+    //                 getDescriptorTable().displayPixelsY/getDescriptorTable().displayCellY
+    //                 );
 
-    // Invalidate screen caches
-    invalidateScreenCaches(false);
+    // // Invalidate screen caches
+    // invalidateScreenCaches(false);
 }
 
 // Disable machine
-void McTerminal::disable()
+void McTerminal::disableMachine()
 {
 }
 
@@ -199,20 +199,21 @@ void McTerminal::displayRefreshFromMirrorHw()
                 for (uint32_t i = 0; i < _pTerminalEmulation->_cols; i++)
                 {
                     uint32_t cellIdx = k * _pTerminalEmulation->_cols + i;
-                    if (!_screenCache[cellIdx].equals(_pTerminalEmulation->_pCharBuffer[cellIdx]))
+                    TermChar& termChar = _pTerminalEmulation->getTermChar(cellIdx);
+                    if (!_screenCache[cellIdx].equals(termChar))
                     {
-                        if (_pTerminalEmulation->_pCharBuffer[cellIdx]._attribs & TermChar::TERM_ATTR_REVERSE)
+                        if (termChar._attribs & TermChar::TERM_ATTR_REVERSE)
                         {
-                            pDisplay->foreground((DISPLAY_FX_COLOUR) _pTerminalEmulation->_pCharBuffer[cellIdx]._backColour);
-                            pDisplay->background((DISPLAY_FX_COLOUR) _pTerminalEmulation->_pCharBuffer[cellIdx]._foreColour);
+                            pDisplay->foreground((DISPLAY_FX_COLOUR) termChar._backColour);
+                            pDisplay->background((DISPLAY_FX_COLOUR) termChar._foreColour);
                         }
                         else
                         {
-                            pDisplay->foreground((DISPLAY_FX_COLOUR) _pTerminalEmulation->_pCharBuffer[cellIdx]._foreColour);
-                            pDisplay->background((DISPLAY_FX_COLOUR) _pTerminalEmulation->_pCharBuffer[cellIdx]._backColour);
+                            pDisplay->foreground((DISPLAY_FX_COLOUR) termChar._foreColour);
+                            pDisplay->background((DISPLAY_FX_COLOUR) termChar._backColour);
                         }
-                        pDisplay->write(i, k, _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode);
-                        _screenCache[cellIdx] = _pTerminalEmulation->_pCharBuffer[cellIdx];
+                        pDisplay->write(i, k, termChar._charCode);
+                        _screenCache[cellIdx] = termChar;
                     }
                 }
             }
@@ -221,7 +222,7 @@ void McTerminal::displayRefreshFromMirrorHw()
                 // Stash location
                 _cursorInfo = _pTerminalEmulation->_cursor;
                 int cellIdx = _cursorInfo._row * _pTerminalEmulation->_cols + _cursorInfo._col;
-                _cursorInfo._replacedChar = _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode;
+                _cursorInfo._replacedChar = _pTerminalEmulation->getTermChar(cellIdx)._charCode;
                 // Show cursor
                 pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._cursorChar);
             }
@@ -238,7 +239,7 @@ void McTerminal::displayRefreshFromMirrorHw()
                     // Stash location
                     _cursorInfo = _pTerminalEmulation->_cursor;
                     int cellIdx = _cursorInfo._row * _pTerminalEmulation->_cols + _cursorInfo._col;
-                    _cursorInfo._replacedChar = _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode;
+                    _cursorInfo._replacedChar = _pTerminalEmulation->getTermChar(cellIdx)._charCode;
                     // Show cursor
                     pDisplay->write(_cursorInfo._col, _cursorInfo._row, _cursorInfo._cursorChar);
                 }
@@ -295,7 +296,8 @@ uint32_t McTerminal::getMirrorChanges(uint8_t* pMirrorChangeBuf, uint32_t mirror
         for (uint32_t i = 0; i < _pTerminalEmulation->_cols; i++)
         {
             uint32_t cellIdx = k * _pTerminalEmulation->_cols + i;
-            if (!_screenMirrorCache[cellIdx].equals(_pTerminalEmulation->_pCharBuffer[cellIdx]))
+            TermChar& termChar = _pTerminalEmulation->getTermChar(cellIdx);
+            if (!_screenMirrorCache[cellIdx].equals(termChar))
             {
                 if (curPos + sizeof(changeElemPacked) > mirrorChangeMaxLen)
                 {
@@ -304,13 +306,13 @@ uint32_t McTerminal::getMirrorChanges(uint8_t* pMirrorChangeBuf, uint32_t mirror
                 }
                 changeElemPacked.col = i;
                 changeElemPacked.row = k;
-                changeElemPacked.ch = _pTerminalEmulation->_pCharBuffer[cellIdx]._charCode;
-                changeElemPacked.fore = _pTerminalEmulation->_pCharBuffer[cellIdx]._foreColour;
-                changeElemPacked.back = _pTerminalEmulation->_pCharBuffer[cellIdx]._backColour;
-                changeElemPacked.attr = _pTerminalEmulation->_pCharBuffer[cellIdx]._attribs;
+                changeElemPacked.ch = termChar._charCode;
+                changeElemPacked.fore = termChar._foreColour;
+                changeElemPacked.back = termChar._backColour;
+                changeElemPacked.attr = termChar._attribs;
                 memcopyfast(pMirrorChangeBuf+curPos, &changeElemPacked, sizeof(changeElemPacked));
                 curPos += sizeof(changeElemPacked);
-                _screenMirrorCache[cellIdx] = _pTerminalEmulation->_pCharBuffer[cellIdx];
+                _screenMirrorCache[cellIdx] = termChar;
             }
         }
     }

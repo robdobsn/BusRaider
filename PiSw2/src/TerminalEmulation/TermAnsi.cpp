@@ -16,7 +16,15 @@
 #define P1(x) (_ansiParams[x] ? _ansiParams[x] : 1)
 
 // Log string
-const char *FromTermAnsi = "TermAnsi";
+static const char *MODULE_PREFIX = "TermAnsi";
+
+TermAnsi::TermAnsi()
+{
+}
+
+TermAnsi::~TermAnsi()
+{
+}
 
 void TermAnsi::init(uint32_t cols, uint32_t rows)
 {
@@ -42,7 +50,7 @@ void TermAnsi::reset()
 
 void TermAnsi::putChar(uint32_t ch)
 {
-    // LogWrite(FromTermAnsi, LOG_DEBUG, "TermRx %02x", ch);
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "TermRx %02x", ch);
 
     if (handleAnsiChar(ch))
         return;
@@ -145,10 +153,11 @@ void TermAnsi::clearline(size_t lineIdx, size_t startCol, size_t endCol)
     _lineDirty[lineIdx] = true;
     for (size_t i = startCol; i < endCol && i < _cols; i++)
     {
-        _pCharBuffer[lineIdx * _cols + i]._attribs = DEFAULT_ATTRIBS;
-        _pCharBuffer[lineIdx * _cols + i]._foreColour = TermChar::TERM_DEFAULT_FORE_COLOUR;
-        _pCharBuffer[lineIdx * _cols + i]._backColour = TermChar::TERM_DEFAULT_BACK_COLOUR;
-        _pCharBuffer[lineIdx * _cols + i]._charCode = ' ';
+        TermChar& termChar = getTermChar(lineIdx * _cols + i);
+        termChar._attribs = DEFAULT_ATTRIBS;
+        termChar._foreColour = TermChar::TERM_DEFAULT_FORE_COLOUR;
+        termChar._backColour = TermChar::TERM_DEFAULT_BACK_COLOUR;
+        termChar._charCode = ' ';
     }
 }
 
@@ -160,14 +169,15 @@ void TermAnsi::clearlines(size_t rowIdx, size_t numRows)
 
 void TermAnsi::writeCharAtCurs(int ch)
 {
-    // LogWrite(FromTermAnsi, LOG_DEBUG, "TermRx %02x", ch);
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "TermRx %02x", ch);
 
     // Add character to buffer
     int cellIdx = _cursor._row * _cols + _cursor._col;
-    _pCharBuffer[cellIdx]._charCode = ch;
-    _pCharBuffer[cellIdx]._backColour = _curAttrs._backColour;
-    _pCharBuffer[cellIdx]._foreColour = _curAttrs._foreColour;
-    _pCharBuffer[cellIdx]._attribs = _curAttrs._attribs;
+    TermChar& termChar = getTermChar(cellIdx);
+    termChar._charCode = ch;
+    termChar._backColour = _curAttrs._backColour;
+    termChar._foreColour = _curAttrs._foreColour;
+    termChar._attribs = _curAttrs._attribs;
     dirtylines(_cursor._row, _cursor._row);
 
     // Bump cursor
@@ -199,12 +209,12 @@ void TermAnsi::scrollUp(size_t startRow, size_t n)
     
     if (n){
         TermChar* pBuf = new TermChar[n*_cols];
+        uint32_t lineChars = n * sizeof(TermChar) * _cols;
 
-        memcopyfast(pBuf, _pCharBuffer + startRow * _cols, n * sizeof(TermChar) * _cols);
+        memcopyfast(pBuf, _pCharBuffer + startRow * _cols, lineChars);
         memmove(_pCharBuffer + startRow * _cols, _pCharBuffer + (startRow + n) * _cols,
                (_rows - n - startRow) * sizeof(TermChar) * _cols);
-        memcopyfast(_pCharBuffer + (_rows - n) * _cols,
-               pBuf, n * sizeof(TermChar) * _cols);
+        memcopyfast(_pCharBuffer + (_rows - n) * _cols, pBuf, lineChars);
         
         delete [] pBuf;
 
@@ -222,12 +232,12 @@ void TermAnsi::scrollDown(size_t startRow, size_t n)
     
     if (n){
         TermChar* pBuf = new TermChar[n*_cols];
+        uint32_t lineChars = n * sizeof(TermChar) * _cols;
 
-        memcopyfast(pBuf, _pCharBuffer + (_rows-n) * _cols, n * sizeof(TermChar) * _cols);
+        memcopyfast(pBuf, _pCharBuffer + (_rows-n) * _cols, lineChars);
         memmove(_pCharBuffer + (startRow+n) * _cols, _pCharBuffer + startRow * _cols,
                (_rows - n - startRow) * sizeof(TermChar) * _cols);
-        memcopyfast(_pCharBuffer + startRow * _cols,
-               pBuf, n * sizeof(TermChar) * _cols);
+        memcopyfast(_pCharBuffer + startRow * _cols, pBuf, lineChars);
         
         delete [] pBuf;
 
@@ -278,6 +288,8 @@ void TermAnsi::el()
 
 void TermAnsi::dch()
 {
+    if (!_pCharBuffer)
+        return;
     size_t n = P1(0); /* XXX use MAX */
     if (n > _cols - _cursor._col)
         n = _cols - _cursor._col;
@@ -290,6 +302,8 @@ void TermAnsi::dch()
 
 void TermAnsi::ich()
 {
+    if (!_pCharBuffer)
+        return;
     size_t n = P1(0); /* XXX use MAX */
     if (n > _cols - _cursor._col - 1)
         n = _cols - _cursor._col - 1;

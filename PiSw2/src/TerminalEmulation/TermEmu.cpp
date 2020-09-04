@@ -9,17 +9,21 @@ TermEmu::TermEmu()
     _pCharBuffer = NULL;
     _cols = 80;
     _rows = 25;
+    _charBufferSize = 0;
 }
 
 TermEmu::~TermEmu()
 {
-    delete [] _pCharBuffer;
+    if (_pCharBuffer)
+        delete [] _pCharBuffer;
 }
 
 void TermEmu::init(uint32_t cols, uint32_t rows)
 {
-    delete [] _pCharBuffer;
+    if (_pCharBuffer)
+        delete [] _pCharBuffer;
     _pCharBuffer = new TermChar [cols*rows];
+    _charBufferSize = cols*rows;
     _cols = cols;
     _rows = rows;
     _cursor.clear();
@@ -32,5 +36,4 @@ void TermEmu::putChar(uint32_t ch)
 
 void TermEmu::reset()
 {
-
 }

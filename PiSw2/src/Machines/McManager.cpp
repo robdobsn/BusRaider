@@ -34,6 +34,11 @@ McManager::McManager(DisplayBase* pDisplay, CommandHandler& commandHandler, HwMa
             _busAccess(busAccess),
             _targetProgrammer(targetProgrammer)
 {
+    // Sockets
+    _busSocketId = -1;
+    _commsSocketId = -1;
+   
+    // McManager
     _pMcManager = this;
     _numMachines = 0;
     _pCurMachine = NULL;
@@ -80,6 +85,8 @@ void McManager::init()
     if (_commsSocketId < 0)
         _commsSocketId = _commandHandler.commsSocketAdd(this, true, handleRxMsgStatic, 
                             NULL, targetFileHandlerStatic);
+
+    // LogWrite(MODULE_PREFIX, LogDebug, "COMMS SOCKET INIT %d", _commsSocketId);
 
     // Add machines - McBase does the actual add
     new McTerminal(*this);
@@ -530,7 +537,7 @@ bool McManager::handleRxMsgStatic(void* pObject, const char* pCmdJson,
 bool McManager::handleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
                 char* pRespJson, unsigned maxRespLen)
 {
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "req %s", pCmdJson);
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "handleRxMsg %s", pCmdJson);
     #define MAX_CMD_NAME_STR 200
     char cmdName[MAX_CMD_NAME_STR+1];
     if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
@@ -574,20 +581,20 @@ bool McManager::handleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsign
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
-    else if (strncasecmp(cmdName, "SetMachine", strlen("SetMachine")) == 0)
-    {
-        // Get machine name
-        const char* pMcName = strstr(cmdName,"=");
-        if (pMcName)
-        {
-            // Move to first char of actual name
-            pMcName++;
-            setMachineByName(pMcName);
-            LogWrite(MODULE_PREFIX, LOG_VERBOSE, "Set Machine to %s", pMcName);
-        }
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-        return true;
-    }
+    // else if (strncasecmp(cmdName, "SetMachine", strlen("SetMachine")) == 0)
+    // {
+    //     // Get machine name
+    //     const char* pMcName = strstr(cmdName,"=");
+    //     if (pMcName)
+    //     {
+    //         // Move to first char of actual name
+    //         pMcName++;
+    //         setMachineByName(pMcName);
+    //         LogWrite(MODULE_PREFIX, LOG_VERBOSE, "Set Machine to %s", pMcName);
+    //     }
+    //     strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+    //     return true;
+    // }
     else if (strcasecmp(cmdName, "SetMcJson") == 0)
     {
         // Get mcJson
@@ -596,8 +603,8 @@ bool McManager::handleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsign
         if (toCopy > _commandHandler.MAX_MC_SET_JSON_LEN)
             toCopy = _commandHandler.MAX_MC_SET_JSON_LEN;
         strlcpy(mcJson, (const char*)pParams, toCopy);
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Set Machine json to %s", mcJson);
-        bool setupOk = setupMachine(mcJson);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "SetMachine %s", mcJson);
+        bool setupOk = setupMachine(mcJson); 
         if (setupOk)
             strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         else
@@ -710,13 +717,13 @@ void McManager::busActionComplete(BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASO
     // We don't care what the reason for the BUSRQ is we will use it for what we need
     if (actionType == BR_BUS_ACTION_BUSRQ)
     {
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionCompleteStatic BUSRQ");
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionCompleteStatic BUSRQ");
 
         // Program target pending?
         if (_busActionPendingProgramTarget)
         {
-            LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionCompleteStatic pendingProgramTarget numBlocks %d",
-                            getTargetProgrammer().numMemoryBlocks());
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionCompleteStatic pendingProgramTarget numBlocks %d",
+            //                 getTargetProgrammer().numMemoryBlocks());
 
             // Write the blocks
             _busActionCodeWrittenAtResetVector = false;

@@ -14,49 +14,49 @@ public:
     McTerminal(McManager& mcManager);
 
     // Enable machine
-    virtual void enable();
+    virtual void enableMachine() override;
 
     // Disable machine
-    virtual void disable();
+    virtual void disableMachine() override;
 
     // Setup machine from JSON
-    virtual bool setupMachine(const char* mcName, const char* mcJson);
+    virtual bool setupMachine(const char* mcName, const char* mcJson) override;
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-    virtual void displayRefreshFromMirrorHw();
+    virtual void displayRefreshFromMirrorHw() override;
 
     // Handle a key press
-    virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]);
+    virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]) override;
 
     // Handle a file
-    virtual bool fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen);
+    virtual bool fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen) override;
 
     // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-    virtual void busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
+    virtual void busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal) override;
 
     // Bus action complete callback
-    virtual void busActionCompleteCallback(BR_BUS_ACTION actionType);
+    virtual void busActionCompleteCallback(BR_BUS_ACTION actionType) override;
 
     // Convert raw USB code to key string
     static const char* convertRawToKeyString(unsigned char ucModifiers, const unsigned char rawKeys[6]);
 
     // Key conversion
-    static KeyConversion _keyConversion;
-    static uint32_t keyboardGetNumTypes()
-    {
-        return _keyConversion.getNumTypes();
-    }
-    static const char* keyboardGetTypeStr(uint32_t keyboardType)
-    {
-        return _keyConversion.getTypeStr(keyboardType);        
-    }
-    static void keyboardSetType(uint32_t keyboardType)
-    {
-        _keyConversion.setKeyboardType(keyboardType);
-    }
+    // TODO 2020
+    // static uint32_t keyboardGetNumTypes() override
+    // {
+    //     return _keyConversion.getNumTypes();
+    // }
+    // static const char* keyboardGetTypeStr(uint32_t keyboardType) override
+    // {
+    //     return _keyConversion.getTypeStr(keyboardType);        
+    // }
+    // static void keyboardSetType(uint32_t keyboardType) override
+    // {
+    //     _keyConversion.setKeyboardType(keyboardType);
+    // }
 
     // Get changes made since last mirror display update
-    virtual uint32_t getMirrorChanges(uint8_t* pMirrorChangeBuf, uint32_t mirrorChangeMaxLen, bool forceGetAll);
+    virtual uint32_t getMirrorChanges(uint8_t* pMirrorChangeBuf, uint32_t mirrorChangeMaxLen, bool forceGetAll) override;
 
 private:
     TermChar _screenCache[TermEmu::MAX_ROWS * TermEmu::MAX_COLS];
@@ -84,4 +84,8 @@ private:
     static const int MAX_SEND_TO_TARGET_CHARS = 5000;
     RingBufferPosn _sendToTargetBufPos;
     uint8_t _sendToTargetBuf[MAX_SEND_TO_TARGET_CHARS];
+
+    // Key conversion
+    static KeyConversion _keyConversion;
+
 };

@@ -18,25 +18,25 @@ public:
     McRobsZ80(McManager& mcManager);
 
     // Enable machine
-    virtual void enable();
+    virtual void enableMachine() override;
 
     // Disable machine
-    virtual void disable();
+    virtual void disableMachine() override;
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-    virtual void displayRefreshFromMirrorHw();
+    virtual void displayRefreshFromMirrorHw() override;
 
     // Handle a key press
-    virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]);
+    virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]) override;
 
     // Handle a file
-    virtual bool fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen);
+    virtual bool fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen) override;
 
     // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-    virtual void busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
+    virtual void busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal) override;
 
     // Bus action complete callback
-    virtual void busActionCompleteCallback(BR_BUS_ACTION actionType);
+    virtual void busActionCompleteCallback(BR_BUS_ACTION actionType) override;
     
 private:
     virtual void updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen);

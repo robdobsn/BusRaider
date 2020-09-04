@@ -86,7 +86,7 @@ McZXSpectrum::McZXSpectrum(McManager& mcManager) :
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Enable machine
-void McZXSpectrum::enable()
+void McZXSpectrum::enableMachine()
 {
     _screenBufferValid = false;
     _screenCacheValid = false;
@@ -98,7 +98,7 @@ void McZXSpectrum::enable()
 }
 
 // Disable machine
-void McZXSpectrum::disable()
+void McZXSpectrum::disableMachine()
 {
 }
 

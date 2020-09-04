@@ -32,11 +32,13 @@
 class TermAnsi : public TermEmu
 {
 public:
+    TermAnsi();
+    virtual ~TermAnsi();
+    virtual void init(uint32_t cols, uint32_t rows) override;
+    virtual void putChar(uint32_t ch) override;
+    virtual void reset() override;
 
-    virtual void init(uint32_t cols, uint32_t rows);
-    virtual void putChar(uint32_t ch);
-    virtual void reset();
-
+private:
     static const uint32_t DEFAULT_ATTRIBS = 0;
 
     enum tmt_msg_t{
@@ -50,7 +52,6 @@ public:
     enum tmt_vt_state {S_NUL, S_ESC, S_ARG};
     tmt_vt_state _vtState;
 
-private:
     void vtCallback(tmt_msg_t msg, const char* str)
     {
 
