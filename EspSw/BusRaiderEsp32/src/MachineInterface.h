@@ -43,9 +43,9 @@ private:
     // Telnet server
     AsyncTelnetServer* _pTelnetServer;
 
-    // TCP interfaces for DeZog and TCP-HDLC
-    RemoteDebugProtocolServer* _DeZogTCPServer;
-    uint32_t _DeZogCommandIndex;
+    // TCP interfaces for ZEsarUX and TCP-HDLC
+    RemoteDebugProtocolServer* _pZEsarUXTCPServer;
+    uint32_t _zesaruxCommandIndex;
     RemoteDebugProtocolServer* _pTCPHDLCServer;
     uint32_t _rdpCommandIndex;
     // HDLC processor for RDP
@@ -82,7 +82,7 @@ private:
     int _demoProgramIdx;
 
     // Frame handlers for RDP
-    void hdlcRxFrameTCP(const uint8_t *framebuffer, unsigned framelength);
+    void hdlcRxFrameTCP(const uint8_t *framebuffer, int framelength);
     void hdlcTxCharTCP(uint8_t ch);
 
     // Hardware version
@@ -101,7 +101,7 @@ public:
                 WebServer *pWebServer, 
                 CommandSerial* pCommandSerial,
                 AsyncTelnetServer* pTelnetServer, 
-                RemoteDebugProtocolServer* pDeZogTCPServer, 
+                RemoteDebugProtocolServer* pZEsarUXTCPServer, 
                 RemoteDebugProtocolServer* pTCPHDLCServer, 
                 RestAPIEndpoints* pRestAPIEndpoints, 
                 FileManager* pFileManager);

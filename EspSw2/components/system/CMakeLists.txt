@@ -3,8 +3,6 @@ idf_component_register(
                   "SysMod/SysModBase.cpp"
                   "SysManager/SysManager.cpp"
                   "SysTypes/SysTypeManager.cpp"
-                  "BLEManager/BLEManager.cpp"
-                  "BLEManager/BLEGattServer.cpp"
                   "NetworkManager/NetworkManager.cpp"
                   "SerialConsole/SerialConsole.cpp"
                   "FileManager/FileManager.cpp"
@@ -14,11 +12,11 @@ idf_component_register(
                   "CommandSerial/CommandSerial.cpp"
                   "CommandFile/CommandFile.cpp"
                   "ESPOTAUpdate/ESPOTAUpdate.cpp"
+                  "PiCoProcessor/PiCoProcessor.cpp"
                 INCLUDE_DIRS
                   "SysMod"
                   "SysManager"
                   "SysTypes"
-                  "BLEManager"
                   "NetworkManager"
                   "SerialConsole"
                   "FileManager"
@@ -28,6 +26,7 @@ idf_component_register(
                   "CommandSerial"
                   "CommandFile"
                   "ESPOTAUpdate"
+                  "PiCoProcessor"
                 REQUIRES 
                   core
                   comms

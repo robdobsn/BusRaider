@@ -93,6 +93,6 @@ public:
 
 private:
     void sendCharToCmdPort(uint8_t ch);
-    void frameHandler(const uint8_t *framebuffer, unsigned framelength);
+    void frameHandler(const uint8_t *framebuffer, int framelength);
     void uploadCommonBlockHandler(const char* fileType, const String& req, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock);
 };

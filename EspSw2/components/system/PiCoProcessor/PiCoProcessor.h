@@ -1,6 +1,6 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// CommandSerial
+// PiCoProcessor
 //
 // Rob Dobson 2020
 //
@@ -11,16 +11,17 @@
 #include <ConfigBase.h>
 #include <RestAPIEndpointManager.h>
 #include <SysModBase.h>
+#include "MiniHDLC.h"
 #include <list>
 
 class ProtocolEndpointMsg;
 
-class CommandSerial : public SysModBase
+class PiCoProcessor : public SysModBase
 {
 public:
     // Constructor/destructor
-    CommandSerial(const char *pModuleName, ConfigBase &defaultConfig, ConfigBase *pGlobalConfig, ConfigBase *pMutableConfig);
-    virtual ~CommandSerial();
+    PiCoProcessor(const char *pModuleName, ConfigBase &defaultConfig, ConfigBase *pGlobalConfig, ConfigBase *pMutableConfig);
+    virtual ~PiCoProcessor();
 
 protected:
     // Setup
@@ -35,14 +36,15 @@ protected:
     // Add protocol endpoints
     virtual void addProtocolEndpoints(ProtocolEndpointManager &endpointManager) override final;
 
-private:
-    // Helpers
-    void applySetup();
-    void begin();
-    void end();
-    bool sendMsg(ProtocolEndpointMsg& msg);
-    bool readyToSend();
+    // Get HDLC stats
+    MiniHDLCStats* getHDLCStats()
+    {
+        if (!_pHDLC)
+            return NULL;
+        return _pHDLC->getStats();
+    }
 
+private:
     // Vars
     bool _isEnabled;
 
@@ -60,4 +62,19 @@ private:
 
     // EndpointID used to identify this message channel to the ProtocolEndpointManager object
     uint32_t _protocolEndpointID;
+
+    // Pi status
+    String _cachedPiStatusJSON;
+    uint32_t _cachedPiStatusRequestMs;
+    static const int TIME_BETWEEN_PI_STATUS_REQS_MS = 10000;
+
+    // HDLC processor
+    MiniHDLC* _pHDLC;
+    uint32_t _hdlcMaxLen;
+
+    // Helpers
+    void applySetup();
+    void sendToPi(const uint8_t *pFrame, int frameLen);
+    void hdlcFrameTxCB(const uint8_t* pFrame, int frameLen);
+    void hdlcFrameRxCB(const uint8_t* pFrame, int frameLen);
 };

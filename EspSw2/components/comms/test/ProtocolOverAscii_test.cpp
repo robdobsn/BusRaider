@@ -60,23 +60,4 @@ TEST_CASE("test_overAscii", "[ProtocolOverAscii]")
         }
         TEST_ASSERT_MESSAGE (isOk, "OverAscii decoded differs");
     }
-    // // Test getString
-    // struct TestElem
-    // {
-    //     const char* dataPath;
-    //     const char* expStr;
-    // };
-    // TestElem getStringTests [] = {
-    //     { "SystemName", "RicFirmwareESP32" },
-    //     { "SysManager/reportList[1]", "RobotController" },
-    //     { "BLEManager", R"({"enable":1,"adName":"Marty","logLevel":"D"})" },
-    //     { "BLEManager/adName", "Marty" },
-    //     { "CommandSocket/enable", "1" },
-    // };
-    // for (int testIdx = 0; testIdx < sizeof(getStringTests)/sizeof(getStringTests[0]); testIdx++)
-    // {
-    //     String tokStartStr = "testGetString testIdx=" + String(testIdx);
-    //     TEST_ASSERT_MESSAGE(true == testGetString(getStringTests[testIdx].dataPath, 
-    //                 getStringTests[testIdx].expStr, testJSONConfigBase), tokStartStr.c_str());
-    // }
 }

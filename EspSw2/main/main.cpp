@@ -13,6 +13,9 @@
 
 #define SYSTEM_NAME "BusRaiderESP32"
 #define SYSTEM_VERSION "3.1.0"
+#define DEFAULT_SYSTYPE "BusRaider"
+#define DEFAULT_SYSNAME "BusRaider"
+#define DEFAULT_HOSTNAME "BusRaider"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Default system config
@@ -31,8 +34,8 @@ static const char *defaultConfigJSON =
         R"("SystemName":")" SYSTEM_NAME R"(",)"
         R"("SystemVersion":")" SYSTEM_VERSION R"(",)"
         R"("IDFVersion":")" IDF_VER R"(",)"
-        R"("DefaultSysType":"BusRaider",)"
-        R"("DefaultName":"BusRaider",)"
+        R"("DefaultSysType":")" DEFAULT_SYSTYPE R"(",)"
+        R"("DefaultName":")" DEFAULT_SYSNAME R"(",)"
         R"("DefaultNameIsSet":0,)"
         R"("SysManager":{)"
             R"("monitorPeriodMs":10000,)"
@@ -41,7 +44,7 @@ static const char *defaultConfigJSON =
         R"(},)"
         R"("NetworkManager":{)"
             R"("WiFiEnabled":1,)"
-            R"("defaultHostname":"BusRaider",)"
+            R"("defaultHostname":")" DEFAULT_HOSTNAME R"(",)"
             R"("logLevel":"D")"
         R"(},)"
         R"("NTPClient":{)"
@@ -78,13 +81,13 @@ static const char *defaultConfigJSON =
             R"("logLevel":"D")"
         R"(},)"
         R"("CommandSerial":{)"
-            R"("enable":1,)"
+            R"("enable":0,)"
             R"("uartNum":1,)"
             R"("baudRate":912600,)"
-            R"("rxBufSize":1024,)"
-            R"("rxPin":35,)"
-            R"("txPin":12,)"
-            R"("hdlcRxMaxLen":1024,)"
+            R"("rxBufSize":32768,)"
+            R"("rxPin":16,)"
+            R"("txPin":17,)"
+            R"("hdlcRxMaxLen":5000,)"
             R"("protocol":"RICSerial",)"
             R"("logLevel":"D")"
         R"(},)"
@@ -94,8 +97,26 @@ static const char *defaultConfigJSON =
             R"("protocol":"BusRaiderCSOK",)"
             R"("logLevel":"D")"
         R"(},)"
+        R"("PiCoProcessor":{)"
+            R"("enable":1,)"
+            R"("uartNum":2,)"
+            R"("baudRate":912600,)"
+            R"("rxBufSize":32768,)"
+            R"("rxPin":16,)"
+            R"("txPin":17,)"
+            R"("hdlcMaxLen":5000,)"
+            R"("protocol":"RICSerial",)"
+            R"("logLevel":"D")"
+        R"(})"
     R"(})"
 ;
+
+const char* SYS_CONFIGURATIONS[] = {
+    R"({)"
+        R"("SysType":"BusRaider")"
+    R"(})"
+};    
+extern const int SYS_CONFIGURATIONS_LEN = sizeof(SYS_CONFIGURATIONS) / sizeof(const char *);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // System Parameters
@@ -166,6 +187,7 @@ uint32_t laststatsdumpms = 0;
 #include <CommandFile.h>
 #include <FileSystem.h>
 #include <ESPOTAUpdate.h>
+#include <PiCoProcessor.h>
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Standard Entry Point
@@ -222,9 +244,6 @@ void mainTask(void *pvParameters)
     {
         LOG_E(MODULE_NAME, "mainTask defaultConfigJSON failed to parse");
     }
-
-    // Handle power-up LED setting if required
-    powerUpLEDSet(defaultSystemConfig.getString("PowerUpLED", "{}"));
 
     ///////////////////////////////////////////////////////////////////////////////////
     // NOTE: Changing the size or order of the following will affect the layout
@@ -283,11 +302,14 @@ void mainTask(void *pvParameters)
     //Command File
     CommandFile _commandFile("CommandFile", defaultSystemConfig, &_sysTypeConfig, NULL);
 
+    // Pi CoProcessor
+    PiCoProcessor _piCoPorcessor("PiCoProcessor", defaultSystemConfig, &_sysTypeConfig, NULL);
+
     // Log out system info
     ESP_LOGI(MODULE_NAME, SYSTEM_NAME " " SYSTEM_VERSION " (built " __DATE__ " " __TIME__ ") Heap %d", heap_caps_get_free_size(MALLOC_CAP_8BIT));
 
     // SysTypeManager setup
-    _sysTypeManager.setup(RIC_CONFIGURATIONS, RIC_CONFIGURATIONS_LEN, &_sysTypeConfig);
+    _sysTypeManager.setup(SYS_CONFIGURATIONS, SYS_CONFIGURATIONS_LEN, &_sysTypeConfig);
     _sysTypeManager.addRestAPIEndpoints(_restAPIEndpointManager);
 
     // System module manager

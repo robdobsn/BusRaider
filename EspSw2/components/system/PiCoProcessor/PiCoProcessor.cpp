@@ -1,25 +1,25 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// CommandSerial
+// PiCoProcessor
 //
 // Rob Dobson 2020
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <Logger.h>
-#include <CommandSerial.h>
+#include <PiCoProcessor.h>
 #include <Utils.h>
 #include <RestAPIEndpointManager.h>
 #include "ProtocolEndpointManager.h"
 #include <driver/uart.h>
 
-static const char *MODULE_PREFIX = "CommandSerial";
+static const char *MODULE_PREFIX = "PiCoProcessor";
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CommandSerial::CommandSerial(const char *pModuleName, ConfigBase &defaultConfig, ConfigBase *pGlobalConfig, ConfigBase *pMutableConfig)
+PiCoProcessor::PiCoProcessor(const char *pModuleName, ConfigBase &defaultConfig, ConfigBase *pGlobalConfig, ConfigBase *pMutableConfig)
     : SysModBase(pModuleName, defaultConfig, pGlobalConfig, pMutableConfig)
 {
     // Config variables
@@ -30,29 +30,36 @@ CommandSerial::CommandSerial(const char *pModuleName, ConfigBase &defaultConfig,
     _rxPin = 0;
     _rxBufSize = 1024;
     _txBufSize = 1024;
+    _hdlcMaxLen = 1024;
     _isInitialised = false;
+    _pHDLC = NULL;
+    _cachedPiStatusJSON = "{}";
+    _cachedPiStatusRequestMs = 0;
 
     // EndpointID
     _protocolEndpointID = ProtocolEndpointManager::UNDEFINED_ID;
 }
 
-CommandSerial::~CommandSerial()
+PiCoProcessor::~PiCoProcessor()
 {
     if (_isInitialised)
         uart_driver_delete((uart_port_t)_uartNum);
+    // Clean up HDLC
+    if (_pHDLC)
+        delete _pHDLC;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Setup
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void CommandSerial::setup()
+void PiCoProcessor::setup()
 {
     // Apply config
     applySetup();
 }
 
-void CommandSerial::applySetup()
+void PiCoProcessor::applySetup()
 {
     // Clear previous config if we've been here before
     if (_isInitialised)
@@ -78,9 +85,10 @@ void CommandSerial::applySetup()
     // Buffers
     _rxBufSize = configGetLong("rxBufSize", 1024);
     _txBufSize = configGetLong("txBufSize", 1024);
+    _hdlcMaxLen = configGetLong("hdlcMaxLen", 1024);
 
-    LOG_I(MODULE_PREFIX, "setup enabled %s uartNum %d baudRate %d txPin %d rxPin %d rxBufSize %d txBufSize %d protocol %s", 
-                    _isEnabled ? "YES" : "NO", _uartNum, _baudRate, _txPin, _rxPin, _rxBufSize, _txBufSize, _protocol.c_str());
+    LOG_I(MODULE_PREFIX, "setup enabled %s uartNum %d baudRate %d txPin %d rxPin %d rxBufSize %d txBufSize %d hdlcMaxLen %d protocol %s", 
+                    _isEnabled ? "YES" : "NO", _uartNum, _baudRate, _txPin, _rxPin, _rxBufSize, _txBufSize, _hdlcMaxLen, _protocol.c_str());
 
     if (_isEnabled && (_rxPin != -1) && (_txPin != -1))
     {
@@ -112,7 +120,6 @@ void CommandSerial::applySetup()
         }
 
         // Delay before UART change
-        // TODO - what does this achieve?
         vTaskDelay(1);
 
         // Install UART driver for interrupt-driven reads and writes
@@ -123,19 +130,45 @@ void CommandSerial::applySetup()
             return;
         }
 
+        // Clean up existing HDLC
+        if (_pHDLC)
+            delete _pHDLC;
+        
+        // New HDLC
+        _pHDLC = new MiniHDLC(            
+            std::bind(&PiCoProcessor::hdlcFrameTxCB, this, 
+                std::placeholders::_1, std::placeholders::_2),
+            std::bind(&PiCoProcessor::hdlcFrameRxCB, this, 
+                std::placeholders::_1, std::placeholders::_2),
+            _hdlcMaxLen, _hdlcMaxLen);
+            
+        // Init ok
         _isInitialised = true;
     }
-
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Service
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void CommandSerial::service()
+void PiCoProcessor::service()
 {
     if (!_isInitialised)
         return;
+
+    // Check cached status is ok
+    if (_cachedPiStatusJSON.length() <= 2)
+    {
+        if ((_cachedPiStatusRequestMs == 0) || 
+            (Utils::isTimeout(millis(), _cachedPiStatusRequestMs, TIME_BETWEEN_PI_STATUS_REQS_MS)))
+        {
+            // Request status
+            const char getStatusCmd[] = "{\"cmdName\":\"getStatus\",\"reqStr\":\"\"}\0";
+            sendToPi((const uint8_t*)getStatusCmd, sizeof(getStatusCmd));
+            LOG_I(MODULE_PREFIX, "Query Pi Status");
+            _cachedPiStatusRequestMs = millis();
+        }
+    }
 
     // Check anything available
     size_t numCharsAvailable = 0;
@@ -143,7 +176,6 @@ void CommandSerial::service()
     if ((err == ESP_OK) && (numCharsAvailable > 0))
     {
         // Get data
-        // TODO - fixed size buffer - review
         static const int MAX_BYTES_PER_CALL = 100;
         uint8_t buf[MAX_BYTES_PER_CALL];
         uint32_t bytesToGet = numCharsAvailable;
@@ -152,10 +184,9 @@ void CommandSerial::service()
         uint32_t bytesRead = uart_read_bytes((uart_port_t)_uartNum, buf, bytesToGet, 1);
         if (bytesRead != 0)
         {
-            // LOG_D(MODULE_PREFIX, "service charsAvail %d ch %02x", numCharsAvailable, buf[0]);
-            // Send to protocol handler
-            if (getProtocolEndpointManager())
-                getProtocolEndpointManager()->handleInboundMessage(_protocolEndpointID, buf, bytesRead);
+            LOG_I(MODULE_PREFIX, "service charsAvail %d ch %02x", numCharsAvailable, buf[0]);
+            if (_pHDLC)
+                _pHDLC->handleBuffer(buf, bytesRead);
         }
     }
 }
@@ -164,50 +195,44 @@ void CommandSerial::service()
 // Endpoints
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void CommandSerial::addRestAPIEndpoints(RestAPIEndpointManager &endpointManager)
+void PiCoProcessor::addRestAPIEndpoints(RestAPIEndpointManager &endpointManager)
 {
 }
 
-void CommandSerial::addProtocolEndpoints(ProtocolEndpointManager &endpointManager)
+void PiCoProcessor::addProtocolEndpoints(ProtocolEndpointManager &endpointManager)
 {
-    // Register as a channel of protocol messages
-    _protocolEndpointID = endpointManager.registerChannel(_protocol.c_str(),
-            std::bind(&CommandSerial::sendMsg, this, std::placeholders::_1),
-            modName(),
-            std::bind(&CommandSerial::readyToSend, this));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Send message
+// Send to co-processor
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool CommandSerial::sendMsg(ProtocolEndpointMsg& msg)
+void PiCoProcessor::sendToPi(const uint8_t *pFrame, int frameLen)
+{
+    LOG_I(MODULE_PREFIX, "sendToPi frameLen %d", frameLen);
+    _pHDLC->sendFrame(pFrame, frameLen);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Helpers
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void PiCoProcessor::hdlcFrameRxCB(const uint8_t* pFrame, int frameLen)
 {
     // Debug
-    // LOG_I(MODULE_PREFIX, "sendMsg channelID %d, direction %s msgNum %d, len %d",
-    //         msg.getChannelID(), msg.getDirectionAsString(msg.getDirection()), msg.getMsgNumber(), msg.getBufLen());
-
-    if (!_isInitialised)
-        return false;
-
-    // Send the message
-    int bytesSent = uart_write_bytes((uart_port_t)_uartNum, (const char*)msg.getBuf(), msg.getBufLen());
-    if (bytesSent != msg.getBufLen())
-    {
-        LOG_W(MODULE_PREFIX, "sendMsg channelID %d, direction %s msgNum %d, len %d only wrote %d bytes",
-                msg.getChannelID(), msg.getDirectionAsString(msg.getDirection()), msg.getMsgNumber(), msg.getBufLen(), bytesSent);
-
-        return false;
-    }
-    return true;
+    LOG_I(MODULE_PREFIX, "Frame received len %d", frameLen);
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Ready to send indicator
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool CommandSerial::readyToSend()
+void PiCoProcessor::hdlcFrameTxCB(const uint8_t* pFrame, int frameLen)
 {
-    // TODO - handle ready to send
-    return true;
+    // Debug
+    Utils::logHexBuf(pFrame, frameLen, MODULE_PREFIX, "Frame to send");
+    // Send the message
+    int bytesSent = uart_write_bytes((uart_port_t)_uartNum, 
+                        (const char*)pFrame, frameLen);
+    if (bytesSent != frameLen)
+    {
+        LOG_W(MODULE_PREFIX, "hdlcFrameTxCB len %d only wrote %d bytes",
+                frameLen, bytesSent);
+    }
 }

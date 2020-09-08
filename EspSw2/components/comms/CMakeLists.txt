@@ -19,9 +19,6 @@ idf_component_register(
                   "ROSSerial/ROSTopicManager.cpp"
                   "RICRESTMsg/RICRESTMsg.cpp"
                   "ProtocolRICSerial/ProtocolRICSerial.cpp"
-                  "ProtocolRICFrame/ProtocolRICFrame.cpp"
-                  "ProtocolMarty1SC/ProtocolMarty1SC.cpp"
-                  "ProtocolMarty1SC/ProtocolMarty1SCDecoder.cpp"
                   "ProtocolOverAscii/ProtocolOverAscii.cpp"
                 INCLUDE_DIRS
                   "RestAPIEndpoints"
@@ -33,7 +30,6 @@ idf_component_register(
                   "ROSSerial"
                   "RICRESTMsg"
                   "ProtocolRICSerial"
-                  "ProtocolRICFrame"
                   "ProtocolOverAscii"
                 REQUIRES
                   core
