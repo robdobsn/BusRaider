@@ -1,0 +1,82 @@
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+// Unit tests of ProtocolOverAscii
+//
+// Rob Dobson 2017-2020
+//
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#include <ProtocolOverAscii.h>
+#include <Utils.h>
+#include <Logger.h>
+#include "unity.h"
+
+static const char* MODULE_PREFIX = "OverAsciiTest";
+
+TEST_CASE("test_overAscii", "[ProtocolOverAscii]")
+{
+    // Debug
+    LOG_I(MODULE_PREFIX, "ProtocolOverAsciis Test");
+
+    // Encode
+    static const uint8_t testFrame1[] = { 0x20, 0x48, 0x45, 0x4C, 0x4C, 0x4F, 0x05, 0x0e, 0x0f, 0x85, 0x8e, 0x8f, 0x90, 0xff, 
+                0x22, 0x0e, 0x45, 0x85, 0xf2, 0x5f, 0x3f, 0x0e, 0x92, 0x51, 0xda, 0x4c, 0x9b, 0xa5, 0x8e, 0x91, 0x05, 0x0f, 0x1d };
+    Utils::logHexBuf(testFrame1, sizeof(testFrame1), MODULE_PREFIX, "ProtocolOverAscii original");
+    uint8_t outFrame[500];
+    ProtocolOverAscii testPt;
+    uint32_t outLen = testPt.encodeFrame(testFrame1, sizeof(testFrame1), outFrame, sizeof(outFrame));
+    Utils::logHexBuf(outFrame, outLen, MODULE_PREFIX, "ProtocolOverAscii encoded");
+
+    // Decode
+    testPt.clear();
+    uint8_t decodedFrame[500];
+    uint32_t decodePos = 0;
+    for (uint32_t i = 0; i < outLen; i++)
+    {
+        int val = testPt.decodeByte(outFrame[i]);
+        if (val >= 0)
+        {
+            if (decodePos < sizeof(decodedFrame))
+            {
+                decodedFrame[decodePos++] = val;
+            }
+        }
+    }
+
+    // Check correct length
+    Utils::logHexBuf(decodedFrame, decodePos, MODULE_PREFIX, "ProtocolOverAscii decoded");
+    TEST_ASSERT_MESSAGE (decodePos == sizeof(testFrame1), "OverAscii decoded length differs");
+
+    // Check valid
+    if (decodePos == sizeof(testFrame1))
+    {
+        bool isOk = true;
+        for (uint32_t i = 0; i < sizeof(testFrame1); i++)
+        {
+            if (testFrame1[i] != decodedFrame[i])
+            {
+                isOk = false;
+            }
+        }
+        TEST_ASSERT_MESSAGE (isOk, "OverAscii decoded differs");
+    }
+    // // Test getString
+    // struct TestElem
+    // {
+    //     const char* dataPath;
+    //     const char* expStr;
+    // };
+    // TestElem getStringTests [] = {
+    //     { "SystemName", "RicFirmwareESP32" },
+    //     { "SysManager/reportList[1]", "RobotController" },
+    //     { "BLEManager", R"({"enable":1,"adName":"Marty","logLevel":"D"})" },
+    //     { "BLEManager/adName", "Marty" },
+    //     { "CommandSocket/enable", "1" },
+    // };
+    // for (int testIdx = 0; testIdx < sizeof(getStringTests)/sizeof(getStringTests[0]); testIdx++)
+    // {
+    //     String tokStartStr = "testGetString testIdx=" + String(testIdx);
+    //     TEST_ASSERT_MESSAGE(true == testGetString(getStringTests[testIdx].dataPath, 
+    //                 getStringTests[testIdx].expStr, testJSONConfigBase), tokStartStr.c_str());
+    // }
+}

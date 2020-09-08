@@ -1,0 +1,8 @@
+menu "Firmware Configuration"
+
+config LOG_LEVEL_INFO_AT_START
+    bool "Log level info at start"
+    help
+        Log level at start - otherwise debug.
+
+endmenu

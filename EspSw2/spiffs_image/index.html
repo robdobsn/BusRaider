@@ -1,0 +1,879 @@
+<html>
+<head>
+    <title>Marty the Robot</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Marty">
+    <meta name="author" content="Rob Dobson">
+    <link type="text/css" href="home.css" rel="stylesheet"/>
+    <link rel="shortcut icon" href="data:image/x-icon;base64,AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAQAABMLAAATCwAAAAAAAAAAAACvlzcSvKE2Z76iNIO+ojSCvqI0gr6iNIK+ojSCvqI0gr6iNIK+ojSCvqI0gr6iNIK+ojSCvqI0g72iN2a1mzgRuqA2aMaqN/bHqjf/x6o3/8eqN//Hqjf/x6o3/8eqN//Hqjf/x6o3/8eqN//Hqjf/x6o3/8eqN//Hqjf2vaI3ZryhNITHqjb/yKo1/8eqNf/HqjX/x6o1/8iqNf/HqjX/yKs2/8irNv/HqjX/x6o1/8iqNv/IqjX/x6o1/76iNIK8oDODzLJK/8+2Uv/Tu17/0blZ/9S9Yf/RuFf/07te/860TP/OtEz/0blY/9O7Xv/PtlD/0bhX/9C4V/++ozaCu58wg9vIff/k1p3/4tOX/+TWnP/n2qf/5deh/+LTl//dyoH/3MqA/+TWnf/cyoH/5NWb/+XXoP/XwnD/vaExgrufMIPcyoL/6Nys/+DPjf/j1Jj/6Nys/+TVm//fzYn/3cuD/9zKgf/j1Jj/1L1h/+TWnf/l16D/0rtf/7ygLoK7nzCD28h+/+vgtv/o3a3/4tOV/+fbqP/p3q//59qn/+XXoP/k1p3/5tmk/+PUmf/o3Kv/6Nyr/9W/aP+8oC+Cup4tg9/Pjf/9/Pj/9vLf/9C3VP/i0pT//fz3//n16P/38uH//Pv1/+TWnf/Qt1P/9O/Y//38+P/j1Zv/vaEwgrqeLYPbyX////79//379v/n2qj/8urO///////28d3/8+3T///////z7dP/5tml//z68///////4dGT/7ygLoK7nzGDzbNL//Ls0f/////////////////+/fr/4M+N/9vIff/8+/X/////////////////9vLf/9C4Vv+9oTCCvKE0g8eqNv/dyoL/7eS+//Xv2v/y69D/38+M/8quPv/JrDr/3MqA//Hpy//18Nv/7uXA/+DQj//IrDv/vqIzgrufMIPPtVL/59up/+DPjf/ezYj/2cV2/82zSv/Iqjb/yKs2/8uwQv/Yw3H/3syG/9/Oiv/n26n/1L1j/72gMIK7oDODya0+/9G5Wf/WwGj/2cV1/97Mhf/Tu17/yKo2/8iqNv/PtVD/3cyF/9rGeP/WwGr/0rtc/8uvQ/++ojOCvKE0hMeqNv/IqjX/x6o0/8eqNP/HqjT/yKs2/8irN//Iqzf/yKs2/8eqNP/HqjT/x6o0/8eqNf/Hqjb/vqI0grmfNmjGqTf3x6o3/8eqN//Hqjf/x6o3/8eqN//Hqjf/x6o3/8eqN//Hqjf/x6o3/8eqN//Hqjf/xqo39ryhNmepkTUSuZ81aLugNIS7oDSDu6A0g7ugNIO7oDSDu6A0g7ugNIO7oDSDu6A0g7ugNIO7oDSDu6A0hLqgNmiuljcSAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==" />
+    <style>@charset "utf-8";@font-face{font-family:BigNoodleTitling;src:url(https://content.robotical.io/static/fonts/big_noodle_titling.woff) format("woff")}body{font-family:BigNoodleTitling,Helvetica;line-height:1.4em;font-size:12pt;margin:0;color:#808080;background-color:white}div{box-sizing:border-box}.page-content{}.content-block{background-color:rgba(255,255,255,0.9)}.content-third{background-color:#fff;display:flex;justify-content:left}.content-buttons{margin:20px}.content-group{display:flex;justify-content:left}.content-status{display:flex;background-color:#73c4d9;justify-content:left;padding-left:10px}.status-item{background-color:#808080;margin-left:10px;color:#fff;line-height:0;padding:0 10px;border-radius:5px;margin:5px 10px}.content-servos{margin:20px}.header-group{min-height:100px;background-color:#37abc8;font-size:1.2rem;color:#fff;width:100%;padding:10px}.hero-logo{margin-left:20px}.marty-logo{width:100px}.info-group{display:flex;flex-direction:column;flex-wrap:wrap;font-size:1.2rem;color:#101010;width:100%}.info-group+.info-group{margin-left:20px}.servo-group{width:23%}.servo-name-pos{display:flex}.servo-pos{background-color:#ccc;border-color:#333}.servo-pos::-webkit-progress-bar{background-color:#ccc}.servo-pos::-webkit-progress-value{background:#47bdde}.servo-pos::-moz-progress-bar{background:#47bdde}.content-head-item{margin-left:50px;font-size:2.5rem;color:#fff;position:absolute;top:38px}.content-master-head{display:inline-block}.settings-edit-button{padding-left:20px;float:right;margin-top:20px;margin-right:15px}.button-small{font-size:1rem;padding:.2rem 2rem;border:0;margin-right:1rem;background-color:#37abc8;color:white;border-radius:4em;vertical-align:middle;white-space:normal;line-height:normal;height:2.5em;display:inline-block}.hwelem-label{margin-right:10px}.hwelem-val{margin-right:10px;display:flex;justify-content:flex-end;flex:auto}.hwelem-status{height:.9rem;width:.9rem;background-color:green;border-radius:50%;justify-content:flex-end;display:flex;margin-right:10px;margin-top:3px}.no-data{background-color:red}.file-sys-title{font-family:BigNoodleTitling,Helvetica;font-size:1.3rem}.file-system-info{}.drop-zone{background:#fff}.drop-zone.highlight{border:2px solid #9595de}.file-upload-form{margin:20px;font-family:Arial,Helvetica,sans-serif}.uiPanelSub{padding-top:10px}.uiPanelSub label{padding-top:10px;height:1.7em}.uiTable{border:0;width:100%;max-width:100%;border-spacing:0;border-collapse:collapse;background-color:transparent;text-align:center;vertical-align:middle !important}.uiTable>thead>tr>th{vertical-align:bottom;border-bottom:2px solid #ccc;color:#222}.uiTable>thead>tr>th>a{color:#666;text-decoration:none;font-size:.8rem}.uiTable>thead>tr>th,.uiTable>tbody>tr>th,.uiTable>tfoot>tr>th,.uiTable>thead>tr>td,.uiTable>tbody>tr>td,.uiTable>tfoot>tr>td{padding:8px;line-height:1.42857143;vertical-align:center;border-top:1px solid #ccc}.uiTable>caption+thead>tr:first-child>th,.uiTable>colgroup+thead>tr:first-child>th,.uiTable>thead:first-child>tr:first-child>th,.uiTable>caption+thead>tr:first-child>td,.uiTable>colgroup+thead>tr:first-child>td,.uiTable>thead:first-child>tr:first-child>td{border-top:0}.uiTableBordered>thead>tr>th,.uiTableBordered>tbody>tr>th,.uiTableBordered>tfoot>tr>th,.uiTableBordered>thead>tr>td,.uiTableBordered>tbody>tr>td,.uiTableBordered>tfoot>tr>td{border:1px solid #ccc}.uiTableBordered>thead>tr>th,.table-bordered>thead>tr>td{border-bottom-width:2px}.uiTableBordered{border:1px solid #ccc;vertical-align:center}.uiTableFiles{margin-bottom:15px}.tooltip{position:relative;display:inline-block}.tooltip .tooltiptext{visibility:hidden;width:120px;background-color:black;color:#fff;text-align:center;border-radius:6px;padding:5px 0;position:absolute;z-index:1;bottom:100%;left:50%;margin-left:-100px;opacity:0;transition:opacity 1s}.tooltip:hover .tooltiptext{visibility:visible;opacity:1}.icon-action{color:#808080;fill:#808080;width:32px;height:32px;padding:2px;vertical-align:middle}#fileElemRun{display:none}#fileElemUpload{display:none}progress{border-radius:5px;margin-bottom:6px;width:100%}progress::-webkit-progress-bar{width:100%;min-height:100%;background-color:#ccc;border-color:#333;border-radius:5px}progress::-moz-progress-bar{background-color:#9595de;border-radius:5px;border-color:#333}progress::-webkit-progress-value{background-color:#9595de;border-radius:5px;border-color:#333}.file-upload-progress{width:100%;margin-top:5px;margin-bottom:5px}.file-actions{min-width:150px}.file-name{text-align:left}.file-size{text-align:left}</style>
+</head>
+<body onload="bodyIsLoaded(event)">
+	<div>
+    <div id="pageList" class="page-content">
+      <div class="content-block">
+        <div class="content-group">
+          <div class="header-group">
+            <a href="https://robotical.io" class="hero-logo">
+              <img src="https://content.robotical.io/static/img/robotical_logo.svg" class="marty-logo">
+            </a>
+            <div id="pageHeadingId" class="content-head-item content-master-head">Marty the Robot</div>
+            <a class="settings-edit-button" href="javascript:void(0)"
+              onclick="settingsMode()">
+              <svg width="30" height="30">
+                <use xlink:href = "#wheel-icon"></use>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="content-block">
+        <div class="content-status">
+          <div class="status-item"><p id="webSocketState"></p></div>
+        </div>
+      </div>
+      <div class="content-block">
+        <div class="content-third">
+          <div class="content-buttons">
+            <button class="button-small" onclick="ricCmd('pwrctrl/5Von');">Power On 5V</button>
+            <button class="button-small" onclick="ricCmd('pwrctrl/5Voff');">Power Off 5V</button>
+          </div>
+        </div>
+      </div>
+      <div class="content-block">
+        <div class="content-servos">
+          <div id="servosLeft" class="content-group">
+          </div>
+          <div id="servosRight" class="content-group">
+          </div>
+          <div id="servosOther" class="content-group">
+          </div>
+        </div>
+      </div>
+      <div class = "content-block">
+        
+      </div>
+      <div id="file-manager" class="content-block drop-zone">
+        <form class="file-upload-form">
+            <div class=uiPanelSub>
+                <p class="file-sys-title">ESP32 file system (drag and drop only one at a time please)</p>
+                <input type="file" id="fileElemUpload" onchange="uploadToFileManager(this.files)">
+                <label class="button-small" for="fileElemUpload">Select a file to upload</label>
+            </div>
+            <progress class="file-upload-progress" id="progress-bar-file-manager" max=100 value=0></progress>
+            <div id="file-system-info" class="uiPanelSub"><span></span></div>
+            <table class="uiTable uiTableBordered uiTableFiles uiTableStripe" id="table_files">
+                <col width="150px">
+                <col width="70%">
+                <thead>
+                    <tr>
+                        <th><a href="#" data-attribute="action">Actions</a>
+                        </th> 
+                        <th><a href="#" data-attribute="filename">File Name</a>
+                        </th>
+                        <th><a href="#" data-attribute="size">Size</a>
+                        </th>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"
+	 xml:space="preserve">
+    <symbol id="wheel-icon" viewBox="0 0 100 100">
+        <path d="m 90.6,45.9 10.8,2.3 0,9.2 -13.3,2.3 -5.1,6.2 0.5,9 6.3,8.8 -7.1,6.6 -9.9,-7.4 -10,2.1 -4.3,6.0
+                -2.4,10.8 -9.2,0 -2.4,-13.3 -6.1,-5.1 -9,0.5 -8.8,6.3 -6.6,-7.2 7.4,-9.9 -1.0,-10.2 -6.5,-4
+                -10.8,-2.2 -0.1,-9.2 13.3,-2.5 5.0,-6.2 -0.6,-9 -6.4,-8.7 7.1,-6.7 10,7.3 9.8,-1.5 4.1,-6.1
+                2.0,-10.9 9.2,-0.3 2.8,13.3 6.3,4.9 9,-0.8 8.6,-6.6 6.8,6.9 -7.1,10.1 1.4,10.6 z" stroke-width="0" fill="#ffffff"></path>
+        <path d="M 75.502077,52.185024 A 23.60549,23.100414 0 0 1 51.896587,75.285439 23.60549,23.100414
+                0 0 1 28.291098,52.185024 23.60549,23.100414 0 0 1 51.896587,29.08461 23.60549,23.100414
+                0 0 1 75.502077,52.185024 Z" stroke-width="0" fill="#37abc8"></path>
+    </symbol>
+    <symbol id="icon-send" viewBox="0 0 1200 1200">
+      <g>
+          <path d="M1200 103l-483 276l-314 -399v423h-399l1196 796v-1096zM483 424v-230l683 953z"
+              transform="scale(1,-1) translate(0,-1200)"></path>
+      </g>
+    </symbol>
+    <symbol id="icon-send-plus" viewBox="0 0 1200 1200">
+        <g>
+            <path
+                d="M 507.57247,298.94304 H 318.98641 V 487.52909 H 261.54552 V 298.94304 H 72.959465 V 243.57832 H 261.54552 V 54.992266 h 57.44089 V 243.57832 H 507.57247 Z M 1200,1100.9135 l -483,-276 -314,399 v -423 H 4 L 1200,4.9135045 Z m -717,-321 v 230 L 1166,56.913505 Z">
+            </path>
+        </g>
+    </symbol>
+    <symbol id="ico-play" viewBox="0 0 233 233">
+        <g>
+            <path d="M203.791,99.628L49.307,2.294c-4.567-2.719-10.238-2.266-14.521-2.266
+    c-17.132,0-17.056,13.227-17.056,16.578v198.94c0,2.833-0.075,16.579,17.056,16.579c4.283,0,9.955,0.451,14.521-2.267
+    l154.483-97.333c12.68-7.545,10.489-16.449,10.489-16.449S216.471,107.172,203.791,99.628z" />
+        </g>
+    </symbol>
+    <symbol id="ico-delete" viewBox="0 0 26 26">
+        <g>
+            <path
+                d="M 11 -0.03125 C 10.164063 -0.03125 9.34375 0.132813 8.75 0.71875 C 8.15625 1.304688 7.96875 2.136719 7.96875 3 L 4 3 C 3.449219 3 3 3.449219 3 4 L 2 4 L 2 6 L 24 6 L 24 4 L 23 4 C 23 3.449219 22.550781 3 22 3 L 18.03125 3 C 18.03125 2.136719 17.84375 1.304688 17.25 0.71875 C 16.65625 0.132813 15.835938 -0.03125 15 -0.03125 Z M 11 2.03125 L 15 2.03125 C 15.546875 2.03125 15.71875 2.160156 15.78125 2.21875 C 15.84375 2.277344 15.96875 2.441406 15.96875 3 L 10.03125 3 C 10.03125 2.441406 10.15625 2.277344 10.21875 2.21875 C 10.28125 2.160156 10.453125 2.03125 11 2.03125 Z M 4 7 L 4 23 C 4 24.652344 5.347656 26 7 26 L 19 26 C 20.652344 26 22 24.652344 22 23 L 22 7 Z M 8 10 L 10 10 L 10 22 L 8 22 Z M 12 10 L 14 10 L 14 22 L 12 22 Z M 16 10 L 18 10 L 18 22 L 16 22 Z " />
+        </g>
+    </symbol>
+    <symbol id="ico-config" viewBox="20 20 40 40">
+        <g>
+            <path
+                d="M 38,23.5C 38.8643,23.5 39.7109,23.5756 40.5337,23.7206L 42.6275,18.5381L 48.1901,20.787L 46.0964,25.9692C 47.6473,27.0149 48.9851,28.3527 50.0308,29.9036L 55.213,27.8099L 57.4619,33.3725L 52.2794,35.4664C 52.4244,36.2891 52.5,37.1357 52.5,38C 52.5,38.8643 52.4244,39.7109 52.2794,40.5337L 57.4619,42.6275L 55.213,48.1901L 50.0308,46.0964C 49.0795,47.5073 47.8865,48.7418 46.5112,49.7405L 48.7844,54.8462L 43.3041,57.2891L 41.0307,52.1828C 40.0533,52.3906 39.0394,52.5 38,52.5C 37.1357,52.5 36.2891,52.4244 35.4664,52.2794L 33.3725,57.462L 27.8099,55.213L 29.9036,50.0309C 28.3527,48.9851 27.0149,47.6473 25.9691,46.0964L 20.787,48.1901L 18.538,42.6275L 23.7206,40.5336C 23.5756,39.7109 23.5,38.8643 23.5,38C 23.5,37.1357 23.5756,36.2891 23.7206,35.4664L 18.538,33.3725L 20.787,27.8099L 25.9691,29.9036C 26.9205,28.4927 28.1135,27.2582 29.4889,26.2594L 27.2157,21.1537L 32.6959,18.7109L 34.9694,23.8172C 35.9468,23.6094 36.9606,23.5 38,23.5 Z M 38,28C 32.4771,28 28,32.4772 28,38C 28,43.5229 32.4771,48 38,48C 43.5228,48 48,43.5229 48,38C 48,32.4772 43.5228,28 38,28 Z" />
+        </g>
+    </symbol>
+    <symbol id="ico-download" viewBox="0 0 1000 1000">
+      <g>
+          <path
+              d="M924,700v222c0,37.3-30.2,67.4-67.4,67.4H143c-37.2,0-67.4-30.1-67.4-67.4V700.4c0-37.2,30.2-67.4,67.4-67.4c37.2,0,67.4,30.2,67.4,67.4v154.9h579.2V700.4c0-37.2,30.2-67.4,67.4-67.4C894.2,633,924.3,663.2,924.3,700.4z M452.4,758.1c13.2,13.2,30.4,19.7,47.6,19.7c17.3,0,34.5-6.6,47.7-19.7l202-202c26.4-26.3,26.4-68.9,0-95.2c-26.3-26.3-69-26.3-95.2,0l-87,87.1V77.4c0-37.2-30.1-67.4-67.4-67.4c-37.2,0-67.4,30.2-67.4,67.4v470l-87.1-87.1c-26.3-26.3-69-26.3-95.2,0c-26.3,26.3-26.3,69,0,95.2L452,758z"/>
+      </g>
+    </symbol>
+  </svg>
+
+  <script type = "text/javascript">
+function callAjax(url, okCallback, failCallback)
+{
+var xmlhttp = new XMLHttpRequest();
+xmlhttp.onreadystatechange = function()
+{
+if (xmlhttp.readyState === 4) {
+if (xmlhttp.status === 200) {
+if ((okCallback !== undefined) && (typeof okCallback !== 'undefined'))
+okCallback(xmlhttp.responseText);
+}
+else {
+if ((failCallback !== undefined) && (typeof failCallback !== 'undefined'))
+failCallback(xmlhttp);
+}
+}
+};
+xmlhttp.open("GET", url, true);
+xmlhttp.send();
+}
+function postAjax(url, jsonInfo, okCallback, failCallback) {
+let xmlhttp = new XMLHttpRequest();
+xmlhttp.onreadystatechange = function () {
+if (xmlhttp.readyState === 4) {
+if (xmlhttp.status === 200) {
+if ((okCallback !== undefined) && (typeof okCallback !== 'undefined'))
+okCallback(xmlhttp.responseText);
+}
+else {
+if ((failCallback !== undefined) && (typeof failCallback !== 'undefined'))
+failCallback(xmlhttp);
+}
+}
+};
+xmlhttp.open("POST", url, true);
+xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+xmlhttp.send(JSON.stringify(jsonInfo));
+}function bodyIsLoaded() {
+document.getElementById("webSocketState").innerHTML = "WebSocket is not connected";
+window.pageState = {
+servos: [{level:null},{level:null},{level:null},{level:null},{level:null},{level:null},{level:null},{level:null},{level:null},{level:null},{level:null},{level:null},{level:null}],
+reconnectTimer: null,
+fsDefault: "spiffs",
+uploadProgress: [],
+latestfileListInfo: null,
+martyIF: new MartyIFWeb(this.servoMsgCB, this.imuMsgCB),
+servoNames: ["LeftHip","LeftTwist","LeftKnee",
+"RightHip","RightTwist","RightKnee",
+"LeftArm","RightArm","Eyes"],
+status: {servos:[]}
+};
+let dropZones = document.getElementsByClassName("drop-zone");
+Array.from(dropZones).forEach(function (dropZone) {
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+dropZone.addEventListener(eventName, preventDefaults, false)
+document.body.addEventListener(eventName, preventDefaults, false)
+});
+['dragenter', 'dragover'].forEach(eventName => {
+dropZone.addEventListener(eventName, highlight, false)
+});
+['dragleave', 'drop'].forEach(eventName => {
+dropZone.addEventListener(eventName, unhighlight, false)
+});
+dropZone.addEventListener('drop', handleDrop, false);
+});
+fileListUpdate();
+connectWs();
+servoMsgCB([
+{"pos":0}, {"pos":0}, {"pos":0},
+{"pos":0}, {"pos":0}, {"pos":0},
+{"pos":0}, {"pos":-0},
+{"pos":0},
+])
+}function handleDrop(e) {
+var dt = e.dataTransfer;
+var files = dt.files;
+let regionId = e.currentTarget.id;
+if (regionId === "file-manager")
+uploadToFileManager(files);
+}
+function initializeProgress(numFiles, progressBarName) {
+window.pageState.uploadProgress = []
+let progressBar = document.getElementById(progressBarName);
+progressBar.value = 0;
+for (let i = numFiles; i > 0; i--) {
+window.pageState.uploadProgress.push(0);
+}
+}
+function updateProgress(fileNumber, percent, progressBarName) {
+let progressBar = document.getElementById(progressBarName);
+window.pageState.uploadProgress[fileNumber] = percent;
+let total = window.pageState.uploadProgress.reduce((tot, curr) => tot + curr, 0) / 
+window.pageState.uploadProgress.length;
+progressBar.value = total;
+}
+function uploadToFileManager(files) {
+filesArray = [...files];
+initializeProgress(filesArray.length, 'progress-bar-file-manager');
+filesArray.forEach(uploadOnlyFile);
+document.getElementById("fileElemUpload").value = ""
+}
+function uploadOnlyFile(file, i) {
+uploadFileSpecUrl("/api/fileupload", 'progress-bar-file-manager', file, i)
+}
+function uploadFileSpecUrl(url, progressBarName, file, i) {
+var xhr = new XMLHttpRequest();
+var formData = new FormData();
+xhr.open('POST', url, true);
+xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+xhr.upload.addEventListener("progress", function (e) {
+updateProgress(i, (e.loaded * 100.0 / e.total) || 100, progressBarName);
+});
+xhr.addEventListener('readystatechange', function (e) {
+if (xhr.readyState == 4 && xhr.status == 200) {
+updateProgress(i, 100, progressBarName)
+fileListUpdate();
+} else if (xhr.readyState == 4 && xhr.status != 200) {
+}
+});
+formData.append('file', file);
+xhr.send(formData);
+}
+function fileListUpdate() {
+callAjax("/api/filelist/" + window.pageState.fsDefault + "/", fileListUpdateOk, fileListUpdateFail);
+}
+function fileListUpdateFail() {
+}
+function fileSizeSI(size) {
+let e = (Math.log(size) / Math.log(1024)) | 0;
+return +(size / Math.pow(1024, e)).toFixed(2) + ' ' + ('kMGTPEZY'[e - 1] || '') + 'B';
+}
+function fileListUpdateOk(resp) {
+let fileListInfo = JSON.parse(resp);
+window.pageState.latestfileListInfo = fileListInfo;
+if (fileListInfo.diskSize) {
+let fileSystemInfo = document.getElementById("file-system-info");
+let fsInfoStr = "<b>Disk Size:</b> " + fileSizeSI(fileListInfo.diskSize) + ", <b>Free Bytes:</b> " + fileSizeSI(fileListInfo.diskSize - fileListInfo.diskUsed);
+fileSystemInfo.innerHTML = fsInfoStr;
+}
+let tabFiles = document.getElementById("table_files");
+let rowCount = tabFiles.rows.length;
+for (let i = rowCount - 1; i > 0; i--)
+tabFiles.deleteRow(i);
+for (let i = 0; i < fileListInfo.files.length; i++) {
+let filename = fileListInfo.files[i].name;
+filename = filename.replace("/", "");
+let aux = filename.split('.');
+if (aux.length > 0)
+{
+let extension = aux[aux.length-1].toLowerCase();
+if ((extension === "json") && (filename.toLowerCase() !== 'demo.json'))
+continue;
+}
+let filesize = fileListInfo.files[i].size;
+let row = '<tr data-file="' + filename + '">';
+row += '<td class=file-actions">'
+row += '<a class="btn btn-fileaction tooltip" onclick="deleteFile(\'' + filename + '\')">'
+row += '<svg class="icon-action"><use xlink:href="#ico-delete"></use></svg>'
+row += '<span class="tooltiptext">Delete file</span>'
+row += '</a>'
+row += '<a class="btn btn-fileaction tooltip" href="' + filename + '" download="' + filename + '">'
+row += '<svg class="icon-action"><use xlink:href="#ico-download"></use></svg>'
+row += '<span class="tooltiptext">Download file</span>'
+row += '</a>'
+row += '<a class="btn btn-fileaction tooltip" onclick="runFileOnTarget(\'' + filename + '\')">'
+row += '<svg class="icon-action"><use xlink:href="#ico-play"></use></svg>'
+row += '<span class="tooltiptext">Run file now</span>'
+row += '</a>'
+row += '</td>'
+row += '<td class="file-name"><a onclick="runFileOnTarget(\'' + filename + '\')">' + filename + '</a></td>';
+row += '<td class="file-size hidden-xs">' + fileSizeSI(filesize) + '</td>';
+row += '</tr>';
+let newRow = tabFiles.insertRow(tabFiles.rows.length);
+newRow.innerHTML = row;
+}
+}
+function deleteFile(filename) {
+callAjax("/api/filedelete/" + window.pageState.fsDefault + "/" + filename);
+fileListUpdate();
+}
+function runFileOnTarget(filename) {
+callAjax("/api/filerun/" + window.pageState.fsDefault + "/" + filename);
+}class MartyIFWeb
+{
+constructor(servoMsgCB, imuMsgCB) {
+this.servoMsgCB = servoMsgCB;
+this.imuMsgCB = imuMsgCB;
+this.miniHDLC = new MiniHDLC();
+this.miniHDLC.onRxFrame = this._onHDLCFrameDecode.bind(this);
+this.currentMsgNumber = 1;
+this.martyIFStats = {
+servoRatePS: 0,
+servosCount: 0,
+};
+this.statsCalcs = {
+lastStatsWindowTime: null,
+lastStatsWindowServos: 0,
+};
+this.MSG_TYPE_COMMAND = 0x00;
+this.PROTOCOL_ROSSERIAL = 0x00;
+this.PROTOCOL_RICREST = 0x02;
+this.RICSERIAL_MSG_NUM_POS = 0;
+this.RICSERIAL_PROTOCOL_POS = 1;
+this.RICSERIAL_PAYLOAD_POS = 2;
+this.RICREST_ELEM_CODE_URL = 0x00;
+this.RICREST_ELEM_CODE_JSON = 0x01;
+this.RICREST_ELEM_CODE_BODY = 0x02;
+this.RICREST_ELEM_CODE_CMD_FRAME = 0x03;
+this.RICREST_ELEM_CODE_FILE_BLOCK = 0x04;
+this.CMD_MSG_PREFIX_LEN = 3;
+}
+/**
+* Handle data received from comms handler
+* @param frameFromComms - data from comms handler Uint8Array
+*/
+handleRxFrame(frameFromComms) {
+this.miniHDLC.addRxBytes(frameFromComms);
+}
+/**
+* Handle frame decoded by HDLC
+* @param rxDataFrame - decoded frame as Uint8Array
+*/
+_onHDLCFrameDecode(rxDataFrame) {
+if (rxDataFrame.length < 3) {
+console.warn('commsRxFrame too short for RICSERIAL message');
+return;
+}
+const rxProtocol = rxDataFrame[this.RICSERIAL_PROTOCOL_POS] & 0x3f;
+const rxPayload = rxDataFrame.slice(2);
+if (rxProtocol === this.PROTOCOL_ROSSERIAL) {
+const decodedMsgs = MartyROSSerial.decode(rxPayload);
+for (let msgIdx = 0; msgIdx < decodedMsgs.length; msgIdx++) {
+const decodedMsg = decodedMsgs[msgIdx];
+if ('smartServos' in decodedMsg) {
+this.servoMsgCB(decodedMsg.smartServos);
+this.martyIFStats.servosCount++;
+this._statsUpdate();
+} else if ('accel' in decodedMsg) {
+this.imuMsgCB(decodedMsg.accel);
+}
+}
+} else {
+console.warn('RxFrame unsupported protocol number ' + rxProtocol);
+}
+}
+_statsUpdate() {
+if (!this.statsCalcs.lastStatsWindowTime) {
+this.statsCalcs.lastStatsWindowTime = new Date();
+} else {
+const curTime = new Date();
+const elapsedMs = curTime - this.statsCalcs.lastStatsWindowTime;
+if (elapsedMs > 1000) {
+const curServoMsgCount = this.martyIFStats.servosCount;
+this.martyIFStats.servoRatePS =
+Math.round(
+(10000 *
+(curServoMsgCount - this.statsCalcs.lastStatsWindowServos)) /
+elapsedMs,
+) / 10;
+this.statsCalcs.lastStatsWindowServos = curServoMsgCount;
+this.statsCalcs.lastStatsWindowTime = new Date();
+}
+}
+}
+}class MartyROSSerial {
+static decode(rosSerialMsg) {
+let msgPos = 0;
+const rosSerialMsgs = [];
+while (true) {
+const remainingMsgLen = rosSerialMsg.length - msgPos;
+const RS_MSG_MIN_LENGTH = 8;
+const RS_MSG_LEN_LOW_POS = 2;
+const RS_MSG_LEN_HIGH_POS = 3;
+const RS_MSG_TOPIC_ID_LOW_POS = 5;
+const RS_MSG_TOPIC_ID_HIGH_POS = 6;
+const RS_MSG_PAYLOAD_POS = 7;
+if (remainingMsgLen < RS_MSG_MIN_LENGTH) break;
+const payloadLength =
+rosSerialMsg[msgPos + RS_MSG_LEN_LOW_POS] +
+rosSerialMsg[msgPos + RS_MSG_LEN_HIGH_POS] * 256;
+const topicID =
+rosSerialMsg[msgPos + RS_MSG_TOPIC_ID_LOW_POS] +
+rosSerialMsg[msgPos + RS_MSG_TOPIC_ID_HIGH_POS] * 256;
+if (rosSerialMsg.length < payloadLength + RS_MSG_MIN_LENGTH) break;
+const payload = rosSerialMsg.slice(
+msgPos + RS_MSG_PAYLOAD_POS,
+msgPos + RS_MSG_PAYLOAD_POS + payloadLength,
+);
+const ROSTOPIC_V2_SMART_SERVOS = 120;
+const ROSTOPIC_V2_ACCEL = 121;
+if (topicID === ROSTOPIC_V2_SMART_SERVOS) {
+rosSerialMsgs.push(this.extractSmartServos(payload));
+}
+else if (topicID === ROSTOPIC_V2_ACCEL) {
+rosSerialMsgs.push(this.extractAccel(payload));
+}
+msgPos += RS_MSG_PAYLOAD_POS + payloadLength + 1;
+}
+return rosSerialMsgs;
+}
+static extractSmartServos(buf) {
+const ROS_SMART_SERVOS_ATTR_GROUP_BYTES = 6;
+const numGroups = Math.floor(
+buf.length / ROS_SMART_SERVOS_ATTR_GROUP_BYTES,
+);
+const smartServos = [];
+let bufPos = 0;
+for (let i = 0; i < numGroups; i++) {
+const servoId = buf[bufPos];
+const servoPos = MartyUtils.getBEInt16FromBuf(buf, bufPos + 1) / 10;
+const servoCurrent = MartyUtils.getBEInt16FromBuf(buf, bufPos + 3);
+const servoStatus = buf[bufPos + 5];
+bufPos += ROS_SMART_SERVOS_ATTR_GROUP_BYTES;
+smartServos.push({
+id: servoId,
+pos: servoPos,
+current: servoCurrent,
+status: servoStatus,
+});
+}
+return { smartServos: smartServos };
+}
+static extractAccel(buf) {
+const x = MartyUtils.getBEFloatFromBuf(buf);
+const y = MartyUtils.getBEFloatFromBuf(buf.slice(4));
+const z = MartyUtils.getBEFloatFromBuf(buf.slice(8));
+return { accel: { x: x, y: y, z: z } };
+}
+}class MartyUtils {
+/**
+* 
+* Add a string to a Uint8Array buffer
+* 
+* @param buffer - buffer to add to
+* @param strToAdd - string to be added
+* @param startPos - start position in buffer (i.e. offset to place string at)
+*/
+static addStringToBuffer(buffer, strToAdd, startPos) {
+if (buffer.length < startPos + strToAdd.length + 1)
+{
+console.error("buffer too short");
+return;
+}
+let curPos = startPos;
+for (let i = 0; i < strToAdd.length; i++) {
+const charAt = strToAdd.charCodeAt(i);
+if (charAt > 255)
+charAt = 255;
+buffer.set([charAt], curPos++);
+}
+buffer.set([0], buffer.length - 1);
+}
+/**
+* 
+* Debug code to format a Uint8Array to string for logging
+* 
+* @param buffer - Uint8Array to be converted to hex string
+*/
+static bufferToHex(buffer) {
+return Array.from(new Uint8Array(buffer))
+.map(b => b.toString(16).padStart(2, '0'))
+.join('');
+}
+/**
+* 
+* Extract a big-endian float from a uint8array
+* 
+* @param buf - Uint8Array containing float
+* @returns float
+*/
+static getBEFloatFromBuf(buf) {
+const isLE = MartyUtils.isLittleEndian();
+let revBuf = new Uint8Array(4);
+if (isLE)
+{
+for (let i = 0; i < 4; i++)
+revBuf[3-i] = buf[i];
+}
+else
+{
+for (let i = 0; i < 4; i++)
+revBuf[i] = buf[i];
+}
+let floatVal = new Float32Array(revBuf.buffer);
+return floatVal[0];
+}
+/**
+* 
+* Extract a big-endian inyt16 from a uint8array
+* 
+* @param buf - Uint8Array containing int16
+* @returns int16
+*/
+static getBEInt16FromBuf(buf, bufPos) {
+const isLE = MartyUtils.isLittleEndian();
+let val = (buf[bufPos] * 256) + buf[bufPos+1];
+if (!isLE)
+val = (buf[bufPos+1] * 256) + buf[bufPos];
+if (val > 32767)
+val -= 65536;
+return val;
+}
+static isLittleEndian()
+{
+var a = new Uint32Array([0x12345678]);
+var b = new Uint8Array(a.buffer, a.byteOffset, a.byteLength);
+return (b[0] != 0x12);
+}
+/**
+* Implementation of atob() according to the HTML and Infra specs, except that
+* instead of throwing INVALID_CHARACTER_ERR we return null.
+*/
+static atob(data) {
+data = `${data}`;
+data = data.replace(/[ \t\n\f\r]/g, "");
+if (data.length % 4 === 0) {
+data = data.replace(/==?$/, "");
+}
+if (data.length % 4 === 1 || /[^+/0-9A-Za-z]/.test(data)) {
+return null;
+}
+let output = "";
+let buffer = 0;
+let accumulatedBits = 0;
+for (let i = 0; i < data.length; i++) {
+buffer <<= 6;
+buffer |= this.atobLookup(data[i]);
+accumulatedBits += 6;
+if (accumulatedBits === 24) {
+output += String.fromCharCode((buffer & 0xff0000) >> 16);
+output += String.fromCharCode((buffer & 0xff00) >> 8);
+output += String.fromCharCode(buffer & 0xff);
+buffer = accumulatedBits = 0;
+}
+}
+if (accumulatedBits === 12) {
+buffer >>= 4;
+output += String.fromCharCode(buffer);
+} else if (accumulatedBits === 18) {
+buffer >>= 2;
+output += String.fromCharCode((buffer & 0xff00) >> 8);
+output += String.fromCharCode(buffer & 0xff);
+}
+return output;
+}
+/**
+* A lookup table for atob(), which converts an ASCII character to the
+* corresponding six-bit number.
+*/
+static atobLookup(chr) {
+if (/[A-Z]/.test(chr)) {
+return chr.charCodeAt(0) - "A".charCodeAt(0);
+}
+if (/[a-z]/.test(chr)) {
+return chr.charCodeAt(0) - "a".charCodeAt(0) + 26;
+}
+if (/[0-9]/.test(chr)) {
+return chr.charCodeAt(0) - "0".charCodeAt(0) + 52;
+}
+if (chr === "+") {
+return 62;
+}
+if (chr === "/") {
+return 63;
+}
+return undefined;
+}
+/**
+* btoa() as defined by the HTML and Infra specs, which mostly just references
+* RFC 4648.
+*/
+static btoa(s) {
+let i;
+s = `${s}`;
+for (i = 0; i < s.length; i++) {
+if (s.charCodeAt(i) > 255) {
+return null;
+}
+}
+let out = "";
+for (i = 0; i < s.length; i += 3) {
+const groupsOfSix = [undefined, undefined, undefined, undefined];
+groupsOfSix[0] = s.charCodeAt(i) >> 2;
+groupsOfSix[1] = (s.charCodeAt(i) & 0x03) << 4;
+if (s.length > i + 1) {
+groupsOfSix[1] |= s.charCodeAt(i + 1) >> 4;
+groupsOfSix[2] = (s.charCodeAt(i + 1) & 0x0f) << 2;
+}
+if (s.length > i + 2) {
+groupsOfSix[2] |= s.charCodeAt(i + 2) >> 6;
+groupsOfSix[3] = s.charCodeAt(i + 2) & 0x3f;
+}
+for (let j = 0; j < groupsOfSix.length; j++) {
+if (typeof groupsOfSix[j] === "undefined") {
+out += "=";
+} else {
+out += MartyUtils.btoaLookup(groupsOfSix[j]);
+}
+}
+}
+return out;
+}
+/**
+* Lookup table for btoa(), which converts a six-bit number into the
+* corresponding ASCII character.
+*/
+static btoaLookup(idx) {
+if (idx < 26) {
+return String.fromCharCode(idx + "A".charCodeAt(0));
+}
+if (idx < 52) {
+return String.fromCharCode(idx - 26 + "a".charCodeAt(0));
+}
+if (idx < 62) {
+return String.fromCharCode(idx - 52 + "0".charCodeAt(0));
+}
+if (idx === 62) {
+return "+";
+}
+if (idx === 63) {
+return "/";
+}
+return undefined;
+}
+}class MiniHDLC {
+constructor() {
+this.STATE_READ = 1;
+this.STATE_ESCAPE = 2;
+this.rxState = this.STATE_READ;
+this.rxBuffer = [];
+this.onRxFrame = null;
+this.crcLUT = [0,4129,8258,12387,16516,20645,24774,28903,33032,37161,41290,45419,49548,53677,57806,61935,4657,528,12915,8786,21173,
+17044,29431,25302,37689,33560,45947,41818,54205,50076,62463,58334,9314,13379,1056,5121,25830,29895,17572,21637,42346,46411,34088,
+38153,58862,62927,50604,54669,13907,9842,5649,1584,30423,26358,22165,18100,46939,42874,38681,34616,63455,59390,55197,51132,18628,
+22757,26758,30887,2112,6241,10242,14371,51660,55789,59790,63919,35144,39273,43274,47403,23285,19156,31415,27286,6769,2640,14899,
+10770,56317,52188,64447,60318,39801,35672,47931,43802,27814,31879,19684,23749,11298,15363,3168,7233,60846,64911,52716,56781,44330,
+48395,36200,40265,32407,28342,24277,20212,15891,11826,7761,3696,65439,61374,57309,53244,48923,44858,40793,36728,37256,33193,45514,
+41451,53516,49453,61774,57711,4224,161,12482,8419,20484,16421,28742,24679,33721,37784,41979,46042,49981,54044,58239,62302,689,4752,
+8947,13010,16949,21012,25207,29270,46570,42443,38312,34185,62830,58703,54572,50445,13538,9411,5280,1153,29798,25671,21540,17413,
+42971,47098,34713,38840,59231,63358,50973,55100,9939,14066,1681,5808,26199,30326,17941,22068,55628,51565,63758,59695,39368,35305,
+47498,43435,22596,18533,30726,26663,6336,2273,14466,10403,52093,56156,60223,64286,35833,39896,43963,48026,19061,23124,27191,31254,
+2801,6864,10931,14994,64814,60687,56684,52557,48554,44427,40424,36297,31782,27655,23652,19525,15522,11395,7392,3265,61215,65342,
+53085,57212,44955,49082,36825,40952,28183,32310,20053,24180,11923,16050,3793,7920];
+}
+addRxByte(rxByte) {
+if (rxByte === 0x7e) {
+if (this.rxBuffer.length > 2) {
+this.frameCRC = this.rxBuffer.slice(-2);
+this.rxBuffer = this.rxBuffer.slice(0, -2);
+if (this._checkCRC()) {
+if (this.onRxFrame) {
+const rxFrame = new Uint8Array(this.rxBuffer);
+this.onRxFrame(rxFrame);
+}
+}
+}
+this.rxBuffer = [];
+} else {
+if (rxByte === 0x7d) {
+this.rxState = this.STATE_ESCAPE;
+} else if (this.rxState == this.STATE_ESCAPE) {
+this.rxState = this.STATE_READ;
+this.rxBuffer.push(rxByte ^ 0x20);
+} else {
+this.rxBuffer.push(rxByte);
+}
+}
+}
+addRxBytes(rxBytes) {
+for (const rxByte of rxBytes) {
+this.addRxByte(rxByte);
+}
+}
+_checkCRC() {
+const calcCRC = this._crc16(this.rxBuffer);
+const rxCRC = this.frameCRC[0] * 256 + this.frameCRC[1];
+return calcCRC == rxCRC;
+}
+_crc16(buf) {
+let crc = 0xffff;
+for (let i = 0; i < buf.length; i++) {
+let byt = buf[i];
+if (byt > 255) byt = 255;
+if (byt < 0) byt = 0;
+const lutIdx = (byt ^ (crc >> 8)) & 0xff;
+crc = this.crcLUT[lutIdx] ^ (crc << 8);
+}
+return crc & 0xffff;
+}
+encode(content) {
+const maxBufferLen = content.length * 2 + 4;
+const frameData = new Uint8Array(maxBufferLen);
+let framePos = 0;
+frameData.set([0x7e], framePos++);
+for (let i = 0; i < content.length; i++) {
+framePos = this._setData(frameData, content[i], framePos);
+}
+const frameCRC = this._crc16(content);
+framePos = this._setData(frameData, (frameCRC >> 8) & 0xff, framePos);
+framePos = this._setData(frameData, frameCRC & 0xff, framePos);
+frameData.set([0x7e], framePos++);
+const frameFinal = frameData.slice(0, framePos);
+return frameFinal;
+}
+_setData(destBuf, dataVal, pos) {
+if (dataVal === 0x7e || dataVal === 0x7d) {
+destBuf.set([0x7d, dataVal ^ 0x20], pos);
+pos += 2;
+} else {
+destBuf.set([dataVal], pos);
+pos += 1;
+}
+return pos;
+}
+}function ricCmd(cmdstr)
+{
+callAjax("/api/" + cmdstr);
+}
+function servoMsgCB(servoData)
+{
+window.pageState.status.servos = servoData;
+updateStatus();
+}
+function imuMsgCB(imuData)
+{
+window.pageState.status.imu = imuData;
+}
+function updateStatus() {
+let status = window.pageState.status;
+for (let servoIdx = 0; servoIdx < status.servos.length; servoIdx++)
+{
+if (servoIdx >= window.pageState.servoNames.length)
+break;
+let servoInfo = status.servos[servoIdx];
+const servoId = "servo_" + servoIdx;
+const servoPosId = "servo_" + servoIdx + "_pos";
+const servoStatusId = "servo_" + servoIdx + "_status";
+const servoLevelId = "servo_" + servoIdx + "_level";
+if (!window.pageState.servos[servoIdx].level)
+{
+let servoGroup = "Other"
+if (servoIdx <= 2 || servoIdx == 6)
+servoGroup = "Left"
+else if (servoIdx != 8)
+servoGroup = "Right"
+const servosDiv = document.getElementById("servos" + servoGroup)
+let newDiv = document.createElement("div");
+newDiv.setAttribute("class", "info-group servo-group");
+newDiv.setAttribute("id", servoId);
+let newInnerDiv = document.createElement("div");
+newInnerDiv.setAttribute("class", "servo-name-pos");
+let servoStatus = document.createElement("div");
+servoStatus.setAttribute("class", "hwelem-status no-data");
+servoStatus.setAttribute("id", servoStatusId);
+servoStatus.innerHTML = "";
+newInnerDiv.appendChild(servoStatus);
+let servoNameContent = document.createElement("div");
+servoNameContent.setAttribute("class", "hwelem-label");
+servoNameContent.innerHTML = window.pageState.servoNames[servoIdx];
+newInnerDiv.appendChild(servoNameContent);
+let servoPosText = document.createElement("div");
+servoPosText.setAttribute("class", "hwelem-val");
+servoPosText.setAttribute("id", servoPosId);
+servoPosText.innerHTML = "0";
+newInnerDiv.appendChild(servoPosText);
+let newProgressDiv = document.createElement("div");
+let newProgress = document.createElement("progress");
+newProgress.setAttribute("id", servoLevelId);
+newProgress.setAttribute("value", "0");
+newProgress.setAttribute("max", "360");
+newProgress.setAttribute("class", "servo-pos");
+newProgressDiv.appendChild(newProgress);
+newDiv.appendChild(newInnerDiv);
+newDiv.appendChild(newProgressDiv);
+servosDiv.appendChild(newDiv);
+window.pageState.servos[servoIdx].level = newProgress;
+window.pageState.servos[servoIdx].level = newProgress;
+newProgress.addEventListener('click', function(e) {
+let newServoPos = Math.floor((e.offsetX / newProgress.scrollWidth) * 360) - 180;
+console.log("click" + (e.offsetX) + "newPos " + newServoPos);
+ricCmd('servo/' + window.pageState.servoNames[servoIdx] + '/pos/' + newServoPos);
+}, false);
+}
+const servoLevel = document.getElementById(servoLevelId);
+servoLevel.setAttribute("max", 360);
+servoLevel.setAttribute("value", servoInfo.pos + 180);
+const servoPosText = document.getElementById(servoPosId);
+servoPosText.innerHTML = servoInfo.pos;
+}
+}function preventDefaults(e) {
+e.preventDefault();
+e.stopPropagation();
+}
+function highlight(e) {
+let regionId = e.currentTarget.id;
+let dropArea = document.getElementById(regionId);
+dropArea.classList.add('highlight');
+}
+function unhighlight(e) {
+let regionId = e.currentTarget.id;
+let dropArea = document.getElementById(regionId);
+dropArea.classList.remove('highlight');
+}function connectWs()
+{
+if (!window.webSocket) 
+{
+console.log('Attempting WebSocket connection');
+window.webSocket = new WebSocket('ws://' + location.hostname + '/ws');
+window.webSocket.binaryType = "arraybuffer";
+window.webSocket.onopen = function(evt) 
+{
+console.log('WebSocket connection opened');
+document.getElementById("webSocketState").innerHTML = "WebSocket is connected!";
+}
+window.webSocket.onmessage = function(evt) 
+{
+const msg = new Uint8Array(evt.data);
+window.pageState.martyIF.handleRxFrame(msg);
+}
+window.webSocket.onclose = function(evt) 
+{
+console.log('Websocket connection closed');
+document.getElementById("webSocketState").innerHTML = "WebSocket closed";
+window.webSocket = null;
+if (window.pageState.reconnectTimer)
+clearTimeout(window.pageState.reconnectTimer);
+window.pageState.reconnectTimer = setTimeout(reconnect, 5000);
+}
+window.webSocket.onerror = function(evt) 
+{
+console.log('Websocket error: ' + evt);
+document.getElementById("webSocketState").innerHTML = "WebSocket error";
+}
+}
+}
+function reconnect(event)
+{
+connectWs();
+}</script>
+</body>
+</html>
