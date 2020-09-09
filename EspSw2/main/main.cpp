@@ -303,7 +303,7 @@ void mainTask(void *pvParameters)
     CommandFile _commandFile("CommandFile", defaultSystemConfig, &_sysTypeConfig, NULL);
 
     // Pi CoProcessor
-    PiCoProcessor _piCoPorcessor("PiCoProcessor", defaultSystemConfig, &_sysTypeConfig, NULL);
+    PiCoProcessor _piCoPorcessor("PiCoProcessor", defaultSystemConfig, &_sysTypeConfig, NULL, SYSTEM_VERSION);
 
     // Log out system info
     ESP_LOGI(MODULE_NAME, SYSTEM_NAME " " SYSTEM_VERSION " (built " __DATE__ " " __TIME__ ") Heap %d", heap_caps_get_free_size(MALLOC_CAP_8BIT));

@@ -20,7 +20,8 @@ class PiCoProcessor : public SysModBase
 {
 public:
     // Constructor/destructor
-    PiCoProcessor(const char *pModuleName, ConfigBase &defaultConfig, ConfigBase *pGlobalConfig, ConfigBase *pMutableConfig);
+    PiCoProcessor(const char *pModuleName, ConfigBase &defaultConfig, ConfigBase *pGlobalConfig, 
+            ConfigBase *pMutableConfig, const char* systemVersion);
     virtual ~PiCoProcessor();
 
 protected:
@@ -48,6 +49,9 @@ private:
     // Vars
     bool _isEnabled;
 
+    // REST API
+    RestAPIEndpointManager* _pRestAPIEndpointManager;
+
     // Serial details
     int _uartNum;
     int _baudRate;
@@ -72,9 +76,23 @@ private:
     MiniHDLC* _pHDLC;
     uint32_t _hdlcMaxLen;
 
+    // System version
+    String _systemVersion;
+
+    // Hardware version
+    static const int HW_VERSION_DETECT_V20_IN_PIN = 12;
+    static const int HW_VERSION_DETECT_V22_IN_PIN = 5;
+    static const int HW_VERSION_DETECT_OUT_PIN = 14;
+    int _hwVersion;
+    static const int ESP_HW_VERSION_DEFAULT = 20;
+    void detectHardwareVersion();
+
     // Helpers
     void applySetup();
     void sendToPi(const uint8_t *pFrame, int frameLen);
+    void sendResponseToPi(String& reqStr, String& msgJson);
     void hdlcFrameTxCB(const uint8_t* pFrame, int frameLen);
     void hdlcFrameRxCB(const uint8_t* pFrame, int frameLen);
+    void apiQueryESPHealth(const String &reqStr, String &respStr);
+    const char* getWifiStatusStr();
 };

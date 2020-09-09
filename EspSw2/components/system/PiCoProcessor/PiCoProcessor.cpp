@@ -11,7 +11,10 @@
 #include <Utils.h>
 #include <RestAPIEndpointManager.h>
 #include "ProtocolEndpointManager.h"
+#include <NetworkSystem.h>
+#include <ESPUtils.h>
 #include <driver/uart.h>
+#include <driver/gpio.h>
 
 static const char *MODULE_PREFIX = "PiCoProcessor";
 
@@ -19,7 +22,8 @@ static const char *MODULE_PREFIX = "PiCoProcessor";
 // Constructor
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-PiCoProcessor::PiCoProcessor(const char *pModuleName, ConfigBase &defaultConfig, ConfigBase *pGlobalConfig, ConfigBase *pMutableConfig)
+PiCoProcessor::PiCoProcessor(const char *pModuleName, ConfigBase &defaultConfig, ConfigBase *pGlobalConfig, 
+        ConfigBase *pMutableConfig, const char* systemVersion)
     : SysModBase(pModuleName, defaultConfig, pGlobalConfig, pMutableConfig)
 {
     // Config variables
@@ -35,6 +39,11 @@ PiCoProcessor::PiCoProcessor(const char *pModuleName, ConfigBase &defaultConfig,
     _pHDLC = NULL;
     _cachedPiStatusJSON = "{}";
     _cachedPiStatusRequestMs = 0;
+    _pRestAPIEndpointManager = NULL;
+    _systemVersion = systemVersion;
+
+    // Assume hardware version until detected
+    _hwVersion = ESP_HW_VERSION_DEFAULT;
 
     // EndpointID
     _protocolEndpointID = ProtocolEndpointManager::UNDEFINED_ID;
@@ -145,6 +154,9 @@ void PiCoProcessor::applySetup()
         // Init ok
         _isInitialised = true;
     }
+
+    // Detect hardware version
+    detectHardwareVersion();    
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -192,15 +204,42 @@ void PiCoProcessor::service()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Endpoints
+// Endpoint Manager
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void PiCoProcessor::addRestAPIEndpoints(RestAPIEndpointManager &endpointManager)
 {
+    endpointManager.addEndpoint("queryESPHealth", 
+                        RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                        RestAPIEndpointDef::ENDPOINT_GET, 
+                        std::bind(&PiCoProcessor::apiQueryESPHealth, this,
+                                std::placeholders::_1, std::placeholders::_2),
+                        "Query ESP Health");    
+    _pRestAPIEndpointManager = &endpointManager;
 }
 
 void PiCoProcessor::addProtocolEndpoints(ProtocolEndpointManager &endpointManager)
 {
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Send response to co-processor
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void PiCoProcessor::sendResponseToPi(String& reqStr, String& msgJson)
+{
+    LOG_I(MODULE_PREFIX, "req %s ... response Msg %s", reqStr.c_str(), msgJson.c_str());
+
+    String frame;
+    if (msgJson.startsWith("{"))
+    {
+        frame = "{\"cmdName\":\"" + reqStr + "Resp\",\"msg\":" + msgJson + "}\0";
+    }
+    else
+    {
+        frame = "{\"cmdName\":\"" + reqStr + "Resp\"," + msgJson + "}\0";
+    }
+    sendToPi((const uint8_t*)frame.c_str(), frame.length());
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -221,6 +260,105 @@ void PiCoProcessor::hdlcFrameRxCB(const uint8_t* pFrame, int frameLen)
 {
     // Debug
     LOG_I(MODULE_PREFIX, "Frame received len %d", frameLen);
+
+    // Extract frame type
+    if (frameLen < 0)
+        return;
+
+    // Buffer is null terminated
+    const char* pRxStr = (const char*)pFrame;
+
+    // Log.trace("%s<- %s\n", MODULE_PREFIX, pRxStr);
+
+    // Get command
+    String cmdName = RdJson::getString("cmdName", "", pRxStr);
+    if (cmdName.equalsIgnoreCase("getStatusResp"))
+    {
+        // Cache the status frame
+        _cachedPiStatusJSON = pRxStr;
+        LOG_I(MODULE_PREFIX, "Received status update %s", _cachedPiStatusJSON.c_str());
+    }
+    else if (cmdName.equalsIgnoreCase("keyCode"))
+    {
+        // Send key to target
+        int asciiCode = RdJson::getLong("key", 0, pRxStr);
+
+        // TODO 2020
+        // if (_pTargetSerial && (asciiCode != 0))
+        //     _pTargetSerial->write((char)asciiCode);
+        LOG_I(MODULE_PREFIX, "sent target char %x", (char)asciiCode);
+    }
+    else if (cmdName.equalsIgnoreCase("apiReq"))
+    {
+        String requestStr = RdJson::getString("req", "", pRxStr);
+        if (_pRestAPIEndpointManager && requestStr.length() != 0)
+        {
+            LOG_I(MODULE_PREFIX, "hdlcFrameRxCB apiReq");
+            String respStr;
+            _pRestAPIEndpointManager->handleApiRequest(requestStr.c_str(), respStr);
+            sendResponseToPi(requestStr, respStr);
+        }
+    }
+    else if ((cmdName.equalsIgnoreCase("rdp")) || (cmdName.equalsIgnoreCase("zesarux")))
+    {
+        // Payload is after a string terminator
+        int headerJsonEndPos = strlen(pRxStr);
+        int payloadStartPos = 0;
+        int payloadLen = 0;
+        if (headerJsonEndPos+1 < frameLen)
+        {
+            payloadStartPos = headerJsonEndPos+1;
+            payloadLen = frameLen - headerJsonEndPos - 1;
+        }
+        uint32_t dataLen = RdJson::getLong("dataLen", payloadLen, pRxStr);
+
+        // TODO 2020
+        LOG_I(MODULE_PREFIX, "RDP %d", dataLen);
+
+        // // TODO
+        // // String inStr = (const char*)(pFrame+payloadStartPos);
+        // // if (inStr.indexOf("validatorStatus") > 0)
+        // //     _rdpValStatCount++;
+        // String payloadStr = (((const char*)pFrame)+payloadStartPos);
+        // payloadStr.replace("\n", "\\n");
+        // if ((cmdName.equalsIgnoreCase("rdp")))
+        // {
+        //     // Log.trace("%srdp <- %s payloadLen %d payload ¬¬%s¬¬\n", 
+        //     //             MODULE_PREFIX, pRxStr, payloadLen,
+        //     //             payloadStr.c_str());
+        //     _miniHDLCForRDPTCP.sendFrame(pFrame+payloadStartPos, dataLen);
+        // }
+        // else
+        // {
+        //     // Log.trace("%szesarux <- %s payloadLen %d payload ¬¬%s¬¬\n", 
+        //     //             MODULE_PREFIX, pRxStr, payloadLen,
+        //     //             payloadStr.c_str());
+        //     _pZEsarUXTCPServer->sendChars(pFrame+payloadStartPos, dataLen);
+        // }
+    }
+    else if (cmdName.equalsIgnoreCase("log"))
+    {
+        // Extract msg
+        String logMsg = RdJson::getString("msg", "", pRxStr);
+        String msgSrc = RdJson::getString("src", "", pRxStr);
+        String msgLev = RdJson::getString("lev", "", pRxStr);
+        LOG_I(msgSrc.c_str(), "%s: %s\n", msgLev.c_str(), logMsg.c_str());
+    }
+    else if (cmdName.equalsIgnoreCase("mirrorScreen"))
+    {
+        LOG_I(MODULE_PREFIX, "Mirror screen len %d buf[52]... %x %x %x %x", 
+                frameLen, pFrame[52], pFrame[53], pFrame[54], pFrame[55]);
+
+        // TODO 2020
+        // _pWebServer->webSocketSend(pFrame, frameLen);
+    }
+    else if ((cmdName.endsWith("Resp")))
+    {
+        // TODO 2020
+        // _cmdResponseNew = true;
+        // _cmdResponseBuf = pRxStr;
+        LOG_I(MODULE_PREFIX, "RespMessageReceived %s\n", pRxStr);
+    }
 }
 
 void PiCoProcessor::hdlcFrameTxCB(const uint8_t* pFrame, int frameLen)
@@ -235,4 +373,83 @@ void PiCoProcessor::hdlcFrameTxCB(const uint8_t* pFrame, int frameLen)
         LOG_W(MODULE_PREFIX, "hdlcFrameTxCB len %d only wrote %d bytes",
                 frameLen, bytesSent);
     }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// WiFi status code
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const char* PiCoProcessor::getWifiStatusStr()
+{
+    if (networkSystem.isWiFiStaConnectedWithIP())
+        return "C";
+    return "I";
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// API requests
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void PiCoProcessor::apiQueryESPHealth(const String &reqStr, String &respStr)
+{
+    LOG_I(MODULE_PREFIX, "queryESPHealth %s", reqStr.c_str());
+    char healthStr[500];
+    snprintf(healthStr, sizeof(healthStr), R"("espHealth":{"wifiIP":"%s","wifiConn":"%s","ssid":"%s","MAC":"%s","RSSI":"%d","espV":"%s","espHWV":"%d"})", 
+                networkSystem.getWiFiIPV4AddrStr().c_str(), 
+                getWifiStatusStr(),
+                networkSystem.getSSID().c_str(), 
+                getSystemMACAddressStr(ESP_MAC_WIFI_STA, ":").c_str(), 
+                0, 
+                _systemVersion.c_str(), 
+                _hwVersion);
+    respStr = healthStr;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Detect hardware version
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void PiCoProcessor::detectHardwareVersion()
+{
+    // Test pins for each version
+    int testInPins[] = { HW_VERSION_DETECT_V22_IN_PIN, HW_VERSION_DETECT_V20_IN_PIN };
+    int testHwVersions[] { 22, 20 };
+
+    // V1.7 has no pins connected
+    _hwVersion = 17;
+
+    for (int i = 0; i < 100; i++)
+
+    // Hardware version detection
+    gpio_pad_select_gpio((gpio_num_t)HW_VERSION_DETECT_OUT_PIN);
+    gpio_set_direction((gpio_num_t)HW_VERSION_DETECT_OUT_PIN, GPIO_MODE_OUTPUT);
+    for (uint32_t i = 0; i < sizeof(testInPins)/sizeof(testInPins[0]); i++)
+    {
+        gpio_set_level((gpio_num_t)HW_VERSION_DETECT_OUT_PIN, 0);
+        gpio_pad_select_gpio((gpio_num_t)testInPins[i]);
+        gpio_set_direction((gpio_num_t)testInPins[i], GPIO_MODE_INPUT);
+        esp_err_t esperr = gpio_pullup_en((gpio_num_t)testInPins[i]);
+        delay(1);
+        bool hwIn0Value = gpio_get_level((gpio_num_t)testInPins[i]) != 0;
+        gpio_set_level((gpio_num_t)HW_VERSION_DETECT_OUT_PIN, 1);
+        bool hwIn1Value = gpio_get_level((gpio_num_t)testInPins[i]) != 0;
+        gpio_pullup_dis((gpio_num_t)testInPins[i]);
+        // Check if IN and OUT pins tied together - if setting out to 0
+        // makes in 0 then they are (as input is pulled-up otherwise)
+        if ((hwIn0Value == 0) && (hwIn1Value == 1))
+        {
+            _hwVersion = testHwVersions[i];
+            LOG_I(MODULE_PREFIX, "HW%d version detect wrote 0 got %d wrote 1 got %d so hwVersion = %d", 
+                    testHwVersions[i], hwIn0Value, hwIn1Value, _hwVersion);
+            break;
+        }
+        else
+        {
+            LOG_I(MODULE_PREFIX, "HW%d version detect wrote 0 got %d wrote 1 got %d - so NOT that version - esperr %d", 
+                    testHwVersions[i], hwIn0Value, hwIn1Value, esperr);
+        }
+    }
+
+    // Tidy up
+    gpio_set_direction((gpio_num_t)HW_VERSION_DETECT_OUT_PIN, GPIO_MODE_INPUT);
 }
