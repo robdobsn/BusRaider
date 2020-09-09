@@ -13,6 +13,9 @@
 
 static const char* MODULE_PREFIX = "RestAPIEndpointManager";
 
+// #define DEBUG_REST_API_ENDPOINTS_ADD
+// #define DEBUG_REST_API_ENDPOINTS_GET
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -69,6 +72,9 @@ void RestAPIEndpointManager::addEndpoint(const char *pEndpointStr,
                                 pContentType, pContentEncoding,
                                 cacheControl, pExtraHeaders,
                                 callbackBody, callbackUpload));
+#ifdef DEBUG_REST_API_ENDPOINTS_ADD
+    LOG_I(MODULE_PREFIX, "addEndpoint %s", pEndpointStr);
+#endif
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -98,10 +104,11 @@ RestAPIEndpointDef* RestAPIEndpointManager::getMatchingEndpointDef(const char *r
     // Get req endpoint name
     String requestEndpoint = getNthArgStr(requestStr, 0);
 
+#ifdef DEBUG_REST_API_ENDPOINTS_GET
     // Debug
-    // int numEndpoints = getNumEndpoints();
-    // LOG_I(MODULE_PREFIX, "reqStr %s requestEndpoint %s, num endpoints %d", 
-    //             requestStr, requestEndpoint.c_str(), numEndpoints);
+    LOG_I(MODULE_PREFIX, "reqStr %s requestEndpoint %s, num endpoints %d", 
+                requestStr, requestEndpoint.c_str(), _endpointsList.size());
+#endif
 
     // Find endpoint
     for (RestAPIEndpointDef& endpointDef : _endpointsList)

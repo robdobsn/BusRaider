@@ -43,6 +43,12 @@ public:
         return _isBusy;
     }
 
+    // Get file name
+    String& getFileName()
+    {
+        return _filePath;
+    }
+
 private:
 
     // File name

@@ -11,6 +11,7 @@
 #include <ConfigBase.h>
 #include <RestAPIEndpointManager.h>
 #include <SysModBase.h>
+#include "FileSystemChunker.h"
 #include "MiniHDLC.h"
 #include <list>
 
@@ -43,6 +44,12 @@ protected:
         if (!_pHDLC)
             return NULL;
         return _pHDLC->getStats();
+    }
+
+    // Upload in progress
+    bool uploadInProgress()
+    {
+        return _uploadFromAPIInProgress || _uploadFromFSInProgress;
     }
 
 private:
@@ -87,12 +94,51 @@ private:
     static const int ESP_HW_VERSION_DEFAULT = 20;
     void detectHardwareVersion();
 
+    // Upload of files
+    bool _uploadFromFSInProgress;
+    bool _uploadFromAPIInProgress;
+    String _uploadFromFSRequest;
+    int _uploadBlockCount;
+    unsigned long _uploadStartMs;
+    unsigned long _uploadLastBlockMs;
+    String _uploadTargetCommandWhenComplete;
+    String _uploadFileType;
+    static const int MAX_UPLOAD_MS = 600000;
+    static const int MAX_BETWEEN_BLOCKS_MS = 20000;
+    static const int DEFAULT_BETWEEN_BLOCKS_MS = 10;
+    static const int UPLOAD_BLOCK_SIZE_BYTES = 1000;
+    unsigned int _uploadFilePos;
+    FileSystemChunker _chunker;
+    uint8_t* _pUploadBlockBuffer;
+
+    // Stats
+    uint32_t _statsRxCh;
+    uint32_t _statsTxCh;
+    uint32_t _statsRxFr;
+    uint32_t _statsTxFr;
+    uint32_t _statsLastReportMs;
+    static const int STATS_REPORT_TIME_MS = 60000;
+
     // Helpers
     void applySetup();
     void sendToPi(const uint8_t *pFrame, int frameLen);
+    void sendTargetCommand(const String& targetCmd, const String& reqStr);
     void sendResponseToPi(String& reqStr, String& msgJson);
     void hdlcFrameTxCB(const uint8_t* pFrame, int frameLen);
     void hdlcFrameRxCB(const uint8_t* pFrame, int frameLen);
-    void apiQueryESPHealth(const String &reqStr, String &respStr);
     const char* getWifiStatusStr();
+    void apiQueryESPHealth(const String &reqStr, String &respStr);
+    void apiUploadPiSwComplete(String &reqStr, String &respStr);
+    void apiUploadPiSwPart(String& req, const String& filename, size_t contentLen, size_t index, 
+                const uint8_t *data, size_t len, bool finalBlock);
+    void uploadAPIBlockHandler(const char* fileType, const String& req, const String& filename, 
+            int fileLength, size_t index, const uint8_t *pData, size_t len, bool finalBlock);
+    void uploadCommonBlockHandler(const char* fileType, const String& req, 
+            const String& filename, int fileLength, size_t index, const uint8_t *pData, size_t len, bool finalBlock);
+    void sendFileStartRecord(const char* fileType, const String& req, const String& filename, int fileLength);
+    void sendFileBlock(size_t index, const uint8_t *pData, size_t len);
+    void sendFileEndRecord(int blockCount, const char* pAdditionalJsonNameValues);
+    bool startUploadFromFileSystem(const String& fileSystemName, 
+                const String& uploadRequest, const String& filename,
+                const char* pTargetCmdWhenDone);
 };

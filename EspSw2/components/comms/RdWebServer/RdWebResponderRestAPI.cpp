@@ -12,10 +12,10 @@
 
 static const char *MODULE_PREFIX = "RdWebRespREST";
 
-#define DEBUG_RESPONDER_REST_API
-#define DEBUG_MULTIPART_EVENTS
-#define DEBUG_MULTIPART_HEADERS
-#define DEBUG_MULTIPART_DATA
+// #define DEBUG_RESPONDER_REST_API
+// #define DEBUG_MULTIPART_EVENTS
+// #define DEBUG_MULTIPART_HEADERS
+// #define DEBUG_MULTIPART_DATA
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor / Destructor
@@ -189,7 +189,7 @@ void RdWebResponderRestAPI::multipartOnData(const uint8_t *pBuf, uint32_t bufLen
 #endif
     // Check for callback
     if (_pEndpointDef)
-        _pEndpointDef->callbackUpload(_requestStr, formInfo._fileName, 0, contentPos, pBuf, bufLen, isFinalPart);
+        _pEndpointDef->callbackUpload(_requestStr, formInfo._fileName, _headerExtract.contentLength, contentPos, pBuf, bufLen, isFinalPart);
 }
 
 void RdWebResponderRestAPI::multipartOnHeaderNameValue(const String& name, const String& val)

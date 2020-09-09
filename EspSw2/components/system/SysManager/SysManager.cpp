@@ -145,6 +145,10 @@ void SysManager::setup()
     if (_pProtocolEndpointManager)
         _pProtocolEndpointManager->addProtocol(ricSerialProtocolDef);
 
+    // Short delay here to allow logging output to complete as some hardware configurations
+    // require changes to serial uarts and this disturbs the logging flow
+    delay(100);
+
     // Now call setup on system modules
     for (SysModBase* pSysMod : _sysModuleList)
     {
