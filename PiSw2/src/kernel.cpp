@@ -109,7 +109,7 @@ boolean CKernel::Initialize (void)
 
 	if (bOK)
 	{
-		bOK = m_Serial.Initialize (921600, 1000000, 1000000);
+		bOK = m_Serial.Initialize (1000000, 1000000, 1000000);
 	}
 
 	if (bOK)

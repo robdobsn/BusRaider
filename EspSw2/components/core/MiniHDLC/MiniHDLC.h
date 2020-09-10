@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <vector>
 
 #define HDLC_USE_STD_FUNCTION_AND_BIND 1
 
@@ -24,10 +25,10 @@
 // Put byte or bit callback function type
 typedef std::function<void(uint8_t ch)> MiniHDLCPutChFnType;
 // Received frame callback function type
-typedef std::function<void(const uint8_t *framebuffer, int framelength)> MiniHDLCFrameFnType;
+typedef std::function<void(const uint8_t *framebuffer, unsigned framelength)> MiniHDLCFrameFnType;
 #else
 typedef void (*MiniHDLCPutChFnType)(uint8_t ch);
-typedef void (*MiniHDLCFrameFnType)(const uint8_t *framebuffer, int framelength);
+typedef void (*MiniHDLCFrameFnType)(const uint8_t *framebuffer, unsigned framelength);
 #endif
 
 class MiniHDLCStats
@@ -57,18 +58,21 @@ public:
     // Constructor for HDLC with bit/bytewise transmit
     // If bitwise HDLC then the first parameter will receive bits not bytes 
     MiniHDLC(uint32_t rxMsgMaxLen, MiniHDLCPutChFnType putChFn, MiniHDLCFrameFnType frameRxFn,
+                uint8_t frameBoundaryOctet, uint8_t controlEscapeOctet,
 				bool bigEndianCRC = true, bool bitwiseHDLC = false);
 
     // Constructor for HDLC with frame-wise transmit
     MiniHDLC(MiniHDLCFrameFnType frameTxFn, MiniHDLCFrameFnType frameRxFn,
-            uint32_t txMsgMaxLen=1000, uint32_t rxMsgMaxLen=1000, bool bigEndianCRC = true, bool bitwiseHDLC = false);
+            uint8_t frameBoundaryOctet, uint8_t controlEscapeOctet,
+            uint32_t txMsgMaxLen=1000, uint32_t rxMsgMaxLen=1000, 
+            bool bigEndianCRC = true, bool bitwiseHDLC = false);
 
     // Destructor
     virtual ~MiniHDLC();
     
     // Called by external function that has byte-wise data to process
     void handleChar(uint8_t ch);
-    void handleBuffer(const uint8_t* pBuf, int numBytes);
+    void handleBuffer(const uint8_t* pBuf, unsigned numBytes);
 
     // Called by external function that has bit-wise data to process
     void handleBit(uint8_t bit);
@@ -85,7 +89,7 @@ public:
     uint32_t calcEncodedPayloadLen(const uint8_t *pFrame, uint32_t frameLen);
 
     // Send a frame
-    void sendFrame(const uint8_t *pData, int frameLen);
+    void sendFrame(const uint8_t *pData, unsigned frameLen);
 
     // Set frame rx max length
     void setFrameRxMaxLen(uint32_t rxMaxLen);
@@ -107,12 +111,14 @@ public:
     // Get frame tx buffer
     uint8_t* getFrameTxBuf()
     {
-        return _pTxBuffer;
+        return _txBuffer.data();
     }
 
     // Get frame tx len
     uint32_t getFrameTxLen()
     {
+        if (_txBuffer.size() < _txBufferPos)
+            return _txBuffer.size();
         return _txBufferPos;
     }
 
@@ -122,15 +128,18 @@ public:
         return &_stats;
     }
 
+    // Compute CCITT CRC16
+    static unsigned computeCRC16(const uint8_t* pData, unsigned len);
+
 private:
     // If either of the following two octets appears in the transmitted data, an escape octet is sent,
     // followed by the original data octet with bit 5 inverted
 
-    // The frame boundary octet - changed from classic HDLC to move out of ascii range
-    static constexpr uint8_t FRAME_BOUNDARY_OCTET = 0xE7;
+    // The frame boundary octet
+    uint8_t _frameBoundaryOctet;
 
-    // Control escape octet - changed from classic HDLC to move out of ascii range
-    static constexpr uint8_t CONTROL_ESCAPE_OCTET = 0xD7;
+    // Control escape octet
+    uint8_t _controlEscapeOctet;
 
     // Invert octet explained above
     static constexpr uint8_t INVERT_OCTET = 0x20;
@@ -172,15 +181,12 @@ private:
     int _bitwiseSendOnesCount;
 
     // Receive buffer
-    uint8_t* _pRxBuffer;
+    std::vector<uint8_t> _rxBuffer;
     uint32_t _rxBufferMaxLen;
-    uint32_t _rxBufferAllocLen;
-    static const uint32_t RX_BUFFER_MIN_ALLOC = 1024;
-    static const uint32_t RX_BUFFER_ALLOC_INC = 2048;
 
     // Transmit buffer
+    std::vector<uint8_t> _txBuffer;
     uint32_t _txBufferMaxLen;
-    uint8_t* _pTxBuffer;
     uint32_t _txBufferPos;
     uint32_t _txBufferBitPos;
 
@@ -188,7 +194,7 @@ private:
     MiniHDLCStats _stats;
 
 private:
-    uint16_t crcUpdateCCITT(unsigned short fcs, unsigned char value);
+    static uint16_t crcUpdateCCITT(unsigned short fcs, unsigned char value);
     void sendChar(uint8_t ch);
     void sendCharWithStuffing(uint8_t ch);
     void sendEscaped(uint8_t ch);
@@ -196,11 +202,13 @@ private:
     void clear();
     void putCharToFrame(uint8_t ch);
 
-    // Buffer allocation
-    typedef enum {
-        BUFFER_ALLOC_OK,
-        BUFFER_ALLOC_NO_MEM,
-        BUFFER_ALLOC_ABOVE_MAX
-    } BufferAllocRetc;
-    BufferAllocRetc checkRxBufferAllocation(uint32_t maxWriteIdx);
+    // Get CRC from buffer
+    uint16_t getCRCFromBuffer()
+    {
+        if (_rxBuffer.size() <= _framePos)
+            return 0;
+        if (_bigEndianCRC)
+            return _rxBuffer[_framePos - 1] | (((uint16_t)_rxBuffer[_framePos-2]) << 8);
+        return _rxBuffer[_framePos - 2] | (((uint16_t)_rxBuffer[_framePos-1]) << 8);
+    }
 };

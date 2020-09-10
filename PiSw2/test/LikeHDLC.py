@@ -26,8 +26,8 @@ def calcCRC(data):
 class Frame(object):
     STATE_READ = 0x01
     STATE_ESCAPE = 0x02
-    FRAME_DELIMITER = 0xE7
-    ESCAPE_CODE = 0xD7
+    FRAME_DELIMITER = 0x7E
+    ESCAPE_CODE = 0x7D
 
     def __init__(self):
         self.finished = False

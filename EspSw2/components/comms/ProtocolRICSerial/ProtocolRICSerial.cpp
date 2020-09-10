@@ -33,7 +33,9 @@ ProtocolRICSerial::ProtocolRICSerial(uint32_t channelID, const char* configJSON,
     // New HDLC
     _pHDLC = new MiniHDLC(NULL, 
             std::bind(&ProtocolRICSerial::hdlcFrameRxCB, this, std::placeholders::_1, std::placeholders::_2),
-            _maxTxMsgLen, _maxRxMsgLen); 
+            RIC_SERIAL_FRAME_BOUNDARY_OCTET,
+            RIC_SERIAL_CONTROL_ESCAPE_OCTET,
+            _maxTxMsgLen, _maxRxMsgLen);
 
     // Debug
     LOG_I(MODULE_PREFIX, "constructed maxRxMsgLen %d maxTxMsgLen %d", _maxRxMsgLen, _maxTxMsgLen);

@@ -17,9 +17,9 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-// #define USE_STD_FUNCTION_AND_BIND 1
+// #define HDLC_USE_STD_FUNCTION_AND_BIND 1
 
-#ifdef USE_STD_FUNCTION_AND_BIND
+#ifdef HDLC_USE_STD_FUNCTION_AND_BIND
 #include <functional>
 // Put byte or bit callback function type
 typedef std::function<void(uint8_t ch)> MiniHDLCPutChFnType;
@@ -57,11 +57,14 @@ public:
     // Constructor for HDLC with bit/bytewise transmit
     // If bitwise HDLC then the first parameter will receive bits not bytes 
     MiniHDLC(uint32_t rxMsgMaxLen, MiniHDLCPutChFnType putChFn, MiniHDLCFrameFnType frameRxFn,
+                uint8_t frameBoundaryOctet, uint8_t controlEscapeOctet,
 				bool bigEndianCRC = true, bool bitwiseHDLC = false);
 
     // Constructor for HDLC with frame-wise transmit
     MiniHDLC(MiniHDLCFrameFnType frameTxFn, MiniHDLCFrameFnType frameRxFn,
-            uint32_t txMsgMaxLen=1000, uint32_t rxMsgMaxLen=1000, bool bigEndianCRC = true, bool bitwiseHDLC = false);
+            uint8_t frameBoundaryOctet, uint8_t controlEscapeOctet,
+            uint32_t txMsgMaxLen=1000, uint32_t rxMsgMaxLen=1000, 
+            bool bigEndianCRC = true, bool bitwiseHDLC = false);
 
     // Destructor
     virtual ~MiniHDLC();
@@ -73,11 +76,30 @@ public:
     // Called by external function that has bit-wise data to process
     void handleBit(uint8_t bit);
 
-    // Called to send a frame
+    // Encode a frame into HDLC
+    uint32_t encodeFrame(uint8_t* pEncoded, uint32_t maxEncodedLen, const uint8_t *pFrame, uint32_t frameLen);
+
+    // Encode a frame into HDLC in sections
+    uint32_t encodeFrameStart(uint8_t* pEncoded, uint32_t maxEncodedLen, uint16_t& fcs);
+    uint32_t encodeFrameAddPayload(uint8_t* pEncoded, uint32_t maxEncodedLen, uint16_t& fcs, uint32_t curPos, const uint8_t *pFrame, uint32_t frameLen);
+    uint32_t encodeFrameEnd(uint8_t* pEncoded, uint32_t maxEncodedLen, uint16_t& fcs, uint32_t curPos);
+
+    // Calculate encoded length for data
+    uint32_t calcEncodedPayloadLen(const uint8_t *pFrame, uint32_t frameLen);
+
+    // Send a frame
     void sendFrame(const uint8_t *pData, unsigned frameLen);
 
     // Set frame rx max length
     void setFrameRxMaxLen(uint32_t rxMaxLen);
+
+    // Max encoded length
+    uint32_t maxEncodedLen(uint32_t payloadLen)
+    {
+        // Worst case length is 2 * payloadLen (if every byte is escaped)
+        // + 2 * BORDER + 2 * FCS
+        return payloadLen * 2 + 4;
+    }
 
     // Get frame rx max len
     uint32_t getFrameRxMaxLen()
@@ -110,11 +132,11 @@ private:
     // If either of the following two octets appears in the transmitted data, an escape octet is sent,
     // followed by the original data octet with bit 5 inverted
 
-    // The frame boundary octet - changed from classic HDLC to move out of ascii range
-    static constexpr uint8_t FRAME_BOUNDARY_OCTET = 0xE7;
+    // The frame boundary octet
+    uint8_t _frameBoundaryOctet;
 
-    // Control escape octet - changed from classic HDLC to move out of ascii range
-    static constexpr uint8_t CONTROL_ESCAPE_OCTET = 0xD7;
+    // Control escape octet
+    uint8_t _controlEscapeOctet;
 
     // Invert octet explained above
     static constexpr uint8_t INVERT_OCTET = 0x20;
@@ -128,7 +150,7 @@ private:
     static const uint16_t _CRCTable[256];
 
     // Callback functions for PutCh/PutBit and FrameRx
-#ifdef USE_STD_FUNCTION_AND_BIND
+#ifdef HDLC_USE_STD_FUNCTION_AND_BIND
     MiniHDLCPutChFnType _putChFn;
     MiniHDLCFrameFnType _frameRxFn;
     MiniHDLCFrameFnType _frameTxFn;
@@ -176,6 +198,7 @@ private:
     void sendChar(uint8_t ch);
     void sendCharWithStuffing(uint8_t ch);
     void sendEscaped(uint8_t ch);
+    uint32_t putEscaped(uint8_t ch, uint8_t* pBuf, uint32_t pos);
     void clear();
     void putCharToFrame(uint8_t ch);
 

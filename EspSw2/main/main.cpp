@@ -66,7 +66,7 @@ static const char *defaultConfigJSON =
             R"("enable":1,)"
             R"("webServerPort":80,)"
             R"("allowOriginAll":1,)"
-            R"("apiPrefix":"api/",)"
+            R"("apiPrefix":"",)"
             R"("numConnSlots":6,)"
             R"("maxWebSockets":3,)"
             R"("pingIntervalMs":2000,)"
@@ -100,7 +100,7 @@ static const char *defaultConfigJSON =
         R"("PiCoProcessor":{)"
             R"("enable":1,)"
             R"("uartNum":2,)"
-            R"("baudRate":912600,)"
+            R"("baudRate":1000000,)"
             R"("rxBufSize":32768,)"
             R"("rxPin":16,)"
             R"("txPin":17,)"
@@ -255,6 +255,9 @@ void mainTask(void *pvParameters)
     // Configuration for the system - including robot name
     ConfigNVS _sysModMutableConfig("system", 500);
 
+    // Configuration for PiCoProcessor
+    ConfigNVS _piCoProConfig("pi", 2000);
+
     // Configuration for other system modules
     ConfigNVS _sysTypeConfig("sys", 10000);
 
@@ -303,7 +306,7 @@ void mainTask(void *pvParameters)
     CommandFile _commandFile("CommandFile", defaultSystemConfig, &_sysTypeConfig, NULL);
 
     // Pi CoProcessor
-    PiCoProcessor _piCoPorcessor("PiCoProcessor", defaultSystemConfig, &_sysTypeConfig, NULL, SYSTEM_VERSION);
+    PiCoProcessor _piCoPorcessor("PiCoProcessor", defaultSystemConfig, &_sysTypeConfig, &_piCoProConfig, SYSTEM_VERSION);
 
     // Log out system info
     ESP_LOGI(MODULE_NAME, SYSTEM_NAME " " SYSTEM_VERSION " (built " __DATE__ " " __TIME__ ") Heap %d", heap_caps_get_free_size(MALLOC_CAP_8BIT));

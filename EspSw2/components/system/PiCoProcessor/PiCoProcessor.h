@@ -109,7 +109,7 @@ private:
     static const int UPLOAD_BLOCK_SIZE_BYTES = 1000;
     unsigned int _uploadFilePos;
     FileSystemChunker _chunker;
-    uint8_t* _pUploadBlockBuffer;
+    std::vector<uint8_t> _uploadBlockBuffer;
 
     // Stats
     uint32_t _statsRxCh;
@@ -123,6 +123,7 @@ private:
     void applySetup();
     void sendToPi(const uint8_t *pFrame, int frameLen);
     void sendTargetCommand(const String& targetCmd, const String& reqStr);
+    void sendTargetData(const String& cmdName, const uint8_t* pData, int len, int index);
     void sendResponseToPi(String& reqStr, String& msgJson);
     void hdlcFrameTxCB(const uint8_t* pFrame, int frameLen);
     void hdlcFrameRxCB(const uint8_t* pFrame, int frameLen);
@@ -133,6 +134,9 @@ private:
                 const uint8_t *data, size_t len, bool finalBlock);
     void uploadAPIBlockHandler(const char* fileType, const String& req, const String& filename, 
             int fileLength, size_t index, const uint8_t *pData, size_t len, bool finalBlock);
+    void apiQueryPiStatus(const String &reqStr, String &respStr);
+    void apiSetMcJson(const String &reqStr, String &respStr);
+    void apiSetMcJsonContent(const String &reqStr, const uint8_t *pData, size_t len, size_t index, size_t total);
     void uploadCommonBlockHandler(const char* fileType, const String& req, 
             const String& filename, int fileLength, size_t index, const uint8_t *pData, size_t len, bool finalBlock);
     void sendFileStartRecord(const char* fileType, const String& req, const String& filename, int fileLength);

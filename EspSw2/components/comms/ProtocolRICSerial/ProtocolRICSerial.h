@@ -39,6 +39,10 @@ private:
     // HDLC
     MiniHDLC* _pHDLC;
 
+    // The following set the "HDLC" special byte values
+    static constexpr uint8_t RIC_SERIAL_FRAME_BOUNDARY_OCTET = 0x7E;
+    static constexpr uint8_t RIC_SERIAL_CONTROL_ESCAPE_OCTET = 0x7D;
+
     // Consts
     static const int DEFAULT_RIC_SERIAL_RX_MAX = 5000;
     static const int DEFAULT_RIC_SERIAL_TX_MAX = 5000;

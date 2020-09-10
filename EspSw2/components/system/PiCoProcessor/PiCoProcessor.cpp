@@ -65,7 +65,6 @@ PiCoProcessor::PiCoProcessor(const char *pModuleName, ConfigBase &defaultConfig,
     _uploadStartMs = 0;
     _uploadLastBlockMs = 0;
     _uploadBlockCount = 0;
-    _pUploadBlockBuffer = NULL;
     _uploadFilePos = 0;
 
     // Stats
@@ -185,6 +184,7 @@ void PiCoProcessor::applySetup()
                 std::placeholders::_1, std::placeholders::_2),
             std::bind(&PiCoProcessor::hdlcFrameRxCB, this, 
                 std::placeholders::_1, std::placeholders::_2),
+            0x7E, 0x7D,
             _hdlcMaxLen, _hdlcMaxLen);
             
         // Init ok
@@ -246,8 +246,17 @@ void PiCoProcessor::service()
     // Stats report
     if (Utils::isTimeout(millis(), _statsLastReportMs, STATS_REPORT_TIME_MS))
     {
-        LOG_I(MODULE_PREFIX, "service CommsStats RxCh %d TxCh %d RxFr %d TxFr %d", 
-                _statsRxCh, _statsTxCh, _statsRxFr, _statsTxFr); 
+        MiniHDLCStats* pStats = NULL;
+        char hdlcStats[150];
+        strcpy(hdlcStats, "HDLC not setup");
+        if (_pHDLC)
+        {
+            pStats = _pHDLC->getStats();
+            snprintf(hdlcStats, sizeof(hdlcStats), "HDLC CRCErrors %d FrameTooLongs %d AllocFails %d", 
+                pStats->_frameCRCErrCount, pStats->_frameTooLongCount, pStats->_rxBufAllocFail);
+        }
+        LOG_I(MODULE_PREFIX, "service CommsStats RxCh %d TxCh %d RxFr %d TxFr %d %s", 
+                _statsRxCh, _statsTxCh, _statsRxFr, _statsTxFr, hdlcStats); 
         _statsLastReportMs = millis();
     }
 
@@ -260,16 +269,17 @@ void PiCoProcessor::service()
             // Get next chunk of data
             uint32_t readLen = 0;
             bool finalChunk = false;
-            if (!_pUploadBlockBuffer)
-                _pUploadBlockBuffer = new uint8_t[UPLOAD_BLOCK_SIZE_BYTES];
-            if (_pUploadBlockBuffer)
+            _uploadBlockBuffer.resize(UPLOAD_BLOCK_SIZE_BYTES);
+
+            // Save the data
+            if (_uploadBlockBuffer.size() >= UPLOAD_BLOCK_SIZE_BYTES)
             {
-                if (!_chunker.next(_pUploadBlockBuffer, UPLOAD_BLOCK_SIZE_BYTES, readLen, finalChunk))
+                if (!_chunker.next(_uploadBlockBuffer.data(), UPLOAD_BLOCK_SIZE_BYTES, readLen, finalChunk))
                 {
                     // Handle the chunk
                     _uploadFilePos += readLen;
                     uploadCommonBlockHandler(_uploadFileType.c_str(), _uploadFromFSRequest, _chunker.getFileName(), 
-                                _chunker.getFileLen(), _uploadFilePos, _pUploadBlockBuffer, readLen, finalChunk); 
+                                _chunker.getFileLen(), _uploadFilePos, _uploadBlockBuffer.data(), readLen, finalChunk); 
                 }
                 else
                 {
@@ -281,11 +291,7 @@ void PiCoProcessor::service()
                     LOG_W(MODULE_PREFIX, "service uploadFromFS done lastBlockMs %lu betweenBlocksMs %u chunkLen %u finalChunk %d", 
                             _uploadLastBlockMs, DEFAULT_BETWEEN_BLOCKS_MS, readLen, finalChunk);
 #endif
-                    if (_pUploadBlockBuffer)
-                    {
-                        delete [] _pUploadBlockBuffer;
-                        _pUploadBlockBuffer = NULL;
-                    }
+                    _uploadBlockBuffer.clear();
                 }
             }
         }
@@ -340,22 +346,34 @@ void PiCoProcessor::addRestAPIEndpoints(RestAPIEndpointManager &endpointManager)
                                 std::placeholders::_3, std::placeholders::_4,
                                 std::placeholders::_5, std::placeholders::_6,
                                 std::placeholders::_7));
+    endpointManager.addEndpoint("querystatus", 
+                        RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                        RestAPIEndpointDef::ENDPOINT_GET, 
+                        std::bind(&PiCoProcessor::apiQueryPiStatus, this,
+                                std::placeholders::_1, std::placeholders::_2),
+                        "Query Pi Status");
+    endpointManager.addEndpoint("setmcjson", 
+                        RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                        RestAPIEndpointDef::ENDPOINT_POST,
+                        std::bind(&PiCoProcessor::apiSetMcJson, this, 
+                                std::placeholders::_1, std::placeholders::_2),
+                        "Set Machine JSON", 
+                        "application/json", 
+                        NULL, 
+                        RestAPIEndpointDef::ENDPOINT_CACHE_NEVER,
+                        NULL,
+                        std::bind(&PiCoProcessor::apiSetMcJsonContent, this, 
+                                std::placeholders::_1, std::placeholders::_2, 
+                                std::placeholders::_3, std::placeholders::_4,
+                                std::placeholders::_5),
+                        NULL);                        
+
+    // Stash endoint manager
     _pRestAPIEndpointManager = &endpointManager;
 }
 
 void PiCoProcessor::addProtocolEndpoints(ProtocolEndpointManager &endpointManager)
 {
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// WiFi status code
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-const char* PiCoProcessor::getWifiStatusStr()
-{
-    if (networkSystem.isWiFiStaConnectedWithIP())
-        return "C";
-    return "I";
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -402,6 +420,59 @@ void PiCoProcessor::apiUploadPiSwPart(String& req, const String& filename, size_
     LOG_I(MODULE_PREFIX, "apiUploadPiSwPart %d, %d, %d, %d", contentLen, index, len, finalBlock);
 #endif
     uploadAPIBlockHandler("firmware", req, filename, contentLen, index, pData, len, finalBlock);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// API request - Query Pi Status
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void PiCoProcessor::apiQueryPiStatus(const String &reqStr, String &respStr)
+{
+    respStr = _cachedPiStatusJSON.c_str();
+    // LOG_I(MODULE_PREFIX, "apiQueryStatus %s resp %s", reqStr.c_str(), respStr.c_str());
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// API request - Set Machine
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void PiCoProcessor::apiSetMcJson(const String &reqStr, String &respStr)
+{
+    LOG_I(MODULE_PREFIX, "apiSetMcJson %s", reqStr.c_str());
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// API request - Set Machine Content
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void PiCoProcessor::apiSetMcJsonContent(const String &reqStr, const uint8_t *pData, size_t len, size_t index, size_t total)
+{
+    // Extract JSON
+    static const int MAX_JSON_DATA_LEN = 1000;
+    char jsonData[MAX_JSON_DATA_LEN];
+    size_t toCopy = len+1;
+    if (len > MAX_JSON_DATA_LEN)
+        toCopy = MAX_JSON_DATA_LEN;
+    strlcpy(jsonData, (const char*) pData, toCopy);
+    // Debug
+    LOG_I(MODULE_PREFIX, "apiSetMcJsonContent %s json %s",  
+            reqStr.c_str(), jsonData);
+    // Store in non-volatile so we can pick back up with same machine
+    configSetData(jsonData);
+    configSave();
+    // Send to the Pi
+    sendTargetData("setmcjson", pData, len, 0);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// WiFi status code
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const char* PiCoProcessor::getWifiStatusStr()
+{
+    if (networkSystem.isWiFiStaConnectedWithIP())
+        return "C";
+    return "I";
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -467,14 +538,20 @@ void PiCoProcessor::sendFileStartRecord(const char* fileType, const String& req,
 
 void PiCoProcessor::sendFileBlock(size_t index, const uint8_t *pData, size_t len)
 {
-    String header = "{\"cmdName\":\"ufBlock\",\"index\":" + String(index) + ",\"len\":" + String(len) + "}";
-    int headerLen = header.length();
-    uint8_t* pFrameBuf = new uint8_t[headerLen + len + 1];
-    memcpy(pFrameBuf, header.c_str(), headerLen);
-    pFrameBuf[headerLen] = 0;
-    memcpy(pFrameBuf + headerLen + 1, pData, len);
-    sendToPi(pFrameBuf, headerLen + len + 1);
-    delete [] pFrameBuf;
+    std::vector<uint8_t> msgData;
+    char msgHeader[100];
+    snprintf(msgHeader, sizeof(msgHeader),
+            R"({"cmdName":"ufBlock","index":"%d","len":"%d"})", 
+            index, len);
+    int headerLen = strlen(msgHeader);
+    msgData.resize(headerLen + len + 1);
+    if (msgData.size() >= headerLen + len + 1)
+    {
+        memcpy(msgData.data(), msgHeader, headerLen);
+        msgData[headerLen] = 0;
+        memcpy(msgData.data() + headerLen + 1, pData, len);
+        sendToPi(msgData.data(), headerLen + len + 1);
+    }
 }
 
 void PiCoProcessor::sendFileEndRecord(int blockCount, const char* pAdditionalJsonNameValues)
@@ -518,6 +595,28 @@ void PiCoProcessor::sendTargetCommand(const String& targetCmd, const String& req
 
     String frame = "{\"cmdName\":\"" + targetCmd + "\",\"reqStr\":\"" + reqStr + "\"}\0";
     sendToPi((const uint8_t*)frame.c_str(), frame.length());
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Send data to target
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void PiCoProcessor::sendTargetData(const String& cmdName, const uint8_t* pData, int len, int index)
+{
+    std::vector<uint8_t> msgData;
+    char msgHeader[100];
+    snprintf(msgHeader, sizeof(msgHeader),
+            R"({"cmdName":"%s","msgIdx":"%d","dataLen":"%d"})", 
+            cmdName.c_str(), index, len);
+    int headerLen = strlen(msgHeader);
+    msgData.resize(headerLen + len + 1);
+    if (msgData.size() >= headerLen + len + 1)
+    {
+        memcpy(msgData.data(), msgHeader, headerLen);
+        msgData[headerLen] = 0;
+        memcpy(msgData.data() + headerLen + 1, pData, len);
+        sendToPi(msgData.data(), headerLen + len + 1);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

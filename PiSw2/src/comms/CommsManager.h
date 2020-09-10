@@ -2,7 +2,6 @@
 #pragma once
 
 #include "UartMaxiSerialDevice.h"
-#include "MiniHDLC.h"
 #include "CommandHandler.h"
 
 class AppSerialIF;

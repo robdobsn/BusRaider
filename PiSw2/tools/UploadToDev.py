@@ -100,7 +100,7 @@ def sendFile(fileName):
             if time.time() - prevTime > 2:
                 break
 
-argparser = argparse.ArgumentParser(description='UploadToI2CEmulator')
+argparser = argparse.ArgumentParser(description='UploadToBusRaider')
 DEFAULT_SERIAL_PORT = "COM7"
 DEFAULT_SERIAL_BAUD = 921600
 DEFAULT_IP_ADDRESS = ""
