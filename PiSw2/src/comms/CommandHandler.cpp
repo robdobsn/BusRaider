@@ -410,15 +410,16 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
         delete [] _pReceivedFileDataPtr;
     _pReceivedFileDataPtr = new uint8_t[fileLen];
 
+    // Init vars
     _receivedFileBytesRx = 0;
     _receivedBlockCount = 0;
     if (_pReceivedFileDataPtr)
     {
         _receivedFileBufSize = fileLen;
 
-        // Debug
-        CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufStart File %s, toPtr %08x, bufSize %d", 
-                    _receivedFileName, _pReceivedFileDataPtr, _receivedFileBufSize);
+        // Debug - NOTE - this affects file downloads so don't use unless absolutely necessary
+        // CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufStart File %s, toPtr %08x, bufSize %d", 
+        //             _receivedFileName, _pReceivedFileDataPtr, _receivedFileBufSize);
     }
     else
     {
@@ -431,6 +432,8 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
 
 #ifdef DEBUG_FILE_BLOCKS
     _debugBlockRxCount = 0;
+    if (_miniHDLC.getStats())
+        _debugCurHDLCStats = *_miniHDLC.getStats();
 #endif
 
 }
@@ -511,7 +514,7 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
             CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufEnd IMG firmware update File %s, len %d rxCRC %04x", 
                         _receivedFileName, _receivedFileBytesRx, rxCRC);
             // Short delay to allow comms completion 
-            microsDelay(100000);
+            microsDelay(2000000);
         }
         else
         {
@@ -534,6 +537,13 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
                             i, curPos, _debugBlockStart[i], _debugBlockLen[i]);
         }
         curPos = _debugBlockStart[i] + _debugBlockLen[i];
+    }
+    if (_miniHDLC.getStats())
+    {
+        MiniHDLCStats nowStats = *_miniHDLC.getStats();
+        CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "efEnd HDLC stats after(before) CRC %d(%d) TooLong %d(%d)", 
+                nowStats._frameCRCErrCount, _debugCurHDLCStats._frameCRCErrCount, 
+                nowStats._frameTooLongCount, _debugCurHDLCStats._frameTooLongCount);
     }
 #endif
 }
@@ -722,7 +732,8 @@ void CommandHandler::service()
     {
         if (isTimeout(millis(), _receivedFileLastBlockMs, MAX_FILE_RECEIVE_BETWEEN_BLOCKS_MS))
         {
-            CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "Receive timed out");
+            CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "Receive timed out blocksRx %d bytesRx %d lastRxMs %ld msNow %ld maxTimeBetweenBlocks %ld",
+                        _receivedBlockCount, _receivedFileBytesRx, _receivedFileLastBlockMs, millis(), MAX_FILE_RECEIVE_BETWEEN_BLOCKS_MS);
             fileReceiveCleardown();
         }
     }

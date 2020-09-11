@@ -180,11 +180,12 @@ private:
     // int _rdpMsgCountOut;
     // uint32_t _rdpTimeUs;
 
-// #define DEBUG_FILE_BLOCKS
+#define DEBUG_FILE_BLOCKS
 #ifdef DEBUG_FILE_BLOCKS
     uint32_t _debugBlockStart[1000];
     uint32_t _debugBlockLen[1000];
     uint32_t _debugBlockRxCount;
     bool _debugBlockFirstCh;
+    MiniHDLCStats _debugCurHDLCStats;
 #endif
 };

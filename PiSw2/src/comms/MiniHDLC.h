@@ -16,9 +16,12 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include "SimpleBuffer.h"
 
-// #define HDLC_USE_STD_FUNCTION_AND_BIND 1
+// Compilation controls
+// #define HDLC_USE_STD_FUNCTION_AND_BIND
 
+// Callback handling
 #ifdef HDLC_USE_STD_FUNCTION_AND_BIND
 #include <functional>
 // Put byte or bit callback function type
@@ -110,12 +113,14 @@ public:
     // Get frame tx buffer
     uint8_t* getFrameTxBuf()
     {
-        return _pTxBuffer;
+        return _txBuffer.data();
     }
 
     // Get frame tx len
     uint32_t getFrameTxLen()
     {
+        if (_txBuffer.size() < _txBufferPos)
+            return _txBuffer.size();
         return _txBufferPos;
     }
 
@@ -167,7 +172,7 @@ private:
     bool _bigEndianCRC;
 
     // State vars
-    int _framePos;
+    unsigned _framePos;
     uint16_t _frameCRC;
     bool _inEscapeSeq;
 
@@ -178,15 +183,12 @@ private:
     int _bitwiseSendOnesCount;
 
     // Receive buffer
-    uint8_t* _pRxBuffer;
+    SimpleBuffer _rxBuffer;
     uint32_t _rxBufferMaxLen;
-    uint32_t _rxBufferAllocLen;
-    static const uint32_t RX_BUFFER_MIN_ALLOC = 1024;
-    static const uint32_t RX_BUFFER_ALLOC_INC = 2048;
 
     // Transmit buffer
+    SimpleBuffer _txBuffer;
     uint32_t _txBufferMaxLen;
-    uint8_t* _pTxBuffer;
     uint32_t _txBufferPos;
     uint32_t _txBufferBitPos;
 
@@ -202,11 +204,11 @@ private:
     void clear();
     void putCharToFrame(uint8_t ch);
 
-    // Buffer allocation
-    typedef enum {
-        BUFFER_ALLOC_OK,
-        BUFFER_ALLOC_NO_MEM,
-        BUFFER_ALLOC_ABOVE_MAX
-    } BufferAllocRetc;
-    BufferAllocRetc checkRxBufferAllocation(uint32_t maxWriteIdx);
+    // Get CRC from buffer
+    uint16_t getCRCFromBuffer()
+    {
+        if (_bigEndianCRC)
+            return _rxBuffer.getAt(_framePos - 1) | (((uint16_t)_rxBuffer.getAt(_framePos-2)) << 8);
+        return _rxBuffer.getAt(_framePos - 2) | (((uint16_t)_rxBuffer.getAt(_framePos-1)) << 8);
+    }
 };

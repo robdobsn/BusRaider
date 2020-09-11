@@ -16,10 +16,12 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include <vector>
+#include "SimpleBuffer.h"
 
-#define HDLC_USE_STD_FUNCTION_AND_BIND 1
+// Compilation controls
+#define HDLC_USE_STD_FUNCTION_AND_BIND
 
+// Callback handling
 #ifdef HDLC_USE_STD_FUNCTION_AND_BIND
 #include <functional>
 // Put byte or bit callback function type
@@ -130,6 +132,12 @@ public:
 
     // Compute CCITT CRC16
     static unsigned computeCRC16(const uint8_t* pData, unsigned len);
+    static uint16_t crcInitCCITT()
+    {
+        return CRC16_CCITT_INIT_VAL;
+    }
+    static uint16_t crcUpdateCCITT(unsigned short fcs, unsigned char value);
+    static uint16_t crcUpdateCCITT(unsigned short fcs, const unsigned char* pBuf, unsigned bufLen);
 
 private:
     // If either of the following two octets appears in the transmitted data, an escape octet is sent,
@@ -170,7 +178,7 @@ private:
     bool _bigEndianCRC;
 
     // State vars
-    int _framePos;
+    unsigned _framePos;
     uint16_t _frameCRC;
     bool _inEscapeSeq;
 
@@ -181,11 +189,11 @@ private:
     int _bitwiseSendOnesCount;
 
     // Receive buffer
-    std::vector<uint8_t> _rxBuffer;
+    SimpleBuffer _rxBuffer;
     uint32_t _rxBufferMaxLen;
 
     // Transmit buffer
-    std::vector<uint8_t> _txBuffer;
+    SimpleBuffer _txBuffer;
     uint32_t _txBufferMaxLen;
     uint32_t _txBufferPos;
     uint32_t _txBufferBitPos;
@@ -194,7 +202,6 @@ private:
     MiniHDLCStats _stats;
 
 private:
-    static uint16_t crcUpdateCCITT(unsigned short fcs, unsigned char value);
     void sendChar(uint8_t ch);
     void sendCharWithStuffing(uint8_t ch);
     void sendEscaped(uint8_t ch);
@@ -205,10 +212,8 @@ private:
     // Get CRC from buffer
     uint16_t getCRCFromBuffer()
     {
-        if (_rxBuffer.size() <= _framePos)
-            return 0;
         if (_bigEndianCRC)
-            return _rxBuffer[_framePos - 1] | (((uint16_t)_rxBuffer[_framePos-2]) << 8);
-        return _rxBuffer[_framePos - 2] | (((uint16_t)_rxBuffer[_framePos-1]) << 8);
+            return _rxBuffer.getAt(_framePos - 1) | (((uint16_t)_rxBuffer.getAt(_framePos-2)) << 8);
+        return _rxBuffer.getAt(_framePos - 2) | (((uint16_t)_rxBuffer.getAt(_framePos-1)) << 8);
     }
 };

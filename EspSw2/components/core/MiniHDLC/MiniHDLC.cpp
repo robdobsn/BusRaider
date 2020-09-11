@@ -71,7 +71,9 @@ MiniHDLC::MiniHDLC(uint32_t rxMsgMaxLen, MiniHDLCPutChFnType putChFn, MiniHDLCFr
 // Constructor for HDLC with frame-wise transmit
 MiniHDLC::MiniHDLC(MiniHDLCFrameFnType frameTxFn, MiniHDLCFrameFnType frameRxFn,
             uint8_t frameBoundaryOctet, uint8_t controlEscapeOctet,
-            uint32_t txMsgMaxLen, uint32_t rxMsgMaxLen, bool bigEndianCRC, bool bitwiseHDLC)
+            uint32_t txMsgMaxLen, uint32_t rxMsgMaxLen, bool bigEndianCRC, bool bitwiseHDLC) :
+            _rxBuffer(rxMsgMaxLen),
+            _txBuffer(txMsgMaxLen)
 {
     clear();
 #ifdef HDLC_USE_STD_FUNCTION_AND_BIND
@@ -182,7 +184,7 @@ void MiniHDLC::handleChar(uint8_t ch)
                 // will overwrite one of the positions of the CRC
                 if ((_framePos >= 2) && (_rxBuffer.size() >= _framePos-1))
                 {
-                    _rxBuffer[_framePos-2] = 0;
+                    _rxBuffer.setAt(_framePos-2, 0);
                     // Handle the frame
                     if(_frameRxFn)
                         _frameRxFn(_rxBuffer.data(), _framePos - 2);
@@ -191,7 +193,8 @@ void MiniHDLC::handleChar(uint8_t ch)
             else
             {
 #ifdef DEBUG_HDLC
-                LOG_W(MODULE_PREFIX, "CRC Error");
+                LOG_W(MODULE_PREFIX, "CRC Error rxLenExclCRC %d crcRx %d crcCalc %d", 
+                            _framePos-2, rxcrc, _frameCRC);
 #endif
                 _stats._frameCRCErrCount++;
             }
@@ -242,12 +245,12 @@ void MiniHDLC::handleChar(uint8_t ch)
     }
 
     // Store char
-    _rxBuffer[_framePos] = ch;
+    _rxBuffer.setAt(_framePos, ch);
 
     // Update checksum if needed
     if (_framePos >= 2) 
     {
-        _frameCRC = crcUpdateCCITT(_frameCRC, _rxBuffer[_framePos - 2]);
+        _frameCRC = crcUpdateCCITT(_frameCRC, _rxBuffer.getAt(_framePos - 2));
     }
 
     // Bump position
@@ -404,6 +407,13 @@ uint16_t MiniHDLC::crcUpdateCCITT(unsigned short fcs, unsigned char value)
 	return (fcs << 8) ^ _CRCTable[((fcs >> 8) ^ value) & 0xff];
 }
 
+uint16_t MiniHDLC::crcUpdateCCITT(unsigned short fcs, const unsigned char* pBuf, unsigned bufLen)
+{
+    for (unsigned i = 0; i < bufLen; i++)
+        fcs = crcUpdateCCITT(fcs, pBuf[i]);
+    return fcs;
+}
+
 void MiniHDLC::sendChar(uint8_t ch)
 {
 	if (_bitwiseHDLC)
@@ -506,9 +516,9 @@ void MiniHDLC::putCharToFrame(uint8_t ch)
     if (_bitwiseHDLC)
     {
         if (_txBufferBitPos == 0)
-            _txBuffer[_txBufferPos] = (ch ? 0x80 : 0);
+            _txBuffer.setAt(_txBufferPos, (ch ? 0x80 : 0));
         else
-            _txBuffer[_txBufferPos] = (_txBuffer[_txBufferPos] >> 1) | (ch ? 0x80 : 0);
+            _txBuffer.setAt(_txBufferPos, (_txBuffer.getAt(_txBufferPos) >> 1) | (ch ? 0x80 : 0));
         _txBufferBitPos++;
         if (_txBufferBitPos == 8)
         {
@@ -519,7 +529,7 @@ void MiniHDLC::putCharToFrame(uint8_t ch)
     else
     {
         // Add to buffer
-        _txBuffer[_txBufferPos++] = ch;
+        _txBuffer.setAt(_txBufferPos++, ch);
     }
 }
 

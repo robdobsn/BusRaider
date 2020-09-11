@@ -19,12 +19,12 @@
 static const char *MODULE_PREFIX = "PiCoProcessor";
 
 // Debug
-// #define DEBUG_PI_UPLOAD_END
+#define DEBUG_PI_UPLOAD_END
 // #define DEBUG_PI_SW_UPLOAD
 // #define DEBUG_PI_UPLOAD_FROM_FS
 // #define DEBUG_PI_QUERY_STATUS
 // #define DEBUG_PI_SERIAL_GET
-// #define DEBUG_PI_QUERY_ESP_HEALTH
+#define DEBUG_PI_QUERY_ESP_HEALTH
 // #define DEBUG_PI_UPLOAD_COMMON_BLOCK
 // #define DEBUG_PI_UPLOAD_COMMON_BLOCK_DETAIL
 // #define DEBUG_PI_RX_API_REQ
@@ -66,6 +66,7 @@ PiCoProcessor::PiCoProcessor(const char *pModuleName, ConfigBase &defaultConfig,
     _uploadLastBlockMs = 0;
     _uploadBlockCount = 0;
     _uploadFilePos = 0;
+    _fileCRC = 0;
 
     // Stats
     _statsLastReportMs = 0;
@@ -534,10 +535,12 @@ void PiCoProcessor::sendFileStartRecord(const char* fileType, const String& req,
                 ((reqParams.length() > 0) ? ("," + reqParams) : "") +
                 "}";
     sendToPi((const uint8_t*)frame.c_str(), frame.length());
+    vTaskDelay(50);
 }
 
 void PiCoProcessor::sendFileBlock(size_t index, const uint8_t *pData, size_t len)
 {
+    vTaskDelay(25);
     std::vector<uint8_t> msgData;
     char msgHeader[100];
     snprintf(msgHeader, sizeof(msgHeader),
@@ -783,11 +786,13 @@ void PiCoProcessor::uploadAPIBlockHandler(const char* fileType, const String& re
     if (!_uploadFromAPIInProgress)
     {
         // Upload now in progress
+        _uploadLastBlockMs = millis();
         _uploadFromAPIInProgress = true;
         _uploadBlockCount = 0;
         _uploadFilePos = 0;
         _uploadStartMs = millis();
-        LOG_I(MODULE_PREFIX, "uploadAPIBlockHandler starting new - nothing in progress");
+        LOG_I(MODULE_PREFIX, "uploadAPIBlockHandler starting new fileType %s filename %s fileLen %d pos %d, blockLen %d",
+                fileType, filename.c_str(), fileLength, index, len);
     }
     
     // Commmon handler
@@ -818,18 +823,24 @@ void PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String&
                 _uploadLastBlockMs, fileType, filename.c_str(), fileLength, len, finalBlock,
                 (_uploadFromFSInProgress ? "yes" : "no"), 
                 (_uploadFromAPIInProgress ? "yes" : "no"));
+        
+        // CRC calculation
+        _fileCRC = MiniHDLC::crcInitCCITT();
     }
 
     // Send the block
     sendFileBlock(index, data, len);
     _uploadBlockCount++;
 
+    // Update CRC
+    _fileCRC = MiniHDLC::crcUpdateCCITT(_fileCRC, data, len);
+
     // Check if that was the final block
     if (finalBlock)
     {
         sendFileEndRecord(_uploadBlockCount, NULL);
 #ifdef DEBUG_PI_UPLOAD_END
-        LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler file end sent");
+        LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler file end sent CRC of whole file %04x", _fileCRC);
 #endif
         if (_uploadTargetCommandWhenComplete.length() != 0)
         {

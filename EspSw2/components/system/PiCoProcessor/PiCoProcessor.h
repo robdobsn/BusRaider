@@ -110,6 +110,7 @@ private:
     unsigned int _uploadFilePos;
     FileSystemChunker _chunker;
     std::vector<uint8_t> _uploadBlockBuffer;
+    uint32_t _fileCRC;
 
     // Stats
     uint32_t _statsRxCh;

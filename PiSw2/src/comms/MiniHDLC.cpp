@@ -14,10 +14,10 @@
 #include "MiniHDLC.h"
 #include "string.h"
 
-#define DEBUG_HDLC
+// #define DEBUG_HDLC
 
 #ifdef DEBUG_HDLC
-#include <circle/logger.h>
+#include <Logger.h>
 static const char* MODULE_PREFIX = "MiniHDLC";
 #endif
 
@@ -71,7 +71,9 @@ MiniHDLC::MiniHDLC(uint32_t rxMsgMaxLen, MiniHDLCPutChFnType putChFn, MiniHDLCFr
 // Constructor for HDLC with frame-wise transmit
 MiniHDLC::MiniHDLC(MiniHDLCFrameFnType frameTxFn, MiniHDLCFrameFnType frameRxFn,
             uint8_t frameBoundaryOctet, uint8_t controlEscapeOctet,
-            uint32_t txMsgMaxLen, uint32_t rxMsgMaxLen, bool bigEndianCRC, bool bitwiseHDLC)
+            uint32_t txMsgMaxLen, uint32_t rxMsgMaxLen, bool bigEndianCRC, bool bitwiseHDLC) :
+            _rxBuffer(rxMsgMaxLen),
+            _txBuffer(txMsgMaxLen)
 {
     clear();
 #ifdef HDLC_USE_STD_FUNCTION_AND_BIND
@@ -90,10 +92,6 @@ MiniHDLC::MiniHDLC(MiniHDLCFrameFnType frameTxFn, MiniHDLCFrameFnType frameRxFn,
 // Destructor
 MiniHDLC::~MiniHDLC()
 {
-    if (_pTxBuffer)
-        delete [] _pTxBuffer;
-    if (_pRxBuffer)
-        delete [] _pRxBuffer;
 }
 
 // Clear vars
@@ -115,9 +113,6 @@ void MiniHDLC::clear()
     _bitwiseByte = 0;
     _bitwiseBitCount = 0;
     _bitwiseSendOnesCount = 0;
-    _pRxBuffer = NULL;
-    _rxBufferAllocLen = 0;
-    _pTxBuffer = NULL;
     _txBufferPos = 0;
     _txBufferBitPos = 0;
 }
@@ -166,12 +161,10 @@ void MiniHDLC::handleChar(uint8_t ch)
     // Check boundary
     if (ch == _frameBoundaryOctet) 
     {
-        if (_framePos >= 2) 
+        if (_framePos >= 2)
         {
             // Valid frame ?
-            uint16_t rxcrc = _pRxBuffer[_framePos - 2] | (((uint16_t)_pRxBuffer[_framePos-1]) << 8);
-            if (_bigEndianCRC)
-                rxcrc = _pRxBuffer[_framePos - 1] | (((uint16_t)_pRxBuffer[_framePos - 2]) << 8);
+            uint16_t rxcrc = getCRCFromBuffer();
             // LOG_D(MODULE_PREFIX, "...len %d calc %x rxcrc %x", _framePos, _frameCRC, rxcrc);
             // for (int i = 0; i < _framePos-2; i++)
             // {
@@ -187,31 +180,20 @@ void MiniHDLC::handleChar(uint8_t ch)
             // Serial.println("");
             if (rxcrc == _frameCRC)
             {
-                // Check _pRxBuffer allocation
-                BufferAllocRetc allocRetc = checkRxBufferAllocation(_framePos-2);
-                if (allocRetc == BUFFER_ALLOC_OK)
+                // Null terminate the frame (just in case) - note that this
+                // will overwrite one of the positions of the CRC
+                if ((_framePos >= 2) && (_rxBuffer.size() >= _framePos-1))
                 {
-                    // Null terminate the frame (in case used as a string)
-                    _pRxBuffer[_framePos-2] = 0;
-
-                    // CLogger::Get()->Write ("MiniHDLC", LogNotice, "RxFrame len %d fn %08x", _framePos-2, _frameRxFn);
+                    _rxBuffer.setAt(_framePos-2, 0);
                     // Handle the frame
                     if(_frameRxFn)
-                        _frameRxFn(_pRxBuffer, _framePos - 2);
-                }
-                else if (allocRetc == BUFFER_ALLOC_NO_MEM)
-                {
-                    _stats._rxBufAllocFail++;
-                }
-                else
-                {
-                    _stats._frameTooLongCount++;
+                        _frameRxFn(_rxBuffer.data(), _framePos - 2);
                 }
             }
             else
             {
 #ifdef DEBUG_HDLC
-                CLogger::Get()->Write (MODULE_PREFIX, LogNotice, "CRC Error");
+                LOG_W(MODULE_PREFIX, "CRC Error");
 #endif
                 _stats._frameCRCErrCount++;
             }
@@ -237,35 +219,41 @@ void MiniHDLC::handleChar(uint8_t ch)
         return;
     }
 
-    // Store in buffer - first check _pRxBuffer allocation
-    BufferAllocRetc allocRetc = checkRxBufferAllocation(_framePos);
-    if (allocRetc == BUFFER_ALLOC_OK)
+    // Check buffer size and increase if needed & possible
+    if (_framePos >= _rxBuffer.size())
     {
-        _pRxBuffer[_framePos] = ch;
-
-        // Update checksum if needed
-        if (_framePos >= 2) 
+        if (_framePos >= _rxBufferMaxLen)
         {
-            _frameCRC = crcUpdateCCITT(_frameCRC, _pRxBuffer[_framePos - 2]);
+            // Too long - discard and start again
+            _framePos = 0;
+            _frameCRC = CRC16_CCITT_INIT_VAL;
+            _stats._frameTooLongCount++;
+            return;
         }
-
-        // Bump position
-        _framePos++;
+        _rxBuffer.resize(_framePos+1);
     }
-    else if (allocRetc == BUFFER_ALLOC_NO_MEM)
+
+    // Check buffer valid
+    if (_framePos >= _rxBuffer.size())
     {
-        // Memory fail - discard and start again
+        // Check valid
         _framePos = 0;
         _frameCRC = CRC16_CCITT_INIT_VAL;
         _stats._rxBufAllocFail++;
+        return;
     }
-    else
+
+    // Store char
+    _rxBuffer.setAt(_framePos, ch);
+
+    // Update checksum if needed
+    if (_framePos >= 2) 
     {
-        // Too long - discard and start again
-        _framePos = 0;
-        _frameCRC = CRC16_CCITT_INIT_VAL;
-        _stats._frameTooLongCount++;
+        _frameCRC = crcUpdateCCITT(_frameCRC, _rxBuffer.getAt(_framePos - 2));
     }
+
+    // Bump position
+    _framePos++;
 }
 
 void MiniHDLC::handleBuffer(const uint8_t* pBuf, unsigned numBytes)
@@ -278,6 +266,11 @@ void MiniHDLC::handleBuffer(const uint8_t* pBuf, unsigned numBytes)
 // Wrap given data in HDLC frame and send it out byte at a time
 void MiniHDLC::sendFrame(const uint8_t *pFrame, unsigned frameLen)
 {
+#ifdef DEBUG_HDLC
+    LOG_W(MODULE_PREFIX, "sendFrame len %d frameBoundary %02x ctrlCh %02x", 
+            frameLen, _frameBoundaryOctet, _controlEscapeOctet);
+#endif
+
     // Clear tx buffer pos initially
     _txBufferPos = 0;
     _txBufferBitPos = 0;
@@ -314,9 +307,9 @@ void MiniHDLC::sendFrame(const uint8_t *pFrame, unsigned frameLen)
     sendChar(_frameBoundaryOctet);
 
     // Check if we are sending frame-wise
-    if (_frameTxFn && (_pTxBuffer) && (_txBufferPos > 0))
+    if (_frameTxFn && (_txBufferPos > 0))
     {
-        _frameTxFn(_pTxBuffer, _txBufferPos);
+        _frameTxFn(_txBuffer.data(), _txBufferPos);
         _txBufferPos = 0;
         _txBufferBitPos = 0;
     }
@@ -492,69 +485,15 @@ uint32_t MiniHDLC::putEscaped(uint8_t ch, uint8_t* pBuf, uint32_t pos)
     return pos;
 }
 
-MiniHDLC::BufferAllocRetc MiniHDLC::checkRxBufferAllocation(uint32_t maxWriteIdx)
-{
-    // TODO - this function is untested!
-
-    // Check there is room in the buffer for the ensuing write
-    uint32_t reqdMinLen = maxWriteIdx+1;
-    if (reqdMinLen > _rxBufferAllocLen)
-    {
-        // Check this is within bounds of max
-        if (reqdMinLen > _rxBufferMaxLen)
-        {
-            return BUFFER_ALLOC_ABOVE_MAX;
-        }
-        
-        // Calculate new buf size
-        uint32_t newBufLen = RX_BUFFER_MIN_ALLOC;
-        if (reqdMinLen > newBufLen)
-            newBufLen = (((reqdMinLen) % RX_BUFFER_ALLOC_INC) + 1) * RX_BUFFER_ALLOC_INC;
-
-        // Allocate more space
-        uint8_t* pNewBuf = new uint8_t[newBufLen];
-        if (!pNewBuf)
-            return BUFFER_ALLOC_NO_MEM;
-
-        // Copy over if required
-        if (_pRxBuffer)
-        {
-            // Copy based on previous alloc length
-            memcpy(pNewBuf, _pRxBuffer, _rxBufferAllocLen);
-            delete [] _pRxBuffer;
-            _pRxBuffer = NULL;
-        }
-        _pRxBuffer = pNewBuf;
-        _rxBufferAllocLen = newBufLen;
-    }
-    return BUFFER_ALLOC_OK;
-}
-
 // Set frame rx max length
 void MiniHDLC::setFrameRxMaxLen(uint32_t rxMaxLen)
 {
-    // Check not going down on current allocation as this would be tricky
-    // e.g. we might be mid-message reception
-    if (rxMaxLen < _rxBufferAllocLen)
-        return;
-
-    // Set
     _rxBufferMaxLen = rxMaxLen;
 }
 
 // Put a char to a frame for tx
 void MiniHDLC::putCharToFrame(uint8_t ch)
 {
-    // Check buffer allocation
-    if (!_pTxBuffer)
-    {
-        _pTxBuffer = new uint8_t[_txBufferMaxLen];
-        _txBufferPos = 0;
-        _txBufferBitPos = 0;
-    }
-    if (!_pTxBuffer)
-        return;
-
     // Check overflow
     if (_txBufferPos >= _txBufferMaxLen)
     {
@@ -562,13 +501,16 @@ void MiniHDLC::putCharToFrame(uint8_t ch)
         _txBufferBitPos = 0;
         return;
     }
+
     // Check bitwise
+    if (_txBufferPos >= _txBuffer.size())
+        _txBuffer.resize(_txBufferPos+1);
     if (_bitwiseHDLC)
     {
         if (_txBufferBitPos == 0)
-            _pTxBuffer[_txBufferPos] = (ch ? 0x80 : 0);
+            _txBuffer.setAt(_txBufferPos, (ch ? 0x80 : 0));
         else
-            _pTxBuffer[_txBufferPos] = (_pTxBuffer[_txBufferPos] >> 1) | (ch ? 0x80 : 0);
+            _txBuffer.setAt(_txBufferPos, (_txBuffer.getAt(_txBufferPos) >> 1) | (ch ? 0x80 : 0));
         _txBufferBitPos++;
         if (_txBufferBitPos == 8)
         {
@@ -579,7 +521,7 @@ void MiniHDLC::putCharToFrame(uint8_t ch)
     else
     {
         // Add to buffer
-        _pTxBuffer[_txBufferPos++] = ch;
+        _txBuffer.setAt(_txBufferPos++, ch);
     }
 }
 
