@@ -132,6 +132,12 @@ public:
 
     // Compute CCITT CRC16
     static unsigned computeCRC16(const uint8_t* pData, unsigned len);
+    static uint16_t crcInitCCITT()
+    {
+        return CRC16_CCITT_INIT_VAL;
+    }
+    static uint16_t crcUpdateCCITT(unsigned short fcs, unsigned char value);
+    static uint16_t crcUpdateCCITT(unsigned short fcs, const unsigned char* pBuf, unsigned bufLen);
 
 private:
     // If either of the following two octets appears in the transmitted data, an escape octet is sent,
@@ -196,7 +202,6 @@ private:
     MiniHDLCStats _stats;
 
 private:
-    static uint16_t crcUpdateCCITT(unsigned short fcs, unsigned char value);
     void sendChar(uint8_t ch);
     void sendCharWithStuffing(uint8_t ch);
     void sendEscaped(uint8_t ch);

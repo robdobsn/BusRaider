@@ -9,7 +9,9 @@
 #include <stdint.h>
 #include <stddef.h>
 
+#ifdef __circle__
 #define USE_FIXED_LENGTH_BUFFER_LEN 10000
+#endif
 
 #ifndef USE_FIXED_LENGTH_BUFFER_LEN
 #include <vector>

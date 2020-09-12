@@ -52,7 +52,9 @@ class Frame(object):
         res = bool(self.crc == calculatedCRC)
         if not res:
             frameStr = ''.join('{:02x}'.format(x) for x in self.data)
-            logger.warning(f"invalid crc 0x{self.crc:x} != 0x{calculatedCRC:x} Len {len(self.data)} Frame {frameStr}")
+            calcCRCStr = ''.join('{:02x}'.format(x) for x in calculatedCRC)
+            receivedCRC = ''.join('{:02x}'.format(x) for x in self.crc)
+            logger.warning(f"invalid rx crc 0x{receivedCRC} != 0x{calcCRCStr} calculated Len {len(self.data)} Frame {frameStr}")
             self.error = True
         return res
         

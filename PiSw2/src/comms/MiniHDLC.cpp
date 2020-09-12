@@ -18,7 +18,7 @@
 #define DEBUG_HDLC_CRC
 
 #if defined(DEBUG_HDLC) || defined(DEBUG_HDLC_CRC)
-#include <circle/logger.h>
+#include <Logger.h>
 static const char* MODULE_PREFIX = "MiniHDLC";
 #endif
 
@@ -204,8 +204,10 @@ void MiniHDLC::handleChar(uint8_t ch)
                     }
                 }
                 if (termPos > 0 && termPos < 200)
-                    CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "CRC Error framePos %d rxcrc 0x%04x calcCRC 0x%04x rxFrame %s", 
+                {
+                    LOG_I(MODULE_PREFIX, "CRC Error framePos %d rxcrc 0x%04x calcCRC 0x%04x rxFrame %s", 
                                 _framePos, rxcrc, _frameCRC, (const char*)_rxBuffer.data());
+                }
 #endif
                 _stats._frameCRCErrCount++;
             }
@@ -416,6 +418,13 @@ uint32_t MiniHDLC::calcEncodedPayloadLen(const uint8_t *pFrame, uint32_t frameLe
 uint16_t MiniHDLC::crcUpdateCCITT(unsigned short fcs, unsigned char value)
 {
 	return (fcs << 8) ^ _CRCTable[((fcs >> 8) ^ value) & 0xff];
+}
+
+uint16_t MiniHDLC::crcUpdateCCITT(unsigned short fcs, const unsigned char* pBuf, unsigned bufLen)
+{
+    for (unsigned i = 0; i < bufLen; i++)
+        fcs = crcUpdateCCITT(fcs, pBuf[i]);
+    return fcs;
 }
 
 void MiniHDLC::sendChar(uint8_t ch)

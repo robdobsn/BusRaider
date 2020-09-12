@@ -9,9 +9,11 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define USE_STD_VECTOR_BUFFERS
+#ifdef __circle__
+#define USE_FIXED_LENGTH_BUFFER_LEN 10000
+#endif
 
-#ifdef USE_STD_VECTOR_BUFFERS
+#ifndef USE_FIXED_LENGTH_BUFFER_LEN
 #include <vector>
 #endif
 
@@ -21,119 +23,95 @@ public:
     static const unsigned DEFAULT_MAX_LEN = 5000;
     SimpleBuffer(unsigned maxFrameLen = DEFAULT_MAX_LEN)
     {
-#ifndef USE_STD_VECTOR_BUFFERS
-        _pBuffer = NULL;
-        _bufferSize = 0;
-#endif
+#ifdef USE_FIXED_LENGTH_BUFFER_LEN
+        _bufMaxLen = USE_FIXED_LENGTH_BUFFER_LEN;
+#else
         _bufMaxLen = maxFrameLen;
+#endif
     }
 
     virtual ~SimpleBuffer()
     {
-#ifndef USE_STD_VECTOR_BUFFERS
-        if (_pBuffer)
-            delete [] _pBuffer;
+#ifdef USE_FIXED_LENGTH_BUFFER_LEN
+        return;
 #endif
     }
 
     void setMaxLen(unsigned maxLen)
     {
+#ifdef USE_FIXED_LENGTH_BUFFER_LEN
+        return;
+#endif
         _bufMaxLen = maxLen;
     }
 
     bool resize(unsigned size)
     {
+#ifdef USE_FIXED_LENGTH_BUFFER_LEN
+        return false;
+#else
         if (size > _bufMaxLen)
             return false;
-#ifdef USE_STD_VECTOR_BUFFERS
         _buffer.resize(size);
         return _buffer.size() == size;
-#else
-        if (_pBuffer)
-        {
-            delete [] _pBuffer;
-            _pBuffer = NULL;
-            _bufferSize = 0;
-        }
-        _pBuffer = new uint8_t[size];
-        if (!_pBuffer)
-            return false;
-        _bufferSize = size;
-        return true;
 #endif
     }
 
     bool setAt(unsigned idx, uint8_t val)
     {
-#ifdef USE_STD_VECTOR_BUFFERS
+#ifdef USE_FIXED_LENGTH_BUFFER_LEN
         if (idx >= _bufMaxLen)
-            return false;
-        if (idx >= _buffer.size())
-            _buffer.resize(idx+1);
-        if (idx >= _buffer.size())
             return false;
         _buffer[idx] = val;
         return true;   
 #else
         if (idx >= _bufMaxLen)
             return false;
-        if ((idx >= _bufferSize) && _pBuffer)
-        {
-            delete [] _pBuffer;
-            _pBuffer = NULL;
-            _bufferSize = 0;
-        }
-        if (!_pBuffer)
-        {
-            _pBuffer = new uint8_t[_bufMaxLen];
-            if (!_pBuffer)
+        if (idx >= _buffer.size())
+            _buffer.resize(idx+1);
+        if (idx >= _buffer.size())
                 return false;
-            _bufferSize = _bufMaxLen;
-        }
-        _pBuffer[idx] = val;
+        _buffer[idx] = val;
         return true;
 #endif
     }
 
     uint8_t getAt(unsigned idx) const
     {
-#ifdef USE_STD_VECTOR_BUFFERS
-        if (idx >= _buffer.size())
+#ifdef USE_FIXED_LENGTH_BUFFER_LEN
+        if (idx >= _bufMaxLen)
             return 0;
         return _buffer[idx];
 #else
-        if (!_pBuffer || (idx >= _bufMaxLen))
+        if (idx >= _buffer.size())
             return 0;
-        return (_pBuffer[idx]);
+        return _buffer[idx];
 #endif
     }
 
     uint8_t* data()
     {
-#ifdef USE_STD_VECTOR_BUFFERS
-        return _buffer.data();
+#ifdef USE_FIXED_LENGTH_BUFFER_LEN
+        return _buffer;
 #else
-        return _pBuffer;
+        return _buffer.data();
 #endif
     }
 
     unsigned size()
     {
-#ifdef USE_STD_VECTOR_BUFFERS
-        return _buffer.size();
+#ifdef USE_FIXED_LENGTH_BUFFER_LEN
+        return _bufMaxLen;
 #else
-        if (!_pBuffer)
-            return 0;
-        return _bufferSize;
+        return _buffer.size();
 #endif
     }
 
 private:
-#ifdef USE_STD_VECTOR_BUFFERS
-    std::vector<uint8_t> _buffer;
+#ifdef USE_FIXED_LENGTH_BUFFER_LEN
+    uint8_t _buffer[USE_FIXED_LENGTH_BUFFER_LEN];
 #else
-    uint8_t* _pBuffer;
-    unsigned _bufferSize;
+    std::vector<uint8_t> _buffer;
 #endif
     unsigned _bufMaxLen;
 };
