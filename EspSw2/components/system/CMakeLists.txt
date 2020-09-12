@@ -12,7 +12,6 @@ idf_component_register(
                   "CommandSerial/CommandSerial.cpp"
                   "CommandFile/CommandFile.cpp"
                   "ESPOTAUpdate/ESPOTAUpdate.cpp"
-                  "PiCoProcessor/PiCoProcessor.cpp"
                 INCLUDE_DIRS
                   "SysMod"
                   "SysManager"
@@ -26,7 +25,6 @@ idf_component_register(
                   "CommandSerial"
                   "CommandFile"
                   "ESPOTAUpdate"
-                  "PiCoProcessor"
                 REQUIRES 
                   core
                   comms

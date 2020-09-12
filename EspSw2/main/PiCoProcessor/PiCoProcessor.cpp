@@ -33,6 +33,7 @@ static const char *MODULE_PREFIX = "PiCoProcessor";
 // #define DEBUG_PI_SEND_FRAME
 // #define DEBUG_PI_SEND_TARGET_CMD
 // #define DEBUG_PI_SEND_RESP_TO_PI
+// #define DEBUG_PI_SEND_FILE_BLOCK
 // #define DEBUG_PI_TX_FRAME_TO_PI
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -353,6 +354,12 @@ void PiCoProcessor::addRestAPIEndpoints(RestAPIEndpointManager &endpointManager)
                         std::bind(&PiCoProcessor::apiQueryPiStatus, this,
                                 std::placeholders::_1, std::placeholders::_2),
                         "Query Pi Status");
+    endpointManager.addEndpoint("querycurmc",
+                        RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                        RestAPIEndpointDef::ENDPOINT_GET, 
+                        std::bind(&PiCoProcessor::apiQueryCurMc, this,
+                                std::placeholders::_1, std::placeholders::_2),
+                        "Query machine");                        
     endpointManager.addEndpoint("setmcjson", 
                         RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                         RestAPIEndpointDef::ENDPOINT_POST,
@@ -367,7 +374,7 @@ void PiCoProcessor::addRestAPIEndpoints(RestAPIEndpointManager &endpointManager)
                                 std::placeholders::_1, std::placeholders::_2, 
                                 std::placeholders::_3, std::placeholders::_4,
                                 std::placeholders::_5),
-                        NULL);                        
+                        NULL);
 
     // Stash endoint manager
     _pRestAPIEndpointManager = &endpointManager;
@@ -431,6 +438,16 @@ void PiCoProcessor::apiQueryPiStatus(const String &reqStr, String &respStr)
 {
     respStr = _cachedPiStatusJSON.c_str();
     // LOG_I(MODULE_PREFIX, "apiQueryStatus %s resp %s", reqStr.c_str(), respStr.c_str());
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// API request - Query cure machine
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void PiCoProcessor::apiQueryCurMc(const String &reqStr, String &respStr)
+{
+    respStr = configGetConfig().getConfigString();
+    LOG_I(MODULE_PREFIX, "apiQueryCurMc %s returning %s", reqStr.c_str(), respStr.c_str());
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -558,8 +575,10 @@ void PiCoProcessor::sendFileBlock(size_t index, const uint8_t *pData, size_t len
         memcpy(msgData.data() + headerLen + 1, pData, len);
         sendMsgAndPayloadToPi(msgData.data(), msgStrPlusPayloadLen);
     }
+#ifdef DEBUG_PI_SEND_FILE_BLOCK
     LOG_I(MODULE_PREFIX, "sendFileBlock blockLen %d headerLenExclTerm %d totalLen %d msgHeader %s", 
                 len, headerLen, msgStrPlusPayloadLen, msgHeader); 
+#endif
 }
 
 void PiCoProcessor::sendFileEndRecord(int blockCount, const char* pAdditionalJsonNameValues)

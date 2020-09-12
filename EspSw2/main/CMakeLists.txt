@@ -1,8 +1,11 @@
 idf_component_register(
                 SRCS 
                     "main.cpp"
+                    "PiCoProcessor/PiCoProcessor.cpp"
                 INCLUDE_DIRS 
-                    ".")
+                    "."
+                    "PiCoProcessor"
+                )
 
 # Create a SPIFFS image from the contents of the 'spiffs_image' directory
 # that fits the partition named 'spiffs'. FLASH_IN_PROJECT indicates that
