@@ -12,7 +12,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define SYSTEM_NAME "BusRaiderESP32"
-#define SYSTEM_VERSION "3.1.1"
+#define SYSTEM_VERSION "3.1.3"
 #define DEFAULT_SYSTYPE "BusRaider"
 #define DEFAULT_SYSNAME "BusRaider"
 #define DEFAULT_HOSTNAME "BusRaider"
@@ -100,7 +100,7 @@ static const char *defaultConfigJSON =
         R"("PiCoProcessor":{)"
             R"("enable":1,)"
             R"("uartNum":2,)"
-            R"("baudRate":460800,)"
+            R"("baudRate":921600,)"
             R"("rxBufSize":32768,)"
             R"("rxPin":16,)"
             R"("txPin":17,)"

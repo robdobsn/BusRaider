@@ -27,7 +27,7 @@ def setupTests(testName, frameCallback):
             useIP = True, 
             serialPort = "COM6", 
             serialBaud = 921600, 
-            ipAddrOrHostName = "192.168.86.40",
+            ipAddrOrHostName = "192.168.86.15",
             dumpTextFileName = testName + ".log",
             dumpBinFileName = testName + ".bin",
             frameCallback = frameCallback

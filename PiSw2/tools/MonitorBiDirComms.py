@@ -126,7 +126,7 @@ logger.setLevel(logging.DEBUG)
 argparser = argparse.ArgumentParser(description='MonitorRxAndTx')
 DEFAULT_RX_SERIAL_PORT = "COM9"
 DEFAULT_TX_SERIAL_PORT = "COM11"
-DEFAULT_SERIAL_BAUD = 460800
+DEFAULT_SERIAL_BAUD = 921600
 DEFAULT_IP_ADDRESS = ""
 DEFAULT_LOG_FOLDER = "log"
 argparser.add_argument('--rxport', help='Rx Serial Port', default=DEFAULT_RX_SERIAL_PORT)
