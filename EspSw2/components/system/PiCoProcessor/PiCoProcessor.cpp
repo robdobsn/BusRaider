@@ -19,12 +19,12 @@
 static const char *MODULE_PREFIX = "PiCoProcessor";
 
 // Debug
-#define DEBUG_PI_UPLOAD_END
+// #define DEBUG_PI_UPLOAD_END
 // #define DEBUG_PI_SW_UPLOAD
 // #define DEBUG_PI_UPLOAD_FROM_FS
 // #define DEBUG_PI_QUERY_STATUS
 // #define DEBUG_PI_SERIAL_GET
-#define DEBUG_PI_QUERY_ESP_HEALTH
+// #define DEBUG_PI_QUERY_ESP_HEALTH
 // #define DEBUG_PI_UPLOAD_COMMON_BLOCK
 // #define DEBUG_PI_UPLOAD_COMMON_BLOCK_DETAIL
 // #define DEBUG_PI_RX_API_REQ
@@ -212,8 +212,8 @@ void PiCoProcessor::service()
             (Utils::isTimeout(millis(), _cachedPiStatusRequestMs, TIME_BETWEEN_PI_STATUS_REQS_MS)))
         {
             // Request status
-            const char getStatusCmd[] = "{\"cmdName\":\"getStatus\",\"reqStr\":\"\"}\0";
-            sendToPi((const uint8_t*)getStatusCmd, sizeof(getStatusCmd));
+            const char getStatusCmd[] = "{\"cmdName\":\"getStatus\",\"reqStr\":\"\"}";
+            sendMsgStrToPi(getStatusCmd);
 #ifdef DEBUG_PI_QUERY_STATUS
             LOG_I(MODULE_PREFIX, "Query Pi Status");
 #endif
@@ -530,11 +530,14 @@ void PiCoProcessor::detectHardwareVersion()
 void PiCoProcessor::sendFileStartRecord(const char* fileType, const String& req, const String& filename, int fileLength)
 {
     String reqParams = Utils::getJSONFromHTTPQueryStr(req.c_str(), true);
-    String frame = "{\"cmdName\":\"ufStart\",\"fileType\":\"" + String(fileType) + "\",\"fileName\":\"" + filename +
-                "\",\"fileLen\":" + String(fileLength) + 
-                ((reqParams.length() > 0) ? ("," + reqParams) : "") +
-                "}";
-    sendToPi((const uint8_t*)frame.c_str(), frame.length());
+    char msgStr[600];
+    snprintf(msgStr, sizeof(msgStr), R"({"cmdName":"ufStart","fileType":"%s","fileName":"%s","fileLen":%d%s%s})",
+                    fileType, 
+                    filename.c_str(),
+                    fileLength,
+                    reqParams.length() > 0 ? "," : "",
+                    reqParams.length() > 0 ? reqParams.c_str() : "");
+    sendMsgStrToPi(msgStr);
     vTaskDelay(50);
 }
 
@@ -544,24 +547,29 @@ void PiCoProcessor::sendFileBlock(size_t index, const uint8_t *pData, size_t len
     std::vector<uint8_t> msgData;
     char msgHeader[100];
     snprintf(msgHeader, sizeof(msgHeader),
-            R"({"cmdName":"ufBlock","index":"%d","len":"%d"})", 
+            R"({"cmdName":"ufBlock","index":%d,"len":%d})", 
             index, len);
-    int headerLen = strlen(msgHeader);
-    msgData.resize(headerLen + len + 1);
-    if (msgData.size() >= headerLen + len + 1)
+    unsigned headerLen = strlen(msgHeader);
+    unsigned msgStrPlusPayloadLen = headerLen + 1 + len;
+    msgData.resize(msgStrPlusPayloadLen);
+    if (msgData.size() >= msgStrPlusPayloadLen)
     {
-        memcpy(msgData.data(), msgHeader, headerLen);
-        msgData[headerLen] = 0;
+        memcpy(msgData.data(), msgHeader, headerLen + 1);
         memcpy(msgData.data() + headerLen + 1, pData, len);
-        sendToPi(msgData.data(), headerLen + len + 1);
+        sendMsgAndPayloadToPi(msgData.data(), msgStrPlusPayloadLen);
     }
+    LOG_I(MODULE_PREFIX, "sendFileBlock blockLen %d headerLenExclTerm %d totalLen %d msgHeader %s", 
+                len, headerLen, msgStrPlusPayloadLen, msgHeader); 
 }
 
 void PiCoProcessor::sendFileEndRecord(int blockCount, const char* pAdditionalJsonNameValues)
 {
-    String frame = "{\"cmdName\":\"ufEnd\",\"blockCount\":\"" + String(blockCount) + "\"" +
-            (pAdditionalJsonNameValues ? ("," + String(pAdditionalJsonNameValues)) : "") + "}";
-    sendToPi((const uint8_t*)frame.c_str(), frame.length());
+    char msgStr[300];
+    snprintf(msgStr, sizeof(msgStr), R"({"cmdName":"ufEnd","blockCount":%d,"crc":"0x%04x"%s%s})",
+                    blockCount, _fileCRC,
+                    pAdditionalJsonNameValues ? "," : "",
+                    pAdditionalJsonNameValues ? pAdditionalJsonNameValues : "");
+    sendMsgStrToPi(msgStr);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -574,16 +582,14 @@ void PiCoProcessor::sendResponseToPi(String& reqStr, String& msgJson)
     LOG_I(MODULE_PREFIX, "req %s ... response Msg %s", reqStr.c_str(), msgJson.c_str());
 #endif
 
-    String frame;
-    if (msgJson.startsWith("{"))
-    {
-        frame = "{\"cmdName\":\"" + reqStr + "Resp\",\"msg\":" + msgJson + "}\0";
-    }
-    else
-    {
-        frame = "{\"cmdName\":\"" + reqStr + "Resp\"," + msgJson + "}\0";
-    }
-    sendToPi((const uint8_t*)frame.c_str(), frame.length());
+    bool hasBraces = msgJson.startsWith("{");
+    char msgStr[300];
+    snprintf(msgStr, sizeof(msgStr), R"({"cmdName":"%sResp","msg":%s%s%s})",
+                    reqStr.c_str(),
+                    hasBraces ? "" : "{",
+                    msgJson.c_str(),
+                    hasBraces ? "" : "}");
+    sendMsgStrToPi(msgStr);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -596,8 +602,11 @@ void PiCoProcessor::sendTargetCommand(const String& targetCmd, const String& req
     LOG_I(MODULE_PREFIX, "sendTargetCommand Msg %s", targetCmd.c_str());
 #endif
 
-    String frame = "{\"cmdName\":\"" + targetCmd + "\",\"reqStr\":\"" + reqStr + "\"}\0";
-    sendToPi((const uint8_t*)frame.c_str(), frame.length());
+    char msgStr[300];
+    snprintf(msgStr, sizeof(msgStr), R"({"cmdName":"%s","reqStr":"%s"})",
+                    targetCmd.c_str(),
+                    reqStr.c_str());
+    sendMsgStrToPi(msgStr);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -611,14 +620,14 @@ void PiCoProcessor::sendTargetData(const String& cmdName, const uint8_t* pData, 
     snprintf(msgHeader, sizeof(msgHeader),
             R"({"cmdName":"%s","msgIdx":"%d","dataLen":"%d"})", 
             cmdName.c_str(), index, len);
-    int headerLen = strlen(msgHeader);
-    msgData.resize(headerLen + len + 1);
-    if (msgData.size() >= headerLen + len + 1)
+    unsigned headerLen = strlen(msgHeader);
+    unsigned msgStrPlusPayloadLen = headerLen + 1 + len;
+    msgData.resize(msgStrPlusPayloadLen);
+    if (msgData.size() >= msgStrPlusPayloadLen)
     {
-        memcpy(msgData.data(), msgHeader, headerLen);
-        msgData[headerLen] = 0;
+        memcpy(msgData.data(), msgHeader, headerLen + 1);
         memcpy(msgData.data() + headerLen + 1, pData, len);
-        sendToPi(msgData.data(), headerLen + len + 1);
+        sendMsgAndPayloadToPi(msgData.data(), headerLen + len + 1);
     }
 }
 
@@ -626,7 +635,13 @@ void PiCoProcessor::sendTargetData(const String& cmdName, const uint8_t* pData, 
 // Send to co-processor
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PiCoProcessor::sendToPi(const uint8_t *pFrame, int frameLen)
+void PiCoProcessor::sendMsgStrToPi(const char *pMsgStr)
+{
+    // Include string terminator
+    sendMsgAndPayloadToPi((const uint8_t*) pMsgStr, strlen(pMsgStr)+1);
+}
+
+void PiCoProcessor::sendMsgAndPayloadToPi(const uint8_t *pFrame, int frameLen)
 {
 #ifdef DEBUG_PI_SEND_FRAME
     LOG_I(MODULE_PREFIX, "sendToPi frameLen %d", frameLen);

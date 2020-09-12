@@ -81,7 +81,7 @@ private:
     HttpStatusCode _httpResponseStatus;
 
     // Timeout timer
-    static const uint32_t MAX_STD_CONN_DURATION_MS = 10000;
+    static const uint32_t MAX_STD_CONN_DURATION_MS = 30000;
     uint32_t _timeoutStartMs;
     uint32_t _timeoutDurationMs;
     bool _timeoutActive;

@@ -100,7 +100,7 @@ static const char *defaultConfigJSON =
         R"("PiCoProcessor":{)"
             R"("enable":1,)"
             R"("uartNum":2,)"
-            R"("baudRate":1000000,)"
+            R"("baudRate":460800,)"
             R"("rxBufSize":32768,)"
             R"("rxPin":16,)"
             R"("txPin":17,)"

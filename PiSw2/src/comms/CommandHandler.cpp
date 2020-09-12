@@ -152,7 +152,7 @@ uint32_t CommandHandler::hdlcTxAvailableStatic()
 // This is a ascii character string (null terminated) followed by a byte buffer containing parameters
 void CommandHandler::hdlcFrameRx(const uint8_t *pFrame, unsigned frameLength)
 {
-    // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "Rx %d bytes", frameLength);
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Rx %d bytes", frameLength);
 
     // Handle the frame - extract command string
     char commandString[CMD_HANDLER_MAX_CMD_STR_LEN+1];
@@ -494,12 +494,24 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
     unsigned blockCount = 0;
     if (jsonGetValueForKey("blockCount", pCmdJson, blockCountStr, MAX_INT_ARG_STR_LEN))
         blockCount = strtoul(blockCountStr, NULL, 10);
+    char crcStr[MAX_INT_ARG_STR_LEN+1];
+    unsigned ufEndCRCVal = 0;
+    if (jsonGetValueForKey("crc", pCmdJson, crcStr, MAX_INT_ARG_STR_LEN))
+        ufEndCRCVal = strtoul(crcStr, NULL, 16);
+    unsigned calcCRC = MiniHDLC::computeCRC16(_pReceivedFileDataPtr, _receivedFileBytesRx);
     char ackMsgJson[100];
-    snprintf(ackMsgJson, sizeof(ackMsgJson), "\"rxCount\":%d, \"expCount\":%d", _receivedBlockCount, blockCount);
+    snprintf(ackMsgJson, sizeof(ackMsgJson), R"("rxCount":%d,"expCount":%d,"CalcCRC":"0x%04x","ufEndCRC":"0x%04x")", 
+                _receivedBlockCount, blockCount, calcCRC, ufEndCRCVal);
     if (blockCount != _receivedBlockCount)
     {
-        CLogger::Get()->Write(MODULE_PREFIX, LogWarning, "ufEnd File %s, blockCount rx %d != sent %d", 
+        CLogger::Get()->Write(MODULE_PREFIX, LogWarning, "ufEnd NOT ACK File %s blockCount rx %d != sent %d", 
                 _receivedFileName, _receivedBlockCount, blockCount);
+        sendWithJSON("ufEndNotAck", ackMsgJson);
+    }
+    else if (calcCRC != ufEndCRCVal)
+    {
+        CLogger::Get()->Write(MODULE_PREFIX, LogWarning, "ufEnd NOT ACK File %s CRC error ufEnd 0x%04x != 0x%04x calc blockCount %d", 
+                _receivedFileName, ufEndCRCVal, calcCRC, blockCount);
         sendWithJSON("ufEndNotAck", ackMsgJson);
     }
     else
@@ -510,18 +522,18 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
         bool isFirmware = strcasecmp(_pReceivedFileType, "firmware") == 0;
         if (isFirmware)
         {
-            unsigned rxCRC = MiniHDLC::computeCRC16(_pReceivedFileDataPtr, _receivedFileBytesRx);
-            CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufEnd IMG firmware update File %s, len %d rxCRC %04x", 
-                        _receivedFileName, _receivedFileBytesRx, rxCRC);
+            // CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufEnd IMG firmware update File %s, len %d calcCRC 0x%04x ufEndCRC 0x%04x", 
+            //             _receivedFileName, _receivedFileBytesRx, calcCRC, ufEndCRCVal);
             // Short delay to allow comms completion 
-            microsDelay(2000000);
+            microsDelay(100000);
         }
         else
         {
             CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "efEnd File %s, len %d", _receivedFileName, _receivedFileBytesRx);
         }
         commsSocketHandleReceivedFile(_receivedFileStartInfo, _pReceivedFileDataPtr, _receivedFileBytesRx, isFirmware);
-        CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufEnd File %s, len %d Completed", _receivedFileName, _receivedFileBytesRx);
+
+        // CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufEnd File %s, len %d Completed", _receivedFileName, _receivedFileBytesRx);
     }
     
     // Clear-down reception
@@ -533,17 +545,26 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
     {
         if (curPos != _debugBlockStart[i])
         {
-            CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "efEnd block %d missing at pos %d block start %d len %d", 
+            // CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufEnd block %d missing at pos %d block start %d len %d", 
+            //                 i, curPos, _debugBlockStart[i], _debugBlockLen[i]);
+            char errMsg[200];
+            snprintf(errMsg, sizeof(errMsg), "ufEnd block %d missing at pos %d block start %d len %d", 
                             i, curPos, _debugBlockStart[i], _debugBlockLen[i]);
+            logDebugMessage(errMsg);
         }
         curPos = _debugBlockStart[i] + _debugBlockLen[i];
     }
     if (_miniHDLC.getStats())
     {
         MiniHDLCStats nowStats = *_miniHDLC.getStats();
-        CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "efEnd HDLC stats after(before) CRC %d(%d) TooLong %d(%d)", 
+        // CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufEnd HDLC stats after(before) CRC %d(%d) TooLong %d(%d)", 
+        //         nowStats._frameCRCErrCount, _debugCurHDLCStats._frameCRCErrCount, 
+        //         nowStats._frameTooLongCount, _debugCurHDLCStats._frameTooLongCount);
+        char errMsg[200];
+        snprintf(errMsg, sizeof(errMsg), "ufEnd HDLC stats after(before) CRC %d(%d) TooLong %d(%d)", 
                 nowStats._frameCRCErrCount, _debugCurHDLCStats._frameCRCErrCount, 
                 nowStats._frameTooLongCount, _debugCurHDLCStats._frameTooLongCount);
+        logDebugMessage(errMsg);
     }
 #endif
 }

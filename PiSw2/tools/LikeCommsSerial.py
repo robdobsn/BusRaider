@@ -71,6 +71,9 @@ class LikeCommsSerial:
         else:
             self._sendBytesToIF(hdlcEncoded)
         
+    def getHDLCStats(self):
+        return self._hdlc.getStats()
+
     def _serialRxLoop(self):
         while self.serialThreadEn:
             i = self.serialPort.in_waiting
@@ -96,7 +99,8 @@ class LikeCommsSerial:
             self.rxFrameCB(frame)
         
     def _onHDLCError(self):
-        print("HDLC error")
+        # print("HDLC error")
+        pass
         
     def _sendBytesToIF(self, bytesToSend):
         # print("Sending to IF len", len(bytesToSend), " ", str(bytesToSend))

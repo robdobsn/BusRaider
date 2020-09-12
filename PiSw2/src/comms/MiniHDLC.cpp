@@ -15,9 +15,10 @@
 #include "string.h"
 
 // #define DEBUG_HDLC
+#define DEBUG_HDLC_CRC
 
-#ifdef DEBUG_HDLC
-#include <Logger.h>
+#if defined(DEBUG_HDLC) || defined(DEBUG_HDLC_CRC)
+#include <circle/logger.h>
 static const char* MODULE_PREFIX = "MiniHDLC";
 #endif
 
@@ -192,8 +193,19 @@ void MiniHDLC::handleChar(uint8_t ch)
             }
             else
             {
-#ifdef DEBUG_HDLC
-                LOG_W(MODULE_PREFIX, "CRC Error");
+#ifdef DEBUG_HDLC_CRC
+                unsigned termPos = 0;
+                for (unsigned i = 0; i < _framePos && i < 200; i++)
+                {
+                    if (_rxBuffer.getAt(i) == 0)
+                    {
+                        termPos = i;
+                        break;
+                    }
+                }
+                if (termPos > 0 && termPos < 200)
+                    CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "CRC Error framePos %d rxcrc 0x%04x calcCRC 0x%04x rxFrame %s", 
+                                _framePos, rxcrc, _frameCRC, (const char*)_rxBuffer.data());
 #endif
                 _stats._frameCRCErrCount++;
             }

@@ -122,6 +122,8 @@ private:
 
     // Helpers
     void applySetup();
+    void sendMsgStrToPi(const char *pMsgStr);
+    void sendMsgAndPayloadToPi(const uint8_t *pFrame, int frameLen);
     void sendToPi(const uint8_t *pFrame, int frameLen);
     void sendTargetCommand(const String& targetCmd, const String& reqStr);
     void sendTargetData(const String& cmdName, const uint8_t* pData, int len, int index);

@@ -11,16 +11,8 @@ import sys
 
 logger = logging.getLogger(__name__)
 
-def calcCRC(data):
-    crc = 0xffff
-    msb = crc >> 8
-    lsb = crc & 255
-    for c in data:
-        x = c ^ msb
-        x ^= (x >> 4)
-        msb = (lsb ^ (x >> 3) ^ (x << 4)) & 255
-        lsb = (x ^ (x << 5)) & 255
-    return bytearray(struct.pack(">H", (msb << 8) + lsb))
+class HDLCStats:
+    crcErrors = 0
 
 # Frame
 class Frame(object):
@@ -56,9 +48,11 @@ class Frame(object):
         self.finished = True
 
     def checkCRC(self):
-        res = bool(self.crc == calcCRC(self.data))
+        calculatedCRC = HDLC.calcCRC(self.data)
+        res = bool(self.crc == calculatedCRC)
         if not res:
-            logger.warning(f"invalid crc {self.crc} != {calcCRC(self.data)}")
+            frameStr = ''.join('{:02x}'.format(x) for x in self.data)
+            logger.warning(f"invalid crc 0x{self.crc:x} != 0x{calculatedCRC:x} Len {len(self.data)} Frame {frameStr}")
             self.error = True
         return res
         
@@ -72,10 +66,23 @@ class HDLC:
         self.payloadsAreStrings = False
         self.onFrame = onFrame
         self.onError = onError
+        self.stats = HDLCStats()
 
     @classmethod
     def toBytes(cls, data):
         return bytearray(data)
+
+    @classmethod
+    def calcCRC(cls, data):
+        crc = 0xffff
+        msb = crc >> 8
+        lsb = crc & 255
+        for c in data:
+            x = c ^ msb
+            x ^= (x >> 4)
+            msb = (lsb ^ (x >> 3) ^ (x << 4)) & 255
+            lsb = (x ^ (x << 5)) & 255
+        return bytearray(struct.pack(">H", (msb << 8) + lsb))
 
     def handleRxByte(self, b):
         assert 0 <= b <= 255
@@ -106,6 +113,7 @@ class HDLC:
                     self.onFrame(self.currentFrame.data)
             elif self.currentFrame.finished:
                 # Error
+                self.stats.crcErrors += 1
                 self.onError()
             self.currentFrame = None
 
@@ -123,3 +131,6 @@ class HDLC:
                 data.append(byte)
         data.append(Frame.FRAME_DELIMITER)
         return bytes(data)
+
+    def getStats(self):
+        return self.stats

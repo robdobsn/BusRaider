@@ -7,7 +7,6 @@ import json
 import os
 import argparse
 from LikeCommsSerial import LikeCommsSerial
-from LikeHDLC import calcCRC
 if os.name == 'nt':
     import msvcrt
 
@@ -18,6 +17,10 @@ class MonitorConn:
     def __init__(self, directionStr):
         self.commsHandler = LikeCommsSerial()
         self.directionStr = directionStr
+        self.fileUploadInProgress = False
+        self.fileUploadLastBlockAddr = 0
+        self.fileUploadLastBlockLen = 0
+        self.fileUploadBlockCount = 0
 
     def open(self, openParams):
         self.commsHandler.setRxFrameCB(self._onRxFrameCB)
@@ -34,24 +37,57 @@ class MonitorConn:
         msgContent = {'cmdName':''}
         termPos = frame.find(0)
         frameJson = frame
+        payloadLen = 0
         if termPos >= 0:
             frameJson = frame[0:termPos]
+            payloadLen = len(frame) - termPos - 1
         try:
             msgContent = json.loads(frameJson)
         except Exception as excp:
             self.logger.error(f"{self.directionStr} failed to parse Json from {frameJson} excp {excp}")
-        # if msgContent['cmdName'] == "ufEndAck":
-        #     print("Upload Acknowledged")
-        #     self.uploadAcked = True
-        # elif msgContent['cmdName'] == "ufEndNotAck":
-        #     print("Upload FAILED")
-        # elif msgContent['cmdName'] == "log":
-        #     try:
-        #         print(msgContent['lev'] + ":", msgContent['src'], msgContent['msg'])
-        #     except Exception as excp:
-        #         print("LOG CONTENT NOT FOUND IN FRAME", frameJson, excp)
-        # else:
-        self.logger.info(f"{self.directionStr} {frameJson}")
+        if msgContent['cmdName'] == "ufStart":
+            if self.fileUploadInProgress:
+                self.logger.error(f"{self.directionStr} ufStart UNEXPECTED upload in progress {frameJson}")
+            else:
+                self.logger.info(f"{self.directionStr} ufStart UPLOAD START {frameJson}")
+                self.fileUploadInProgress = True
+                self.fileUploadLastBlockAddr = 0
+                self.fileUploadLastBlockLen = 0
+                self.fileUploadBlockCount
+        elif msgContent['cmdName'] == "ufBlock":
+            if not self.fileUploadInProgress:
+                self.logger.error(f"{self.directionStr} ufBlock UNEXPECTED no upload in progress {frameJson} payloadLen {payloadLen}")
+            else:
+                blockStart = int(msgContent["index"])
+                blockLen = int(msgContent["len"])
+                expBlockStart = self.fileUploadLastBlockAddr + self.fileUploadLastBlockLen
+                if blockStart != expBlockStart:
+                    self.logger.info(f"{self.directionStr} ufBlock BLOCK MISSING? Expected Block Start {expBlockStart} BlkCnt {self.fileUploadBlockCount} {frameJson} payloadLen {payloadLen}")
+                else:
+                    self.logger.info(f"{self.directionStr} ufBlock Block OK BlkCnt {self.fileUploadBlockCount} frameLen {len(frame)} payloadLen {payloadLen} {frameJson}")
+                self.fileUploadLastBlockAddr = blockStart
+                self.fileUploadLastBlockLen = blockLen
+                self.fileUploadBlockCount += 1
+        elif msgContent['cmdName'] == "ufEnd":
+                self.logger.info(f"{self.directionStr} ufEnd hdlcCRCErrs {self.commsHandler.getHDLCStats().crcErrors} {frameJson}")
+                self.fileUploadInProgress = False
+        elif msgContent['cmdName'] == "ufEndAck":
+            if self.fileUploadInProgress:
+                self.logger.error(f"{self.directionStr} ufEndAck UNEXPECTED no upload in progress {frameJson}")
+            else:
+                self.logger.info(f"{self.directionStr} ufEndAck {frameJson}")
+        elif msgContent['cmdName'] == "ufEndNotAck":
+            if self.fileUploadInProgress:
+                self.logger.error(f"{self.directionStr} ufEndNotAck UNEXPECTED no upload in progress {frameJson}")
+            else:
+                self.logger.info(f"{self.directionStr} UPLOAD NOT ACK ufEndNotAck {frameJson}")
+        elif msgContent['cmdName'] == "log":
+            try:
+                self.logger.info(f"{self.directionStr} {msgContent['msg']} {frameJson}")
+            except Exception as excp:
+                self.logger.info(f"{self.directionStr} LOG CONTENT NOT FOUND IN FRAME {frameJson}")
+        else:
+            self.logger.info(f"{self.directionStr} {frameJson}")
         # print("Unknown cmd msg", frameJson)
 
 def handleUserCommands():
@@ -90,7 +126,7 @@ logger.setLevel(logging.DEBUG)
 argparser = argparse.ArgumentParser(description='MonitorRxAndTx')
 DEFAULT_RX_SERIAL_PORT = "COM9"
 DEFAULT_TX_SERIAL_PORT = "COM11"
-DEFAULT_SERIAL_BAUD = 1000000
+DEFAULT_SERIAL_BAUD = 460800
 DEFAULT_IP_ADDRESS = ""
 DEFAULT_LOG_FOLDER = "log"
 argparser.add_argument('--rxport', help='Rx Serial Port', default=DEFAULT_RX_SERIAL_PORT)
@@ -100,9 +136,9 @@ argparser.add_argument('--logfolder', help='Log folder', default=DEFAULT_LOG_FOL
 args = argparser.parse_args()
 setupLogToFile(True, args.logfolder)
 rxConn = MonitorConn("FromPi")
-rxConn.open({"serialPort":args.rxport,"serialBaud":args.baud})
+rxConn.open({"serialPort":args.rxport,"serialBaud":args.baud,"rxBufferSize":1000000})
 txConn = MonitorConn("ToPi")
-txConn.open({"serialPort":args.txport,"serialBaud":args.baud})
+txConn.open({"serialPort":args.txport,"serialBaud":args.baud,"rxBufferSize":1000000})
 print("Monitoring started")
 while handleUserCommands():
     pass

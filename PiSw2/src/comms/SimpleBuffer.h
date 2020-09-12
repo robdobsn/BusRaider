@@ -10,6 +10,7 @@
 #include <stddef.h>
 
 // #define USE_STD_VECTOR_BUFFERS
+#define USE_FIXED_LENGTH_BUFFER_LEN 10000
 
 #ifdef USE_STD_VECTOR_BUFFERS
 #include <vector>
@@ -21,23 +22,34 @@ public:
     static const unsigned DEFAULT_MAX_LEN = 5000;
     SimpleBuffer(unsigned maxFrameLen = DEFAULT_MAX_LEN)
     {
+#ifdef USE_FIXED_LENGTH_BUFFER_LEN
+        _bufMaxLen = USE_FIXED_LENGTH_BUFFER_LEN;
+#else
 #ifndef USE_STD_VECTOR_BUFFERS
         _pBuffer = NULL;
         _bufferSize = 0;
 #endif
         _bufMaxLen = maxFrameLen;
+#endif
     }
 
     virtual ~SimpleBuffer()
     {
+#ifdef USE_FIXED_LENGTH_BUFFER_LEN
+        return;
+#else
 #ifndef USE_STD_VECTOR_BUFFERS
         if (_pBuffer)
             delete [] _pBuffer;
+#endif
 #endif
     }
 
     void setMaxLen(unsigned maxLen)
     {
+#ifdef USE_FIXED_LENGTH_BUFFER_LEN
+        return;
+#endif
         _bufMaxLen = maxLen;
     }
 
@@ -48,6 +60,8 @@ public:
 #ifdef USE_STD_VECTOR_BUFFERS
         _buffer.resize(size);
         return _buffer.size() == size;
+#elif USE_FIXED_LENGTH_BUFFER_LEN
+        return false;
 #else
         if (_pBuffer)
         {
@@ -74,6 +88,11 @@ public:
             return false;
         _buffer[idx] = val;
         return true;   
+#elif USE_FIXED_LENGTH_BUFFER_LEN
+        if (idx >= _bufMaxLen)
+            return false;
+        _buffer[idx] = val;
+        return true;
 #else
         if (idx >= _bufMaxLen)
             return false;
@@ -101,6 +120,10 @@ public:
         if (idx >= _buffer.size())
             return 0;
         return _buffer[idx];
+#elif USE_FIXED_LENGTH_BUFFER_LEN
+        if (idx >= _bufMaxLen)
+            return 0;
+        return _buffer[idx];
 #else
         if (!_pBuffer || (idx >= _bufMaxLen))
             return 0;
@@ -112,6 +135,8 @@ public:
     {
 #ifdef USE_STD_VECTOR_BUFFERS
         return _buffer.data();
+#elif USE_FIXED_LENGTH_BUFFER_LEN
+        return _buffer;
 #else
         return _pBuffer;
 #endif
@@ -121,6 +146,8 @@ public:
     {
 #ifdef USE_STD_VECTOR_BUFFERS
         return _buffer.size();
+#elif USE_FIXED_LENGTH_BUFFER_LEN
+        return _bufMaxLen;
 #else
         if (!_pBuffer)
             return 0;
@@ -131,6 +158,8 @@ public:
 private:
 #ifdef USE_STD_VECTOR_BUFFERS
     std::vector<uint8_t> _buffer;
+#elif USE_FIXED_LENGTH_BUFFER_LEN
+    uint8_t _buffer[USE_FIXED_LENGTH_BUFFER_LEN];
 #else
     uint8_t* _pBuffer;
     unsigned _bufferSize;
