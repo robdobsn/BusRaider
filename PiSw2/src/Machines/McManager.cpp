@@ -44,12 +44,12 @@ McManager::McManager(DisplayBase* pDisplay, CommandHandler& commandHandler, HwMa
     _pCurMachine = NULL;
     _rxHostCharsBufferLen = 0;
     _refreshCount = 0;
-    _refreshLastUpdateUs = 0;
-    _refreshLastCountResetUs = 0;
+    _refreshLastUpdateMs = 0;
+    _refreshLastCountResetMs = 0;
     _refreshRate = 0;
     _screenMirrorOut = false;
     _screenMirrorCount = 0;
-    _screenMirrorLastUs = 0;
+    _screenMirrorLastMs = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -96,11 +96,11 @@ void McManager::init()
 
     // Refresh init
     _refreshCount = 0;
-    _refreshLastUpdateUs = 0;
+    _refreshLastUpdateMs = 0;
     
     // Screen mirroring
     _screenMirrorOut = true;
-    _screenMirrorLastUs = 0;
+    _screenMirrorLastMs = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -112,7 +112,7 @@ void McManager::service()
     // Check for screen mirroring
     if (_screenMirrorOut && _pCurMachine)
     {
-        if (isTimeout(micros(), _screenMirrorLastUs, SCREEN_MIRROR_REFRESH_US))
+        if (isTimeout(millis(), _screenMirrorLastMs, SCREEN_MIRROR_REFRESH_MS))
         {
             // See if time to force a full refresh
             bool forceGetAll = false;
@@ -127,7 +127,7 @@ void McManager::service()
             // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Change len %d", mirrorChangeLen);
             if (mirrorChangeLen > 0)
                 _commandHandler.sendWithJSON("mirrorScreen", "", 0, mirrorChanges, mirrorChangeLen);
-            _screenMirrorLastUs = micros();
+            _screenMirrorLastMs = millis();
         }
     }
 }
@@ -329,15 +329,15 @@ void McManager::displayRefresh()
     if (!_pCurMachine)
         return;
 
-    unsigned long reqUpdateUs = 1000000 / _pCurMachine->getDisplayRefreshRatePerSec();
+    unsigned long reqUpdateMs = 1000 / _pCurMachine->getDisplayRefreshRatePerSec();
     // Drop rate to one tenth if TargetTracker is running
     // TODO 2020
     // if (getTargetTracker().isTrackingActive())
     //     reqUpdateUs = 10 * reqUpdateUs;
-    if (isTimeout(micros(), _refreshLastUpdateUs, reqUpdateUs)) 
+    if (isTimeout(millis(), _refreshLastUpdateMs, reqUpdateMs)) 
     {
         // Update timings
-        _refreshLastUpdateUs = micros();
+        _refreshLastUpdateMs = millis();
         _refreshCount++;
 
         // Determine whether display is memory mapped
@@ -377,11 +377,11 @@ void McManager::displayRefresh()
     _pCurMachine->service();
 
     // Check for reset of rate
-    if (isTimeout(micros(), _refreshLastCountResetUs, REFRESH_RATE_WINDOW_SIZE_MS * 1000))
+    if (isTimeout(millis(), _refreshLastCountResetMs, REFRESH_RATE_WINDOW_SIZE_MS))
     {
         _refreshRate = _refreshCount * 1000 / REFRESH_RATE_WINDOW_SIZE_MS;
         _refreshCount = 0;
-        _refreshLastCountResetUs = micros();
+        _refreshLastCountResetMs = millis();
     }
 }
 

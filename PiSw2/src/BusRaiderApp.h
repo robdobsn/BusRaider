@@ -66,7 +66,7 @@ private:
     char _esp32ESP32Version[MAX_ESP_VERSION_STR];
     bool _esp32IPAddressValid;
     static const uint32_t ESP32_TO_PI_STATUS_UPDATE_MAX_MS = 5000;
-    uint32_t _esp32StatusLastRxUs;
+    uint32_t _esp32StatusLastRxMs;
 
     // Cached last machine command from ESP32
     char _esp32LastMachineCmd[CommandHandler::MAX_MC_SET_JSON_LEN];

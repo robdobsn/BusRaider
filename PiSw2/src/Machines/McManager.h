@@ -146,13 +146,13 @@ private:
     const int REFRESH_RATE_WINDOW_SIZE_MS = 1000;
     uint32_t _refreshCount;
     int _refreshRate;
-    uint32_t _refreshLastUpdateUs;
-    uint32_t _refreshLastCountResetUs;
+    uint32_t _refreshLastUpdateMs;
+    uint32_t _refreshLastCountResetMs;
 
     // Screen mirroring
-    const int SCREEN_MIRROR_REFRESH_US = 100000;
+    const int SCREEN_MIRROR_REFRESH_MS = 100;
     bool _screenMirrorOut;
-    uint32_t _screenMirrorLastUs;
+    uint32_t _screenMirrorLastMs;
     const uint32_t SCREEN_MIRROR_FULL_REFRESH_COUNT = 500;
     uint32_t _screenMirrorCount;
 };

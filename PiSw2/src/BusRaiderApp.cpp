@@ -76,7 +76,7 @@ void BusRaiderApp::clear()
     _esp32WifiSSID[0] = 0;
     _esp32ESP32Version[0] = 0;
     _esp32IPAddressValid = false;
-    _esp32StatusLastRxUs = 0;
+    _esp32StatusLastRxMs = 0;
     _esp32LastMachineCmd[0] = 0;
     _esp32LastMachineValid = false;
     _esp32LastMachineReqUs = 0;
@@ -141,7 +141,7 @@ void BusRaiderApp::service()
     }
 
     // Handle status update from ESP32
-    if (isTimeout(micros(), _esp32StatusLastRxUs, ESP32_TO_PI_STATUS_UPDATE_MAX_MS * 1000))
+    if (isTimeout(millis(), _esp32StatusLastRxMs, ESP32_TO_PI_STATUS_UPDATE_MAX_MS))
     {
         // Request status update
         if (!commandHandler.isFileTransferInProgress())
@@ -149,7 +149,7 @@ void BusRaiderApp::service()
             commandHandler.sendAPIReq("queryESPHealth");
             // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Req ESP32 status as not received recently");
         }
-        _esp32StatusLastRxUs = micros();
+        _esp32StatusLastRxMs = millis();
     }
 
     // Handle initial get of ESP32 last machine info
@@ -542,7 +542,7 @@ void BusRaiderApp::getPiStatus(char* pRespJson, int maxRespLen)
 
 void BusRaiderApp::storeESP32StatusInfo(const char* pCmdJson)
 {
-    _esp32StatusLastRxUs = micros();
+    _esp32StatusLastRxMs = millis();
     microsDelay(1000);
     // Get espHealth field
     char espHealthJson[MAX_ESP_HEALTH_STR];
