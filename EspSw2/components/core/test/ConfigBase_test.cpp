@@ -46,7 +46,7 @@ const char* testJSONConfigBase =
     R"("WebServer":{"enable":1,"webServerPort":80,"allowOriginAll":1,"apiPrefix":"","logLevel":"D"},)"
     R"("SerialConsole":{"enable":1,"uartNum":0,"baudRate":115200,"crlfOnTx":1,"logLevel":"D"},)"
     R"("CommandSerial":{"enable":1,"uartNum":1,"baudRate":912600,"rxBufSize":1024,"rxPin":35,"txPin":12,)"
-            R"("hdlcRxMaxLen":1024,"protocol":"RICSerial","logLevel":"D"},)"
+            R"("protocol":"RICSerial","logLevel":"D"},)"
     R"("TelnetServer":{"enable":1,"port":23},)"
     R"("CommandSocket":{"enable":1,"socketPort":24,"protocol":"Marty1ShortCodes","logLevel":"D"})"
     R"(})"

@@ -16,6 +16,7 @@
 #define DEFAULT_SYSTYPE "BusRaider"
 #define DEFAULT_SYSNAME "BusRaider"
 #define DEFAULT_HOSTNAME "BusRaider"
+#define DEFAULT_ADVNAME ""
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Default system config
@@ -40,7 +41,11 @@ static const char *defaultConfigJSON =
         R"("SysManager":{)"
             R"("monitorPeriodMs":10000,)"
             R"("reportList":["NetworkManager"],)"
-            R"("pauseWiFiforBLE":1)"
+            R"("pauseWiFiforBLE":1,)"
+            R"("RICSerial":{)"
+                R"("FrameBound":"0x7E",)"
+                R"("CtrlEscape":"0x7D")"
+            R"(})"
         R"(},)"
         R"("NetworkManager":{)"
             R"("WiFiEnabled":1,)"
@@ -85,9 +90,8 @@ static const char *defaultConfigJSON =
             R"("uartNum":1,)"
             R"("baudRate":912600,)"
             R"("rxBufSize":32768,)"
-            R"("rxPin":16,)"
-            R"("txPin":17,)"
-            R"("hdlcRxMaxLen":5000,)"
+            R"("rxPin":-1,)"
+            R"("txPin":-1,)"
             R"("protocol":"RICSerial",)"
             R"("logLevel":"D")"
         R"(},)"
@@ -177,6 +181,7 @@ uint32_t laststatsdumpms = 0;
 #include <SysManager.h>
 #include <SerialConsole.h>
 #include <FileManager.h>
+#include <BLEManager.h>
 #ifdef INCLUDE_WIFI_FUNCTIONALITY
 #include <NetworkManager.h>
 #include <NetDiscovery.h>

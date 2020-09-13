@@ -7,7 +7,7 @@ from SimpleTCP import SimpleTCP
 import logging
 import json
 import os
-import asyncio
+import websocket
 
 # def commandLineTestStart():
 #     # Get args passed from build/test script
@@ -31,10 +31,11 @@ import asyncio
 
 class CommonTest:
 
-    def __init__(self, testName, testBaseFolder, useIP, serialPort, serialBaud, ipAddrOrHostName, dumpBinFileName, dumpTextFileName, frameCallback, logSends=False):
+    def __init__(self, testName, testBaseFolder, useIP, useWsPath, serialPort, serialBaud, ipAddrOrHostName, dumpBinFileName, dumpTextFileName, frameCallback, logSends=False):
         
         self.testName = testName
         self.useIP = useIP
+        self.useWsUrl = useWsUrl
         # Logging
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
@@ -92,24 +93,27 @@ class CommonTest:
 
         # Check for using IP address
         if useIP:
-            self.tcpHdlcPort = 10001
+            if useWsPath != "":
+                
+            else:
+                self.tcpHdlcPort = 10001
 
-            # Frame handler
-            def onTCPFrame(fr):
-                # Send to HDLC
-                for byt in fr:
-                    self.commsSerial._hdlc.handleRxByte(byt)
+                # Frame handler
+                def onTCPFrame(fr):
+                    # Send to HDLC
+                    for byt in fr:
+                        self.commsSerial._hdlc.handleRxByte(byt)
 
-            # TCP Reader
-            self.rdpTCP = SimpleTCP(ipAddrOrHostName, self.tcpHdlcPort)
-            self.rdpTCP.startReader(onTCPFrame)
+                # TCP Reader
+                self.rdpTCP = SimpleTCP(ipAddrOrHostName, self.tcpHdlcPort)
+                self.rdpTCP.startReader(onTCPFrame)
 
-            # Setup HDLC
-            self.commsSerial = LikeCommsSerial()
-            self.commsSerial.setRxFrameCB(onRxFrame)
+                # Setup HDLC
+                self.commsSerial = LikeCommsSerial()
+                self.commsSerial.setRxFrameCB(onRxFrame)
 
-            self.logger.info(f"UnitTest BusRaider IP {ipAddrOrHostName} port {self.tcpHdlcPort}")
-
+                self.logger.info(f"UnitTest BusRaider IP {ipAddrOrHostName} port {self.tcpHdlcPort}")
+                
         else:
             # Open the serial connection to the BusRaider
             self.commsSerial = LikeCommsSerial()

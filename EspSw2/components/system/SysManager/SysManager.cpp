@@ -23,6 +23,7 @@
 #include <ESPUtils.h>
 #include <NetworkSystem.h>
 #include <ProtocolRICSerial.h>
+#include <ProtocolRICFrame.h>
 #include <RICRESTMsg.h>
 #include <FileSystem.h>
 
@@ -144,6 +145,14 @@ void SysManager::setup()
                         std::bind(&SysManager::processEndpointMsg, this, std::placeholders::_1) };
     if (_pProtocolEndpointManager)
         _pProtocolEndpointManager->addProtocol(ricSerialProtocolDef);
+
+    // Add support for RICFrame
+    String ricFrameConfig = _sysModManConfig.getString("RICFrame", "{}");
+    LOG_I(MODULE_PREFIX, "addProtocolEndpoints - adding RICFrame config %s", ricFrameConfig.c_str());
+    ProtocolDef ricFrameProtocolDef = { "RICFrame", ProtocolRICFrame::createInstance, ricFrameConfig, 
+                        std::bind(&SysManager::processEndpointMsg, this, std::placeholders::_1) };
+    if (_pProtocolEndpointManager)
+        _pProtocolEndpointManager->addProtocol(ricFrameProtocolDef);
 
     // Short delay here to allow logging output to complete as some hardware configurations
     // require changes to serial uarts and this disturbs the logging flow

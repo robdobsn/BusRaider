@@ -214,7 +214,7 @@ long RdJson::getLong(const char *dataPath,
     isValid = getElement(dataPath, startPos, strLen, elemType, elemSize, pSourceStr);
     if (!isValid)
         return defaultValue;
-    return strtol(pSourceStr + startPos, NULL, 10);
+    return strtol(pSourceStr + startPos, NULL, 0);
 }
 
 /**

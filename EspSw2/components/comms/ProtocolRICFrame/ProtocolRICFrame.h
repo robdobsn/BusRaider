@@ -1,7 +1,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// ProtocolRICSerial
-// Protocol wrapper implementing RICSerial
+// ProtocolRICFrame
+// Protocol wrapper implementing RICFrame
 //
 // Rob Dobson 2020
 //
@@ -12,18 +12,16 @@
 #include <Logger.h>
 #include <ProtocolBase.h>
 
-class MiniHDLC;
-
-class ProtocolRICSerial : public ProtocolBase
+class ProtocolRICFrame : public ProtocolBase
 {
 public:
-    ProtocolRICSerial(uint32_t channelID, const char* configJSON, ProtocolEndpointMsgCB msgTxCB, ProtocolEndpointMsgCB msgRxCB);
-    virtual ~ProtocolRICSerial();
+    ProtocolRICFrame(uint32_t channelID, const char* configJSON, ProtocolEndpointMsgCB msgTxCB, ProtocolEndpointMsgCB msgRxCB);
+    virtual ~ProtocolRICFrame();
     
     // Create instance
     static ProtocolBase* createInstance(uint32_t channelID, const char* configJSON, ProtocolEndpointMsgCB msgTxCB, ProtocolEndpointMsgCB msgRxCB)
     {
-        return new ProtocolRICSerial(channelID, configJSON, msgTxCB, msgRxCB);
+        return new ProtocolRICFrame(channelID, configJSON, msgTxCB, msgRxCB);
     }
 
     // // Set message complete callback
@@ -36,21 +34,11 @@ public:
     virtual void encodeTxMsgAndSend(ProtocolEndpointMsg& msg) override final;
 
 private:
-    // HDLC
-    MiniHDLC* _pHDLC;
-
     // Consts
-    static const int DEFAULT_RIC_SERIAL_RX_MAX = 5000;
-    static const int DEFAULT_RIC_SERIAL_TX_MAX = 5000;
-
-    // Max msg lengths
-    uint32_t _maxTxMsgLen;
-    uint32_t _maxRxMsgLen;
+    static const int DEFAULT_RIC_FRAME_RX_MAX = 1000;
+    static const int DEFAULT_RIC_FRAME_TX_MAX = 1000;
 
     // Callbacks
     ProtocolEndpointMsgCB _msgTxCB;
     ProtocolEndpointMsgCB _msgRxCB;
-
-    // Helpers
-    void hdlcFrameRxCB(const uint8_t* pFrame, int frameLen);
 };

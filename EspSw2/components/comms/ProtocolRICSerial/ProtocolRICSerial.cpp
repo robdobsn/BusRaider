@@ -29,12 +29,14 @@ ProtocolRICSerial::ProtocolRICSerial(uint32_t channelID, const char* configJSON,
     ConfigBase config(configJSON);
     _maxRxMsgLen = config.getLong("MaxRxMsgLen", DEFAULT_RIC_SERIAL_RX_MAX);
     _maxTxMsgLen = config.getLong("MaxTxMsgLen", DEFAULT_RIC_SERIAL_TX_MAX);
+    unsigned frameBoundary = config.getLong("FrameBound", 0x7E);
+    unsigned controlEscape = config.getLong("CtrlEscape", 0x7D);
 
     // New HDLC
     _pHDLC = new MiniHDLC(NULL, 
             std::bind(&ProtocolRICSerial::hdlcFrameRxCB, this, std::placeholders::_1, std::placeholders::_2),
-            RIC_SERIAL_FRAME_BOUNDARY_OCTET,
-            RIC_SERIAL_CONTROL_ESCAPE_OCTET,
+            frameBoundary,
+            controlEscape,
             _maxTxMsgLen, _maxRxMsgLen);
 
     // Debug

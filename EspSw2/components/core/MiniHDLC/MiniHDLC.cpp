@@ -15,7 +15,7 @@
 #include "string.h"
 
 // #define DEBUG_HDLC
-#define DEBUG_HDLC_CRC
+// #define DEBUG_HDLC_CRC
 
 #if defined(DEBUG_HDLC) || defined(DEBUG_HDLC_CRC)
 #include <Logger.h>
@@ -182,7 +182,10 @@ void MiniHDLC::handleChar(uint8_t ch)
             if (rxcrc == _frameCRC)
             {
                 // Null terminate the frame (just in case) - note that this
-                // will overwrite one of the positions of the CRC
+                // will overwrite one of the positions of the CRC but the intention
+                // is not to include this in the length returned - it really is just
+                // a last resort fallback in case the buffer is not a C string and
+                // someone uses an older C-style string manipulation function
                 if ((_framePos >= 2) && (_rxBuffer.size() >= _framePos-1))
                 {
                     _rxBuffer.setAt(_framePos-2, 0);
@@ -195,7 +198,8 @@ void MiniHDLC::handleChar(uint8_t ch)
             {
 #ifdef DEBUG_HDLC_CRC
                 unsigned termPos = 0;
-                for (unsigned i = 0; i < _framePos && i < 200; i++)
+                const unsigned DEBUG_MAX_TERM_POS_IN_TEST_STR = 200;
+                for (unsigned i = 0; i < _framePos && i < DEBUG_MAX_TERM_POS_IN_TEST_STR; i++)
                 {
                     if (_rxBuffer.getAt(i) == 0)
                     {
@@ -203,7 +207,7 @@ void MiniHDLC::handleChar(uint8_t ch)
                         break;
                     }
                 }
-                if (termPos > 0 && termPos < 200)
+                if (termPos > 0 && termPos < DEBUG_MAX_TERM_POS_IN_TEST_STR)
                 {
                     LOG_I(MODULE_PREFIX, "CRC Error framePos %d rxcrc 0x%04x calcCRC 0x%04x rxFrame %s", 
                                 _framePos, rxcrc, _frameCRC, (const char*)_rxBuffer.data());
