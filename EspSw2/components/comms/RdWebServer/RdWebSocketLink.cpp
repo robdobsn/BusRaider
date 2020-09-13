@@ -24,6 +24,8 @@ static const char *MODULE_PREFIX = "RdWSLink";
 // #define DEBUG_WEBSOCKET_LINK_EVENTS
 // #define DEBUG_WEBSOCKET_PING_PONG
 // #define DEBUG_WEBSOCKET_LINK_HEADER_DETAIL
+// #define DEBUG_WEBSOCKET_LINK_DATA_STR
+// #define DEBUG_WEBSOCKET_LINK_DATA_BINARY
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor / Destructor
@@ -385,6 +387,14 @@ void RdWebSocketLink::handleRxPacketData(const uint8_t *pBuf, uint32_t bufLen)
             // Unmask the data
             unmaskData();
 
+#ifdef DEBUG_WEBSOCKET_LINK_DATA_STR
+            String cbStr;
+            Utils::strFromBuffer(_callbackData.data(), _callbackData.size(), cbStr);
+#endif
+#ifdef DEBUG_WEBSOCKET_LINK_DATA_BINARY
+            LOG_I(MODULE_PREFIX, "handleRx %s", cbStr.c_str());
+            Utils::logHexBuf(_callbackData.data(), _callbackData.size(), MODULE_PREFIX, "handleRx");
+#endif
             // Perform callback
             _webSocketCB(callbackEventCode, _callbackData.data(), _callbackData.size());
         }

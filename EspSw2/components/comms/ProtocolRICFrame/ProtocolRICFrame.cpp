@@ -15,7 +15,7 @@
 static const char* MODULE_PREFIX = "PcolRICFrm";
 
 // Debug
-// #define DEBUG_PROTOCOL_RIC_FRAME 1
+// #define DEBUG_PROTOCOL_RIC_FRAME
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -83,7 +83,13 @@ void ProtocolRICFrame::encodeTxMsgAndSend(ProtocolEndpointMsg& msg)
 {
     // Valid
     if (!_msgTxCB)
+    {
+        #ifdef DEBUG_PROTOCOL_RIC_FRAME
+            // Debug
+            LOG_I(MODULE_PREFIX, "encodeTxMsgAndSend NO TX CB");
+        #endif
         return;
+    }
 
     // Create the message
     std::vector<uint8_t> ricFrameMsg;
@@ -94,10 +100,11 @@ void ProtocolRICFrame::encodeTxMsgAndSend(ProtocolEndpointMsg& msg)
     ricFrameMsg.insert(ricFrameMsg.end(), msg.getCmdVector().begin(), msg.getCmdVector().end());
     msg.setFromBuffer(ricFrameMsg.data(), ricFrameMsg.size());
 
-    // Debug
 #ifdef DEBUG_PROTOCOL_RIC_FRAME
+    // Debug
     LOG_I(MODULE_PREFIX, "encodeTxMsgAndSend, encoded len %d", msg.getBufLen());
 #endif
+
     // Send
     _msgTxCB(msg);
 }

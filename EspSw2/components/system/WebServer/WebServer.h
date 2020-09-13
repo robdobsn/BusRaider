@@ -69,6 +69,7 @@ private:
 
     // EndpointID used to identify this message source to the ProtocolEndpointManager object
     uint32_t _protocolEndpointID;
+    String _webSocketProtocol;
 
     // Web server setup
     bool _isWebServerSetup;

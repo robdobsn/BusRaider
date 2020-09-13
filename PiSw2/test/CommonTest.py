@@ -4,10 +4,14 @@ import time
 import math
 from LikeCommsSerial import LikeCommsSerial
 from SimpleTCP import SimpleTCP
+from SimpleWS import SimpleWS
+from RICProtocols import RICProtocols
+from RICProtocols import PROTOCOL_RICREST
+from RICProtocols import MSG_TYPE_COMMAND
+from RICProtocols import RICREST_ELEM_CODE_CMD_FRAME
 import logging
 import json
 import os
-import websocket
 
 # def commandLineTestStart():
 #     # Get args passed from build/test script
@@ -31,11 +35,45 @@ import websocket
 
 class CommonTest:
 
-    def __init__(self, testName, testBaseFolder, useIP, useWsPath, serialPort, serialBaud, ipAddrOrHostName, dumpBinFileName, dumpTextFileName, frameCallback, logSends=False):
+    # Received Frame handler
+    def onRxFrame(self, fr):
+        msgContent = {'cmdName':''}
+        frStr = ""
+        try:
+            if not isinstance(fr, str):
+                frStr = fr.decode().rstrip('\x00')
+            else:
+                frStr = fr.rstrip('\x00')
+            msgContent = json.loads(frStr)
+            print(frStr)
+        except Exception as excp:
+            self.logger.error(f"Failed to parse Json from {frStr}, {excp}")
+        try:
+            # print("rxmsg", msgContent['cmdName'])
+            if msgContent['cmdName'] == "log":
+                try:
+                    self.logger.info(f"{msgContent['lev']} : {msgContent['src']} {msgContent['msg']}")
+                except Exception as excp:
+                    self.logger.error(f"LOG CONTENT NOT FOUND IN FRAME {fr}, {excp}")
+            else:
+                # Check for awaited response
+                if "cmdName" in msgContent and self.respAwaited is not None:
+                    if msgContent["cmdName"] == self.respAwaited:
+                        self.respGot = True
+                # Callback
+                try:
+                    self.frameCallback(msgContent, self.logger)
+                except Exception as excp:
+                    self.logger.error(f"Error in frameCallback with content {msgContent}, {excp}")
+        except Exception as excp:
+            self.logger.error(f"Failed to extract cmdName {fr}, {excp}")
+
+    def __init__(self, testName, testBaseFolder, useIP, wsUrl, serialPort, serialBaud, ipAddrOrHostName, dumpBinFileName, dumpTextFileName, frameCallback, logSends=False):
         
         self.testName = testName
         self.useIP = useIP
-        self.useWsUrl = useWsUrl
+        self.wsUrl = wsUrl
+        self.frameCallback = frameCallback
         # Logging
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
@@ -53,6 +91,7 @@ class CommonTest:
         self.logSends = logSends
         self.respAwaited = None
         self.respGot = False
+        self.ricProtocols = RICProtocols()
 
         # Open dump file
         try:
@@ -62,39 +101,20 @@ class CommonTest:
         except Exception as excp:
             self.logger.warning("Can't open dump binary file " + os.path.join("./test/logs/", dumpBinFileName))
 
-        # Received Frame handler
-        def onRxFrame(fr):
-            msgContent = {'cmdName':''}
-            try:
-                frStr = fr.decode().rstrip('\x00')
-                msgContent = json.loads(frStr)
-                print(frStr)
-            except Exception as excp:
-                self.logger.error(f"Failed to parse Json from {frStr}, {excp}")
-            try:
-                # print("rxmsg", msgContent['cmdName'])
-                if msgContent['cmdName'] == "log":
-                    try:
-                        self.logger.info(f"{msgContent['lev']} : {msgContent['src']} {msgContent['msg']}")
-                    except Exception as excp:
-                        self.logger.error(f"LOG CONTENT NOT FOUND IN FRAME {fr}, {excp}")
-                else:
-                    # Check for awaited response
-                    if "cmdName" in msgContent and self.respAwaited is not None:
-                        if msgContent["cmdName"] == self.respAwaited:
-                            self.respGot = True
-                    # Callback
-                    try:
-                        frameCallback(msgContent, self.logger)
-                    except Exception as excp:
-                        self.logger.error(f"Error in frameCallback with content {msgContent}, {excp}")
-            except Exception as excp:
-                self.logger.error(f"Failed to extract cmdName {fr}, {excp}")
-
         # Check for using IP address
         if useIP:
-            if useWsPath != "":
-                
+            if wsUrl != "":
+                def onWSFrame(fr):
+                    decodedFr = self.ricProtocols.decodeRICFrame(fr)
+                    self.onRxFrame(decodedFr.payload)
+                    print(f"WS Frame len {len(fr)}")
+
+                # WS Reader
+                self.ws = SimpleWS(self.wsUrl)
+                self.ws.startReader(onWSFrame)
+
+                self.logger.info(f"UnitTest BusRaider ws {self.wsUrl}")
+
             else:
                 self.tcpHdlcPort = 10001
 
@@ -110,14 +130,14 @@ class CommonTest:
 
                 # Setup HDLC
                 self.commsSerial = LikeCommsSerial()
-                self.commsSerial.setRxFrameCB(onRxFrame)
+                self.commsSerial.setRxFrameCB(self.onRxFrame)
 
                 self.logger.info(f"UnitTest BusRaider IP {ipAddrOrHostName} port {self.tcpHdlcPort}")
                 
         else:
             # Open the serial connection to the BusRaider
             self.commsSerial = LikeCommsSerial()
-            self.commsSerial.setRxFrameCB(onRxFrame)
+            self.commsSerial.setRxFrameCB(self.onRxFrame)
             self.commsSerial.open(
                 {
                     "serialPort": serialPort,
@@ -136,8 +156,12 @@ class CommonTest:
         #     print(hex(b)+" ",end='')
         # print()
         if self.useIP:
-            frameEncoded = self.commsSerial._hdlc._encode(frame)
-            self.rdpTCP.sendFrame(frameEncoded)
+            if self.wsUrl != "":
+                ricFrame = self.ricProtocols.encodeRICFrameRICREST(frame, PROTOCOL_RICREST, MSG_TYPE_COMMAND, RICREST_ELEM_CODE_CMD_FRAME)
+                self.ws.sendFrame(ricFrame)
+            else:
+                frameEncoded = self.commsSerial._hdlc._encode(frame)
+                self.rdpTCP.sendFrame(frameEncoded)
         else:
             try:
                 self.commsSerial.send(frame)
@@ -169,10 +193,16 @@ class CommonTest:
             self.dumpBinFile.close()
         if self.useIP:
             self.logger.info("UnitTest closing socket")
-            try:
-                self.rdpTCP.stopReader()
-            except Exception as excp:
-                self.logger.error(f"{excp}")
+            if self.wsUrl != "":
+                try:
+                    self.ws.stopReader()
+                except Exception as excp:
+                    self.logger.error(f"{excp}")
+            else:
+                try:
+                    self.rdpTCP.stopReader()
+                except Exception as excp:
+                    self.logger.error(f"{excp}")
         else:
             try:
                 self.commsSerial.close()

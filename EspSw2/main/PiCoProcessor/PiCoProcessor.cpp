@@ -11,6 +11,7 @@
 #include <Utils.h>
 #include <RestAPIEndpointManager.h>
 #include "ProtocolEndpointManager.h"
+#include <RICRESTMsg.h>
 #include <NetworkSystem.h>
 #include <ESPUtils.h>
 #include <driver/uart.h>
@@ -35,6 +36,7 @@ static const char *MODULE_PREFIX = "PiCoProcessor";
 // #define DEBUG_PI_SEND_RESP_TO_PI
 // #define DEBUG_PI_SEND_FILE_BLOCK
 // #define DEBUG_PI_TX_FRAME_TO_PI
+#define DEBUG_RICREST_CMD_FRAMES
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -929,4 +931,34 @@ bool PiCoProcessor::startUploadFromFileSystem(const String& fileSystemName,
     else
         _uploadTargetCommandWhenComplete = "";
     return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Process RICRESTMsg CmdFrame
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool PiCoProcessor::procRICRESTCmdFrame(const String& cmdName, RICRESTMsg& ricRESTReqMsg, 
+                        String& respMsg, uint32_t channelID)
+{
+    // Handle command frames
+    if (cmdName.equalsIgnoreCase("comtest"))
+    {
+        ConfigBase cmdFrame = ricRESTReqMsg.getPayloadJson();
+        unsigned msgIdx = cmdFrame.getLong("msgIdx", 0);
+        // Response
+        char extraJson[100];
+        snprintf(extraJson, sizeof(extraJson), "\"cmdName\":\"%sResp\",\"msgIdx\":%d", cmdName.c_str(), msgIdx);
+        Utils::setJsonResult(ricRESTReqMsg.getReq().c_str(), respMsg, true, NULL, extraJson);
+
+#ifdef DEBUG_RICREST_CMD_FRAMES
+        LOG_I(MODULE_PREFIX, "processRICRESTCmdFrame %s => Resp %s", cmdName.c_str(), respMsg.c_str());
+#endif
+        return true;
+    }
+
+#ifdef DEBUG_RICREST_CMD_FRAMES
+    LOG_I(MODULE_PREFIX, "processRICRESTCmdFrame UNKNOWN %s", cmdName.c_str());
+#endif
+
+    return false;
 }

@@ -816,7 +816,7 @@ bool SysManager::processEndpointMsg(ProtocolEndpointMsg &cmdMsg)
         ricRESTReqMsg.decode(cmdMsg.getBuf(), cmdMsg.getBufLen());
 
 #ifdef DEBUG_RICREST_MESSAGES
-//         LOG_I(MODULE_PREFIX, "RICREST rx param1 %s", ricRESTReqMsg.getStringParam1().c_str());
+        LOG_I(MODULE_PREFIX, "RICREST rx elemCode %d", ricRESTReqMsg.getElemCode());
 #endif
 
         // Check elemCode of message
@@ -930,9 +930,18 @@ bool SysManager::processRICRESTCmdFrame(RICRESTMsg& ricRESTReqMsg, String& respM
     LOG_I(MODULE_PREFIX, "processRICRESTCmdFrame %s", cmdName.c_str());
 #endif
 
+    // See if any SysMod wants to handle this
+    for (SysModBase* pSysMod : _sysModuleList)
+    {
+        if (pSysMod->procRICRESTCmdFrame(cmdName, ricRESTReqMsg, respMsg, channelID))
+            return true;
+    }
+
+    // Otherwise check file upload
     if (cmdName.equalsIgnoreCase("ufStart"))
     {
         fileUploadStart(ricRESTReqMsg.getReq(), respMsg, channelID, cmdFrame);
+        return true;
     }
     else if (cmdName.equalsIgnoreCase("ufEnd"))
     {
@@ -941,6 +950,7 @@ bool SysManager::processRICRESTCmdFrame(RICRESTMsg& ricRESTReqMsg, String& respM
     else if (cmdName.equalsIgnoreCase("ufCancel"))
     {
         fileUploadCancel(ricRESTReqMsg.getReq(), respMsg, cmdFrame);
+        return true;
     }
     return false;
 }

@@ -52,6 +52,10 @@ protected:
         return _uploadFromAPIInProgress || _uploadFromFSInProgress;
     }
 
+    // Process RICRESTMsg CmdFrame
+    virtual bool procRICRESTCmdFrame(const String& cmdName, RICRESTMsg& ricRESTReqMsg, 
+            String& respMsg, uint32_t channelID) override final;
+
 private:
     // Vars
     bool _isEnabled;

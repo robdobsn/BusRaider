@@ -25,6 +25,7 @@ def setupTests(testName, frameCallback):
             testName = testName,
             testBaseFolder = testBaseFolder,
             useIP = True, 
+            wsUrl = "ws://192.168.86.15/ws",
             serialPort = "COM6", 
             serialBaud = 921600, 
             ipAddrOrHostName = "192.168.86.15",
@@ -35,10 +36,11 @@ def setupTests(testName, frameCallback):
 
 def test_Comms():
     def frameCallback(frameJson, logger):
+        print("Frame callback " + json.dumps(frameJson))
         assert(frameJson['cmdName'] == "comtestResp")
         if frameJson['cmdName'] == "comtestResp":
             testStats["framesRx"] += 1
-            # print(frameJson['msgIdx'])
+            print(frameJson['msgIdx'])
             testStats["msgRx"][frameJson['msgIdx']] = True
 
     logger = logging.getLogger(__name__)
@@ -48,10 +50,10 @@ def test_Comms():
     testRepeatCount = 100
     testStats = {"framesRx": 0, "msgRx":[False]*testRepeatCount}
     for i in range(testRepeatCount):
-        commonTest.sendFrame("statusReq", b"{\"cmdName\":\"comtest\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
+        commonTest.sendFrame("comtest", b"{\"cmdName\":\"comtest\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
         msgIdx += 1
-        # time.sleep(0.001)
-    time.sleep(1)
+        time.sleep(0.2)
+    time.sleep(.1)
     
     # Wait for test end and cleardown
     commonTest.cleardown()

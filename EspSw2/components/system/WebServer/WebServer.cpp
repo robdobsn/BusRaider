@@ -94,10 +94,13 @@ void WebServer::applySetup()
     uint32_t numConnSlots = configGetLong("numConnSlots", 6);
 
     // Max websockets
-    uint32_t maxWebSockets = configGetLong("maxWebSockets", 3);
+    uint32_t maxWebSockets = configGetLong("maxWS", 3);
 
     // Ping interval ms
-    uint32_t pingIntervalMs = configGetLong("pingIntervalMs", 1000);
+    uint32_t pingIntervalMs = configGetLong("wsPingMs", 1000);
+
+    // Websocket protocol
+    _webSocketProtocol = configGetString("wsPcol", "RICSerial");
 
     // Setup server if required
     if (_webServerEnabled)
@@ -151,8 +154,9 @@ void WebServer::setupEndpoints()
 
 void WebServer::addProtocolEndpoints(ProtocolEndpointManager& endpointManager)
 {
-    // Register as a channel for protocol messages
-    _protocolEndpointID = endpointManager.registerChannel("RICSerial", 
+    // Register as a channel for protocol messages - websocket
+    LOG_I(MODULE_PREFIX, "addProtocolEndpoints webSocketProtocol %s", _webSocketProtocol.c_str());
+    _protocolEndpointID = endpointManager.registerChannel(_webSocketProtocol.c_str(), 
             std::bind(&WebServer::sendWebSocketMsg, this, std::placeholders::_1),
             "WS",
             std::bind(&WebServer::readyToSendWebSocketMsg, this));
@@ -258,10 +262,13 @@ void WebServer::webSocketCallback(RdWebSocketEventCode eventCode, const uint8_t*
         }
 		case WEBSOCKET_EVENT_TEXT:
         {
+            // Send the message to the ProtocolEndpointManager
+            if (_pThisWebServer->getProtocolEndpointManager() && (pBuf != NULL))
+                _pThisWebServer->getProtocolEndpointManager()->handleInboundMessage(_pThisWebServer->_protocolEndpointID, (uint8_t*) pBuf, bufLen);
+#ifdef DEBUG_WEBSOCKETS
             String msgText;
             if (pBuf)
                 Utils::strFromBuffer(pBuf, bufLen, msgText);
-#ifdef DEBUG_WEBSOCKETS
 			LOG_I(MODULE_PREFIX, "sent text message of size %i content %s", bufLen, msgText.c_str());
 #endif
 			break;
@@ -318,5 +325,5 @@ bool WebServer::sendWebSocketMsg(ProtocolEndpointMsg& msg)
 
 bool WebServer::readyToSendWebSocketMsg()
 {
-    return false;
+    return true;
 }
