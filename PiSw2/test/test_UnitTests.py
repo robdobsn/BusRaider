@@ -52,7 +52,7 @@ def test_Comms():
     for i in range(testRepeatCount):
         commonTest.sendFrame("comtest", b"{\"cmdName\":\"comtest\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
         msgIdx += 1
-        time.sleep(0.2)
+        time.sleep(0.05)
     time.sleep(.1)
     
     # Wait for test end and cleardown

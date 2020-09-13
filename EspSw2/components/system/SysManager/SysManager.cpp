@@ -946,6 +946,7 @@ bool SysManager::processRICRESTCmdFrame(RICRESTMsg& ricRESTReqMsg, String& respM
     else if (cmdName.equalsIgnoreCase("ufEnd"))
     {
         fileUploadEnd(ricRESTReqMsg.getReq(), respMsg, cmdFrame);
+        return true;
     } 
     else if (cmdName.equalsIgnoreCase("ufCancel"))
     {

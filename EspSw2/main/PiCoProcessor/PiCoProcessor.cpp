@@ -36,7 +36,7 @@ static const char *MODULE_PREFIX = "PiCoProcessor";
 // #define DEBUG_PI_SEND_RESP_TO_PI
 // #define DEBUG_PI_SEND_FILE_BLOCK
 // #define DEBUG_PI_TX_FRAME_TO_PI
-#define DEBUG_RICREST_CMD_FRAMES
+// #define DEBUG_RICREST_CMD_FRAMES
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
