@@ -159,7 +159,7 @@ def test_MemRW():
         writtenData.append(testWriteData)
         time.sleep(0.01)
         commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":8000,\"lenDec\":10,\"isIo\":0}\0")
-        time.sleep(0.01)
+        time.sleep(0.1)
         if not testStats["msgRdOk"]:
             break
         testWriteData = bytearray(len(testWriteData))
