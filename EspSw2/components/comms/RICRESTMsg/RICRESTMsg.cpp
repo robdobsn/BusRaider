@@ -115,3 +115,15 @@ void RICRESTMsg::encode(const String& payload, ProtocolEndpointMsg& endpointMsg)
     endpointMsg.setPartBuffer(RICREST_REST_ELEM_CODE_POS, msgPrefixBuf, sizeof(msgPrefixBuf));
     endpointMsg.setPartBuffer(RICREST_HEADER_PAYLOAD_POS, (uint8_t*)payload.c_str(), payload.length() + 1);
 }
+
+void RICRESTMsg::encode(const uint8_t* pBuf, uint32_t len, ProtocolEndpointMsg& endpointMsg)
+{
+    // Setup buffer for the RESTElementCode
+    uint8_t msgPrefixBuf[RICREST_HEADER_PAYLOAD_POS];
+    msgPrefixBuf[RICREST_REST_ELEM_CODE_POS] = RICREST_REST_ELEM_CMDRESPJSON;
+
+    // Set the response
+    endpointMsg.setBufferSize(RICREST_HEADER_PAYLOAD_POS + len);
+    endpointMsg.setPartBuffer(RICREST_REST_ELEM_CODE_POS, msgPrefixBuf, sizeof(msgPrefixBuf));
+    endpointMsg.setPartBuffer(RICREST_HEADER_PAYLOAD_POS, pBuf, len);
+}

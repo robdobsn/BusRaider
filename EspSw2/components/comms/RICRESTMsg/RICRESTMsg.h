@@ -50,6 +50,7 @@ public:
     }
     bool decode(const uint8_t* pBuf, uint32_t len);
     void encode(const String& payload, ProtocolEndpointMsg& endpointMsg);
+    void encode(const uint8_t* pBuf, uint32_t len, ProtocolEndpointMsg& endpointMsg);
 
     const String& getReq()
     {

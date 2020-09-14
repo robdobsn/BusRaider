@@ -930,14 +930,7 @@ bool SysManager::processRICRESTCmdFrame(RICRESTMsg& ricRESTReqMsg, String& respM
     LOG_I(MODULE_PREFIX, "processRICRESTCmdFrame %s", cmdName.c_str());
 #endif
 
-    // See if any SysMod wants to handle this
-    for (SysModBase* pSysMod : _sysModuleList)
-    {
-        if (pSysMod->procRICRESTCmdFrame(cmdName, ricRESTReqMsg, respMsg, channelID))
-            return true;
-    }
-
-    // Otherwise check file upload
+    // Check file upload
     if (cmdName.equalsIgnoreCase("ufStart"))
     {
         fileUploadStart(ricRESTReqMsg.getReq(), respMsg, channelID, cmdFrame);
@@ -953,6 +946,14 @@ bool SysManager::processRICRESTCmdFrame(RICRESTMsg& ricRESTReqMsg, String& respM
         fileUploadCancel(ricRESTReqMsg.getReq(), respMsg, cmdFrame);
         return true;
     }
+
+    // Otherwise see if any SysMod wants to handle this
+    for (SysModBase* pSysMod : _sysModuleList)
+    {
+        if (pSysMod->procRICRESTCmdFrame(cmdName, ricRESTReqMsg, respMsg, channelID))
+            return true;
+    }
+
     return false;
 }
 

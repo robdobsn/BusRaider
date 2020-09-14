@@ -37,6 +37,7 @@ static const char *MODULE_PREFIX = "PiCoProcessor";
 // #define DEBUG_PI_SEND_FILE_BLOCK
 // #define DEBUG_PI_TX_FRAME_TO_PI
 // #define DEBUG_RICREST_CMD_FRAMES
+#define DEBUG_RDP_MSG_FROM_PI
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -78,11 +79,18 @@ PiCoProcessor::PiCoProcessor(const char *pModuleName, ConfigBase &defaultConfig,
     _statsRxFr = 0;
     _statsTxFr = 0;
 
+    // RDP
+    _rdpCommandIndex = 0;
+    _rdpChannelId = 0;
+
     // Assume hardware version until detected
     _hwVersion = ESP_HW_VERSION_DEFAULT;
 
     // EndpointID
     _protocolEndpointID = ProtocolEndpointManager::UNDEFINED_ID;
+
+    // Endpoint manager
+    _pEndpointManager = NULL;
 }
 
 PiCoProcessor::~PiCoProcessor()
@@ -184,9 +192,9 @@ void PiCoProcessor::applySetup()
         
         // New HDLC
         _pHDLC = new MiniHDLC(            
-            std::bind(&PiCoProcessor::hdlcFrameTxCB, this, 
+            std::bind(&PiCoProcessor::hdlcFrameTxToPiCB, this, 
                 std::placeholders::_1, std::placeholders::_2),
-            std::bind(&PiCoProcessor::hdlcFrameRxCB, this, 
+            std::bind(&PiCoProcessor::hdlcFrameRxFromPiCB, this, 
                 std::placeholders::_1, std::placeholders::_2),
             0x7E, 0x7D,
             _hdlcMaxLen, _hdlcMaxLen);
@@ -384,6 +392,8 @@ void PiCoProcessor::addRestAPIEndpoints(RestAPIEndpointManager &endpointManager)
 
 void PiCoProcessor::addProtocolEndpoints(ProtocolEndpointManager &endpointManager)
 {
+    // Record endpointManager
+	_pEndpointManager = &endpointManager;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -672,10 +682,10 @@ void PiCoProcessor::sendMsgAndPayloadToPi(const uint8_t *pFrame, int frameLen)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Helpers
+// HDLC frame received from Pi
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PiCoProcessor::hdlcFrameRxCB(const uint8_t* pFrame, int frameLen)
+void PiCoProcessor::hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen)
 {
 #ifdef DEBUG_PI_RX_FRAME
     // Debug
@@ -718,7 +728,7 @@ void PiCoProcessor::hdlcFrameRxCB(const uint8_t* pFrame, int frameLen)
         if (_pRestAPIEndpointManager && requestStr.length() != 0)
         {
 #ifdef DEBUG_PI_RX_API_REQ
-            LOG_I(MODULE_PREFIX, "hdlcFrameRxCB apiReq");
+            LOG_I(MODULE_PREFIX, "hdlcFrameRxFromPiCB apiReq");
 #endif
             String respStr;
             _pRestAPIEndpointManager->handleApiRequest(requestStr.c_str(), respStr);
@@ -736,31 +746,46 @@ void PiCoProcessor::hdlcFrameRxCB(const uint8_t* pFrame, int frameLen)
             payloadStartPos = headerJsonEndPos+1;
             payloadLen = frameLen - headerJsonEndPos - 1;
         }
-        uint32_t dataLen = RdJson::getLong("dataLen", payloadLen, pRxStr);
+        uint32_t msgIdx = RdJson::getLong("msgIdx", 0, pRxStr);
 
-        // TODO 2020
-        LOG_I(MODULE_PREFIX, "RDP %d", dataLen);
+        // String inStr = (const char*)(pFrame+payloadStartPos);
+        // if (inStr.indexOf("validatorStatus") > 0)
+        //     _rdpValStatCount++;
+        if ((cmdName.equalsIgnoreCase("rdp")))
+        {
+#ifdef DEBUG_RDP_MSG_FROM_PI
+            uint32_t dataLen = RdJson::getLong("dataLen", payloadLen, pRxStr);
+            String payloadStr;
+            Utils::strFromBuffer(pFrame+payloadStartPos, payloadLen, payloadStr, true);
+            // String payloadStr = (((const char*)pFrame)+payloadStartPos);
+            payloadStr.replace("\n", "\\n");
+            LOG_I(MODULE_PREFIX, "rdp <- %s payloadLen %d dataLen %d payload ¬¬%s¬¬", 
+                        pRxStr, payloadLen, dataLen,
+                        payloadStr.c_str());
+#endif
 
-        // // TODO
-        // // String inStr = (const char*)(pFrame+payloadStartPos);
-        // // if (inStr.indexOf("validatorStatus") > 0)
-        // //     _rdpValStatCount++;
-        // String payloadStr = (((const char*)pFrame)+payloadStartPos);
-        // payloadStr.replace("\n", "\\n");
-        // if ((cmdName.equalsIgnoreCase("rdp")))
-        // {
-        //     // Log.trace("%srdp <- %s payloadLen %d payload ¬¬%s¬¬\n", 
-        //     //             MODULE_PREFIX, pRxStr, payloadLen,
-        //     //             payloadStr.c_str());
-        //     _miniHDLCForRDPTCP.sendFrame(pFrame+payloadStartPos, dataLen);
-        // }
-        // else
-        // {
-        //     // Log.trace("%szesarux <- %s payloadLen %d payload ¬¬%s¬¬\n", 
-        //     //             MODULE_PREFIX, pRxStr, payloadLen,
-        //     //             payloadStr.c_str());
-        //     _pZEsarUXTCPServer->sendChars(pFrame+payloadStartPos, dataLen);
-        // }
+            // Send to websocket
+            if (payloadLen > 0)
+            {
+                // Send the response back
+                RICRESTMsg ricRESTRespMsg;
+                ProtocolEndpointMsg endpointMsg;
+                ricRESTRespMsg.encode(pFrame + payloadStartPos, payloadLen, endpointMsg);
+                endpointMsg.setAsResponse(_rdpChannelId, MSG_PROTOCOL_RICREST, msgIdx, MSG_DIRECTION_RESPONSE);
+
+                // Send message on the appropriate channel
+                if (_pEndpointManager)
+                    _pEndpointManager->handleOutboundMessage(endpointMsg);
+            // _miniHDLCForRDPTCP.sendFrame(pFrame+payloadStartPos, dataLen);
+            }
+        }
+        else
+        {
+            // Log.trace("%szesarux <- %s payloadLen %d payload ¬¬%s¬¬\n", 
+            //             MODULE_PREFIX, pRxStr, payloadLen,
+            //             payloadStr.c_str());
+            // _pZEsarUXTCPServer->sendChars(pFrame+payloadStartPos, dataLen);
+        }
     }
     else if (cmdName.equalsIgnoreCase("log"))
     {
@@ -787,7 +812,7 @@ void PiCoProcessor::hdlcFrameRxCB(const uint8_t* pFrame, int frameLen)
     }
 }
 
-void PiCoProcessor::hdlcFrameTxCB(const uint8_t* pFrame, int frameLen)
+void PiCoProcessor::hdlcFrameTxToPiCB(const uint8_t* pFrame, int frameLen)
 {
 #ifdef DEBUG_PI_TX_FRAME_TO_PI
     // Debug
@@ -798,7 +823,7 @@ void PiCoProcessor::hdlcFrameTxCB(const uint8_t* pFrame, int frameLen)
                         (const char*)pFrame, frameLen);
     if (bytesSent != frameLen)
     {
-        LOG_W(MODULE_PREFIX, "hdlcFrameTxCB len %d only wrote %d bytes",
+        LOG_W(MODULE_PREFIX, "hdlcFrameTxToPiCB len %d only wrote %d bytes",
                 frameLen, bytesSent);
     }
     _statsTxCh += bytesSent;
@@ -934,7 +959,7 @@ bool PiCoProcessor::startUploadFromFileSystem(const String& fileSystemName,
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Process RICRESTMsg CmdFrame
+// Process RICRESTMsg CmdFrame - coming from websocket
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool PiCoProcessor::procRICRESTCmdFrame(const String& cmdName, RICRESTMsg& ricRESTReqMsg, 
@@ -953,6 +978,20 @@ bool PiCoProcessor::procRICRESTCmdFrame(const String& cmdName, RICRESTMsg& ricRE
 #ifdef DEBUG_RICREST_CMD_FRAMES
         LOG_I(MODULE_PREFIX, "processRICRESTCmdFrame %s => Resp %s", cmdName.c_str(), respMsg.c_str());
 #endif
+        return true;
+    }
+
+    // Send on to Pi as a combined message
+    std::vector<uint8_t> combinedMsg;
+    unsigned jsonLen = ricRESTReqMsg.getPayloadJson().length();
+    unsigned combinedLen = jsonLen + 1 + ricRESTReqMsg.getBinLen();
+    combinedMsg.resize(combinedLen);
+    if (combinedMsg.size() >= combinedLen)
+    {
+        memcpy(combinedMsg.data(), ricRESTReqMsg.getPayloadJson().c_str(), jsonLen + 1);
+        memcpy(combinedMsg.data() + jsonLen + 1, ricRESTReqMsg.getBinBuf(), ricRESTReqMsg.getBinLen());
+        sendTargetData("rdp", combinedMsg.data(), combinedLen, _rdpCommandIndex++);
+        _rdpChannelId  = channelID;
         return true;
     }
 

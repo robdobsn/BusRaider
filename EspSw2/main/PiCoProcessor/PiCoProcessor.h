@@ -78,6 +78,9 @@ private:
     // EndpointID used to identify this message channel to the ProtocolEndpointManager object
     uint32_t _protocolEndpointID;
 
+    // EndpointManager
+    ProtocolEndpointManager* _pEndpointManager;
+
     // Pi status
     String _cachedPiStatusJSON;
     uint32_t _cachedPiStatusRequestMs;
@@ -124,6 +127,10 @@ private:
     uint32_t _statsLastReportMs;
     static const int STATS_REPORT_TIME_MS = 60000;
 
+    // RDP - remote data protocol - used for tunnelling messages between Pi and WebSocket
+    uint32_t _rdpCommandIndex;
+    uint32_t _rdpChannelId;
+
     // Helpers
     void applySetup();
     void sendMsgStrToPi(const char *pMsgStr);
@@ -132,8 +139,8 @@ private:
     void sendTargetCommand(const String& targetCmd, const String& reqStr);
     void sendTargetData(const String& cmdName, const uint8_t* pData, int len, int index);
     void sendResponseToPi(String& reqStr, String& msgJson);
-    void hdlcFrameTxCB(const uint8_t* pFrame, int frameLen);
-    void hdlcFrameRxCB(const uint8_t* pFrame, int frameLen);
+    void hdlcFrameTxToPiCB(const uint8_t* pFrame, int frameLen);
+    void hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen);
     const char* getWifiStatusStr();
     void apiQueryESPHealth(const String &reqStr, String &respStr);
     void apiUploadPiSwComplete(String &reqStr, String &respStr);
