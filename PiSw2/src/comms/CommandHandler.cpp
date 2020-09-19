@@ -436,6 +436,11 @@ void CommandHandler::handleFileStart(const char* pCmdJson)
         _debugCurHDLCStats = *_miniHDLC.getStats();
 #endif
 
+#ifdef USE_ACKS_ON_FILE_TRANSFER
+    // Acknowledge start
+    sendWithJSON("ufStartAck", "");
+#endif
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -477,6 +482,14 @@ void CommandHandler::handleFileBlock(const char* pCmdJson, const uint8_t* pData,
     _debugBlockLen[_debugBlockRxCount] = dataLen;
     _debugBlockRxCount++;
 #endif
+
+#ifdef USE_ACKS_ON_FILE_TRANSFER
+    // Acknowledge block
+    char ackBlockJson[100];
+    snprintf(ackBlockJson, sizeof(ackBlockJson), R"("index":%d)", blockStart);
+    sendWithJSON("ufBlockAck", ackBlockJson);
+#endif
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

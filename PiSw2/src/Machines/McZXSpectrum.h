@@ -24,7 +24,7 @@ public:
     virtual void machineHeartbeat() override;
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-    virtual void displayRefreshFromMirrorHw() override;
+    virtual void refreshDisplay() override;
 
     // Handle a key press
     virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]) override;
@@ -77,7 +77,7 @@ private:
     static constexpr int ZXSPECTRUM_KEYBOARD_NUM_ROWS = 8;
     static constexpr int ZXSPECTRUM_KEYS_IN_ROW = 5;
 
-    static McVariantTable _defaultDescriptorTables[];
+    static McVariantTable _machineDescriptorTables[];
 
     static const int MAX_KEYS = 6;
 

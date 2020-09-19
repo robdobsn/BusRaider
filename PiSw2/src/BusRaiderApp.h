@@ -19,7 +19,14 @@ public:
     void init();
     void initUSB();
     void service();
+    void peripheralStatus(bool usbOk, bool keyboardOk);
+    
+    // Raw Keyboard (called from USB - maybe on interrupt?)
+    void keyStatusHandlerRaw(unsigned char ucModifiers, const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED]);
 
+    // Self-test helpers
+    void selfTestHelperService();
+    int selfTestKeyboardGet();
 private:
    
     bool _lastActivityTickerState;
@@ -79,8 +86,7 @@ private:
     void clear();
     void statusDisplayUpdate();
 
-    // Keyboard
-    static void addUSBKeypressToBufferStatic(unsigned char ucModifiers, const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED]);
+    // Key press
     void handleUSBKeypress(unsigned char ucModifiers, const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED]);
 
     // Msg Rx from ESP32
@@ -104,22 +110,7 @@ private:
     RingBufferPosn _keyInfoBufferPos;
     bool _inKeyboardRoutine;
 
-    // Tests
-    enum testCodeRet_type {
-        TEST_SELF_RET_OK,
-        TEST_SELF_RET_QUIT,
-        TEST_SELF_RET_TIMEOUT
-    };
-
-    // TODO 2020
-    // void testSelf_busrq();
-    // void testSelf_readSetBus(bool readMode);
-    // void testSelf_detailedBus();
-    // void testSelf_memory();
-    // void testSelf_busBits();
-    // bool testSelf_detailedBus_addr();
-    // testCodeRet_type testSelf_commonLoop();
-    // int _testSelf_curKeyAscii;
-    // uint32_t _testSelf_startUpdateTimeMs;
-
+    // Self-test mode
+    bool _selfTestMode;
+    int _selfTestKeyWaiting;
 };

@@ -26,7 +26,7 @@ HwRAMROM::HwRAMROM(HwManager& hwManager, BusAccess& busAccess) :
     _pTracerMemory = NULL;
     _tracerMemAllocNotified = false;
     _pName = _baseName;
-    _memoryEmulationMode = false;
+    _isEmulatingMemory = false;
     _memoryCardOpMode = MEM_CARD_OP_MODE_LINEAR;
     _memCardOpts = MEM_OPT_OPT_NONE;
     _bankHwBaseIOAddr = BANK_16K_BASE_ADDR;
@@ -115,7 +115,7 @@ void HwRAMROM::configure( const char* jsonConfig)
 // for bus accesses
 void HwRAMROM::setMemoryEmulationMode(bool pageOut)
 {
-    _memoryEmulationMode = pageOut;
+    _isEmulatingMemory = pageOut;
 
     // Paging
     if (!_pageOutEnabled)
@@ -157,7 +157,7 @@ void HwRAMROM::pageOutForInjection(bool pageOut)
     else
     {
         // Release paging unless emulation in progress
-        if (!_memoryEmulationMode)
+        if (!_isEmulatingMemory)
             _busAccess.busPagePinSetActive(false);
     }
 }
@@ -196,7 +196,7 @@ uint8_t* HwRAMROM::getMirrorMemory()
 void HwRAMROM::mirrorClone()
 {
     // No point doing this in emulator mode as mirror and emulator memory is shared
-    if (_memoryEmulationMode)
+    if (_isEmulatingMemory)
         return;
 
     // Dest memory
@@ -474,7 +474,7 @@ uint8_t* HwRAMROM::getMirrorMemForAddr(uint32_t addr)
 void HwRAMROM::tracerClone()
 {
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "tracerClone emulated %d mem %d", 
-            _memoryEmulationMode, getTracerMemory());
+            _isEmulatingMemory, getTracerMemory());
 
     // Tracer memory
     uint8_t* pValMemory = getTracerMemory();
@@ -482,7 +482,7 @@ void HwRAMROM::tracerClone()
         return;
 
     // Check if in emulated memory mode
-    if (_memoryEmulationMode)
+    if (_isEmulatingMemory)
     {
         uint8_t* pSrcMemory = getMirrorMemory();
         if (!pSrcMemory)
@@ -616,7 +616,7 @@ void HwRAMROM::handleMemOrIOReq( uint32_t addr,  uint32_t data,
     if (flags & BR_CTRL_BUS_MREQ_MASK)
     {
         // Check emulation mode
-        if (_memoryEmulationMode || _mirrorMode)
+        if (_isEmulatingMemory || _mirrorMode)
         {
             // Check mirror memory ok
             uint8_t* pMemory = getMirrorMemory();

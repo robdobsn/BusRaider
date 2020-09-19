@@ -71,10 +71,9 @@ BusAccess::BusAccess()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Initialisation
+// Initialise the bus raider bus
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Initialise the bus raider
 void BusAccess::init()
 {
     // Clock
@@ -134,11 +133,10 @@ void BusAccess::init()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Bus Reset
+// Reset the bus raider bus
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Reset the bus raider bus
-void BusAccess::busAccessReset()
+void BusAccess::busAccessReinit()
 {
     // Instruct extension hardware to page in
     busAccessCallbackPageIn();
@@ -161,12 +159,12 @@ void BusAccess::busAccessReset()
     waitGenerationDisable();
 
     // Clear any wait condition
-    LogWrite("BusAccess", LOG_DEBUG, "busAccessReset");
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "busAccessReinit");
     waitResetFlipFlops(true);
 
     // Update wait state generation
     // Debug
-    // LogWrite("BusAccess", LOG_DEBUG, "busAccessReset");
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busAccessReinit");
     waitEnablementUpdate();
 
     // Reactivate bus service
@@ -186,7 +184,7 @@ void BusAccess::waitOnMemory(int busSocket, bool isOn)
 
     // Update wait handling
     // Debug
-    // LogWrite("BusAccess", LOG_DEBUG, "waitonMem %d", isOn);
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "waitonMem %d", isOn);
     waitEnablementUpdate();
 }
 
@@ -199,7 +197,7 @@ void BusAccess::waitOnIO(int busSocket, bool isOn)
 
     // Update wait handling
     // Debug
-    // LogWrite("BusAccess", LOG_DEBUG, "waitOnIO");
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "waitOnIO");
     waitEnablementUpdate();
 }
 
@@ -220,7 +218,7 @@ void BusAccess::waitSetCycleUs(uint32_t cycleUs)
 
 void BusAccess::waitRelease()
 {
-    // LogWrite("BusAccess", LOG_DEBUG, "waitRelease");
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "waitRelease");
     waitResetFlipFlops();
     // Handle release after a read
     waitHandleReadRelease();
@@ -233,7 +231,7 @@ bool BusAccess::waitIsHeld()
 
 void BusAccess::waitHold(int busSocket, bool hold)
 {
-    // LogWrite("BusAccess", LOG_DEBUG, "waitHold %d", hold);
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "waitHold %d", hold);
     // Check validity
     if ((busSocket < 0) || (busSocket >= _busSocketCount))
         return;
@@ -264,7 +262,7 @@ void BusAccess::targetReqReset(int busSocket, int durationTStates)
         return;
     _busSockets[busSocket].resetDurationTStates = (durationTStates <= 0) ? BR_RESET_PULSE_T_STATES : durationTStates;
     _busSockets[busSocket].resetPending = true;
-    LogWrite("BusAccess", LOG_DEBUG, "targetReqReset");
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetReqReset");
 }
 
 // Non-maskable interrupt the host
@@ -305,7 +303,7 @@ void BusAccess::targetReqBus(int busSocket, BR_BUS_ACTION_REASON busMasterReason
     // Bus request can be handled immediately as the BUSRQ line is not part of the multiplexer (so is not affected by WAIT processing)
     busActionCheck();
     busActionHandleStart();
-    // LogWrite("BusAccess", LOG_DEBUG, "reqBus sock %d enabled %d reason %d", busSocket, _busSockets[busSocket].enabled, busMasterReason);
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "reqBus sock %d enabled %d reason %d", busSocket, _busSockets[busSocket].enabled, busMasterReason);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

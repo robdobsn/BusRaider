@@ -9,6 +9,9 @@
 #include "lowlib.h"
 #include "CommsSocketInfo.h"
 
+// Use acks on file transfer
+#define USE_ACKS_ON_FILE_TRANSFER
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Callback types
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -165,6 +168,7 @@ private:
     static const int MAX_USB_KEYBOARD_CHARS = 50;
     uint8_t _usbKeyboardRingBuffer[MAX_USB_KEYBOARD_CHARS];
 
+    // Remote data protocol index
     static const uint32_t RDP_INDEX_NONE = 0xffffffff;
 
     // Timeouts

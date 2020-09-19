@@ -15,7 +15,7 @@
 
 static const char* MODULE_PREFIX = "RobsZ80";
 
-McVariantTable McRobsZ80::_defaultDescriptorTables[] = {
+McVariantTable McRobsZ80::_machineDescriptorTables[] = {
     {
         // Machine name
         "Rob's Z80",
@@ -46,8 +46,8 @@ McVariantTable McRobsZ80::_defaultDescriptorTables[] = {
 
 McRobsZ80::McRobsZ80(McManager& mcManager) : 
         McBase(mcManager, 
-            _defaultDescriptorTables, 
-            sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0]))
+            _machineDescriptorTables, 
+            sizeof(_machineDescriptorTables)/sizeof(_machineDescriptorTables[0]))
 {
     _screenBufferValid = false;
 }
@@ -64,7 +64,7 @@ void McRobsZ80::disableMachine()
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-void McRobsZ80::displayRefreshFromMirrorHw()
+void McRobsZ80::refreshDisplay()
 {
     // Read mirror memory at the location of the memory mapped screen
     uint8_t pScrnBuffer[ROBSZ80_DISP_RAM_SIZE];

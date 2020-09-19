@@ -17,7 +17,7 @@ static const char* MODULE_PREFIX = "McTerm";
 extern WgfxFont __p12x16Font;
 KeyConversion McTerminal::_keyConversion;
 
-McVariantTable McTerminal::_defaultDescriptorTables[] = {
+McVariantTable McTerminal::_machineDescriptorTables[] = {
     {
         // Machine name
         "Serial Terminal ANSI",
@@ -72,9 +72,9 @@ McVariantTable McTerminal::_defaultDescriptorTables[] = {
     }
 };
 
-McTerminal::McTerminal(McManager& mcManager) : 
-    McBase(mcManager, _defaultDescriptorTables, 
-            sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0])),
+McTerminal::McTerminal(McManager& mcManager, BusAccess& busAccess) : 
+    McBase(mcManager, busAccess, _machineDescriptorTables, 
+            sizeof(_machineDescriptorTables)/sizeof(_machineDescriptorTables[0])),
     _sendToTargetBufPos(MAX_SEND_TO_TARGET_CHARS)
 {
     // Emulation
@@ -158,7 +158,7 @@ bool McTerminal::setupMachine(const char* mcName, const char* mcJson)
 }
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-void McTerminal::displayRefreshFromMirrorHw()
+void McTerminal::refreshDisplay()
 {
     DisplayBase* pDisplay = getDisplay();
     if (!pDisplay)

@@ -55,7 +55,7 @@ public:
 
 private:
     // Paging hardware support
-    bool _memoryEmulationMode;
+    bool _isEmulatingMemory;
     bool _pageOutEnabled;
     bool _currentlyPagedOut;
 

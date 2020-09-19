@@ -11,7 +11,7 @@ class McTerminal : public McBase
 {
 public:
 
-    McTerminal(McManager& mcManager);
+    McTerminal(McManager& mcManager, BusAccess& busAccess);
 
     // Enable machine
     virtual void enableMachine() override;
@@ -23,7 +23,7 @@ public:
     virtual bool setupMachine(const char* mcName, const char* mcJson) override;
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-    virtual void displayRefreshFromMirrorHw() override;
+    virtual void refreshDisplay() override;
 
     // Handle a key press
     virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]) override;
@@ -72,7 +72,7 @@ private:
     bool _emulation6850NotSetup;
     bool _emulationInterruptOnRx;
 
-    static McVariantTable _defaultDescriptorTables[];
+    static McVariantTable _machineDescriptorTables[];
 
     // Terminal emulation maintains an in-memory image of the screen
     TermEmu* _pTerminalEmulation;

@@ -29,7 +29,7 @@ static const char* MODULE_PREFIX = "ZXSpectrum";
 
 uint8_t McZXSpectrum::_spectrumKeyboardIOBitMap[ZXSPECTRUM_KEYBOARD_NUM_ROWS];
 
-McVariantTable McZXSpectrum::_defaultDescriptorTables[] = {
+McVariantTable McZXSpectrum::_machineDescriptorTables[] = {
     {
         // Machine name
         "ZX Spectrum",
@@ -62,8 +62,8 @@ McVariantTable McZXSpectrum::_defaultDescriptorTables[] = {
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 McZXSpectrum::McZXSpectrum(McManager& mcManager) : 
-            McBase(mcManager, _defaultDescriptorTables, 
-            sizeof(_defaultDescriptorTables)/sizeof(_defaultDescriptorTables[0]))
+            McBase(mcManager, _machineDescriptorTables, 
+            sizeof(_machineDescriptorTables)/sizeof(_machineDescriptorTables[0]))
 {
     // Screen needs redrawing
     _screenBufferValid = false;
@@ -73,8 +73,8 @@ McZXSpectrum::McZXSpectrum(McManager& mcManager) :
     _screenBufferRefreshCount = 0;
     _pFrameBuffer = NULL;
     _pfbSize = 0;
-    _cellsY = _defaultDescriptorTables[0].displayPixelsY/_defaultDescriptorTables[0].displayPixelsY;
-    _cellsX = _defaultDescriptorTables[0].displayPixelsX/_defaultDescriptorTables[0].displayPixelsX;
+    _cellsY = _machineDescriptorTables[0].displayPixelsY/_machineDescriptorTables[0].displayPixelsY;
+    _cellsX = _machineDescriptorTables[0].displayPixelsX/_machineDescriptorTables[0].displayPixelsX;
 
     // Clear key bitmap
     for (int i = 0; i < ZXSPECTRUM_KEYBOARD_NUM_ROWS; i++)
@@ -134,7 +134,7 @@ void McZXSpectrum::service()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-void McZXSpectrum::displayRefreshFromMirrorHw()
+void McZXSpectrum::refreshDisplay()
 {
     // Read mirror memory at the location of the memory mapped screen
     if (getHwManager().blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, false, false, true) == BR_OK)

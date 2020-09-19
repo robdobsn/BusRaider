@@ -41,8 +41,8 @@ McVariantTable McBase::_defaultVariantTable = {
     .setRegistersCodeAddr = 0
 };
 
-McBase::McBase(McManager& mcManager, const McVariantTable* pVariantTables, uint32_t numVariants) :
-        _mcManager(mcManager)
+McBase::McBase(McManager& mcManager, BusAccess& busAccess, const McVariantTable* pVariantTables, uint32_t numVariants) :
+        _mcManager(mcManager), _busAccess(busAccess)
 {
     // Clear machine variant table info
     for (uint32_t i = 0; i < numVariants && i < MAX_VARIANTS_FOR_MACHINE; i++)

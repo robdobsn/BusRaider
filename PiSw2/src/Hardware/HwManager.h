@@ -38,9 +38,9 @@ public:
 
     // Memory emulation mode 
     void setMemoryEmulationMode(bool val);
-    bool getMemoryEmulationMode()
+    bool isEmulatingMemory()
     {
-        return _memoryEmulationMode;
+        return _isEmulatingMemory;
     }
 
     // Memory paging enable 
@@ -119,7 +119,7 @@ private:
     int _commsSocketId;
 
     // Memory emulation mode
-    bool _memoryEmulationMode;
+    bool _isEmulatingMemory;
 
     // Mirror memory mode
     bool _mirrorMode;

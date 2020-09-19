@@ -30,6 +30,10 @@ cd Machines
 $make $1 $2 || exit
 cd ..
 
+cd SelfTest
+$make $1 $2 || exit
+cd ..
+
 cd fonts
 $make $1 $2 || exit
 cd ..

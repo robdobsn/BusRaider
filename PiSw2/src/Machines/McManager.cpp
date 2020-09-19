@@ -89,10 +89,11 @@ void McManager::init()
     // LogWrite(MODULE_PREFIX, LogDebug, "COMMS SOCKET INIT %d", _commsSocketId);
 
     // Add machines - McBase does the actual add
-    new McTerminal(*this);
-    new McTRS80(*this);
-    new McRobsZ80(*this);
-    new McZXSpectrum(*this);
+    // TODO 2020
+    // new McTerminal(*this);
+    new McTRS80(*this, _busAccess);
+    // new McRobsZ80(*this);
+    // new McZXSpectrum(*this);
 
     // Refresh init
     _refreshCount = 0;
@@ -109,6 +110,9 @@ void McManager::init()
 
 void McManager::service()
 {
+    // Refresh display
+    displayRefresh();
+
     // Check for screen mirroring
     if (_screenMirrorOut && _pCurMachine)
     {
@@ -209,7 +213,7 @@ const char* McManager::getMachineJSON()
     strlcat(mcString, "\"", MAX_MC_JSON_LEN);
 
     // Clock info
-    uint32_t actualHz = getBusAccess().clockCurFreqHz();
+    uint32_t actualHz = _busAccess.clockCurFreqHz();
     snprintf(mcString+strlen(mcString), MAX_MC_JSON_LEN, ",\"clockHz\":\"%d\"", (int)actualHz);
 
     // Ret
@@ -218,17 +222,18 @@ const char* McManager::getMachineJSON()
 
 int McManager::getMachineClock()
 {
-    return getBusAccess().clockCurFreqHz();
+    return _busAccess.clockCurFreqHz();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Manage Machine List
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// TODO 2020 - move to BusAccess
 void McManager::targetIrq(int durationTStates)
 {
     // Generate a maskable interrupt
-    getBusAccess().targetReqIRQ(_busSocketId, durationTStates);
+    _busAccess.targetReqIRQ(_busSocketId, durationTStates);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -284,8 +289,8 @@ bool McManager::setupMachine(const char* mcJson)
     // getStepTracer().stopAll(true);
 
     // Remove wait generation
-    getBusAccess().waitOnIO(_busSocketId, false);
-    getBusAccess().waitOnMemory(_busSocketId, false);
+    _busAccess.waitOnIO(_busSocketId, false);
+    _busAccess.waitOnMemory(_busSocketId, false);
 
     // Setup the machine
     pMc->setupMachine(mcName, mcJson);
@@ -294,8 +299,8 @@ bool McManager::setupMachine(const char* mcJson)
     pMc->setupDisplay(_pDisplay);
 
     // Enable wait generation as required
-    getBusAccess().waitOnIO(_busSocketId, pMc->isMonitorIORQEnabled());
-    getBusAccess().waitOnMemory(_busSocketId, pMc->isMonitorMREQEnabled());
+    _busAccess.waitOnIO(_busSocketId, pMc->isMonitorIORQEnabled());
+    _busAccess.waitOnMemory(_busSocketId, pMc->isMonitorMREQEnabled());
 
     // See if any files to load
     static const int MAX_FILE_NAME_LEN = 100;
@@ -340,37 +345,39 @@ void McManager::displayRefresh()
         _refreshLastUpdateMs = millis();
         _refreshCount++;
 
+        // LogWrite(MODULE_PREFIX, LOG_NOTICE, "displayRefresh isMemMapped %d waitIsHeld %d isEmulatingMem %d isTrackingActive %d",
+        //     _pCurMachine->isDisplayMemoryMapped(), _busAccess.waitIsHeld(), _hwManager.isEmulatingMemory(), _busAccess.isTrackingActive());
+
         // Determine whether display is memory mapped
-        if (_pCurMachine->isDisplayMemoryMapped())
+        if (_pCurMachine->isDisplayMemoryMapped() && _busAccess.busRqNeededForMemAccess())
         {
             // TODO 2020
             // if (getTargetTracker().busAccessAvailable())
             // {
-            //     // Asynch display refresh - start bus access request here
-            //     getBusAccess().targetReqBus(_busSocketId, BR_BUS_ACTION_DISPLAY);
-            //     _busActionPendingDisplayRefresh = true;
+                // Asynch display refresh - start bus access request here
+                _busAccess.targetReqBus(_busSocketId, BR_BUS_ACTION_DISPLAY);
+                _busActionPendingDisplayRefresh = true;
             // }
             // else if (getTargetTracker().isTrackingActive())
             // {
             //     // Refresh from mirror hardware
             //     _busActionPendingDisplayRefresh = true;
-            //     _pCurMachine->displayRefreshFromMirrorHw();
+            //     _pCurMachine->refreshDisplay();
             // }
             // else
             // {
                 // Synchronous display update (from local memory copy)
-                _pCurMachine->displayRefreshFromMirrorHw();
+                // _pCurMachine->refreshDisplay();
             // }
         }
         else
         {
-            _pCurMachine->displayRefreshFromMirrorHw();
+            _pCurMachine->refreshDisplay();
         }
 
         // Heartbeat
-        // TODO 2020
-        // if (!getTargetTracker().isTrackingActive())
-        //     machineHeartbeat();
+        if (!_busAccess.isTrackingActive())
+            machineHeartbeat();
     }
 
     // Service machine
@@ -473,7 +480,7 @@ void McManager::sendKeyStrToTargetStatic(const char* pKeyStr)
 void McManager::targetReset()
 {
     // Reset target
-    getBusAccess().targetReqReset(_busSocketId);
+    _busAccess.targetReqReset(_busSocketId);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -494,11 +501,11 @@ void McManager::targetProgrammingStart(bool execAfterProgramming)
         // BUSRQ is used even if memory is emulated because it holds the processor while changes are made
         // Give the BusAccess some service first to ensure WAIT handling is complete before requesting the bus
         for (int i = 0; i < 3; i++)
-            getBusAccess().service();
+            _busAccess.service();
 
         // Request target bus
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetProgStart targetReqBus");
-        getBusAccess().targetReqBus(_busSocketId, BR_BUS_ACTION_PROGRAMMING);
+        _busAccess.targetReqBus(_busSocketId, BR_BUS_ACTION_PROGRAMMING);
         _busActionPendingProgramTarget = true;
         _busActionPendingExecAfterProgram = execAfterProgramming;
     }
@@ -695,7 +702,7 @@ void McManager::targetExec()
     if (performHardReset)
     {
         // Request reset target
-        getBusAccess().targetReqReset(_busSocketId);
+        _busAccess.targetReqReset(_busSocketId);
     }
 }
 
@@ -770,7 +777,7 @@ void McManager::busActionComplete(BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASO
         {
             // Call the machine to handle
             if (_pCurMachine)
-                _pCurMachine->busActionCompleteCallback(actionType);
+                _pCurMachine->refreshDisplay();
             _busActionPendingDisplayRefresh = false;    
         }
     }

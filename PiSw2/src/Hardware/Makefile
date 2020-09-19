@@ -4,7 +4,8 @@
 
 CIRCLEHOME = ../../circle
 
-OBJS	= HwManager.o HwBase.o HwRAMROM.o
+OBJS	= HwManager.o HwBase.o 
+# HwRAMROM.o
 
 INCLUDE	+= -I ../system -I ../TargetBus -I ../comms -I ../fonts
 

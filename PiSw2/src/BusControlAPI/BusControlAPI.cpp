@@ -467,8 +467,8 @@ bool BusControlAPI::handleRxMsg(const char* pCmdJson,
     }
     else if (strcasecmp(cmdName, "busInit") == 0)
     {
-        // Get bus status
-        busAccess.busAccessReset();
+        // Reinit bus
+        busAccess.busAccessReinit();
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }

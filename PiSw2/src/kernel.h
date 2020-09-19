@@ -85,6 +85,10 @@ private:
 	// BusRaiderApp
 	BusRaiderApp m_BusRaiderApp;
 
+	// Reboot requested
+	bool _rebootRequested;
+
+	static void KeyStatusHandlerRaw(unsigned char ucModifiers, const unsigned char rawKeys[6]);
 };
 
 #endif

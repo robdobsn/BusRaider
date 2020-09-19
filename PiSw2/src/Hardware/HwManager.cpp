@@ -52,7 +52,7 @@ HwManager::HwManager(CommandHandler& commandHandler, BusAccess& busAccess) :
     // Sockets
     _busSocketId = -1;
     _commsSocketId = -1;
-    _memoryEmulationMode = false;
+    _isEmulatingMemory = false;
     _memoryPagingEnable = false;
     _opcodeInjectEnable = false;
     _mirrorMode = false;
@@ -97,7 +97,8 @@ void HwManager::init()
 #endif
     }
     // Add hardware - HwBase constructor adds to HwManager
-   new HwRAMROM(*this, _busAccess);
+    // TODO 2020
+    //    new HwRAMROM(*this, _busAccess);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -156,7 +157,7 @@ void HwManager::setMemoryEmulationMode(bool val)
     }
 
     // Set
-    _memoryEmulationMode = val;
+    _isEmulatingMemory = val;
 }
 
 // Page out RAM/ROM for opcode injection
@@ -575,6 +576,7 @@ void HwManager::setupFromJson(const char* jsonKey, const char* hwJson)
 // Check if bus can be accessed directly
 bool HwManager::busAccessAvailable()
 {
-    return !(_busAccess.waitIsHeld() || getMemoryEmulationMode() || 
-                    _busAccess.busSocketIsEnabled(_busSocketId));
+    return !_busAccess.waitIsHeld() && !isEmulatingMemory() && 
+                    // !_busAccess.busSocketIsEnabled(_busSocketId) &&
+                    !_busAccess.isTrackingActive();
 }

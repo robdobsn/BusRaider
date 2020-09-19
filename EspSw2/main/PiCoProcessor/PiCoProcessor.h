@@ -119,6 +119,14 @@ private:
     std::vector<uint8_t> _uploadBlockBuffer;
     uint32_t _fileCRC;
 
+    // Upload acks
+    bool _uploadStartAck;
+    int _uploadBlockRxIndex;
+    bool _uploadEndAck;
+    bool _uploadEndNotAck;
+    static const int UPLOAD_MAX_WAIT_FOR_ACK_BEFORE_RESEND_MS = 1000;
+    static const int UPLOAD_MAX_RESENDS_BEFORE_FAIL = 5;
+
     // Stats
     uint32_t _statsRxCh;
     uint32_t _statsTxCh;
@@ -160,4 +168,9 @@ private:
     bool startUploadFromFileSystem(const String& fileSystemName, 
                 const String& uploadRequest, const String& filename,
                 const char* pTargetCmdWhenDone);
+    bool waitForAck(size_t index, bool finalBlock);
+    bool waitForStartAck();
+    bool waitForBlockAck(size_t index);
+    bool waitForEndAck();
+
 };

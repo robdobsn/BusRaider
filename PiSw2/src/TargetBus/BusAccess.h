@@ -31,7 +31,7 @@ public:
 
     // Initialise the bus raider
     void init();
-    void busAccessReset();
+    void busAccessReinit();
 
     // Bus Sockets - used to hook things like waitInterrupts, busControl, etc
     int busSocketAdd(bool enabled, BusAccessCBFnType* busAccessCallback,
@@ -63,9 +63,15 @@ public:
     // Bus control
     bool isUnderControl();
     
+    enum BlockAccessType
+    {
+        ACCESS_MEM,
+        ACCESS_IO
+    };
+
     // Read and write blocks
-    BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, bool busRqAndRelease, bool iorq);
-    BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pData, uint32_t len, bool busRqAndRelease, bool iorq);
+    BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, BlockAccessType accessType);
+    BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pData, uint32_t len, BlockAccessType accessType);
 
     // Wait hold and release
     void waitRelease();
@@ -150,6 +156,20 @@ public:
     void controlTake();
     bool waitForBusAck(bool ack);
 
+    // Target tracker
+    bool isTrackingActive()
+    {
+        return false;
+    }
+
+    // Bus access checks
+    bool busRqNeededForMemAccess()
+    {
+        return waitIsHeld() && 
+                    !isEmulatingMemory() && 
+                    !isTrackingActive();
+    }
+
 private:
     // Hardware version
     // V1.7 ==> 17, V2.0 ==> 20
@@ -215,6 +235,12 @@ private:
 
     // Status info
     BusAccessStatusInfo _statusInfo; 
+
+    // TODO 2020 move to hw access
+    bool isEmulatingMemory()
+    {
+        return false;
+    }
 
 private:
     // Bus actions
@@ -415,8 +441,8 @@ private:
     void busAccessCallbackPageIn();
 
     // Read and write bytes
-    void byteWrite(uint32_t byte, int iorq);
-    uint8_t byteRead(int iorq);
+    void byteWrite(uint32_t byte, BlockAccessType accessType);
+    uint8_t byteRead(BlockAccessType accessType);
 
 private:
     // Timeouts
@@ -429,19 +455,24 @@ private:
     static const int CYCLES_DELAY_FOR_WRITE_TO_TARGET = 250;
 
     // Delay for settling of high address lines on PIB read
-    static const int CYCLES_DELAY_FOR_HIGH_ADDR_READ = 100;
+    // TODO 2020 was 100
+    static const int CYCLES_DELAY_FOR_HIGH_ADDR_READ = 1000;
 
     // Period target read control bus line is asserted during a read from the PIB (any bus element)
-    static const int CYCLES_DELAY_FOR_READ_FROM_PIB = 50;
+    // TODO 2020 was 50
+    static const int CYCLES_DELAY_FOR_READ_FROM_PIB = 500;
 
     // Max wait for end of read cycle
-    static const int MAX_WAIT_FOR_END_OF_READ_US = 10;
+    // TODO 2020 was 10
+    static const int MAX_WAIT_FOR_END_OF_READ_US = 100;
 
     // Delay in machine cycles for setting the pulse width when clearing/incrementing the address counter/shift-reg
-    static const int CYCLES_DELAY_FOR_CLEAR_LOW_ADDR = 15;
-    static const int CYCLES_DELAY_FOR_CLOCK_LOW_ADDR = 15;
-    static const int CYCLES_DELAY_FOR_LOW_ADDR_SET = 15;
-    static const int CYCLES_DELAY_FOR_HIGH_ADDR_SET = 20;
+    // TODO 2020 following 3 were 15
+    static const int CYCLES_DELAY_FOR_CLEAR_LOW_ADDR = 150;
+    static const int CYCLES_DELAY_FOR_CLOCK_LOW_ADDR = 150;
+    static const int CYCLES_DELAY_FOR_LOW_ADDR_SET = 150;
+    // TODO 2020 was 20
+    static const int CYCLES_DELAY_FOR_HIGH_ADDR_SET = 200;
     static const int CYCLES_DELAY_FOR_WAIT_CLEAR = 50;
     static const int CYCLES_DELAY_FOR_MREQ_FF_RESET = 20;
     static const int CYCLES_DELAY_FOR_DATA_DIRN = 20;
@@ -451,4 +482,3 @@ private:
     // Delay in machine cycles for M1 to settle
     static const int CYCLES_DELAY_FOR_M1_SETTLING = 100;
 };
-

@@ -10,6 +10,7 @@
 #include "usb_hid_keys.h"
 #include "McTerminal.h"
 #include "TargetTracker.h"
+#include "SelfTest.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // System Name and Version
@@ -80,34 +81,28 @@ void BusRaiderApp::clear()
     _esp32LastMachineCmd[0] = 0;
     _esp32LastMachineValid = false;
     _esp32LastMachineReqUs = 0;
-
-    // TODO 2020
-    // // Tests
-    // _testSelf_curKeyAscii = -1;
-    // _testSelf_startUpdateTimeMs = 0;
+    _selfTestMode = false;
+    _selfTestKeyWaiting = -1;
 }
 
-void BusRaiderApp::initUSB()
+void BusRaiderApp::peripheralStatus(bool usbOk, bool keyboardOk)
 {
-    // TODO 2020
-    // // USB
-    // if (USPiInitialize()) 
-    // {
-    //     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Checking for keyboards...");
-
-    //     if (USPiKeyboardAvailable()) 
-    //     {
-    //         USPiKeyboardRegisterKeyStatusHandlerRaw(addUSBKeypressToBufferStatic);
-    //         _display.statusPut(Display::STATUS_FIELD_KEYBOARD, Display::STATUS_HILITE, "Keyboard OK, F2 for Settings");
-    //     } 
-    //     else 
-    //     {
-    //         _display.statusPut(Display::STATUS_FIELD_KEYBOARD, Display::STATUS_FAIL, "Keyboard Not Found");
-    //     }
-    // } else 
-    // {
-    //     _display.statusPut(Display::STATUS_FIELD_KEYBOARD, Display::STATUS_NORMAL, "USB Init Fail - No Keyboard");
-    // }
+    // USB
+    if (usbOk) 
+    {
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Checking for keyboards...");
+        if (keyboardOk) 
+        {
+            _display.statusPut(Display::STATUS_FIELD_KEYBOARD, Display::STATUS_HILITE, "Keyboard OK, F2 for Settings");
+        } 
+        else 
+        {
+            _display.statusPut(Display::STATUS_FIELD_KEYBOARD, Display::STATUS_FAIL, "Keyboard Not Found");
+        }
+    } else 
+    {
+        _display.statusPut(Display::STATUS_FIELD_KEYBOARD, Display::STATUS_NORMAL, "USB Init Fail - No Keyboard");
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -260,7 +255,7 @@ void BusRaiderApp::statusDisplayUpdate()
         else
         {
             strlcat(statusStr, _esp32ESP32Version, MAX_STATUS_STR_LEN);
-            char tmpStr[10];
+            char tmpStr[30];
             int hwVers = busAccess.getHwVersion();
             snprintf(tmpStr, sizeof(tmpStr), " (HW V%d.%d)", hwVers / 10, hwVers %10);
             strlcat(statusStr, tmpStr, MAX_STATUS_STR_LEN);
@@ -414,115 +409,123 @@ void BusRaiderApp::statusDisplayUpdate()
 // USB Keyboard
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void BusRaiderApp::addUSBKeypressToBufferStatic(unsigned char ucModifiers, 
+void BusRaiderApp::keyStatusHandlerRaw(unsigned char ucModifiers, 
                     const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED])
 {
-    // TODO 2020
-    // // Place in ring buffer
-    // if (_pApp->_keyInfoBufferPos.canPut())
-    // {
-    //     KeyInfo* pKeyInfo = (&_pApp->_keyInfoBuffer[_pApp->_keyInfoBufferPos.posToPut()]);
-    //     for (int i = 0; i < CommandHandler::NUM_USB_KEYS_PASSED; i++)
-    //         pKeyInfo->rawKeys[i] = rawKeys[i];
-    //     pKeyInfo->modifiers = ucModifiers;
-    //     _pApp->_keyInfoBufferPos.hasPut();
-    //     // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_C);
-    // }
+    // Place in ring buffer
+    if (_pApp->_keyInfoBufferPos.canPut())
+    {
+        KeyInfo* pKeyInfo = (&_pApp->_keyInfoBuffer[_pApp->_keyInfoBufferPos.posToPut()]);
+        for (int i = 0; i < CommandHandler::NUM_USB_KEYS_PASSED; i++)
+            pKeyInfo->rawKeys[i] = rawKeys[i];
+        pKeyInfo->modifiers = ucModifiers;
+        _pApp->_keyInfoBufferPos.hasPut();
+        // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_C);
+    }
 }
 
 void BusRaiderApp::handleUSBKeypress(unsigned char ucModifiers, 
                 const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED])
 {
-    // TODO 2020
-    // CommandHandler commandHandler = _commsManager.getCommandHandler();
-    // // Check for immediate mode
-    // if (rawKeys[0] == KEY_F2)
-    // {
-    //     if (!_immediateMode)
-    //     {
-    //         _display.consolePut("Immediate mode\n");
-    //         _display.consolePut("* WiFi setup enter      ... w/ssid/password/hostname <enter>\n");
-    //         _display.consolePut("* BusRaider board test  ... t <enter>\n");
-    //         _display.consolePut("* Memory test           ... m <enter>\n");
-    //         _display.consolePut("* Bit tests             ... b <enter>\n");
+    // Check for self-test mode
+    if (_selfTestMode)
+    {
+        const char* pKeyStr = McTerminal::convertRawToKeyString(ucModifiers, rawKeys);
+        if (strlen(pKeyStr) != 0)
+            _selfTestKeyWaiting = pKeyStr[0];
+        return;
+    }
 
-    //         // _display.consolePut("To self-test (CPU) BUSRQ type ... q<enter>\n");
-    //         // _display.consolePut("To show raw bus values type ... r<enter>\n");
-    //         // _display.consolePut("To test the bus only (NO CPU OR memory) type ... b<enter>\n");
-    //     }
-    //     _immediateMode = true;
-    //     return;
-    // }
-    // if (_immediateMode)
-    // {
-    //     if (_immediateModeLineLen < IMM_MODE_LINE_MAXLEN)
-    //     {
-    //         const char* pKeyStr = McTerminal::convertRawToKeyString(ucModifiers, rawKeys);
-    //         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "KEY asc %02x mod %02x raw %02x %02x %02x",
-    //         //             pKeyStr[0], ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
-    //         if (strlen(pKeyStr) == 0)
-    //             return;
-    //         if (pKeyStr[0] == 0x08)
-    //         {
-    //             if (_immediateModeLineLen > 0)
-    //                 _immediateModeLineLen--;
-    //             _display.consolePut(0x08);
-    //             _display.consolePut(' ');
-    //         }
-    //         else if (pKeyStr[0] == 0x0d)
-    //         {
-    //             _immediateMode = false;
-    //             _immediateModeLine[_immediateModeLineLen] = 0;
-    //             if (_immediateModeLineLen > 0)
-    //             {
-    //                 // Check for test commands
-    //                 if (rdtolower(_immediateModeLine[0]) == 't')
-    //                 {
-    //                     // Run detailed bus test
-    //                     testSelf_detailedBus();
-    //                 }
-    //                 else if (rdtolower(_immediateModeLine[0]) == 'm')
-    //                 {
-    //                     // Run memory test
-    //                     testSelf_memory();
-    //                 }
-    //                 else if (rdtolower(_immediateModeLine[0]) == 'b')
-    //                 {
-    //                     // Run bus bit test
-    //                     testSelf_busBits();
-    //                 }
-    //                 else if ((rdtolower(_immediateModeLine[0]) == 'r') || (rdtolower(_immediateModeLine[0]) == 's'))
-    //                 {
-    //                     // Run self-tests
-    //                     testSelf_readSetBus(rdtolower(_immediateModeLine[0]) == 'r');
-    //                 }
-    //                 else
-    //                 {
-    //                     // Send other commands to ESP32
-    //                     commandHandler.sendAPIReq(_immediateModeLine);
-    //                     _display.consolePut("\nSent request to ESP32:");
-    //                     _display.consolePut(_immediateModeLine);
-    //                     _display.consolePut("\n");
-    //                 }
-    //             }
-    //             _immediateModeLineLen = 0;
-    //             _display.consolePut("\nNormal mode\n");
-    //             _immediateMode = false;
-    //         }
-    //         else if ((pKeyStr[0] >= 32) && (pKeyStr[0] < 127))
-    //         {
-    //             _immediateModeLine[_immediateModeLineLen++] = pKeyStr[0];
-    //             _display.consolePut(pKeyStr[0]);
-    //         }
-    //     }
-    //     return;
-    // }
+    CommandHandler commandHandler = _commsManager.getCommandHandler();
+    // Check for immediate mode
+    if (rawKeys[0] == KEY_F2)
+    {
+        if (!_immediateMode)
+        {
+            _display.consolePut("Immediate mode\n");
+            _display.consolePut("* WiFi setup enter      ... w/ssid/password/hostname <enter>\n");
+            _display.consolePut("* BusRaider board test  ... t <enter>\n");
+            _display.consolePut("* Memory test           ... m <enter>\n");
+            _display.consolePut("* Bit tests             ... b <enter>\n");
 
-    // // Send to the target machine to process
-    // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
-    // McBase* pMc = _mcManager.getMachine();
-    // if (pMc)
-    //     pMc->keyHandler(ucModifiers, rawKeys);
+            // _display.consolePut("To self-test (CPU) BUSRQ type ... q<enter>\n");
+            // _display.consolePut("To show raw bus values type ... r<enter>\n");
+            // _display.consolePut("To test the bus only (NO CPU OR memory) type ... b<enter>\n");
+        }
+        _immediateMode = true;
+        return;
+    }
+    if (_immediateMode)
+    {
+        if (_immediateModeLineLen < IMM_MODE_LINE_MAXLEN)
+        {
+            const char* pKeyStr = McTerminal::convertRawToKeyString(ucModifiers, rawKeys);
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "KEY asc %02x mod %02x raw %02x %02x %02x",
+            //             pKeyStr[0], ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
+            if (strlen(pKeyStr) == 0)
+                return;
+            if (pKeyStr[0] == 0x08)
+            {
+                if (_immediateModeLineLen > 0)
+                    _immediateModeLineLen--;
+                _display.consolePut(0x08);
+                _display.consolePut(' ');
+            }
+            else if (pKeyStr[0] == 0x0d)
+            {
+                _immediateMode = false;
+                _immediateModeLine[_immediateModeLineLen] = 0;
+                if (_immediateModeLineLen > 0)
+                {
+                    // Check for test commands
+                    if (rdtolower(_immediateModeLine[0]) == 't')
+                    {
+                        // Run detailed bus test
+                        // testSelf_detailedBus();
+                    }
+                    else if (rdtolower(_immediateModeLine[0]) == 'm')
+                    {
+                        // Run memory test
+                        _selfTestMode = true;
+                        selfTestMemory(this, _display, _mcManager.getBusAccess());
+                    }
+                    else if (rdtolower(_immediateModeLine[0]) == 'b')
+                    {
+                        // Run bus bit test
+                        // testSelf_busBits();
+                    }
+                    else if ((rdtolower(_immediateModeLine[0]) == 'r') || (rdtolower(_immediateModeLine[0]) == 's'))
+                    {
+                        // Run self-tests
+                        // testSelf_readSetBus(rdtolower(_immediateModeLine[0]) == 'r');
+                    }
+                    else
+                    {
+                        // Send other commands to ESP32
+                        commandHandler.sendAPIReq(_immediateModeLine);
+                        _display.consolePut("\nSent request to ESP32:");
+                        _display.consolePut(_immediateModeLine);
+                        _display.consolePut("\n");
+                    }
+                }
+                _immediateModeLineLen = 0;
+                _display.consolePut("\nNormal mode\n");
+                _immediateMode = false;
+            }
+            else if ((pKeyStr[0] >= 32) && (pKeyStr[0] < 127))
+            {
+                _immediateModeLine[_immediateModeLineLen++] = pKeyStr[0];
+                _display.consolePut(pKeyStr[0]);
+            }
+        }
+        return;
+    }
+
+    // Send to the target machine to process
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
+    McBase* pMc = _mcManager.getMachine();
+    if (pMc)
+        pMc->keyHandler(ucModifiers, rawKeys);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -562,3 +565,18 @@ void BusRaiderApp::storeESP32StatusInfo(const char* pCmdJson)
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Ip Address %s", _esp32IPAddress);
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Self-test helpers
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusRaiderApp::selfTestHelperService()
+{
+    service();
+}
+
+int BusRaiderApp::selfTestKeyboardGet()
+{
+    int tmpKey = _selfTestKeyWaiting;
+    _selfTestKeyWaiting = -1;
+    return tmpKey;
+}

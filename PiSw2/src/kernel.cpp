@@ -12,6 +12,7 @@
 #include "tftpbootserver.h"
 #include <circle/chainboot.h>
 #include <circle/sysconfig.h>
+#include <circle/usb/usbkeyboard.h>
 #include <assert.h>
 #include <stdint.h>
 #include "string.h"
@@ -71,6 +72,7 @@ CKernel::CKernel (void)
 	m_BusRaiderApp(m_Display, m_CommsManager, m_McManager)
 {
 	m_pKernel = this;
+	_rebootRequested = false;
 	// m_ActLED.Blink (5);	// show we are alive
 }
 
@@ -119,6 +121,8 @@ boolean CKernel::Initialize (void)
 
 	if (bOK)
 	{
+		// TODO 2020
+		// NOTE: lines 158..165 of usbdevice.cpp are currently commented out and need to be for USB keyboards to work
 		bOK = m_USBHCI.Initialize ();
 	}
 
@@ -151,11 +155,24 @@ TShutdownMode CKernel::Run (void)
 {
 	m_Logger.Write(MODULE_PREFIX, LogNotice, "Compile time: " __DATE__ " " __TIME__);
 
+	CUSBKeyboardDevice *pKeyboard = (CUSBKeyboardDevice *) m_DeviceNameService.GetDevice ("ukbd1", FALSE);
+	if (pKeyboard == 0)
+	{
+		m_Logger.Write (MODULE_PREFIX, LogError, "Keyboard not found");
+		m_BusRaiderApp.peripheralStatus(true, false);
+	}
+	else
+	{
+		m_BusRaiderApp.peripheralStatus(true, true);
+	}
+
+	pKeyboard->RegisterKeyStatusHandlerRaw (KeyStatusHandlerRaw);
+
 	// Main loop
-	for (unsigned nCount = 0; !IsChainBootEnabled(); nCount++)
+	while (!IsChainBootEnabled() && !_rebootRequested)
 	{
 		// Screen alive indicator
-		m_Display.rotor (0, micros() / 100000);
+		m_Display.rotor (0, millis() / 100);
 
 		// Service comms
 		m_CommsManager.service();
@@ -173,3 +190,13 @@ TShutdownMode CKernel::Run (void)
 
 	return ShutdownReboot;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Keypresses
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void CKernel::KeyStatusHandlerRaw(unsigned char ucModifiers, const unsigned char rawKeys[6])
+{
+	m_pKernel->m_BusRaiderApp.keyStatusHandlerRaw(ucModifiers, rawKeys);
+}
+

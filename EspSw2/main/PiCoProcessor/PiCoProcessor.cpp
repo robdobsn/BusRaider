@@ -71,6 +71,10 @@ PiCoProcessor::PiCoProcessor(const char *pModuleName, ConfigBase &defaultConfig,
     _uploadBlockCount = 0;
     _uploadFilePos = 0;
     _fileCRC = 0;
+    _uploadStartAck = false;
+    _uploadBlockRxIndex = 0;
+    _uploadEndAck = false;
+    _uploadEndNotAck = false;
 
     // Stats
     _statsLastReportMs = 0;
@@ -810,6 +814,22 @@ void PiCoProcessor::hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen)
         // _cmdResponseBuf = pRxStr;
         LOG_I(MODULE_PREFIX, "RespMessageReceived %s\n", pRxStr);
     }
+    else if ((cmdName.equalsIgnoreCase("ufStartAck")))
+    {
+        _uploadStartAck = true;
+    }
+    else if ((cmdName.equalsIgnoreCase("ufBlockAck")))
+    {
+        _uploadBlockRxIndex = RdJson::getLong("index", 0, pRxStr);
+    }
+    else if ((cmdName.equalsIgnoreCase("ufEndAck")))
+    {
+        _uploadEndAck = true;
+    }
+    else if ((cmdName.equalsIgnoreCase("ufEndNotAck")))
+    {
+        _uploadEndNotAck = true;
+    }
 }
 
 void PiCoProcessor::hdlcFrameTxToPiCB(const uint8_t* pFrame, int frameLen)
@@ -878,19 +898,40 @@ void PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String&
     // Check if first block in an upload
     if (_uploadBlockCount == 0)
     {
+        // CRC calculation
+        _fileCRC = MiniHDLC::crcInitCCITT();
         _uploadFileType = fileType;
-        sendFileStartRecord(fileType, req, filename, fileLength);
+
+        // Debug
         LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler new upload millis %ld filetype %s fileName %s fileLen %d blockLen %d final %d isFS %s isAPI %s", 
                 _uploadLastBlockMs, fileType, filename.c_str(), fileLength, len, finalBlock,
                 (_uploadFromFSInProgress ? "yes" : "no"), 
                 (_uploadFromAPIInProgress ? "yes" : "no"));
-        
-        // CRC calculation
-        _fileCRC = MiniHDLC::crcInitCCITT();
+
+        // Init acks
+        _uploadStartAck = false;
+        _uploadBlockRxIndex = 0;
+        _uploadEndAck = false;
+        _uploadEndNotAck = false;
+
+        // Send file start
+        for (int retryCount = 0; retryCount < UPLOAD_MAX_RESENDS_BEFORE_FAIL; retryCount++)
+        {
+            sendFileStartRecord(fileType, req, filename, fileLength);
+            if (waitForStartAck())
+                break;
+            LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler retry %d upload start", retryCount+1);
+        }
     }
 
     // Send the block
-    sendFileBlock(index, data, len);
+    for (int retryCount = 0; retryCount < UPLOAD_MAX_RESENDS_BEFORE_FAIL; retryCount++)
+    {
+        sendFileBlock(index, data, len);
+        if (waitForBlockAck(index))
+            break;
+        LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler retry %d upload block %d", retryCount+1, _uploadBlockCount);
+    }
     _uploadBlockCount++;
 
     // Update CRC
@@ -899,7 +940,14 @@ void PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String&
     // Check if that was the final block
     if (finalBlock)
     {
-        sendFileEndRecord(_uploadBlockCount, NULL);
+        for (int retryCount = 0; retryCount < UPLOAD_MAX_RESENDS_BEFORE_FAIL; retryCount++)
+        {
+            sendFileEndRecord(_uploadBlockCount, NULL);
+            if (waitForEndAck())
+                break;
+            LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler retry %d upload end", retryCount+1);
+        }
+
 #ifdef DEBUG_PI_UPLOAD_END
         LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler file end sent CRC of whole file %04x", _fileCRC);
 #endif
@@ -999,5 +1047,47 @@ bool PiCoProcessor::procRICRESTCmdFrame(const String& cmdName, RICRESTMsg& ricRE
     LOG_I(MODULE_PREFIX, "processRICRESTCmdFrame UNKNOWN %s", cmdName.c_str());
 #endif
 
+    return false;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Wait for acknowledgement
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool PiCoProcessor::waitForStartAck()
+{
+    uint32_t waitStartMs = millis();
+    while (!Utils::isTimeout(millis(), waitStartMs, UPLOAD_MAX_WAIT_FOR_ACK_BEFORE_RESEND_MS))
+    {
+        if (_uploadStartAck)
+            return true;
+    }
+    return false;
+}
+
+bool PiCoProcessor::waitForBlockAck(size_t index)
+{
+    uint32_t waitStartMs = millis();
+    while (!Utils::isTimeout(millis(), waitStartMs, UPLOAD_MAX_WAIT_FOR_ACK_BEFORE_RESEND_MS))
+    {
+        if (_uploadBlockRxIndex == index)
+            return true;
+    }
+    return false;
+}
+
+bool PiCoProcessor::waitForEndAck()
+{
+    uint32_t waitStartMs = millis();
+    while (!Utils::isTimeout(millis(), waitStartMs, UPLOAD_MAX_WAIT_FOR_ACK_BEFORE_RESEND_MS))
+    {
+        if (_uploadEndAck)
+            return true;
+        else if (_uploadEndNotAck)
+        {
+            _uploadEndNotAck = false;
+            return false;
+        }
+    }
     return false;
 }

@@ -11,7 +11,7 @@ private:
     uint8_t _screenBuffer[ROBSZ80_DISP_RAM_SIZE];
     bool _screenBufferValid;
 
-    static McVariantTable _defaultDescriptorTables[];
+    static McVariantTable _machineDescriptorTables[];
 
 public:
 
@@ -24,7 +24,7 @@ public:
     virtual void disableMachine() override;
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-    virtual void displayRefreshFromMirrorHw() override;
+    virtual void refreshDisplay() override;
 
     // Handle a key press
     virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]) override;

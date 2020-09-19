@@ -20,7 +20,7 @@ class McBase
 {
 public:
 
-    McBase(McManager& mcManager, const McVariantTable* pVariantTables, uint32_t numVariants);
+    McBase(McManager& mcManager, BusAccess& busAccess, const McVariantTable* pVariantTables, uint32_t numVariants);
 
     // Check if name is a valid one for this machine
     virtual bool isCalled(const char* mcName, uint32_t& machineVariant);
@@ -62,7 +62,7 @@ public:
     virtual void machineHeartbeat();
 
     // Handle display refresh (called at a rate indicated by the machine's descriptor table)
-    virtual void displayRefreshFromMirrorHw() = 0;
+    virtual void refreshDisplay() = 0;
 
     // Handle reset for the machine - if false returned then the bus raider will issue a hardware reset
     virtual bool reset( bool restoreWaitDefaults,  bool holdInReset);
@@ -142,6 +142,9 @@ public:
 protected:
     // Machine manager
     McManager& _mcManager;
+
+    // Bus access
+    BusAccess& _busAccess;
 
 private:
     // Machine descriptor

@@ -5,7 +5,7 @@
 CIRCLEHOME = ../../circle
 
 OBJS	= BusAccess.o BusAccess_Control.o TargetBreakpoints.o \
-		TargetCPUZ80.o TargetProgrammer.o
+		TargetCPUZ80.o TargetProgrammer.o memoryTests.o
 
 INCLUDE	+= -I ../system
 

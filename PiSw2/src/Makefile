@@ -20,12 +20,13 @@ LIBS	= 	$(CIRCLEHOME)/lib/usb/libusb.a \
 			Hardware/brHardware.a \
 			BusControlAPI/brBusAPI.a \
 			Machines/brMachines.a \
+			SelfTest/brSelfTest.a \
 			fonts/brFonts.a \
 			TerminalEmulation/brTermEmu.a \
 			FileFormats/brFileFormats.a \
 			Display/brDisplay.a
 
-INCLUDE	+= -I system -I comms -I web -I TargetBus -I Display -I Machines -I TerminalEmulation
+INCLUDE	+= -I system -I comms -I web -I TargetBus -I Display -I Machines -I TerminalEmulation -I SelfTest
 
 include Rules.mk
 

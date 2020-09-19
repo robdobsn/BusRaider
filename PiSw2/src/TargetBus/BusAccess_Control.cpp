@@ -8,6 +8,9 @@
 #include <circle/bcm2835.h>
 #include "TargetClockGenerator.h"
 
+// Module name
+static const char MODULE_PREFIX[] = "BusAccCtrl";
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Bus Sockets
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -576,13 +579,13 @@ void BusAccess::addrSet(unsigned int addr)
 // - control of host bus has been requested and acknowledged
 // - address bus is already set and output enabled to host bus
 // - PIB is already set to output
-void BusAccess::byteWrite(uint32_t data, int iorq)
+void BusAccess::byteWrite(uint32_t data, BlockAccessType accessType)
 {
     // Set the data onto the PIB
     pibSetValue(data);
     // Perform the write
     // Clear DIR_IN (so make direction out), enable data output onto data bus and MREQ_BAR active
-    write32(ARM_GPIO_GPCLR0, BR_DATA_DIR_IN_MASK | BR_MUX_CTRL_BIT_MASK | (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK));
+    write32(ARM_GPIO_GPCLR0, BR_DATA_DIR_IN_MASK | BR_MUX_CTRL_BIT_MASK | ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK));
     write32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
     // Write the data by setting WR_BAR active
     if (_hwVersionNumber == 17)
@@ -602,13 +605,13 @@ void BusAccess::byteWrite(uint32_t data, int iorq)
     // Deactivate and leave data direction set to inwards
     if (_hwVersionNumber == 17)
     {
-        write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_WR_BAR_MASK);
+        write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_WR_BAR_MASK);
         muxClear();
     }
     else
     {
 #ifdef V2_PROTO_USING_MUX_EN
-        write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | BR_MUX_EN_BAR_MASK | (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_WR_BAR_MASK);
+        write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | BR_MUX_EN_BAR_MASK | ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_WR_BAR_MASK);
 #else
         write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_WR_BAR_MASK);
         write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
@@ -621,10 +624,10 @@ void BusAccess::byteWrite(uint32_t data, int iorq)
 // - control of host bus has been requested and acknowledged
 // - address bus is already set and output enabled to host bus
 // - PIB is already set to input
-uint8_t BusAccess::byteRead(int iorq)
+uint8_t BusAccess::byteRead(BlockAccessType accessType)
 {
     // Enable data output onto PIB, MREQ_BAR and RD_BAR both active
-    write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK | (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
+    write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK | ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
     write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | (BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS));
     if (_hwVersionNumber != 17)
     {
@@ -640,14 +643,14 @@ uint8_t BusAccess::byteRead(int iorq)
     if (_hwVersionNumber == 17)
     {
         write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-        write32(ARM_GPIO_GPSET0, (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
+        write32(ARM_GPIO_GPSET0, ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
     }
     else
     {
 #ifdef V2_PROTO_USING_MUX_EN
-        write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK | (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
+        write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK | ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
 #else
-        write32(ARM_GPIO_GPSET0, (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
+        write32(ARM_GPIO_GPSET0, ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
         write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
 #endif
     }
@@ -655,9 +658,10 @@ uint8_t BusAccess::byteRead(int iorq)
 }
 
 // Write a consecutive block of memory to host
-BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, bool busRqAndRelease, bool iorq)
+BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, BlockAccessType accessType)
 {
     // Check if we need to request bus
+    bool busRqAndRelease = !_busIsUnderControl;
     if (busRqAndRelease) {
         // Request bus and take control after ack
         BR_RETURN_TYPE ret = controlRequestAndTake();
@@ -678,7 +682,7 @@ BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32
     for (uint32_t i = 0; i < len; i++)
     {
         // Write byte
-        byteWrite(*pData, iorq);
+        byteWrite(*pData, accessType);
 
         // Increment the lower address counter
         addrLowInc();
@@ -708,9 +712,10 @@ BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32
 // Read a consecutive block of memory from host
 // Assumes:
 // - control of host bus has been requested and acknowledged
-BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len, bool busRqAndRelease, bool iorq)
+BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len, BlockAccessType accessType)
 {
     // Check if we need to request bus
+    bool busRqAndRelease = !_busIsUnderControl;
     if (busRqAndRelease) {
         // Request bus and take control after ack
         BR_RETURN_TYPE ret = controlRequestAndTake();
@@ -728,7 +733,7 @@ BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
     addrSet(addr);
 
     // Calculate bit patterns outside loop
-    uint32_t reqLinePlusRead = (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | (1 << BR_RD_BAR);
+    uint32_t reqLinePlusRead = ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | (1 << BR_RD_BAR);
 
     // Iterate data
     for (uint32_t i = 0; i < len; i++)
@@ -744,8 +749,27 @@ BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
         // Delay to allow data bus to settle
         lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
         
+        // // TODO 2020
+        // lowlev_cycleDelay(10000);
+
+        // TODO 2020
+        if (pibGetValue() != *pData)
+        {
+            digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+            microsDelay(4);
+            digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        }
+
         // Get the data
         *pData = pibGetValue();
+
+        // // TODO 2020
+        // lowlev_cycleDelay(10000);
+
+        // if (i == 0)
+        // {
+        //     LogWrite(MODULE_PREFIX, LOG_NOTICE, "blockRead %08x", read32(ARM_GPIO_GPLEV0));
+        // }
 
         // Deactivate IORQ/MREQ and RD and clock the low address
         write32(ARM_GPIO_GPSET0, reqLinePlusRead);
@@ -1061,7 +1085,7 @@ void BusAccess::busPagePinSetActive(bool active)
 
 void BusAccess::rawBusControlEnable(bool en)
 {
-    busAccessReset();
+    busAccessReinit();
     _busServiceEnabled = !en;
 }
 
