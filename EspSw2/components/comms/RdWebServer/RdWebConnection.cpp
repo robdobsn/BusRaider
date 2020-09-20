@@ -29,6 +29,7 @@ static const char *MODULE_PREFIX = "RdWebConn";
 // #define DEBUG_RESPONDER_CONTENT_DETAIL
 // #define DEBUG_RESPONDER_CREATE_DELETE
 // #define DEBUG_WEB_SOCKET_SEND
+// #define DEBUG_WEB_CONNECTION_DATA_PACKETS
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -119,6 +120,7 @@ void RdWebConnection::clear()
     _timeoutDurationMs = 0;
     _timeoutActive = false;
     _parseHeaderStr = "";
+    _debugDataRxCount = 0;
     _header.clear();
 }
 
@@ -201,6 +203,13 @@ void RdWebConnection::service()
         {
             LOG_W(MODULE_PREFIX, "service netconn_data err %s buf NULL pConn %lx", netconnErrToStr(err), (unsigned long)_pConn);
             errorFound = true;
+        }
+        else
+        {
+            _debugDataRxCount += bufLen;
+#ifdef DEBUG_WEB_CONNECTION_DATA_PACKETS
+            LOG_W(MODULE_PREFIX, "service netconn_data len %d rxTotal %d", bufLen, _debugDataRxCount);
+#endif
         }
     }
 

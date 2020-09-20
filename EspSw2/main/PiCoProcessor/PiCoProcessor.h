@@ -118,6 +118,7 @@ private:
     FileSystemChunker _chunker;
     std::vector<uint8_t> _uploadBlockBuffer;
     uint32_t _fileCRC;
+    uint32_t _uploadBytesSent;
 
     // Upload acks
     bool _uploadStartAck;

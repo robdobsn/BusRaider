@@ -14,10 +14,7 @@
 #include <string.h>
 #include "lwip/api.h"
 #include <Utils.h>
-#ifdef USE_IDF_V4_1_NETIF_METHODS
-#else
-#include <tcpip_adapter.h>
-#endif
+#include <NetworkSystem.h>
 
 static const char *MODULE_PREFIX = "RdWebServer";
 
@@ -45,8 +42,7 @@ void RdWebServer::setup(RdWebServerSettings& settings)
 
     // Start network interface if not already started
 #ifdef USE_IDF_V4_1_NETIF_METHODS
-        if (esp_netif_init() == ESP_OK)
-        else
+        if (esp_netif_init() != ESP_OK)
             LOG_E(MODULE_PREFIX, "could not start netif");
 #else
         tcpip_adapter_init();

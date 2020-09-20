@@ -38,6 +38,8 @@ static const char *MODULE_PREFIX = "PiCoProcessor";
 // #define DEBUG_PI_TX_FRAME_TO_PI
 // #define DEBUG_RICREST_CMD_FRAMES
 #define DEBUG_RDP_MSG_FROM_PI
+#define DEBUG_PI_UPLOAD_ACKS
+// #define DEBUG_PI_UPLOAD_ACKS_DETAIL
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -71,6 +73,7 @@ PiCoProcessor::PiCoProcessor(const char *pModuleName, ConfigBase &defaultConfig,
     _uploadBlockCount = 0;
     _uploadFilePos = 0;
     _fileCRC = 0;
+    _uploadBytesSent = 0;
     _uploadStartAck = false;
     _uploadBlockRxIndex = 0;
     _uploadEndAck = false;
@@ -817,18 +820,30 @@ void PiCoProcessor::hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen)
     else if ((cmdName.equalsIgnoreCase("ufStartAck")))
     {
         _uploadStartAck = true;
+#ifdef DEBUG_PI_UPLOAD_ACKS
+        LOG_I(MODULE_PREFIX, "ufStartAck %s", pRxStr);
+#endif
     }
     else if ((cmdName.equalsIgnoreCase("ufBlockAck")))
     {
         _uploadBlockRxIndex = RdJson::getLong("index", 0, pRxStr);
+#ifdef DEBUG_PI_UPLOAD_ACKS_DETAIL
+        LOG_I(MODULE_PREFIX, "ufBlockAck %s", pRxStr);
+#endif
     }
     else if ((cmdName.equalsIgnoreCase("ufEndAck")))
     {
         _uploadEndAck = true;
+#ifdef DEBUG_PI_UPLOAD_ACKS
+        LOG_I(MODULE_PREFIX, "ufEndAck %s", pRxStr);
+#endif
     }
     else if ((cmdName.equalsIgnoreCase("ufEndNotAck")))
     {
         _uploadEndNotAck = true;
+#ifdef DEBUG_PI_UPLOAD_ACKS
+        LOG_I(MODULE_PREFIX, "ufEndNotAck %s", pRxStr);
+#endif
     }
 }
 
@@ -888,8 +903,8 @@ void PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String&
             const String& filename, int fileLength, size_t index, const uint8_t *data, size_t len, bool finalBlock)
 {
 #ifdef DEBUG_PI_UPLOAD_COMMON_BLOCK_DETAIL
-    LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler pos %d blkCnt %d blkLen %d isFinal %d", 
-                index, _uploadBlockCount, len, finalBlock);
+    LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler pos %d blkCnt %d blkLen %d isFinal %d rxIdx %d bytesSent %d", 
+                index, _uploadBlockCount, len, finalBlock, _uploadBlockRxIndex, _uploadBytesSent);
 #endif
 
     // For timeouts        
@@ -913,6 +928,7 @@ void PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String&
         _uploadBlockRxIndex = 0;
         _uploadEndAck = false;
         _uploadEndNotAck = false;
+        _uploadBytesSent = 0;
 
         // Send file start
         for (int retryCount = 0; retryCount < UPLOAD_MAX_RESENDS_BEFORE_FAIL; retryCount++)
@@ -936,6 +952,7 @@ void PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String&
 
     // Update CRC
     _fileCRC = MiniHDLC::crcUpdateCCITT(_fileCRC, data, len);
+    _uploadBytesSent += len;
 
     // Check if that was the final block
     if (finalBlock)

@@ -154,6 +154,7 @@ void BusRaiderApp::service()
         {
             commandHandler.sendAPIReq("querycurmc");
             _esp32LastMachineReqUs = micros();
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Req ESP32 cur machine");
         }
     }
 
@@ -161,7 +162,7 @@ void BusRaiderApp::service()
     statusDisplayUpdate();
 
     // Service keyboard
-    if (!_inKeyboardRoutine)
+    if (!_inKeyboardRoutine || _selfTestMode)
     {
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Keys in buffer %d", _keyInfoBufferPos.count());
         if (_keyInfoBufferPos.canGet())
@@ -169,9 +170,19 @@ void BusRaiderApp::service()
             KeyInfo* pKeyInfo = &_keyInfoBuffer[_keyInfoBufferPos.posToGet()];
             _keyInfoBufferPos.hasGot();
             // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Keyattop %02x %02x %02x", pKeyInfo->rawKeys[0], pKeyInfo->rawKeys[1], pKeyInfo->rawKeys[2]);
-            _inKeyboardRoutine = true;
-            handleUSBKeypress(pKeyInfo->modifiers, pKeyInfo->rawKeys);
-            _inKeyboardRoutine = false;
+            if (!_inKeyboardRoutine)
+            {
+                _inKeyboardRoutine = true;
+                handleUSBKeypress(pKeyInfo->modifiers, pKeyInfo->rawKeys);
+                _inKeyboardRoutine = false;
+            }
+            else
+            {
+                const char* pKeyStr = McTerminal::convertRawToKeyString(pKeyInfo->modifiers, pKeyInfo->rawKeys);
+                LogWrite("MODULE_PREFIX", LogNotice, "Key converted to %s", pKeyStr);
+                if (strlen(pKeyStr) != 0)
+                    _selfTestKeyWaiting = pKeyStr[0];
+            }
         }
     }
 }
@@ -427,15 +438,6 @@ void BusRaiderApp::keyStatusHandlerRaw(unsigned char ucModifiers,
 void BusRaiderApp::handleUSBKeypress(unsigned char ucModifiers, 
                 const unsigned char rawKeys[CommandHandler::NUM_USB_KEYS_PASSED])
 {
-    // Check for self-test mode
-    if (_selfTestMode)
-    {
-        const char* pKeyStr = McTerminal::convertRawToKeyString(ucModifiers, rawKeys);
-        if (strlen(pKeyStr) != 0)
-            _selfTestKeyWaiting = pKeyStr[0];
-        return;
-    }
-
     CommandHandler commandHandler = _commsManager.getCommandHandler();
     // Check for immediate mode
     if (rawKeys[0] == KEY_F2)
@@ -488,6 +490,7 @@ void BusRaiderApp::handleUSBKeypress(unsigned char ucModifiers,
                         // Run memory test
                         _selfTestMode = true;
                         selfTestMemory(this, _display, _mcManager.getBusAccess());
+                        _selfTestMode = false;
                     }
                     else if (rdtolower(_immediateModeLine[0]) == 'b')
                     {

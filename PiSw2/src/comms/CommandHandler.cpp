@@ -535,8 +535,8 @@ void CommandHandler::handleFileEnd(const char* pCmdJson)
         bool isFirmware = strcasecmp(_pReceivedFileType, "firmware") == 0;
         if (isFirmware)
         {
-            // CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufEnd IMG firmware update File %s, len %d calcCRC 0x%04x ufEndCRC 0x%04x", 
-            //             _receivedFileName, _receivedFileBytesRx, calcCRC, ufEndCRCVal);
+            CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "ufEnd IMG firmware update File %s, len %d bufSize %d calcCRC 0x%04x ufEndCRC 0x%04x", 
+                        _receivedFileName, _receivedFileBytesRx, _receivedFileBufSize, calcCRC, ufEndCRCVal);
             // Short delay to allow comms completion 
             microsDelay(100000);
         }

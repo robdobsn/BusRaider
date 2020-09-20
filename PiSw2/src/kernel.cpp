@@ -166,25 +166,55 @@ TShutdownMode CKernel::Run (void)
 		m_BusRaiderApp.peripheralStatus(true, true);
 	}
 
-	pKeyboard->RegisterKeyStatusHandlerRaw (KeyStatusHandlerRaw);
+	pKeyboard->RegisterKeyStatusHandlerRaw(KeyStatusHandlerRaw);
 
+#ifdef USE_OTA_COPY
 	// Main loop
-	while (!IsChainBootEnabled() && !_rebootRequested)
+	while (!m_CommsManager.otaIsPending() && !_rebootRequested)
 	{
-		// Screen alive indicator
-		m_Display.rotor (0, millis() / 100);
-
 		// Service comms
-		m_CommsManager.service();
 		m_BusAccess.service();
 		m_TargetProgrammer.service();
 		m_HwManager.service();
 		m_BusControlAPI.service();
 		m_McManager.service();
 		m_BusRaiderApp.service();
+		m_CommsManager.service();
+	}
+
+	// // Diable peripherals
+	// pKeyboard->RemoveDevice();
+	// m_Serial.RemoveDevice();
+	// m_Interrupt.DisableIRQ(0);
+	// m_Interrupt.DisableFIQ();
+
+	// Check for OTA pending
+	if (m_CommsManager.otaIsPending())
+	{
+		// Enable chain boot
+		EnableChainBoot(m_CommsManager.otaBuffer(), m_CommsManager.otaBufLen());
+		DoChainBoot();
+	}
+	
+	// m_Logger.Write (MODULE_PREFIX, LogNotice, "Rebooting ...");
+
+	// m_Scheduler.Sleep (1);
+
+#else
+	while (!IsChainBootEnabled() && !_rebootRequested)
+	{
+		// Service comms
+		m_BusAccess.service();
+		m_TargetProgrammer.service();
+		m_HwManager.service();
+		m_BusControlAPI.service();
+		m_McManager.service();
+		m_BusRaiderApp.service();
+		m_CommsManager.service();
 	}
 
 	m_Logger.Write (MODULE_PREFIX, LogNotice, "Rebooting ...");
+#endif
 
 	m_Scheduler.Sleep (1);
 

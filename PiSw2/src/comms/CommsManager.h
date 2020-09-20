@@ -28,6 +28,19 @@ public:
         return _commandHandler;
     }
     
+    // OTA
+    bool otaIsPending()
+    {
+        return _otaBufLen > 0;
+    }
+    uint8_t* otaBuffer()
+    {
+        return _pOTABuffer;
+    }
+    uint32_t otaBufLen()
+    {
+        return _otaBufLen;
+    }
 private:
     // Singleton pointer
     static CommsManager* _pCommsManager;
@@ -43,6 +56,10 @@ private:
 
     // AppSerialIF
     AppSerialIF* _pAppSerialIF;
+
+    // Pending OTA
+    uint8_t* _pOTABuffer;
+    uint32_t _otaBufLen;
     
 	// Service getting from serial
     void serviceGetFromSerial();
@@ -58,6 +75,6 @@ private:
     static uint32_t serialTxAvailable();
 	static bool handleRxMsg(void* pObject, const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
                 char* pRespJson, unsigned maxRespLen);
-	static bool performUpdate(const uint8_t* pData, unsigned dataLen);
+	static bool registerPendingOTA(const uint8_t* pData, unsigned dataLen);
 };
 

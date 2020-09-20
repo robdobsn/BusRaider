@@ -90,7 +90,7 @@ void McManager::init()
 
     // Add machines - McBase does the actual add
     // TODO 2020
-    // new McTerminal(*this);
+    new McTerminal(*this, _busAccess);
     new McTRS80(*this, _busAccess);
     // new McRobsZ80(*this);
     // new McZXSpectrum(*this);
@@ -261,8 +261,13 @@ bool McManager::setupMachine(const char* mcJson)
     // Extract machine name
     static const int MAX_MC_NAME_LEN = 100;
     char mcName [MAX_MC_NAME_LEN];
-    if (!jsonGetValueForKey("name", mcJson, mcName, MAX_MC_NAME_LEN))
-        return false;
+    bool nameValid = jsonGetValueForKey("name", mcJson, mcName, MAX_MC_NAME_LEN);
+    if (!nameValid || (strlen(mcName) == 0))
+    {
+        // Select first machine
+        if (_numMachines > 0)
+            strlcpy(mcName, _pMachines[0]->getMachineName(), sizeof(mcName));
+    }
 
     // Ask each machine if it is them
     McBase* pMc = NULL;

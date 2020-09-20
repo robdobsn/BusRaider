@@ -49,6 +49,7 @@ void RdWebMultipart::clear()
     _contentPos = 0;
     _isFinalPart = false;
     _boundaryIdx = 0;
+    _debugBytesHandled = 0;
     _headerFieldStartPos = INVALID_POS;
     _headerValueStartPos = INVALID_POS;
     _headerName.clear();
@@ -75,6 +76,9 @@ void RdWebMultipart::setBoundary(const String &boundaryStr)
 
     // Start of parsing
     _parseState = RDMULTIPART_START;
+
+    // Debug
+    _debugBytesHandled = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -83,6 +87,9 @@ void RdWebMultipart::setBoundary(const String &boundaryStr)
 
 bool RdWebMultipart::handleData(const uint8_t *buffer, uint32_t bufLen)
 {
+    // Debug
+    _debugBytesHandled += bufLen;
+
     // Check valid
     if (_parseState == RDMULTIPART_ERROR)
     {
@@ -300,7 +307,8 @@ bool RdWebMultipart::processPayload(const uint8_t *buffer, uint32_t bufPos, uint
     // Process all data
     uint32_t payloadStartPos = bufPos;
 #ifdef DEBUG_MULTIPART_PAYLOAD
-    LOG_W(MODULE_PREFIX, "Payload start pos %d", bufPos);
+    LOG_W(MODULE_PREFIX, "Payload start pos %d bytesHandled %d %s", bufPos, _debugBytesHandled,
+            _debugBytesHandled > _contentPos + 154 + 1440 ? "MISSING DATA" : "");
 #endif
     while (bufPos < bufLen)
     {
@@ -317,10 +325,8 @@ bool RdWebMultipart::processPayload(const uint8_t *buffer, uint32_t bufPos, uint
             }
         }
 
-        // We know there is a boundary
-        uint8_t curByte = buffer[bufPos];
-
         // Check for boundary
+        uint8_t curByte = buffer[bufPos];
         if (_boundaryIdx != 0)
         {
             // Already in a possible boundary
@@ -390,7 +396,8 @@ bool RdWebMultipart::processPayload(const uint8_t *buffer, uint32_t bufPos, uint
                 if (payloadStartPos + _boundaryIdx > bufPos)
                 {
 #ifdef DEBUG_MULTIPART_BOUNDARY
-                    LOG_W(MODULE_PREFIX, "Mis-identified boundary crossing part %d byte %02x", bufPos, curByte);
+                    LOG_W(MODULE_PREFIX, "Mis-identified boundary crossing part %d byte %02x boundaryIdx %d payloadStartPos %d savedData %02x", 
+                                bufPos, curByte, _boundaryIdx, payloadStartPos, _boundaryBuf.at(0));
 #endif
                     // Failed to match boundary - the chars in the boundaryBuf were regular data
                     dataCallback(_boundaryBuf.data(), 0, _boundaryIdx);
@@ -412,7 +419,7 @@ bool RdWebMultipart::processPayload(const uint8_t *buffer, uint32_t bufPos, uint
             _boundaryBuf[0] = curByte;
             _boundaryIdx = 1;
 #ifdef DEBUG_MULTIPART_BOUNDARY
-            LOG_W(MODULE_PREFIX, "Boundary possible at %d", bufPos);
+            LOG_W(MODULE_PREFIX, "Boundary possible at %d byteVal %02x", bufPos, curByte);
 #endif
         }
 

@@ -8,9 +8,6 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <Logger.h>
-#ifndef USE_IDF_V4_1_NETIF_METHODS
-#include "tcpip_adapter.h"
-#endif
 #include "NetworkSystem.h"
 
 static const char* MODULE_PREFIX = "NetworkSystem";

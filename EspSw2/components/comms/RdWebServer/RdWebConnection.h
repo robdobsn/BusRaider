@@ -81,10 +81,13 @@ private:
     HttpStatusCode _httpResponseStatus;
 
     // Timeout timer
-    static const uint32_t MAX_STD_CONN_DURATION_MS = 30000;
+    static const uint32_t MAX_STD_CONN_DURATION_MS = 180000;
     uint32_t _timeoutStartMs;
     uint32_t _timeoutDurationMs;
     bool _timeoutActive;
+
+    // Debug
+    uint32_t _debugDataRxCount;
 
     // Handle header data
     bool handleHeaderData(const uint8_t* pRxData, uint32_t dataLen, uint32_t& curBufPos);

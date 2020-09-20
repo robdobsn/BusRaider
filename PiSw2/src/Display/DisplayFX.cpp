@@ -65,7 +65,7 @@ bool DisplayFX::init(int displayWidth, int displayHeight)
     _pBCMFrameBuffer = new CBcmFrameBuffer (displayWidth, displayHeight, DEPTH);
 #if DEPTH == 8
     for (int i = 0; i < 256; i++)
-        _pBCMFrameBuffer->SetPalette32(i, xterm_colors[i]);
+        _pBCMFrameBuffer->SetPalette32(i, COLORTRANS(xterm_colors[i]));
     // _pBCMFrameBuffer->SetPalette (NORMAL_COLOR, NORMAL_COLOR16);
     // _pBCMFrameBuffer->SetPalette (HIGH_COLOR,   HIGH_COLOR16);
     // _pBCMFrameBuffer->SetPalette (HALF_COLOR,   HALF_COLOR16);

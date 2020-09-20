@@ -14,6 +14,10 @@ extern "C" WgfxFont __systemFont;
 
 #define DEPTH	8		// can be: 8, 16 or 32
 
+#define COLORTRANS(RGB) (((RGB & 0xff) << 16) \
+                    | ((RGB & 0xff00)) \
+                    | ((RGB & 0xff0000) >> 16))
+
 // really ((green) & 0x3F) << 5, but to have a 0-31 range for all colors
 #define COLOR16(red, green, blue)	  (((red) & 0x1F) << 11 \
 					| ((green) & 0x1F) << 6 \

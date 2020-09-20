@@ -75,7 +75,7 @@ private:
     struct netconn* _pConn;
 
     // Timeout timer
-    static const uint32_t MAX_STD_CONN_DURATION_MS = 30000;
+    static const uint32_t MAX_STD_CONN_DURATION_MS = 120000;
     uint32_t _timeoutStartMs;
     uint32_t _timeoutDurationMs;
     bool _timeoutActive;

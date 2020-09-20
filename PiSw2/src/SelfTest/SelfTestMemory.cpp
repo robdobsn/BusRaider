@@ -78,6 +78,8 @@ void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusAccess& bu
             {
                 // Get key
                 int key = pBusRaiderApp->selfTestKeyboardGet();
+                // LogWrite("MEMTEST", LogNotice, "GET KEY");
+
                 // 
                 if (rdtolower(key) == 'y')
                 {
@@ -239,5 +241,6 @@ void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusAccess& bu
             }
         }
     }
+
 }
 

@@ -14,10 +14,7 @@
 #include <string.h>
 #include "lwip/api.h"
 #include <Utils.h>
-#ifdef USE_IDF_V4_1_NETIF_METHODS
-#else
-#include <tcpip_adapter.h>
-#endif
+#include <NetworkSystem.h>
 
 const static char* MODULE_PREFIX = "WebConnMgr";
 

@@ -19,8 +19,18 @@
 #include "WString.h"
 
 // #define PRIVATE_EVENT_LOOP 1
-// #define USE_IDF_V4_1_NETIF_METHODS 1
 #define USE_V4_0_1_PLUS_NET_STRUCTS 1
+
+#include "esp_idf_version.h"
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 1, 0)
+#define USE_IDF_V4_1_NETIF_METHODS
+#endif
+
+#ifdef USE_IDF_V4_1_NETIF_METHODS
+#include "esp_netif.h"
+#else
+#include "tcpip_adapter.h"
+#endif
 
 class NetworkSystem
 {

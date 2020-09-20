@@ -135,6 +135,9 @@ private:
     // Form info
     RdMultipartForm _formInfo;
 
+    // Debug
+    uint32_t _debugBytesHandled;
+
     // Helpers
     void clearCallbacks();
     void indexBoundary();

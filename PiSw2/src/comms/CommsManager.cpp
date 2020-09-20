@@ -18,11 +18,15 @@ CommsManager::CommsManager(CUartMaxiSerialDevice* pSerial, AppSerialIF* pAppSeri
     // Singleton
     _pCommsManager = this;
 
+    // OTA
+    _otaBufLen = 0;
+    _pOTABuffer = NULL;
+
 	// Setup command handler
 	_commandHandler.setPutToSerialCallback(serialPutStr, serialTxAvailable);
 
     // Add a comms socket (should have index 0)
-    _commandHandler.commsSocketAdd(this, true, handleRxMsg, performUpdate, NULL);
+    _commandHandler.commsSocketAdd(this, true, handleRxMsg, registerPendingOTA, NULL);
 }
 
 CommsManager::~CommsManager()
@@ -147,18 +151,26 @@ bool CommsManager::handleRxMsg(void* pObject, const char* pCmdJson, const uint8_
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Perform update
+// Register pending OTA
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool CommsManager::performUpdate(const uint8_t* pData, unsigned dataLen)
+bool CommsManager::registerPendingOTA(const uint8_t* pData, unsigned dataLen)
 {
-	CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "performUpdate dataLen %d firstByte= 0x%02x last 0x%02x", 
-            dataLen, pData[0], pData[dataLen-1]);
+	CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "performUpdate dataLen %d [0] 0x%02x [16] 0x%02x [-1] 0x%02x", 
+            dataLen, pData[0], pData[16], pData[dataLen-1]);
 
-    // Allow debug message to be output - maybe needs longer if sent to display
-    microsDelay(1000000);
+    // Allow debug message to be output
+    microsDelay(100000);
 
+#ifdef USE_OTA_COPY
+    // Copy to buffer
+    _pCommsManager->_pOTABuffer = new uint8_t[dataLen];
+    if (!_pCommsManager->_pOTABuffer)
+        return false;
+    _pCommsManager->_otaBufLen = dataLen;
+#else
     // Restart with new firmware
 	EnableChainBoot(pData, dataLen);
+#endif
 	return true;
 }
