@@ -179,7 +179,7 @@ void BusRaiderApp::service()
             else
             {
                 const char* pKeyStr = McTerminal::convertRawToKeyString(pKeyInfo->modifiers, pKeyInfo->rawKeys);
-                LogWrite("MODULE_PREFIX", LogNotice, "Key converted to %s", pKeyStr);
+                // LogWrite("MODULE_PREFIX", LogNotice, "Key converted to %s", pKeyStr);
                 if (strlen(pKeyStr) != 0)
                     _selfTestKeyWaiting = pKeyStr[0];
             }

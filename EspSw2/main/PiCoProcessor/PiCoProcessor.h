@@ -161,7 +161,7 @@ private:
     void apiQueryCurMc(const String &reqStr, String &respStr);
     void apiSetMcJson(const String &reqStr, String &respStr);
     void apiSetMcJsonContent(const String &reqStr, const uint8_t *pData, size_t len, size_t index, size_t total);
-    void uploadCommonBlockHandler(const char* fileType, const String& req, 
+    bool uploadCommonBlockHandler(const char* fileType, const String& req, 
             const String& filename, int fileLength, size_t index, const uint8_t *pData, size_t len, bool finalBlock);
     void sendFileStartRecord(const char* fileType, const String& req, const String& filename, int fileLength);
     void sendFileBlock(size_t index, const uint8_t *pData, size_t len);

@@ -881,6 +881,8 @@ void PiCoProcessor::uploadAPIBlockHandler(const char* fileType, const String& re
     // Check upload from API already in progress
     if (!_uploadFromAPIInProgress)
     {
+        if (index != 0)
+            return;
         // Upload now in progress
         _uploadLastBlockMs = millis();
         _uploadFromAPIInProgress = true;
@@ -892,14 +894,17 @@ void PiCoProcessor::uploadAPIBlockHandler(const char* fileType, const String& re
     }
     
     // Commmon handler
-    uploadCommonBlockHandler(fileType, req, filename, fileLength, index, data, len, finalBlock);
+    if (!uploadCommonBlockHandler(fileType, req, filename, fileLength, index, data, len, finalBlock))
+    {
+        _uploadFromAPIInProgress = false;
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Common upload block handler
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String& req, 
+bool PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String& req, 
             const String& filename, int fileLength, size_t index, const uint8_t *data, size_t len, bool finalBlock)
 {
 #ifdef DEBUG_PI_UPLOAD_COMMON_BLOCK_DETAIL
@@ -938,6 +943,8 @@ void PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String&
                 break;
             LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler retry %d upload start", retryCount+1);
         }
+        if (!waitForStartAck())
+            return false;
     }
 
     // Send the block
@@ -948,6 +955,8 @@ void PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String&
             break;
         LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler retry %d upload block %d", retryCount+1, _uploadBlockCount);
     }
+    if (!waitForBlockAck(index))
+        return false;
     _uploadBlockCount++;
 
     // Update CRC
@@ -964,6 +973,8 @@ void PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String&
                 break;
             LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler retry %d upload end", retryCount+1);
         }
+        if (!waitForEndAck())
+            return false;
 
 #ifdef DEBUG_PI_UPLOAD_END
         LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler file end sent CRC of whole file %04x", _fileCRC);
@@ -982,6 +993,7 @@ void PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String&
         _uploadFromFSInProgress = false;
         _uploadFromAPIInProgress = false;
     }
+    return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
