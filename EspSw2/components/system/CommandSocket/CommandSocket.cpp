@@ -123,19 +123,6 @@ void CommandSocket::service()
     {
         begin();
     }
-
-//     // Take mutex
-//     xSemaphoreTake(_clientMutex, portMAX_DELAY);
-
-//     // Handle clients
-//     for (AsyncClient* pClient : _clientList)
-//     {
-//         if (pClient->
-//     }
-
-//    // Return the mutex
-//     xSemaphoreGive(_clientMutex);
-// }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -257,11 +244,13 @@ void CommandSocket::addClient(AsyncClient* pClient)
         }, this);
 
         // Take mutex
-        xSemaphoreTake(_clientMutex, portMAX_DELAY);
-        // Add to list of clients
-        _clientList.push_back(pClient);
-        // Return the mutex
-        xSemaphoreGive(_clientMutex);
+        if (xSemaphoreTake(_clientMutex, portMAX_DELAY) == pdTRUE)
+        {
+            // Add to list of clients
+            _clientList.push_back(pClient);
+            // Return the mutex
+            xSemaphoreGive(_clientMutex);
+        }
     }
     else
     {
@@ -275,11 +264,13 @@ void CommandSocket::addClient(AsyncClient* pClient)
 void CommandSocket::removeFromClientList(AsyncClient* pClient)
 {
     // Take mutex
-    xSemaphoreTake(_clientMutex, portMAX_DELAY);
-    // Remove from list of clients
-    _clientList.remove(pClient);
-    // Return the mutex
-    xSemaphoreGive(_clientMutex);
+    if (xSemaphoreTake(_clientMutex, portMAX_DELAY) == pdTRUE)
+    {
+        // Remove from list of clients
+        _clientList.remove(pClient);
+        // Return the mutex
+        xSemaphoreGive(_clientMutex);
+    }
 }
 #endif
 

@@ -81,4 +81,4 @@ int jsmn_parse(jsmn_parser *parser, const char *js, size_t len,
                 jsmntok_t *tokens, unsigned int num_tokens);
 
 
-void jsmn_logLongStr(const char* headerMsg, const char* toLog, bool infoLevel = false);
+void jsmn_logLongStr(const char* headerMsg, const char* toLog, bool infoLevel);

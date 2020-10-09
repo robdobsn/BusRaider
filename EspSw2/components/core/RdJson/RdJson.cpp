@@ -460,7 +460,7 @@ jsmntok_t *RdJson::parseJson(const char *jsonStr, int &numTokens,
     if (tokenCountRslt < 0)
     {
         LOG_D(MODULE_PREFIX, "parseJson result %d maxTokens %d jsonLen %d", tokenCountRslt, maxTokens, strlen(jsonStr));
-        jsmn_logLongStr("RdJson: jsonStr", jsonStr);
+        jsmn_logLongStr("RdJson: jsonStr", jsonStr, false);
         return NULL;
     }
 
@@ -506,7 +506,7 @@ bool RdJson::validateJson(const char* pSourceStr, int& numTokens)
     {
         LOG_D(MODULE_PREFIX, "validateJson result %d maxTokens %d jsonLen %d", 
                 numTokens, RDJSON_MAX_TOKENS, strlen(pSourceStr));
-        jsmn_logLongStr("RdJson: jsonStr", pSourceStr);
+        jsmn_logLongStr("RdJson: jsonStr", pSourceStr, false);
         return false;
     }
     return true;

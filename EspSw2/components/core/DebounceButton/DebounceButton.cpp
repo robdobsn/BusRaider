@@ -21,25 +21,36 @@ DebounceButton::DebounceButton()
     _lastCheckMs = 0;
     _firstPass = true;
     _lastStableVal = false;
-    _changeCountMs = 0;
+    _timeInPresentStateMs = 0;
+    _activeRepeatTimeMs = DEFAULT_ACTIVE_REPEAT_MS;
+    _debounceMs = DEFAULT_PIN_DEBOUNCE_MS;
     _callback = nullptr;
+    _repeatCount = 0;
+}
+
+DebounceButton::~DebounceButton()
+{
+    if (_buttonPin >= 0)
+    {
+        gpio_set_pull_mode((gpio_num_t)_buttonPin, GPIO_FLOATING);
+    }
 }
 
 // Setup
-void DebounceButton::setup(int pin, bool pullup, int activeLevel, 
-        DebounceButtonCallback cb, uint32_t debounceMs, bool activateOnRelease)
+void DebounceButton::setup(int pin, bool pullup, bool activeLevel, 
+        DebounceButtonCallback cb, uint32_t debounceMs, uint16_t activeRepeatTimeMs)
 {
     // Settings
     _buttonPin = pin;
     _buttonActiveLevel = activeLevel;
     _debounceMs = debounceMs;
-    _activateOnRelease = activateOnRelease;
+    _activeRepeatTimeMs = activeRepeatTimeMs;
 
     // State
     _lastCheckMs = millis();
     _firstPass = true;
     _lastStableVal = 0;
-    _changeCountMs = 0;
+    _timeInPresentStateMs = 0;
     _callback = cb;
 
     // Setup the input pin
@@ -59,45 +70,59 @@ void DebounceButton::service()
         return;
 
     // Check time for check
-    if (Utils::isTimeout(millis(), _lastCheckMs, PIN_CHECK_MS))
+    uint64_t curMs = millis();
+    if (Utils::isTimeout(curMs, _lastCheckMs, PIN_CHECK_MS))
     {
-        // Count time elapsed in changed state
-        _changeCountMs += (millis() - _lastCheckMs);
+        // Accumulate ms elapsed since state of button (pressed/unpressed) changed
+        _timeInPresentStateMs += (curMs - _lastCheckMs);
 
         // Last check update
-        _lastCheckMs = millis();
+        _lastCheckMs = curMs;
 
         // Check first time we've monitored
         if (_firstPass)
         {
-            _lastStableVal = gpio_get_level((gpio_num_t)_buttonPin) == _buttonActiveLevel;
+            _lastStableVal = (gpio_get_level((gpio_num_t)_buttonPin) != 0) == _buttonActiveLevel;
             _firstPass = false;
             return;
         }
 
         // Check for change of state
-        bool curVal = gpio_get_level((gpio_num_t)_buttonPin) == _buttonActiveLevel;
+        bool curVal = (gpio_get_level((gpio_num_t)_buttonPin) != 0) == _buttonActiveLevel;
 
         // Check if changed
         if (curVal != _lastStableVal)
         {
             // See if at threshold for detection
-            if (_changeCountMs > _debounceMs )
+            if (_timeInPresentStateMs > _debounceMs)
             {
                 // Set active/inactive
                 _lastStableVal = curVal;
 
                 // Call callback
                 if (_callback)
-                    _callback(curVal, _changeCountMs);
+                    _callback(curVal, _timeInPresentStateMs, 0);
+
+                // Reset time in state
+                _timeInPresentStateMs = 0;
+                _lastRepeatTimeMs = curMs;
+                _repeatCount = 0;
             }
-            if (_activateOnRelease)
-                _changeCountMs = 0;
         }
         else
         {
-            if (!_activateOnRelease)
-                _changeCountMs = 0;
+            // Check if active
+            if (curVal)
+            {
+                if (Utils::isTimeout(curMs, _lastRepeatTimeMs, _activeRepeatTimeMs))
+                {
+                    _lastRepeatTimeMs = curMs;
+                    _repeatCount++;
+                    // Call callback
+                    if (_callback)
+                        _callback(curVal, _timeInPresentStateMs, _repeatCount);
+                }
+            }
         }
     }
 }

@@ -778,7 +778,8 @@ void PiCoProcessor::hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen)
                 // Send the response back
                 RICRESTMsg ricRESTRespMsg;
                 ProtocolEndpointMsg endpointMsg;
-                ricRESTRespMsg.encode(pFrame + payloadStartPos, payloadLen, endpointMsg);
+                ricRESTRespMsg.encode(pFrame + payloadStartPos, payloadLen, endpointMsg, 
+                            RICRESTMsg::RICREST_REST_ELEM_CMDRESPJSON);
                 endpointMsg.setAsResponse(_rdpChannelId, MSG_PROTOCOL_RICREST, msgIdx, MSG_DIRECTION_RESPONSE);
 
                 // Send message on the appropriate channel

@@ -128,6 +128,21 @@ public:
         return val-65536;
     }
 
+    // Get a float32_t big endian value from the uint8_t pointer passed in
+    // Increment the pointer (by 4)
+    // Also checks endStop pointer value if provided
+    static float getBEfloat32AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = NULL)
+    {
+        if (pEndStop && (pVal + 3 >= pEndStop))
+            return 0;
+        
+        float val = 0;
+        uint8_t* pFloat = (uint8_t*)(&val)+3;
+        for (int i = 0; i < 4; i++)
+            *pFloat-- = *pVal++;
+        return val;
+    }
+
     // Set values into a buffer
     static void setBEInt8(uint8_t* pBuf, uint32_t offset, int8_t val)
     {

@@ -60,6 +60,16 @@ public:
     // Exists - check if file exists
     bool exists(const char* path);
 
+    // Stat (details on a file)
+    typedef enum {
+        FILE_SYSTEM_STAT_NO_EXIST,
+        FILE_SYSTEM_STAT_DIR,
+        FILE_SYSTEM_STAT_FILE,
+    } FileSystemStatType;
+
+    // Get stat
+    FileSystemStatType pathType(const char* filename);
+
     // Get a file path using default file system if necessary
     bool getFileFullPath(const String& filename, String& fileFullPath);
 

@@ -76,7 +76,40 @@ void ProtocolRICFrame::addRxData(const uint8_t* pData, uint32_t dataLen)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// addRxData
+// Decode
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool ProtocolRICFrame::decodeParts(const uint8_t* pData, uint32_t dataLen, uint32_t& msgNumber, 
+                uint32_t& msgProtocolCode, uint32_t& msgDirectionCode, uint32_t& payloadStartPos)
+{
+    // Check validity of frame length
+    if (dataLen < 2)
+        return false;
+
+    // Extract message type
+    msgNumber = pData[0];
+    msgProtocolCode = pData[1] & 0x3f;
+    msgDirectionCode = pData[1] >> 6;
+    payloadStartPos = 2;
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Encode
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void ProtocolRICFrame::encode(ProtocolEndpointMsg& msg, std::vector<uint8_t>& outMsg)
+{
+    // Create the message
+    outMsg.reserve(msg.getBufLen()+2);
+    outMsg.push_back(msg.getMsgNumber());
+    uint8_t protocolDirnByte = ((msg.getDirection() & 0x03) << 6) + (msg.getProtocol() & 0x3f);
+    outMsg.push_back(protocolDirnByte);
+    outMsg.insert(outMsg.end(), msg.getCmdVector().begin(), msg.getCmdVector().end());
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Encode and send
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void ProtocolRICFrame::encodeTxMsgAndSend(ProtocolEndpointMsg& msg)
@@ -91,13 +124,9 @@ void ProtocolRICFrame::encodeTxMsgAndSend(ProtocolEndpointMsg& msg)
         return;
     }
 
-    // Create the message
+    // Encode
     std::vector<uint8_t> ricFrameMsg;
-    ricFrameMsg.reserve(msg.getBufLen()+2);
-    ricFrameMsg.push_back(msg.getMsgNumber());
-    uint8_t protocolDirnByte = ((msg.getDirection() & 0x03) << 6) + (msg.getProtocol() & 0x3f);
-    ricFrameMsg.push_back(protocolDirnByte);
-    ricFrameMsg.insert(ricFrameMsg.end(), msg.getCmdVector().begin(), msg.getCmdVector().end());
+    encode(msg, ricFrameMsg);
     msg.setFromBuffer(ricFrameMsg.data(), ricFrameMsg.size());
 
 #ifdef DEBUG_PROTOCOL_RIC_FRAME

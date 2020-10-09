@@ -289,10 +289,10 @@ String BLEManager::getDebugStr()
     advertisingName += ble_svc_gap_device_name();
     char tmpBuf[200];
     snprintf(tmpBuf, sizeof(tmpBuf)-1, "BLE%s%s%s%s%s Rx%d Tx%d",
-        _isConnected ? " CONN" : (advertisingActive ? "ADV" : ""),
-        gapConnActive ? " ACTV" : "",
+        _isConnected ? " Conn" : (advertisingActive ? "Adv" : ""),
+        gapConnActive ? " Actv" : "",
         advertisingActive ? advertisingName.c_str() : "",
-        discoveryActive ? " DISCOV" : "",
+        discoveryActive ? " Discov" : "",
         tmpRssi,
         _rxTotalCount,
         _txTotalCount);

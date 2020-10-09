@@ -11,6 +11,7 @@
 
 #include <Logger.h>
 #include <ProtocolBase.h>
+#include <vector>
 
 class ProtocolRICFrame : public ProtocolBase
 {
@@ -31,7 +32,12 @@ public:
     // }
 
     virtual void addRxData(const uint8_t* pData, uint32_t dataLen) override final;
+    static bool decodeParts(const uint8_t* pData, uint32_t dataLen, uint32_t& msgNumber, 
+                    uint32_t& msgProtocolCode, uint32_t& msgDirectionCode, uint32_t& payloadStartPos);
+
     virtual void encodeTxMsgAndSend(ProtocolEndpointMsg& msg) override final;
+    static void encode(ProtocolEndpointMsg& msg, std::vector<uint8_t>& outMsg);
+
 
 private:
     // Consts

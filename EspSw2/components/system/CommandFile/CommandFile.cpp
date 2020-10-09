@@ -15,7 +15,7 @@
 static const char *MODULE_PREFIX = "CommandFile";
 
 // Debug
-//#define DEBUG_COMMAND_FILE 1
+// #define DEBUG_COMMAND_FILE 1
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -133,6 +133,14 @@ void CommandFile::apiFileRun(String &reqStr, String& respStr)
 	{
         // Run the .api file
         rslt = handleAPIFile(fileName);
+	}
+    else if (fileExt.equalsIgnoreCase(".py"))
+	{
+        // Send command to robot controller to play the file
+        char jsonExecFile[200];
+        snprintf(jsonExecFile, sizeof(jsonExecFile), R"("cmd":"pyrun","fileName":"%s")", fileName.c_str());
+        sysModSendCmdJSON("uPy", jsonExecFile);
+        rslt = true;
 	}
 
     Utils::setJsonBoolResult(reqStr.c_str(), respStr, rslt);

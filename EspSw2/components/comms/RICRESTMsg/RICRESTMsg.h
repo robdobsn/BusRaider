@@ -49,8 +49,8 @@ public:
         _totalBytes = 0;
     }
     bool decode(const uint8_t* pBuf, uint32_t len);
-    void encode(const String& payload, ProtocolEndpointMsg& endpointMsg);
-    void encode(const uint8_t* pBuf, uint32_t len, ProtocolEndpointMsg& endpointMsg);
+    static void encode(const String& payload, ProtocolEndpointMsg& endpointMsg, RICRESTElemCode elemCode);
+    static void encode(const uint8_t* pBuf, uint32_t len, ProtocolEndpointMsg& endpointMsg, RICRESTElemCode elemCode);
 
     const String& getReq()
     {

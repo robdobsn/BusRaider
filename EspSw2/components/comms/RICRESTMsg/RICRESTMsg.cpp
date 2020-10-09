@@ -104,11 +104,11 @@ bool RICRESTMsg::decode(const uint8_t* pBuf, uint32_t len)
     return true;
 }
 
-void RICRESTMsg::encode(const String& payload, ProtocolEndpointMsg& endpointMsg)
+void RICRESTMsg::encode(const String& payload, ProtocolEndpointMsg& endpointMsg, RICRESTElemCode elemCode)
 {
     // Setup buffer for the RESTElementCode
     uint8_t msgPrefixBuf[RICREST_HEADER_PAYLOAD_POS];
-    msgPrefixBuf[RICREST_REST_ELEM_CODE_POS] = RICREST_REST_ELEM_CMDRESPJSON;
+    msgPrefixBuf[RICREST_REST_ELEM_CODE_POS] = elemCode;
 
     // Set the response ensuring to include the string terminator although this isn't stricly necessary
     endpointMsg.setBufferSize(RICREST_HEADER_PAYLOAD_POS + payload.length() + 1);
@@ -116,11 +116,11 @@ void RICRESTMsg::encode(const String& payload, ProtocolEndpointMsg& endpointMsg)
     endpointMsg.setPartBuffer(RICREST_HEADER_PAYLOAD_POS, (uint8_t*)payload.c_str(), payload.length() + 1);
 }
 
-void RICRESTMsg::encode(const uint8_t* pBuf, uint32_t len, ProtocolEndpointMsg& endpointMsg)
+void RICRESTMsg::encode(const uint8_t* pBuf, uint32_t len, ProtocolEndpointMsg& endpointMsg, RICRESTElemCode elemCode)
 {
     // Setup buffer for the RESTElementCode
     uint8_t msgPrefixBuf[RICREST_HEADER_PAYLOAD_POS];
-    msgPrefixBuf[RICREST_REST_ELEM_CODE_POS] = RICREST_REST_ELEM_CMDRESPJSON;
+    msgPrefixBuf[RICREST_REST_ELEM_CODE_POS] = elemCode;
 
     // Set the response
     endpointMsg.setBufferSize(RICREST_HEADER_PAYLOAD_POS + len);

@@ -17,7 +17,7 @@ static const char* MODULE_PREFIX = "ROSSerialMsg";
 // Decode message
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool ROSSerialMsg::decode(const uint8_t* pBuf, uint32_t len)
+bool ROSSerialMsg::decode(const uint8_t* pBuf, uint32_t len, uint32_t& actualMsgLen)
 {
     _payload.clear();
     // Check not too short
@@ -40,6 +40,7 @@ bool ROSSerialMsg::decode(const uint8_t* pBuf, uint32_t len)
 
     // Final checksum
     _payloadChecksum = pBuf[payloadLength + ROSSERIAL_MSG_PAYLOAD_CSUM_OFFSET];
+    actualMsgLen = payloadLength + ROSSERIAL_MSG_PAYLOAD_CSUM_OFFSET + 1;
     return true;
 }
 

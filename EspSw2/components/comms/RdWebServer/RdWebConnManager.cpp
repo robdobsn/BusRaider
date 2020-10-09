@@ -177,7 +177,8 @@ bool RdWebConnManager::handleNewConnection(struct netconn* pNewConnection)
 void RdWebConnManager::addEndpoints(RestAPIEndpointManager* pEndpointManager)
 {
 	// Take semaphore
-	xSemaphoreTake(_endpointsMutex, pdMS_TO_TICKS(1000));
+	if (xSemaphoreTake(_endpointsMutex, pdMS_TO_TICKS(1000)) != pdTRUE)
+		return;
 	
 	// Record endpointManager
 	_pEndpointManager = pEndpointManager;

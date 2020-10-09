@@ -214,7 +214,8 @@ bool FileSystem::getFileInfo(const String& fileSystemStr, const String& filename
     }
 
     // Take mutex
-    xSemaphoreTake(_fileSysMutex, portMAX_DELAY);
+    if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
+        return false;
 
     // Check file exists
     struct stat st;
@@ -413,7 +414,8 @@ String FileSystem::getFileContents(const String& fileSystemStr, const String& fi
     }
 
     // Take mutex
-    xSemaphoreTake(_fileSysMutex, portMAX_DELAY);
+    if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
+        return "";
 
     // Get file info - to check length
     struct stat st;
@@ -503,7 +505,8 @@ bool FileSystem::setFileContents(const String& fileSystemStr, const String& file
     }
 
     // Take mutex
-    xSemaphoreTake(_fileSysMutex, portMAX_DELAY);
+    if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
+        return false;
 
     // Open file for writing
     String rootFilename = getFilePath(nameOfFS, filename);
@@ -553,7 +556,10 @@ void FileSystem::uploadAPIBlockHandler(const char* fileSystem, const String& req
     }
 
     // Take mutex
-    xSemaphoreTake(_fileSysMutex, portMAX_DELAY);
+    if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
+        return;
+
+    // Get path
     String tempFileName = "/__tmp__";
     String tmpRootFilename = getFilePath(nameOfFS, tempFileName);
     if (data && (len > 0))
@@ -652,7 +658,8 @@ bool FileSystem::deleteFile(const String& fileSystemStr, const String& filename)
     }
     
     // Take mutex
-    xSemaphoreTake(_fileSysMutex, portMAX_DELAY);
+    if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
+        return false;
 
     // Remove file
     struct stat st;
@@ -797,11 +804,31 @@ bool FileSystem::getFileFullPath(const String& filename, String& fileFullPath)
 bool FileSystem::exists(const char* path)
 {
     // Take mutex
-    xSemaphoreTake(_fileSysMutex, portMAX_DELAY);
+    if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
+        return false;
     struct stat buffer;   
     bool rslt = (stat(path, &buffer) == 0);
     xSemaphoreGive(_fileSysMutex);
     return rslt;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Path type - folder/file/non-existent
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+FileSystem::FileSystemStatType FileSystem::pathType(const char* filename)
+{
+    // Take mutex
+    if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
+        return FILE_SYSTEM_STAT_NO_EXIST;
+    struct stat buffer;
+    bool rslt = stat(filename, &buffer);
+    xSemaphoreGive(_fileSysMutex);
+    if (rslt != 0)
+        return FILE_SYSTEM_STAT_NO_EXIST;
+    if (S_ISREG(buffer.st_mode))
+        return FILE_SYSTEM_STAT_FILE;
+    return FILE_SYSTEM_STAT_DIR;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -820,7 +847,8 @@ bool FileSystem::getFileSection(const String& fileSystemStr, const String& filen
     }
 
     // Take mutex
-    xSemaphoreTake(_fileSysMutex, portMAX_DELAY);
+    if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
+        return false;
 
     // Open file
     String rootFilename = getFilePath(nameOfFS, filename);
@@ -858,7 +886,8 @@ bool FileSystem::getFileLine(const String& fileSystemStr, const String& filename
     }
 
     // Take mutex
-    xSemaphoreTake(_fileSysMutex, portMAX_DELAY);
+    if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
+        return false;
 
     // Open file for text reading
     String rootFilename = getFilePath(nameOfFS, filename);

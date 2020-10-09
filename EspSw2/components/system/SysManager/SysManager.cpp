@@ -544,7 +544,7 @@ void SysManager::apiReset(String &reqStr, String& respStr)
 
 void SysManager::apiGetVersion(String &reqStr, String& respStr)
 {
-    // LOG_I(MODULE_PREFIX, "apiGetVersion");
+    LOG_I(MODULE_PREFIX, "apiGetVersion");
     char versionJson[200];
     snprintf(versionJson, sizeof(versionJson), R"({"req":"%s","rslt":"ok","SystemName":"%s","SystemVersion":"%s","SerialNo":"%s","MAC":"%s"})", 
                 reqStr.c_str(), _systemName.c_str(), _systemVersion.c_str(), _ricSerialNoStoredStr.c_str(), _systemUniqueString.c_str());
@@ -857,7 +857,7 @@ bool SysManager::processEndpointMsg(ProtocolEndpointMsg &cmdMsg)
             // Send the response back
             RICRESTMsg ricRESTRespMsg;
             ProtocolEndpointMsg endpointMsg;
-            ricRESTRespMsg.encode(respMsg, endpointMsg);
+            ricRESTRespMsg.encode(respMsg, endpointMsg, RICRESTMsg::RICREST_REST_ELEM_CMDRESPJSON);
             endpointMsg.setAsResponse(cmdMsg);
 
             // Send message on the appropriate channel
@@ -1055,7 +1055,7 @@ void SysManager::serviceFileUpload()
         // Send the response back
         RICRESTMsg ricRESTRespMsg;
         ProtocolEndpointMsg endpointMsg;
-        ricRESTRespMsg.encode(respMsg, endpointMsg);
+        ricRESTRespMsg.encode(respMsg, endpointMsg, RICRESTMsg::RICREST_REST_ELEM_CMDRESPJSON);
         endpointMsg.setAsResponse(_fileUploadHandler._commsChannelID, MSG_PROTOCOL_RICREST, 
                     0, MSG_DIRECTION_RESPONSE);
 
