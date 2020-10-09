@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include <stdio.h>
 #include "lowlib.h"
 #include <circle/util.h>
 

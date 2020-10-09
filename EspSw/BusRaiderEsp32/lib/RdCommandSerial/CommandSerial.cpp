@@ -315,7 +315,8 @@ void CommandSerial::uploadCommonBlockHandler(const char* fileType, const String&
 }
 
 // Upload from API
-void CommandSerial::uploadAPIBlockHandler(const char* fileType, const String& req, const String& filename, int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock)
+void CommandSerial::uploadAPIBlockHandler(const char* fileType, const String& req, const String& filename, 
+            int fileLength, size_t index, uint8_t *data, size_t len, bool finalBlock)
 {
     // Check there isn't an upload in progress from FS
     if (_uploadFromFSInProgress)

@@ -9,6 +9,11 @@ cd ../src &&\
 cd .. &&\
 python tools/CalcCRC.py src/kernel.img
 # python.exe tools/UploadToDev.py src/kernel.img --port $1 
-curl -F "file=@./src/kernel.img" http://192.168.86.15/uploadpisw
+if [ -z "$1" ]
+  then
+    echo "Done"
+  else
+    curl -F "file=@./src/kernel.img" http://$1/uploadpisw
+fi
 # &&\
 # python.exe I2CEmulatorMonitor.py --port $1

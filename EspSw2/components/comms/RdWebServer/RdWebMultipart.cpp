@@ -12,7 +12,7 @@
 
 static const char *MODULE_PREFIX = "RdMultipart";
 
-#define WARN_ON_MULTIPART_ERRORS
+// #define WARN_ON_MULTIPART_ERRORS
 // #define DEBUG_MULTIPART_RECEIVE_ASCII_ONLY
 // #define DEBUG_MULTIPART_PAYLOAD
 // #define DEBUG_MULTIPART_BOUNDARY
@@ -331,7 +331,8 @@ bool RdWebMultipart::processPayload(const uint8_t *buffer, uint32_t bufPos, uint
         {
             // Already in a possible boundary
             // Add current byte to buffer in case this isn't a real boundary
-            _boundaryBuf[_boundaryIdx] = curByte;
+            if (_boundaryIdx < _boundaryBuf.size())
+                _boundaryBuf[_boundaryIdx] = curByte;
 
             // Check if we are beyond the boundary - looking for indication of part-end
             if (((_boundaryIdx == _boundaryStr.length()) || 
@@ -339,7 +340,8 @@ bool RdWebMultipart::processPayload(const uint8_t *buffer, uint32_t bufPos, uint
                  && (curByte == HYPHEN))
             {
 #ifdef DEBUG_MULTIPART_BOUNDARY
-                LOG_W(MODULE_PREFIX, "Boundary hyphen %d %d", bufPos, _boundaryIdx);
+                LOG_W(MODULE_PREFIX, "Boundary hyphen bufPos %d boundaryIdx %d boundaryStrLen %d", 
+                            bufPos, _boundaryIdx, _boundaryStr.length() + 1);
 #endif
                 if (_boundaryIdx == _boundaryStr.length() + 1)
                     _isFinalPart = true;
@@ -364,10 +366,14 @@ bool RdWebMultipart::processPayload(const uint8_t *buffer, uint32_t bufPos, uint
             {
                 // We have a complete boundary
 #ifdef DEBUG_MULTIPART_BOUNDARY
-                LOG_W(MODULE_PREFIX, "Boundary LF %d %d", bufPos, _boundaryIdx);
+                LOG_W(MODULE_PREFIX, "Boundary LF payloadStartPos %d bufPos %d boundaryIdx %d", 
+                            payloadStartPos, bufPos, _boundaryIdx);
 #endif
-                // Send the data up to the start of the boundary
-                dataCallback(buffer, payloadStartPos, bufPos - payloadStartPos - _boundaryIdx);
+                // Send the data up to the start of the boundary (if there is any)
+                int bufLen = bufPos - payloadStartPos - _boundaryIdx;
+                if (bufLen < 0)
+                    bufLen = 0;
+                dataCallback(buffer, payloadStartPos, bufLen);
                 payloadStartPos = bufPos + 1;
                 _boundaryIdx = 0;
                 _contentPos = 0;

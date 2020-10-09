@@ -12,7 +12,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define SYSTEM_NAME "BusRaiderESP32"
-#define SYSTEM_VERSION "3.1.3"
+#define SYSTEM_VERSION "3.1.6"
 #define DEFAULT_SYSTYPE "BusRaider"
 #define DEFAULT_SYSNAME "BusRaider"
 #define DEFAULT_HOSTNAME "BusRaider"
@@ -131,6 +131,7 @@ extern const int SYS_CONFIGURATIONS_LEN = sizeof(SYS_CONFIGURATIONS) / sizeof(co
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 static const int MAIN_TASK_PRIORITY = 20;
+static const int PRO_TASK_PROCESSOR_CORE = 0;
 static const int MAIN_TASK_PROCESSOR_CORE = 1;
 static const int MAIN_TASK_STACK_SIZE = 16384;
 static TaskHandle_t mainTaskHandle = NULL;

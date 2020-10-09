@@ -579,7 +579,6 @@ void PiCoProcessor::sendFileStartRecord(const char* fileType, const String& req,
 
 void PiCoProcessor::sendFileBlock(size_t index, const uint8_t *pData, size_t len)
 {
-    vTaskDelay(25);
     std::vector<uint8_t> msgData;
     char msgHeader[100];
     snprintf(msgHeader, sizeof(msgHeader),
@@ -590,6 +589,8 @@ void PiCoProcessor::sendFileBlock(size_t index, const uint8_t *pData, size_t len
     msgData.resize(msgStrPlusPayloadLen);
     if (msgData.size() >= msgStrPlusPayloadLen)
     {
+        // LOG_I(MODULE_PREFIX, "sendFileBlock blockLen %d headerLenExclTerm %d totalLen %d msgHeader %s msgDataSize %d", 
+        //         len, headerLen, msgStrPlusPayloadLen, msgHeader, msgData.size());         
         memcpy(msgData.data(), msgHeader, headerLen + 1);
         memcpy(msgData.data() + headerLen + 1, pData, len);
         sendMsgAndPayloadToPi(msgData.data(), msgStrPlusPayloadLen);
@@ -905,7 +906,8 @@ void PiCoProcessor::uploadAPIBlockHandler(const char* fileType, const String& re
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String& req, 
-            const String& filename, int fileLength, size_t index, const uint8_t *data, size_t len, bool finalBlock)
+            const String& filename, int fileLength, size_t index, const uint8_t *data, 
+            size_t len, bool finalBlock)
 {
 #ifdef DEBUG_PI_UPLOAD_COMMON_BLOCK_DETAIL
     LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler pos %d blkCnt %d blkLen %d isFinal %d rxIdx %d bytesSent %d", 

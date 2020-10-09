@@ -20,7 +20,7 @@ static const char* MODULE_PREFIX = "ProtocolEndpointManager";
 // #define DEBUG_CHANNEL_ID
 // #define DEBUG_PROTOCOL_HANDLER
 // #define DEBUG_FRAME_SEND
-#define WARN_ON_NO_CHANNEL_MATCH
+// #define WARN_ON_NO_CHANNEL_MATCH
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
