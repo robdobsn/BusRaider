@@ -11,6 +11,7 @@ tests/**/*.o
 tests/**/*.err
 tests/**/*.lst
 tests/**/*.bin
+logs/
 
 # User-specific files
 *.suo

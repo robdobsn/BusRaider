@@ -543,22 +543,32 @@ void BusAccess::addrHighSet(uint32_t highAddrByte)
         for (uint32_t i = 0; i < 9; i++) {
             // Set or clear serial pin to shift register
             if (highAddrByte & 0x80)
+            {
                 muxClear();
+            }
             else
+            {
                 // Mux low address clear doubles as high address serial in 
                 muxSet(BR_MUX_LADDR_CLR_BAR_LOW);
+            }
             // Delay to allow settling
+            // TODO 2020
+            // microsDelay(1);
             lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
             // Shift the address value for next bit
             highAddrByte = highAddrByte << 1;
             // Clock the bit
             write32(ARM_GPIO_GPSET0, 1 << BR_HADDR_CK);
+            // TODO 2020
+            // microsDelay(1);
             lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
             write32(ARM_GPIO_GPCLR0, 1 << BR_HADDR_CK);
         }
     }
 
     // Clear multiplexer
+    // TODO 2020
+    // microsDelay(1);
     lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
     muxClear();
 }
@@ -747,18 +757,21 @@ BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
         write32(ARM_GPIO_GPCLR0, reqLinePlusRead);
         
         // Delay to allow data bus to settle
+        //TODO 2020
         lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
+        // microsDelay(1);
         
         // // TODO 2020
         // lowlev_cycleDelay(10000);
 
         // TODO 2020
-        if (pibGetValue() != *pData)
-        {
-            digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-            microsDelay(4);
-            digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-        }
+        // pibGetValue()
+        // if (pibGetValue() != *pData)
+        // {
+        //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+        //     microsDelay(1);
+        //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        // }
 
         // Get the data
         *pData = pibGetValue();

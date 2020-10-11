@@ -101,14 +101,22 @@ void McTRS80::refreshDisplay()
 {
     // LogWrite(MODULE_PREFIX, LOG_NOTICE, "refreshDisplay");
 
-    // TODO 2020 remove
-    uint8_t jmp000[] = { 0xc3, 0, 0 };
-    _busAccess.blockWrite(0, jmp000, sizeof(jmp000), BusAccess::ACCESS_MEM);
+    // // TODO 2020 remove
+    // uint8_t testVal = millis() & 0xff;
+    // uint8_t jmp000[] = { 0xc3, 0, 0 };
+    // _busAccess.blockWrite(0, jmp000, sizeof(jmp000), BusAccess::ACCESS_MEM);
+    // unsigned char pClrBuffer[TRS80_DISP_RAM_SIZE];
+    // memset(pClrBuffer, testVal, TRS80_DISP_RAM_SIZE);
+    // _busAccess.blockWrite(TRS80_DISP_RAM_ADDR, pClrBuffer, TRS80_DISP_RAM_SIZE, BusAccess::ACCESS_MEM);
 
     // Read memory at the location of the TRS80 memory mapped screen
     unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
     // TODO 2020 remove the following line
-    memcpy(pScrnBuffer, _screenBuffer, TRS80_DISP_RAM_SIZE);
+    // memcpy(pScrnBuffer, _screenBuffer, TRS80_DISP_RAM_SIZE);
+    // memset(pScrnBuffer, 0x3c, TRS80_DISP_RAM_SIZE/4);
+    // memset(pScrnBuffer+TRS80_DISP_RAM_SIZE/4, 0x3d, TRS80_DISP_RAM_SIZE/4);
+    // memset(pScrnBuffer+2*TRS80_DISP_RAM_SIZE/4, 0x3e, TRS80_DISP_RAM_SIZE/4);
+    // memset(pScrnBuffer+3*TRS80_DISP_RAM_SIZE/4, 0x3f, TRS80_DISP_RAM_SIZE/4);
     if (_busAccess.blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, BusAccess::ACCESS_MEM) == BR_OK)
         updateDisplayFromBuffer(pScrnBuffer, TRS80_DISP_RAM_SIZE);
 

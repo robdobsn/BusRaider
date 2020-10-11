@@ -477,7 +477,8 @@ private:
     static const int CYCLES_DELAY_FOR_MREQ_FF_RESET = 20;
     static const int CYCLES_DELAY_FOR_DATA_DIRN = 20;
     static const int CYCLES_DELAY_FOR_TARGET_READ = 100;
-    static const int CYCLES_DELAY_FOR_OUT_FF_SET = 10;
+    // TODO 2020 was 10 - optimize
+    static const int CYCLES_DELAY_FOR_OUT_FF_SET = 1000;
 
     // Delay in machine cycles for M1 to settle
     static const int CYCLES_DELAY_FOR_M1_SETTLING = 100;

@@ -86,6 +86,11 @@ private:
     uint32_t _cachedPiStatusRequestMs;
     static const int TIME_BETWEEN_PI_STATUS_REQS_MS = 10000;
 
+    // Pi response to commands
+    static const int MAX_WAIT_FOR_CMD_RESPONSE_MS = 250;
+    String _cmdResponseBuf;
+    bool _cmdResponseNew;
+
     // HDLC processor
     MiniHDLC* _pHDLC;
     uint32_t _hdlcMaxLen;
@@ -145,22 +150,29 @@ private:
     void sendMsgStrToPi(const char *pMsgStr);
     void sendMsgAndPayloadToPi(const uint8_t *pFrame, int frameLen);
     void sendToPi(const uint8_t *pFrame, int frameLen);
-    void sendTargetCommand(const String& targetCmd, const String& reqStr);
+    bool sendTargetCommand(const String& targetCmd, const String& reqStr, String& respStr, bool waitForResponse);
     void sendTargetData(const String& cmdName, const uint8_t* pData, int len, int index);
     void sendResponseToPi(String& reqStr, String& msgJson);
     void hdlcFrameTxToPiCB(const uint8_t* pFrame, int frameLen);
     void hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen);
     const char* getWifiStatusStr();
+
+    // API commands
     void apiQueryESPHealth(const String &reqStr, String &respStr);
     void apiUploadPiSwComplete(String &reqStr, String &respStr);
     void apiUploadPiSwPart(String& req, const String& filename, size_t contentLen, size_t index, 
                 const uint8_t *data, size_t len, bool finalBlock);
-    void uploadAPIBlockHandler(const char* fileType, const String& req, const String& filename, 
-            int fileLength, size_t index, const uint8_t *pData, size_t len, bool finalBlock);
     void apiQueryPiStatus(const String &reqStr, String &respStr);
     void apiQueryCurMc(const String &reqStr, String &respStr);
     void apiSetMcJson(const String &reqStr, String &respStr);
     void apiSetMcJsonContent(const String &reqStr, const uint8_t *pData, size_t len, size_t index, size_t total);
+    void apiTargetCommand(String &reqStr, String &respStr);
+    void apiTargetCommandPost(String &reqStr, String &respStr);
+    void apiTargetCommandPostContent(const String &reqStr, const uint8_t *pData, size_t len, size_t index, size_t total);
+
+    // Upload
+    void uploadAPIBlockHandler(const char* fileType, const String& req, const String& filename, 
+            int fileLength, size_t index, const uint8_t *pData, size_t len, bool finalBlock);
     bool uploadCommonBlockHandler(const char* fileType, const String& req, 
             const String& filename, int fileLength, size_t index, const uint8_t *pData, size_t len, bool finalBlock);
     void sendFileStartRecord(const char* fileType, const String& req, const String& filename, int fileLength);

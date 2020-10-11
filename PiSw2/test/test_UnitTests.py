@@ -1,4 +1,4 @@
-from CommonTest import CommonTest
+from .CommonTest import CommonTest
 import time
 import logging
 import random
@@ -24,11 +24,6 @@ def setupTests(testName, frameCallback):
     return CommonTest(
             testName = testName,
             testBaseFolder = testBaseFolder,
-            useIP = True, 
-            wsUrl = "ws://192.168.86.15/ws",
-            serialPort = "COM6", 
-            serialBaud = 921600, 
-            ipAddrOrHostName = "192.168.86.15",
             dumpTextFileName = testName + ".log",
             dumpBinFileName = testName + ".bin",
             frameCallback = frameCallback
@@ -89,7 +84,7 @@ def test_SetMc():
     time.sleep(1)
 
     # Set machines alternately
-    for i in range(testRepeatCount):
+    for _ in range(testRepeatCount):
         for mc in testStats['mcList']:
             logger.debug(f"Setting machine {mc}")
             commonTest.sendFrame("SetMcJson", b"{\"cmdName\":\"SetMcJson\"}\0{\"name\":\"" + bytes(mc,'utf-8') + b"\"}\0")
@@ -244,13 +239,13 @@ def test_BankedMemRW():
     testMemorySize = 512 * 1024
     blocksWritten = 0
     blocksRead = 0
-    for i in range(testRepeatCount):
+    for _ in range(testRepeatCount):
         testBlockLen = 1024
         testWriteData = bytearray(os.urandom(testMemorySize))
         print("Last byte", hex(testWriteData[-1]))
         curAddr = 0x010000
         testBlockInc = (testMemorySize - curAddr) // numTestBlocks
-        for testBlockNum in range(numTestBlocks):
+        for _ in range(numTestBlocks):
             apiCmd = {"cmdName":"Wr", "isIo":0}
             apiCmd["addr"] = hex(curAddr)
             apiCmd["lenDec"] = str(testBlockLen)
@@ -266,7 +261,7 @@ def test_BankedMemRW():
         time.sleep(1)
         # Now read blocks back in reverse order
         curAddr -= testBlockInc
-        for testBlockNum in range(numTestBlocks):
+        for _ in range(numTestBlocks):
             apiCmd = {"cmdName":"Rd", "isIo":0}
             apiCmd["addr"] = hex(curAddr)
             apiCmd["lenDec"] = str(testBlockLen)
@@ -362,7 +357,7 @@ def test_TraceJMP000():
     commonTest.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
     commonTest.sendFrame("tracerStop", b"{\"cmdName\":\"tracerStop\",\"logging\":1}\0")
     time.sleep(0.1)
-    for i in range(testRepeatCount):
+    for _ in range(testRepeatCount):
 
         testStats['isrCount'] = 0
 
@@ -380,7 +375,7 @@ def test_TraceJMP000():
 
         # Get status
         msgIdx = 0
-        for j in range(testValStatusCount):
+        for _ in range(testValStatusCount):
             commonTest.sendFrame("statusReq", b"{\"cmdName\":\"tracerStatus\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
             msgIdx += 1
             commonTest.sendFrame("busStatus", b"{\"cmdName\":\"busStatus\"}\0")
@@ -584,7 +579,7 @@ def test_TRS80Level1RomExec():
 
     # Loop through tests
     testRepeatCount = 5
-    for i in range(testRepeatCount):
+    for _ in range(testRepeatCount):
 
         # Remove test valid check text
         testWriteData = b"TESTING IN PROGRESS"
@@ -684,7 +679,7 @@ def test_GalaxiansExec():
 
     # Loop through tests
     testRepeatCount = 1
-    for i in range(testRepeatCount):
+    for _ in range(testRepeatCount):
 
         # Remove test valid check text
         testWriteData = b"TESTING IN PROGRESS"
@@ -822,7 +817,7 @@ def test_stepSingle_RequiresPaging():
     numTestLoops = 20
     expectedAFValue = 5
     codePos = 0
-    for i in range(numTestLoops):
+    for _ in range(numTestLoops):
         # Run a step
         commonTest.sendFrame("stepInto", b"{\"cmdName\":\"stepInto\"}\0", "stepIntoDone")
         commonTest.awaitResponse(2000)
@@ -909,7 +904,7 @@ def test_regGetTest_requiresPaging():
     commonTest = setupTests("RegGet", frameCallback)
     # Test data - sets all registers to known values
     # jump to 0000
-    expectedRegs = "PC=0002 SP=9b61 BC=3a2b AF=2530 HL=7a4e DE=5542 IX=9187 IY=f122 AF'=8387 BC'=83b2 HL'=2334 DE'=a202 I=03 R=77  F=---H---- F'=S-----PNC"
+    # expectedRegs = "PC=0002 SP=9b61 BC=3a2b AF=2530 HL=7a4e DE=5542 IX=9187 IY=f122 AF'=8387 BC'=83b2 HL'=2334 DE'=a202 I=03 R=77  F=---H---- F'=S-----PNC"
     testWriteData = b"\x3e\x25" \
                     b"\x01\xb2\x83" \
                     b"\x11\x02\xa2" \

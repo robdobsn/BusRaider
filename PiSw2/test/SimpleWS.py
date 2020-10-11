@@ -19,7 +19,8 @@ class SimpleWS(object):
         return bytearray(data)
 
     def sendFrame(self, data):
-        res = self.ws.send(data, opcode=websocket.ABNF.OPCODE_BINARY)
+        # res = \
+        self.ws.send(data, opcode=websocket.ABNF.OPCODE_BINARY)
         # time.sleep(0.05)
         # logger.info("Send %s bytes", res)
 
@@ -64,10 +65,10 @@ class SimpleWS(object):
                               on_message = self.onWSFrame,
                               on_error = self.onWSError,
                               on_close = self.onWSClose)
-        self.ws.on_open = self.onWSOpen()
+        self.ws.on_open = self.onWSOpen
         
         # Ensure running
-        for i in range(20):
+        for _ in range(20):
             if self.running:
                break
             time.sleep(0.1)

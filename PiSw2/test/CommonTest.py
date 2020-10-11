@@ -2,16 +2,18 @@ import serial
 import sys
 import time
 import math
-from LikeCommsSerial import LikeCommsSerial
-from SimpleTCP import SimpleTCP
-from SimpleWS import SimpleWS
-from RICProtocols import RICProtocols
-from RICProtocols import PROTOCOL_RICREST
-from RICProtocols import MSG_TYPE_COMMAND
-from RICProtocols import RICREST_ELEM_CODE_CMD_FRAME
+from .LikeCommsSerial import LikeCommsSerial
+from .SimpleTCP import SimpleTCP
+from .SimpleWS import SimpleWS
+from .RICProtocols import RICProtocols
+from .RICProtocols import PROTOCOL_RICREST
+from .RICProtocols import MSG_TYPE_COMMAND
+from .RICProtocols import RICREST_ELEM_CODE_CMD_FRAME
 import logging
 import json
 import os
+import argparse
+import configparser
 
 # def commandLineTestStart():
 #     # Get args passed from build/test script
@@ -34,6 +36,117 @@ import os
 #     commonTestEntry(testname, testLoops, useIP, serialOrIp, flashbaud, baseFolder, dumpBinFileName, dumpTextFileName)
 
 class CommonTest:
+
+    def getConfig(self):
+        # Handle arguments
+        argparser = argparse.ArgumentParser(description='BusRaider Tests')
+        argparser.add_argument('--configfile', help='Config ini file', default='devconfig.ini')
+        argparser.add_argument('--configsection', help='Config file section', default='DEFAULT')
+        args, _ = argparser.parse_known_args()
+
+        # Handle config
+        config = configparser.ConfigParser()
+        config.read(args.configfile)
+
+        # Extract config
+        fullConf = config[args.configsection]
+        logConfig = {"logfolder": fullConf.get("logfolder", "./log")}
+        ifConfig = {
+            "ifType": fullConf.get("ifType", "websocket"),
+            "wsURL": fullConf.get("wsURL", ""),
+            "ipAddr": fullConf.get("ipAddr", ""),
+            "serialPort": fullConf.get("serialPort", ""),
+            "serialBaud": fullConf.get("serialBaud", ""),
+        }
+        testConfig = {
+        }
+        return logConfig, ifConfig, testConfig
+
+    def __init__(self, testName, testBaseFolder, dumpBinFileName, dumpTextFileName, frameCallback, logSends=False):
+        
+        self.logConfig, self.ifConfig, self.testConfig = self.getConfig()
+        self.testName = testName
+        self.frameCallback = frameCallback
+        self.useIP = self.ifConfig["ifType"] == "websocket" or self.ifConfig["ifType"] == "TCP"
+        self.wsURL = self.ifConfig["wsURL"]
+        self.serialPort = self.ifConfig["serialPort"]
+        self.serialBaud = self.ifConfig["serialBaud"]
+        self.logBaseFolder = self.logConfig["logfolder"]
+        # Logging
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.DEBUG)
+        consoleLogger = logging.StreamHandler()
+        consoleLogger.setLevel(logging.DEBUG)
+        consoleLogger.setFormatter(logging.Formatter('%(asctime)s: %(message)s'))
+        self.logger.addHandler(consoleLogger)
+        if dumpTextFileName is not None and len(dumpTextFileName) != 0:
+            logsFileName = os.path.join(self.logBaseFolder, "testlogs/", dumpTextFileName)
+            print(logsFileName)
+            fileLogger = logging.FileHandler(logsFileName)
+            fileLogger.setLevel(logging.DEBUG)
+            fileLogger.setFormatter(logging.Formatter('%(asctime)s: %(message)s'))
+            self.logger.addHandler(fileLogger)
+        self.logSends = logSends
+        self.respAwaited = None
+        self.respGot = False
+        self.ricProtocols = RICProtocols()
+
+        # Open dump file
+        try:
+            self.dumpBinFile = None
+            dumpBinPath = os.path.join(self.logBaseFolder, "testlogs/", dumpBinFileName)
+            if dumpBinFileName is not None and len(dumpBinFileName) > 0:
+                self.dumpBinFile = open(dumpBinPath, "wb")
+        except Exception as excp:
+            self.logger.warning("Can't open dump binary file " + dumpBinPath + " excp " + str(excp))
+
+        # Check for using IP address
+        if self.useIP:
+            if self.wsURL != "":
+                def onWSFrame(fr):
+                    decodedFr = self.ricProtocols.decodeRICFrame(fr)
+                    self.onRxFrame(decodedFr.payload)
+                    print(f"WS Frame len {len(fr)}")
+
+                # WS Reader
+                self.ws = SimpleWS(self.wsURL)
+                self.ws.startReader(onWSFrame)
+
+                self.logger.info(f"UnitTest BusRaider ws {self.wsURL}")
+
+            else:
+                ipAddr = self.ifConfig["ipAddr"]
+                self.tcpHdlcPort = 10001
+
+                # Frame handler
+                def onTCPFrame(fr):
+                    # Send to HDLC
+                    for byt in fr:
+                        self.commsSerial._hdlc.handleRxByte(byt)
+
+                # TCP Reader
+                self.rdpTCP = SimpleTCP(ipAddr, self.tcpHdlcPort)
+                self.rdpTCP.startReader(onTCPFrame)
+
+                # Setup HDLC
+                self.commsSerial = LikeCommsSerial()
+                self.commsSerial.setRxFrameCB(self.onRxFrame)
+
+                self.logger.info(f"UnitTest BusRaider IP {ipAddr} port {self.tcpHdlcPort}")
+                
+        else:
+            # Open the serial connection to the BusRaider
+            self.commsSerial = LikeCommsSerial()
+            self.commsSerial.setRxFrameCB(self.onRxFrame)
+            self.commsSerial.open(
+                {
+                    "serialPort": self.serialPort,
+                    "serialBaud": self.serialBaud,
+                    "rxBufferSize": 20000
+                })
+
+            self.logger.info(f"UnitTest BusRaider port {self.serialPort} baudrate {self.serialBaud}")
+            sys.stdout.flush()
 
     # Received Frame handler
     def onRxFrame(self, fr):
@@ -68,86 +181,6 @@ class CommonTest:
         except Exception as excp:
             self.logger.error(f"Failed to extract cmdName {fr}, {excp}")
 
-    def __init__(self, testName, testBaseFolder, useIP, wsUrl, serialPort, serialBaud, ipAddrOrHostName, dumpBinFileName, dumpTextFileName, frameCallback, logSends=False):
-        
-        self.testName = testName
-        self.useIP = useIP
-        self.wsUrl = wsUrl
-        self.frameCallback = frameCallback
-        # Logging
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.DEBUG)
-        consoleLogger = logging.StreamHandler()
-        consoleLogger.setLevel(logging.DEBUG)
-        consoleLogger.setFormatter(logging.Formatter('%(asctime)s: %(message)s'))
-        self.logger.addHandler(consoleLogger)
-        if dumpTextFileName is not None and len(dumpTextFileName) != 0:
-            logsFileName = os.path.join(testBaseFolder, "logs/", dumpTextFileName)
-            print(logsFileName)
-            fileLogger = logging.FileHandler(logsFileName)
-            fileLogger.setLevel(logging.DEBUG)
-            fileLogger.setFormatter(logging.Formatter('%(asctime)s: %(message)s'))
-            self.logger.addHandler(fileLogger)
-        self.logSends = logSends
-        self.respAwaited = None
-        self.respGot = False
-        self.ricProtocols = RICProtocols()
-
-        # Open dump file
-        try:
-            self.dumpBinFile = None
-            if dumpBinFileName is not None and len(dumpBinFileName) > 0:
-                self.dumpBinFile = open(os.path.join(testBaseFolder, "logs/", dumpBinFileName), "wb")
-        except Exception as excp:
-            self.logger.warning("Can't open dump binary file " + os.path.join("./test/logs/", dumpBinFileName))
-
-        # Check for using IP address
-        if useIP:
-            if wsUrl != "":
-                def onWSFrame(fr):
-                    decodedFr = self.ricProtocols.decodeRICFrame(fr)
-                    self.onRxFrame(decodedFr.payload)
-                    print(f"WS Frame len {len(fr)}")
-
-                # WS Reader
-                self.ws = SimpleWS(self.wsUrl)
-                self.ws.startReader(onWSFrame)
-
-                self.logger.info(f"UnitTest BusRaider ws {self.wsUrl}")
-
-            else:
-                self.tcpHdlcPort = 10001
-
-                # Frame handler
-                def onTCPFrame(fr):
-                    # Send to HDLC
-                    for byt in fr:
-                        self.commsSerial._hdlc.handleRxByte(byt)
-
-                # TCP Reader
-                self.rdpTCP = SimpleTCP(ipAddrOrHostName, self.tcpHdlcPort)
-                self.rdpTCP.startReader(onTCPFrame)
-
-                # Setup HDLC
-                self.commsSerial = LikeCommsSerial()
-                self.commsSerial.setRxFrameCB(self.onRxFrame)
-
-                self.logger.info(f"UnitTest BusRaider IP {ipAddrOrHostName} port {self.tcpHdlcPort}")
-                
-        else:
-            # Open the serial connection to the BusRaider
-            self.commsSerial = LikeCommsSerial()
-            self.commsSerial.setRxFrameCB(self.onRxFrame)
-            self.commsSerial.open(
-                {
-                    "serialPort": serialPort,
-                    "serialBaud": serialBaud,
-                    "rxBufferSize": 20000
-                })
-
-            self.logger.info(f"UnitTest BusRaider port {serialPort} baudrate {serialBaud}")
-            sys.stdout.flush()
-
     def sendFrame(self, comment, content, respExpected = None):
         self.respAwaited = respExpected
         self.respGot = False
@@ -156,7 +189,7 @@ class CommonTest:
         #     print(hex(b)+" ",end='')
         # print()
         if self.useIP:
-            if self.wsUrl != "":
+            if self.wsURL != "":
                 ricFrame = self.ricProtocols.encodeRICFrameRICREST(frame, PROTOCOL_RICREST, MSG_TYPE_COMMAND, RICREST_ELEM_CODE_CMD_FRAME)
                 self.ws.sendFrame(ricFrame)
             else:
@@ -193,7 +226,7 @@ class CommonTest:
             self.dumpBinFile.close()
         if self.useIP:
             self.logger.info("UnitTest closing socket")
-            if self.wsUrl != "":
+            if self.wsURL != "":
                 try:
                     self.ws.stopReader()
                 except Exception as excp:
@@ -212,9 +245,9 @@ class CommonTest:
         # Results
         # testOk = (errCount == 0 and loopCount != 0)
         # testResultStr = "OK" if testOk else "FAILED"
-        # logger.info(f"\n---------------------------------------\n")
-        # logger.info(f"Test results: {testResultStr} loops {loopCount} errors {errCount} isrs {isrCount}\n")
-        # logger.info(f"---------------------------------------\n")
+        # self.logger.info(f"\n---------------------------------------\n")
+        # self.logger.info(f"Test results: {testResultStr} loops {loopCount} errors {errCount} isrs {isrCount}\n")
+        # self.logger.info(f"---------------------------------------\n")
 
     def getFileData(self, fileFolder, fileName):
         inData = []
@@ -228,7 +261,7 @@ class CommonTest:
                 with open(os.path.join(fileFolder, fileName), "rb") as inFile:
                     inData = inFile.read()
             except:
-                logger.error("Unable to load file ", os.path.join(fileFolder, fileName))
+                self.logger.error(f"Unable to load file {os.path.join(fileFolder, fileName)}")
                 return None
         return inData
 

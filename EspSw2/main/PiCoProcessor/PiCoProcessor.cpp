@@ -64,6 +64,7 @@ PiCoProcessor::PiCoProcessor(const char *pModuleName, ConfigBase &defaultConfig,
     _cachedPiStatusRequestMs = 0;
     _pRestAPIEndpointManager = NULL;
     _systemVersion = systemVersion;
+    _cmdResponseNew = false;
 
     // Upload vars
     _uploadFromFSInProgress = false;
@@ -392,6 +393,27 @@ void PiCoProcessor::addRestAPIEndpoints(RestAPIEndpointManager &endpointManager)
                                 std::placeholders::_3, std::placeholders::_4,
                                 std::placeholders::_5),
                         NULL);
+    endpointManager.addEndpoint("targetcmd", 
+                        RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                        RestAPIEndpointDef::ENDPOINT_GET, 
+                        std::bind(&PiCoProcessor::apiTargetCommand, this,
+                                std::placeholders::_1, std::placeholders::_2),
+                        "Target command (GET)");
+    endpointManager.addEndpoint("targetcmd", 
+                        RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                        RestAPIEndpointDef::ENDPOINT_POST,
+                        std::bind(&PiCoProcessor::apiTargetCommandPost, this, 
+                                std::placeholders::_1, std::placeholders::_2),
+                        "Target command (POST)", 
+                        "application/json", 
+                        NULL, 
+                        RestAPIEndpointDef::ENDPOINT_CACHE_NEVER,
+                        NULL,
+                        std::bind(&PiCoProcessor::apiTargetCommandPostContent, this, 
+                                std::placeholders::_1, std::placeholders::_2, 
+                                std::placeholders::_3, std::placeholders::_4,
+                                std::placeholders::_5),
+                        NULL);
 
     // Stash endoint manager
     _pRestAPIEndpointManager = &endpointManager;
@@ -499,6 +521,40 @@ void PiCoProcessor::apiSetMcJsonContent(const String &reqStr, const uint8_t *pDa
     configSave();
     // Send to the Pi
     sendTargetData("setmcjson", pData, len, 0);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// API request - Target command
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void PiCoProcessor::apiTargetCommand(String &reqStr, String &respStr)
+{
+    // Get command
+    String targetCmd = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
+    // Log.trace("%sapiTargetCommand %s\n", MODULE_PREFIX, targetCmd.c_str());
+    sendTargetCommand(targetCmd, reqStr, respStr, true);
+}
+
+void PiCoProcessor::apiTargetCommandPost(String &reqStr, String &respStr)
+{
+}
+
+void PiCoProcessor::apiTargetCommandPostContent(const String &reqStr, const uint8_t *pData, size_t len, size_t index, size_t total)
+{
+    // Get command
+    String targetCmd = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
+    // Extract JSON
+    static const int MAX_JSON_DATA_LEN = 1000;
+    char jsonData[MAX_JSON_DATA_LEN];
+    size_t toCopy = len+1;
+    if (len > MAX_JSON_DATA_LEN)
+        toCopy = MAX_JSON_DATA_LEN;
+    strlcpy(jsonData, (const char*) pData, toCopy);
+    // Debug
+    // Log.trace("%sapiTargetCommandPostContent %s json %s\n", MODULE_PREFIX, 
+    //         reqStr.c_str(), jsonData);
+    // Send to the Pi
+    sendTargetData(targetCmd.c_str(), pData, len, 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -635,17 +691,42 @@ void PiCoProcessor::sendResponseToPi(String& reqStr, String& msgJson)
 // Send command to target
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PiCoProcessor::sendTargetCommand(const String& targetCmd, const String& reqStr)
+bool PiCoProcessor::sendTargetCommand(const String& targetCmd, const String& reqStr, String& respStr, bool waitForResponse)
 {
 #ifdef DEBUG_PI_SEND_TARGET_CMD
     LOG_I(MODULE_PREFIX, "sendTargetCommand Msg %s", targetCmd.c_str());
 #endif
 
+    // Clear response flag
+    _cmdResponseNew = false;
+
+    // Form command
     char msgStr[300];
     snprintf(msgStr, sizeof(msgStr), R"({"cmdName":"%s","reqStr":"%s"})",
                     targetCmd.c_str(),
                     reqStr.c_str());
     sendMsgStrToPi(msgStr);
+
+    // Return if no response required
+    if (!waitForResponse)
+    {
+        Utils::setJsonBoolResult(reqStr.c_str(), respStr, true);
+        return true;
+    }
+
+    // Wait for a response (or time-out)
+    uint32_t timeStarted = millis();
+    while (!Utils::isTimeout(millis(), timeStarted, MAX_WAIT_FOR_CMD_RESPONSE_MS))
+    {
+        service();
+        if (_cmdResponseNew)
+        {
+            respStr = _cmdResponseBuf;
+            return true;
+        }
+    }
+    Utils::setJsonBoolResult(reqStr.c_str(), respStr, false);
+    return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -814,9 +895,9 @@ void PiCoProcessor::hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen)
     }
     else if ((cmdName.endsWith("Resp")))
     {
-        // TODO 2020
-        // _cmdResponseNew = true;
-        // _cmdResponseBuf = pRxStr;
+        // Responses
+        _cmdResponseNew = true;
+        _cmdResponseBuf = pRxStr;
         LOG_I(MODULE_PREFIX, "RespMessageReceived %s\n", pRxStr);
     }
     else if ((cmdName.equalsIgnoreCase("ufStartAck")))
@@ -984,7 +1065,8 @@ bool PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String&
 #endif
         if (_uploadTargetCommandWhenComplete.length() != 0)
         {
-            sendTargetCommand(_uploadTargetCommandWhenComplete, "");
+            String respStr;
+            sendTargetCommand(_uploadTargetCommandWhenComplete, "", respStr, false);
             LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler post-upload target command sent %s",
                     _uploadTargetCommandWhenComplete.c_str());
         }

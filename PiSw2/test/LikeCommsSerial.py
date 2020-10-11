@@ -1,8 +1,8 @@
 from threading import Thread
 import serial
 import time
-from LikeHDLC import HDLC
-from ProtocolOverAscii import ProtocolOverAscii
+from .LikeHDLC import HDLC
+from .ProtocolOverAscii import ProtocolOverAscii
 
 class LikeCommsSerial:
 
@@ -71,8 +71,8 @@ class LikeCommsSerial:
         else:
             self._sendBytesToIF(hdlcEncoded)
         
-    def getHDLCStats(self):
-        return self._hdlc.getStats()
+    # def getHDLCStats(self):
+    #     return self._hdlc.getStats()
 
     def _serialRxLoop(self):
         while self.serialThreadEn:
