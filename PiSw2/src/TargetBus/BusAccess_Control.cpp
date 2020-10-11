@@ -465,51 +465,11 @@ void BusAccess::addrLowSet(uint32_t lowAddrByte)
         write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
         write32(ARM_GPIO_GPSET0, BR_MUX_LADDR_CLK << BR_MUX_LOW_BIT_POS);
         for (uint32_t i = 0; i < (lowAddrByte & 0xff) + 1; i++) {
-#ifdef V2_PROTO_USING_MUX_EN
             write32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
             lowlev_cycleDelay(CYCLES_DELAY_FOR_CLOCK_LOW_ADDR);
             write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_CLOCK_LOW_ADDR);
-#else
-            // This clears the OE FFbut is used as a safe way
-            // to cycle the low address clock
-            write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-            write32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_CLOCK_LOW_ADDR);
-            write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_CLOCK_LOW_ADDR);
-#endif
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
         }
-    }
-}
-
-// Increment low address value by clocking the counter
-void BusAccess::addrLowInc()
-{
-    if (_hwVersionNumber == 17)
-    {
-        write32(ARM_GPIO_GPSET0, BR_V17_LADDR_CK_MASK);
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-        write32(ARM_GPIO_GPCLR0, BR_V17_LADDR_CK_MASK);
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-    }
-    else
-    {
-#ifdef V2_PROTO_USING_MUX_EN
-        // This sets the low address clock low as it is MUX0
-        write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-        write32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_CLOCK_LOW_ADDR);
-        write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
-#else
-        // This clears the OE FF but is used as a safe way
-        // to cycle the low address clock
-        write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-        write32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_CLOCK_LOW_ADDR);
-        write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_CLOCK_LOW_ADDR);
-#endif
     }
 }
 
@@ -553,23 +513,23 @@ void BusAccess::addrHighSet(uint32_t highAddrByte)
             }
             // Delay to allow settling
             // TODO 2020
-            // microsDelay(1);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
+            microsDelay(1);
+            // lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
             // Shift the address value for next bit
             highAddrByte = highAddrByte << 1;
             // Clock the bit
             write32(ARM_GPIO_GPSET0, 1 << BR_HADDR_CK);
             // TODO 2020
-            // microsDelay(1);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
+            microsDelay(1);
+            // lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
             write32(ARM_GPIO_GPCLR0, 1 << BR_HADDR_CK);
         }
     }
 
     // Clear multiplexer
     // TODO 2020
-    // microsDelay(1);
-    lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
+    microsDelay(1);
+    // lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
     muxClear();
 }
 
@@ -604,11 +564,7 @@ void BusAccess::byteWrite(uint32_t data, BlockAccessType accessType)
     }
     else
     {
-#ifdef V2_PROTO_USING_MUX_EN
         write32(ARM_GPIO_GPCLR0, BR_WR_BAR_MASK | BR_MUX_EN_BAR_MASK);
-#else
-        write32(ARM_GPIO_GPCLR0, BR_WR_BAR_MASK);
-#endif
     }
     // Target write delay
     lowlev_cycleDelay(CYCLES_DELAY_FOR_WRITE_TO_TARGET);
@@ -620,12 +576,7 @@ void BusAccess::byteWrite(uint32_t data, BlockAccessType accessType)
     }
     else
     {
-#ifdef V2_PROTO_USING_MUX_EN
         write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | BR_MUX_EN_BAR_MASK | ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_WR_BAR_MASK);
-#else
-        write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | (iorq ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_WR_BAR_MASK);
-        write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-#endif
     }
 }
 
@@ -641,9 +592,7 @@ uint8_t BusAccess::byteRead(BlockAccessType accessType)
     write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | (BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS));
     if (_hwVersionNumber != 17)
     {
-#ifdef V2_PROTO_USING_MUX_EN
         write32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
-#endif
     }
     // Delay to allow data to settle
     lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
@@ -657,12 +606,7 @@ uint8_t BusAccess::byteRead(BlockAccessType accessType)
     }
     else
     {
-#ifdef V2_PROTO_USING_MUX_EN
         write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK | ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
-#else
-        write32(ARM_GPIO_GPSET0, ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
-        write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-#endif
     }
     return val;
 }
@@ -719,96 +663,96 @@ BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32
     return BR_OK;
 }
 
-// Read a consecutive block of memory from host
-// Assumes:
-// - control of host bus has been requested and acknowledged
-BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len, BlockAccessType accessType)
-{
-    // Check if we need to request bus
-    bool busRqAndRelease = !_busIsUnderControl;
-    if (busRqAndRelease) {
-        // Request bus and take control after ack
-        BR_RETURN_TYPE ret = controlRequestAndTake();
-        if (ret != BR_OK)
-            return ret;
-    }
+// // Read a consecutive block of memory from host
+// // Assumes:
+// // - control of host bus has been requested and acknowledged
+// BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len, BlockAccessType accessType)
+// {
+//     // Check if we need to request bus
+//     bool busRqAndRelease = !_busIsUnderControl;
+//     if (busRqAndRelease) {
+//         // Request bus and take control after ack
+//         BR_RETURN_TYPE ret = controlRequestAndTake();
+//         if (ret != BR_OK)
+//             return ret;
+//     }
 
-    // Set PIB to input
-    pibSetIn();
+//     // Set PIB to input
+//     pibSetIn();
 
-    // Data direction for data bus drivers inward
-    write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK);
+//     // Data direction for data bus drivers inward
+//     write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK);
 
-    // Set the address to initial value
-    addrSet(addr);
+//     // Set the address to initial value
+//     addrSet(addr);
 
-    // Calculate bit patterns outside loop
-    uint32_t reqLinePlusRead = ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | (1 << BR_RD_BAR);
+//     // Calculate bit patterns outside loop
+//     uint32_t reqLinePlusRead = ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | (1 << BR_RD_BAR);
 
-    // Iterate data
-    for (uint32_t i = 0; i < len; i++)
-    {
+//     // Iterate data
+//     for (uint32_t i = 0; i < len; i++)
+//     {
 
-        // Enable data bus driver output - must be done each time round the loop as it is
-        // cleared by IORQ or MREQ rising edge
-        muxDataBusOutputEnable();
+//         // Enable data bus driver output - must be done each time round the loop as it is
+//         // cleared by IORQ or MREQ rising edge
+//         muxDataBusOutputEnable();
 
-        // IORQ_BAR / MREQ_BAR and RD_BAR both active
-        write32(ARM_GPIO_GPCLR0, reqLinePlusRead);
+//         // IORQ_BAR / MREQ_BAR and RD_BAR both active
+//         write32(ARM_GPIO_GPCLR0, reqLinePlusRead);
         
-        // Delay to allow data bus to settle
-        //TODO 2020
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
-        // microsDelay(1);
+//         // Delay to allow data bus to settle
+//         //TODO 2020
+//         // lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
+//         microsDelay(1);
         
-        // // TODO 2020
-        // lowlev_cycleDelay(10000);
+//         // // TODO 2020
+//         // lowlev_cycleDelay(10000);
 
-        // TODO 2020
-        // pibGetValue()
-        // if (pibGetValue() != *pData)
-        // {
-        //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-        //     microsDelay(1);
-        //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-        // }
+//         // TODO 2020
+//         // pibGetValue()
+//         if (pibGetValue() != *pData)
+//         {
+//             digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+//             microsDelay(1);
+//             digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+//         }
 
-        // Get the data
-        *pData = pibGetValue();
+//         // Get the data
+//         *pData = pibGetValue();
 
-        // // TODO 2020
-        // lowlev_cycleDelay(10000);
+//         // // TODO 2020
+//         // lowlev_cycleDelay(10000);
 
-        // if (i == 0)
-        // {
-        //     LogWrite(MODULE_PREFIX, LOG_NOTICE, "blockRead %08x", read32(ARM_GPIO_GPLEV0));
-        // }
+//         // if (i == 0)
+//         // {
+//         //     LogWrite(MODULE_PREFIX, LOG_NOTICE, "blockRead %08x", read32(ARM_GPIO_GPLEV0));
+//         // }
 
-        // Deactivate IORQ/MREQ and RD and clock the low address
-        write32(ARM_GPIO_GPSET0, reqLinePlusRead);
+//         // Deactivate IORQ/MREQ and RD and clock the low address
+//         write32(ARM_GPIO_GPSET0, reqLinePlusRead);
 
-        // Inc low address
-        addrLowInc();
+//         // Inc low address
+//         addrLowInc();
 
-        // Increment addresses
-        pData++;
-        addr++;
+//         // Increment addresses
+//         pData++;
+//         addr++;
 
-        // Check if we've rolled over the lowest 8 bits
-        if ((addr & 0xff) == 0) {
+//         // Check if we've rolled over the lowest 8 bits
+//         if ((addr & 0xff) == 0) {
 
-            // Set the address again
-            addrSet(addr);
-        }
-    }
+//             // Set the address again
+//             addrSet(addr);
+//         }
+//     }
 
-    // Check if we need to release bus
-    if (busRqAndRelease) {
-        // release bus
-        controlRelease();
-    }
-    return BR_OK;
-}
+//     // Check if we need to release bus
+//     if (busRqAndRelease) {
+//         // release bus
+//         controlRelease();
+//     }
+//     return BR_OK;
+// }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Clock Generator
@@ -1161,15 +1105,10 @@ void BusAccess::rawBusControlSetData(uint32_t data)
     }
     else
     {
-#ifdef V2_PROTO_USING_MUX_EN
         write32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
         lowlev_cycleDelay(CYCLES_DELAY_FOR_OUT_FF_SET);
         write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
         write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);       
-#else
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_OUT_FF_SET);
-        write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);       
-#endif
     }
 }
 

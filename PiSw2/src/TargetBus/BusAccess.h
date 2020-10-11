@@ -18,8 +18,6 @@
 
 // #define ISR_TEST 1
 
-#define V2_PROTO_USING_MUX_EN 1
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Bus Access
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -253,9 +251,59 @@ private:
 
     // Set address
     void addrLowSet(uint32_t lowAddrByte);
-    void addrLowInc();
     void addrHighSet(uint32_t highAddrByte);
     void addrSet(unsigned int addr);
+
+    // Increment low address value by clocking the counter
+    void addrLowInc()
+    {
+        if (_hwVersionNumber == 17)
+        {
+            write32(ARM_GPIO_GPSET0, BR_V17_LADDR_CK_MASK);
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
+            write32(ARM_GPIO_GPCLR0, BR_V17_LADDR_CK_MASK);
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
+        }
+        else
+        {
+            // This sets the low address clock low as it is MUX0
+            write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK | BR_MUX_EN_BAR_MASK);
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_CLOCK_LOW_ADDR);
+            write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
+        }
+    }
+
+    // Start Increment low address value
+    void addrLowIncStart()
+    {
+        if (_hwVersionNumber == 17)
+        {
+            write32(ARM_GPIO_GPSET0, BR_V17_LADDR_CK_MASK);
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
+            write32(ARM_GPIO_GPCLR0, BR_V17_LADDR_CK_MASK);
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
+        }
+        else
+        {
+            // This sets the low address clock low as it is MUX0
+            write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK | BR_MUX_EN_BAR_MASK);
+        }
+    }
+
+    // Finish increment low address value
+    void addrLowIncFinish()
+    {
+        if (_hwVersionNumber == 17)
+        {
+            write32(ARM_GPIO_GPCLR0, BR_V17_LADDR_CK_MASK);
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
+        }
+        else
+        {
+            // This sets the low address clock high
+            write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
+        }
+    }
 
     // Control bus read
     uint32_t controlBusRead();
@@ -318,7 +366,6 @@ private:
         }
         else
         {
-#ifdef V2_PROTO_USING_MUX_EN
             // Disable mux initially
             write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
             // Clear all the mux bits
@@ -327,12 +374,6 @@ private:
             write32(ARM_GPIO_GPSET0, muxVal << BR_MUX_LOW_BIT_POS);
             // Enable the mux
             write32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
-#else
-            // Clear first
-            write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-            // Now set bits required
-            write32(ARM_GPIO_GPSET0, muxVal << BR_MUX_LOW_BIT_POS);
-#endif
         }
     }
 
@@ -346,20 +387,26 @@ private:
         }
         else
         {
-#ifdef V2_PROTO_USING_MUX_EN
             // Disable the mux
             write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
             // Clear to a safe setting - sets LADDR_CK low
             write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-#else
-            // Clear to a safe setting - sets LADDR_CK low
-            write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-#endif
         }
     }
 
     // Mux set data bus driver output enable
     inline void muxDataBusOutputEnable()
+    {
+        // Start pulse
+        muxDataBusOutputStart();
+        // Time pulse width
+        lowlev_cycleDelay(CYCLES_DELAY_FOR_OUT_FF_SET);
+        // Finish pulse
+        muxDataBusOutputFinish();
+    }
+
+    // Mux set data bus driver output start
+    inline void muxDataBusOutputStart()
     {
         if (_hwVersionNumber == 17)
         {
@@ -367,28 +414,28 @@ private:
             write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
             // Now set OE bit
             write32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
-            // Time pulse width
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_OUT_FF_SET);
+        }
+        else
+        {
+            // Clear then set the output enable
+            write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
+            write32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
+            // Mux enable active
+            write32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
+        }
+    }
+
+    // Mux set data bus driver output finish
+    inline void muxDataBusOutputFinish()
+    {
+        if (_hwVersionNumber == 17)
+        {
             // Clear again
             write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
         }
         else
         {
-#ifdef V2_PROTO_USING_MUX_EN
-            // Clear then set the output enable
-            write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-            write32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
-            // Pulse mux enable
-            write32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_OUT_FF_SET);
             write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
-#else
-            // Clear then set the output enable
-            write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-            write32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_OUT_FF_SET);
-            write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);       
-#endif
         }
     }
 
@@ -406,7 +453,6 @@ private:
         }
         else
         {
-#ifdef V2_PROTO_USING_MUX_EN
             // Clear then set the low address clear line
             write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
             write32(ARM_GPIO_GPSET0, BR_MUX_LADDR_CLR_BAR_LOW << BR_MUX_LOW_BIT_POS);
@@ -414,13 +460,6 @@ private:
             write32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
             lowlev_cycleDelay(CYCLES_DELAY_FOR_CLEAR_LOW_ADDR);
             write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
-#else
-            // Clear then set the low address clear line
-            write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-            write32(ARM_GPIO_GPSET0, BR_MUX_LADDR_CLR_BAR_LOW << BR_MUX_LOW_BIT_POS);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_CLEAR_LOW_ADDR);
-            write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-#endif
         }
         
     }
@@ -459,8 +498,7 @@ private:
     static const int CYCLES_DELAY_FOR_HIGH_ADDR_READ = 1000;
 
     // Period target read control bus line is asserted during a read from the PIB (any bus element)
-    // TODO 2020 was 50
-    static const int CYCLES_DELAY_FOR_READ_FROM_PIB = 500;
+    static const int CYCLES_DELAY_FOR_READ_FROM_PIB = 200;
 
     // Max wait for end of read cycle
     // TODO 2020 was 10
@@ -469,7 +507,7 @@ private:
     // Delay in machine cycles for setting the pulse width when clearing/incrementing the address counter/shift-reg
     // TODO 2020 following 3 were 15
     static const int CYCLES_DELAY_FOR_CLEAR_LOW_ADDR = 150;
-    static const int CYCLES_DELAY_FOR_CLOCK_LOW_ADDR = 150;
+    static const int CYCLES_DELAY_FOR_CLOCK_LOW_ADDR = 10;
     static const int CYCLES_DELAY_FOR_LOW_ADDR_SET = 150;
     // TODO 2020 was 20
     static const int CYCLES_DELAY_FOR_HIGH_ADDR_SET = 200;
