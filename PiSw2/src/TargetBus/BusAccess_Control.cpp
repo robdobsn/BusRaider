@@ -261,6 +261,11 @@ BR_RETURN_TYPE BusAccess::controlRequestAndTake()
 
 bool BusAccess::waitForBusAck(bool ack)
 {
+    // TODO 2020
+    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+    microsDelay(1);
+    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+
     // Initially check very frequently so the response is fast
     for (int j = 0; j < 1000; j++)
         if (controlBusReqAcknowledged() == ack)
@@ -269,7 +274,7 @@ bool BusAccess::waitForBusAck(bool ack)
     // Fall-back to slower checking which can be timed against target clock speed
     if (controlBusReqAcknowledged() != ack)
     {
-        uint32_t maxUsToWait = BusSocketInfo::getUsFromTStates(BR_MAX_WAIT_FOR_BUSACK_T_STATES, clockCurFreqHz());
+        uint32_t maxUsToWait = 500000; //BusSocketInfo::getUsFromTStates(BR_MAX_WAIT_FOR_BUSACK_T_STATES, clockCurFreqHz());
         if (maxUsToWait <= 0)
             maxUsToWait = 1;
         for (uint32_t j = 0; j < maxUsToWait; j++)
@@ -277,8 +282,15 @@ bool BusAccess::waitForBusAck(bool ack)
             if (controlBusReqAcknowledged() == ack)
                 break;
             microsDelay(1);
+            // TODO 2020
+            digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+            microsDelay(1);
+            digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
         }
     }
+
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "waitForBusAck controlBusReqAcknowledged %d ack %d GPIO %d", 
+    //         controlBusReqAcknowledged(), ack, read32(ARM_GPIO_GPLEV0));
 
     // Check we succeeded
     return controlBusReqAcknowledged() == ack;
@@ -438,106 +450,6 @@ void BusAccess::addrAndDataBusRead(uint32_t& addr, uint32_t& dataBusVals)
 
     // Read the data bus values
     dataBusVals = pibGetValue() & 0xff;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Address Bus Functions
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Set low address value by clearing and counting
-void BusAccess::addrLowSet(uint32_t lowAddrByte)
-{
-    // Clear initially
-    muxClearLowAddr();
-    // Clock the required value in - requires one more count than
-    // expected as the output register is one clock pulse behind the counter
-    if (_hwVersionNumber == 17)
-    {
-        for (uint32_t i = 0; i < (lowAddrByte & 0xff) + 1; i++) {
-            write32(ARM_GPIO_GPSET0, BR_V17_LADDR_CK_MASK);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-            write32(ARM_GPIO_GPCLR0, BR_V17_LADDR_CK_MASK);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-        }
-    }
-    else
-    {
-        write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-        write32(ARM_GPIO_GPSET0, BR_MUX_LADDR_CLK << BR_MUX_LOW_BIT_POS);
-        for (uint32_t i = 0; i < (lowAddrByte & 0xff) + 1; i++) {
-            write32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_CLOCK_LOW_ADDR);
-            write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-        }
-    }
-}
-
-// Set the high address value
-void BusAccess::addrHighSet(uint32_t highAddrByte)
-{
-    if (_hwVersionNumber == 17)
-    {
-        // Shift the value into the register
-        // Takes one more shift than expected as output reg is one pulse behind shift
-        for (uint32_t i = 0; i < 9; i++) {
-            // Set or clear serial pin to shift register
-            if (highAddrByte & 0x80)
-                muxSet(BR_V17_MUX_HADDR_SER_HIGH);
-            else
-                muxSet(BR_V17_MUX_HADDR_SER_LOW);
-            // Delay to allow settling
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
-            // Shift the address value for next bit
-            highAddrByte = highAddrByte << 1;
-            // Clock the bit
-            write32(ARM_GPIO_GPSET0, 1 << BR_HADDR_CK);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
-            write32(ARM_GPIO_GPCLR0, 1 << BR_HADDR_CK);
-        }
-    }
-    else
-    {
-        // Shift the value into the register
-        // Takes one more shift than expected as output reg is one pulse behind shift
-        for (uint32_t i = 0; i < 9; i++) {
-            // Set or clear serial pin to shift register
-            if (highAddrByte & 0x80)
-            {
-                muxClear();
-            }
-            else
-            {
-                // Mux low address clear doubles as high address serial in 
-                muxSet(BR_MUX_LADDR_CLR_BAR_LOW);
-            }
-            // Delay to allow settling
-            // TODO 2020
-            microsDelay(1);
-            // lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
-            // Shift the address value for next bit
-            highAddrByte = highAddrByte << 1;
-            // Clock the bit
-            write32(ARM_GPIO_GPSET0, 1 << BR_HADDR_CK);
-            // TODO 2020
-            microsDelay(1);
-            // lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
-            write32(ARM_GPIO_GPCLR0, 1 << BR_HADDR_CK);
-        }
-    }
-
-    // Clear multiplexer
-    // TODO 2020
-    microsDelay(1);
-    // lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_SET);
-    muxClear();
-}
-
-// Set the full address
-void BusAccess::addrSet(unsigned int addr)
-{
-    addrHighSet(addr >> 8);
-    addrLowSet(addr & 0xff);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -790,170 +702,6 @@ uint32_t BusAccess::clockGetMaxFreqHz()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Wait helper functions
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void BusAccess::waitEnablementUpdate()
-{
-    // Iterate bus sockets to see if any enable Mem/IO wait states
-    bool ioWait = false;
-    bool memWait = false;
-    for (int i = 0; i < _busSocketCount; i++)
-    {
-        if (_busSockets[i].enabled)
-        {
-            memWait = memWait || _busSockets[i].waitOnMemory;
-            ioWait = ioWait || _busSockets[i].waitOnIO;
-        }
-    }
-
-    // Store flags
-    _waitOnMemory = memWait;
-    _waitOnIO = ioWait;
-
-    // LogWrite("BusAccess", LOG_DEBUG, "WAIT ENABLEMENT mreq %d iorq %d", memWait, ioWait);
-
-    // Set PWM generator idle value to enable/disable wait states
-    // This is done using the idle states of the PWM
-    uint32_t pwmCtrl = read32(ARM_PWM_CTL);
-    pwmCtrl &= ~(ARM_PWM_CTL_SBIT1 | ARM_PWM_CTL_SBIT2);
-    if (_waitOnIO)
-        pwmCtrl |= ARM_PWM_CTL_SBIT1;
-    if (_waitOnMemory)
-        pwmCtrl |= ARM_PWM_CTL_SBIT2;
-    write32(ARM_PWM_CTL, pwmCtrl);
-
-    // Debug
-    // LogWrite("BusAccess", LOG_DEBUG, "WAIT UPDATE mem %d io %d", _waitOnMemory, _waitOnIO);
-
-#ifdef ISR_TEST
-    // Setup edge triggering on falling edge of IORQ
-    // Clear any current detected edges
-    write32(ARM_GPIO_GPEDS0, (1 << BR_IORQ_BAR) | (1 << BR_MREQ_BAR));  
-    // Set falling edge detect
-    if (_waitOnIO)
-    {
-        write32(ARM_GPIO_GPFEN0, read32(ARM_GPIO_GPFEN0) | BR_IORQ_BAR_MASK);
-        lowlev_enable_fiq();
-    }
-    else
-    {
-        write32(ARM_GPIO_GPFEN0, read32(ARM_GPIO_GPFEN0) & (~BR_IORQ_BAR_MASK));
-        lowlev_disable_fiq();
-    }
-    // if (_waitOnMemory)
-    //     write32(ARM_GPIO_GPFEN0, read32(ARM_GPIO_GPFEN0) | BR_WAIT_BAR_MASK);
-    // else
-    //     write32(ARM_GPIO_GPFEN0, read32(ARM_GPIO_GPFEN0) & (~BR_WAIT_BAR_MASK);
-#endif
-}
-
-void BusAccess::waitGenerationDisable()
-{
-    // Debug
-    // LogWrite("BusAccess", LOG_DEBUG, "WAIT DISABLE");
-    // Set PWM idle state to disable waits
-    uint32_t pwmCtrl = read32(ARM_PWM_CTL);
-    pwmCtrl &= ~(ARM_PWM_CTL_SBIT1 | ARM_PWM_CTL_SBIT2);
-    write32(ARM_PWM_CTL, pwmCtrl);
-}
-
-void BusAccess::waitSetupMREQAndIORQEnables()
-{
-    // Use PWM to generate pulses as the behaviour of the processor is non-deterministic in terms
-    // of time taken between consecutive instructions and when MREQ/IORQ enable is low wait
-    // states are disabled and bus operations can be missed
-
-    // Clock for PWM 
-    uint32_t clockSource = ARM_CM_CTL_CLKSRC_PLLD;
-    uint32_t freqReqd = 31250000;
-
-    // Disable the clock (without changing SRC and FLIP)
-    write32(ARM_CM_PWMCTL, ARM_CM_PASSWD | clockSource);
-
-    // Wait a little if clock is busy
-    int busyCount = 0;
-    static const int MAX_BUSY_WAIT_COUNT = 100000;
-    uint32_t lastBusy = 0;
-    for (int i = 0; i < MAX_BUSY_WAIT_COUNT; i++)
-    {
-        if ((read32(ARM_CM_PWMCTL) & ARM_CM_CTL_BUSY) == 0)
-            break;
-        microsDelay(1);
-        busyCount++;
-        lastBusy = read32(ARM_CM_PWMCTL);
-    }
-    uint32_t afterKill = 0;
-    if (busyCount == MAX_BUSY_WAIT_COUNT)
-    {
-        write32(ARM_CM_PWMCTL, ARM_CM_PASSWD | ARM_CM_CTL_KILL | clockSource);
-        microsDelay(1);
-        afterKill = read32(ARM_CM_PWMCTL);
-    }
-
-    // Set output pins
-    // MREQ will use PWM channel 2 and IORQ PWM channel 1
-    pinMode(BR_MREQ_WAIT_EN, PINMODE_ALT0);
-    pinMode(BR_IORQ_WAIT_EN, PINMODE_ALT0);
-
-    // Clear status on PWM generator
-    write32(ARM_PWM_STA, 0xffffffff);
-
-    // Set the divisor for PWM clock
-    uint32_t divisor = ARM_CM_CTL_PLLD_FREQ / freqReqd;
-    if (divisor > 4095)
-        divisor = 4095;
-    write32(ARM_CM_PWMDIV, ARM_CM_PASSWD | divisor << 12);
-    microsDelay(1);
-
-    // Enable PWM clock
-    write32(ARM_CM_PWMCTL, ARM_CM_PASSWD | ARM_CM_CTL_ENAB | clockSource);
-    microsDelay(1);
-
-    // Clear wait state enables initially - leaving LOW disables wait state generation
-    // Enable PWM two channels (one for IORQ and one for MREQ)
-    // FIFO is cleared so pins for IORQ and MREQ enable will be low
-    write32(ARM_PWM_CTL, ARM_PWM_CTL_CLRF1 | ARM_PWM_CTL_USEF2 | ARM_PWM_CTL_MODE2 | ARM_PWM_CTL_PWEN2 |
-                                          ARM_PWM_CTL_USEF1 | ARM_PWM_CTL_MODE1 | ARM_PWM_CTL_PWEN1);
-    microsDelay(1);
-
-    // Debug
-    LogWrite("BusAccess", LOG_DEBUG, "PWM div %d, busyCount %d, lastBusy %08x afterKill %08x", divisor, busyCount, lastBusy, afterKill);
-}
-
-void BusAccess::waitResetFlipFlops(bool forceClear)
-{
-    // LogWrite("BusAccess", LOG_DEBUG, "WAIT waitResetFlipFlops");
-
-    // Since the FIFO is shared the data output to MREQ/IORQ enable pins will be interleaved so we need to write data for both
-    if ((read32(ARM_PWM_STA) & 1) == 0)
-    {
-        // Write to FIFO
-        uint32_t busVals = read32(ARM_GPIO_GPLEV0);
-        bool ioWaitClear = (forceClear || ((busVals & BR_IORQ_BAR_MASK) == 0)) && _waitOnIO;
-        write32(ARM_PWM_FIF1, ioWaitClear ? 0x00ffffff : 0);  // IORQ sequence
-        bool memWaitClear = (forceClear || ((busVals & BR_MREQ_BAR_MASK) == 0)) && _waitOnMemory;
-        write32(ARM_PWM_FIF1, memWaitClear ? 0x00ffffff : 0);  // MREQ sequence
-    }
-
-    // Clear flag
-    _waitAsserted = false;
-}
-
-void BusAccess::waitClearDetected()
-{
-    // TODO maybe no longer needed as service or timer used instead of edge detection???
-    // Clear currently detected edge
-    // write32(ARM_GPIO_GPEDS0, BR_ANY_EDGE_MASK);
-}
-
-void BusAccess::waitSuspendBusDetailOneCycle()
-{
-    if (_hwVersionNumber == 17)
-        _waitSuspendBusDetailOneCycle = true;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Utility Functions
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1034,131 +782,6 @@ void BusAccess::busPagePinSetActive(bool active)
 {
     // LogWrite("BA", LOG_DEBUG, "pagePin = %d", (_hwVersionNumber == 17) ? active : !active);
     digitalWrite(BR_PAGING_RAM_PIN, (_hwVersionNumber == 17) ? active : !active);
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// External API control
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void BusAccess::rawBusControlEnable(bool en)
-{
-    busAccessReinit();
-    _busServiceEnabled = !en;
-}
-
-void BusAccess::rawBusControlClearWait()
-{
-    // LogWrite("BusAccess", LOG_DEBUG, "rawBusControlClearWait");
-    waitResetFlipFlops();
-    // Handle release after a read
-    waitHandleReadRelease();
-}
-
-void BusAccess::rawBusControlWaitDisable()
-{
-    waitGenerationDisable();
-}
-
-void BusAccess::rawBusControlClockEnable(bool en)
-{
-    if(!en)
-    {
-        clockEnable(false);
-        pinMode(BR_CLOCK_PIN, OUTPUT);
-    }
-    else
-    {
-        clockSetup();
-        clockSetFreqHz(1000000);
-        clockEnable(true);
-    }
-}
-
-bool BusAccess::rawBusControlTakeBus()
-{
-    return (controlRequestAndTake() == BR_OK);
-}
-
-void BusAccess::rawBusControlReleaseBus()
-{
-    controlRelease();
-}
-
-void BusAccess::rawBusControlSetAddress(uint32_t addr)
-{
-    addrSet(addr);
-}
-
-void BusAccess::rawBusControlSetData(uint32_t data)
-{
-    // Set the data onto the PIB
-    pibSetOut();
-    pibSetValue(data);
-    // Perform the write
-    // Clear DIR_IN (so make direction out), enable data output onto data bus and MREQ_BAR active
-    write32(ARM_GPIO_GPCLR0, BR_DATA_DIR_IN_MASK | BR_MUX_CTRL_BIT_MASK);
-    write32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
-    if (_hwVersionNumber == 17)
-    {
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_OUT_FF_SET);
-        write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-    }
-    else
-    {
-        write32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK);
-        lowlev_cycleDelay(CYCLES_DELAY_FOR_OUT_FF_SET);
-        write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
-        write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);       
-    }
-}
-
-uint32_t BusAccess::rawBusControlReadRaw()
-{
-    return read32(ARM_GPIO_GPLEV0);
-}
-
-uint32_t BusAccess::rawBusControlReadCtrl()
-{
-    return controlBusRead();
-}
-
-void BusAccess::rawBusControlReadAll(uint32_t& ctrl, uint32_t& addr, uint32_t& data)
-{
-    ctrl = controlBusRead();
-    addrAndDataBusRead(addr, data);
-}
-
-void BusAccess::rawBusControlSetPin(uint32_t pinNumber, bool level)
-{
-    digitalWrite(pinNumber, level);
-}
-
-bool BusAccess::rawBusControlGetPin(uint32_t pinNumber)
-{
-    return digitalRead(pinNumber);
-}
-
-uint32_t BusAccess::rawBusControlReadPIB()
-{
-    pibSetIn();
-    return (read32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
-}
-
-void BusAccess::rawBusControlWritePIB(uint32_t val)
-{
-    // Set the data onto the PIB
-    pibSetOut();
-    pibSetValue(val);
-}
-
-void BusAccess::rawBusControlMuxSet(uint32_t val)
-{
-    muxSet(val);
-}
-
-void BusAccess::rawBusControlMuxClear()
-{
-    muxClear();
 }
 
 void BusAccess::formatCtrlBus(uint32_t ctrlBus, char* msgBuf, int maxMsgBufLen)

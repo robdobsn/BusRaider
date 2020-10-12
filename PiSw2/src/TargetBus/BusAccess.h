@@ -46,7 +46,15 @@ public:
     // Wait state enablement
     void waitOnMemory(int busSocket, bool isOn);
     void waitOnIO(int busSocket, bool isOn);
-    bool waitIsOnMemory();
+
+    // Suspend wait system
+    void waitSystemSuspend(bool suspend);
+
+    // Check if wait on memory is enabled
+    bool waitIsOnMemory()
+    {
+        return _waitOnMemory;
+    }
 
     // Min cycle Us when in waitOnMemory mode
     void waitSetCycleUs(uint32_t cycleUs);
@@ -125,6 +133,7 @@ public:
     void rawBusControlWritePIB(uint32_t val);
     void rawBusControlMuxSet(uint32_t val);
     void rawBusControlMuxClear();
+    void rawBusControlTargetReset(uint32_t ms);
 
     // Version
     static const int HW_VERSION_DEFAULT = 20;
@@ -253,57 +262,7 @@ private:
     void addrLowSet(uint32_t lowAddrByte);
     void addrHighSet(uint32_t highAddrByte);
     void addrSet(unsigned int addr);
-
-    // Increment low address value by clocking the counter
-    void addrLowInc()
-    {
-        if (_hwVersionNumber == 17)
-        {
-            write32(ARM_GPIO_GPSET0, BR_V17_LADDR_CK_MASK);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-            write32(ARM_GPIO_GPCLR0, BR_V17_LADDR_CK_MASK);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-        }
-        else
-        {
-            // This sets the low address clock low as it is MUX0
-            write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK | BR_MUX_EN_BAR_MASK);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_CLOCK_LOW_ADDR);
-            write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
-        }
-    }
-
-    // Start Increment low address value
-    void addrLowIncStart()
-    {
-        if (_hwVersionNumber == 17)
-        {
-            write32(ARM_GPIO_GPSET0, BR_V17_LADDR_CK_MASK);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-            write32(ARM_GPIO_GPCLR0, BR_V17_LADDR_CK_MASK);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-        }
-        else
-        {
-            // This sets the low address clock low as it is MUX0
-            write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK | BR_MUX_EN_BAR_MASK);
-        }
-    }
-
-    // Finish increment low address value
-    void addrLowIncFinish()
-    {
-        if (_hwVersionNumber == 17)
-        {
-            write32(ARM_GPIO_GPCLR0, BR_V17_LADDR_CK_MASK);
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_LOW_ADDR_SET);
-        }
-        else
-        {
-            // This sets the low address clock high
-            write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
-        }
-    }
+    void addrLowInc();
 
     // Control bus read
     uint32_t controlBusRead();
@@ -468,11 +427,11 @@ private:
     void setSignal(BR_BUS_ACTION busAction, bool assert);
 
     // Wait control
-    void waitSetupMREQAndIORQEnables();
+    void waitSystemInit();
     void waitResetFlipFlops(bool forceClear = false);
     void waitClearDetected();
     void waitHandleNew();
-    void waitEnablementUpdate();
+    void waitEnablementUpdate(bool forceSuspend = false);
     void waitGenerationDisable();
     void waitHandleReadRelease();
 
@@ -498,7 +457,7 @@ private:
     static const int CYCLES_DELAY_FOR_HIGH_ADDR_READ = 1000;
 
     // Period target read control bus line is asserted during a read from the PIB (any bus element)
-    static const int CYCLES_DELAY_FOR_READ_FROM_PIB = 200;
+    static const int CYCLES_DELAY_FOR_READ_FROM_PIB = 500;
 
     // Max wait for end of read cycle
     // TODO 2020 was 10
@@ -506,9 +465,10 @@ private:
 
     // Delay in machine cycles for setting the pulse width when clearing/incrementing the address counter/shift-reg
     // TODO 2020 following 3 were 15
-    static const int CYCLES_DELAY_FOR_CLEAR_LOW_ADDR = 150;
-    static const int CYCLES_DELAY_FOR_CLOCK_LOW_ADDR = 10;
-    static const int CYCLES_DELAY_FOR_LOW_ADDR_SET = 150;
+    static const int CYCLES_DELAY_FOR_CLEAR_LOW_ADDR = 500;
+    static const int CYCLES_DELAY_FOR_CLOCK_LOW_ADDR = 500;
+    static const int CYCLES_DELAY_FOR_LOW_ADDR_SET = 500;
+    static const int CYCLES_REPEAT_FOR_CLOCK_LOW_ADDR = 1;
     // TODO 2020 was 20
     static const int CYCLES_DELAY_FOR_HIGH_ADDR_SET = 200;
     static const int CYCLES_DELAY_FOR_WAIT_CLEAR = 50;

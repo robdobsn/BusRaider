@@ -109,7 +109,7 @@ void BusAccess::init()
     busPagePinSetActive(false);
 
     // Setup MREQ and IORQ enables
-    waitSetupMREQAndIORQEnables();
+    waitSystemInit();
     _waitAsserted = false;
 
     // Remove edge detection
@@ -133,7 +133,7 @@ void BusAccess::init()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Reset the bus raider bus
+// Re-initialise the bus raider bus
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void BusAccess::busAccessReinit()
@@ -169,85 +169,6 @@ void BusAccess::busAccessReinit()
 
     // Reactivate bus service
     _busServiceEnabled = true;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Wait System
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void BusAccess::waitOnMemory(int busSocket, bool isOn)
-{
-    // Check validity
-    if ((busSocket < 0) || (busSocket >= _busSocketCount))
-        return;
-    _busSockets[busSocket].waitOnMemory = isOn;
-
-    // Update wait handling
-    // Debug
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "waitonMem %d", isOn);
-    waitEnablementUpdate();
-}
-
-void BusAccess::waitOnIO(int busSocket, bool isOn)
-{
-    // Check validity
-    if ((busSocket < 0) || (busSocket >= _busSocketCount))
-        return;
-    _busSockets[busSocket].waitOnIO = isOn;
-
-    // Update wait handling
-    // Debug
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "waitOnIO");
-    waitEnablementUpdate();
-}
-
-bool BusAccess::waitIsOnMemory()
-{
-    return _waitOnMemory;
-}
-
-// Min cycle Us when in waitOnMemory mode
-void BusAccess::waitSetCycleUs(uint32_t cycleUs)
-{
-    _waitCycleLengthUs = cycleUs;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Pause & Single Step Handling
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void BusAccess::waitRelease()
-{
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "waitRelease");
-    waitResetFlipFlops();
-    // Handle release after a read
-    waitHandleReadRelease();
-}
-
-bool BusAccess::waitIsHeld()
-{
-    return _waitHold;
-}
-
-void BusAccess::waitHold(int busSocket, bool hold)
-{
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "waitHold %d", hold);
-    // Check validity
-    if ((busSocket < 0) || (busSocket >= _busSocketCount))
-        return;
-    _busSockets[busSocket].holdInWaitReq = hold;
-    // Update flag
-    for (int i = 0; i < _busSocketCount; i++)
-    {
-        if (!_busSockets[i].enabled)
-            continue;
-        if (_busSockets[i].holdInWaitReq)
-        {
-            _waitHold = true;
-            return;
-        }
-    }
-    _waitHold = false;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

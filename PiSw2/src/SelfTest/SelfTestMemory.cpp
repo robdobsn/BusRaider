@@ -97,14 +97,15 @@ void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusAccess& bu
             case TEST_STATE_PERFORM_RESET:
             {
                 // Reset the machine
-                busAccess.rawBusControlMuxSet(BR_MUX_RESET_Z80_BAR_LOW);
-                microsDelay(100000);
-                busAccess.rawBusControlMuxClear();
+                busAccess.rawBusControlTargetReset(100);
                 testState = TEST_STATE_CHECK_BUSRQ;
                 break;
             }
             case TEST_STATE_CHECK_BUSRQ:
             {
+                // Suspend wait system
+                busAccess.waitSystemSuspend(true);
+
                 // Check if BUSRQ works
                 BR_RETURN_TYPE busAckedRetc = busAccess.controlRequestAndTake();
                 if (busAckedRetc != BR_OK)
@@ -222,6 +223,7 @@ void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusAccess& bu
             case TEST_STATE_DONE:
             {
                 busAccess.controlRelease();
+                busAccess.waitSystemSuspend(false);
                 if (issueCount == 0)
                 {
                     display.consoleForeground(DISPLAY_FX_GREEN);
