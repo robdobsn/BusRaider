@@ -240,28 +240,8 @@ void PiCoProcessor::service()
         }
     }
 
-    // Check anything available
-    size_t numCharsAvailable = 0;
-    esp_err_t err = uart_get_buffered_data_len((uart_port_t)_uartNum, &numCharsAvailable);
-    if ((err == ESP_OK) && (numCharsAvailable > 0))
-    {
-        // Get data
-        static const int MAX_BYTES_PER_CALL = 100;
-        uint8_t buf[MAX_BYTES_PER_CALL];
-        uint32_t bytesToGet = numCharsAvailable;
-        if (bytesToGet > MAX_BYTES_PER_CALL)
-            bytesToGet = MAX_BYTES_PER_CALL;
-        uint32_t bytesRead = uart_read_bytes((uart_port_t)_uartNum, buf, bytesToGet, 1);
-        if (bytesRead != 0)
-        {
-#ifdef DEBUG_PI_SERIAL_GET
-            LOG_I(MODULE_PREFIX, "service charsAvail %d ch %02x", numCharsAvailable, buf[0]);
-#endif
-            if (_pHDLC)
-                _pHDLC->handleBuffer(buf, bytesRead);
-        }
-        _statsRxCh += bytesRead;
-    }
+    // Pump the serial interface
+    serialInterfacePump();
 
     // Stats report
     if (Utils::isTimeout(millis(), _statsLastReportMs, STATS_REPORT_TIME_MS))
@@ -294,18 +274,18 @@ void PiCoProcessor::service()
             // Save the data
             if (_uploadBlockBuffer.size() >= UPLOAD_BLOCK_SIZE_BYTES)
             {
-                if (!_chunker.next(_uploadBlockBuffer.data(), UPLOAD_BLOCK_SIZE_BYTES, readLen, finalChunk))
+                if (_chunker.next(_uploadBlockBuffer.data(), UPLOAD_BLOCK_SIZE_BYTES, readLen, finalChunk))
                 {
                     // Handle the chunk
-                    _uploadFilePos += readLen;
                     uploadCommonBlockHandler(_uploadFileType.c_str(), _uploadFromFSRequest, _chunker.getFileName(), 
                                 _chunker.getFileLen(), _uploadFilePos, _uploadBlockBuffer.data(), readLen, finalChunk); 
+                    _uploadFilePos += readLen;
                 }
                 else
                 {
                     // Tidy up if finished
                     if (!finalChunk)
-                        LOG_W(MODULE_PREFIX, "service upload failed but not final");
+                        LOG_W(MODULE_PREFIX, "service upload returned false but isn't final chunk");
                     _uploadFromFSInProgress = false;
 #ifdef DEBUG_PI_UPLOAD_FROM_FS
                     LOG_W(MODULE_PREFIX, "service uploadFromFS done lastBlockMs %lu betweenBlocksMs %u chunkLen %u finalChunk %d", 
@@ -414,6 +394,78 @@ void PiCoProcessor::addRestAPIEndpoints(RestAPIEndpointManager &endpointManager)
                                 std::placeholders::_3, std::placeholders::_4,
                                 std::placeholders::_5),
                         NULL);
+    endpointManager.addEndpoint("sendfiletotargetbuffer", 
+                        RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                        RestAPIEndpointDef::ENDPOINT_GET, 
+                        std::bind(&PiCoProcessor::apiSendFileToTargetBuffer, this,
+                                std::placeholders::_1, std::placeholders::_2),
+                        "Send file to target buffer - from file system to target buffer");                            
+    endpointManager.addEndpoint("appendfiletotargetbuffer", 
+                        RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                        RestAPIEndpointDef::ENDPOINT_GET, 
+                        std::bind(&PiCoProcessor::apiAppendFileToTargetBuffer, this,
+                                std::placeholders::_1, std::placeholders::_2),
+                        "Append file to target buffer - from file system to target buffer");                            
+    endpointManager.addEndpoint("runfileontarget", 
+                        RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+                        RestAPIEndpointDef::ENDPOINT_GET, 
+                        std::bind(&PiCoProcessor::apiRunFileOnTarget, this,
+                                std::placeholders::_1, std::placeholders::_2),
+                        "Run file on target - /fileSystem/filename - from file system");      
+    // endpointManager.addEndpoint("uploadappend", 
+    //                     RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+    //                     RestAPIEndpointDef::ENDPOINT_POST,
+    //                     std::bind(&PiCoProcessor::apiUploadAppendComplete, this, 
+    //                             std::placeholders::_1, std::placeholders::_2),
+    //                     "Upload file", 
+    //                     "application/json", 
+    //                     NULL, 
+    //                     RestAPIEndpointDef::ENDPOINT_CACHE_NEVER,
+    //                     NULL,
+    //                     NULL,
+    //                     std::bind(&PiCoProcessor::apiUploadAppendPart, this, 
+    //                             std::placeholders::_1, std::placeholders::_2, 
+    //                             std::placeholders::_3, std::placeholders::_4,
+    //                             std::placeholders::_5, std::placeholders::_6,
+    //                             std::placeholders::_7));   
+    // endpointManager.addEndpoint("uploadtofileman", 
+    //                     RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+    //                     RestAPIEndpointDef::ENDPOINT_POST,
+    //                     std::bind(&PiCoProcessor::apiUploadToFileManComplete, this, 
+    //                             std::placeholders::_1, std::placeholders::_2),
+    //                     "Upload file", 
+    //                     "application/json", 
+    //                     NULL, 
+    //                     RestAPIEndpointDef::ENDPOINT_CACHE_NEVER,
+    //                     NULL,
+    //                     NULL,
+    //                     std::bind(&PiCoProcessor::apiUploadToFileManPart, this, 
+    //                             std::placeholders::_1, std::placeholders::_2, 
+    //                             std::placeholders::_3, std::placeholders::_4,
+    //                             std::placeholders::_5, std::placeholders::_6,
+    //                             std::placeholders::_7));                                    
+    // endpointManager.addEndpoint("uploadandrun", 
+    //                     RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+    //                     RestAPIEndpointDef::ENDPOINT_POST,
+    //                     std::bind(&PiCoProcessor::apiUploadAndRunComplete, this, 
+    //                             std::placeholders::_1, std::placeholders::_2),
+    //                     "Upload and run file", 
+    //                     "application/json", 
+    //                     NULL, 
+    //                     RestAPIEndpointDef::ENDPOINT_CACHE_NEVER,
+    //                     NULL,
+    //                     NULL,
+    //                     std::bind(&PiCoProcessor::apiUploadAndRunPart, this, 
+    //                             std::placeholders::_1, std::placeholders::_2, 
+    //                             std::placeholders::_3, std::placeholders::_4,
+    //                             std::placeholders::_5, std::placeholders::_6,
+    //                             std::placeholders::_7));                          
+    // endpointManager.addEndpoint("sendKey", 
+    //                     RestAPIEndpointDef::ENDPOINT_CALLBACK, 
+    //                     RestAPIEndpointDef::ENDPOINT_GET, 
+    //                     std::bind(&PiCoProcessor::apiSendKey, this,
+    //                             std::placeholders::_1, std::placeholders::_2),
+    //                     "Send key from terminal window");    
 
     // Stash endoint manager
     _pRestAPIEndpointManager = &endpointManager;
@@ -558,6 +610,44 @@ void PiCoProcessor::apiTargetCommandPostContent(const String &reqStr, const uint
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// API target file handling
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void PiCoProcessor::apiSendFileToTargetBuffer(const String &reqStr, String &respStr)
+{
+    // Clear target first
+    sendTargetCommand("ClearTarget", reqStr, respStr, true);
+    // File system
+    String fileSystemStr = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
+    // Filename
+    String filename = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 2);
+    LOG_I(MODULE_PREFIX, "apiSendFileToBuf filename %s", filename.c_str());
+    startUploadFromFileSystem(fileSystemStr, reqStr, filename, "");
+}
+
+void PiCoProcessor::apiAppendFileToTargetBuffer(const String &reqStr, String &respStr)
+{
+    // File system
+    String fileSystemStr = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
+    // Filename        
+    String filename = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 2);
+    LOG_I(MODULE_PREFIX, "apiAppendFileToBuf filename %s", filename.c_str());
+    startUploadFromFileSystem(fileSystemStr, reqStr, filename, "");
+}
+
+void PiCoProcessor::apiRunFileOnTarget(const String &reqStr, String &respStr)
+{
+    // Clear target first
+    sendTargetCommand("ClearTarget", reqStr, respStr, false);
+    // File system
+    String fileSystemStr = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
+    // Filename        
+    String filename = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 2);
+    LOG_I(MODULE_PREFIX, "runFileOnTarget filename %s", filename.c_str());
+    startUploadFromFileSystem(fileSystemStr, "", filename, "ProgramAndReset");
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // WiFi status code
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -645,8 +735,8 @@ void PiCoProcessor::sendFileBlock(size_t index, const uint8_t *pData, size_t len
     msgData.resize(msgStrPlusPayloadLen);
     if (msgData.size() >= msgStrPlusPayloadLen)
     {
-        // LOG_I(MODULE_PREFIX, "sendFileBlock blockLen %d headerLenExclTerm %d totalLen %d msgHeader %s msgDataSize %d", 
-        //         len, headerLen, msgStrPlusPayloadLen, msgHeader, msgData.size());         
+        LOG_I(MODULE_PREFIX, "sendFileBlock blockLen %d headerLenExclTerm %d totalLen %d msgHeader %s msgDataSize %d", 
+                len, headerLen, msgStrPlusPayloadLen, msgHeader, msgData.size());         
         memcpy(msgData.data(), msgHeader, headerLen + 1);
         memcpy(msgData.data() + headerLen + 1, pData, len);
         sendMsgAndPayloadToPi(msgData.data(), msgStrPlusPayloadLen);
@@ -793,6 +883,42 @@ void PiCoProcessor::hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen)
 
     // Get command
     String cmdName = RdJson::getString("cmdName", "", pRxStr);
+
+    // Check for file transfer related messages
+    if ((cmdName.equalsIgnoreCase("ufStartAck")))
+    {
+        _uploadStartAck = true;
+#ifdef DEBUG_PI_UPLOAD_ACKS
+        LOG_I(MODULE_PREFIX, "ufStartAck %s", pRxStr);
+#endif
+    }
+    else if ((cmdName.equalsIgnoreCase("ufBlockAck")))
+    {
+        _uploadBlockRxIndex = RdJson::getLong("index", 0, pRxStr);
+#ifdef DEBUG_PI_UPLOAD_ACKS_DETAIL
+        LOG_I(MODULE_PREFIX, "ufBlockAck %s", pRxStr);
+#endif
+    }
+    else if ((cmdName.equalsIgnoreCase("ufEndAck")))
+    {
+        _uploadEndAck = true;
+#ifdef DEBUG_PI_UPLOAD_ACKS
+        LOG_I(MODULE_PREFIX, "ufEndAck %s", pRxStr);
+#endif
+    }
+    else if ((cmdName.equalsIgnoreCase("ufEndNotAck")))
+    {
+        _uploadEndNotAck = true;
+#ifdef DEBUG_PI_UPLOAD_ACKS
+        LOG_I(MODULE_PREFIX, "ufEndNotAck %s", pRxStr);
+#endif
+    }
+
+    // Check if transferring files
+    if (_uploadFromAPIInProgress || _uploadFromFSInProgress)
+        return;
+
+    // Check other messages
     if (cmdName.equalsIgnoreCase("getStatusResp"))
     {
         // Cache the status frame
@@ -899,34 +1025,6 @@ void PiCoProcessor::hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen)
         _cmdResponseNew = true;
         _cmdResponseBuf = pRxStr;
         LOG_I(MODULE_PREFIX, "RespMessageReceived %s\n", pRxStr);
-    }
-    else if ((cmdName.equalsIgnoreCase("ufStartAck")))
-    {
-        _uploadStartAck = true;
-#ifdef DEBUG_PI_UPLOAD_ACKS
-        LOG_I(MODULE_PREFIX, "ufStartAck %s", pRxStr);
-#endif
-    }
-    else if ((cmdName.equalsIgnoreCase("ufBlockAck")))
-    {
-        _uploadBlockRxIndex = RdJson::getLong("index", 0, pRxStr);
-#ifdef DEBUG_PI_UPLOAD_ACKS_DETAIL
-        LOG_I(MODULE_PREFIX, "ufBlockAck %s", pRxStr);
-#endif
-    }
-    else if ((cmdName.equalsIgnoreCase("ufEndAck")))
-    {
-        _uploadEndAck = true;
-#ifdef DEBUG_PI_UPLOAD_ACKS
-        LOG_I(MODULE_PREFIX, "ufEndAck %s", pRxStr);
-#endif
-    }
-    else if ((cmdName.equalsIgnoreCase("ufEndNotAck")))
-    {
-        _uploadEndNotAck = true;
-#ifdef DEBUG_PI_UPLOAD_ACKS
-        LOG_I(MODULE_PREFIX, "ufEndNotAck %s", pRxStr);
-#endif
     }
 }
 
@@ -1173,6 +1271,7 @@ bool PiCoProcessor::waitForStartAck()
     uint32_t waitStartMs = millis();
     while (!Utils::isTimeout(millis(), waitStartMs, UPLOAD_MAX_WAIT_FOR_ACK_BEFORE_RESEND_MS))
     {
+        serialInterfacePump();
         if (_uploadStartAck)
             return true;
     }
@@ -1184,6 +1283,7 @@ bool PiCoProcessor::waitForBlockAck(size_t index)
     uint32_t waitStartMs = millis();
     while (!Utils::isTimeout(millis(), waitStartMs, UPLOAD_MAX_WAIT_FOR_ACK_BEFORE_RESEND_MS))
     {
+        serialInterfacePump();
         if (_uploadBlockRxIndex == index)
             return true;
     }
@@ -1195,6 +1295,7 @@ bool PiCoProcessor::waitForEndAck()
     uint32_t waitStartMs = millis();
     while (!Utils::isTimeout(millis(), waitStartMs, UPLOAD_MAX_WAIT_FOR_ACK_BEFORE_RESEND_MS))
     {
+        serialInterfacePump();
         if (_uploadEndAck)
             return true;
         else if (_uploadEndNotAck)
@@ -1204,4 +1305,30 @@ bool PiCoProcessor::waitForEndAck()
         }
     }
     return false;
+}
+
+void PiCoProcessor::serialInterfacePump()
+{
+    // Check anything available
+    size_t numCharsAvailable = 0;
+    esp_err_t err = uart_get_buffered_data_len((uart_port_t)_uartNum, &numCharsAvailable);
+    if ((err == ESP_OK) && (numCharsAvailable > 0))
+    {
+        // Get data
+        static const int MAX_BYTES_PER_CALL = 100;
+        uint8_t buf[MAX_BYTES_PER_CALL];
+        uint32_t bytesToGet = numCharsAvailable;
+        if (bytesToGet > MAX_BYTES_PER_CALL)
+            bytesToGet = MAX_BYTES_PER_CALL;
+        uint32_t bytesRead = uart_read_bytes((uart_port_t)_uartNum, buf, bytesToGet, 1);
+        if (bytesRead != 0)
+        {
+#ifdef DEBUG_PI_SERIAL_GET
+            LOG_I(MODULE_PREFIX, "service charsAvail %d ch %02x", numCharsAvailable, buf[0]);
+#endif
+            if (_pHDLC)
+                _pHDLC->handleBuffer(buf, bytesRead);
+        }
+        _statsRxCh += bytesRead;
+    }
 }

@@ -77,13 +77,6 @@ void McTRS80::enableMachine()
     // Invalidate screen buffer
     _screenBufferValid = false;
     _keyBufferDirty = false;
-
-
-    // // TODO 2020
-    // uint32_t v1 = read32(ARM_TIMER_VALUE);
-    // microsDelay(100);
-    // uint32_t v2 = read32(ARM_TIMER_VALUE);
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "ARM TIMER %u, %u, diff %u", v1, v2, v2-v1);
 }
 
 // Disable machine

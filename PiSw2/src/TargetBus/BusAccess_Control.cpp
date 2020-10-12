@@ -261,11 +261,6 @@ BR_RETURN_TYPE BusAccess::controlRequestAndTake()
 
 bool BusAccess::waitForBusAck(bool ack)
 {
-    // TODO 2020
-    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-    microsDelay(1);
-    digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-
     // Initially check very frequently so the response is fast
     for (int j = 0; j < 1000; j++)
         if (controlBusReqAcknowledged() == ack)
@@ -282,10 +277,6 @@ bool BusAccess::waitForBusAck(bool ack)
             if (controlBusReqAcknowledged() == ack)
                 break;
             microsDelay(1);
-            // TODO 2020
-            digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-            microsDelay(1);
-            digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
         }
     }
 

@@ -12,7 +12,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define SYSTEM_NAME "BusRaiderESP32"
-#define SYSTEM_VERSION "3.1.6"
+#define SYSTEM_VERSION "3.1.7"
 #define DEFAULT_SYSTYPE "BusRaider"
 #define DEFAULT_SYSNAME "BusRaider"
 #define DEFAULT_HOSTNAME "BusRaider"

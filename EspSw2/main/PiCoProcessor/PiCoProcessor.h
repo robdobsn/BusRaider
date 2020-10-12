@@ -169,6 +169,9 @@ private:
     void apiTargetCommand(String &reqStr, String &respStr);
     void apiTargetCommandPost(String &reqStr, String &respStr);
     void apiTargetCommandPostContent(const String &reqStr, const uint8_t *pData, size_t len, size_t index, size_t total);
+    void apiSendFileToTargetBuffer(const String &reqStr, String &respStr);
+    void apiAppendFileToTargetBuffer(const String &reqStr, String &respStr);
+    void apiRunFileOnTarget(const String &reqStr, String &respStr);
 
     // Upload
     void uploadAPIBlockHandler(const char* fileType, const String& req, const String& filename, 
@@ -185,5 +188,6 @@ private:
     bool waitForStartAck();
     bool waitForBlockAck(size_t index);
     bool waitForEndAck();
+    void serialInterfacePump();
 
 };

@@ -152,8 +152,6 @@ uint32_t CommandHandler::hdlcTxAvailableStatic()
 // This is a ascii character string (null terminated) followed by a byte buffer containing parameters
 void CommandHandler::hdlcFrameRx(const uint8_t *pFrame, unsigned frameLength)
 {
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Rx %d bytes", frameLength);
-
     // Handle the frame - extract command string
     char commandString[CMD_HANDLER_MAX_CMD_STR_LEN+1];
     strlcpy(commandString, (const char*)pFrame, CMD_HANDLER_MAX_CMD_STR_LEN < frameLength ? CMD_HANDLER_MAX_CMD_STR_LEN : frameLength+1);
@@ -162,6 +160,8 @@ void CommandHandler::hdlcFrameRx(const uint8_t *pFrame, unsigned frameLength)
     unsigned paramsLen = frameLength - commandStringLen - 1;
     if (paramsLen < 0)
         paramsLen = 0;
+
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Rx %d bytes msg %s paramsLen %d", frameLength, commandString, paramsLen);
 
     // Process the command with parameters
     processRxCmd(commandString, pParams, paramsLen);
