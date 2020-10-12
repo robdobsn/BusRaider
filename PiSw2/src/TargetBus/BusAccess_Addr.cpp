@@ -103,6 +103,15 @@ void BusAccess::addrHighSet(uint32_t highAddrByte)
                 write32(ARM_GPIO_GPCLR0, BR_MUX_EN_BAR_MASK | 1 << BR_HADDR_CK);
             }
 
+            // Repeat here to handle pulse timing
+            write32(ARM_GPIO_GPCLR0, 1 << BR_HADDR_CK);
+            write32(ARM_GPIO_GPCLR0, 1 << BR_HADDR_CK);
+            write32(ARM_GPIO_GPCLR0, 1 << BR_HADDR_CK);
+            write32(ARM_GPIO_GPCLR0, 1 << BR_HADDR_CK);
+            write32(ARM_GPIO_GPCLR0, 1 << BR_HADDR_CK);
+            write32(ARM_GPIO_GPCLR0, 1 << BR_HADDR_CK);
+            write32(ARM_GPIO_GPCLR0, 1 << BR_HADDR_CK);
+
             // Delay to allow settling
             // TODO 2020
             // microsDelay(1);

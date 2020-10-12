@@ -470,7 +470,7 @@ private:
     static const int CYCLES_DELAY_FOR_LOW_ADDR_SET = 500;
     static const int CYCLES_REPEAT_FOR_CLOCK_LOW_ADDR = 1;
     // TODO 2020 was 20
-    static const int CYCLES_DELAY_FOR_HIGH_ADDR_SET = 200;
+    static const int CYCLES_DELAY_FOR_HIGH_ADDR_SET = 1000;
     static const int CYCLES_DELAY_FOR_WAIT_CLEAR = 50;
     static const int CYCLES_DELAY_FOR_MREQ_FF_RESET = 20;
     static const int CYCLES_DELAY_FOR_DATA_DIRN = 20;
