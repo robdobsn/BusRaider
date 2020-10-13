@@ -18,13 +18,11 @@
 #include "UartMaxiSerialDevice.h"
 #include "CommsManager.h"
 #include "CommandHandler.h"
-#include "Hardware/HwManager.h"
 #include "Machines/McManager.h"
 #include "TargetBus/BusAccess.h"
-#include "BusControlAPI/BusControlAPI.h"
+// #include "BusControlAPI/BusControlAPI.h"
 #include "BusRaiderApp.h"
 #include "Display.h"
-#include "TargetBus/TargetProgrammer.h"
 
 enum TShutdownMode
 {
@@ -70,14 +68,8 @@ private:
 	// BusAccess
 	BusAccess m_BusAccess;
 
-	// TargetProgrammer
-	TargetProgrammer m_TargetProgrammer;
-	
-	// Hardware manager
-	HwManager m_HwManager;
-
 	// BusControlAPI
-	BusControlAPI m_BusControlAPI;
+	// BusControlAPI m_BusControlAPI;
 
 	// Machine Manager
 	McManager m_McManager;

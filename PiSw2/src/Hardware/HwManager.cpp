@@ -2,9 +2,7 @@
 // Rob Dobson 2018
 
 #include "HwManager.h"
-#include "TargetProgrammer.h"
 #include "BusAccess.h"
-#include "TargetTracker.h"
 #include "rdutils.h"
 #include "lowlib.h"
 #include "PiWiring.h"

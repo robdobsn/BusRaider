@@ -14,7 +14,7 @@ class BusRaiderApp
 {
 public:
 
-    BusRaiderApp(Display& display, CommsManager& commsManager, McManager& mcManager);
+    BusRaiderApp(Display& display, CommsManager& commsManager, McManager& mcManager, BusAccess& busAccess);
 
     void init();
     void initUSB();
@@ -52,6 +52,9 @@ private:
 
     // Machine manager
     McManager& _mcManager;
+
+    // BusAccess
+    BusAccess& _busAccess;
 
     // Singleton
     static BusRaiderApp* _pApp;

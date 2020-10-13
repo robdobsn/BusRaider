@@ -8,7 +8,6 @@
 #include "lowlib.h"
 #include "BusAccess.h"
 #include "TargetProgrammer.h"
-#include "HwManager.h"
 #include "TermH19.h"
 #include "TermAnsi.h"
 
@@ -392,7 +391,8 @@ void McTerminal::keyHandler( unsigned char ucModifiers,  const unsigned char raw
 }
 
 // Handle a file
-bool McTerminal::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
+bool McTerminal::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen,
+                TargetProgrammer& targetProgrammer)
 {
     // Get the file type (extension of file name)
     #define MAX_VALUE_STR 30
@@ -413,7 +413,7 @@ bool McTerminal::fileHandler(const char* pFileInfo, const uint8_t* pFileData, in
     if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
         baseAddr = strtoul(baseAddrStr, NULL, 16);
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
-    getTargetProgrammer().addMemoryBlock(baseAddr, pFileData, fileLen);
+    targetProgrammer.addMemoryBlock(baseAddr, pFileData, fileLen);
     return true;
 }
 

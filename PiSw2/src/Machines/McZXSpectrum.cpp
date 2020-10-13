@@ -9,7 +9,6 @@
 #include "BusAccess.h"
 #include "TargetProgrammer.h"
 #include "McManager.h"
-#include "HwManager.h"
 #include "McZXSpectrumTZXFormat.h"
 #include "McZXSpectrumSNAFormat.h"
 #include "McZXSpectrumZ80Format.h"
@@ -136,6 +135,7 @@ void McZXSpectrum::service()
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
 void McZXSpectrum::refreshDisplay()
 {
+    // TODO 2020 - changed from hwman
     // Read mirror memory at the location of the memory mapped screen
     if (getHwManager().blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, false, false, true) == BR_OK)
     {
@@ -462,7 +462,8 @@ bool McZXSpectrum::canProcFileType(const char* pFileType)
 }
 
 // Handle a file
-bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
+bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen,
+                TargetProgrammer& targetProgrammer)
 {
     // Get the file type (extension of file name)
     #define MAX_VALUE_STR 30
@@ -483,9 +484,9 @@ bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         // TZX
         McZXSpectrumTZXFormat formatHandler;
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing TZX file len %d", fileLen);
-        formatHandler.proc(getTargetProgrammer().addMemoryBlockStatic, 
-                getTargetProgrammer().setTargetRegistersStatic,
-                &getTargetProgrammer(),
+        formatHandler.proc(targetProgrammer.addMemoryBlockStatic, 
+                targetProgrammer.setTargetRegistersStatic,
+                &targetProgrammer,
                 pFileData, fileLen);
     }
     else if (strcasecmp(pFileType, ".z80") == 0)
@@ -494,9 +495,9 @@ bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         McZXSpectrumZ80Format formatHandler;
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing Z80 file len %d", fileLen);
         // Handle registers and injecting RET
-        formatHandler.proc(getTargetProgrammer().addMemoryBlockStatic, 
-                getTargetProgrammer().setTargetRegistersStatic,
-                &getTargetProgrammer(),
+        formatHandler.proc(targetProgrammer.addMemoryBlockStatic, 
+                targetProgrammer.setTargetRegistersStatic,
+                &targetProgrammer,
                 pFileData, fileLen);
     }
     else if (strcasecmp(pFileType, ".sna") == 0)
@@ -505,9 +506,9 @@ bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         McZXSpectrumSNAFormat formatHandler;
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing SNA file len %d", fileLen);
         // Handle the format
-        formatHandler.proc(getTargetProgrammer().addMemoryBlockStatic, 
-                getTargetProgrammer().setTargetRegistersStatic,
-                &getTargetProgrammer(),
+        formatHandler.proc(targetProgrammer.addMemoryBlockStatic, 
+                targetProgrammer.setTargetRegistersStatic,
+                &targetProgrammer,
                 pFileData, fileLen);
     }
     else
@@ -518,7 +519,7 @@ bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
             baseAddr = strtoul(baseAddrStr, NULL, 16);
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
-        getTargetProgrammer().addMemoryBlock(baseAddr, pFileData, fileLen);
+        targetProgrammer.addMemoryBlock(baseAddr, pFileData, fileLen);
     }
     return true;
 }
@@ -577,7 +578,7 @@ void McZXSpectrum::busActionCompleteCallback(BR_BUS_ACTION actionType)
     if (actionType == BR_BUS_ACTION_BUSRQ)
     {
         // Read memory at the location of the memory mapped screen
-        if (getHwManager().blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, false, false, false) == BR_OK)
+        if (_busAccess.blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, BusAccess::ACCESS_MEM) == BR_OK)
             _screenBufferValid = true;
 
         // // TODO

@@ -65,11 +65,9 @@ CKernel::CKernel (void)
 #endif
 	m_CommsManager(&m_Serial, NULL),
 	m_BusAccess(),
-	m_TargetProgrammer(),
-	m_HwManager(m_CommsManager.getCommandHandler(), m_BusAccess),
-	m_BusControlAPI(m_CommsManager.getCommandHandler(), m_HwManager, m_BusAccess),
-	m_McManager(&m_Display, m_CommsManager.getCommandHandler(), m_HwManager, m_BusAccess, m_TargetProgrammer),
-	m_BusRaiderApp(m_Display, m_CommsManager, m_McManager)
+	// m_BusControlAPI(m_CommsManager.getCommandHandler(), m_BusAccess),
+	m_McManager(&m_Display, m_CommsManager.getCommandHandler(), m_BusAccess),
+	m_BusRaiderApp(m_Display, m_CommsManager, m_McManager, m_BusAccess)
 {
 	m_pKernel = this;
 	_rebootRequested = false;
@@ -137,9 +135,8 @@ boolean CKernel::Initialize (void)
 	{
 		bOK = m_CommsManager.setup();
 		m_BusAccess.init();
-		m_TargetProgrammer.init();
-		m_HwManager.init();
-		m_BusControlAPI.init();
+		// TODO 2020 reinstate
+		// m_BusControlAPI.init();
 		m_McManager.init();
 		m_BusRaiderApp.init();
 	}
@@ -174,8 +171,6 @@ TShutdownMode CKernel::Run (void)
 	{
 		// Service comms
 		m_BusAccess.service();
-		m_TargetProgrammer.service();
-		m_HwManager.service();
 		m_BusControlAPI.service();
 		m_McManager.service();
 		m_BusRaiderApp.service();
@@ -205,9 +200,7 @@ TShutdownMode CKernel::Run (void)
 	{
 		// Service comms
 		m_BusAccess.service();
-		m_TargetProgrammer.service();
-		m_HwManager.service();
-		m_BusControlAPI.service();
+		// m_BusControlAPI.service();
 		m_McManager.service();
 		m_BusRaiderApp.service();
 		m_CommsManager.service();

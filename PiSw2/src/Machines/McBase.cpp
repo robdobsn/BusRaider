@@ -4,7 +4,6 @@
 #include "McBase.h"
 #include "McManager.h"
 #include "rdutils.h"
-#include "HwManager.h"
 #include "SystemFont.h"
 #include <stdlib.h>
 
@@ -123,10 +122,10 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
     disableMachine();
     
     // Disable hardware initially
-    getHwManager().disableAll();
+    _busAccess.hwDisableAll();
 
     // Setup hardware
-    getHwManager().setupFromJson("hw", mcJson);
+    _busAccess.hwSetupFromJson("hw", mcJson);
 
     // Setup clock
     uint32_t clockFreqHz = _machineDescriptor.clockFrequencyHz;
@@ -134,25 +133,24 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
     // Check if clock specified in json
     static const int MAX_CLOCK_SET_STR = 100;
     char clockSpeedStr[MAX_CLOCK_SET_STR];
-    BusAccess& busAccess = _mcManager.getBusAccess();
     bool clockValid = jsonGetValueForKey("clockHz", mcJson, clockSpeedStr, MAX_CLOCK_SET_STR);
     if (clockValid)
     {
         uint32_t clockHz = strtoul(clockSpeedStr, NULL, 10);
-        if ((clockHz >= busAccess.clockGetMinFreqHz()) && 
-                        (clockHz <= busAccess.clockGetMaxFreqHz()))
+        if ((clockHz >= _busAccess.clockGetMinFreqHz()) && 
+                        (clockHz <= _busAccess.clockGetMaxFreqHz()))
             clockFreqHz = clockHz;
     }
-    if ((clockFreqHz >= busAccess.clockGetMinFreqHz()) && 
-                        (clockFreqHz <= busAccess.clockGetMaxFreqHz()))
+    if ((clockFreqHz >= _busAccess.clockGetMinFreqHz()) && 
+                        (clockFreqHz <= _busAccess.clockGetMaxFreqHz()))
     {
-        busAccess.clockSetup();
-        busAccess.clockSetFreqHz(clockFreqHz);
-        busAccess.clockEnable(true);
+        _busAccess.clockSetup();
+        _busAccess.clockSetFreqHz(clockFreqHz);
+        _busAccess.clockEnable(true);
     }
     else
     {
-        busAccess.clockEnable(false);
+        _busAccess.clockEnable(false);
     }
 
     // Enable machine
@@ -194,16 +192,3 @@ bool McBase::canProcFileType( const char* fileType)
 {
     return false;
 }
-
-// Get HwManager
-HwManager& McBase::getHwManager()
-{
-    return _mcManager.getHwManager();
-}
-
-// Get Target Programmer
-TargetProgrammer& McBase::getTargetProgrammer()
-{
-    return _mcManager.getTargetProgrammer();
-}
-

@@ -7,26 +7,31 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "TargetCPU.h"
-#include "BusAccess.h"
+#include "BusSocketInfo.h"
 #include "TargetRegisters.h"
 #include "TargetBreakpoints.h"
+#include "TargetProgrammer.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Defs
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class McManager;
+class BusAccess;
 
 class TargetTracker
 {
 public:
 
-    TargetTracker(McManager& mcManager);
+    TargetTracker(BusAccess& busAccess);
 
     // Init
     void init();
     void service();
     void enable(bool en, bool waitHold);
+    void clear()
+    {
+        _targetProgrammer.clear();
+    }
 
     // Step
     void stepInto();
@@ -46,11 +51,19 @@ public:
     bool isPaused(); 
     bool isTrackingActive();
 
+    // Target programming
+    TargetProgrammer& targetProgrammer()
+    {
+        return _targetProgrammer;
+    }
+    void targetProgrammingStart(TargetProgrammer& targetProgrammer, bool execAfterProgramming);
+
     // Complete the process of programming the target
     void completeTargetProgram();
 
-    // Reset target
+    // Reset / exec target
     void targetReset();
+    void targetExec();
 
     // Register injection and code snippet generation
     void startSetRegisterSequence(Z80Registers* pRegs = NULL);
@@ -108,9 +121,6 @@ public:
     }
 
 private:
-    // Machine manager
-    McManager& _mcManager;
-
     // Can't turn off mid-injection so store flag to indicate disable pending
     bool _disablePending;
 
@@ -120,6 +130,11 @@ private:
     // Page out for injection active
     bool _pageOutForInjectionActive;
 
+    // Pending actions
+    bool _busActionPendingProgramTarget;
+    bool _busActionPendingExecAfterProgram;
+    bool _busActionCodeWrittenAtResetVector;
+    
     // Step mode
     STEP_MODE_TYPE _stepMode;
 
@@ -144,6 +159,16 @@ private:
     // Registers
     Z80Registers _z80Registers;
 
+    // BusAccess
+    BusAccess& _busAccess;
+
+    // Target Programmer
+    TargetProgrammer _targetProgrammer;
+    
+    // Bus socket we're attached to and setup info
+    int _busSocketId;
+    BusSocketInfo _busSocketInfo;
+
     // Register get/set
     enum OPCODE_INJECT_PROGRESS
     {
@@ -163,10 +188,6 @@ private:
     bool trackPrefixedInstructions(uint32_t flags, uint32_t data, uint32_t retVal);
     void store16BitVal(uint8_t arry[], int offset, uint16_t val);
     bool handlePendingDisable();
-
-    // Bus socket we're attached to and setup info
-    int _busSocketId;
-    BusSocketInfo _busSocketInfo;
 
     // Bus action complete callback
     static void busActionCompleteStatic(void* pObject, BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);

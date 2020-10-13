@@ -1,13 +1,17 @@
 // Bus Raider
 // Rob Dobson 2019
 
-#include "TargetTracker.h"
+#include "BusAccess.h"
 #include "PiWiring.h"
 #include "lowlib.h"
 #include "logging.h"
-#include "HwManager.h"
-#include "McManager.h"
+#include "TargetCPUZ80.h"
+
+// #define INCLUDE_DISASSEMBLER
+
+#ifdef INCLUDE_DISASSEMBLER
 #include "mdZ80.h"
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Variables
@@ -28,7 +32,8 @@
 static const char MODULE_PREFIX[] = "TargetTracker";
 
 // Constructor
-TargetTracker::TargetTracker(McManager& mcManager) : _mcManager(mcManager)
+TargetTracker::TargetTracker(BusAccess& busAccess)
+    : _busAccess(busAccess)
 {
     // Sockets
     _busSocketId = -1;
@@ -72,6 +77,11 @@ TargetTracker::TargetTracker(McManager& mcManager) : _mcManager(mcManager)
     // Machine heartbeat
     _machineHeartbeatCounter = 0;
 
+    // Pending actions
+    _busActionPendingProgramTarget = false;
+    _busActionPendingExecAfterProgram = false;
+    _busActionCodeWrittenAtResetVector = false;
+
     // Debug
     _debugInstrBytePos = 0;
 }
@@ -84,7 +94,7 @@ void TargetTracker::init()
 {
     // Connect to the bus socket
     if (_busSocketId < 0)
-        _busSocketId = _mcManager.getBusAccess().busSocketAdd(    
+        _busSocketId = _busAccess.busSocketAdd(    
             false,
             TargetTracker::handleWaitInterruptStatic,
             TargetTracker::busActionCompleteStatic,
@@ -115,35 +125,43 @@ void TargetTracker::service()
 //Enable
 void TargetTracker::enable(bool en, bool waitHold)
 {
-    BusAccess& busAccess = _mcManager.getBusAccess();
     _stepMode = STEP_MODE_STEP_PAUSED;
     if (en)
     {
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "enable %d", en);
         // Enable the bus socket so we get bus callbacks
-        busAccess.busSocketEnable(_busSocketId, en);
+        _busAccess.busSocketEnable(_busSocketId, en);
         // Set mirror mode so we record memory accesses
-        _mcManager.getHwManager().setMirrorMode(true);
+
+        // TODO 2020
+        // _mcManager.getHwManager().setMirrorMode(true);
+
+
         _postInjectMemoryMirror = true;
         // Wait on memory and hold at each instruction
-        busAccess.waitOnMemory(_busSocketId, true);
-        busAccess.waitHold(_busSocketId, waitHold);
+        _busAccess.waitOnMemory(_busSocketId, true);
+        _busAccess.waitHold(_busSocketId, waitHold);
         if (!waitHold)
-            busAccess.waitRelease();
+            _busAccess.waitRelease();
     }
     else
     {
         // Turn off mirror mode
-        _mcManager.getHwManager().setMirrorMode(false);
+        
+        
+        // TODO 2020
+        // _mcManager.getHwManager().setMirrorMode(false);
+
+
         // Remove any hold
-        busAccess.waitHold(_busSocketId, false);
+        _busAccess.waitHold(_busSocketId, false);
         if (_targetStateAcqMode != TARGET_STATE_ACQ_INJECTING)
         {
             // Disable
-            busAccess.waitOnMemory(_busSocketId, false);
-            busAccess.busSocketEnable(_busSocketId, en);
+            _busAccess.waitOnMemory(_busSocketId, false);
+            _busAccess.busSocketEnable(_busSocketId, en);
             // Remove paging for injection
-            busAccess.targetPageForInjection(_busSocketId, false);
+            _busAccess.targetPageForInjection(_busSocketId, false);
             _pageOutForInjectionActive = false;
         }
         else
@@ -157,22 +175,20 @@ bool TargetTracker::isPaused()
 {
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busSocketIsEnabled %d %d", 
     //             busAccess.busSocketIsEnabled(_busSocketId), _stepMode);
-    BusAccess& busAccess = _mcManager.getBusAccess();
-    if (!busAccess.busSocketIsEnabled(_busSocketId))
+    if (!_busAccess.busSocketIsEnabled(_busSocketId))
         return false;
     return _stepMode == STEP_MODE_STEP_PAUSED;
 }
 
 bool TargetTracker::isTrackingActive()
 {
-    BusAccess& busAccess = _mcManager.getBusAccess();
-    return busAccess.busSocketIsEnabled(_busSocketId);
+    return _busAccess.busSocketIsEnabled(_busSocketId);
 }
 
 void TargetTracker::targetReset()
 {
     _targetResetPending = true;
-    _mcManager.targetReset();
+    _busAccess.targetReqReset(_busSocketId);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -199,8 +215,7 @@ void TargetTracker::startSetRegisterSequence(Z80Registers* pRegs)
     _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
 
     // Remove any hold to allow execution / injection
-    BusAccess& busAccess = _mcManager.getBusAccess();
-    busAccess.waitHold(_busSocketId, false);
+    _busAccess.waitHold(_busSocketId, false);
 
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Wait release for injection");
 
@@ -511,12 +526,11 @@ void TargetTracker::stepInto()
     _stepMode = STEP_MODE_STEP_INTO;
 
     // Release bus hold if held
-    BusAccess& busAccess = _mcManager.getBusAccess();
-    if (busAccess.waitIsHeld())
+    if (_busAccess.waitIsHeld())
     {
         // Remove any hold to allow execution / injection
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "stepInto waitHold = false");
-        busAccess.waitHold(_busSocketId, false);
+        _busAccess.waitHold(_busSocketId, false);
     }
 
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Breakpoints en %d num %d", _breakpoints.isEnabled(), _breakpoints.getNumEnabled());
@@ -527,24 +541,26 @@ void TargetTracker::stepOver()
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "stepOver");
 
     // Get address to run to by disassembling code at current location
-    uint8_t* pMirrorMemory = _mcManager.getHwManager().getMirrorMemForAddr(0);
-    if (!pMirrorMemory)
-        return;
-    uint32_t curAddr = _z80Registers.PC;
-    char pDisassembly[MAX_Z80_DISASSEMBLY_LINE_LEN];
-    int instrLen = disasmZ80(pMirrorMemory, 0, curAddr, pDisassembly, INTEL, false, true);
-    _stepOverPCValue = curAddr + instrLen;
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "cpu-step-over PCnow %04x StepToPC %04x", _z80Registers.PC, _stepOverPCValue);
+
+    // TODO 2020
+    // RESTORE ...
+    // uint8_t* pMirrorMemory = _mcManager.getHwManager().getMirrorMemForAddr(0);
+    // if (!pMirrorMemory)
+    //     return;
+    // uint32_t curAddr = _z80Registers.PC;
+    // char pDisassembly[MAX_Z80_DISASSEMBLY_LINE_LEN];
+    // int instrLen = disasmZ80(pMirrorMemory, 0, curAddr, pDisassembly, INTEL, false, true);
+    // _stepOverPCValue = curAddr + instrLen;
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "cpu-step-over PCnow %04x StepToPC %04x", _z80Registers.PC, _stepOverPCValue);
 
     // Set flag to indicate mode
     _stepMode = STEP_MODE_STEP_OVER;
 
     // Release bus hold if held
-    BusAccess& busAccess = _mcManager.getBusAccess();
-    if (busAccess.waitIsHeld())
+    if (_busAccess.waitIsHeld())
     {
         // Remove any hold to allow execution / injection
-        busAccess.waitHold(_busSocketId, false);
+        _busAccess.waitHold(_busSocketId, false);
     }
 }
 
@@ -557,11 +573,10 @@ void TargetTracker::stepTo(uint32_t toAddr)
     _stepMode = STEP_MODE_STEP_OVER;
 
     // Release bus hold if held
-    BusAccess& busAccess = _mcManager.getBusAccess();
-    if (busAccess.waitIsHeld())
+    if (_busAccess.waitIsHeld())
     {
         // Remove any hold to allow execution / injection
-        busAccess.waitHold(_busSocketId, false);
+        _busAccess.waitHold(_busSocketId, false);
     }
 }
 
@@ -573,11 +588,10 @@ void TargetTracker::stepRun()
     _stepMode = STEP_MODE_RUN;
 
     // Release bus hold if held
-    BusAccess& busAccess = _mcManager.getBusAccess();
-    if (busAccess.waitIsHeld())
+    if (_busAccess.waitIsHeld())
     {
         // Remove any hold to allow execution / injection
-        busAccess.waitHold(_busSocketId, false);
+        _busAccess.waitHold(_busSocketId, false);
     }
 }
 
@@ -595,22 +609,6 @@ void TargetTracker::stepRun()
 //         busAccess.waitHold(_busSocketId, false);
 //     }
 // }
-
-void TargetTracker::completeTargetProgram()
-{
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "completeTargetProgram");
-
-    // Set flag to indicate mode
-    _stepMode = STEP_MODE_STEP_PAUSED;
-
-    // Release bus hold if held
-    BusAccess& busAccess = _mcManager.getBusAccess();
-    if (busAccess.waitIsHeld())
-    {
-        // Remove any hold to allow execution / injection
-        busAccess.waitHold(_busSocketId, false);
-    }
-}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Status
@@ -673,15 +671,14 @@ bool TargetTracker::handlePendingDisable()
         _disablePending = false;
 
         // Disable
-        BusAccess& busAccess = _mcManager.getBusAccess();
-        busAccess.waitOnMemory(_busSocketId, false);
-        busAccess.busSocketEnable(_busSocketId, false);
+        _busAccess.waitOnMemory(_busSocketId, false);
+        _busAccess.busSocketEnable(_busSocketId, false);
 
         // Release bus hold
-        busAccess.waitHold(_busSocketId, false);
+        _busAccess.waitHold(_busSocketId, false);
 
         // Remove paging for injection
-        busAccess.targetPageForInjection(_busSocketId, false);
+        _busAccess.targetPageForInjection(_busSocketId, false);
         _pageOutForInjectionActive = false;
 
         return true;
@@ -702,6 +699,9 @@ void TargetTracker::busActionCompleteStatic(void* pObject, BR_BUS_ACTION actionT
 
 void TargetTracker::busActionComplete(BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASON reason)
 {
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG,"bus action complete type %d reason %d programPending %d", 
+    //         actionType, reason, _busActionPendingProgramTarget);
+
     if (actionType == BR_BUS_ACTION_RESET)
     {
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionComplete Reset");
@@ -723,6 +723,59 @@ void TargetTracker::busActionComplete(BR_BUS_ACTION actionType,  BR_BUS_ACTION_R
     else if (actionType == BR_BUS_ACTION_RESET_END)
     {
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionComplete ResetEnd");
+    }
+    else if (actionType == BR_BUS_ACTION_BUSRQ)
+    {
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionComplete BUSRQ");
+
+        // Program target pending?
+        if (_busActionPendingProgramTarget)
+        {
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionComplete pendingProgramTarget numBlocks %d",
+            //                 _targetProgrammer.numMemoryBlocks());
+
+            // Write the blocks
+
+            // TODO 2020 - using _busaccess instead of hw for blockwrite
+            _busActionCodeWrittenAtResetVector = false;
+            for (int i = 0; i < _targetProgrammer.numMemoryBlocks(); i++) {
+                TargetProgrammer::TargetMemoryBlock* pBlock = _targetProgrammer.getMemoryBlock(i);
+                BR_RETURN_TYPE brResult = _busAccess.blockWrite(pBlock->start, 
+                            _targetProgrammer.getMemoryImagePtr() + pBlock->start, pBlock->len,
+                            BusAccess::ACCESS_MEM);
+                LogWrite(MODULE_PREFIX, LOG_DEBUG,"ProgramTarget done %08x len %d result %d micros %u", pBlock->start, pBlock->len, brResult, micros());
+                if (pBlock->start == Z80_PROGRAM_RESET_VECTOR)
+                    _busActionCodeWrittenAtResetVector = true;
+            }
+
+            // // Debug
+            // uint8_t testBlock[0x100];
+            // uint32_t baseAddr = 0x6000;
+            // uint32_t blockLen = 0x100;
+            // BusAccess::blockRead(baseAddr, testBlock, blockLen, false, false);
+            // char buf2[100];
+            // buf2[0] = 0;
+            // uint32_t lineStart = 0;
+            // for (uint32_t i = 0; i < blockLen; i++)
+            // {
+            //     char buf1[10];
+            //     ee_sprintf(buf1, "%02x ", testBlock[i]);
+            //     strlcat(buf2, buf1, 100);
+            //     if (i % 0x10 == 0x0f)
+            //     {
+            //         LogWrite(MODULE_PREFIX, LOG_DEBUG, "%04x %s", baseAddr+lineStart, buf2);
+            //         buf2[0] = 0;
+            //         lineStart = i+1;
+            //     }
+            // }
+
+            // Check for exec
+            if (_busActionPendingExecAfterProgram)
+                targetExec();
+
+            // No longer pending
+            _busActionPendingProgramTarget = false;
+        }
     }
 }
 
@@ -755,7 +808,6 @@ void TargetTracker::handleWaitInterrupt(uint32_t addr, uint32_t data,
 
     // Handle state machine
     TARGET_STATE_ACQ startAcqMode = _targetStateAcqMode;
-    BusAccess& busAccess = _mcManager.getBusAccess();
     switch (_targetStateAcqMode)
     {
         case TARGET_STATE_ACQ_NONE:
@@ -766,7 +818,7 @@ void TargetTracker::handleWaitInterrupt(uint32_t addr, uint32_t data,
             {
                 // Tell bus to hold at this point
                 // LogWrite(MODULE_PREFIX, LOG_DEBUG, "waitISR postInject && paused -> hold = true");
-                busAccess.waitHold(_busSocketId, true);
+                _busAccess.waitHold(_busSocketId, true);
             }
 
             // Check for step-over, breakpoints, etc
@@ -779,17 +831,20 @@ void TargetTracker::handleWaitInterrupt(uint32_t addr, uint32_t data,
         }
         case TARGET_STATE_ACQ_INJECT_IF_NEW_INSTR:
         {
-            // Machine heartbeat handler
-            if (flags & BR_CTRL_BUS_M1_MASK)
-            {
-                _machineHeartbeatCounter++;
-                if (_machineHeartbeatCounter > 1000)
-                {
-                    _mcManager.machineHeartbeat();
-                    _machineHeartbeatCounter = 0;
-                    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "INT");
-                }
-            }
+            // TODO 2020
+            // RE-implement heartbeat while debugging
+
+            // // Machine heartbeat handler
+            // if (flags & BR_CTRL_BUS_M1_MASK)
+            // {
+            //     _machineHeartbeatCounter++;
+            //     if (_machineHeartbeatCounter > 1000)
+            //     {
+            //         _mcManager.machineHeartbeat();
+            //         _machineHeartbeatCounter = 0;
+            //         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "INT");
+            //     }
+            // }
 
             // Check for disable
             if (handlePendingDisable())
@@ -936,8 +991,7 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
     if (!_pageOutForInjectionActive)
     {
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetPageForInjection TRUE");
-        BusAccess& busAccess = _mcManager.getBusAccess();
-        busAccess.targetPageForInjection(_busSocketId, true);
+        _busAccess.targetPageForInjection(_busSocketId, true);
         _pageOutForInjectionActive = true;
     }
     
@@ -949,7 +1003,6 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
         injectProgress = handleRegisterGet(addr, data, flags, retVal);
 
     // Check if time for memory grab
-    BusAccess& busAccess = _mcManager.getBusAccess();
     if (injectProgress == OPCODE_INJECT_GRAB_MEMORY)
     {
         // Check if post-inject memory mirroring required
@@ -961,10 +1014,10 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
             // ensure BUSRQ is handled synchronously with the TargetTracker operation when MREQ waits are
             // enabled so that the cycle immediately following a BUSRQ in this case will be part of the 
             // opcode injection cycle and the bus detail will not be required
-            busAccess.waitSuspendBusDetailOneCycle();
+            _busAccess.waitSuspendBusDetailOneCycle();
 
             // Use the bus socket to request page-in
-            busAccess.targetPageForInjection(_busSocketId, false);
+            _busAccess.targetPageForInjection(_busSocketId, false);
             _pageOutForInjectionActive = false;
 
             // Request bus
@@ -973,7 +1026,7 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
             if (_requestDisplayWhileStepping)
                 busAction = BR_BUS_ACTION_DISPLAY;
             _requestDisplayWhileStepping = false;
-            busAccess.targetReqBus(_busSocketId, busAction);
+            _busAccess.targetReqBus(_busSocketId, busAction);
             _postInjectMemoryMirror = false;
         }
     }
@@ -987,7 +1040,7 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
         _snippetPos = 0;
 
         // Use the bus socket to request page-in delayed to next wait event
-        busAccess.targetPageForInjection(_busSocketId, false);
+        _busAccess.targetPageForInjection(_busSocketId, false);
         _pageOutForInjectionActive = false;
 
         // Go back to allowing a single instruction to run before reg get
@@ -1033,3 +1086,108 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
     }
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Target programming
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TargetTracker::targetProgrammingStart(TargetProgrammer& targetProgrammer, bool execAfterProgramming)
+{
+    // Check there is something to write
+    if (targetProgrammer.numMemoryBlocks() == 0) 
+    {
+        // Nothing new to write
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetProgrammingStart - nothing to write");
+    } 
+    else 
+    {
+        // BUSRQ is used even if memory is emulated because it holds the processor while changes are made
+        // Give the BusAccess some service first to ensure WAIT handling is complete before requesting the bus
+        for (int i = 0; i < 3; i++)
+            _busAccess.service();
+
+        // Request target bus
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetProgrammingStart targetReqBus");
+        _busAccess.targetReqBus(_busSocketId, BR_BUS_ACTION_PROGRAMMING);
+        _busActionPendingProgramTarget = true;
+        _busActionPendingExecAfterProgram = execAfterProgramming;
+    }
+}
+
+void TargetTracker::completeTargetProgram()
+{
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "completeTargetProgram");
+
+    // Set flag to indicate mode
+    _stepMode = STEP_MODE_STEP_PAUSED;
+
+    // Release bus hold if held
+    if (_busAccess.waitIsHeld())
+    {
+        // Remove any hold to allow execution / injection
+        _busAccess.waitHold(_busSocketId, false);
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Start target program - or reset
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TargetTracker::targetExec()
+{
+    // TODO 2020
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Starting target code, debugActive %c", 
+    //                 getTargetTracker().isTrackingActive() ? 'Y' : 'N');
+    bool performHardReset = true;
+    // TODO 2020
+    // if (getTargetProgrammer().areRegistersValid())
+    // {
+    //     // Check how to set registers
+    //     if (getHwManager().getOpcodeInjectEnable() || getTargetTracker().isTrackingActive())
+    //     {
+    //         // Use the TargetTracker module to inject instructions to set registers
+    //         Z80Registers regs;
+    //         getTargetProgrammer().getTargetRegs(regs);
+    //         getTargetTracker().startSetRegisterSequence(&regs);
+    //         performHardReset = false;
+    //     }
+    //     else
+    //     {
+    //         // If the code doesn't start at 0 or a start location has been supplied,
+    //         // generate a code snippet to set registers and run
+    //         if (!_busActionCodeWrittenAtResetVector || getTargetProgrammer().areRegistersValid())
+    //         {
+    //             uint8_t regSetCode[MAX_REGISTER_SET_CODE_LEN];
+    //             Z80Registers regs;
+    //             getTargetProgrammer().getTargetRegs(regs);
+    //             static const int REGISTERS_STR_MAX_LEN = 500;
+    //             char regsStr[REGISTERS_STR_MAX_LEN];
+    //             regs.format(regsStr, REGISTERS_STR_MAX_LEN);
+    //             LogWrite(MODULE_PREFIX, LOG_DEBUG, "Regs: %s", regsStr);
+    //             uint32_t codeDestAddr = 0;
+    //             if (_pCurMachine)
+    //                 _pCurMachine->getSetRegistersCodeAddr();
+    //             int codeLen = TargetCPUZ80::getSnippetToSetRegs(codeDestAddr, regs, regSetCode, MAX_REGISTER_SET_CODE_LEN);
+    //             if (codeLen != 0)
+    //             {
+    //                 // Reg setting code
+    //                 LogWrite(MODULE_PREFIX, LOG_DEBUG,"Set regs snippet at %04x len %d", codeDestAddr, codeLen);
+    //                 getHwManager().blockWrite(codeDestAddr, regSetCode, codeLen, false, false, false);
+                    
+    //                 // Reset vector
+    //                 uint8_t jumpCmd[3] = { 0xc3, uint8_t(codeDestAddr & 0xff), uint8_t((codeDestAddr >> 8) & 0xff) };
+    //                 getHwManager().blockWrite(Z80_PROGRAM_RESET_VECTOR, jumpCmd, 3, false, false, false);
+
+    //                 // TODO 2020
+    //                 // LogDumpMemory(MODULE_PREFIX, LOG_DEBUG, regSetCode, regSetCode + codeLen);
+    //             }
+    //         }
+    //     }
+    // }
+
+    // See if we need to do a hard reset
+    if (performHardReset)
+    {
+        // Request reset target
+        _busAccess.targetReqReset(_busSocketId);
+    }
+}

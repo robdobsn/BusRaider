@@ -10,15 +10,13 @@
 #include "BusAccess.h"
 #include "CommandHandler.h"
 
-class TargetProgrammer;
 class DisplayBase;
 
 class McManager
 {
 public:
     // Constuction
-    McManager(DisplayBase* pDisplay, CommandHandler& commandHandler, HwManager& hwManager, 
-                BusAccess& busAccess, TargetProgrammer& targetProgrammer);
+    McManager(DisplayBase* pDisplay, CommandHandler& commandHandler, BusAccess& busAccess);
 
     // Init
     void init();
@@ -52,34 +50,21 @@ public:
     uint32_t hostSerialReadChars(uint8_t* pBuf, uint32_t bufMaxLen);
     void sendKeyStrToTargetStatic(const char* pKeyStr);
 
-    // Target programming
-    void targetProgrammingStart(bool execAfterProgramming);
-
-    // Target control
-    void targetReset();
-
     // Handle target files
     static bool targetFileHandlerStatic(void* pObject, const char* rxFileInfo, const uint8_t* pData, unsigned dataLen);
     bool targetFileHandler(const char* rxFileInfo, const uint8_t* pData, unsigned dataLen);
 
-    void targetIrq(int durationTStates = -1);
-
-    // Access to hardware manager
-    HwManager& getHwManager()
+    // IRQ on target
+    void targetIrq(int durationTStates = -1)
     {
-        return _hwManager;
+        // Generate a maskable interrupt
+        _busAccess.targetReqIRQ(_busSocketId, durationTStates);
     }
 
-    // Access to bus
-    BusAccess& getBusAccess()
+    // Get access to target programmer
+    TargetProgrammer& targetProgrammer()
     {
-        return _busAccess;
-    }
-
-    // Access to target programmer
-    TargetProgrammer& getTargetProgrammer()
-    {
-        return _targetProgrammer;
+        return _busAccess.targetProgrammer();
     }
 
 private:
@@ -92,14 +77,8 @@ private:
     // CommandHandler
     CommandHandler& _commandHandler;
 
-    // HwManager
-    HwManager& _hwManager;
-
     // BusAccess
     BusAccess& _busAccess;
-
-    // TargetProgrammer
-    TargetProgrammer& _targetProgrammer;
 
     // Bus socket we're attached to and setup info
     int _busSocketId;
@@ -113,9 +92,6 @@ private:
     bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
                     char* pRespJson, unsigned maxRespLen);
 
-    // Exec program on target
-    void targetExec();
-    
     // Bus action complete callback
     static void busActionCompleteStatic(void* pObject, BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
     void busActionComplete(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
@@ -137,10 +113,7 @@ private:
     McBase* _pCurMachine;
 
     // Pending actions
-    bool _busActionPendingProgramTarget;
-    bool _busActionPendingExecAfterProgram;
     bool _busActionPendingDisplayRefresh;
-    bool _busActionCodeWrittenAtResetVector;
 
     // Display refresh
     const int REFRESH_RATE_WINDOW_SIZE_MS = 1000;

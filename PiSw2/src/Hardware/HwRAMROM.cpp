@@ -4,7 +4,6 @@
 #include "HwRAMROM.h"
 #include "HwManager.h"
 #include "BusAccess.h"
-#include "TargetProgrammer.h"
 #include "rdutils.h"
 #include "PiWiring.h"
 #include "lowlib.h"

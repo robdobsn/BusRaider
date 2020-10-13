@@ -9,7 +9,6 @@
 #include "TargetProgrammer.h"
 #include "McManager.h"
 #include "McTRS80CmdFormat.h"
-#include "HwManager.h"
 
 static const char* MODULE_PREFIX = "TRS80";
 
@@ -122,7 +121,7 @@ void McTRS80::refreshDisplay()
 
     // Check for key presses and send to the TRS80 if necessary
     // Only send to mirror if we are in emulation mode, otherwise store up changes for later
-    if (_keyBufferDirty && getHwManager().isEmulatingMemory())
+    if (_keyBufferDirty && _busAccess.isEmulatingMemory())
     {
         _busAccess.blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, BusAccess::ACCESS_MEM);
         _keyBufferDirty = false;
@@ -379,7 +378,8 @@ void McTRS80::keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[
 // File handler
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen)
+bool McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen,
+                TargetProgrammer& targetProgrammer)
 {
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "fileHandler %s", pFileInfo);
 
@@ -402,9 +402,9 @@ bool McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
         // TRS80 command file
         McTRS80CmdFormat cmdFormat;
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing TRS80 CMD file len %d", fileLen);
-        cmdFormat.proc(getTargetProgrammer().addMemoryBlockStatic, 
-                    getTargetProgrammer().setTargetRegistersStatic, 
-                    &getTargetProgrammer(), pFileData, fileLen);
+        cmdFormat.proc(targetProgrammer.addMemoryBlockStatic, 
+                    targetProgrammer.setTargetRegistersStatic, 
+                    &targetProgrammer, pFileData, fileLen);
     }
     else
     {
@@ -414,7 +414,7 @@ bool McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
         if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
             baseAddr = strtoul(baseAddrStr, NULL, 16);
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
-        getTargetProgrammer().addMemoryBlock(baseAddr, pFileData, fileLen);
+        targetProgrammer.addMemoryBlock(baseAddr, pFileData, fileLen);
     }
     return true;
 }

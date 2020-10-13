@@ -24,6 +24,7 @@ static const char MODULE_PREFIX[] = "BusAccess";
 // Constructor
 
 BusAccess::BusAccess()
+    : _targetTracker(*this)
 {
     // Hardware version
     _hwVersionNumber = HW_VERSION_DEFAULT;

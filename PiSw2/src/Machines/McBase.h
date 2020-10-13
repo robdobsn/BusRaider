@@ -11,7 +11,6 @@
 static const int MC_WINDOW_NUMBER = 0;
 
 struct WgfxFont;
-class HwManager;
 class BusAccess;
 class McManager;
 class TargetProgrammer;
@@ -71,7 +70,8 @@ public:
     virtual void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]) = 0;
 
     // Handle a file
-    virtual bool fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen) = 0;
+    virtual bool fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
+                        int fileLen, TargetProgrammer& targetProgrammer) = 0;
 
     // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
     virtual void busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal) = 0;
@@ -126,12 +126,6 @@ public:
     {
         return _machineDescriptor.displayMemoryMapped;
     }
-
-    // Get HWManager
-    virtual HwManager& getHwManager();
-
-    // Get Target Programmer
-    virtual TargetProgrammer& getTargetProgrammer();
 
     // Get display
     virtual DisplayBase* getDisplay()

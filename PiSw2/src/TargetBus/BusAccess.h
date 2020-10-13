@@ -6,11 +6,12 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "TargetCPU.h"
 #include <circle/bcm2835.h>
 #include <circle/memio.h>
 #include "lowlib.h"
 #include "lowlev.h"
+#include "TargetCPU.h"
+#include "TargetTracker.h"
 #include "BusSocketInfo.h"
 #include "BusAccessDefs.h"
 #include "TargetClockGenerator.h"
@@ -27,7 +28,7 @@ class BusAccess
 public:
     BusAccess();
 
-    // Initialise the bus raider
+    // Initialise bus access
     void init();
     void busAccessReinit();
 
@@ -60,15 +61,33 @@ public:
     void waitSetCycleUs(uint32_t cycleUs);
 
     // Reset, NMI and IRQ on target
+    void targetClear()
+    {
+        _targetTracker.clear();
+    }
     void targetReqReset(int busSocket, int durationTStates = -1);
     void targetReqNMI(int busSocket, int durationTStates = -1);
     void targetReqIRQ(int busSocket, int durationTStates = -1);
     void targetReqBus(int busSocket, BR_BUS_ACTION_REASON busMasterReason);
     void targetPageForInjection(int busSocket, bool pageOut);
+    void targetProgrammingStart(TargetProgrammer& targetProgrammer, bool execAfterProgramming)
+    {
+        _targetTracker.targetProgrammingStart(targetProgrammer, execAfterProgramming);
+    }
+    TargetProgrammer& targetProgrammer()
+    {
+        return _targetTracker.targetProgrammer();
+    }
 
     // Bus control
     bool isUnderControl();
     
+    // TODO 2020 handle
+    bool isEmulatingMemory()
+    {
+        return false;
+    }
+
     enum BlockAccessType
     {
         ACCESS_MEM,
@@ -101,6 +120,15 @@ public:
             case BR_NO_BUS_ACK: return "BUSACK not received";
             default: return "unknown error";
         }
+    }
+
+    // TODO - implement
+    // Hardware (plug-in boards, etc)
+    void hwDisableAll()
+    {
+    }
+    void hwSetupFromJson(const char* jsonKey, const char* hwJson)
+    {        
     }
 
     // Clock
@@ -187,6 +215,9 @@ private:
     BusSocketInfo _busSockets[MAX_BUS_SOCKETS];
     int _busSocketCount;
 
+    // TargetTracker
+    TargetTracker _targetTracker;
+
     // Bus service active
     bool _busServiceEnabled;
 
@@ -242,12 +273,6 @@ private:
 
     // Status info
     BusAccessStatusInfo _statusInfo; 
-
-    // TODO 2020 move to hw access
-    bool isEmulatingMemory()
-    {
-        return false;
-    }
 
 private:
     // Bus actions
