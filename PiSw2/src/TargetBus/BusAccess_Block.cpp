@@ -17,14 +17,15 @@ static const char MODULE_PREFIX[] = "BusAccBlock";
 
 BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len, BlockAccessType accessType)
 {
-    // Check if we need to request bus
-    bool busRqAndRelease = !_busIsUnderControl;
-    if (busRqAndRelease) {
-        // Request bus and take control after ack
-        BR_RETURN_TYPE ret = controlRequestAndTake();
-        if (ret != BR_OK)
-            return ret;
-    }
+    // TODO 2020 - assumes bus is under control
+    // // Check if we need to request bus
+    // bool busRqAndRelease = !_busIsUnderControl;
+    // if (busRqAndRelease) {
+    //     // Request bus and take control after ack
+    //     BR_RETURN_TYPE ret = controlRequestAndTake();
+    //     if (ret != BR_OK)
+    //         return ret;
+    // }
 
     // Set PIB to input
     pibSetIn();
@@ -138,25 +139,28 @@ BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
         }
     }
 
-    // Check if we need to release bus
-    if (busRqAndRelease) {
-        // release bus
-        controlRelease();
-    }
+    // TODO 2020 - assumes bus is under control
+    // // Check if we need to release bus
+    // if (busRqAndRelease) {
+    //     // release bus
+    //     controlRelease();
+    // }
     return BR_OK;
 }
 
 // Write a consecutive block of memory to host
 BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, BlockAccessType accessType)
 {
-    // Check if we need to request bus
-    bool busRqAndRelease = !_busIsUnderControl;
-    if (busRqAndRelease) {
-        // Request bus and take control after ack
-        BR_RETURN_TYPE ret = controlRequestAndTake();
-        if (ret != BR_OK)
-            return ret;
-    }
+    // TODO 2020 - assumes bus is under control
+    // // Check if we need to request bus
+    // bool busRqAndRelease = !_busIsUnderControl;
+    // if (busRqAndRelease) {
+    //     // Request bus and take control after ack
+    //     BR_RETURN_TYPE ret = controlRequestAndTake();
+    //     if (ret != BR_OK)
+    //         return ret;
+    // }
+
 
     // Set PIB to input
     pibSetIn();
@@ -174,17 +178,11 @@ BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32
         uint32_t reqLinePlusDataInMux = ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_DATA_DIR_IN_MASK | BR_MUX_CTRL_BIT_MASK;
         uint32_t lowAddrIncClockLow = BR_MUX_CTRL_BIT_MASK | BR_MUX_EN_BAR_MASK;
 
-        // microsDelay(1);
-
         // Iterate data
         for (uint32_t i = 0; i < len; i++)
         {
-            // microsDelay(1);
-
             // Set the data onto the PIB
             pibSetValue(*pData);
-
-            // microsDelay(1);
 
             // Perform the write
             // Clear DIR_IN (so make direction out), enable data output onto data bus and MREQ/IORQ active
@@ -205,16 +203,10 @@ BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32
             write32(ARM_GPIO_GPCLR0, lowAddrIncClockLow);
             write32(ARM_GPIO_GPCLR0, lowAddrIncClockLow);
 
-            // microsDelay(1);
-
             // Deactivate, clock the low address and leave data direction set to inwards
             write32(ARM_GPIO_GPSET0, BR_WR_BAR_MASK );
 
-            // microsDelay(1);
-
             write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK | reqLinePlusDataInMux);
-
-            // microsDelay(1);
 
             // Increment addresses
             pData++;
@@ -227,9 +219,6 @@ BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32
                 addrSet(addr);
             }
         }
-
-        // microsDelay(1);
-
     }
     else
     {
@@ -258,11 +247,13 @@ BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32
     // Set the PIB back to INPUT
     pibSetIn();
 
-    // Check if we need to release bus
-    if (busRqAndRelease) {
-        // release bus
-        controlRelease();
-    }
+    // TODO 2020 - assumes bus is under control
+    // // Check if we need to release bus
+    // if (busRqAndRelease) {
+    //     // release bus
+    //     controlRelease();
+    // }
+
     return BR_OK;
 }
 

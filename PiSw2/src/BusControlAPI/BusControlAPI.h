@@ -45,7 +45,7 @@ private:
 //#define USE_TARGET_TRACKER
 #ifdef USE_TARGET_TRACKER
     // Target tracker
-    TargetTracker& _targetTracker;
+    TargetController& _targetController;
 #endif
 
     // Bus socket we're attached to and setup info

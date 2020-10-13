@@ -6,7 +6,7 @@
 #include "lowlib.h"
 #include "logging.h"
 #include "rdutils.h"
-#include "TargetTracker.h"
+#include "TargetController.h"
 #include "BusAccess.h"
 #include "BusAccess.h"
 #include "CommandHandler.h"
@@ -910,7 +910,7 @@ void BusControlAPI::service()
 {
 #ifdef USE_TARGET_TRACKER
     // Check for targettracker enable message response
-    TargetTracker& targetTracker = _mcManager.getTargetTracker();
+    TargetController& targetTracker = _mcManager.getTargetTracker();
     if (_targetTrackerResetPending && targetTracker.isStepPaused())
     {
         _commandHandler.sendUnnumberedMsg("targetTrackerOnDone", "\"err\":\"ok\"");

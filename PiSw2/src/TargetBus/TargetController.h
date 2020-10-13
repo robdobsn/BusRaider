@@ -18,11 +18,11 @@
 
 class BusAccess;
 
-class TargetTracker
+class TargetController
 {
 public:
 
-    TargetTracker(BusAccess& busAccess);
+    TargetController(BusAccess& busAccess);
 
     // Init
     void init();

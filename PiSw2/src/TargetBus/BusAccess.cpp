@@ -24,7 +24,7 @@ static const char MODULE_PREFIX[] = "BusAccess";
 // Constructor
 
 BusAccess::BusAccess()
-    : _targetTracker(*this)
+    : _targetController(*this)
 {
     // Hardware version
     _hwVersionNumber = HW_VERSION_DEFAULT;
@@ -131,6 +131,9 @@ void BusAccess::init()
     Timers::set(TIMER_ISR_PERIOD_US, BusAccess::stepTimerISR, NULL);
     Timers::start();
 #endif
+
+    // Init the TargetController
+    _targetController.init();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -141,7 +144,7 @@ void BusAccess::busAccessReinit()
 {
     // Instruct extension hardware to page in
     busAccessCallbackPageIn();
-    
+
     // Clear mux
     muxClear();
 
@@ -202,7 +205,7 @@ void BusAccess::targetReqNMI(int busSocket, int durationTStates)
 void BusAccess::targetReqIRQ(int busSocket, int durationTStates)
 {
     // Check validity
-    // LogWrite("BA", LOG_DEBUG, "ReqIRQ sock %d us %d", busSocket, _busSockets[busSocket].busActionDurationUs);
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "ReqIRQ sock %d us %d", busSocket, _busSockets[busSocket].busActionDurationUs);
     if ((busSocket < 0) || (busSocket >= _busSocketCount))
         return;
     // Request NMI
@@ -216,7 +219,7 @@ void BusAccess::targetReqBus(int busSocket, BR_BUS_ACTION_REASON busMasterReason
     // Check validity
     if ((busSocket < 0) || (busSocket >= _busSocketCount))
     {
-        LogWrite("BA", LOG_DEBUG, "targetReqBus sock %d invalid count = %d", busSocket, _busSocketCount);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetReqBus sock %d invalid count = %d", busSocket, _busSocketCount);
         return;
     }
     _busSockets[busSocket].busMasterRequest = true;
@@ -239,7 +242,7 @@ void BusAccess::targetPageForInjection(int busSocket, bool pageOut)
     if (pageOut)
     {
         
-        // LogWrite("BA", LOG_DEBUG, "targetPageForInjection TRUE count %d en %s", _busSocketCount,
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetPageForInjection TRUE count %d en %s", _busSocketCount,
         //             (_busSocketCount > 0) ? (_busSockets[0].enabled ? "Y" : "N") : "X");
 
         // Tell all connected devices to page in/out
@@ -254,7 +257,7 @@ void BusAccess::targetPageForInjection(int busSocket, bool pageOut)
     }
     else
     {
-        // LogWrite("BA", LOG_DEBUG, "targetPageForInjection FALSE on complete count %d en %s", _busSocketCount,
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetPageForInjection FALSE on complete count %d en %s", _busSocketCount,
         //             (_busSocketCount > 0) ? (_busSockets[0].enabled ? "Y" : "N") : "X");
 
         _targetPageInOnReadComplete = true;
@@ -292,6 +295,9 @@ void BusAccess::service()
 
 #endif
 #endif
+
+    // Service target controller
+    _targetController.service();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -611,7 +617,7 @@ void BusAccess::serviceWaitActivity()
             busActionHandleStart();
 
             // Release the wait
-            // LogWrite("BA", LOG_DEBUG, "waitRelease due to timeout, waitHold %d busVals %x", _waitHold, busVals);
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "waitRelease due to timeout, waitHold %d busVals %x", _waitHold, busVals);
 
             waitRelease();
         }
@@ -706,7 +712,7 @@ void BusAccess::waitHandleNew()
                              addr, dataBusVals, ctrlBusVals, retVal);
             // TODO
             // if (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK)
-            //     LogWrite("BA", LOG_DEBUG, "%d IORQ %s from %04x %02x", sockIdx,
+            //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "%d IORQ %s from %04x %02x", sockIdx,
             //             (ctrlBusVals & BR_CTRL_BUS_RD_MASK) ? "RD" : ((ctrlBusVals & BR_CTRL_BUS_WR_MASK) ? "WR" : "??"),
             //             addr, 
             //             (ctrlBusVals & BR_CTRL_BUS_WR_MASK) ? dataBusVals : retVal);

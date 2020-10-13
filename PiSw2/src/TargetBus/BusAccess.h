@@ -11,7 +11,7 @@
 #include "lowlib.h"
 #include "lowlev.h"
 #include "TargetCPU.h"
-#include "TargetTracker.h"
+#include "TargetController.h"
 #include "BusSocketInfo.h"
 #include "BusAccessDefs.h"
 #include "TargetClockGenerator.h"
@@ -63,7 +63,7 @@ public:
     // Reset, NMI and IRQ on target
     void targetClear()
     {
-        _targetTracker.clear();
+        _targetController.clear();
     }
     void targetReqReset(int busSocket, int durationTStates = -1);
     void targetReqNMI(int busSocket, int durationTStates = -1);
@@ -72,11 +72,11 @@ public:
     void targetPageForInjection(int busSocket, bool pageOut);
     void targetProgrammingStart(TargetProgrammer& targetProgrammer, bool execAfterProgramming)
     {
-        _targetTracker.targetProgrammingStart(targetProgrammer, execAfterProgramming);
+        _targetController.targetProgrammingStart(targetProgrammer, execAfterProgramming);
     }
     TargetProgrammer& targetProgrammer()
     {
-        return _targetTracker.targetProgrammer();
+        return _targetController.targetProgrammer();
     }
 
     // Bus control
@@ -215,8 +215,8 @@ private:
     BusSocketInfo _busSockets[MAX_BUS_SOCKETS];
     int _busSocketCount;
 
-    // TargetTracker
-    TargetTracker _targetTracker;
+    // TargetController
+    TargetController _targetController;
 
     // Bus service active
     bool _busServiceEnabled;

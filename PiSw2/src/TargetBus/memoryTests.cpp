@@ -171,38 +171,44 @@ uint32_t memTestDevice(BusAccess& busAccess, uint32_t baseAddress, unsigned long
     uint8_t pattern;
     uint8_t antipattern;
 
+    uint8_t* pMem = new uint8_t[nBytes];
+    if (!pMem)
+        return UINT32_MAX;
+
     /*
      * Fill memory with a known pattern.
      */
     for (pattern = 1, offset = 0; offset < nWords; pattern++, offset++)
     {
-        busAccess.blockWrite(baseAddress + offset, &pattern, 1, BusAccess::ACCESS_MEM);
+        pMem[offset] = pattern;
     }
+    busAccess.blockWrite(baseAddress, pMem, nBytes, BusAccess::ACCESS_MEM);
 
     /*
      * Check each location and invert it for the second pass.
      */
+    busAccess.blockRead(baseAddress, pMem, nBytes, BusAccess::ACCESS_MEM);    
     for (pattern = 1, offset = 0; offset < nWords; pattern++, offset++)
     {
-        uint8_t readPattern;
-        busAccess.blockRead(baseAddress + offset, &readPattern, 1, BusAccess::ACCESS_MEM);
+        uint8_t readPattern = pMem[offset];
         if (readPattern != pattern)
         {
             return (baseAddress + offset);
         }
 
         antipattern = ~pattern;
-        busAccess.blockWrite(baseAddress + offset, &antipattern, 1, BusAccess::ACCESS_MEM);
+        pMem[offset] = antipattern;
     }
+    busAccess.blockWrite(baseAddress, pMem, nBytes, BusAccess::ACCESS_MEM);
 
     /*
      * Check each location for the inverted pattern and zero it.
      */
+    busAccess.blockRead(baseAddress, pMem, nBytes, BusAccess::ACCESS_MEM);    
     for (pattern = 1, offset = 0; offset < nWords; pattern++, offset++)
     {
         antipattern = ~pattern;
-        uint8_t readPattern;
-        busAccess.blockRead(baseAddress + offset, &readPattern, 1, BusAccess::ACCESS_MEM);
+        uint8_t readPattern = pMem[offset];
         if (readPattern != antipattern)
         {
             return (baseAddress + offset);

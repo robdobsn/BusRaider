@@ -593,7 +593,7 @@ void BusAccess::setSignal(BR_BUS_ACTION busAction, bool assertSignal)
     {
         case BR_BUS_ACTION_RESET: 
             assertSignal ? muxSet(BR_MUX_RESET_Z80_BAR_LOW) : muxClear();
-            // LogWrite("BA", LOG_DEBUG, "RESET"); 
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "RESET"); 
             // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_E, assertSignal);
             break;
         case BR_BUS_ACTION_NMI: 
@@ -602,7 +602,7 @@ void BusAccess::setSignal(BR_BUS_ACTION busAction, bool assertSignal)
             break;
         case BR_BUS_ACTION_IRQ: 
             assertSignal ? muxSet(BR_MUX_IRQ_BAR_LOW) : muxClear(); 
-            // LogWrite("BA", LOG_DEBUG, "IRQ"); 
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "IRQ"); 
             // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_I, assertSignal);
             break;
         case BR_BUS_ACTION_BUSRQ: 
@@ -615,7 +615,7 @@ void BusAccess::setSignal(BR_BUS_ACTION busAction, bool assertSignal)
 
 void BusAccess::busAccessCallbackPageIn()
 {
-    // LogWrite("BA", LOG_DEBUG, "targetPageForInjection FALSE");
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetPageForInjection FALSE");
 
     for (int i = 0; i < _busSocketCount; i++)
     {
@@ -628,7 +628,7 @@ void BusAccess::busAccessCallbackPageIn()
 // Paging pin on the bus
 void BusAccess::busPagePinSetActive(bool active)
 {
-    // LogWrite("BA", LOG_DEBUG, "pagePin = %d", (_hwVersionNumber == 17) ? active : !active);
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "pagePin = %d", (_hwVersionNumber == 17) ? active : !active);
     digitalWrite(BR_PAGING_RAM_PIN, (_hwVersionNumber == 17) ? active : !active);
 }
 

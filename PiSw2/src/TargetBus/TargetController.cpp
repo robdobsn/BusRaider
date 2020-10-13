@@ -29,10 +29,10 @@
 #define PAUSE_GET_REGS_AT_CUR_ADDR 1
 
 // Module name
-static const char MODULE_PREFIX[] = "TargetTracker";
+static const char MODULE_PREFIX[] = "TargetController";
 
 // Constructor
-TargetTracker::TargetTracker(BusAccess& busAccess)
+TargetController::TargetController(BusAccess& busAccess)
     : _busAccess(busAccess)
 {
     // Sockets
@@ -90,14 +90,14 @@ TargetTracker::TargetTracker(BusAccess& busAccess)
 // Init, Service, Enable
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetTracker::init()
+void TargetController::init()
 {
     // Connect to the bus socket
     if (_busSocketId < 0)
         _busSocketId = _busAccess.busSocketAdd(    
             false,
-            TargetTracker::handleWaitInterruptStatic,
-            TargetTracker::busActionCompleteStatic,
+            TargetController::handleWaitInterruptStatic,
+            TargetController::busActionCompleteStatic,
             false,
             false,
             // Reset
@@ -117,13 +117,13 @@ void TargetTracker::init()
 }
 
 // Service
-void TargetTracker::service()
+void TargetController::service()
 {
 
 }
 
 //Enable
-void TargetTracker::enable(bool en, bool waitHold)
+void TargetController::enable(bool en, bool waitHold)
 {
     _stepMode = STEP_MODE_STEP_PAUSED;
     if (en)
@@ -171,7 +171,7 @@ void TargetTracker::enable(bool en, bool waitHold)
     }
 }
 
-bool TargetTracker::isPaused()
+bool TargetController::isPaused()
 {
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busSocketIsEnabled %d %d", 
     //             busAccess.busSocketIsEnabled(_busSocketId), _stepMode);
@@ -180,12 +180,12 @@ bool TargetTracker::isPaused()
     return _stepMode == STEP_MODE_STEP_PAUSED;
 }
 
-bool TargetTracker::isTrackingActive()
+bool TargetController::isTrackingActive()
 {
     return _busAccess.busSocketIsEnabled(_busSocketId);
 }
 
-void TargetTracker::targetReset()
+void TargetController::targetReset()
 {
     _targetResetPending = true;
     _busAccess.targetReqReset(_busSocketId);
@@ -195,7 +195,7 @@ void TargetTracker::targetReset()
 // Control
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetTracker::startSetRegisterSequence(Z80Registers* pRegs)
+void TargetController::startSetRegisterSequence(Z80Registers* pRegs)
 {
     // Set regs
     if (pRegs)
@@ -228,13 +228,13 @@ void TargetTracker::startSetRegisterSequence(Z80Registers* pRegs)
 // Handle register setting
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetTracker::store16BitVal(uint8_t arry[], int offset, uint16_t val)
+void TargetController::store16BitVal(uint8_t arry[], int offset, uint16_t val)
 {
     arry[offset] = val & 0xff;
     arry[offset+1] = (val >> 8) & 0xff;
 }
 
-int TargetTracker::getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBuffer, uint32_t codeMaxlen)
+int TargetController::getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBuffer, uint32_t codeMaxlen)
 {
     // Instructions to set register values
     static uint8_t regSetInstructions[] = 
@@ -311,7 +311,7 @@ int TargetTracker::getInstructionsToSetRegs(Z80Registers& regs, uint8_t* pCodeBu
 // Interrupt extension for debugger - handle register GET
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-TargetTracker::OPCODE_INJECT_PROGRESS TargetTracker::handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal)
+TargetController::OPCODE_INJECT_PROGRESS TargetController::handleRegisterGet(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal)
 {
     // Instructions to get register values
     static uint8_t regQueryInstructions[] = 
@@ -492,7 +492,7 @@ TargetTracker::OPCODE_INJECT_PROGRESS TargetTracker::handleRegisterGet(uint32_t 
 // Interrupt extension for debugger - handle register SET
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-TargetTracker::OPCODE_INJECT_PROGRESS TargetTracker::handleRegisterSet(uint32_t& retVal)
+TargetController::OPCODE_INJECT_PROGRESS TargetController::handleRegisterSet(uint32_t& retVal)
 {
     // Fill in the register values
     if (_snippetPos == 0)
@@ -518,7 +518,7 @@ TargetTracker::OPCODE_INJECT_PROGRESS TargetTracker::handleRegisterSet(uint32_t&
 // Pause at next instruction start
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetTracker::stepInto()
+void TargetController::stepInto()
 {
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "stepInto");
 
@@ -536,7 +536,7 @@ void TargetTracker::stepInto()
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Breakpoints en %d num %d", _breakpoints.isEnabled(), _breakpoints.getNumEnabled());
 }
 
-void TargetTracker::stepOver()
+void TargetController::stepOver()
 {
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "stepOver");
 
@@ -564,7 +564,7 @@ void TargetTracker::stepOver()
     }
 }
 
-void TargetTracker::stepTo(uint32_t toAddr)
+void TargetController::stepTo(uint32_t toAddr)
 {
     _stepOverPCValue = toAddr;
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "cpu-step-to PCnow %04x StepToPC %04x", _z80Registers.PC, toAddr);
@@ -580,7 +580,7 @@ void TargetTracker::stepTo(uint32_t toAddr)
     }
 }
 
-void TargetTracker::stepRun()
+void TargetController::stepRun()
 {
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "stepRun");
 
@@ -595,7 +595,7 @@ void TargetTracker::stepRun()
     }
 }
 
-// void TargetTracker::stepPause(bool allowInjection)
+// void TargetController::stepPause(bool allowInjection)
 // {
 //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "stepPause");
 
@@ -614,7 +614,7 @@ void TargetTracker::stepRun()
 // Status
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetTracker::getRegsFormatted(char* pBuf, int len)
+void TargetController::getRegsFormatted(char* pBuf, int len)
 {
     _z80Registers.format(pBuf, len);
 }
@@ -622,7 +622,7 @@ void TargetTracker::getRegsFormatted(char* pBuf, int len)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Test if opcode is an instruction prefix
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-bool TargetTracker::isPrefixInstruction(uint32_t instr)
+bool TargetController::isPrefixInstruction(uint32_t instr)
 {
     switch(instr)
     {
@@ -635,7 +635,7 @@ bool TargetTracker::isPrefixInstruction(uint32_t instr)
     return false;
 }
 
-bool TargetTracker::trackPrefixedInstructions(uint32_t flags, uint32_t data, uint32_t retVal)
+bool TargetController::trackPrefixedInstructions(uint32_t flags, uint32_t data, uint32_t retVal)
 {
     // Value read/written
     uint32_t codeVal = ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) ? data : retVal) & 0xff;
@@ -664,7 +664,7 @@ bool TargetTracker::trackPrefixedInstructions(uint32_t flags, uint32_t data, uin
 // Callbacks/Hooks
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool TargetTracker::handlePendingDisable()
+bool TargetController::handlePendingDisable()
 {
     if (_disablePending)
     {
@@ -690,14 +690,14 @@ bool TargetTracker::handlePendingDisable()
 // Handle bus actions
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetTracker::busActionCompleteStatic(void* pObject, BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASON reason)
+void TargetController::busActionCompleteStatic(void* pObject, BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASON reason)
 {
     if(!pObject)
         return;
-    ((TargetTracker*)pObject)->busActionComplete(actionType, reason);
+    ((TargetController*)pObject)->busActionComplete(actionType, reason);
 }
 
-void TargetTracker::busActionComplete(BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASON reason)
+void TargetController::busActionComplete(BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASON reason)
 {
     // LogWrite(MODULE_PREFIX, LOG_DEBUG,"bus action complete type %d reason %d programPending %d", 
     //         actionType, reason, _busActionPendingProgramTarget);
@@ -783,15 +783,15 @@ void TargetTracker::busActionComplete(BR_BUS_ACTION actionType,  BR_BUS_ACTION_R
 // Handle wait callbacks
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetTracker::handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t data, 
+void TargetController::handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t data, 
         uint32_t flags, uint32_t& retVal)
 {
     if (!pObject)
         return;
-    ((TargetTracker*)pObject)->handleWaitInterrupt(addr, data, flags, retVal);
+    ((TargetController*)pObject)->handleWaitInterrupt(addr, data, flags, retVal);
 }
 
-void TargetTracker::handleWaitInterrupt(uint32_t addr, uint32_t data, 
+void TargetController::handleWaitInterrupt(uint32_t addr, uint32_t data, 
         uint32_t flags, uint32_t& retVal)
 {
     // Only handle MREQs
@@ -930,7 +930,7 @@ void TargetTracker::handleWaitInterrupt(uint32_t addr, uint32_t data,
 // Handle stepping over a breakpoint
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetTracker::handleStepOverBkpts( uint32_t addr,  uint32_t data, 
+void TargetController::handleStepOverBkpts( uint32_t addr,  uint32_t data, 
         uint32_t flags,  uint32_t& retVal)
 {
     // Ignore if injecting
@@ -957,7 +957,7 @@ void TargetTracker::handleStepOverBkpts( uint32_t addr,  uint32_t data,
 // Handle tracking when idle
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetTracker::handleTrackerIdle( uint32_t addr, uint32_t data, 
+void TargetController::handleTrackerIdle( uint32_t addr, uint32_t data, 
         uint32_t flags, uint32_t& retVal)
 {
     // Check for disable
@@ -984,7 +984,7 @@ void TargetTracker::handleTrackerIdle( uint32_t addr, uint32_t data,
 // Handle injection
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetTracker::handleInjection(uint32_t addr, uint32_t data, 
+void TargetController::handleInjection(uint32_t addr, uint32_t data, 
         uint32_t flags, uint32_t& retVal)
 {
     // Use the bus socket to request page out if required
@@ -1011,7 +1011,7 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
 
             // Suspend bus detail after a BUSRQ as there is a hardware problem with FF_DATA_OE_BAR remaining
             // enabled after a BUSRQ which causes contention issues on the PIB. The way around this is to
-            // ensure BUSRQ is handled synchronously with the TargetTracker operation when MREQ waits are
+            // ensure BUSRQ is handled synchronously with the TargetController operation when MREQ waits are
             // enabled so that the cycle immediately following a BUSRQ in this case will be part of the 
             // opcode injection cycle and the bus detail will not be required
             _busAccess.waitSuspendBusDetailOneCycle();
@@ -1090,7 +1090,7 @@ void TargetTracker::handleInjection(uint32_t addr, uint32_t data,
 // Target programming
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetTracker::targetProgrammingStart(TargetProgrammer& targetProgrammer, bool execAfterProgramming)
+void TargetController::targetProgrammingStart(TargetProgrammer& targetProgrammer, bool execAfterProgramming)
 {
     // Check there is something to write
     if (targetProgrammer.numMemoryBlocks() == 0) 
@@ -1113,7 +1113,7 @@ void TargetTracker::targetProgrammingStart(TargetProgrammer& targetProgrammer, b
     }
 }
 
-void TargetTracker::completeTargetProgram()
+void TargetController::completeTargetProgram()
 {
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "completeTargetProgram");
 
@@ -1132,7 +1132,7 @@ void TargetTracker::completeTargetProgram()
 // Start target program - or reset
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetTracker::targetExec()
+void TargetController::targetExec()
 {
     // TODO 2020
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Starting target code, debugActive %c", 
@@ -1144,7 +1144,7 @@ void TargetTracker::targetExec()
     //     // Check how to set registers
     //     if (getHwManager().getOpcodeInjectEnable() || getTargetTracker().isTrackingActive())
     //     {
-    //         // Use the TargetTracker module to inject instructions to set registers
+    //         // Use the TargetController module to inject instructions to set registers
     //         Z80Registers regs;
     //         getTargetProgrammer().getTargetRegs(regs);
     //         getTargetTracker().startSetRegisterSequence(&regs);
