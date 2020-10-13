@@ -98,8 +98,8 @@ void BusAccess::controlRequest()
 {
     // Set the PIB to input
     pibSetIn();
-    // Set data bus to input
-    write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK);
+    // Set data bus to input and ensure the WR, RD, MREQ, IORQ lines are high
+    write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | BR_IORQ_BAR_MASK | BR_MREQ_BAR_MASK | BR_WR_BAR_MASK | BR_RD_BAR_MASK | (_hwVersionNumber == 17 ? BR_V20_M1_BAR_MASK : 0));
     // Request the bus
     digitalWrite(BR_BUSRQ_BAR, 0);
 }

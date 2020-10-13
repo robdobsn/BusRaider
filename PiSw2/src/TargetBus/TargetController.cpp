@@ -95,7 +95,7 @@ void TargetController::init()
     // Connect to the bus socket
     if (_busSocketId < 0)
         _busSocketId = _busAccess.busSocketAdd(    
-            false,
+            true,
             TargetController::handleWaitInterruptStatic,
             TargetController::busActionCompleteStatic,
             false,
@@ -731,8 +731,8 @@ void TargetController::busActionComplete(BR_BUS_ACTION actionType,  BR_BUS_ACTIO
         // Program target pending?
         if (_busActionPendingProgramTarget)
         {
-            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionComplete pendingProgramTarget numBlocks %d",
-            //                 _targetProgrammer.numMemoryBlocks());
+            LogWrite(MODULE_PREFIX, LOG_NOTICE, "busActionComplete pendingProgramTarget numBlocks %d",
+                            _targetProgrammer.numMemoryBlocks());
 
             // Write the blocks
 

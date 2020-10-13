@@ -340,8 +340,9 @@ void McManager::displayRefresh()
         // LogWrite(MODULE_PREFIX, LOG_NOTICE, "displayRefresh isMemMapped %d waitIsHeld %d isEmulatingMem %d isTrackingActive %d",
         //     _pCurMachine->isDisplayMemoryMapped(), _busAccess.waitIsHeld(), _hwManager.isEmulatingMemory(), _busAccess.isTrackingActive());
 
+        // TODO 2020
         // Determine whether display is memory mapped
-        if (_pCurMachine->isDisplayMemoryMapped() && _busAccess.busRqNeededForMemAccess())
+        if (_pCurMachine->isDisplayMemoryMapped()) // && _busAccess.busRqNeededForMemAccess())
         {
             // TODO 2020
             // if (getTargetTracker().busAccessAvailable())

@@ -197,13 +197,13 @@ public:
         return false;
     }
 
-    // Bus access checks
-    bool busRqNeededForMemAccess()
-    {
-        return waitIsHeld() && 
-                    !isEmulatingMemory() && 
-                    !isTrackingActive();
-    }
+    // // Bus access checks
+    // bool busRqNeededForMemAccess()
+    // {
+    //     return waitIsHeld() && 
+    //                 !isEmulatingMemory() && 
+    //                 !isTrackingActive();
+    // }
 
 private:
     // Hardware version
