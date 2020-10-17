@@ -2,7 +2,7 @@
 // Rob Dobson 2020
 
 class Display;
-class BusAccess;
+class BusControl;
 class BusRaiderApp;
 
 enum SelfTestRetType {
@@ -11,7 +11,7 @@ enum SelfTestRetType {
     SELF_TEST_RET_TIMEOUT
 };
 
-void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusAccess& busAccess);
+void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusControl& busAccess);
 
 // TODO 2020
 // void testSelf_busrq();

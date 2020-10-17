@@ -11,7 +11,7 @@ class McTerminal : public McBase
 {
 public:
 
-    McTerminal(McManager& mcManager, BusAccess& busAccess);
+    McTerminal(McManager& mcManager, BusControl& busAccess);
 
     // Enable machine
     virtual void enableMachine() override;

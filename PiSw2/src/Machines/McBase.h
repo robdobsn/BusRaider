@@ -11,7 +11,7 @@
 static const int MC_WINDOW_NUMBER = 0;
 
 struct WgfxFont;
-class BusAccess;
+class BusControl;
 class McManager;
 class TargetProgrammer;
 
@@ -19,7 +19,7 @@ class McBase
 {
 public:
 
-    McBase(McManager& mcManager, BusAccess& busAccess, const McVariantTable* pVariantTables, uint32_t numVariants);
+    McBase(McManager& mcManager, BusControl& busAccess, const McVariantTable* pVariantTables, uint32_t numVariants);
 
     // Check if name is a valid one for this machine
     virtual bool isCalled(const char* mcName, uint32_t& machineVariant);
@@ -137,8 +137,8 @@ protected:
     // Machine manager
     McManager& _mcManager;
 
-    // Bus access
-    BusAccess& _busAccess;
+    // Bus control
+    BusControl& _busAccess;
 
 private:
     // Machine descriptor

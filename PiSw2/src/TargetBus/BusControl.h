@@ -12,15 +12,15 @@
 #include "lowlev.h"
 #include "TargetCPU.h"
 #include "TargetController.h"
-#include "BusSocketInfo.h"
+#include "BusSocketManager.h"
 #include "BusAccessDefs.h"
 #include "TargetClockGenerator.h"
 #include "BusAccessStatusInfo.h"
-
-// #define ISR_TEST 1
+#include "MemoryController.h"
+#include "BusRawAccess.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Bus Access
+// Bus control
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class BusControl
@@ -28,15 +28,82 @@ class BusControl
 public:
     BusControl();
 
-    init();
+    // Initialization
+    void init();
+    void machineChangeInit();
+
+    // Service
+    void service();
+
+    // Raw access start/end
+    void rawAccessStart();
+    void rawAccessEnd();
+
+    // Target controller
+    TargetController& ctrl()
+    {
+        return _targetController;
+    }    
+
+    // Target programmer
+    TargetProgrammer& prog()
+    {
+        return _targetController.targetProgrammer();
+    }    
+
+    // Bus socket manager
+    BusSocketManager& sock()
+    {
+        return _busSocketManager;
+    }
+
+    // Target clock generator
+    TargetClockGenerator& clock()
+    {
+        return _clockGenerator;
+    }
+
+    // Memory controller
+    MemoryController& mem()
+    {
+        return _memoryController;
+    }
+
+    // Raw bus access
+    BusRawAccess& bus()
+    {
+        return _busRawAccess;
+    }
+
+    // Get return type string
+    const char* retcString(BR_RETURN_TYPE retc)
+    {
+        switch (retc)
+        {
+            case BR_OK: return "ok";
+            case BR_ERR: return "general error";
+            case BR_ALREADY_DONE: return "already paused";
+            case BR_NO_BUS_ACK: return "BUSACK not received";
+            default: return "unknown error";
+        }
+    }
     
 private:
     // State of bus
     bool _isInitialized;
-    bool _busReqAcknowledged;
-    bool _waitIsActive;
-    bool _pageIsActive;
 
-    // Helpers
-    void waitSystemInit();
+    // Clock generator
+    TargetClockGenerator _clockGenerator;
+
+    // TargetController
+    TargetController _targetController;
+
+    // Bus Sockets
+    BusSocketManager _busSocketManager;
+
+    // MemoryController
+    MemoryController _memoryController;
+
+    // Bus raw access
+    BusRawAccess _busRawAccess;
 };

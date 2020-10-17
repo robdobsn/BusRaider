@@ -88,7 +88,7 @@ void BusAccess::clearStatus()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Is under control
-bool BusAccess::isUnderControl()
+bool BusAccess::busReqAcknowledged()
 {
     return _busReqAcknowledged;
 }
@@ -458,7 +458,7 @@ void BusAccess::byteWrite(uint32_t data, BlockAccessType accessType)
     pibSetValue(data);
     // Perform the write
     // Clear DIR_IN (so make direction out), enable data output onto data bus and MREQ_BAR active
-    write32(ARM_GPIO_GPCLR0, BR_DATA_DIR_IN_MASK | BR_MUX_CTRL_BIT_MASK | ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK));
+    write32(ARM_GPIO_GPCLR0, BR_DATA_DIR_IN_MASK | BR_MUX_CTRL_BIT_MASK | ((accessType == BLOCK_ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK));
     write32(ARM_GPIO_GPSET0, BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS);
     // Write the data by setting WR_BAR active
     if (_hwVersionNumber == 17)
@@ -474,12 +474,12 @@ void BusAccess::byteWrite(uint32_t data, BlockAccessType accessType)
     // Deactivate and leave data direction set to inwards
     if (_hwVersionNumber == 17)
     {
-        write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_WR_BAR_MASK);
+        write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | ((accessType == BLOCK_ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_WR_BAR_MASK);
         muxClear();
     }
     else
     {
-        write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | BR_MUX_EN_BAR_MASK | ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_WR_BAR_MASK);
+        write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | BR_MUX_EN_BAR_MASK | ((accessType == BLOCK_ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_WR_BAR_MASK);
     }
 }
 
@@ -491,7 +491,7 @@ void BusAccess::byteWrite(uint32_t data, BlockAccessType accessType)
 uint8_t BusAccess::byteRead(BlockAccessType accessType)
 {
     // Enable data output onto PIB, MREQ_BAR and RD_BAR both active
-    write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK | ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
+    write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK | ((accessType == BLOCK_ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
     write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK | (BR_MUX_DATA_OE_BAR_LOW << BR_MUX_LOW_BIT_POS));
     if (_hwVersionNumber != 17)
     {
@@ -505,11 +505,11 @@ uint8_t BusAccess::byteRead(BlockAccessType accessType)
     if (_hwVersionNumber == 17)
     {
         write32(ARM_GPIO_GPCLR0, BR_MUX_CTRL_BIT_MASK);
-        write32(ARM_GPIO_GPSET0, ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
+        write32(ARM_GPIO_GPSET0, ((accessType == BLOCK_ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
     }
     else
     {
-        write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK | ((accessType == ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
+        write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK | ((accessType == BLOCK_ACCESS_IO) ? BR_IORQ_BAR_MASK : BR_MREQ_BAR_MASK) | BR_RD_BAR_MASK);
     }
     return val;
 }

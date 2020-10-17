@@ -19,6 +19,8 @@ public:
     {
     }
 
+    void clear();
+
     // Max 1MB address range of Z180 so use that as the limit of memory
     static const int MAX_TARGET_MEMORY_SIZE = 1024 * 1024;
     static const int MAX_TARGET_MEMORY_BLOCKS = 20;
@@ -40,7 +42,6 @@ public:
     Z80Registers _targetRegisters;
 
 public:
-    void clear();
     static void addMemoryBlockStatic(uint32_t addr, const uint8_t* pData, uint32_t len, void* pProgrammer);
     void addMemoryBlock(uint32_t addr, const uint8_t* pData, uint32_t len);
     int numMemoryBlocks();

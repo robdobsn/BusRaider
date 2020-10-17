@@ -7,7 +7,7 @@
 #include "McBase.h"
 #include "logging.h"
 #include "DisplayBase.h"
-#include "BusAccess.h"
+#include "BusControl.h"
 #include "CommandHandler.h"
 
 class DisplayBase;
@@ -16,7 +16,7 @@ class McManager
 {
 public:
     // Constuction
-    McManager(DisplayBase* pDisplay, CommandHandler& commandHandler, BusAccess& busAccess);
+    McManager(DisplayBase* pDisplay, CommandHandler& commandHandler, BusControl& busAccess);
 
     // Init
     void init();
@@ -54,17 +54,16 @@ public:
     static bool targetFileHandlerStatic(void* pObject, const char* rxFileInfo, const uint8_t* pData, unsigned dataLen);
     bool targetFileHandler(const char* rxFileInfo, const uint8_t* pData, unsigned dataLen);
 
+    uint32_t getClockFreqInHz()
+    {
+        return _busAccess.clock().getFreqInHz();
+    }
+
     // IRQ on target
     void targetIrq(int durationTStates = -1)
     {
         // Generate a maskable interrupt
-        _busAccess.targetReqIRQ(_busSocketId, durationTStates);
-    }
-
-    // Get access to target programmer
-    TargetProgrammer& targetProgrammer()
-    {
-        return _busAccess.targetProgrammer();
+        _busAccess.sock().reqIRQ(_busSocketId, durationTStates);
     }
 
 private:
@@ -77,8 +76,8 @@ private:
     // CommandHandler
     CommandHandler& _commandHandler;
 
-    // BusAccess
-    BusAccess& _busAccess;
+    // Bus control
+    BusControl& _busAccess;
 
     // Bus socket we're attached to and setup info
     int _busSocketId;

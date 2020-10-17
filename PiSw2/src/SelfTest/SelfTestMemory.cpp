@@ -6,7 +6,7 @@
 #include "PiWiring.h"
 #include "lowlib.h"
 #include "rdutils.h"
-#include "BusAccess.h"
+#include "BusControl.h"
 #include "memoryTests.h"
 #include "KeyConversion.h"
 #include "SelfTest.h"
@@ -15,7 +15,7 @@
 // Self test - memory test
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusAccess& busAccess)
+void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusControl& busAccess)
 {
     display.consoleForeground(DISPLAY_FX_BLUE);
     display.consolePut("\nMemory test\n");
@@ -97,17 +97,17 @@ void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusAccess& bu
             case TEST_STATE_PERFORM_RESET:
             {
                 // Reset the machine
-                busAccess.rawBusControlTargetReset(100);
+                busAccess.bus().targetReset(100);
                 testState = TEST_STATE_CHECK_BUSRQ;
                 break;
             }
             case TEST_STATE_CHECK_BUSRQ:
             {
-                // Suspend wait system
-                busAccess.waitSystemSuspend(true);
+                // Start raw bus access
+                busAccess.rawAccessStart();
 
                 // Check if BUSRQ works
-                BR_RETURN_TYPE busAckedRetc = busAccess.controlRequestAndTake();
+                BR_RETURN_TYPE busAckedRetc = busAccess.bus().busRequestAndTake();
                 if (busAckedRetc != BR_OK)
                 {
                     display.consoleForeground(DISPLAY_FX_RED);
@@ -222,8 +222,8 @@ void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusAccess& bu
             }
             case TEST_STATE_DONE:
             {
-                busAccess.controlRelease();
-                busAccess.waitSystemSuspend(false);
+                busAccess.bus().busRelease();
+                busAccess.rawAccessEnd();
                 if (issueCount == 0)
                 {
                     display.consoleForeground(DISPLAY_FX_GREEN);

@@ -16,13 +16,13 @@
 // Defs
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class BusAccess;
+class BusControl;
 
 class TargetController
 {
 public:
 
-    TargetController(BusAccess& busAccess);
+    TargetController(BusControl& busAccess);
 
     // Init
     void init();
@@ -56,7 +56,7 @@ public:
     {
         return _targetProgrammer;
     }
-    void targetProgrammingStart(TargetProgrammer& targetProgrammer, bool execAfterProgramming);
+    void programmingStart(bool execAfterProgramming);
 
     // Complete the process of programming the target
     void completeTargetProgram();
@@ -120,6 +120,12 @@ public:
         _breakpoints.clearFastBreakpoints();
     }
 
+    bool allowHeartbeat()
+    {
+        // TODO 2020
+        return true;
+    }
+
 private:
     // Can't turn off mid-injection so store flag to indicate disable pending
     bool _disablePending;
@@ -159,8 +165,8 @@ private:
     // Registers
     Z80Registers _z80Registers;
 
-    // BusAccess
-    BusAccess& _busAccess;
+    // Bus control
+    BusControl& _busAccess;
 
     // Target Programmer
     TargetProgrammer _targetProgrammer;

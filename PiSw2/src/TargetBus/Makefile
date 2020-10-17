@@ -4,11 +4,16 @@
 
 CIRCLEHOME = ../../circle
 
-OBJS	= BusAccess.o BusAccess_Control.o BusAccess_Block.o \
-		BusAccess_Raw.o BusAccess_Wait.o BusAccess_Addr.o \
-		BusAccess_Cycle.o \
+OBJS	= BusControl.o BusSocketManager.o \
+		BusRawAccess.o BusRawAccess_Wait.o \
+		BusRawAccess_Busrq.o BusRawAccess_Addr.o \
+		BusRawAccess_Block.o BusRawAccess_Mux.o \
 		TargetBreakpoints.o TargetController.o \
-		TargetCPUZ80.o TargetProgrammer.o memoryTests.o
+		TargetCPUZ80.o TargetProgrammer.o memoryTests.o \
+		MemoryController.o \
+		# BusAccess.o BusAccess_Control.o BusAccess_Block.o \
+		# BusAccess_Raw.o BusAccess_Wait.o BusAccess_Addr.o \
+		# BusAccess_Cycle.o
 
 INCLUDE	+= -I ../system
 

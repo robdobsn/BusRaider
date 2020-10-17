@@ -6,7 +6,6 @@
 #include "lowlib.h"
 #include "rdutils.h"
 #include "PiWiring.h"
-#include "BusAccess.h"
 #include "TargetCPUZ80.h"
 #include "McTRS80.h"
 #include "McRobsZ80.h"
@@ -24,7 +23,7 @@ static const char MODULE_PREFIX[] = "McManager";
 // Singleton
 McManager* McManager::_pMcManager = NULL;
 
-McManager::McManager(DisplayBase* pDisplay, CommandHandler& commandHandler, BusAccess& busAccess) :
+McManager::McManager(DisplayBase* pDisplay, CommandHandler& commandHandler, BusControl& busAccess) :
             _pDisplay(pDisplay),
             _commandHandler(commandHandler),
             _busAccess(busAccess)
@@ -55,7 +54,7 @@ void McManager::init()
 {
     // Connect to the bus socket
     if (_busSocketId < 0)
-        _busSocketId = _busAccess.busSocketAdd(
+        _busSocketId = _busAccess.sock().add(
             true,
             handleWaitInterruptStatic,
             busActionCompleteStatic,
@@ -208,16 +207,12 @@ const char* McManager::getMachineJSON()
     strlcat(mcString, "\"", MAX_MC_JSON_LEN);
 
     // Clock info
-    uint32_t actualHz = _busAccess.clockCurFreqHz();
-    snprintf(mcString+strlen(mcString), MAX_MC_JSON_LEN, ",\"clockHz\":\"%d\"", (int)actualHz);
+    uint32_t actualHz = _busAccess.clock().getFreqInHz();
+    snprintf(mcString+strlen(mcString), MAX_MC_JSON_LEN, 
+                ",\"clockHz\":\"%d\"", (int)actualHz);
 
     // Ret
     return mcString;
-}
-
-int McManager::getMachineClock()
-{
-    return _busAccess.clockCurFreqHz();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -273,16 +268,12 @@ bool McManager::setupMachine(const char* mcJson)
     // Set cur machine
     _pCurMachine = pMc;
 
-    // Clear the target
-    _busAccess.targetClear();
+    // Warn bus control
+    _busAccess.machineChangeInit();
 
     // Remove step tracer
     // TODO
     // getStepTracer().stopAll(true);
-
-    // Remove wait generation
-    _busAccess.waitOnIO(_busSocketId, false);
-    _busAccess.waitOnMemory(_busSocketId, false);
 
     // Setup the machine
     pMc->setupMachine(mcName, mcJson);
@@ -290,9 +281,9 @@ bool McManager::setupMachine(const char* mcJson)
     // Setup display
     pMc->setupDisplay(_pDisplay);
 
-    // Enable wait generation as required
-    _busAccess.waitOnIO(_busSocketId, pMc->isMonitorIORQEnabled());
-    _busAccess.waitOnMemory(_busSocketId, pMc->isMonitorMREQEnabled());
+    // Setup the bus socket
+    _busAccess.sock().setup(_busSocketId, 
+                pMc->isMonitorMREQEnabled(), pMc->isMonitorIORQEnabled());
 
     // See if any files to load
     static const int MAX_FILE_NAME_LEN = 100;
@@ -348,7 +339,7 @@ void McManager::displayRefresh()
             // if (getTargetTracker().busAccessAvailable())
             // {
                 // Asynch display refresh - start bus access request here
-                _busAccess.targetReqBus(_busSocketId, BR_BUS_ACTION_DISPLAY);
+                _busAccess.sock().reqBus(_busSocketId, BR_BUS_ACTION_DISPLAY);
                 _busActionPendingDisplayRefresh = true;
             // }
             // else if (getTargetTracker().isTrackingActive())
@@ -369,8 +360,7 @@ void McManager::displayRefresh()
         }
 
         // Heartbeat
-        if (!_busAccess.isTrackingActive())
-            machineHeartbeat();
+        machineHeartbeat();
     }
 
     // Service machine
@@ -387,6 +377,8 @@ void McManager::displayRefresh()
 
 void McManager::machineHeartbeat()
 {
+    if (!_busAccess.ctrl().allowHeartbeat())
+        return;
     if (_pCurMachine)
         _pCurMachine->machineHeartbeat();
 }
@@ -492,27 +484,27 @@ bool McManager::handleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsign
     if (strcasecmp(cmdName, "ClearTarget") == 0)
     {
         // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ClearTarget");
-        _busAccess.targetClear();
+        _busAccess.prog().clear();
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "ProgramTarget") == 0)
     {
-        _busAccess.targetProgrammingStart(_busAccess.targetProgrammer(), false);
+        _busAccess.ctrl().programmingStart(false);
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if ((strcasecmp(cmdName, "ProgramAndReset") == 0) ||
             (strcasecmp(cmdName, "ProgramAndExec") == 0))
     {
-        _busAccess.targetProgrammingStart(_busAccess.targetProgrammer(), true);
+        _busAccess.ctrl().programmingStart(true);
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "ResetTarget") == 0)
     {
         // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ResetTarget");
-        _busAccess.targetReqReset(_busSocketId);
+        _busAccess.sock().reqReset(_busSocketId);
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
@@ -521,7 +513,7 @@ bool McManager::handleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsign
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "File to Target, len %d, json %s", paramsLen, pCmdJson);
         McBase* pMc = _pMcManager->getMachine();
         if (pMc)
-            pMc->fileHandler(pCmdJson, pParams, paramsLen, _busAccess.targetProgrammer());
+            pMc->fileHandler(pCmdJson, pParams, paramsLen, _busAccess.prog());
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
@@ -585,13 +577,21 @@ bool McManager::handleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsign
 
 bool McManager::targetFileHandlerStatic(void* pObject, const char* rxFileInfo, const uint8_t* pData, unsigned dataLen)
 {
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetFileHandler");
     if (!pObject)
         return false;
-    McManager* pMcManager = (McManager*)pObject;
-    McBase* pMc = pMcManager->getMachine();
+    return ((McManager*)pObject)->targetFileHandler(rxFileInfo, pData, dataLen);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Target file handling
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool McManager::targetFileHandler(const char* rxFileInfo, const uint8_t* pData, unsigned dataLen)
+{
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetFileHandler");
+    McBase* pMc = getMachine();
     if (pMc)
-        return pMc->fileHandler(rxFileInfo, pData, dataLen, pMcManager->targetProgrammer());
+        return pMc->fileHandler(rxFileInfo, pData, dataLen, _busAccess.prog());
     return false;
 }
 

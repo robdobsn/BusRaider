@@ -6,7 +6,7 @@
 #include "usb_hid_keys.h"
 #include "rdutils.h"
 #include "lowlib.h"
-#include "BusAccess.h"
+#include "BusControl.h"
 #include "TargetProgrammer.h"
 #include "TermH19.h"
 #include "TermAnsi.h"
@@ -71,7 +71,7 @@ McVariantTable McTerminal::_machineDescriptorTables[] = {
     }
 };
 
-McTerminal::McTerminal(McManager& mcManager, BusAccess& busAccess) : 
+McTerminal::McTerminal(McManager& mcManager, BusControl& busAccess) : 
     McBase(mcManager, busAccess, _machineDescriptorTables, 
             sizeof(_machineDescriptorTables)/sizeof(_machineDescriptorTables[0])),
     _sendToTargetBufPos(MAX_SEND_TO_TARGET_CHARS)

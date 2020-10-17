@@ -40,13 +40,11 @@ BusRaiderApp* BusRaiderApp::_pApp = NULL;
 // Init
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-BusRaiderApp::BusRaiderApp(Display& display, CommsManager& commsManager, McManager& mcManager, BusAccess& busAccess) :
+BusRaiderApp::BusRaiderApp(Display& display, CUartMaxiSerialDevice& serial) :
     _display(display),
-    _commsManager(commsManager), 
-    _mcManager(mcManager), 
-    _busAccess(busAccess),
-    _keyInfoBufferPos(BusRaiderApp::MAX_USB_KEYS_BUFFERED)
-    
+    _commsManager(serial, NULL),
+    _mcManager(&_display, _commsManager.getCommandHandler(), _busAccess),
+    _keyInfoBufferPos(MAX_USB_KEYS_BUFFERED)
 {
     _pApp = this;
     _inKeyboardRoutine = false;
@@ -57,6 +55,12 @@ void BusRaiderApp::init()
 {
     clear();
 
+    _commsManager.setup();
+    _busAccess.init();
+    // TODO 2020 reinstate
+    // _busControlAPI.init();
+    _mcManager.init();
+    
     // Add socket for status handling
     _commsManager.getCommandHandler().commsSocketAdd(this, true, BusRaiderApp::handleRxMsgStatic, NULL, NULL);
 
@@ -112,6 +116,12 @@ void BusRaiderApp::peripheralStatus(bool usbOk, bool keyboardOk)
 
 void BusRaiderApp::service()
 {
+    // Service components
+    _busAccess.service();
+    // _busControlAPI.service();
+    _mcManager.service();
+    _commsManager.service();
+
     // Handle status update to ESP32
     CommandHandler& commandHandler = _commsManager.getCommandHandler();
     if (isTimeout(micros(), _esp32StatusUpdateStartUs, PI_TO_ESP32_STATUS_UPDATE_RATE_MS * 1000)) 
@@ -267,7 +277,7 @@ void BusRaiderApp::statusDisplayUpdate()
         {
             strlcat(statusStr, _esp32ESP32Version, MAX_STATUS_STR_LEN);
             char tmpStr[30];
-            int hwVers = _busAccess.getHwVersion();
+            int hwVers = _busAccess.bus().getHwVersion(false);
             snprintf(tmpStr, sizeof(tmpStr), " (HW V%d.%d)", hwVers / 10, hwVers %10);
             strlcat(statusStr, tmpStr, MAX_STATUS_STR_LEN);
             strlcat(statusStr, "        ", MAX_STATUS_STR_LEN);
@@ -299,9 +309,9 @@ void BusRaiderApp::statusDisplayUpdate()
         _display.statusPut(Display::STATUS_FIELD_CUR_MACHINE, Display::STATUS_NORMAL, statusStr);
 
         // Speed
-        int clockSpeed = _mcManager.getMachineClock();
-        int mhz = clockSpeed/1000000;
-        int khz = (clockSpeed - mhz*1000000)/1000;
+        uint32_t clockSpeedHz = _mcManager.getClockFreqInHz();
+        uint32_t mhz = clockSpeedHz/1000000;
+        uint32_t khz = (clockSpeedHz - mhz*1000000)/1000;
         snprintf(statusStr, MAX_STATUS_STR_LEN, "Clock: %d.%s%s%dMHz",
                     mhz,
                     khz <= 99 ? "0" : "",
@@ -320,7 +330,7 @@ void BusRaiderApp::statusDisplayUpdate()
         //     strlcat(statusStr, "Paused      ", MAX_STATUS_STR_LEN);
         // else
         //     strlcat(statusStr, "Free Running", MAX_STATUS_STR_LEN);
-        if (_busAccess.isUnderControl())
+        if (_busAccess.bus().busReqAcknowledged())
             strlcat(statusStr, " & PiControl   ", MAX_STATUS_STR_LEN);
         _display.statusPut(Display::STATUS_FIELD_BUS_ACCESS, Display::STATUS_NORMAL, statusStr);
 
@@ -560,11 +570,11 @@ void BusRaiderApp::storeESP32StatusInfo(const char* pCmdJson)
     jsonGetValueForKey("espV", espHealthJson, _esp32ESP32Version, MAX_ESP_VERSION_STR);
     char espHwVersStr[MAX_ESP_VERSION_STR];
     espHwVersStr[0] = '\0';
-    int espHwVersion = BusAccess::HW_VERSION_DEFAULT;
+    int espHwVersion = _busAccess.bus().getHwVersion(true);
     jsonGetValueForKey("espHWV", espHealthJson, espHwVersStr, MAX_ESP_VERSION_STR);
     if (strlen(espHwVersStr) != 0)
         espHwVersion = atoi(espHwVersStr);
-    _busAccess.setHwVersion(espHwVersion);
+    _busAccess.bus().setHwVersion(espHwVersion);
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Ip Address %s", _esp32IPAddress);
 }
 

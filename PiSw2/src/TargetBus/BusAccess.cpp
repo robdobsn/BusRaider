@@ -930,3 +930,4 @@ const char* BusAccessStatusInfo::getJson()
     return _jsonBuf;
 }
 
+

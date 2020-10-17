@@ -12,8 +12,8 @@ CommsManager* CommsManager::_pCommsManager = 0;
 // Comms socket
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CommsManager::CommsManager(CUartMaxiSerialDevice* pSerial, AppSerialIF* pAppSerialIF) :
-    _pSerial(pSerial), _pAppSerialIF(pAppSerialIF)
+CommsManager::CommsManager(CUartMaxiSerialDevice& serial, AppSerialIF* pAppSerialIF) :
+    _pSerial(&serial), _pAppSerialIF(pAppSerialIF)
 {
     // Singleton
     _pCommsManager = this;

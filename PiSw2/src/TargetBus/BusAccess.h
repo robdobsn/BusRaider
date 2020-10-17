@@ -80,7 +80,7 @@ public:
     }
 
     // Bus control
-    bool isUnderControl();
+    bool busReqAcknowledged();
     
     // TODO 2020 handle
     bool isEmulatingMemory()
@@ -90,8 +90,8 @@ public:
 
     enum BlockAccessType
     {
-        ACCESS_MEM,
-        ACCESS_IO
+        BLOCK_ACCESS_MEM,
+        BLOCK_ACCESS_IO
     };
 
     // Read and write blocks
@@ -165,8 +165,10 @@ public:
 
     // Version
     static const int HW_VERSION_DEFAULT = 20;
-    int getHwVersion()
+    int getHwVersion(bool getDefault)
     {
+        if (getDefault)
+            return BusAccess::HW_VERSION_DEFAULT;
         return _hwVersionNumber;
     }
     void setHwVersion(int hwVersion)
@@ -186,7 +188,7 @@ public:
 
     // Bus request/ack
     void controlRequest();
-    BR_RETURN_TYPE controlRequestAndTake();
+    BR_RETURN_TYPE controlRequestAndTake();busRequestAndTake
     void controlRelease();
     void controlTake();
     bool waitForBusAck(bool ack);

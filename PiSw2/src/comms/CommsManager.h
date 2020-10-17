@@ -9,7 +9,7 @@ class AppSerialIF;
 class CommsManager
 {
 public:
-	CommsManager (CUartMaxiSerialDevice* pSerial, AppSerialIF* pAppSerialIF);
+	CommsManager (CUartMaxiSerialDevice& serial, AppSerialIF* pAppSerialIF);
 	~CommsManager (void);
 
     // Setup

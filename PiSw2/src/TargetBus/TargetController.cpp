@@ -1,7 +1,7 @@
 // Bus Raider
 // Rob Dobson 2019
 
-#include "BusAccess.h"
+#include "BusControl.h"
 #include "PiWiring.h"
 #include "lowlib.h"
 #include "logging.h"
@@ -32,7 +32,7 @@
 static const char MODULE_PREFIX[] = "TargetController";
 
 // Constructor
-TargetController::TargetController(BusAccess& busAccess)
+TargetController::TargetController(BusControl& busAccess)
     : _busAccess(busAccess)
 {
     // Sockets
@@ -92,28 +92,29 @@ TargetController::TargetController(BusAccess& busAccess)
 
 void TargetController::init()
 {
-    // Connect to the bus socket
-    if (_busSocketId < 0)
-        _busSocketId = _busAccess.busSocketAdd(    
-            true,
-            TargetController::handleWaitInterruptStatic,
-            TargetController::busActionCompleteStatic,
-            false,
-            false,
-            // Reset
-            false,
-            0,
-            // NMI
-            false,
-            0,
-            // IRQ
-            false,
-            0,
-            false,
-            BR_BUS_ACTION_GENERAL,
-            false,
-            this
-        );
+    // TODO 2020 removed
+    // // Connect to the bus socket
+    // if (_busSocketId < 0)
+    //     _busSocketId = _busAccess.socketAdd(    
+    //         true,
+    //         TargetController::handleWaitInterruptStatic,
+    //         TargetController::busActionCompleteStatic,
+    //         false,
+    //         false,
+    //         // Reset
+    //         false,
+    //         0,
+    //         // NMI
+    //         false,
+    //         0,
+    //         // IRQ
+    //         false,
+    //         0,
+    //         false,
+    //         BR_BUS_ACTION_GENERAL,
+    //         false,
+    //         this
+    //     );
 }
 
 // Service
@@ -125,70 +126,75 @@ void TargetController::service()
 //Enable
 void TargetController::enable(bool en, bool waitHold)
 {
-    _stepMode = STEP_MODE_STEP_PAUSED;
-    if (en)
-    {
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "enable %d", en);
-        // Enable the bus socket so we get bus callbacks
-        _busAccess.busSocketEnable(_busSocketId, en);
-        // Set mirror mode so we record memory accesses
+    // TODO 2020
+    // _stepMode = STEP_MODE_STEP_PAUSED;
+    // if (en)
+    // {
+    //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "enable %d", en);
+    //     // Enable the bus socket so we get bus callbacks
+    //     _busAccess.socketEnable(_busSocketId, en);
 
-        // TODO 2020
-        // _mcManager.getHwManager().setMirrorMode(true);
+    //     // Set mirror mode so we record memory accesses
+    //     // TODO 2020
+    //     // _mcManager.getHwManager().setMirrorMode(true);
+    //     _postInjectMemoryMirror = true;
 
-
-        _postInjectMemoryMirror = true;
-        // Wait on memory and hold at each instruction
-        _busAccess.waitOnMemory(_busSocketId, true);
-        _busAccess.waitHold(_busSocketId, waitHold);
-        if (!waitHold)
-            _busAccess.waitRelease();
-    }
-    else
-    {
-        // Turn off mirror mode
+    //     // Wait on memory and hold at each instruction
+    //     // TODO 2020
+    //     // _busAccess.waitOnMemory(_busSocketId, true);
+    //     // _busAccess.waitHold(_busSocketId, waitHold);
+    //     // if (!waitHold)
+    //     //     _busAccess.waitRelease();
+    // }
+    // else
+    // {
+    //     // Turn off mirror mode
         
         
-        // TODO 2020
-        // _mcManager.getHwManager().setMirrorMode(false);
+    //     // TODO 2020
+    //     // _mcManager.getHwManager().setMirrorMode(false);
+    //     // Remove any hold
+    //     // _busAccess.waitHold(_busSocketId, false);
+    //     // if (_targetStateAcqMode != TARGET_STATE_ACQ_INJECTING)
+    //     // {
+    //     //     // Disable
+    //     //     _busAccess.waitOnMemory(_busSocketId, false);
+    //     //     _busAccess.socketEnable(_busSocketId, en);
 
-
-        // Remove any hold
-        _busAccess.waitHold(_busSocketId, false);
-        if (_targetStateAcqMode != TARGET_STATE_ACQ_INJECTING)
-        {
-            // Disable
-            _busAccess.waitOnMemory(_busSocketId, false);
-            _busAccess.busSocketEnable(_busSocketId, en);
-            // Remove paging for injection
-            _busAccess.targetPageForInjection(_busSocketId, false);
-            _pageOutForInjectionActive = false;
-        }
-        else
-        {
-            _disablePending = true;
-        }
-    }
+    //     //     // TODO 2020
+    //     //     // // Remove paging for injection
+    //     //     // _busAccess.targetPageForInjection(_busSocketId, false);
+    //     //     _pageOutForInjectionActive = false;
+    //     // }
+    //     // else
+    //     // {
+    //     //     _disablePending = true;
+    //     // }
+    // }
 }
 
 bool TargetController::isPaused()
 {
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busSocketIsEnabled %d %d", 
-    //             busAccess.busSocketIsEnabled(_busSocketId), _stepMode);
-    if (!_busAccess.busSocketIsEnabled(_busSocketId))
-        return false;
+    // TODO 2020
+    // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busSocketIsEnabled %d %d", 
+    // //             busAccess.busSocketIsEnabled(_busSocketId), _stepMode);
+    // if (!_busAccess.socketIsEnabled(_busSocketId))
+    //     return false;
     return _stepMode == STEP_MODE_STEP_PAUSED;
 }
 
 bool TargetController::isTrackingActive()
 {
-    return _busAccess.busSocketIsEnabled(_busSocketId);
+    // TODO 2020
+    // return _busAccess.socketIsEnabled(_busSocketId);
+    return false;
 }
 
 void TargetController::targetReset()
 {
     _targetResetPending = true;
-    _busAccess.targetReqReset(_busSocketId);
+    // TODO 2020
+    // _busAccess.socketReqReset(_busSocketId);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -197,31 +203,32 @@ void TargetController::targetReset()
 
 void TargetController::startSetRegisterSequence(Z80Registers* pRegs)
 {
-    // Set regs
-    if (pRegs)
-        _z80Registers = *pRegs;
+    // TODO 2020
+    // // Set regs
+    // if (pRegs)
+    //     _z80Registers = *pRegs;
 
-    // TODO probably don't need synch with instruction to ensure we are at starting M1 cycle
-    // as there is a nop at the start of the sequence
+    // // TODO probably don't need synch with instruction to ensure we are at starting M1 cycle
+    // // as there is a nop at the start of the sequence
 
-    // Check we can inject
-    if (_targetStateAcqMode == TARGET_STATE_ACQ_INJECTING)
-    {
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Can't inject as Injector is busy - state = %d", _targetStateAcqMode);
-        return;
-    }
+    // // Check we can inject
+    // if (_targetStateAcqMode == TARGET_STATE_ACQ_INJECTING)
+    // {
+    //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "Can't inject as Injector is busy - state = %d", _targetStateAcqMode);
+    //     return;
+    // }
 
-    // Set state machine to inject
-    _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
+    // // Set state machine to inject
+    // _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
 
-    // Remove any hold to allow execution / injection
-    _busAccess.waitHold(_busSocketId, false);
+    // // Remove any hold to allow execution / injection
+    // _busAccess.waitHold(_busSocketId, false);
 
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Wait release for injection");
+    // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Wait release for injection");
 
-    // Start sequence of setting registers
-    _setRegs = true;
-    _snippetPos = 0;
+    // // Start sequence of setting registers
+    // _setRegs = true;
+    // _snippetPos = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -520,20 +527,21 @@ TargetController::OPCODE_INJECT_PROGRESS TargetController::handleRegisterSet(uin
 
 void TargetController::stepInto()
 {
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "stepInto");
+    // TODO 2020
+    // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "stepInto");
 
-    // Set flag to indicate mode
-    _stepMode = STEP_MODE_STEP_INTO;
+    // // Set flag to indicate mode
+    // _stepMode = STEP_MODE_STEP_INTO;
 
-    // Release bus hold if held
-    if (_busAccess.waitIsHeld())
-    {
-        // Remove any hold to allow execution / injection
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "stepInto waitHold = false");
-        _busAccess.waitHold(_busSocketId, false);
-    }
+    // // Release bus hold if held
+    // if (_busAccess.waitIsHeld())
+    // {
+    //     // Remove any hold to allow execution / injection
+    //     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "stepInto waitHold = false");
+    //     _busAccess.waitHold(_busSocketId, false);
+    // }
 
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Breakpoints en %d num %d", _breakpoints.isEnabled(), _breakpoints.getNumEnabled());
+    // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Breakpoints en %d num %d", _breakpoints.isEnabled(), _breakpoints.getNumEnabled());
 }
 
 void TargetController::stepOver()
@@ -553,46 +561,49 @@ void TargetController::stepOver()
     // _stepOverPCValue = curAddr + instrLen;
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "cpu-step-over PCnow %04x StepToPC %04x", _z80Registers.PC, _stepOverPCValue);
 
-    // Set flag to indicate mode
-    _stepMode = STEP_MODE_STEP_OVER;
+    // TODO 2020
+    // // Set flag to indicate mode
+    // _stepMode = STEP_MODE_STEP_OVER;
 
-    // Release bus hold if held
-    if (_busAccess.waitIsHeld())
-    {
-        // Remove any hold to allow execution / injection
-        _busAccess.waitHold(_busSocketId, false);
-    }
+    // // Release bus hold if held
+    // if (_busAccess.waitIsHeld())
+    // {
+    //     // Remove any hold to allow execution / injection
+    //     _busAccess.waitHold(_busSocketId, false);
+    // }
 }
 
 void TargetController::stepTo(uint32_t toAddr)
 {
-    _stepOverPCValue = toAddr;
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "cpu-step-to PCnow %04x StepToPC %04x", _z80Registers.PC, toAddr);
+    // TODO 2020
+    // _stepOverPCValue = toAddr;
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "cpu-step-to PCnow %04x StepToPC %04x", _z80Registers.PC, toAddr);
 
-    // Set flag to indicate mode
-    _stepMode = STEP_MODE_STEP_OVER;
+    // // Set flag to indicate mode
+    // _stepMode = STEP_MODE_STEP_OVER;
 
-    // Release bus hold if held
-    if (_busAccess.waitIsHeld())
-    {
-        // Remove any hold to allow execution / injection
-        _busAccess.waitHold(_busSocketId, false);
-    }
+    // // Release bus hold if held
+    // if (_busAccess.waitIsHeld())
+    // {
+    //     // Remove any hold to allow execution / injection
+    //     _busAccess.waitHold(_busSocketId, false);
+    // }
 }
 
 void TargetController::stepRun()
 {
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "stepRun");
 
-    // Set flag to indicate mode
-    _stepMode = STEP_MODE_RUN;
+    // TODO 2020
+    // // Set flag to indicate mode
+    // _stepMode = STEP_MODE_RUN;
 
-    // Release bus hold if held
-    if (_busAccess.waitIsHeld())
-    {
-        // Remove any hold to allow execution / injection
-        _busAccess.waitHold(_busSocketId, false);
-    }
+    // // Release bus hold if held
+    // if (_busAccess.waitIsHeld())
+    // {
+    //     // Remove any hold to allow execution / injection
+    //     _busAccess.waitHold(_busSocketId, false);
+    // }
 }
 
 // void TargetController::stepPause(bool allowInjection)
@@ -666,23 +677,24 @@ bool TargetController::trackPrefixedInstructions(uint32_t flags, uint32_t data, 
 
 bool TargetController::handlePendingDisable()
 {
-    if (_disablePending)
-    {
-        _disablePending = false;
+    // TODO 2020
+    // if (_disablePending)
+    // {
+    //     _disablePending = false;
 
-        // Disable
-        _busAccess.waitOnMemory(_busSocketId, false);
-        _busAccess.busSocketEnable(_busSocketId, false);
+    //     // Disable
+    //     _busAccess.waitOnMemory(_busSocketId, false);
+    //     _busAccess.busSocketEnable(_busSocketId, false);
 
-        // Release bus hold
-        _busAccess.waitHold(_busSocketId, false);
+    //     // Release bus hold
+    //     _busAccess.waitHold(_busSocketId, false);
 
-        // Remove paging for injection
-        _busAccess.targetPageForInjection(_busSocketId, false);
-        _pageOutForInjectionActive = false;
+    //     // Remove paging for injection
+    //     _busAccess.targetPageForInjection(_busSocketId, false);
+    //     _pageOutForInjectionActive = false;
 
-        return true;
-    }
+    //     return true;
+    // }
     return false;
 }
 
@@ -736,17 +748,19 @@ void TargetController::busActionComplete(BR_BUS_ACTION actionType,  BR_BUS_ACTIO
 
             // Write the blocks
 
-            // TODO 2020 - using _busaccess instead of hw for blockwrite
-            _busActionCodeWrittenAtResetVector = false;
-            for (int i = 0; i < _targetProgrammer.numMemoryBlocks(); i++) {
-                TargetProgrammer::TargetMemoryBlock* pBlock = _targetProgrammer.getMemoryBlock(i);
-                BR_RETURN_TYPE brResult = _busAccess.blockWrite(pBlock->start, 
-                            _targetProgrammer.getMemoryImagePtr() + pBlock->start, pBlock->len,
-                            BusAccess::ACCESS_MEM);
-                LogWrite(MODULE_PREFIX, LOG_DEBUG,"ProgramTarget done %08x len %d result %d micros %u", pBlock->start, pBlock->len, brResult, micros());
-                if (pBlock->start == Z80_PROGRAM_RESET_VECTOR)
-                    _busActionCodeWrittenAtResetVector = true;
-            }
+            // TODO 2020
+
+            // // TODO 2020 - using _busaccess instead of hw for blockwrite
+            // _busActionCodeWrittenAtResetVector = false;
+            // for (int i = 0; i < _targetProgrammer.numMemoryBlocks(); i++) {
+            //     TargetProgrammer::TargetMemoryBlock* pBlock = _targetProgrammer.getMemoryBlock(i);
+            //     BR_RETURN_TYPE brResult = _busAccess.blockWrite(pBlock->start, 
+            //                 _targetProgrammer.getMemoryImagePtr() + pBlock->start, pBlock->len,
+            //                 BLOCK_ACCESS_MEM);
+            //     LogWrite(MODULE_PREFIX, LOG_DEBUG,"ProgramTarget done %08x len %d result %d micros %u", pBlock->start, pBlock->len, brResult, micros());
+            //     if (pBlock->start == Z80_PROGRAM_RESET_VECTOR)
+            //         _busActionCodeWrittenAtResetVector = true;
+            // }
 
             // // Debug
             // uint8_t testBlock[0x100];
@@ -806,124 +820,125 @@ void TargetController::handleWaitInterrupt(uint32_t addr, uint32_t data,
 //                 (flags & BR_CTRL_BUS_M1_MASK) != 0, _prefixTracker[0], _prefixTracker[1], 
 //                 flags);
 
-    // Handle state machine
-    TARGET_STATE_ACQ startAcqMode = _targetStateAcqMode;
-    switch (_targetStateAcqMode)
-    {
-        case TARGET_STATE_ACQ_NONE:
-        case TARGET_STATE_ACQ_POST_INJECT:
-        {
-            // Check for post inject hold
-            if ((_targetStateAcqMode == TARGET_STATE_ACQ_POST_INJECT) && (_stepMode == STEP_MODE_STEP_PAUSED))
-            {
-                // Tell bus to hold at this point
-                // LogWrite(MODULE_PREFIX, LOG_DEBUG, "waitISR postInject && paused -> hold = true");
-                _busAccess.waitHold(_busSocketId, true);
-            }
+    // TODO 2020 - RESTORE
+    // // Handle state machine
+    // TARGET_STATE_ACQ startAcqMode = _targetStateAcqMode;
+    // switch (_targetStateAcqMode)
+    // {
+    //     case TARGET_STATE_ACQ_NONE:
+    //     case TARGET_STATE_ACQ_POST_INJECT:
+    //     {
+    //         // Check for post inject hold
+    //         if ((_targetStateAcqMode == TARGET_STATE_ACQ_POST_INJECT) && (_stepMode == STEP_MODE_STEP_PAUSED))
+    //         {
+    //             // Tell bus to hold at this point
+    //             // LogWrite(MODULE_PREFIX, LOG_DEBUG, "waitISR postInject && paused -> hold = true");
+    //             _busAccess.waitHold(_busSocketId, true);
+    //         }
 
-            // Check for step-over, breakpoints, etc
-            handleStepOverBkpts(addr, data, flags, retVal);
+    //         // Check for step-over, breakpoints, etc
+    //         handleStepOverBkpts(addr, data, flags, retVal);
 
-            // Look for start of instruction
-            handleTrackerIdle(addr, data, flags, retVal);
+    //         // Look for start of instruction
+    //         handleTrackerIdle(addr, data, flags, retVal);
 
-            break;
-        }
-        case TARGET_STATE_ACQ_INJECT_IF_NEW_INSTR:
-        {
-            // TODO 2020
-            // RE-implement heartbeat while debugging
+    //         break;
+    //     }
+    //     case TARGET_STATE_ACQ_INJECT_IF_NEW_INSTR:
+    //     {
+    //         // TODO 2020
+    //         // RE-implement heartbeat while debugging
 
-            // // Machine heartbeat handler
-            // if (flags & BR_CTRL_BUS_M1_MASK)
-            // {
-            //     _machineHeartbeatCounter++;
-            //     if (_machineHeartbeatCounter > 1000)
-            //     {
-            //         _mcManager.machineHeartbeat();
-            //         _machineHeartbeatCounter = 0;
-            //         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "INT");
-            //     }
-            // }
+    //         // // Machine heartbeat handler
+    //         // if (flags & BR_CTRL_BUS_M1_MASK)
+    //         // {
+    //         //     _machineHeartbeatCounter++;
+    //         //     if (_machineHeartbeatCounter > 1000)
+    //         //     {
+    //         //         _mcManager.machineHeartbeat();
+    //         //         _machineHeartbeatCounter = 0;
+    //         //         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "INT");
+    //         //     }
+    //         // }
 
-            // Check for disable
-            if (handlePendingDisable())
-                break;
+    //         // Check for disable
+    //         if (handlePendingDisable())
+    //             break;
 
-            // Check for step-over, breakpoints, etc
-            handleStepOverBkpts(addr, data, flags, retVal);
+    //         // Check for step-over, breakpoints, etc
+    //         handleStepOverBkpts(addr, data, flags, retVal);
 
-            // // Remove any hold to allow execution / injection
-            // busAccess.waitHold(_busSocketId, false);
+    //         // // Remove any hold to allow execution / injection
+    //         // busAccess.waitHold(_busSocketId, false);
 
-            // If we get another first byte then start injecting
-            bool firstByteOfInstr = trackPrefixedInstructions(flags, data, retVal);
-            if (!firstByteOfInstr)
-            {
-                // LogWrite(MODULE_PREFIX, LOG_DEBUG, "WAITFIRST %04x %02x %s%s %d %d", 
-                //         addr, data, 
-                //         (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", 
-                //         (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "",
-                //         _prefixTracker[0], _prefixTracker[1]);
-                // Debug
-                if (_debugInstrBytePos < MAX_BYTES_IN_INSTR)
-                    _debugInstrBytes[_debugInstrBytePos++] = data;
-            }
-            else
-            {
-                // LogWrite(MODULE_PREFIX, LOG_DEBUG, "GOTFIRST %04x %02x %s%s %d %d", 
-                //         addr, data, 
-                //         (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", 
-                //         (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "",
-                //         _prefixTracker[0], _prefixTracker[1]);
-                // Bump state if in step mode or a grab is needed
-                if ((_stepMode == STEP_MODE_STEP_INTO) || _requestDisplayWhileStepping)
-                {
-                    // TODO DEBUG
-                    // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_A);
-                    _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
-                }
-            }
+    //         // If we get another first byte then start injecting
+    //         bool firstByteOfInstr = trackPrefixedInstructions(flags, data, retVal);
+    //         if (!firstByteOfInstr)
+    //         {
+    //             // LogWrite(MODULE_PREFIX, LOG_DEBUG, "WAITFIRST %04x %02x %s%s %d %d", 
+    //             //         addr, data, 
+    //             //         (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", 
+    //             //         (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "",
+    //             //         _prefixTracker[0], _prefixTracker[1]);
+    //             // Debug
+    //             if (_debugInstrBytePos < MAX_BYTES_IN_INSTR)
+    //                 _debugInstrBytes[_debugInstrBytePos++] = data;
+    //         }
+    //         else
+    //         {
+    //             // LogWrite(MODULE_PREFIX, LOG_DEBUG, "GOTFIRST %04x %02x %s%s %d %d", 
+    //             //         addr, data, 
+    //             //         (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", 
+    //             //         (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "",
+    //             //         _prefixTracker[0], _prefixTracker[1]);
+    //             // Bump state if in step mode or a grab is needed
+    //             if ((_stepMode == STEP_MODE_STEP_INTO) || _requestDisplayWhileStepping)
+    //             {
+    //                 // TODO DEBUG
+    //                 // ISR_ASSERT(ISR_ASSERT_CODE_DEBUG_A);
+    //                 _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
+    //             }
+    //         }
 
-            // Check for move to injection state and start now
-            if (_targetStateAcqMode == TARGET_STATE_ACQ_INJECTING)
-            {
-                _setRegs = false;
-                _snippetPos = 0;
-                handleInjection(addr, data, flags, retVal);
-            }
+    //         // Check for move to injection state and start now
+    //         if (_targetStateAcqMode == TARGET_STATE_ACQ_INJECTING)
+    //         {
+    //             _setRegs = false;
+    //             _snippetPos = 0;
+    //             handleInjection(addr, data, flags, retVal);
+    //         }
 
-            break;
-        }
-        case TARGET_STATE_ACQ_INJECTING:
-        {
-            // Perform injection
-            handleInjection(addr, data, flags, retVal);
-            break;
-        }
-    }
+    //         break;
+    //     }
+    //     case TARGET_STATE_ACQ_INJECTING:
+    //     {
+    //         // Perform injection
+    //         handleInjection(addr, data, flags, retVal);
+    //         break;
+    //     }
+    // }
 
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "WAITISRDONE %s %s RetVal %02x", 
-    //             (_stepMode == STEP_MODE_STEP_PAUSED) ? "PAUSED" : ((_stepMode == STEP_MODE_STEP_INTO) ? "INTO" : ((_stepMode == STEP_MODE_STEP_OVER) ? "OVER" : "RUN")),
-    //             (_targetStateAcqMode == TARGET_STATE_ACQ_NONE) ? "ACQNONE" : ((_targetStateAcqMode == TARGET_STATE_ACQ_INJECTING) ? "INJECTING" : ((_targetStateAcqMode == TARGET_STATE_ACQ_INJECT_IF_NEW_INSTR) ? "INJIFNEW" : "POSTINJ")),
-    //             retVal);
+    // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "WAITISRDONE %s %s RetVal %02x", 
+    // //             (_stepMode == STEP_MODE_STEP_PAUSED) ? "PAUSED" : ((_stepMode == STEP_MODE_STEP_INTO) ? "INTO" : ((_stepMode == STEP_MODE_STEP_OVER) ? "OVER" : "RUN")),
+    // //             (_targetStateAcqMode == TARGET_STATE_ACQ_NONE) ? "ACQNONE" : ((_targetStateAcqMode == TARGET_STATE_ACQ_INJECTING) ? "INJECTING" : ((_targetStateAcqMode == TARGET_STATE_ACQ_INJECT_IF_NEW_INSTR) ? "INJIFNEW" : "POSTINJ")),
+    // //             retVal);
 
-    if (!((_targetStateAcqMode == TARGET_STATE_ACQ_INJECTING) && (startAcqMode == TARGET_STATE_ACQ_INJECTING)))
-    {
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "addr %04x RetVal %02x(%c) Held %c InData %02x flags %08x %c%c%c%c%c Pfx1 %d Pfx2 %d state %d startState %d", 
-        //             addr, retVal & 0xff, 
-        //             (retVal & BR_MEM_ACCESS_INSTR_INJECT) ? 'I' : ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) ? 'X' : 'D'),
-        //             busAccess.waitIsHeld() ? 'Y' : 'N',
-        //             data,
-        //             flags, 
-        //             (flags & BR_CTRL_BUS_M1_MASK) ? '1' : ' ', 
-        //             (flags & BR_CTRL_BUS_WR_MASK) ? 'W' : ' ', 
-        //             (flags & BR_CTRL_BUS_RD_MASK) ? 'R' : ' ', 
-        //             (flags & BR_CTRL_BUS_MREQ_MASK) ? 'M' : ' ', 
-        //             (flags & BR_CTRL_BUS_IORQ_MASK) ? 'I' : ' ', 
-        //             _prefixTracker[0], _prefixTracker[1],
-        //             _targetStateAcqMode, startAcqMode);
-    }
+    // if (!((_targetStateAcqMode == TARGET_STATE_ACQ_INJECTING) && (startAcqMode == TARGET_STATE_ACQ_INJECTING)))
+    // {
+    //     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "addr %04x RetVal %02x(%c) Held %c InData %02x flags %08x %c%c%c%c%c Pfx1 %d Pfx2 %d state %d startState %d", 
+    //     //             addr, retVal & 0xff, 
+    //     //             (retVal & BR_MEM_ACCESS_INSTR_INJECT) ? 'I' : ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) ? 'X' : 'D'),
+    //     //             busAccess.waitIsHeld() ? 'Y' : 'N',
+    //     //             data,
+    //     //             flags, 
+    //     //             (flags & BR_CTRL_BUS_M1_MASK) ? '1' : ' ', 
+    //     //             (flags & BR_CTRL_BUS_WR_MASK) ? 'W' : ' ', 
+    //     //             (flags & BR_CTRL_BUS_RD_MASK) ? 'R' : ' ', 
+    //     //             (flags & BR_CTRL_BUS_MREQ_MASK) ? 'M' : ' ', 
+    //     //             (flags & BR_CTRL_BUS_IORQ_MASK) ? 'I' : ' ', 
+    //     //             _prefixTracker[0], _prefixTracker[1],
+    //     //             _targetStateAcqMode, startAcqMode);
+    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -987,130 +1002,132 @@ void TargetController::handleTrackerIdle( uint32_t addr, uint32_t data,
 void TargetController::handleInjection(uint32_t addr, uint32_t data, 
         uint32_t flags, uint32_t& retVal)
 {
-    // Use the bus socket to request page out if required
-    if (!_pageOutForInjectionActive)
-    {
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetPageForInjection TRUE");
-        _busAccess.targetPageForInjection(_busSocketId, true);
-        _pageOutForInjectionActive = true;
-    }
+    // TODO 2020
+//     // Use the bus socket to request page out if required
+//     if (!_pageOutForInjectionActive)
+//     {
+//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetPageForInjection TRUE");
+//         _busAccess.targetPageForInjection(_busSocketId, true);
+//         _pageOutForInjectionActive = true;
+//     }
     
-    // Handle get or set
-    OPCODE_INJECT_PROGRESS injectProgress = OPCODE_INJECT_GENERAL;
-    if (_setRegs)
-        injectProgress = handleRegisterSet(retVal);
-    else
-        injectProgress = handleRegisterGet(addr, data, flags, retVal);
+//     // Handle get or set
+//     OPCODE_INJECT_PROGRESS injectProgress = OPCODE_INJECT_GENERAL;
+//     if (_setRegs)
+//         injectProgress = handleRegisterSet(retVal);
+//     else
+//         injectProgress = handleRegisterGet(addr, data, flags, retVal);
 
-    // Check if time for memory grab
-    if (injectProgress == OPCODE_INJECT_GRAB_MEMORY)
-    {
-        // Check if post-inject memory mirroring required
-        if (_postInjectMemoryMirror || _requestDisplayWhileStepping)
-        {
+//     // Check if time for memory grab
+//     if (injectProgress == OPCODE_INJECT_GRAB_MEMORY)
+//     {
+//         // Check if post-inject memory mirroring required
+//         if (_postInjectMemoryMirror || _requestDisplayWhileStepping)
+//         {
 
-            // Suspend bus detail after a BUSRQ as there is a hardware problem with FF_DATA_OE_BAR remaining
-            // enabled after a BUSRQ which causes contention issues on the PIB. The way around this is to
-            // ensure BUSRQ is handled synchronously with the TargetController operation when MREQ waits are
-            // enabled so that the cycle immediately following a BUSRQ in this case will be part of the 
-            // opcode injection cycle and the bus detail will not be required
-            _busAccess.waitSuspendBusDetailOneCycle();
+//             // Suspend bus detail after a BUSRQ as there is a hardware problem with FF_DATA_OE_BAR remaining
+//             // enabled after a BUSRQ which causes contention issues on the PIB. The way around this is to
+//             // ensure BUSRQ is handled synchronously with the TargetController operation when MREQ waits are
+//             // enabled so that the cycle immediately following a BUSRQ in this case will be part of the 
+//             // opcode injection cycle and the bus detail will not be required
+//             _busAccess.waitSuspendBusDetailOneCycle();
 
-            // Use the bus socket to request page-in
-            _busAccess.targetPageForInjection(_busSocketId, false);
-            _pageOutForInjectionActive = false;
+//             // Use the bus socket to request page-in
+//             _busAccess.targetPageForInjection(_busSocketId, false);
+//             _pageOutForInjectionActive = false;
 
-            // Request bus
-            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Request bus for mirror");
-            BR_BUS_ACTION_REASON busAction = BR_BUS_ACTION_MIRROR;
-            if (_requestDisplayWhileStepping)
-                busAction = BR_BUS_ACTION_DISPLAY;
-            _requestDisplayWhileStepping = false;
-            _busAccess.targetReqBus(_busSocketId, busAction);
-            _postInjectMemoryMirror = false;
-        }
-    }
-    else if (injectProgress == OPCODE_INJECT_DONE)
-    {
-        // Clear the prefix tracker
-        _prefixTracker[0] = _prefixTracker[1] = false;
+//             // Request bus
+//             // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Request bus for mirror");
+//             BR_BUS_ACTION_REASON busAction = BR_BUS_ACTION_MIRROR;
+//             if (_requestDisplayWhileStepping)
+//                 busAction = BR_BUS_ACTION_DISPLAY;
+//             _requestDisplayWhileStepping = false;
+//             _busAccess.targetReqBus(_busSocketId, busAction);
+//             _postInjectMemoryMirror = false;
+//         }
+//     }
+//     else if (injectProgress == OPCODE_INJECT_DONE)
+//     {
+//         // Clear the prefix tracker
+//         _prefixTracker[0] = _prefixTracker[1] = false;
 
-        // Default back to getting
-        _setRegs = false;
-        _snippetPos = 0;
+//         // Default back to getting
+//         _setRegs = false;
+//         _snippetPos = 0;
 
-        // Use the bus socket to request page-in delayed to next wait event
-        _busAccess.targetPageForInjection(_busSocketId, false);
-        _pageOutForInjectionActive = false;
+//         // Use the bus socket to request page-in delayed to next wait event
+//         _busAccess.targetPageForInjection(_busSocketId, false);
+//         _pageOutForInjectionActive = false;
 
-        // Go back to allowing a single instruction to run before reg get
-#ifdef PAUSE_GET_REGS_AT_CUR_ADDR
-        _targetStateAcqMode = TARGET_STATE_ACQ_POST_INJECT;
-        if (_stepMode == STEP_MODE_STEP_INTO)
-        {
-            _stepMode = STEP_MODE_STEP_PAUSED;
-        }
-#else
-        _targetStateAcqMode = TARGET_STATE_ACQ_NONE;
-        // Check for hold required
-        if (_stepMode == STEP_MODE_STEP_INTO)
-        {
-            // Tell bus to hold at this point
-            busAccess.waitHold(_busSocketId, true);
-        }
-#endif
+//         // Go back to allowing a single instruction to run before reg get
+// #ifdef PAUSE_GET_REGS_AT_CUR_ADDR
+//         _targetStateAcqMode = TARGET_STATE_ACQ_POST_INJECT;
+//         if (_stepMode == STEP_MODE_STEP_INTO)
+//         {
+//             _stepMode = STEP_MODE_STEP_PAUSED;
+//         }
+// #else
+//         _targetStateAcqMode = TARGET_STATE_ACQ_NONE;
+//         // Check for hold required
+//         if (_stepMode == STEP_MODE_STEP_INTO)
+//         {
+//             // Tell bus to hold at this point
+//             busAccess.waitHold(_busSocketId, true);
+//         }
+// #endif
 
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "INJECTING FINISHED 0x%04x 0x%02x %s%s",
-        //             addr, ((flags & BR_CTRL_BUS_RD_MASK) & ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0)) ? (retVal & 0xff) : data,  
-        //             (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "");
+//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "INJECTING FINISHED 0x%04x 0x%02x %s%s",
+//         //             addr, ((flags & BR_CTRL_BUS_RD_MASK) & ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0)) ? (retVal & 0xff) : data,  
+//         //             (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "");
 
-        // TODO
-        // char regBuf[1000];
-        // _z80Registers.format(regBuf, 1000);
-        // char tmpBuf[10];
-        // for (uint32_t i = 0; i < _debugInstrBytePos; i++)
-        // {    
-        //     ee_sprintf(tmpBuf, " %02x", _debugInstrBytes[i]);
-        //     strlcat(regBuf, tmpBuf, 1000);
-        // }
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "%s", regBuf);
+//         // TODO
+//         // char regBuf[1000];
+//         // _z80Registers.format(regBuf, 1000);
+//         // char tmpBuf[10];
+//         // for (uint32_t i = 0; i < _debugInstrBytePos; i++)
+//         // {    
+//         //     ee_sprintf(tmpBuf, " %02x", _debugInstrBytes[i]);
+//         //     strlcat(regBuf, tmpBuf, 1000);
+//         // }
+//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "%s", regBuf);
 
-        // TODO may need to call back to whoever requested this
-    }
-    else
-    {
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "INJECTING %04x %02x %s%s",
-        //             addr, ((flags & BR_CTRL_BUS_RD_MASK) & ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0)) ? (retVal & 0xff) : data, 
-        //             (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "");
+//         // TODO may need to call back to whoever requested this
+//     }
+//     else
+//     {
+//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "INJECTING %04x %02x %s%s",
+//         //             addr, ((flags & BR_CTRL_BUS_RD_MASK) & ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0)) ? (retVal & 0xff) : data, 
+//         //             (flags & BR_CTRL_BUS_RD_MASK) ? "R" : "", (flags & BR_CTRL_BUS_WR_MASK) ? "W" : "");
 
-    }
+//     }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Target programming
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetController::targetProgrammingStart(TargetProgrammer& targetProgrammer, bool execAfterProgramming)
+void TargetController::programmingStart(bool execAfterProgramming)
 {
-    // Check there is something to write
-    if (targetProgrammer.numMemoryBlocks() == 0) 
-    {
-        // Nothing new to write
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetProgrammingStart - nothing to write");
-    } 
-    else 
-    {
-        // BUSRQ is used even if memory is emulated because it holds the processor while changes are made
-        // Give the BusAccess some service first to ensure WAIT handling is complete before requesting the bus
-        for (int i = 0; i < 3; i++)
-            _busAccess.service();
+    // TODO 2020
+    // // Check there is something to write
+    // if (targetProgrammer.numMemoryBlocks() == 0) 
+    // {
+    //     // Nothing new to write
+    //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "programmingStart - nothing to write");
+    // } 
+    // else 
+    // {
+    //     // BUSRQ is used even if memory is emulated because it holds the processor while changes are made
+    //     // Give the BusAccess some service first to ensure WAIT handling is complete before requesting the bus
+    //     for (int i = 0; i < 3; i++)
+    //         _busAccess.service();
 
-        // Request target bus
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetProgrammingStart targetReqBus");
-        _busAccess.targetReqBus(_busSocketId, BR_BUS_ACTION_PROGRAMMING);
-        _busActionPendingProgramTarget = true;
-        _busActionPendingExecAfterProgram = execAfterProgramming;
-    }
+    //     // Request target bus
+    //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "programmingStart targetReqBus");
+    //     _busAccess.socketReqBus(_busSocketId, BR_BUS_ACTION_PROGRAMMING);
+    //     _busActionPendingProgramTarget = true;
+    //     _busActionPendingExecAfterProgram = execAfterProgramming;
+    // }
 }
 
 void TargetController::completeTargetProgram()
@@ -1120,12 +1137,13 @@ void TargetController::completeTargetProgram()
     // Set flag to indicate mode
     _stepMode = STEP_MODE_STEP_PAUSED;
 
-    // Release bus hold if held
-    if (_busAccess.waitIsHeld())
-    {
-        // Remove any hold to allow execution / injection
-        _busAccess.waitHold(_busSocketId, false);
-    }
+    // TODO 2020
+    // // Release bus hold if held
+    // if (_busAccess.waitIsHeld())
+    // {
+    //     // Remove any hold to allow execution / injection
+    //     _busAccess.waitHold(_busSocketId, false);
+    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1184,10 +1202,10 @@ void TargetController::targetExec()
     //     }
     // }
 
-    // See if we need to do a hard reset
-    if (performHardReset)
-    {
-        // Request reset target
-        _busAccess.targetReqReset(_busSocketId);
-    }
+    // // See if we need to do a hard reset
+    // if (performHardReset)
+    // {
+    //     // Request reset target
+    //     _busAccess.targetReqReset(_busSocketId);
+    // }
 }

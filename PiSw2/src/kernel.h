@@ -16,13 +16,8 @@
 #include <circle/net/netsubsystem.h>
 #include <circle/types.h>
 #include "UartMaxiSerialDevice.h"
-#include "CommsManager.h"
-#include "CommandHandler.h"
-#include "Machines/McManager.h"
-#include "TargetBus/BusAccess.h"
-// #include "BusControlAPI/BusControlAPI.h"
-#include "BusRaiderApp.h"
 #include "Display.h"
+#include "BusRaiderApp.h"
 
 enum TShutdownMode
 {
@@ -61,18 +56,6 @@ private:
 
 	// Pointer to singleton kernel
 	static CKernel* m_pKernel;
-
-	// Comms Manager
-	CommsManager m_CommsManager;
-
-	// BusAccess
-	BusAccess m_BusAccess;
-
-	// BusControlAPI
-	// BusControlAPI m_BusControlAPI;
-
-	// Machine Manager
-	McManager m_McManager;
 
 	// BusRaiderApp
 	BusRaiderApp m_BusRaiderApp;

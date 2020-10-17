@@ -63,11 +63,7 @@ CKernel::CKernel (void)
 	, m_Net (IPAddress, NetMask, DefaultGateway, DNSServer)
 #endif
 #endif
-	m_CommsManager(&m_Serial, NULL),
-	m_BusAccess(),
-	// m_BusControlAPI(m_CommsManager.getCommandHandler(), m_BusAccess),
-	m_McManager(&m_Display, m_CommsManager.getCommandHandler(), m_BusAccess),
-	m_BusRaiderApp(m_Display, m_CommsManager, m_McManager, m_BusAccess)
+	m_BusRaiderApp(m_Display, m_Serial)
 {
 	m_pKernel = this;
 	_rebootRequested = false;
@@ -133,11 +129,6 @@ boolean CKernel::Initialize (void)
 
 	if (bOK)
 	{
-		bOK = m_CommsManager.setup();
-		m_BusAccess.init();
-		// TODO 2020 reinstate
-		// m_BusControlAPI.init();
-		m_McManager.init();
 		m_BusRaiderApp.init();
 	}
 
@@ -170,11 +161,7 @@ TShutdownMode CKernel::Run (void)
 	while (!m_CommsManager.otaIsPending() && !_rebootRequested)
 	{
 		// Service comms
-		m_BusAccess.service();
-		m_BusControlAPI.service();
-		m_McManager.service();
 		m_BusRaiderApp.service();
-		m_CommsManager.service();
 	}
 
 	// // Diable peripherals
@@ -198,12 +185,7 @@ TShutdownMode CKernel::Run (void)
 #else
 	while (!IsChainBootEnabled() && !_rebootRequested)
 	{
-		// Service comms
-		m_BusAccess.service();
-		// m_BusControlAPI.service();
-		m_McManager.service();
 		m_BusRaiderApp.service();
-		m_CommsManager.service();
 	}
 
 	m_Logger.Write (MODULE_PREFIX, LogNotice, "Rebooting ...");

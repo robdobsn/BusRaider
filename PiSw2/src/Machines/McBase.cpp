@@ -40,7 +40,7 @@ McVariantTable McBase::_defaultVariantTable = {
     .setRegistersCodeAddr = 0
 };
 
-McBase::McBase(McManager& mcManager, BusAccess& busAccess, const McVariantTable* pVariantTables, uint32_t numVariants) :
+McBase::McBase(McManager& mcManager, BusControl& busAccess, const McVariantTable* pVariantTables, uint32_t numVariants) :
         _mcManager(mcManager), _busAccess(busAccess)
 {
     // Clear machine variant table info
@@ -120,12 +120,13 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
     // Disable machine first
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "Disabling %s", getMachineName());
     disableMachine();
-    
-    // Disable hardware initially
-    _busAccess.hwDisableAll();
 
-    // Setup hardware
-    _busAccess.hwSetupFromJson("hw", mcJson);
+    // TODO 2020 - restore    
+    // // Disable hardware initially
+    // _busAccess.hwDisableAll();
+
+    // // Setup hardware
+    // _busAccess.hwSetupFromJson("hw", mcJson);
 
     // Setup clock
     uint32_t clockFreqHz = _machineDescriptor.clockFrequencyHz;
@@ -134,23 +135,24 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
     static const int MAX_CLOCK_SET_STR = 100;
     char clockSpeedStr[MAX_CLOCK_SET_STR];
     bool clockValid = jsonGetValueForKey("clockHz", mcJson, clockSpeedStr, MAX_CLOCK_SET_STR);
+    TargetClockGenerator& clockGen = _busAccess.clock();
     if (clockValid)
     {
         uint32_t clockHz = strtoul(clockSpeedStr, NULL, 10);
-        if ((clockHz >= _busAccess.clockGetMinFreqHz()) && 
-                        (clockHz <= _busAccess.clockGetMaxFreqHz()))
+        if ((clockHz >= clockGen.getMinFreqHz()) && 
+                        (clockHz <= clockGen.getMaxFreqHz()))
             clockFreqHz = clockHz;
     }
-    if ((clockFreqHz >= _busAccess.clockGetMinFreqHz()) && 
-                        (clockFreqHz <= _busAccess.clockGetMaxFreqHz()))
+    if ((clockFreqHz >= clockGen.getMinFreqHz()) && 
+                        (clockFreqHz <= clockGen.getMaxFreqHz()))
     {
-        _busAccess.clockSetup();
-        _busAccess.clockSetFreqHz(clockFreqHz);
-        _busAccess.clockEnable(true);
+        clockGen.setup();
+        clockGen.setFreqHz(clockFreqHz);
+        clockGen.enable(true);
     }
     else
     {
-        _busAccess.clockEnable(false);
+        clockGen.enable(false);
     }
 
     // Enable machine

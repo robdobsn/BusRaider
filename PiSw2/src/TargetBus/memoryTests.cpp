@@ -1,5 +1,5 @@
 
-#include "BusAccess.h"
+#include "BusControl.h"
 #include "memoryTests.h"
 
 // The following code from
@@ -20,7 +20,7 @@
  *              A non-zero result is the first pattern that failed.
  *
  **********************************************************************/
-uint8_t memTestDataBus(BusAccess& busAccess, uint32_t address)
+uint8_t memTestDataBus(BusControl& busAccess, uint32_t address)
 {
     uint8_t pattern;
     /*
@@ -31,13 +31,13 @@ uint8_t memTestDataBus(BusAccess& busAccess, uint32_t address)
         /*
          * Write the test pattern.
          */
-        busAccess.blockWrite(address, &pattern, 1, BusAccess::ACCESS_MEM);
+        busAccess.mem().blockWrite(address, &pattern, 1, BLOCK_ACCESS_MEM);
 
         /*
          * Read it back (immediately is okay for this test).
          */
         uint8_t readPattern;
-        busAccess.blockRead(address, &readPattern, 1, BusAccess::ACCESS_MEM);
+        busAccess.mem().blockRead(address, &readPattern, 1, BLOCK_ACCESS_MEM);
         if (readPattern != pattern) 
         {
             return pattern;
@@ -73,7 +73,7 @@ uint8_t memTestDataBus(BusAccess& busAccess, uint32_t address)
  *
  **********************************************************************/
 
-uint32_t memTestAddressBus(BusAccess& busAccess, uint32_t baseAddress, unsigned long nBytes)
+uint32_t memTestAddressBus(BusControl& busAccess, uint32_t baseAddress, unsigned long nBytes)
 {
     unsigned long addressMask = (nBytes/sizeof(uint8_t) - 1);
     unsigned long offset;
@@ -88,19 +88,19 @@ uint32_t memTestAddressBus(BusAccess& busAccess, uint32_t baseAddress, unsigned 
      */
     for (offset = 1; (offset & addressMask) != 0; offset <<= 1)
     {
-        busAccess.blockWrite(baseAddress + offset, &pattern, 1, BusAccess::ACCESS_MEM);
+        busAccess.mem().blockWrite(baseAddress + offset, &pattern, 1, BLOCK_ACCESS_MEM);
     }
 
     /* 
      * Check for address bits stuck high.
      */
     testOffset = 0;
-    busAccess.blockWrite(baseAddress + testOffset, &antipattern, 1, BusAccess::ACCESS_MEM);
+    busAccess.mem().blockWrite(baseAddress + testOffset, &antipattern, 1, BLOCK_ACCESS_MEM);
 
     for (offset = 1; (offset & addressMask) != 0; offset <<= 1)
     {
         uint8_t readPattern;
-        busAccess.blockRead(baseAddress + offset, &readPattern, 1, BusAccess::ACCESS_MEM);
+        busAccess.mem().blockRead(baseAddress + offset, &readPattern, 1, BLOCK_ACCESS_MEM);
 
         if (readPattern != pattern)
         {
@@ -108,17 +108,17 @@ uint32_t memTestAddressBus(BusAccess& busAccess, uint32_t baseAddress, unsigned 
         }
     }
 
-    busAccess.blockWrite(baseAddress + testOffset, &pattern, 1, BusAccess::ACCESS_MEM);
+    busAccess.mem().blockWrite(baseAddress + testOffset, &pattern, 1, BLOCK_ACCESS_MEM);
 
     /*
      * Check for address bits stuck low or shorted.
      */
     for (testOffset = 1; (testOffset & addressMask) != 0; testOffset <<= 1)
     {
-        busAccess.blockWrite(baseAddress + testOffset, &antipattern, 1, BusAccess::ACCESS_MEM);
+        busAccess.mem().blockWrite(baseAddress + testOffset, &antipattern, 1, BLOCK_ACCESS_MEM);
 
         uint8_t readPattern;
-        busAccess.blockRead(baseAddress, &readPattern, 1, BusAccess::ACCESS_MEM);
+        busAccess.mem().blockRead(baseAddress, &readPattern, 1, BLOCK_ACCESS_MEM);
 		if (readPattern != pattern)
 		{
 			return (baseAddress + testOffset);
@@ -127,7 +127,7 @@ uint32_t memTestAddressBus(BusAccess& busAccess, uint32_t baseAddress, unsigned 
         for (offset = 1; (offset & addressMask) != 0; offset <<= 1)
         {
             uint8_t readPattern;
-            busAccess.blockRead(baseAddress + offset, &readPattern, 1, BusAccess::ACCESS_MEM);
+            busAccess.mem().blockRead(baseAddress + offset, &readPattern, 1, BLOCK_ACCESS_MEM);
 
             if ((readPattern != pattern) && (offset != testOffset))
             {
@@ -135,7 +135,7 @@ uint32_t memTestAddressBus(BusAccess& busAccess, uint32_t baseAddress, unsigned 
             }
         }
 
-        busAccess.blockWrite(baseAddress + testOffset, &pattern, 1, BusAccess::ACCESS_MEM);
+        busAccess.mem().blockWrite(baseAddress + testOffset, &pattern, 1, BLOCK_ACCESS_MEM);
     }
 
     return 0;
@@ -163,7 +163,7 @@ uint32_t memTestAddressBus(BusAccess& busAccess, uint32_t baseAddress, unsigned 
  *              additional information about the problem.
  *
  **********************************************************************/
-uint32_t memTestDevice(BusAccess& busAccess, uint32_t baseAddress, unsigned long nBytes)	
+uint32_t memTestDevice(BusControl& busAccess, uint32_t baseAddress, unsigned long nBytes)	
 {
     unsigned long offset;
     unsigned long nWords = nBytes / sizeof(uint8_t);
@@ -182,12 +182,12 @@ uint32_t memTestDevice(BusAccess& busAccess, uint32_t baseAddress, unsigned long
     {
         pMem[offset] = pattern;
     }
-    busAccess.blockWrite(baseAddress, pMem, nBytes, BusAccess::ACCESS_MEM);
+    busAccess.mem().blockWrite(baseAddress, pMem, nBytes, BLOCK_ACCESS_MEM);
 
     /*
      * Check each location and invert it for the second pass.
      */
-    busAccess.blockRead(baseAddress, pMem, nBytes, BusAccess::ACCESS_MEM);    
+    busAccess.mem().blockRead(baseAddress, pMem, nBytes, BLOCK_ACCESS_MEM);    
     for (pattern = 1, offset = 0; offset < nWords; pattern++, offset++)
     {
         uint8_t readPattern = pMem[offset];
@@ -199,12 +199,12 @@ uint32_t memTestDevice(BusAccess& busAccess, uint32_t baseAddress, unsigned long
         antipattern = ~pattern;
         pMem[offset] = antipattern;
     }
-    busAccess.blockWrite(baseAddress, pMem, nBytes, BusAccess::ACCESS_MEM);
+    busAccess.mem().blockWrite(baseAddress, pMem, nBytes, BLOCK_ACCESS_MEM);
 
     /*
      * Check each location for the inverted pattern and zero it.
      */
-    busAccess.blockRead(baseAddress, pMem, nBytes, BusAccess::ACCESS_MEM);    
+    busAccess.mem().blockRead(baseAddress, pMem, nBytes, BLOCK_ACCESS_MEM);    
     for (pattern = 1, offset = 0; offset < nWords; pattern++, offset++)
     {
         antipattern = ~pattern;

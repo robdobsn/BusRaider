@@ -68,7 +68,7 @@ void McRobsZ80::refreshDisplay()
     // TODO 2020 changed from hwman
     // Read mirror memory at the location of the memory mapped screen
     uint8_t pScrnBuffer[ROBSZ80_DISP_RAM_SIZE];
-    if (_busAccess.blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, BusAccess::ACCESS_MEM) == BR_OK)
+    if (_busAccess.blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, BLOCK_ACCESS_MEM) == BR_OK)
         updateDisplayFromBuffer(pScrnBuffer, ROBSZ80_DISP_RAM_SIZE);
 }
 
@@ -146,7 +146,7 @@ void McRobsZ80::busActionCompleteCallback(BR_BUS_ACTION actionType)
         // TODO 2020 changed from hwman
         // Read memory at the location of the memory mapped screen
         uint8_t pScrnBuffer[ROBSZ80_DISP_RAM_SIZE];
-        if (_busAccess.blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, BusAccess::ACCESS_MEM) == BR_OK)
+        if (_busAccess.blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, BLOCK_ACCESS_MEM) == BR_OK)
             updateDisplayFromBuffer(pScrnBuffer, ROBSZ80_DISP_RAM_SIZE);
     }
 }

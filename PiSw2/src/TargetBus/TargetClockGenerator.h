@@ -2,7 +2,6 @@
 #pragma once
 
 #include "logging.h"
-#include "BusAccess.h"
 #include "PiWiring.h"
 #include "lowlib.h"
 #include <circle/bcm2835.h>
@@ -45,7 +44,7 @@ class TargetClockGenerator
         _altMode = INPUT;
     }   
 
-    bool setOutputPin(int pin = -1)
+    bool setup(int pin = -1)
     {
         // Check for default
         if (pin == -1)
@@ -78,10 +77,10 @@ class TargetClockGenerator
         return 25000000;
     }
 
-    void setFrequency(uint32_t newFreq)
+    void setFreqHz(uint32_t newFreq)
     {
         bool isEnabled = _enabled;
-        LogWrite("ClockGen", LOG_DEBUG, "setFrequency %d curEnabled %d",
+        LogWrite("ClockGen", LOG_DEBUG, "setFreqHz %d curEnabled %d",
                 newFreq, isEnabled);
 
         if (_enabled)

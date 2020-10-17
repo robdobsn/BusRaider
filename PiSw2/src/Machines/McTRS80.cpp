@@ -5,7 +5,7 @@
 #include "McTRS80.h"
 #include "usb_hid_keys.h"
 #include "rdutils.h"
-#include "BusAccess.h"
+#include "BusControl.h"
 #include "TargetProgrammer.h"
 #include "McManager.h"
 #include "McTRS80CmdFormat.h"
@@ -51,7 +51,7 @@ McVariantTable McTRS80::_machineDescriptorTables[] = {
 // Constructor
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-McTRS80::McTRS80(McManager& mcManager, BusAccess& busAccess) : 
+McTRS80::McTRS80(McManager& mcManager, BusControl& busAccess) : 
         McBase(mcManager, busAccess, _machineDescriptorTables, 
                 sizeof(_machineDescriptorTables)/sizeof(_machineDescriptorTables[0]))
 {
@@ -103,10 +103,10 @@ void McTRS80::refreshDisplay()
     // // TODO 2020 remove
     // uint8_t testVal = millis() & 0xff;
     // uint8_t jmp000[] = { 0xc3, 0, 0 };
-    // _busAccess.blockWrite(0, jmp000, sizeof(jmp000), BusAccess::ACCESS_MEM);
+    // _busAccess.blockWrite(0, jmp000, sizeof(jmp000), BLOCK_ACCESS_MEM);
     // unsigned char pClrBuffer[TRS80_DISP_RAM_SIZE];
     // memset(pClrBuffer, testVal, TRS80_DISP_RAM_SIZE);
-    // _busAccess.blockWrite(TRS80_DISP_RAM_ADDR, pClrBuffer, TRS80_DISP_RAM_SIZE, BusAccess::ACCESS_MEM);
+    // _busAccess.blockWrite(TRS80_DISP_RAM_ADDR, pClrBuffer, TRS80_DISP_RAM_SIZE, BLOCK_ACCESS_MEM);
 
     // Read memory at the location of the TRS80 memory mapped screen
     unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
@@ -116,14 +116,16 @@ void McTRS80::refreshDisplay()
     // memset(pScrnBuffer+TRS80_DISP_RAM_SIZE/4, 0xbc, TRS80_DISP_RAM_SIZE/4);
     // memset(pScrnBuffer+2*TRS80_DISP_RAM_SIZE/4, 0x7c, TRS80_DISP_RAM_SIZE/4);
     // memset(pScrnBuffer+3*TRS80_DISP_RAM_SIZE/4, 0xfc, TRS80_DISP_RAM_SIZE/4);
-    if (_busAccess.blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, BusAccess::ACCESS_MEM) == BR_OK)
+    if (_busAccess.mem().blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, BLOCK_ACCESS_MEM) == BR_OK)
         updateDisplayFromBuffer(pScrnBuffer, TRS80_DISP_RAM_SIZE);
 
     // Check for key presses and send to the TRS80 if necessary
+    // TODO 2020 - ???
     // Only send to mirror if we are in emulation mode, otherwise store up changes for later
-    if (_keyBufferDirty && _busAccess.isEmulatingMemory())
+    // if (_keyBufferDirty && _busAccess.isEmulatingMemory())
+    if (_keyBufferDirty)
     {
-        _busAccess.blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, BusAccess::ACCESS_MEM);
+        _busAccess.mem().blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, BLOCK_ACCESS_MEM);
         _keyBufferDirty = false;
     }
 }

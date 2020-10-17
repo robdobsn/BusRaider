@@ -5,16 +5,17 @@
 
 #include "stdint.h"
 #include "comms/CommsManager.h"
-#include "TargetBus/BusAccess.h"
+#include "TargetBus/BusControl.h"
 #include "Machines/McManager.h"
 
 class Display;
+class CUartMaxiSerialDevice;
 
 class BusRaiderApp
 {
 public:
 
-    BusRaiderApp(Display& display, CommsManager& commsManager, McManager& mcManager, BusAccess& busAccess);
+    BusRaiderApp(Display& display, CUartMaxiSerialDevice& serial);
 
     void init();
     void initUSB();
@@ -47,14 +48,17 @@ private:
     // Display
     Display& _display;
 
-    // CommsManager
-    CommsManager& _commsManager;
+	// Comms Manager
+	CommsManager _commsManager;
 
-    // Machine manager
-    McManager& _mcManager;
+	// Bus control
+	BusControl _busAccess;
 
-    // BusAccess
-    BusAccess& _busAccess;
+	// BusControlAPI
+	// BusControlAPI m_BusControlAPI;
+
+	// Machine Manager
+	McManager _mcManager;
 
     // Singleton
     static BusRaiderApp* _pApp;
