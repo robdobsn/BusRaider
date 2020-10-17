@@ -6,6 +6,7 @@ CIRCLEHOME = ../../circle
 
 OBJS	= BusAccess.o BusAccess_Control.o BusAccess_Block.o \
 		BusAccess_Raw.o BusAccess_Wait.o BusAccess_Addr.o \
+		BusAccess_Cycle.o \
 		TargetBreakpoints.o TargetController.o \
 		TargetCPUZ80.o TargetProgrammer.o memoryTests.o
 

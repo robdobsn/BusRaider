@@ -181,7 +181,7 @@ void BusAccess::waitResetFlipFlops(bool forceClear)
     }
 
     // Clear flag
-    _waitAsserted = false;
+    _waitIsActive = false;
 }
 
 void BusAccess::waitClearDetected()

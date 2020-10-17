@@ -226,7 +226,7 @@ private:
     bool _waitOnIO;
 
     // Wait currently asserted
-    volatile bool _waitAsserted;
+    volatile bool _waitIsActive;
 
     // Outputs enabled to allow target read
     volatile bool _targetReadInProgress;
@@ -263,7 +263,7 @@ private:
     volatile BUS_ACTION_STATE _busActionState;
 
     // Bus currently under BusRaider control
-    volatile bool _busIsUnderControl;
+    volatile bool _busReqAcknowledged;
 
     // Debug
     volatile int _isrAssertCounts[ISR_ASSERT_NUM_CODES];
@@ -275,6 +275,10 @@ private:
     BusAccessStatusInfo _statusInfo; 
 
 private:
+    // Bus cycle
+    void busCycleService();
+    void cycleHandleNewWait();
+
     // Bus actions
     void busActionCheck();
     bool busActionHandleStart();

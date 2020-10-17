@@ -19,7 +19,7 @@ BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len,
 {
     // TODO 2020 - assumes bus is under control
     // // Check if we need to request bus
-    // bool busRqAndRelease = !_busIsUnderControl;
+    // bool busRqAndRelease = !_busReqAcknowledged;
     // if (busRqAndRelease) {
     //     // Request bus and take control after ack
     //     BR_RETURN_TYPE ret = controlRequestAndTake();
@@ -153,7 +153,7 @@ BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32
 {
     // TODO 2020 - assumes bus is under control
     // // Check if we need to request bus
-    // bool busRqAndRelease = !_busIsUnderControl;
+    // bool busRqAndRelease = !_busReqAcknowledged;
     // if (busRqAndRelease) {
     //     // Request bus and take control after ack
     //     BR_RETURN_TYPE ret = controlRequestAndTake();
@@ -263,7 +263,7 @@ BR_RETURN_TYPE BusAccess::blockWrite(uint32_t addr, const uint8_t* pData, uint32
 // BR_RETURN_TYPE BusAccess::blockRead(uint32_t addr, uint8_t* pData, uint32_t len, BlockAccessType accessType)
 // {
 //     // Check if we need to request bus
-//     bool busRqAndRelease = !_busIsUnderControl;
+//     bool busRqAndRelease = !_busReqAcknowledged;
 //     if (busRqAndRelease) {
 //         // Request bus and take control after ack
 //         BR_RETURN_TYPE ret = controlRequestAndTake();

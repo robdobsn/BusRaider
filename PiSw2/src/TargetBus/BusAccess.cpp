@@ -68,7 +68,7 @@ BusAccess::BusAccess()
     _targetReadInProgress = false;
 
     // Bus under BusRaider control
-    _busIsUnderControl = false;
+    _busReqAcknowledged = false;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,7 +97,7 @@ void BusAccess::init()
     
     // Bus Request
     setPinOut(BR_BUSRQ_BAR, 1);
-    _busIsUnderControl = false;
+    _busReqAcknowledged = false;
         
     // High address clock
     setPinOut(BR_HADDR_CK, 0);
@@ -283,7 +283,7 @@ void BusAccess::service()
         uint32_t serviceLoopStartUs = micros();
         for (int i = 0; i < 10; i++)
         {
-            serviceWaitActivity();
+            busCycleService();
 
             if ((_busActionState != BUS_ACTION_STATE_ASSERTED) && (!_waitAsserted))
                 break;
@@ -929,3 +929,4 @@ const char* BusAccessStatusInfo::getJson()
 
     return _jsonBuf;
 }
+

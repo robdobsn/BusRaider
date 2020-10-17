@@ -90,7 +90,7 @@ void BusAccess::clearStatus()
 // Is under control
 bool BusAccess::isUnderControl()
 {
-    return _busIsUnderControl;
+    return _busReqAcknowledged;
 }
 
 // Request access to the bus
@@ -108,7 +108,7 @@ void BusAccess::controlRequest()
 void BusAccess::controlTake()
 {
     // Bus is under BusRaider control
-    _busIsUnderControl = true;
+    _busReqAcknowledged = true;
 
     // Disable wait generation while in control of bus
     waitGenerationDisable();
@@ -237,7 +237,7 @@ void BusAccess::controlRelease()
     waitForBusAck(false);
 
     // Bus no longer under BusRaider control
-    _busIsUnderControl = false;
+    _busReqAcknowledged = false;
 }
 
 // Request bus, wait until available and take control

@@ -137,33 +137,6 @@ void McTRS80::machineHeartbeat()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Bus action complete callback
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void McTRS80::busActionCompleteCallback(BR_BUS_ACTION actionType)
-{
-    // // Check for BUSRQ
-    // if (actionType == BR_BUS_ACTION_BUSRQ)
-    // {
-    //     // Read memory of RC2014 at the location of the TRS80 memory mapped screen
-    //     unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
-    //     if (getHwManager().blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, false, false, false) == BR_OK)
-    //         updateDisplayFromBuffer(pScrnBuffer, TRS80_DISP_RAM_SIZE);
-
-    //     // Check for key presses and send to the TRS80 if necessary
-    //     if (_keyBufferDirty)
-    //     {
-    //         if (_keyBufferDirty)
-    //             LogWrite(MODULE_PREFIX, LOG_DEBUG, "KB Dirty %02x %02x %02x %02x %02x %02x %02x %02x",
-    //                 _keyBuffer[0], _keyBuffer[1], _keyBuffer[2], _keyBuffer[4], 
-    //                 _keyBuffer[8], _keyBuffer[16], _keyBuffer[32], _keyBuffer[64], _keyBuffer[128]);
-    //         getHwManager().blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, false, false, false);
-    //         _keyBufferDirty = false;
-    //     }
-    // }
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Display update helper
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -426,6 +399,12 @@ bool McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
 void McTRS80::busAccessCallback( uint32_t addr,  uint32_t data, 
              uint32_t flags,  uint32_t& retVal)
 {
+    // if (flags & BR_CTRL_BUS_MREQ_MASK)
+    // {
+    //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+    //     microsDelay(1);
+    //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+    // }
     // if (flags & BR_CTRL_BUS_IORQ_MASK)
     //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "IORQ %s from %04x %02x", 
     //             (flags & BR_CTRL_BUS_RD_MASK) ? "RD" : ((flags & BR_CTRL_BUS_WR_MASK) ? "WR" : "??"),
@@ -459,4 +438,31 @@ void McTRS80::busAccessCallback( uint32_t addr,  uint32_t data,
 void McTRS80::handleWD1771DiskController( uint32_t addr,  uint32_t data, 
              uint32_t flags,  uint32_t& retVal)
 {
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Bus action complete callback
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void McTRS80::busActionCompleteCallback(BR_BUS_ACTION actionType)
+{
+    // // Check for BUSRQ
+    // if (actionType == BR_BUS_ACTION_BUSRQ)
+    // {
+    //     // Read memory of RC2014 at the location of the TRS80 memory mapped screen
+    //     unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
+    //     if (getHwManager().blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, false, false, false) == BR_OK)
+    //         updateDisplayFromBuffer(pScrnBuffer, TRS80_DISP_RAM_SIZE);
+
+    //     // Check for key presses and send to the TRS80 if necessary
+    //     if (_keyBufferDirty)
+    //     {
+    //         if (_keyBufferDirty)
+    //             LogWrite(MODULE_PREFIX, LOG_DEBUG, "KB Dirty %02x %02x %02x %02x %02x %02x %02x %02x",
+    //                 _keyBuffer[0], _keyBuffer[1], _keyBuffer[2], _keyBuffer[4], 
+    //                 _keyBuffer[8], _keyBuffer[16], _keyBuffer[32], _keyBuffer[64], _keyBuffer[128]);
+    //         getHwManager().blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, false, false, false);
+    //         _keyBufferDirty = false;
+    //     }
+    // }
 }
