@@ -7,6 +7,17 @@
         "PiSw2/test"
     ],
     "files.associations": {
-        "functional": "cpp"
+        "functional": "cpp",
+        "atomic": "cpp",
+        "*.tcc": "cpp",
+        "deque": "cpp",
+        "list": "cpp",
+        "string": "cpp",
+        "unordered_map": "cpp",
+        "vector": "cpp",
+        "fstream": "cpp",
+        "limits": "cpp",
+        "sstream": "cpp",
+        "system_error": "cpp"
     }
 }

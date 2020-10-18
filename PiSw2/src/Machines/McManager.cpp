@@ -304,6 +304,9 @@ bool McManager::setupMachine(const char* mcJson)
     //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "no load cmd found");
     // }
 
+    // Warn bus control
+    _busAccess.machineChangeComplete();
+
     return true;
 }
 

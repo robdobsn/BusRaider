@@ -112,6 +112,14 @@ public:
             irqPending = false;
     }
 
+    void clearPending()
+    {
+        busMasterRequest = false;
+        resetPending = false;
+        nmiPending = false;
+        irqPending = false;
+    }
+
     // Time calc
     static uint32_t getUsFromTStates(uint32_t tStates, uint32_t clockFreqHz, uint32_t defaultTStates = 1)
     {

@@ -25,7 +25,8 @@ McVariantTable McTRS80::_machineDescriptorTables[] = {
         // Processor
         McVariantTable::PROCESSOR_Z80,
         // Required display refresh rate
-        .displayRefreshRatePerSec = 50,
+        // TODO 2020
+        .displayRefreshRatePerSec = 1,
         .displayPixelsX = 8 * 64,
         .displayPixelsY = 24 * 16,
         .displayCellX = 8,

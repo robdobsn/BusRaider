@@ -11,7 +11,7 @@
 #include "lowlib.h"
 #include "lowlev.h"
 #include "TargetCPU.h"
-#include "TargetController.h"
+#include "TargetControl.h"
 #include "BusSocketManager.h"
 #include "BusAccessDefs.h"
 #include "TargetClockGenerator.h"
@@ -30,7 +30,10 @@ public:
 
     // Initialization
     void init();
+
+    // Machine change
     void machineChangeInit();
+    void machineChangeComplete();
 
     // Service
     void service();
@@ -39,16 +42,16 @@ public:
     void rawAccessStart();
     void rawAccessEnd();
 
-    // Target controller
-    TargetController& ctrl()
+    // Target control
+    TargetControl& ctrl()
     {
-        return _targetController;
+        return _targetControl;
     }    
 
     // Target programmer
     TargetProgrammer& prog()
     {
-        return _targetController.targetProgrammer();
+        return _targetControl.targetProgrammer();
     }    
 
     // Bus socket manager
@@ -87,7 +90,7 @@ public:
             default: return "unknown error";
         }
     }
-    
+
 private:
     // State of bus
     bool _isInitialized;
@@ -95,8 +98,8 @@ private:
     // Clock generator
     TargetClockGenerator _clockGenerator;
 
-    // TargetController
-    TargetController _targetController;
+    // TargetControl
+    TargetControl _targetControl;
 
     // Bus Sockets
     BusSocketManager _busSocketManager;

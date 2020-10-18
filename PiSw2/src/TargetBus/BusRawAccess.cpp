@@ -21,7 +21,6 @@ BusRawAccess::BusRawAccess()
     _busReqAcknowledged = false;
     _pageIsActive = false;
     _waitIsActive = false;
-    cycleClear();
 }
 
 void BusRawAccess::init()
@@ -78,8 +77,6 @@ void BusRawAccess::init()
 
 void BusRawAccess::service()
 {
-    // Service processing cycle
-    cycleService();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -105,3 +102,33 @@ void BusRawAccess::setPinOut(int pinNumber, bool val)
     digitalWrite(pinNumber, val);
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Set signal
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusRawAccess::setBusSignal(BR_BUS_ACTION busAction, bool assert)
+{
+    switch (busAction)
+    {
+        case BR_BUS_ACTION_RESET: 
+            assert ? muxSet(BR_MUX_RESET_Z80_BAR_LOW) : muxClear();
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "RESET"); 
+            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_E, assert);
+            break;
+        case BR_BUS_ACTION_NMI: 
+            assert ? muxSet(BR_MUX_NMI_BAR_LOW) : muxClear(); 
+            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_F, assert);
+            break;
+        case BR_BUS_ACTION_IRQ: 
+            assert ? muxSet(BR_MUX_IRQ_BAR_LOW) : muxClear(); 
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "IRQ"); 
+            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_I, assert);
+            break;
+        case BR_BUS_ACTION_BUSRQ: 
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "BUSRQ"); 
+            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B, assert);
+            assert ? busReqStart() : busReqRelease(); 
+            break;
+        default: break;
+    }
+}

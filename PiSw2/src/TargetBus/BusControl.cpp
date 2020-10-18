@@ -17,7 +17,7 @@ static const char MODULE_PREFIX[] = "BusControl";
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 BusControl::BusControl()
-    : _targetController(*this), 
+    : _targetControl(*this), 
       _busSocketManager(*this), 
       _memoryController(*this)
 {
@@ -56,20 +56,26 @@ void BusControl::service()
     _busRawAccess.service();
 
     // Service target controller
-    _targetController.service();
+    _targetControl.service();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Initialise the hardware
+// Machine changes
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void BusControl::machineChangeInit()
 {
     // Suspend socket manager
-    _busSocketManager.suspend(true);
+    _busSocketManager.suspend(true, true);
 
     // Clear the target controller
-    _targetController.clear();
+    _targetControl.clear();
+}
+
+void BusControl::machineChangeComplete()
+{
+    // Resume socket manager
+    _busSocketManager.suspend(false, true);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -79,10 +85,10 @@ void BusControl::machineChangeInit()
 
 void BusControl::rawAccessStart()
 {
-    _busSocketManager.suspend(true);
+    _busSocketManager.suspend(true, true);
 }
 
 void BusControl::rawAccessEnd()
 {
-    _busSocketManager.suspend(false);
+    _busSocketManager.suspend(false, true);
 }

@@ -6,7 +6,6 @@
 #include "lowlib.h"
 #include "logging.h"
 #include "rdutils.h"
-#include "TargetController.h"
 #include "BusAccess.h"
 #include "BusAccess.h"
 #include "CommandHandler.h"

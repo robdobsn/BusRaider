@@ -17,6 +17,7 @@ BusSocketManager::BusSocketManager(BusControl& busControl)
     // Bus sockets
     _busSocketCount = 0;
     _socketWithAction = -1;
+    _isSuspended = false;
 
     // Wait settings
     _waitOnIO = false;
@@ -24,13 +25,15 @@ BusSocketManager::BusSocketManager(BusControl& busControl)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Clear
+// Suspend socket activity
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void BusSocketManager::clear()
+void BusSocketManager::suspend(bool suspend, bool clearPendingActions)
 {
-    // Clear socket list and update
-    _busSocketCount = 0;
+    _busControl.bus().waitSuspend(suspend);
+    _isSuspended = suspend;
+    if (clearPendingActions)
+        clearPending();
     updateAfterSocketChange();
 }
 
@@ -63,7 +66,7 @@ int BusSocketManager::add(bool enabled, BusAccessCBFnType* busAccessCallback,
     uint32_t tmpCount = _busSocketCount++;
 
     // Update wait state generation
-    LogWrite(MODULE_PREFIX, LOG_NOTICE, "busSocketAdd %d", tmpCount);
+    // LogWrite(MODULE_PREFIX, LOG_NOTICE, "busSocketAdd %d", tmpCount);
     updateAfterSocketChange();
 
     return tmpCount;
@@ -126,7 +129,7 @@ void BusSocketManager::reqReset(uint32_t busSocket, int durationMs)
         return;
     _busSockets[busSocket].resetDurationMs = (durationMs <= 0) ? BR_RESET_PULSE_MS : durationMs;
     _busSockets[busSocket].resetPending = true;
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "reqReset");
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "reqReset");
     updateAfterSocketChange();
 }
 
@@ -151,6 +154,7 @@ void BusSocketManager::reqBus(uint32_t busSocket, BR_BUS_ACTION_REASON busMaster
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "reqBus sock %d invalid count = %d", busSocket, _busSocketCount);
         return;
     }
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "reqBus reason %d", busMasterReason);
     _busSockets[busSocket].busMasterRequest = true;
     _busSockets[busSocket].busMasterReason = busMasterReason;
     updateAfterSocketChange();
@@ -170,6 +174,12 @@ void BusSocketManager::reqBus(uint32_t busSocket, BR_BUS_ACTION_REASON busMaster
 // Update after changes made to a socket
 void BusSocketManager::updateAfterSocketChange()
 {
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "updateAfterSocketChange suspended %d", _isSuspended); 
+
+    // Check if suspended
+    if (_isSuspended)
+        return;
+
     // Iterate bus sockets to see if any enable Mem/IO wait states
     bool ioWait = false;
     bool memWait = false;
@@ -192,15 +202,6 @@ void BusSocketManager::updateAfterSocketChange()
             break;
         }
     }
-    // TODO 2020 = removed
-    // if (busSocketWithAction >= 0)
-    // {
-    //     // Set this new action as in progress
-    //     _busActionSocket = busSocket;
-    //     _busActionType = _busSockets[busSocket].getType();
-    //     _busActionState = BUS_ACTION_STATE_PENDING;
-    //     _busActionInProgressStartUs = micros();
-    // }
 
     // Inform BusControl
     socketSetAction(memWait, ioWait, busSocketWithAction);
@@ -235,7 +236,7 @@ void BusSocketManager::socketSetAction(bool memWait, bool ioWait, int socketWith
         // Store socket with action
         _socketWithAction = socketWithAction;
         // Request action
-        _busControl.bus().cycleReqAction(_busSockets[_socketWithAction], 
+        _busControl.ctrl().cycleReqAction(_busSockets[_socketWithAction], 
                         _busSockets[_socketWithAction].getAssertUs(_busControl.clock().getFreqInHz()),
                         cycleActionStaticCB, this, _socketWithAction);
     }
@@ -260,15 +261,6 @@ void BusSocketManager::socketSetAction(bool memWait, bool ioWait, int socketWith
     // else
     //     write32(ARM_GPIO_GPFEN0, read32(ARM_GPIO_GPFEN0) & (~BR_WAIT_BAR_MASK);
 #endif
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Suspend socket activity
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void BusSocketManager::suspend(bool suspend)
-{
-    _busControl.bus().waitSuspend(suspend);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -311,4 +303,18 @@ void BusSocketManager::cycleActionCB(uint32_t slotIdx, BR_RETURN_TYPE rslt)
     
     // Reset indicator of socket with action
     _socketWithAction = -1;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Clear all pending actions
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusSocketManager::clearPending()
+{
+    _socketWithAction = -1;
+    for (uint32_t i = 0; i < _busSocketCount; i++)
+    {
+        _busSockets[i].clearPending();
+    }
+    _busControl.ctrl().cycleClearAction();
 }

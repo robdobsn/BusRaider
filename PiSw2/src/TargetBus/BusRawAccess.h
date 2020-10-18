@@ -11,7 +11,6 @@
 #include "lowlib.h"
 #include "lowlev.h"
 #include "TargetCPU.h"
-#include "TargetController.h"
 #include "BusSocketManager.h"
 #include "BusAccessDefs.h"
 #include "TargetClockGenerator.h"
@@ -36,15 +35,11 @@ public:
     // Service
     void service();
 
-    // Request bus cycle action
-    void cycleReqAction(BusSocketInfo& busSocketInfo, 
-            uint32_t maxDurationUs,
-            BusCompleteCBFnType* cycleCompleteCB, 
-            void* pObject,
-            uint32_t slotIdx);
-
     // Reset target
     void targetReset(uint32_t ms);
+
+    // Set signal (RESET/IRQ/NMI/BUSRQ)
+    void setBusSignal(BR_BUS_ACTION busAction, bool assert);
 
     // Read and write raw blocks - directly to bus
     BR_RETURN_TYPE rawBlockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, BlockAccessType accessType);
@@ -54,9 +49,22 @@ public:
     BR_RETURN_TYPE waitConfigure(bool waitOnMemory, bool waitOnIO);
     void waitSuspend(bool suspend);
 
+    // Wait
+    bool waitIsActive()
+    {
+        return _waitIsActive;
+    }
+
     // Bus request
     BR_RETURN_TYPE busRequestAndTake();
     void busReqRelease();
+    void busReqStart();
+    void busReqTakeControl();
+    bool busReqWaitForAck(bool ack);
+    bool rawBUSAKActive()
+    {
+        return (read32(ARM_GPIO_GPLEV0) & BR_BUSACK_BAR_MASK) == 0;
+    }
     
     // State
     bool busReqAcknowledged()
@@ -106,22 +114,11 @@ private:
     void muxDataBusOutputFinish();
     void muxClearLowAddr();
 
-    // Bus request
-    void busReqStart();
-    void busReqTakeControl();
-    bool busReqWaitForAck(bool ack);
-
     // Address bus
     void addrLowSet(uint32_t lowAddrByte);
     void addrHighSet(uint32_t highAddrByte);
     void addrSet(unsigned int addr);
     void addrLowInc();
-
-    // Raw bus access
-    bool rawBUSAKActive()
-    {
-        return (read32(ARM_GPIO_GPLEV0) & BR_BUSACK_BAR_MASK) == 0;
-    }
 
     // Control the PIB (bus used to transfer data to/from Pi)
     inline void pibSetOut()
@@ -147,32 +144,4 @@ private:
     {
         return (read32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
     }
-
-    // Cycle request stat
-    enum CYCLE_REQ_STATE
-    {
-        CYCLE_REQ_STATE_NONE,
-        CYCLE_REQ_STATE_PENDING,
-        CYCLE_REQ_STATE_ASSERTED
-    };
-
-    // Cycle Request Handling
-    BusSocketInfo* _cycleReqInfo;
-    BusCompleteCBFnType* _cycleReqCompleteCB;
-    void* _cycleReqPObject;
-    uint32_t _cycleReqSlotIdx;
-    CYCLE_REQ_STATE _cycleReqState;
-    BR_BUS_ACTION _cycleReqActionType;
-    uint32_t _cycleReqUs;
-    uint32_t _cycleReqAssertedUs;
-    uint32_t _cycleReqMaxUs;
-    void cycleClear();
-    void cycleService();
-    void cycleReqCompleted(BR_RETURN_TYPE result);
-    void cycleReqAssertedBusRq();
-    void cycleReqAssertedIRQ();
-    void cycleReqAssertedOther();
-
-    // Set signal (RESET/IRQ/NMI/BUSRQ)
-    void cycleSetSignal(BR_BUS_ACTION busAction, bool assert);
 };

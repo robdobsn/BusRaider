@@ -132,8 +132,8 @@ void BusAccess::init()
     Timers::start();
 #endif
 
-    // Init the TargetController
-    _targetController.init();
+    // Init the Target control
+    _targetControl.init();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

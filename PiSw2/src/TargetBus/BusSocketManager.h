@@ -19,9 +19,6 @@ class BusSocketManager
 public:
     BusSocketManager(BusControl& busControl);
 
-    // Clear
-    void clear();
-
     // Bus Sockets - used to hook things like waitInterrupts, busControl, etc
     int add(bool enabled, BusAccessCBFnType* busAccessCallback,
             BusActionCBFnType* busActionCallback, 
@@ -36,7 +33,7 @@ public:
     void setup(uint32_t busSocket, bool waitOnMem, bool waitOnIO);
 
     // Suspend socket activity
-    void suspend(bool suspend);
+    void suspend(bool suspend, bool clearPendingActions);
 
     // Socket requests
     void reqIRQ(uint32_t busSocket, int durationTStates = -1);
@@ -57,6 +54,9 @@ private:
     bool _waitOnMemory;
     bool _waitOnIO;
 
+    // Suspended
+    bool _isSuspended;
+
     // Socket with pending or in-process action
     // -1 is no action
     int _socketWithAction;
@@ -66,6 +66,7 @@ private:
     void socketSetAction(bool memWait, bool ioWait, int socketWithAction);
 
     // Helpers
+    void clearPending();
     void updateAfterSocketChange();
     static void cycleActionStaticCB(void* pObject, uint32_t slotIdx, BR_RETURN_TYPE rslt);
     void cycleActionCB(uint32_t slotIdx, BR_RETURN_TYPE rslt);
