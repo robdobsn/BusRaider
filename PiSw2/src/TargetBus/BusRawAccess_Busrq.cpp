@@ -23,7 +23,7 @@ BR_RETURN_TYPE BusRawAccess::busRequestAndTake()
     if (!busReqWaitForAck(true))
     {
         // We didn't get the bus
-        busRelease();
+        busReqRelease();
         return BR_NO_BUS_ACK;
     }
 
@@ -36,7 +36,7 @@ BR_RETURN_TYPE BusRawAccess::busRequestAndTake()
 // Bus release
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void BusRawAccess::busRelease()
+void BusRawAccess::busReqRelease()
 {
     // Prime flip-flop that skips refresh cycles
     // So that the very first MREQ cycle after a BUSRQ/BUSACK causes a WAIT to be generated

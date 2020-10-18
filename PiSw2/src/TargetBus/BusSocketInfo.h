@@ -13,6 +13,7 @@
 // Callback types
 typedef void BusAccessCBFnType(void* pObject, uint32_t addr, uint32_t data, uint32_t flags, uint32_t& curRetVal);
 typedef void BusActionCBFnType(void* pObject, BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
+typedef void BusCompleteCBFnType(void* pObject, uint32_t slotIdx, BR_RETURN_TYPE rslt);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Bus Socket Info - this is used to plug-in to the BusAccess layer
@@ -24,7 +25,7 @@ public:
     void set(bool enabled, BusAccessCBFnType* busAccessCallback,
             BusActionCBFnType* busActionCallback, 
             bool waitOnMemory, bool waitOnIO,
-            bool resetPending, uint32_t resetDurationTStates,
+            bool resetPending, uint32_t resetDurationMs,
             bool nmiPending, uint32_t nmiDurationTStates,
             bool irqPending, uint32_t irqDurationTStates,
             bool busMasterRequest, BR_BUS_ACTION_REASON busMasterReason,
@@ -44,7 +45,7 @@ public:
 
         // Bus actions and duration
         this->resetPending = resetPending;
-        this->resetDurationTStates = resetDurationTStates;
+        this->resetDurationMs = resetDurationMs;
         this->nmiPending = nmiPending;
         this->nmiDurationTStates = nmiDurationTStates;
         this->irqPending = irqPending;
@@ -72,7 +73,7 @@ public:
 
     // Bus actions and duration
     volatile bool resetPending;
-    volatile uint32_t resetDurationTStates;
+    volatile uint32_t resetDurationMs;
     volatile bool nmiPending;
     volatile uint32_t nmiDurationTStates;
     volatile bool irqPending;
@@ -121,12 +122,13 @@ public:
         return uS;
     }
 
-    uint32_t getAssertUs(BR_BUS_ACTION type, uint32_t clockFreqHz)
+    uint32_t getAssertUs(uint32_t clockFreqHz)
     {
+        BR_BUS_ACTION type = getType();
         if (type == BR_BUS_ACTION_BUSRQ)
             return getUsFromTStates(BR_MAX_WAIT_FOR_BUSACK_T_STATES, clockFreqHz);
         else if (type == BR_BUS_ACTION_RESET)
-            return getUsFromTStates(resetDurationTStates, clockFreqHz, BR_RESET_PULSE_T_STATES);
+            return resetDurationMs * 1000;
         else if (type == BR_BUS_ACTION_NMI)
             return getUsFromTStates(nmiDurationTStates, clockFreqHz, BR_NMI_PULSE_T_STATES);
         else if (type == BR_BUS_ACTION_IRQ)

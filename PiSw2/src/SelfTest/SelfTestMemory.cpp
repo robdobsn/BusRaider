@@ -222,7 +222,7 @@ void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusControl& b
             }
             case TEST_STATE_DONE:
             {
-                busAccess.bus().busRelease();
+                busAccess.bus().busReqRelease();
                 busAccess.rawAccessEnd();
                 if (issueCount == 0)
                 {

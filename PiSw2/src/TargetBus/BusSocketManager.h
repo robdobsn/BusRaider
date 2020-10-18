@@ -31,24 +31,24 @@ public:
             bool irqPending, uint32_t irqDurationTStates,
             bool busMasterRequest, BR_BUS_ACTION_REASON busMasterReason,
             bool holdInWaitReq, void* pSourceObject);
-    void enable(int busSocket, bool enable);
-    bool isEnabled(int busSocket);
-    void setup(int busSocket, bool waitOnMem, bool waitOnIO);
+    void enable(uint32_t busSocket, bool enable);
+    bool isEnabled(uint32_t busSocket);
+    void setup(uint32_t busSocket, bool waitOnMem, bool waitOnIO);
 
     // Suspend socket activity
     void suspend(bool suspend);
 
     // Socket requests
-    void reqIRQ(int busSocket, int durationTStates = -1);
-    void reqReset(int busSocket, int durationTStates = -1);
-    void reqNMI(int busSocket, int durationTStates = -1);
-    void reqBus(int busSocket, BR_BUS_ACTION_REASON busMasterReason);
+    void reqIRQ(uint32_t busSocket, int durationTStates = -1);
+    void reqReset(uint32_t busSocket, int durationTStates = -1);
+    void reqNMI(uint32_t busSocket, int durationTStates = -1);
+    void reqBus(uint32_t busSocket, BR_BUS_ACTION_REASON busMasterReason);
 
 private:
     // Sockets
     static const int MAX_BUS_SOCKETS = 10;
     BusSocketInfo _busSockets[MAX_BUS_SOCKETS];
-    int _busSocketCount;
+    uint32_t _busSocketCount;
 
     // Bus control
     BusControl& _busControl;
@@ -67,4 +67,6 @@ private:
 
     // Helpers
     void updateAfterSocketChange();
+    static void cycleActionStaticCB(void* pObject, uint32_t slotIdx, BR_RETURN_TYPE rslt);
+    void cycleActionCB(uint32_t slotIdx, BR_RETURN_TYPE rslt);
 };

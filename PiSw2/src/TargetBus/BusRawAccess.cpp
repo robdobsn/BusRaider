@@ -21,6 +21,7 @@ BusRawAccess::BusRawAccess()
     _busReqAcknowledged = false;
     _pageIsActive = false;
     _waitIsActive = false;
+    cycleClear();
 }
 
 void BusRawAccess::init()
@@ -77,8 +78,8 @@ void BusRawAccess::init()
 
 void BusRawAccess::service()
 {
-    // TODO 2020
-    // serviceWaitActivity();
+    // Service processing cycle
+    cycleService();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

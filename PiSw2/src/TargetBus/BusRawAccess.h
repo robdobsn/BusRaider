@@ -23,6 +23,8 @@
 // Bus raw access
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+class BusSocketInfo;
+
 class BusRawAccess
 {
 public:
@@ -33,6 +35,13 @@ public:
 
     // Service
     void service();
+
+    // Request bus cycle action
+    void cycleReqAction(BusSocketInfo& busSocketInfo, 
+            uint32_t maxDurationUs,
+            BusCompleteCBFnType* cycleCompleteCB, 
+            void* pObject,
+            uint32_t slotIdx);
 
     // Reset target
     void targetReset(uint32_t ms);
@@ -47,7 +56,7 @@ public:
 
     // Bus request
     BR_RETURN_TYPE busRequestAndTake();
-    void busRelease();
+    void busReqRelease();
     
     // State
     bool busReqAcknowledged()
@@ -137,5 +146,33 @@ private:
     inline uint8_t pibGetValue()
     {
         return (read32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
-    }    
+    }
+
+    // Cycle request stat
+    enum CYCLE_REQ_STATE
+    {
+        CYCLE_REQ_STATE_NONE,
+        CYCLE_REQ_STATE_PENDING,
+        CYCLE_REQ_STATE_ASSERTED
+    };
+
+    // Cycle Request Handling
+    BusSocketInfo* _cycleReqInfo;
+    BusCompleteCBFnType* _cycleReqCompleteCB;
+    void* _cycleReqPObject;
+    uint32_t _cycleReqSlotIdx;
+    CYCLE_REQ_STATE _cycleReqState;
+    BR_BUS_ACTION _cycleReqActionType;
+    uint32_t _cycleReqUs;
+    uint32_t _cycleReqAssertedUs;
+    uint32_t _cycleReqMaxUs;
+    void cycleClear();
+    void cycleService();
+    void cycleReqCompleted(BR_RETURN_TYPE result);
+    void cycleReqAssertedBusRq();
+    void cycleReqAssertedIRQ();
+    void cycleReqAssertedOther();
+
+    // Set signal (RESET/IRQ/NMI/BUSRQ)
+    void cycleSetSignal(BR_BUS_ACTION busAction, bool assert);
 };

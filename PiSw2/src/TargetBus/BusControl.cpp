@@ -65,8 +65,8 @@ void BusControl::service()
 
 void BusControl::machineChangeInit()
 {
-    // Clear socket manager
-    _busSocketManager.clear();
+    // Suspend socket manager
+    _busSocketManager.suspend(true);
 
     // Clear the target controller
     _targetController.clear();
