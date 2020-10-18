@@ -231,14 +231,26 @@ void BusSocketManager::socketSetAction(bool memWait, bool ioWait, int socketWith
     }
 
     // Check for changes to actions
+    // LogWrite(MODULE_PREFIX, LOG_NOTICE, "socketSetAction curSockWithAction %d newSockIdx %d",
+    //             _socketWithAction, socketWithAction);
     if (_socketWithAction != socketWithAction)
     {
-        // Store socket with action
-        _socketWithAction = socketWithAction;
         // Request action
-        _busControl.ctrl().cycleReqAction(_busSockets[_socketWithAction], 
-                        _busSockets[_socketWithAction].getAssertUs(_busControl.clock().getFreqInHz()),
-                        cycleActionStaticCB, this, _socketWithAction);
+        if (_busControl.ctrl().cycleReqAction(_busSockets[socketWithAction], 
+                        _busSockets[socketWithAction].getAssertUs(_busControl.clock().getFreqInHz()),
+                        cycleActionStaticCB, this, socketWithAction))
+        {
+            // Store socket with action
+            _socketWithAction = socketWithAction;
+            // LogWrite(MODULE_PREFIX, LOG_NOTICE, "socketSetAction OK type %d reason %d",
+            //         _busSockets[socketWithAction].getType(),
+            //         _busSockets[socketWithAction].busMasterReason);
+        }
+        else
+        {
+            LogWrite(MODULE_PREFIX, LOG_NOTICE, "socketSetAction FAILED");
+        }
+        
     }
 
 #ifdef ISR_TEST

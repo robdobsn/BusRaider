@@ -18,6 +18,7 @@
 #include "BusAccessStatusInfo.h"
 #include "MemoryController.h"
 #include "BusRawAccess.h"
+#include "BusControlSettings.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Bus control
@@ -91,6 +92,12 @@ public:
         }
     }
 
+    // Get bus settings
+    BusControlSettings& busSettings()
+    {
+        return _busSettings;
+    }
+
 private:
     // State of bus
     bool _isInitialized;
@@ -109,4 +116,7 @@ private:
 
     // Bus raw access
     BusRawAccess _busRawAccess;
+
+    // Bus settings
+    BusControlSettings _busSettings;
 };

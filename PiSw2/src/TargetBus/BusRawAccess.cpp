@@ -125,7 +125,7 @@ void BusRawAccess::setBusSignal(BR_BUS_ACTION busAction, bool assert)
             // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_I, assert);
             break;
         case BR_BUS_ACTION_BUSRQ: 
-            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "BUSRQ"); 
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "BUSRQ %c", assert ? 'Y' : 'N'); 
             // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B, assert);
             assert ? busReqStart() : busReqRelease(); 
             break;

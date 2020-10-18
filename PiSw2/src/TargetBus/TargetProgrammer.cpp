@@ -20,10 +20,10 @@ void TargetProgrammer::clear()
     _targetRegsValid = false;
     _targetMemoryBlockLastIdx = 0;
 
-    for (int i = 0; i < MAX_TARGET_MEMORY_BLOCKS; i++)
+    for (uint32_t i = 0; i < MAX_TARGET_MEMORY_BLOCKS; i++)
         _targetMemoryBlocks[i].len = 0;
 
-    for (int i = 0; i < MAX_TARGET_MEMORY_SIZE; i++)
+    for (uint32_t i = 0; i < MAX_TARGET_MEMORY_SIZE; i++)
         _pTargetMemoryImage[i] = 0;
 }
 
@@ -37,7 +37,7 @@ void TargetProgrammer::addMemoryBlock(uint32_t addr, const uint8_t* pData, uint3
 {
     // Check if contiguous with other data
     int blockIdx = -1;
-    for (int i = 0; i < _targetMemoryBlockLastIdx; i++) {
+    for (uint32_t i = 0; i < _targetMemoryBlockLastIdx; i++) {
         if (_targetMemoryBlocks[i].start + _targetMemoryBlocks[i].len == addr) {
             blockIdx = i;
             _targetMemoryBlocks[i].len += len;
@@ -61,19 +61,19 @@ void TargetProgrammer::addMemoryBlock(uint32_t addr, const uint8_t* pData, uint3
     // ee_printf("Blk st %04x len %d\n", addr, len);
     
     // Store block
-    for (unsigned int i = 0; i < len; i++) 
+    for (uint32_t i = 0; i < len; i++) 
     {
         if (addr + i < MAX_TARGET_MEMORY_SIZE)
             _pTargetMemoryImage[addr + i] = pData[i];
     }
 }
 
-int TargetProgrammer::numMemoryBlocks()
+uint32_t TargetProgrammer::numMemoryBlocks()
 {
     return _targetMemoryBlockLastIdx;
 }
 
-TargetProgrammer::TargetMemoryBlock* TargetProgrammer::getMemoryBlock(int n)
+TargetProgrammer::TargetMemoryBlock* TargetProgrammer::getMemoryBlock(uint32_t n)
 {
     return &_targetMemoryBlocks[n];
 }
@@ -83,7 +83,7 @@ uint8_t* TargetProgrammer::getMemoryImagePtr()
     return _pTargetMemoryImage;
 }
 
-int TargetProgrammer::getMemoryImageSize()
+uint32_t TargetProgrammer::getMemoryImageSize()
 {
     return MAX_TARGET_MEMORY_SIZE;
 }

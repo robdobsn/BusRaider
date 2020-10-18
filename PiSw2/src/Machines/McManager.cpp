@@ -331,8 +331,8 @@ void McManager::displayRefresh()
         _refreshLastUpdateMs = millis();
         _refreshCount++;
 
-        // LogWrite(MODULE_PREFIX, LOG_NOTICE, "displayRefresh isMemMapped %d waitIsHeld %d isEmulatingMem %d isTrackingActive %d",
-        //     _pCurMachine->isDisplayMemoryMapped(), _busAccess.waitIsHeld(), _hwManager.isEmulatingMemory(), _busAccess.isTrackingActive());
+        // LogWrite(MODULE_PREFIX, LOG_NOTICE, "displayRefresh isMemMapped %d",
+        //     _pCurMachine->isDisplayMemoryMapped());
 
         // TODO 2020
         // Determine whether display is memory mapped

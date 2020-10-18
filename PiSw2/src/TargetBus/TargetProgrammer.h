@@ -22,8 +22,8 @@ public:
     void clear();
 
     // Max 1MB address range of Z180 so use that as the limit of memory
-    static const int MAX_TARGET_MEMORY_SIZE = 1024 * 1024;
-    static const int MAX_TARGET_MEMORY_BLOCKS = 20;
+    static const uint32_t MAX_TARGET_MEMORY_SIZE = 1024 * 1024;
+    static const uint32_t MAX_TARGET_MEMORY_BLOCKS = 20;
 
     typedef struct TargetMemoryBlock {
         uint32_t start;
@@ -35,7 +35,7 @@ public:
 
     // Target memory blocks
     TargetMemoryBlock _targetMemoryBlocks[MAX_TARGET_MEMORY_BLOCKS];
-    int _targetMemoryBlockLastIdx;
+    uint32_t _targetMemoryBlockLastIdx;
 
     // Registers
     bool _targetRegsValid;
@@ -44,10 +44,10 @@ public:
 public:
     static void addMemoryBlockStatic(uint32_t addr, const uint8_t* pData, uint32_t len, void* pProgrammer);
     void addMemoryBlock(uint32_t addr, const uint8_t* pData, uint32_t len);
-    int numMemoryBlocks();
-    TargetMemoryBlock* getMemoryBlock(int n);
+    uint32_t numMemoryBlocks();
+    TargetMemoryBlock* getMemoryBlock(uint32_t n);
     unsigned char* getMemoryImagePtr();
-    int getMemoryImageSize();
+    uint32_t getMemoryImageSize();
     static void setTargetRegistersStatic(const Z80Registers& regs, void* pProgrammer);
     void setTargetRegisters(const Z80Registers& regs);
     bool areRegistersValid();

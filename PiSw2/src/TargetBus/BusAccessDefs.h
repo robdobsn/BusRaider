@@ -114,6 +114,9 @@
 #define BR_IRQ_PULSE_T_STATES 32
 #define BR_MAX_WAIT_FOR_BUSACK_T_STATES 1000
 
+// Memory speed default
+#define BR_MEM_SPEED_DEFAULT_NS 100;
+
 // Max time bound in service function
 #define BR_MAX_TIME_IN_SERVICE_LOOP_US 10000
 #define BR_MAX_TIME_IN_READ_LOOP_US 10000

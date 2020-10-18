@@ -52,11 +52,8 @@ public:
     }
     void programmingStart(bool execAfterProgramming);
 
-    // Complete the process of programming the target
-    void programmingDone();
-
     // Request bus cycle action
-    void cycleReqAction(BusSocketInfo& busSocketInfo, 
+    bool cycleReqAction(BusSocketInfo& busSocketInfo, 
             uint32_t maxDurationUs,
             BusCompleteCBFnType* cycleCompleteCB, 
             void* pObject,
@@ -77,6 +74,15 @@ private:
     // Target Programmer
     TargetProgrammer _targetProgrammer;
 
+    // Programming state
+    bool _programmingPending;
+    bool _programmingDoExec;
+    void programmingClear();
+    void programmingWrite();
+    void programmingDone();
+    void programExec(bool codeAtResetVector);
+    static const uint32_t PROG_MAX_WAIT_FOR_BUSAK_US = 100000;
+
     // Cycle request stat
     enum CYCLE_REQ_STATE
     {
@@ -95,8 +101,10 @@ private:
     uint32_t _cycleReqUs;
     uint32_t _cycleReqAssertedUs;
     uint32_t _cycleReqMaxUs;
+    BR_BUS_ACTION_REASON _cycleBusRqReason;
     void cycleClear();
     void cycleService();
+    void cycleReqHandlePending(bool isProgramming);
     void cycleReqCompleted(BR_RETURN_TYPE result);
     void cycleReqAssertedBusRq();
     void cycleReqAssertedIRQ();

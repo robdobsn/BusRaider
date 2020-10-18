@@ -6,13 +6,13 @@
 #include "PiWiring.h"
 #include "lowlib.h"
 #include "logging.h"
-// #include "TargetCPUZ80.h"
 
 // Constructor
 TargetControl::TargetControl(BusControl& busAccess)
     : _busAccess(busAccess)
 {
     cycleClear();
+    programmingClear();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
