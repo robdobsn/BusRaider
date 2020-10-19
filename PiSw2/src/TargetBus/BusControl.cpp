@@ -40,6 +40,7 @@ void BusControl::init()
         
         // Raw access
         _busRawAccess.init();
+        _targetControl.init();
 
         // Now initialized
         _isInitialized = true;
@@ -86,9 +87,11 @@ void BusControl::machineChangeComplete()
 void BusControl::rawAccessStart()
 {
     _busSocketManager.suspend(true, true);
+    _targetControl.suspend(true);
 }
 
 void BusControl::rawAccessEnd()
 {
     _busSocketManager.suspend(false, true);
+    _targetControl.suspend(false);
 }

@@ -44,37 +44,37 @@ public:
     void rawAccessEnd();
 
     // Target control
-    TargetControl& ctrl()
+    inline TargetControl& ctrl()
     {
         return _targetControl;
     }    
 
     // Target programmer
-    TargetProgrammer& prog()
+    inline TargetProgrammer& prog()
     {
         return _targetControl.targetProgrammer();
     }    
 
     // Bus socket manager
-    BusSocketManager& sock()
+    inline BusSocketManager& sock()
     {
         return _busSocketManager;
     }
 
     // Target clock generator
-    TargetClockGenerator& clock()
+    inline TargetClockGenerator& clock()
     {
         return _clockGenerator;
     }
 
     // Memory controller
-    MemoryController& mem()
+    inline MemoryController& mem()
     {
         return _memoryController;
     }
 
     // Raw bus access
-    BusRawAccess& bus()
+    inline BusRawAccess& bus()
     {
         return _busRawAccess;
     }

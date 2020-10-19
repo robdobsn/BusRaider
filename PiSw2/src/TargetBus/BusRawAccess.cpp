@@ -20,7 +20,6 @@ BusRawAccess::BusRawAccess()
 {
     _busReqAcknowledged = false;
     _pageIsActive = false;
-    _waitIsActive = false;
 }
 
 void BusRawAccess::init()
@@ -55,7 +54,6 @@ void BusRawAccess::init()
 
     // Setup MREQ and IORQ enables
     waitSystemInit();
-    _waitIsActive = false;
 
     // Remove edge detection
 #ifdef ISR_TEST

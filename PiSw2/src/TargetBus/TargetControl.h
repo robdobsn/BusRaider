@@ -16,6 +16,11 @@
 // Defs
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// Test processor is reading from the data bus (inc reading an ISR vector)
+// and result is valid then put the returned data onto the bus
+#define CTRL_BUS_IS_READ(x) ((((x & BR_CTRL_BUS_RD_MASK) != 0) && (((x & BR_CTRL_BUS_MREQ_MASK) != 0) || ((x & BR_CTRL_BUS_IORQ_MASK) != 0))) || \
+                     (((x & BR_CTRL_BUS_IORQ_MASK) != 0) && ((x & BR_CTRL_BUS_M1_MASK) != 0)))
+
 class BusControl;
 
 // Step mode
@@ -26,6 +31,10 @@ enum STEP_MODE_TYPE
     STEP_MODE_STEP_OVER,
     STEP_MODE_RUN
 };
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// TargetControl
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class TargetControl
 {
@@ -44,6 +53,9 @@ public:
     {
         _targetProgrammer.clear();
     }
+
+    // Suspend
+    void suspend(bool suspend);
 
     // Target programming
     TargetProgrammer& targetProgrammer()
@@ -73,6 +85,9 @@ private:
 
     // Target Programmer
     TargetProgrammer _targetProgrammer;
+
+    // Suspended
+    bool _isSuspended;
 
     // Programming state
     bool _programmingPending;
@@ -104,11 +119,20 @@ private:
     BR_BUS_ACTION_REASON _cycleBusRqReason;
     void cycleClear();
     void cycleService();
+    void cycleSuspend(bool suspend);
     void cycleReqHandlePending(bool isProgramming);
-    void cycleReqCompleted(BR_RETURN_TYPE result);
+    void cycleReqCallback(BR_RETURN_TYPE result);
     void cycleReqAssertedBusRq();
     void cycleReqAssertedIRQ();
     void cycleReqAssertedOther();
+    void cycleNewWait();
+    void cycleSetupForFastWait();
+    void cycleHandleIORQ();
+    void cycleHandleReadRelease();
+
+    // State
+    bool _waitIsActive;
+    bool _cycleReadInProgress;
 
 // public:
 //     void service();

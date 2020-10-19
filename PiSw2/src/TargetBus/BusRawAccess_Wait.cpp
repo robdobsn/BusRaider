@@ -114,9 +114,6 @@ void BusRawAccess::waitResetFlipFlops(bool forceClear)
         bool memWaitClear = (forceClear || ((busVals & BR_MREQ_BAR_MASK) == 0)) && _rawWaitOnMem;
         write32(ARM_PWM_FIF1, memWaitClear ? 0x00ffffff : 0);  // MREQ sequence
     }
-
-    // Clear flag
-    _waitIsActive = false;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -13,6 +13,8 @@ TargetControl::TargetControl(BusControl& busAccess)
 {
     cycleClear();
     programmingClear();
+    _isSuspended = false;
+    _waitIsActive = false;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -21,6 +23,7 @@ TargetControl::TargetControl(BusControl& busAccess)
 
 void TargetControl::init()
 {
+    _waitIsActive = false;
 }
 
 // Service
@@ -28,6 +31,13 @@ void TargetControl::service()
 {
     // Service processing cycle
     cycleService();
+}
+
+// Suspend
+void TargetControl::suspend(bool suspend)
+{
+    cycleSuspend(suspend);
+    _isSuspended = suspend;
 }
 
 // #define INCLUDE_DISASSEMBLER

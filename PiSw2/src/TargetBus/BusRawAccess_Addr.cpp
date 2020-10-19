@@ -158,3 +158,158 @@ void BusRawAccess::addrLowInc()
         write32(ARM_GPIO_GPSET0, BR_MUX_EN_BAR_MASK);
     }
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Control Bus Functions
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uint32_t BusRawAccess::controlBusRead()
+{
+    uint32_t startGetCtrlBusUs = micros();
+    int loopCount = 0;
+    while (true)
+    {
+        // Read the control lines
+        uint32_t busVals = read32(ARM_GPIO_GPLEV0);
+
+        // Handle slower M1 signal on V1.7 hardware
+        if (_hwVersionNumber == 17)
+        {
+            // Check if we're in a wait - in which case FF OE will be active
+            // So we must set the data bus direction outward even if this causes a temporary
+            // conflict on the data bus
+            write32(ARM_GPIO_GPCLR0, BR_DATA_DIR_IN_MASK);
+
+            // Delay for settling of M1
+            lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
+
+            // Read the control lines
+            busVals = read32(ARM_GPIO_GPLEV0);
+
+            // Set data bus driver direction inward - onto PIB
+            write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK);
+        }
+
+        // Get the appropriate bits for up-line communication
+        uint32_t ctrlBusVals = 
+                (((busVals & BR_RD_BAR_MASK) == 0) ? BR_CTRL_BUS_RD_MASK : 0) |
+                (((busVals & BR_WR_BAR_MASK) == 0) ? BR_CTRL_BUS_WR_MASK : 0) |
+                (((busVals & BR_MREQ_BAR_MASK) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
+                (((busVals & BR_IORQ_BAR_MASK) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
+                (((busVals & BR_WAIT_BAR_MASK) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
+                (((busVals & BR_V20_M1_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0) |
+                (((busVals & BR_BUSACK_BAR_MASK) == 0) ? BR_CTRL_BUS_BUSACK_MASK : 0);
+
+        // Handle slower M1 signal on V1.7 hardware
+        if (_hwVersionNumber == 17)
+        {
+            // Clear M1 in case set above
+            ctrlBusVals = ctrlBusVals & (~BR_CTRL_BUS_M1_MASK);
+
+            // Set M1 from PIB reading
+            ctrlBusVals |= (((busVals & BR_V17_M1_PIB_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
+        }
+
+        // Check if valid (MREQ || IORQ) && (RD || WR)
+        bool ctrlValid = ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) || (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)) && ((ctrlBusVals & BR_CTRL_BUS_RD_MASK) || (ctrlBusVals & BR_CTRL_BUS_WR_MASK));
+        // Also valid if IORQ && M1 as this is used for interrupt ack
+        ctrlValid = ctrlValid || ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) && (ctrlBusVals & BR_CTRL_BUS_M1_MASK));
+        
+        // If ctrl is already valid then continue
+        if (ctrlValid)
+        {
+            // if (((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) == 0) && ((ctrlBusVals & BR_CTRL_BUS_MREQ_MASK) == 0))
+            // {
+            //     // TODO
+            //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+            //     microsDelay(1);
+            //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+            // }
+            return ctrlBusVals;
+        }
+
+        // Break out if time-out and enough loops done
+        loopCount++;
+        if ((isTimeout(micros(), startGetCtrlBusUs, MAX_WAIT_FOR_CTRL_BUS_VALID_US)) && (loopCount > MIN_LOOP_COUNT_FOR_CTRL_BUS_VALID))
+        {
+            // // TODO
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+            // microsDelay(1);
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+            // microsDelay(1);
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+            // microsDelay(1);
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+            // microsDelay(1);
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+            // microsDelay(1);
+            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+            // microsDelay(1);
+            return ctrlBusVals;
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Address & Data Bus Functions
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusRawAccess::addrAndDataBusRead(uint32_t& addr, uint32_t& dataBusVals)
+{
+    if (_hwVersionNumber == 17)
+    {
+        // Set data bus driver direction outward - so it doesn't conflict with the PIB
+        // if FF OE is set
+        write32(ARM_GPIO_GPCLR0, BR_DATA_DIR_IN_MASK);            
+    }
+
+    // Set PIB to input
+    pibSetIn();
+
+    // Enable the high address onto the PIB
+    muxSet(BR_MUX_HADDR_OE_BAR);
+
+    // Delay to allow data to settle
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_READ);
+
+    // Or in the high address
+    addr = (pibGetValue() & 0xff) << 8;
+
+    // Enable the low address onto the PIB
+    muxSet(BR_MUX_LADDR_OE_BAR);
+
+    // Delay to allow data to settle
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
+
+    // Get low address value
+    addr |= pibGetValue() & 0xff;
+
+    // Clear the mux to deactivate output enables
+    muxClear();
+
+    // Delay to allow data to settle
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
+
+    // Read the data bus
+    // If the target machine is writing then this will be the data it wants to write
+    // If reading then the memory/IO system may have placed its data onto the data bus 
+
+    // Due to hardware limitations reading from the data bus MUST be done last as the
+    // output of the data bus is latched onto the PIB (or out onto the data bus in the case
+    // where the ISR provides data for the processor to read)
+
+    // Set data bus driver direction inward - onto PIB
+    write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK);
+
+    // Set output enable on data bus driver by resetting flip-flop
+    // Note that the outputs of the data bus buffer are enabled from this point until
+    // a rising edge of IORQ or MREQ
+    // This can cause a bus conflict if BR_DATA_DIR_IN is set low before this happens
+    muxDataBusOutputEnable();
+
+    // Delay to allow data to settle
+    lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
+
+    // Read the data bus values
+    dataBusVals = pibGetValue() & 0xff;
+}

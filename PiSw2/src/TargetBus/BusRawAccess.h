@@ -48,12 +48,7 @@ public:
     // Wait hardware config
     BR_RETURN_TYPE waitConfigure(bool waitOnMemory, bool waitOnIO);
     void waitSuspend(bool suspend);
-
-    // Wait
-    bool waitIsActive()
-    {
-        return _waitIsActive;
-    }
+    void waitResetFlipFlops(bool forceClear = false);
 
     // Bus request
     BR_RETURN_TYPE busRequestAndTake();
@@ -71,54 +66,6 @@ public:
     {
         return _busReqAcknowledged;
     }
-
-    // Version
-    static const int HW_VERSION_DEFAULT = 20;
-    int getHwVersion(bool getDefault)
-    {
-        if (getDefault)
-            return HW_VERSION_DEFAULT;
-        return _hwVersionNumber;
-    }
-    void setHwVersion(int hwVersion)
-    {
-        _hwVersionNumber = hwVersion;
-    }
-
-private:
-    // State
-    bool _busReqAcknowledged;
-    bool _waitIsActive;
-    bool _pageIsActive;
-
-    // Hardware version
-    // V1.7 ==> 17, V2.0 ==> 20
-    int _hwVersionNumber;
-
-    // Wait system
-    bool _rawWaitOnMem;
-    bool _rawWaitOnIO;
-    void waitSystemInit();
-    void waitResetFlipFlops(bool forceClear = false);
-    void waitClearDetected();
-    void waitRawSet(bool waitOnMemory, bool waitOnIO);
-
-    // Set a pin to be an output and set initial value for that pin
-    void setPinOut(int pinNumber, bool val);
-
-    // Mux functions
-    void muxSet(int muxVal);
-    void muxClear();
-    void muxDataBusOutputEnable();
-    void muxDataBusOutputStart();
-    void muxDataBusOutputFinish();
-    void muxClearLowAddr();
-
-    // Address bus
-    void addrLowSet(uint32_t lowAddrByte);
-    void addrHighSet(uint32_t highAddrByte);
-    void addrSet(unsigned int addr);
-    void addrLowInc();
 
     // Control the PIB (bus used to transfer data to/from Pi)
     inline void pibSetOut()
@@ -144,4 +91,56 @@ private:
     {
         return (read32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
     }
+
+    // Mux functions
+    void muxSet(int muxVal);
+    void muxClear();
+
+    // Bus reads
+    uint32_t controlBusRead();
+    void addrAndDataBusRead(uint32_t& addr, uint32_t& dataBusVals);
+
+    // Version
+    static const int HW_VERSION_DEFAULT = 20;
+    int getHwVersion(bool getDefault)
+    {
+        if (getDefault)
+            return HW_VERSION_DEFAULT;
+        return _hwVersionNumber;
+    }
+    void setHwVersion(int hwVersion)
+    {
+        _hwVersionNumber = hwVersion;
+    }
+
+private:
+    // State
+    bool _busReqAcknowledged;
+    bool _pageIsActive;
+
+    // Hardware version
+    // V1.7 ==> 17, V2.0 ==> 20
+    int _hwVersionNumber;
+
+    // Wait system
+    bool _rawWaitOnMem;
+    bool _rawWaitOnIO;
+    void waitSystemInit();
+    void waitClearDetected();
+    void waitRawSet(bool waitOnMemory, bool waitOnIO);
+
+    // Set a pin to be an output and set initial value for that pin
+    void setPinOut(int pinNumber, bool val);
+
+    // Mux functions
+    void muxDataBusOutputEnable();
+    void muxDataBusOutputStart();
+    void muxDataBusOutputFinish();
+    void muxClearLowAddr();
+
+    // Address bus
+    void addrLowSet(uint32_t lowAddrByte);
+    void addrHighSet(uint32_t highAddrByte);
+    void addrSet(unsigned int addr);
+    void addrLowInc();
 };
