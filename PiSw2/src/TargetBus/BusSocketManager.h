@@ -18,6 +18,7 @@ class BusSocketManager
 {
 public:
     BusSocketManager(BusControl& busControl);
+    void init();
 
     // Bus Sockets - used to hook things like waitInterrupts, busControl, etc
     int add(bool enabled, BusAccessCBFnType* busAccessCallback,
@@ -70,4 +71,7 @@ private:
     void updateAfterSocketChange();
     static void cycleActionStaticCB(void* pObject, uint32_t slotIdx, BR_RETURN_TYPE rslt);
     void cycleActionCB(uint32_t slotIdx, BR_RETURN_TYPE rslt);
+    static void busAccessCallbackStatic(void* pObject, uint32_t addr, uint32_t data, uint32_t flags, uint32_t& curRetVal);
+    void busAccessCallback(uint32_t addr, uint32_t data, 
+            uint32_t flags, uint32_t& curRetVal);
 };

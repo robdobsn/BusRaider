@@ -9,6 +9,7 @@
 #include "TargetProgrammer.h"
 #include "McManager.h"
 #include "McTRS80CmdFormat.h"
+#include "DebugVals.h"
 
 static const char* MODULE_PREFIX = "TRS80";
 
@@ -26,7 +27,7 @@ McVariantTable McTRS80::_machineDescriptorTables[] = {
         McVariantTable::PROCESSOR_Z80,
         // Required display refresh rate
         // TODO 2020
-        .displayRefreshRatePerSec = 1,
+        .displayRefreshRatePerSec = 50,
         .displayPixelsX = 8 * 64,
         .displayPixelsY = 24 * 16,
         .displayCellX = 8,
@@ -43,7 +44,7 @@ McVariantTable McTRS80::_machineDescriptorTables[] = {
         .irqRate = 0,
         // Bus monitor
         .monitorIORQ = true,
-        .monitorMREQ = false,
+        .monitorMREQ = true,
         .setRegistersCodeAddr = TRS80_DISP_RAM_ADDR
     }
 };
@@ -413,6 +414,9 @@ void McTRS80::busAccessCallback( uint32_t addr,  uint32_t data,
     //             (flags & BR_CTRL_BUS_RD_MASK) ? "RD" : ((flags & BR_CTRL_BUS_WR_MASK) ? "WR" : "??"),
     //             addr, 
     //             (flags & BR_CTRL_BUS_WR_MASK) ? data : retVal);
+
+    DEBUG_PULSE();
+
     // Check for read from IO
     if ((flags & BR_CTRL_BUS_RD_MASK) && (flags & BR_CTRL_BUS_IORQ_MASK))
     {

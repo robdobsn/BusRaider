@@ -38,9 +38,10 @@ void BusControl::init()
         _clockGenerator.setFreqHz(1000000);
         _clockGenerator.enable(true);
         
-        // Raw access
+        // Handlers
         _busRawAccess.init();
         _targetControl.init();
+        _busSocketManager.init();
 
         // Now initialized
         _isInitialized = true;

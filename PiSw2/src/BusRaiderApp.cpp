@@ -10,13 +10,14 @@
 #include "usb_hid_keys.h"
 #include "McTerminal.h"
 #include "SelfTest.h"
+#include "DebugVals.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // System Name and Version
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define SYSTEM_NAME "BusRaider"
-#define SYSTEM_VERSION "3.1.6"
+#define SYSTEM_VERSION "3.1.7"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Globals
@@ -381,18 +382,20 @@ void BusRaiderApp::statusDisplayUpdate()
         //     ee_sprintf(refreshStr, "RxFull %u,", rxBufferFullCount);
         //     strlcat(statusStr, refreshStr, MAX_STATUS_STR_LEN);
         // }
-        // for (int i = 0; i < ISR_ASSERT_NUM_CODES; i++)
-        // {
-        //     int cnt = busAccess.isrAssertGetCount(i);
-        //     if (cnt > 0)
-        //     {
-        //         ee_sprintf(refreshStr, "[%c]=%d,", i+'A'-1, cnt);
-        //         strlcat(statusStr, refreshStr, MAX_STATUS_STR_LEN);
-        //     }
-        // }
-        // strlcat(statusStr, "                                    ", MAX_STATUS_STR_LEN);
-    
-        // _display.statusPut(Display::STATUS_FIELD_ASSERTS, Display::STATUS_FAIL, statusStr);
+
+        // Debug Vals
+        statusStr[0] = 0;
+        for (uint32_t i = 0; i < DebugVals::NUM_DEBUG_VALS; i++)
+        {
+            int cnt = 0;
+            if (__debugVals.get(i, cnt))
+            {
+                snprintf(refreshStr, sizeof(refreshStr), "[%d]=%d,", i, cnt);
+                strlcat(statusStr, refreshStr, MAX_STATUS_STR_LEN);
+            }
+        }
+        strlcat(statusStr, "                                    ", MAX_STATUS_STR_LEN);
+        _display.statusPut(Display::STATUS_FIELD_ASSERTS, Display::STATUS_FAIL, statusStr);
 
         // Get file receive status
         uint32_t fileLen = 0, filePos = 0;

@@ -11,7 +11,7 @@
 static const int MAX_WAIT_FOR_PENDING_ACTION_US = 100000;
 static const int MAX_WAIT_FOR_CTRL_LINES_COUNT = 10;
 static const int MAX_WAIT_FOR_CTRL_BUS_VALID_US = 10;
-static const int MIN_LOOP_COUNT_FOR_CTRL_BUS_VALID = 100;
+static const int MIN_LOOP_COUNT_FOR_CTRL_BUS_VALID = 10000;
 
 // Period target write control bus line is asserted during a write
 static const int CYCLES_DELAY_FOR_WRITE_TO_TARGET = 250;

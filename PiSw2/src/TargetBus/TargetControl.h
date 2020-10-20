@@ -57,6 +57,13 @@ public:
     // Suspend
     void suspend(bool suspend);
 
+    // Set callback on bus access
+    void setBusAccessCallback(BusAccessCBFnType* pCB, void* pObject)
+    {
+        _pBusAccessCB = pCB;
+        _pBusAccessCBObject = pObject;
+    }
+
     // Target programming
     TargetProgrammer& targetProgrammer()
     {
@@ -127,12 +134,21 @@ private:
     void cycleReqAssertedOther();
     void cycleNewWait();
     void cycleSetupForFastWait();
-    void cycleHandleIORQ();
-    void cycleHandleReadRelease();
+    void cycleHandleImportantWait();
 
-    // State
-    bool _waitIsActive;
-    bool _cycleReadInProgress;
+    // Memory wait high address watch table
+    static const uint32_t MEM_WAIT_HIGH_ADDR_WATCH_LEN = 256;
+    uint8_t _memWaitHighAddrWatch[MEM_WAIT_HIGH_ADDR_WATCH_LEN];
+
+    // Callback on bus access
+    BusAccessCBFnType* _pBusAccessCB;
+    void* _pBusAccessCBObject;
+
+
+    // void cycleHandleReadRelease();
+    // // State
+    // bool _waitIsActive;
+    // bool _cycleReadInProgress;
 
 // public:
 //     void service();

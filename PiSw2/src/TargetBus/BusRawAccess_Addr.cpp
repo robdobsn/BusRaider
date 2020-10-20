@@ -272,7 +272,7 @@ void BusRawAccess::addrAndDataBusRead(uint32_t& addr, uint32_t& dataBusVals)
     // Delay to allow data to settle
     lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_READ);
 
-    // Or in the high address
+    // High address
     addr = (pibGetValue() & 0xff) << 8;
 
     // Enable the low address onto the PIB
@@ -281,7 +281,7 @@ void BusRawAccess::addrAndDataBusRead(uint32_t& addr, uint32_t& dataBusVals)
     // Delay to allow data to settle
     lowlev_cycleDelay(CYCLES_DELAY_FOR_READ_FROM_PIB);
 
-    // Get low address value
+    // Or in low address value
     addr |= pibGetValue() & 0xff;
 
     // Clear the mux to deactivate output enables

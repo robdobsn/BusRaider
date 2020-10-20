@@ -14,7 +14,10 @@ TargetControl::TargetControl(BusControl& busAccess)
     cycleClear();
     programmingClear();
     _isSuspended = false;
-    _waitIsActive = false;
+    _pBusAccessCB = NULL;
+    _pBusAccessCBObject = NULL;
+    for (uint32_t i = 0; i < MEM_WAIT_HIGH_ADDR_WATCH_LEN; i++)
+        _memWaitHighAddrWatch[i] = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -23,7 +26,6 @@ TargetControl::TargetControl(BusControl& busAccess)
 
 void TargetControl::init()
 {
-    _waitIsActive = false;
 }
 
 // Service

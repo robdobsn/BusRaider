@@ -6,6 +6,9 @@
 #include "PiWiring.h"
 #include "lowlib.h"
 #include "logging.h"
+#include "DebugVals.h"
+
+// #define TEST_HIGH_ADDR_IS_ON_PIB
 
 // Module name
 static const char MODULE_PREFIX[] = "TargCtrlCyc";
@@ -26,7 +29,6 @@ void TargetControl::cycleClear()
     _cycleReqUs = 0;
     _cycleReqAssertedUs = 0;
     _cycleReqMaxUs = 0;
-    _cycleReadInProgress = false;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -206,6 +208,10 @@ void TargetControl::cycleReqAssertedOther()
     cycleSetupForFastWait();
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Cycle callback on action request
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void TargetControl::cycleReqCallback(BR_RETURN_TYPE result)
 {
     // Perform cycle callback
@@ -226,47 +232,136 @@ void TargetControl::cycleNewWait()
     if (_isSuspended)
         return;
 
-    // Check if already in wait
-    if (!_waitIsActive)
+    // TODO 2020 - assumes simple mode - no debug:
+    // - processor will not be held in wait
+    // - processor read from emulated IO or MEM is handled completely
+    //   in this function - right to the end of the cycle
+
+    // Get inputs
+    uint32_t busVals = read32(ARM_GPIO_GPLEV0);
+
+    // Check for WAIT active (and BUSACK not active) - otherwise nothing to do
+    if ((busVals & BR_WAIT_BAR_MASK) || (!(busVals & BR_BUSACK_BAR_MASK)))
+        return;
+
+    // Check RD or WR is active - nothing to do if not
+    if ((busVals & BR_RD_BAR_MASK) && (busVals & BR_WR_BAR_MASK))
+        return;
+
+    // Check for IORQ
+    if (!(busVals & BR_IORQ_BAR_MASK))
     {
-        // Check new wait type
-        uint32_t busVals = read32(ARM_GPIO_GPLEV0);
+        cycleHandleImportantWait();
+    }
+    else if (!(busVals & BR_MREQ_BAR_MASK))
+    {
+        // Get high address
+        uint32_t highAddr = (busVals >> BR_DATA_BUS) & 0xff;
 
-        // Ignore if there is no WAIT or we're in BUSAK
-        if (((busVals & BR_WAIT_BAR_MASK) == 0) && ((busVals & BR_BUSACK_BAR_MASK) != 0))
-        {
-            // Handle the wait if there isn't an IRQ/NMI/RESET action in progress
-            // - because these actions use the MUX and we can't handle the wait
-            // properly when they are in progress
-            _waitIsActive = (_cycleReqState != CYCLE_REQ_STATE_ASSERTED) ||
-                   (_cycleReqActionType == BR_BUS_ACTION_BUSRQ);
-        }
-
-        // Handle wait newly asserted
-        if (_waitIsActive)
-        {
-            // Check for IORQ and not M1
-            if (((busVals & BR_IORQ_BAR_MASK) == 0) && (busVals & BR_V20_M1_BAR_MASK) != 0)
-            {
-                cycleHandleIORQ();
-            }
-
-            // TODO 2020 - handle INT_ACK and MREQ
-        }
+        // Check if in watch table
+        if (_memWaitHighAddrWatch[highAddr] != 0)
+            cycleHandleImportantWait();
     }
 
-    // Handle existing wait conditions - including ones just started above
-    // TODO - handle hold in wait
-    if (_waitIsActive)
-    {
-        // Release wait
-        _busAccess.bus().waitResetFlipFlops();
-        _waitIsActive = false;
+    // High address stats
+    // _memWaitHighAddrLookup[highAddr]++;
+    // uint32_t foundVals = 0;
+    // for (uint32_t i = 0; i < MEM_WAIT_HIGH_ADDR_LOOKUP_LEN; i++)
+    // {
+    //     if (_memWaitHighAddrLookup[i] > 0)
+    //     {
+    //         if (foundVals < 5)
+    //             DEBUG_VAL_SET(foundVals+1, i);
+    //         foundVals++;
+    //     }
+    //     DEBUG_VAL_SET(0, foundVals);
+    // }
 
-        // Handle read release if required
-        cycleHandleReadRelease();
-    }
+    // Debug
+    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+
+    // TODO 2020
+    _busAccess.bus().waitResetFlipFlops();
+    return;
+
+//     // Check if already in wait
+//     if (!_waitIsActive)
+//     {
+//         // Check new wait type
+//         uint32_t busVals = read32(ARM_GPIO_GPLEV0);
+
+//         // Ignore if there is no WAIT or we're in BUSAK
+//         if (((busVals & BR_WAIT_BAR_MASK) == 0) && ((busVals & BR_BUSACK_BAR_MASK) != 0))
+//         {
+//             // Handle the wait if there isn't an IRQ/NMI/RESET action in progress
+//             // - because these actions use the MUX and we can't handle the wait
+//             // properly when they are in progress
+//             _waitIsActive = (_cycleReqState != CYCLE_REQ_STATE_ASSERTED) ||
+//                    (_cycleReqActionType == BR_BUS_ACTION_BUSRQ);
+//         }
+
+//         // Handle wait newly asserted
+//         if (_waitIsActive)
+//         {
+//             // Check for MREQ
+//             if ((busVals & BR_MREQ_BAR_MASK) == 0)
+//             {
+//                 // This may be a refesh cycle (logic to skip refresh cycles doesn't
+//                 // always work - so may need to wait until RD or WR become active
+//                 uint32_t curUs = micros();
+//                 while ((busVals & BR_RD_BAR_MASK) && (busVals & BR_RD_BAR_MASK))
+//                 {
+//                     if (isTimeout(micros(), curUs, MAX_WAIT_FOR_CTRL_BUS_VALID_US))
+//                         break;
+//                 }
+//                 // The high address should be on the PIB at this time
+//                 uint32_t highAddr = (busVals >> BR_DATA_BUS) & 0xff;
+// #ifdef TEST_HIGH_ADDR_IS_ON_PIB
+//                 digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+//                 microsDelay(1);
+//                 digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+//                 cycleSetupForFastWait();
+//                 lowlev_cycleDelay(CYCLES_DELAY_FOR_HIGH_ADDR_READ);
+//                 uint32_t testAddr = (read32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
+//                 if (highAddr != testAddr)
+//                     DEBUG_VAL_INC(0);
+// #endif
+//                 // TODO 2020
+//                 // _memWaitHighAddrLookup
+//                 cycleHandleImportantWait();
+//             }
+//             // Check for IORQ and not M1
+//             else if (((busVals & BR_IORQ_BAR_MASK) == 0) && (busVals & BR_V20_M1_BAR_MASK) != 0)
+//             {
+//                 cycleHandleImportantWait();
+//             }
+
+//             // TODO 2020 - handle INT_ACK and MREQ
+//         }
+//     }
+
+//     // Handle existing wait conditions - including ones just started above
+//     // TODO - handle hold in wait
+//     if (_waitIsActive)
+//     {
+//         // Release wait
+//         _busAccess.bus().waitResetFlipFlops();
+//         _waitIsActive = false;
+
+//         // Handle read release if required
+//         cycleHandleReadRelease();
+//     }
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Setup for fast wait
+// Routes the high-address bus to PIB (so it can be read immediately)
+// Also used at end of processor read cycle as the same thing is required
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void TargetControl::cycleSetupForFastWait()
 {
@@ -276,10 +371,15 @@ void TargetControl::cycleSetupForFastWait()
     _busAccess.bus().muxSet(BR_MUX_HADDR_OE_BAR);
     // Set data bus direction in
     write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK);
-
 }
 
-void TargetControl::cycleHandleIORQ()
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Cycle handle important wait
+// Called when any IORQ wait is detected
+// Called for an MREQ wait that matches a high-addr of interest
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TargetControl::cycleHandleImportantWait()
 {
     // Read control lines
     uint32_t ctrlBusVals = _busAccess.bus().controlBusRead();
@@ -291,8 +391,8 @@ void TargetControl::cycleHandleIORQ()
 
     // Callback to sockets
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
-//     if (_pSocketBusCallback)
-//         _pSocketBusCallback(addr, dataBusVals, ctrlBusVals, retVal);
+    if (_pBusAccessCB)
+        _pBusAccessCB(_pBusAccessCBObject, addr, dataBusVals, ctrlBusVals, retVal);
 
     // Handle processor read (means we have to push data onto the data bus)
     if (CTRL_BUS_IS_READ(ctrlBusVals) && ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0))
@@ -300,9 +400,35 @@ void TargetControl::cycleHandleIORQ()
         // Set data direction out on the data bus driver
         write32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
         _busAccess.bus().pibSetOut();
+
+        // Set the value for the processor to read
         _busAccess.bus().pibSetValue(retVal & 0xff);
-        _cycleReadInProgress = true;
+
+        // Stay here until read cycle is complete
+        uint32_t waitForReadCompleteStartUs = micros();
+        while(!isTimeout(micros(), waitForReadCompleteStartUs, MAX_WAIT_FOR_END_OF_READ_US))
+        {
+            // Read the control lines
+            uint32_t busVals = read32(ARM_GPIO_GPLEV0);
+
+            // Check if a neither IORQ or MREQ asserted
+            if (((busVals & BR_MREQ_BAR_MASK) != 0) && ((busVals & BR_IORQ_BAR_MASK) != 0))
+            {
+                // TODO 2020
+                // // Check if paging in/out is required
+                // if (_targetPageInOnReadComplete)
+                // {
+                //     busAccessCallbackPageIn();
+                //     _targetPageInOnReadComplete = false;
+                // }
+
+                break;
+            }
+        }
     }
+
+    // Clear output and setup for fast wait
+    cycleSetupForFastWait();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -310,34 +436,34 @@ void TargetControl::cycleHandleIORQ()
 // Stop outputting data onto data bus after processor read cycle
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetControl::cycleHandleReadRelease()
-{
-    if (!_cycleReadInProgress)
-        return;
+// void TargetControl::cycleHandleReadRelease()
+// {
+//     if (!_cycleReadInProgress)
+//         return;
 
-    // Stay here until read cycle is complete
-    uint32_t waitForReadCompleteStartUs = micros();
-    while(!isTimeout(micros(), waitForReadCompleteStartUs, MAX_WAIT_FOR_END_OF_READ_US))
-    {
-        // Read the control lines
-        uint32_t busVals = read32(ARM_GPIO_GPLEV0);
+//     // Stay here until read cycle is complete
+//     uint32_t waitForReadCompleteStartUs = micros();
+//     while(!isTimeout(micros(), waitForReadCompleteStartUs, MAX_WAIT_FOR_END_OF_READ_US))
+//     {
+//         // Read the control lines
+//         uint32_t busVals = read32(ARM_GPIO_GPLEV0);
 
-        // Check if a neither IORQ or MREQ asserted
-        if (((busVals & BR_MREQ_BAR_MASK) != 0) && ((busVals & BR_IORQ_BAR_MASK) != 0))
-        {
-            // Clear output and setup for fast wait
-            cycleSetupForFastWait();
+//         // Check if a neither IORQ or MREQ asserted
+//         if (((busVals & BR_MREQ_BAR_MASK) != 0) && ((busVals & BR_IORQ_BAR_MASK) != 0))
+//         {
+//             // TODO 2020
+//             // // Check if paging in/out is required
+//             // if (_targetPageInOnReadComplete)
+//             // {
+//             //     busAccessCallbackPageIn();
+//             //     _targetPageInOnReadComplete = false;
+//             // }
 
-            // TODO 2020
-            // // Check if paging in/out is required
-            // if (_targetPageInOnReadComplete)
-            // {
-            //     busAccessCallbackPageIn();
-            //     _targetPageInOnReadComplete = false;
-            // }
+//             break;
+//         }
+//     }
 
-            break;
-        }
-    }
-    _cycleReadInProgress = false;
-}
+//     // Clear output and setup for fast wait
+//     cycleSetupForFastWait();
+//     _cycleReadInProgress = false;
+// }

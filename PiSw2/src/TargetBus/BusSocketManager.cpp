@@ -25,6 +25,15 @@ BusSocketManager::BusSocketManager(BusControl& busControl)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Init
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusSocketManager::init()
+{
+    _busControl.ctrl().setBusAccessCallback(busAccessCallbackStatic, this);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Suspend socket activity
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -329,4 +338,37 @@ void BusSocketManager::clearPending()
         _busSockets[i].clearPending();
     }
     _busControl.ctrl().cycleClearAction();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Callback when a bus access is taking place
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BusSocketManager::busAccessCallbackStatic(void* pObject, uint32_t addr, uint32_t data, 
+            uint32_t flags, uint32_t& curRetVal)
+{
+    if (!pObject)
+        return;
+    ((BusSocketManager*)pObject)->busAccessCallback(addr, data, flags, curRetVal);
+}
+
+void BusSocketManager::busAccessCallback(uint32_t addr, uint32_t data, 
+            uint32_t flags, uint32_t& curRetVal)
+{
+    // Send this to all bus sockets
+    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
+    for (int sockIdx = 0; sockIdx < _busSocketCount; sockIdx++)
+    {
+        if (_busSockets[sockIdx].enabled && _busSockets[sockIdx].busAccessCallback)
+        {
+            _busSockets[sockIdx].busAccessCallback(_busSockets[sockIdx].pSourceObject,
+                             addr, data, flags, retVal);
+            // TODO
+            // if (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK)
+            //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "%d IORQ %s from %04x %02x", sockIdx,
+            //             (ctrlBusVals & BR_CTRL_BUS_RD_MASK) ? "RD" : ((ctrlBusVals & BR_CTRL_BUS_WR_MASK) ? "WR" : "??"),
+            //             addr, 
+            //             (ctrlBusVals & BR_CTRL_BUS_WR_MASK) ? dataBusVals : retVal);
+        }
+    }
 }
