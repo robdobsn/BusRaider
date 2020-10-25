@@ -100,7 +100,7 @@ void CommandFile::addRestAPIEndpoints(RestAPIEndpointManager &endpointManager)
 // Run a file
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void CommandFile::apiFileRun(String &reqStr, String& respStr)
+void CommandFile::apiFileRun(const String &reqStr, String& respStr)
 {
     // File
     String fileName = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);

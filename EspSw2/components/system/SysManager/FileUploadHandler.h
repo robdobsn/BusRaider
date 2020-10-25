@@ -32,6 +32,8 @@ public:
         _fileSize = 0;
         _fileIsRICFirmware = false;
         _commsChannelID = 0;
+        _expCRC16Valid = false;
+        _expCRC16 = 0;
 
         // Status
         _isUploading = false;
@@ -62,7 +64,7 @@ public:
     }
     bool start(String& reqStr, String& fileName, uint32_t fileSize, 
             String& fileType, uint32_t& fileBlockSize, uint32_t& batchAckSize,
-            uint32_t channelID, String& respInfo)
+            uint32_t channelID, String& respInfo, uint32_t crc16, bool crc16Valid)
     {
 #ifdef FILE_UPLOAD_USE_BATCH_ACKS
         if (_isUploading && (_expectedFilePos > 0))
@@ -84,6 +86,8 @@ public:
         _fileType = fileType;
         _fileIsRICFirmware = (_fileType.equalsIgnoreCase("ricfw"));
         _commsChannelID = channelID;
+        _expCRC16 = crc16;
+        _expCRC16Valid = crc16Valid;
 
         // Status
         _isUploading = true;
@@ -359,6 +363,8 @@ public:
     String _fileName;
     String _fileType;
     bool _fileIsRICFirmware;
+    uint32_t _expCRC16;
+    bool _expCRC16Valid;
 
     // Upload state
     bool _isUploading;

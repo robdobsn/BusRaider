@@ -85,7 +85,7 @@ String ESPOTAUpdate::getDebugStr()
 // Handle the update
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool ESPOTAUpdate::firmwareUpdateStart(const String& fileName, size_t fileLen)
+bool ESPOTAUpdate::firmwareUpdateStart(const char* fileName, size_t fileLen)
 {
     // Check enabled
     if (!_otaDirectEnabled)
@@ -105,7 +105,7 @@ bool ESPOTAUpdate::firmwareUpdateStart(const String& fileName, size_t fileLen)
 
 #ifdef DEBUG_ESP_OTA_UPDATE
     // Debug
-    LOG_I(MODULE_PREFIX, "firmwareUpdateStart fileName %s fileLen %d", fileName.c_str(), fileLen);
+    LOG_I(MODULE_PREFIX, "firmwareUpdateStart fileName %s fileLen %d", fileName, fileLen);
 #endif
 
     // const esp_partition_t *configured = esp_ota_get_boot_partition();
@@ -203,22 +203,22 @@ bool ESPOTAUpdate::firmwareUpdateEnd()
 // Handle the API update
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ESPOTAUpdate::fwUpdateAPIPart(const String &filename, uint32_t fileLen, uint32_t filePos,
-                                           const uint8_t *pBlock, uint32_t blockLen, bool finalBlock)
+void ESPOTAUpdate::fwUpdateAPIPart(FileBlockInfo& fileBlockInfo)
 {
     // LOG_I(MODULE_PREFIX, "fwUpdateAPIPart %d, %d, %d, %d", contentLen, index, len, finalBlock);
 
     // Start if at the beginning
-    if (filePos == 0)
-        if (!firmwareUpdateStart(filename, fileLen))
+    if (fileBlockInfo.filePos == 0)
+        if (!firmwareUpdateStart(fileBlockInfo.filename, 
+                    fileBlockInfo.fileLenValid ? fileBlockInfo.fileLen : fileBlockInfo.contentLen))
             return;
 
     // Update block
-    if (!firmwareUpdateBlock(filePos, pBlock, blockLen))
+    if (!firmwareUpdateBlock(fileBlockInfo.filePos, fileBlockInfo.pBlock, fileBlockInfo.blockLen))
         return;
 
     // Check if final block
-    if (finalBlock)
+    if (fileBlockInfo.finalBlock)
         if (!firmwareUpdateEnd())
             return;
 
@@ -255,25 +255,21 @@ void ESPOTAUpdate::addRestAPIEndpoints(RestAPIEndpointManager& endpointManager)
                         NULL, 
                         NULL,
                         std::bind(&ESPOTAUpdate::apiESPFirmwarePart, this, 
-                                std::placeholders::_1, std::placeholders::_2, 
-                                std::placeholders::_3, std::placeholders::_4,
-                                std::placeholders::_5, std::placeholders::_6,
-                                std::placeholders::_7));
+                                std::placeholders::_1, std::placeholders::_2));
 }
 
 // ESP Firmware update
-void ESPOTAUpdate::apiESPFirmwarePart(String& req, const String& filename, size_t contentLen, size_t index, 
-                const uint8_t *data, size_t len, bool finalBlock)
+void ESPOTAUpdate::apiESPFirmwarePart(const String& reqStr, FileBlockInfo& fileBlockInfo)
 {
     // Handle with OTA update
 #ifdef DEBUG_ESP_OTA_UPDATE
     // Debug
     // LOG_I(MODULE_PREFIX, "apiESPFirmwarePart");
 #endif
-    fwUpdateAPIPart(filename, contentLen, index, data, len, finalBlock);
+    fwUpdateAPIPart(fileBlockInfo);
 }
 
-void ESPOTAUpdate::apiESPFirmwareUpdateDone(String &reqStr, String &respStr)
+void ESPOTAUpdate::apiESPFirmwareUpdateDone(const String &reqStr, String &respStr)
 {
     // Handle with OTA update
 #ifdef DEBUG_ESP_OTA_UPDATE

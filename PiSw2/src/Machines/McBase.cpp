@@ -169,6 +169,10 @@ void McBase::setupDisplay(DisplayBase* pDisplay)
                 _machineDescriptor.displayPixelsX, _machineDescriptor.displayPixelsY);
     if (!pDisplay)
         return;
+
+    // TODO 2020 remove
+    // pDisplay->debug();
+
     // Layout display for machine
     pDisplay->targetLayout(
         _machineDescriptor.displayPixelsX, _machineDescriptor.displayPixelsY,

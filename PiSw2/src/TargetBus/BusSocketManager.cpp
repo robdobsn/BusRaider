@@ -3,6 +3,7 @@
 
 #include "BusSocketManager.h"
 #include "BusControl.h"
+#include "DebugHelper.h"
 
 // Module name
 static const char MODULE_PREFIX[] = "BusSocketMgr";
@@ -255,10 +256,10 @@ void BusSocketManager::socketSetAction(bool memWait, bool ioWait, int socketWith
             //         _busSockets[socketWithAction].getType(),
             //         _busSockets[socketWithAction].busMasterReason);
         }
-        else
-        {
-            LogWrite(MODULE_PREFIX, LOG_NOTICE, "socketSetAction FAILED");
-        }
+        // else
+        // {
+        //     LogWrite(MODULE_PREFIX, LOG_NOTICE, "socketSetAction FAILED");
+        // }
         
     }
 
@@ -357,7 +358,7 @@ void BusSocketManager::busAccessCallback(uint32_t addr, uint32_t data,
 {
     // Send this to all bus sockets
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
-    for (int sockIdx = 0; sockIdx < _busSocketCount; sockIdx++)
+    for (uint32_t sockIdx = 0; sockIdx < _busSocketCount; sockIdx++)
     {
         if (_busSockets[sockIdx].enabled && _busSockets[sockIdx].busAccessCallback)
         {

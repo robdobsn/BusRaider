@@ -9,7 +9,7 @@
 #include "TargetProgrammer.h"
 #include "McManager.h"
 #include "McTRS80CmdFormat.h"
-#include "DebugVals.h"
+#include "DebugHelper.h"
 
 static const char* MODULE_PREFIX = "TRS80";
 
@@ -118,9 +118,9 @@ void McTRS80::refreshDisplay()
     // memset(pScrnBuffer+TRS80_DISP_RAM_SIZE/4, 0xbc, TRS80_DISP_RAM_SIZE/4);
     // memset(pScrnBuffer+2*TRS80_DISP_RAM_SIZE/4, 0x7c, TRS80_DISP_RAM_SIZE/4);
     // memset(pScrnBuffer+3*TRS80_DISP_RAM_SIZE/4, 0xfc, TRS80_DISP_RAM_SIZE/4);
-    if (_busAccess.mem().blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, BLOCK_ACCESS_MEM) == BR_OK)
+    bool readOk = _busAccess.mem().blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, BLOCK_ACCESS_MEM) == BR_OK;
+    if (readOk)
         updateDisplayFromBuffer(pScrnBuffer, TRS80_DISP_RAM_SIZE);
-
     // Check for key presses and send to the TRS80 if necessary
     // TODO 2020 - ???
     // Only send to mirror if we are in emulation mode, otherwise store up changes for later
@@ -163,6 +163,7 @@ void McTRS80::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen)
         //     LogWrite(MODULE_PREFIX, LOG_NOTICE, "%02x %02x %02x %02x",
         //             pScrnBuffer[0], pScrnBuffer[1], pScrnBuffer[2], pScrnBuffer[3]);
         // }
+
         for (int i = 0; i < cols; i++)
         {
             int cellIdx = k * cols + i;
@@ -172,6 +173,8 @@ void McTRS80::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen)
                 _screenBuffer[cellIdx] = pScrnBuffer[cellIdx];
             }
         }
+
+
     }
     _screenBufferValid = true;
 }
@@ -414,8 +417,6 @@ void McTRS80::busAccessCallback( uint32_t addr,  uint32_t data,
     //             (flags & BR_CTRL_BUS_RD_MASK) ? "RD" : ((flags & BR_CTRL_BUS_WR_MASK) ? "WR" : "??"),
     //             addr, 
     //             (flags & BR_CTRL_BUS_WR_MASK) ? data : retVal);
-
-    DEBUG_PULSE();
 
     // Check for read from IO
     if ((flags & BR_CTRL_BUS_RD_MASK) && (flags & BR_CTRL_BUS_IORQ_MASK))

@@ -46,22 +46,35 @@ bool Display::init()
     _displayFX.init(DISPLAY_WIDTH, DISPLAY_HEIGHT);
 
     // Target machine window
-    _displayFX.windowSetup(DISPLAY_WINDOW_TARGET, 0, 0, DISPLAY_TARGET_WIDTH, DISPLAY_TARGET_HEIGHT, 
-            8, 8, 1, 1,
-            NULL, -1, -1,
+    _displayFX.windowSetup(DISPLAY_WINDOW_TARGET, 
+            0, 0, 
+            DISPLAY_TARGET_WIDTH, DISPLAY_TARGET_HEIGHT, 
+            8, 8, 
+            1, 1,
+            NULL, 
+            -1, -1,
             DISPLAY_TARGET_BORDER, DISPLAY_FX_DARK_GRAY);
 
     // Status window
-    _displayFX.windowSetup(DISPLAY_WINDOW_STATUS, DISPLAY_TARGET_WIDTH + DISPLAY_TARGET_BORDER * 2 + DISPLAY_STATUS_MARGIN, 0,
-        -1, -1, -1, -1, 1, 1, 
-        NULL, -1, -1,
+    _displayFX.windowSetup(DISPLAY_WINDOW_STATUS, 
+        DISPLAY_TARGET_WIDTH + DISPLAY_TARGET_BORDER * 2 + DISPLAY_STATUS_MARGIN, 
+        0,
+        -1, -1, 
+        -1, -1, 
+        1, 1, 
+        NULL, 
+        -1, -1,
         0, DISPLAY_FX_DARK_GRAY);
 
     // Console window
-    _displayFX.windowSetup(DISPLAY_WINDOW_CONSOLE, DISPLAY_TARGET_WIDTH + DISPLAY_TARGET_BORDER * 2 + DISPLAY_CONSOLE_MARGIN, 
+    _displayFX.windowSetup(DISPLAY_WINDOW_CONSOLE, 
+        DISPLAY_TARGET_WIDTH + DISPLAY_TARGET_BORDER * 2 + DISPLAY_CONSOLE_MARGIN, 
         DISPLAY_STATUS_LINES * __systemFont.cellY,
-        -1, -1, -1, -1, 1, 1, 
-        NULL, -1, -1,
+        -1, -1, 
+        -1, -1, 
+        1, 1, 
+        NULL, 
+        -1, -1,
         0, DISPLAY_FX_DARK_GRAY);
     _displayFX.consoleSetWindow(DISPLAY_WINDOW_CONSOLE);
 
@@ -71,6 +84,7 @@ bool Display::init()
 
     // Started ok
     _displayStarted = true;
+
     return true;
 }
 
@@ -127,43 +141,49 @@ void Display::targetLayout(
         return;
 
     _displayFX.screenRectClear(0, 0, DISPLAY_TARGET_WIDTH + DISPLAY_TARGET_BORDER * 2, DISPLAY_TARGET_HEIGHT + DISPLAY_TARGET_BORDER * 2);
-    _displayFX.windowSetup(DISPLAY_WINDOW_TARGET, 0, 0, pixX, pixY, cellX, cellY, xScale, yScale,
-                pFont, foreColour, backColour, DISPLAY_TARGET_BORDER, DISPLAY_FX_DARK_GRAY);
+    _displayFX.windowSetup(DISPLAY_WINDOW_TARGET, 
+            0, 0, 
+            pixX, pixY, 
+            cellX, cellY, 
+            xScale, yScale,
+            pFont, 
+            foreColour, backColour, 
+            DISPLAY_TARGET_BORDER, DISPLAY_FX_DARK_GRAY);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Windows
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Display::windowForeground(int winIdx, DISPLAY_FX_COLOUR colour)
+void Display::windowForeground(uint32_t winIdx, DISPLAY_FX_COLOUR colour)
 {
     if (!_displayStarted)
         return;
     _displayFX.windowForeground(winIdx, colour);
 }
 
-void Display::windowBackground(int winIdx, DISPLAY_FX_COLOUR colour)
+void Display::windowBackground(uint32_t winIdx, DISPLAY_FX_COLOUR colour)
 {
     if (!_displayStarted)
         return;
     _displayFX.windowBackground(winIdx, colour);
 }
 
-void Display::windowWrite(int winIdx, int col, int row, const char* pStr)
+void Display::windowWrite(uint32_t winIdx, uint32_t col, uint32_t row, const char* pStr)
 {
     if (!_displayStarted)
         return;
     _displayFX.windowPut(winIdx, col, row, pStr);
 }
 
-void Display::windowWrite(int winIdx, int col, int row, int ch)
+void Display::windowWrite(uint32_t winIdx, uint32_t col, uint32_t row, uint32_t ch)
 {
     if (!_displayStarted)
         return;
     _displayFX.windowPut(winIdx, col, row, ch);
 }
 
-void Display::windowSetPixel(int winIdx, int x, int y, int value, DISPLAY_FX_COLOUR colour)
+void Display::windowSetPixel(uint32_t winIdx, uint32_t x, uint32_t y, uint32_t value, DISPLAY_FX_COLOUR colour)
 {
     if (!_displayStarted)
         return;
@@ -181,17 +201,17 @@ void Display::background(DISPLAY_FX_COLOUR colour)
     windowBackground(DISPLAY_WINDOW_TARGET, colour);
 }
 
-void Display::write(int col, int row, const char* pStr)
+void Display::write(uint32_t col, uint32_t row, const char* pStr)
 {
     windowWrite(DISPLAY_WINDOW_TARGET, col, row, pStr);
 }
 
-void Display::write(int col, int row, int ch)
+void Display::write(uint32_t col, uint32_t row, uint32_t ch)
 {
     windowWrite(DISPLAY_WINDOW_TARGET, col, row, ch);
 }
 
-void Display::setPixel(int x, int y, int value, DISPLAY_FX_COLOUR colour)
+void Display::setPixel(uint32_t x, uint32_t y, uint32_t value, DISPLAY_FX_COLOUR colour)
 {
     windowSetPixel(DISPLAY_WINDOW_TARGET, x, y, value, colour);
 }
@@ -212,7 +232,7 @@ void Display::consolePut(const char* pStr)
     _displayFX.consolePut(pStr);
 }
 
-void Display::consolePut(int ch)
+void Display::consolePut(uint32_t ch)
 {
     if (!_displayStarted)
         return; 

@@ -208,7 +208,7 @@ void SysTypeManager::addRestAPIEndpoints(RestAPIEndpointManager& endpointManager
                             "Get settings for robot");
 }
 
-void SysTypeManager::apiGetSysTypes(String &reqStr, String &respStr)
+void SysTypeManager::apiGetSysTypes(const String &reqStr, String &respStr)
 {
     LOG_I(MODULE_PREFIX, "GetSysTypes");
     String sysTypesJson;
@@ -217,7 +217,7 @@ void SysTypeManager::apiGetSysTypes(String &reqStr, String &respStr)
     Utils::setJsonBoolResult(reqStr.c_str(), respStr, true, ("\"sysTypes\":" + sysTypesJson).c_str());
 }
 
-void SysTypeManager::apiGetSysTypeConfig(String &reqStr, String &respStr)
+void SysTypeManager::apiGetSysTypeConfig(const String &reqStr, String &respStr)
 {
     LOG_I(MODULE_PREFIX, "GetSysTypeConfig");
     String sysTypeName = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
@@ -226,7 +226,7 @@ void SysTypeManager::apiGetSysTypeConfig(String &reqStr, String &respStr)
     Utils::setJsonBoolResult(reqStr.c_str(), respStr, gotOk, ("\"sysType\":" + sysTypeJson).c_str());
 }
 
-void SysTypeManager::apiSysTypeGetSettings(String &reqStr, String &respStr)
+void SysTypeManager::apiSysTypeGetSettings(const String &reqStr, String &respStr)
 {
     LOG_V(MODULE_PREFIX, "GetSettings %s", respStr.c_str());
     String sysSettingsJson;
@@ -234,14 +234,14 @@ void SysTypeManager::apiSysTypeGetSettings(String &reqStr, String &respStr)
     Utils::setJsonBoolResult(reqStr.c_str(), respStr, true, ("\"cfg\":" + sysSettingsJson).c_str());
 }
 
-void SysTypeManager::apiSysTypePostSettings(String &reqStr, String &respStr)
+void SysTypeManager::apiSysTypePostSettings(const String &reqStr, String &respStr)
 {
     LOG_I(MODULE_PREFIX, "PostSettings %s", reqStr.c_str());
     // Result
     Utils::setJsonBoolResult(reqStr.c_str(), respStr, true);
 }
 
-void SysTypeManager::apiSysTypePostSettingsBody(String& reqStr, const uint8_t *pData, size_t len, size_t index, size_t total)
+void SysTypeManager::apiSysTypePostSettingsBody(const String& reqStr, const uint8_t *pData, size_t len, size_t index, size_t total)
 {
     LOG_I(MODULE_PREFIX, "PostSettingsBody len %d", len);
     // Store the settings

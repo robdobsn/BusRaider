@@ -49,11 +49,11 @@ private:
     ConfigBase* _pSysSettings;
 
     // API System type
-    void apiGetSysTypes(String &reqStr, String &respStr);
-    void apiGetSysTypeConfig(String &reqStr, String &respStr);
+    void apiGetSysTypes(const String &reqStr, String &respStr);
+    void apiGetSysTypeConfig(const String &reqStr, String &respStr);
 
     // API System settings
-    void apiSysTypeGetSettings(String &reqStr, String &respStr);
-    void apiSysTypePostSettings(String &reqStr, String &respStr);
-    void apiSysTypePostSettingsBody(String& reqStr, const uint8_t *pData, size_t len, size_t index, size_t total);
+    void apiSysTypeGetSettings(const String &reqStr, String &respStr);
+    void apiSysTypePostSettings(const String &reqStr, String &respStr);
+    void apiSysTypePostSettingsBody(const String& reqStr, const uint8_t *pData, size_t len, size_t index, size_t total);
 };

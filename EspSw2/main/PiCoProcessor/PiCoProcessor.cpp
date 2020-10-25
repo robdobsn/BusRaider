@@ -276,9 +276,15 @@ void PiCoProcessor::service()
             {
                 if (_chunker.next(_uploadBlockBuffer.data(), UPLOAD_BLOCK_SIZE_BYTES, readLen, finalChunk))
                 {
-                    // Handle the chunk
-                    uploadCommonBlockHandler(_uploadFileType.c_str(), _uploadFromFSRequest, _chunker.getFileName(), 
-                                _chunker.getFileLen(), _uploadFilePos, _uploadBlockBuffer.data(), readLen, finalChunk); 
+                    // File block info
+                    uint32_t fileLen = _chunker.getFileLen();
+                    FileBlockInfo fileBlockInfo(_chunker.getFileName().c_str(), 
+                                fileLen, _uploadFilePos, 
+                                _uploadBlockBuffer.data(), readLen, finalChunk,
+                                0, false,
+                                fileLen, true);
+                    // Handle the block
+                    uploadCommonBlockHandler(_uploadFileType.c_str(), _uploadFromFSRequest, fileBlockInfo); 
                     _uploadFilePos += readLen;
                 }
                 else
@@ -342,10 +348,7 @@ void PiCoProcessor::addRestAPIEndpoints(RestAPIEndpointManager &endpointManager)
                         NULL, 
                         NULL,
                         std::bind(&PiCoProcessor::apiUploadPiSwPart, this, 
-                                std::placeholders::_1, std::placeholders::_2, 
-                                std::placeholders::_3, std::placeholders::_4,
-                                std::placeholders::_5, std::placeholders::_6,
-                                std::placeholders::_7));
+                                std::placeholders::_1, std::placeholders::_2));
     endpointManager.addEndpoint("querystatus", 
                         RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                         RestAPIEndpointDef::ENDPOINT_GET, 
@@ -502,7 +505,7 @@ void PiCoProcessor::apiQueryESPHealth(const String &reqStr, String &respStr)
 // API request - Upload pi-sw - completed
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PiCoProcessor::apiUploadPiSwComplete(String &reqStr, String &respStr)
+void PiCoProcessor::apiUploadPiSwComplete(const String &reqStr, String &respStr)
 {
 #ifdef DEBUG_PI_SW_UPLOAD
     LOG_I(MODULE_PREFIX, "apiUploadPiSwComplete %s", reqStr.c_str());
@@ -514,13 +517,12 @@ void PiCoProcessor::apiUploadPiSwComplete(String &reqStr, String &respStr)
 // API request - Upload pi-sw - part of file (from HTTP POST file)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PiCoProcessor::apiUploadPiSwPart(String& req, const String& filename, size_t contentLen, size_t index, 
-                const uint8_t *pData, size_t len, bool finalBlock)
+void PiCoProcessor::apiUploadPiSwPart(const String& req, FileBlockInfo& fileBlockInfo)
 {
 #ifdef DEBUG_PI_SW_UPLOAD
     LOG_I(MODULE_PREFIX, "apiUploadPiSwPart %d, %d, %d, %d", contentLen, index, len, finalBlock);
 #endif
-    uploadAPIBlockHandler("firmware", req, filename, contentLen, index, pData, len, finalBlock);
+    uploadAPIBlockHandler("firmware", req, fileBlockInfo);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -579,7 +581,7 @@ void PiCoProcessor::apiSetMcJsonContent(const String &reqStr, const uint8_t *pDa
 // API request - Target command
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PiCoProcessor::apiTargetCommand(String &reqStr, String &respStr)
+void PiCoProcessor::apiTargetCommand(const String &reqStr, String &respStr)
 {
     // Get command
     String targetCmd = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
@@ -587,7 +589,7 @@ void PiCoProcessor::apiTargetCommand(String &reqStr, String &respStr)
     sendTargetCommand(targetCmd, reqStr, respStr, true);
 }
 
-void PiCoProcessor::apiTargetCommandPost(String &reqStr, String &respStr)
+void PiCoProcessor::apiTargetCommandPost(const String &reqStr, String &respStr)
 {
 }
 
@@ -761,7 +763,7 @@ void PiCoProcessor::sendFileEndRecord(int blockCount, const char* pAdditionalJso
 // Send response to co-processor
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PiCoProcessor::sendResponseToPi(String& reqStr, String& msgJson)
+void PiCoProcessor::sendResponseToPi(const String& reqStr, String& msgJson)
 {
 #ifdef DEBUG_PI_SEND_RESP_TO_PI
     LOG_I(MODULE_PREFIX, "req %s ... response Msg %s", reqStr.c_str(), msgJson.c_str());
@@ -1049,8 +1051,7 @@ void PiCoProcessor::hdlcFrameTxToPiCB(const uint8_t* pFrame, int frameLen)
 // Handle upload block
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PiCoProcessor::uploadAPIBlockHandler(const char* fileType, const String& req, const String& filename, 
-            int fileLength, size_t index, const uint8_t *data, size_t len, bool finalBlock)
+void PiCoProcessor::uploadAPIBlockHandler(const char* fileType, const String& req, FileBlockInfo& fileBlockInfo)
 {
     // Check there isn't an upload in progress from FS
     if (_uploadFromFSInProgress)
@@ -1062,7 +1063,7 @@ void PiCoProcessor::uploadAPIBlockHandler(const char* fileType, const String& re
     // Check upload from API already in progress
     if (!_uploadFromAPIInProgress)
     {
-        if (index != 0)
+        if (fileBlockInfo.filePos != 0)
             return;
         // Upload now in progress
         _uploadLastBlockMs = millis();
@@ -1070,12 +1071,14 @@ void PiCoProcessor::uploadAPIBlockHandler(const char* fileType, const String& re
         _uploadBlockCount = 0;
         _uploadFilePos = 0;
         _uploadStartMs = millis();
-        LOG_I(MODULE_PREFIX, "uploadAPIBlockHandler starting new fileType %s filename %s fileLen %d pos %d, blockLen %d",
-                fileType, filename.c_str(), fileLength, index, len);
+        LOG_I(MODULE_PREFIX, "uploadAPIBlockHandler starting new fileType %s filename %s fileLenValid %d fileLen %d contentLen %d pos %d, blockLen %d",
+                fileType, fileBlockInfo.filename,
+                fileBlockInfo.fileLenValid, fileBlockInfo.fileLen, fileBlockInfo.contentLen,
+                fileBlockInfo.filePos, fileBlockInfo.blockLen);
     }
     
     // Commmon handler
-    if (!uploadCommonBlockHandler(fileType, req, filename, fileLength, index, data, len, finalBlock))
+    if (!uploadCommonBlockHandler(fileType, req, fileBlockInfo))
     {
         _uploadFromAPIInProgress = false;
     }
@@ -1085,13 +1088,12 @@ void PiCoProcessor::uploadAPIBlockHandler(const char* fileType, const String& re
 // Common upload block handler
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String& req, 
-            const String& filename, int fileLength, size_t index, const uint8_t *data, 
-            size_t len, bool finalBlock)
+bool PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String& req, FileBlockInfo& fileBlockInfo)
 {
 #ifdef DEBUG_PI_UPLOAD_COMMON_BLOCK_DETAIL
-    LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler pos %d blkCnt %d blkLen %d isFinal %d rxIdx %d bytesSent %d", 
-                index, _uploadBlockCount, len, finalBlock, _uploadBlockRxIndex, _uploadBytesSent);
+    LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler filePos %d blkCnt %d blkLen %d isFinal %d rxIdx %d bytesSent %d", 
+                fileBlockInfo.filePos, _uploadBlockCount, fileBlockInfo.blockLen, fileBlockInfo.finalBlock,
+                _uploadBlockRxIndex, _uploadBytesSent);
 #endif
 
     // For timeouts        
@@ -1105,8 +1107,10 @@ bool PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String&
         _uploadFileType = fileType;
 
         // Debug
-        LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler new upload millis %ld filetype %s fileName %s fileLen %d blockLen %d final %d isFS %s isAPI %s", 
-                _uploadLastBlockMs, fileType, filename.c_str(), fileLength, len, finalBlock,
+        LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler new upload millis %ld filetype %s fileName %s fileLenValid %d fileLen %d contentLen %d blockLen %d final %d isFS %s isAPI %s", 
+                _uploadLastBlockMs, fileType, fileBlockInfo.filename, 
+                fileBlockInfo.fileLenValid, fileBlockInfo.fileLen, fileBlockInfo.contentLen,
+                fileBlockInfo.blockLen, fileBlockInfo.finalBlock,
                 (_uploadFromFSInProgress ? "yes" : "no"), 
                 (_uploadFromAPIInProgress ? "yes" : "no"));
 
@@ -1120,7 +1124,8 @@ bool PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String&
         // Send file start
         for (int retryCount = 0; retryCount < UPLOAD_MAX_RESENDS_BEFORE_FAIL; retryCount++)
         {
-            sendFileStartRecord(fileType, req, filename, fileLength);
+            sendFileStartRecord(fileType, req, fileBlockInfo.filename, 
+                        fileBlockInfo.fileLenValid ? fileBlockInfo.fileLen : fileBlockInfo.contentLen);
             if (waitForStartAck())
                 break;
             LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler retry %d upload start", retryCount+1);
@@ -1132,21 +1137,22 @@ bool PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String&
     // Send the block
     for (int retryCount = 0; retryCount < UPLOAD_MAX_RESENDS_BEFORE_FAIL; retryCount++)
     {
-        sendFileBlock(index, data, len);
-        if (waitForBlockAck(index))
+        sendFileBlock(fileBlockInfo.filePos, fileBlockInfo.pBlock, fileBlockInfo.blockLen);
+        if (waitForBlockAck(fileBlockInfo.filePos))
             break;
-        LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler retry %d upload block %d", retryCount+1, _uploadBlockCount);
+        LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler retry %d upload block %d", 
+                    retryCount+1, _uploadBlockCount);
     }
-    if (!waitForBlockAck(index))
+    if (!waitForBlockAck(fileBlockInfo.filePos))
         return false;
     _uploadBlockCount++;
 
     // Update CRC
-    _fileCRC = MiniHDLC::crcUpdateCCITT(_fileCRC, data, len);
-    _uploadBytesSent += len;
+    _fileCRC = MiniHDLC::crcUpdateCCITT(_fileCRC, fileBlockInfo.pBlock, fileBlockInfo.blockLen);
+    _uploadBytesSent += fileBlockInfo.blockLen;
 
     // Check if that was the final block
-    if (finalBlock)
+    if (fileBlockInfo.finalBlock)
     {
         for (int retryCount = 0; retryCount < UPLOAD_MAX_RESENDS_BEFORE_FAIL; retryCount++)
         {

@@ -15,6 +15,7 @@
 #include <WString.h>
 #include <list>
 #include <Utils.h>
+#include "FileBlockInfo.h"
 
 class FileSystem
 {
@@ -41,8 +42,7 @@ public:
     bool setFileContents(const String& fileSystemStr, const String& filename, String& fileContents);
 
     // Handle a file upload block - same API as ESPAsyncWebServer file handler
-    void uploadAPIBlockHandler(const char* fileSystem, const String& req, const String& filename, 
-                int fileLength, size_t filePos, const uint8_t *data, size_t len, bool finalBlock);
+    void uploadAPIBlockHandler(const char* fileSystem, const String& req, FileBlockInfo& fileBlockInfo);
     void uploadAPIBlocksComplete();
 
     // Delete file on file system

@@ -14,6 +14,7 @@
 #include "FileSystemChunker.h"
 #include "MiniHDLC.h"
 #include <list>
+#include "FileBlockInfo.h"
 
 class ProtocolEndpointMsg;
 
@@ -152,32 +153,29 @@ private:
     void sendToPi(const uint8_t *pFrame, int frameLen);
     bool sendTargetCommand(const String& targetCmd, const String& reqStr, String& respStr, bool waitForResponse);
     void sendTargetData(const String& cmdName, const uint8_t* pData, int len, int index);
-    void sendResponseToPi(String& reqStr, String& msgJson);
+    void sendResponseToPi(const String& reqStr, String& msgJson);
     void hdlcFrameTxToPiCB(const uint8_t* pFrame, int frameLen);
     void hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen);
     const char* getWifiStatusStr();
 
     // API commands
     void apiQueryESPHealth(const String &reqStr, String &respStr);
-    void apiUploadPiSwComplete(String &reqStr, String &respStr);
-    void apiUploadPiSwPart(String& req, const String& filename, size_t contentLen, size_t index, 
-                const uint8_t *data, size_t len, bool finalBlock);
+    void apiUploadPiSwComplete(const String &reqStr, String &respStr);
+    void apiUploadPiSwPart(const String& req, FileBlockInfo& fileBlockInfo);
     void apiQueryPiStatus(const String &reqStr, String &respStr);
     void apiQueryCurMc(const String &reqStr, String &respStr);
     void apiSetMcJson(const String &reqStr, String &respStr);
     void apiSetMcJsonContent(const String &reqStr, const uint8_t *pData, size_t len, size_t index, size_t total);
-    void apiTargetCommand(String &reqStr, String &respStr);
-    void apiTargetCommandPost(String &reqStr, String &respStr);
+    void apiTargetCommand(const String &reqStr, String &respStr);
+    void apiTargetCommandPost(const String &reqStr, String &respStr);
     void apiTargetCommandPostContent(const String &reqStr, const uint8_t *pData, size_t len, size_t index, size_t total);
     void apiSendFileToTargetBuffer(const String &reqStr, String &respStr);
     void apiAppendFileToTargetBuffer(const String &reqStr, String &respStr);
     void apiRunFileOnTarget(const String &reqStr, String &respStr);
 
     // Upload
-    void uploadAPIBlockHandler(const char* fileType, const String& req, const String& filename, 
-            int fileLength, size_t index, const uint8_t *pData, size_t len, bool finalBlock);
-    bool uploadCommonBlockHandler(const char* fileType, const String& req, 
-            const String& filename, int fileLength, size_t index, const uint8_t *pData, size_t len, bool finalBlock);
+    void uploadAPIBlockHandler(const char* fileType, const String& req, FileBlockInfo& fileBlockInfo);
+    bool uploadCommonBlockHandler(const char* fileType, const String& req, FileBlockInfo& fileBlockInfo);
     void sendFileStartRecord(const char* fileType, const String& req, const String& filename, int fileLength);
     void sendFileBlock(size_t index, const uint8_t *pData, size_t len);
     void sendFileEndRecord(int blockCount, const char* pAdditionalJsonNameValues);

@@ -32,7 +32,7 @@ protected:
 private:
     // Helpers
     void applySetup();
-    void apiFileRun(String &reqStr, String& respStr);
+    void apiFileRun(const String &reqStr, String& respStr);
 
     //API Processing
     bool handleAPIFile(String& fileName);

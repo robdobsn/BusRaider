@@ -4,7 +4,7 @@
 #pragma once
 
 #include "DisplayBase.h"
-#include "wgfxfont.h"
+#include "../system/wgfxfont.h"
 #include "stdint.h"
 #include "stddef.h"
 #include <circle/bcmframebuffer.h>
@@ -75,7 +75,7 @@ public:
         if (_pChars)
             delete [] _pChars;
     }
-    void setSize(int numLines, int numCharsAcross)
+    void setSize(uint32_t numLines, uint32_t numCharsAcross)
     {
         if (_pChars)
             delete [] _pChars;
@@ -84,8 +84,8 @@ public:
         _numCharsAcross = numCharsAcross;
         _pChars = new uint8_t[_numLines * _numCharsAcross];
     }
-    int _numLines;
-    int _numCharsAcross;
+    uint32_t _numLines;
+    uint32_t _numCharsAcross;
     uint8_t* _pChars;
  };
 
@@ -106,39 +106,61 @@ public:
         _cursorRow = 0;
         _cursorCol = 0;
         _cursorVisible = false;
+        _pFontCache = NULL;
+        _fontCacheUint32sPerLine = 1;
+        _fontCacheUint32sPerChar = 1;
+        _fontCacheError = 0;
+        _pFrameBufError8 = NULL;
+        _pFrameBufError32 = NULL;
     }
 
-    int cols()
+    virtual ~DisplayWindow()
+    {
+        delete _pFontCache;
+    }
+
+    uint32_t cols()
     {
         if (cellWidth <= 0)
             return 0;
         return width/cellWidth;
     }
 
-    int rows()
+    uint32_t rows()
     {
         if (cellHeight <= 0)
             return 0;
         return height/cellHeight;
     }
+    void genFontAtCurRes(DISPLAY_FX_COLOUR screenFG, DISPLAY_FX_COLOUR screenBG);
+    // TODO 2020 remove
+    void debug();
 
 public:
     bool _valid;
-    int tlx;
-    int width;
-    int tly;
-    int height;
-    int cellWidth;
-    int cellHeight;
-    int xPixScale;
-    int yPixScale;
-    int windowBackground;
-    int windowForeground;
+    uint32_t tlx;
+    uint32_t width;
+    uint32_t tly;
+    uint32_t height;
+    uint32_t cellWidth;
+    uint32_t cellHeight;
+    uint32_t xPixScale;
+    uint32_t yPixScale;
+    int32_t windowBackground;
+    int32_t windowForeground;
     WgfxFont* pFont;
+    uint32_t _fontCacheUint32sPerLine;
+    uint32_t _fontCacheUint32sPerChar;
+    int _fontCacheError;
+    uint8_t* _pFrameBufError8;
+    uint32_t* _pFrameBufError32;
+
+    // Font rendered at current res
+    uint32_t* _pFontCache;
 
     // Cursor
-    int _cursorRow;
-    int _cursorCol;
+    uint32_t _cursorRow;
+    uint32_t _cursorCol;
     bool _cursorVisible;
     // Make sure this is big enough for any font's character cell
     uint8_t _cursorBuffer[512];
@@ -153,30 +175,37 @@ public:
     DisplayFX();
     ~DisplayFX();
 
-    bool init(int displayWidth, int displayHeight);
+    bool init(uint32_t displayWidth, uint32_t displayHeight);
+
+    // TODO 2020 remove
+    void debug()
+    {
+        _windows[_consoleWinIdx].debug();
+    }
 
     // Screen
     void screenClear();
-    void screenRectClear(int tlx, int tly, int width, int height);
+    void screenRectClear(uint32_t tlx, uint32_t tly, uint32_t width, uint32_t height);
     void screenBackground(DISPLAY_FX_COLOUR colour);
 
     // Window
-    void windowSetup(int winIdx, int tlX, int tlY,
+    void windowSetup(uint32_t winIdx, 
+                    int tlX, int tlY,
                     int pixX, int pixY, 
                     int cellX, int cellY, 
                     int xScale, int yScale,
                     WgfxFont* pFont, 
                     int foreColour, int backColour, 
                     int borderWidth, int borderColour);
-    void windowClear(int winIdx);
-    void windowPut(int winIdx, int col, int row, const char* pStr);
-    void windowPut(int winIdx, int col, int row, int ch);
-    void windowForeground(int winIdx, DISPLAY_FX_COLOUR colour);
-    void windowBackground(int winIdx, DISPLAY_FX_COLOUR colour);
-    void windowSetPixel(int winIdx, int x, int y, int value, DISPLAY_FX_COLOUR colour);
+    void windowClear(uint32_t winIdx);
+    void windowPut(uint32_t winIdx, uint32_t col, uint32_t row, const char* pStr);
+    void windowPut(uint32_t winIdx, uint32_t col, uint32_t row, uint32_t ch);
+    void windowForeground(uint32_t winIdx, DISPLAY_FX_COLOUR colour);
+    void windowBackground(uint32_t winIdx, DISPLAY_FX_COLOUR colour);
+    void windowSetPixel(uint32_t winIdx, uint32_t x, uint32_t y, uint32_t value, DISPLAY_FX_COLOUR colour);
 
     // Console
-    void consoleSetWindow(int consoleWinIdx);
+    void consoleSetWindow(uint32_t consoleWinIdx);
     void consolePut(const char* pStr);
     void consolePut(int ch);
     void consolePut(const char* pBuffer, unsigned count);
@@ -184,11 +213,11 @@ public:
     int consoleGetWidth();
 
     // Draw
-    void drawHorizontal(int x, int y, int len, int colour);
-    void drawVertical(int x, int y, int len, int colour);
+    void drawHorizontal(uint32_t x, uint32_t y, uint32_t len, uint32_t colour);
+    void drawVertical(uint32_t x, uint32_t y, uint32_t len, uint32_t colour);
 
     // RAW access
-    void getFramebuffer(int winIdx, FrameBufferInfo& frameBufferInfo);
+    void getFramebuffer(uint32_t winIdx, FrameBufferInfo& frameBufferInfo);
 
 private:
 
@@ -200,21 +229,21 @@ private:
     CBcmFrameBuffer* _pBCMFrameBuffer;
 
     // Screen
-    int _screenWidth;
-    int _screenHeight;
-    int _pitch;
-    int _size;
+    uint32_t _screenWidth;
+    uint32_t _screenHeight;
+    uint32_t _pitch;
+    uint32_t _size;
     uint8_t* _pRawFrameBuffer;
     DISPLAY_FX_COLOUR _screenBackground;
     DISPLAY_FX_COLOUR _screenForeground;
 
     // Console window
-    int _consoleWinIdx;
+    uint32_t _consoleWinIdx;
 
     // Get framebuffer
-    uint8_t* windowGetPFB(int winIdx, int col, int row);
-    uint8_t* screenGetPFBXY(int x, int y);
-    uint8_t* windowGetPFBXY(int winIdx, int x, int y);
+    uint8_t* windowGetPFB(uint32_t winIdx, uint32_t col, uint32_t row);
+    uint8_t* screenGetPFBXY(uint32_t x, uint32_t y);
+    uint8_t* windowGetPFBXY(uint32_t winIdx, uint32_t x, uint32_t y);
 
     // Cursor
     void cursorCheck();
@@ -222,9 +251,9 @@ private:
     void cursorRender();
 
     // Scroll
-    void windowScroll(int winIdx, int rows);
+    void windowScroll(uint32_t winIdx, int32_t rows);
 
     // Access
-    void screenReadCell(int winIdx, int col, int row, uint8_t* pCellBuf);
-    void screenWriteCell(int winIdx, int col, int row, uint8_t* pCellBuf);
+    void screenReadCell(uint32_t winIdx, uint32_t col, uint32_t row, uint8_t* pCellBuf);
+    void screenWriteCell(uint32_t winIdx, uint32_t col, uint32_t row, uint8_t* pCellBuf);
 };

@@ -10,12 +10,12 @@
 #pragma once
 #include <functional>
 #include <WString.h>
+#include "FileBlockInfo.h"
 
 // Callback function for any endpoint
 typedef std::function<void(String &reqStr, String &respStr)> RestAPIFunction;
 typedef std::function<void(String &reqStr, const uint8_t *pData, size_t len, size_t index, size_t total)> RestAPIFnBody;
-typedef std::function<void(String &reqStr, const String& filename, size_t contentLen, size_t index, 
-            const uint8_t *data, size_t len, bool finalBlock)> RestAPIFnUpload;
+typedef std::function<void(String &reqStr, FileBlockInfo& fileBlockInfo)> RestAPIFnUpload;
 
 // Definition of an endpoint
 class RestAPIEndpointDef
@@ -93,11 +93,9 @@ public:
             _callbackBody(req, pData, len, bufferPos, total);
     }
 
-    void callbackUpload(String&req, const String &filename, size_t contentLen, size_t filePos,
-                         const uint8_t *data, size_t len, bool finalBlock)
+    void callbackUpload(String&req, FileBlockInfo& fileBlockInfo)
     {
         if (_callbackUpload)
-            _callbackUpload(req, filename, contentLen, filePos, data, len, finalBlock);
+            _callbackUpload(req, fileBlockInfo);
     }
-
 };

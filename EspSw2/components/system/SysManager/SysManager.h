@@ -246,20 +246,20 @@ private:
     
 private:
     // API to reset system
-    void apiReset(String &reqStr, String& respStr);
+    void apiReset(const String &reqStr, String& respStr);
 
     // Get system version
-    void apiGetVersion(String &reqStr, String& respStr);
+    void apiGetVersion(const String &reqStr, String& respStr);
 
     // Friendly name get/set
-    void apiFriendlyName(String &reqStr, String& respStr);
+    void apiFriendlyName(const String &reqStr, String& respStr);
 
     // Serial no
-    void apiSerialNumber(String &reqStr, String& respStr);
+    void apiSerialNumber(const String &reqStr, String& respStr);
 
     // SysMod info and debug
-    void apiGetSysModInfo(String &reqStr, String& respStr);
-    void apiGetSysModDebug(String &reqStr, String& respStr);
+    void apiGetSysModInfo(const String &reqStr, String& respStr);
+    void apiGetSysModDebug(const String &reqStr, String& respStr);
 
     // Clear status change callbacks
     void clearAllStatusChangeCBs();

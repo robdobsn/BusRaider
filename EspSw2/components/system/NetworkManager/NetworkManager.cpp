@@ -134,7 +134,7 @@ void NetworkManager::addRestAPIEndpoints(RestAPIEndpointManager &endpointManager
             "WiFi pause, wifipause/pause, wifipause/resume");
 }
 
-void NetworkManager::apiWifiSet(String &reqStr, String &respStr)
+void NetworkManager::apiWifiSet(const String &reqStr, String &respStr)
 {
     // LOG_I(MODULE_PREFIX, "apiWifiSet incoming %s", reqStr.c_str());
 
@@ -162,7 +162,7 @@ void NetworkManager::apiWifiSet(String &reqStr, String &respStr)
     Utils::setJsonBoolResult(reqStr.c_str(), respStr, rslt);
 }
 
-void NetworkManager::apiWifiClear(String &reqStr, String &respStr)
+void NetworkManager::apiWifiClear(const String &reqStr, String &respStr)
 {
     // Clear stored credentials back to default
     esp_err_t err = networkSystem.clearCredentials();
@@ -199,7 +199,7 @@ void NetworkManager::apiWifiClear(String &reqStr, String &respStr)
 // Control WiFi pause on BLE connection
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void NetworkManager::apiWiFiPause(String &reqStr, String& respStr)
+void NetworkManager::apiWiFiPause(const String &reqStr, String& respStr)
 {
     // Get pause arg
     String arg = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1, false);

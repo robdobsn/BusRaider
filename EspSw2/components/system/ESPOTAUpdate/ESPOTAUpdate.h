@@ -13,6 +13,7 @@
 #include <ConfigBase.h>
 #include <SysModBase.h>
 #include "esp_ota_ops.h"
+#include "FileBlockInfo.h"
 
 class RestAPIEndpointManager;
 
@@ -34,7 +35,7 @@ public:
     }
 
     // Firmware update method
-    virtual bool firmwareUpdateStart(const String& fileName, size_t fileLen) override final;
+    virtual bool firmwareUpdateStart(const char* fileName, size_t fileLen) override final;
     virtual bool firmwareUpdateBlock(uint32_t filePos, const uint8_t *pBlock, size_t blockLen) override final;
     virtual bool firmwareUpdateEnd() override final;
 
@@ -75,12 +76,10 @@ private:
     void onDataReceived(uint8_t *pDataReceived, size_t dataReceivedLen);
 
     // API ESP Firmware update
-    void apiESPFirmwarePart(String& req, const String& filename, size_t contentLen, size_t index, 
-                    const uint8_t *data, size_t len, bool finalBlock);
-    void apiESPFirmwareUpdateDone(String &reqStr, String &respStr);
+    void apiESPFirmwarePart(const String& req, FileBlockInfo& fileBlockInfo);
+    void apiESPFirmwareUpdateDone(const String &reqStr, String &respStr);
 
     // Direct firmware update
-    virtual void fwUpdateAPIPart(const String& filename, uint32_t fileLen, uint32_t filePos, 
-                const uint8_t *pBlock, uint32_t blockLen, bool finalBlock);
+    virtual void fwUpdateAPIPart(FileBlockInfo& fileBlockInfo);
     void fwUpdateAPIFinal();
 };

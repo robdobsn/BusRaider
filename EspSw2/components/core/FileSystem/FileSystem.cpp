@@ -539,13 +539,19 @@ void FileSystem::uploadAPIBlocksComplete()
     // Other file upload paths don't - but it isn't needed as the uploadAPIBlockHandler as a finalBlock flag
 }
 
-void FileSystem::uploadAPIBlockHandler(const char* fileSystem, const String& req, const String& filename, 
-                    int fileLength, size_t filePos, const uint8_t *data, size_t len, bool finalBlock)
+void FileSystem::uploadAPIBlockHandler(const char* fileSystem, const String& req, 
+                    FileBlockInfo& fileBlockInfo)
 {
 #ifdef DEBUG_FILE_UPLOAD
-    LOG_I(MODULE_PREFIX, "uploadAPIBlockHandler fileSys %s, filename %s, total %d, pos %d, len %d, final %d", 
-                fileSystem, filename.c_str(), fileLength, filePos, len, finalBlock);
+    LOG_I(MODULE_PREFIX, "uploadAPIBlockHandler fileSys %s, filename %s, fileLenValid %d fileLen %d contentLen %d, pos %d, len %d, final %d", 
+                fileSystem, fileBlockInfo.filename, fileBlockInfo.fileLenValid, 
+                fileBlockInfo.fileLen, fileBlockInfo.contentLen,
+                fileBlockInfo.filePos, fileBlockInfo.blockLen, fileBlockInfo.finalBlock);
 #endif
+
+    // Check valid
+    if ((!fileBlockInfo.filename) || strlen(fileBlockInfo.filename))
+        return;
 
     // Check file system supported
     String nameOfFS;
@@ -560,14 +566,15 @@ void FileSystem::uploadAPIBlockHandler(const char* fileSystem, const String& req
         return;
 
     // Get path
+    String filename = fileBlockInfo.filename;
     String tempFileName = "/__tmp__";
     String tmpRootFilename = getFilePath(nameOfFS, tempFileName);
-    if (data && (len > 0))
+    if (fileBlockInfo.pBlock && (fileBlockInfo.blockLen > 0))
     {
         FILE* pFile = NULL;
 
         // Check if we should overwrite or append
-        if (filePos > 0)
+        if (fileBlockInfo.filePos > 0)
             pFile = fopen(tmpRootFilename.c_str(), "ab");
         else
             pFile = fopen(tmpRootFilename.c_str(), "wb");
@@ -579,26 +586,29 @@ void FileSystem::uploadAPIBlockHandler(const char* fileSystem, const String& req
         }
 
         // Write file block to temporary file
-        size_t bytesWritten = fwrite(data, 1, len, pFile);
+        size_t bytesWritten = fwrite(fileBlockInfo.pBlock, 1, fileBlockInfo.blockLen, pFile);
         fclose(pFile);
-        if (bytesWritten != len)
+        if (bytesWritten != fileBlockInfo.blockLen)
         {
-            LOG_W(MODULE_PREFIX, "uploadBlock write failed %s (written %d != len %d)", tmpRootFilename.c_str(), bytesWritten, len);
+            LOG_W(MODULE_PREFIX, "uploadBlock write failed %s (written %d != blockLen %d)", 
+                        tmpRootFilename.c_str(), bytesWritten, fileBlockInfo.blockLen);
         }
         else
         {
 #ifdef DEBUG_FILE_UPLOAD
-            LOG_I(MODULE_PREFIX, "uploadBlock write ok %s (written %d == len %d)", tmpRootFilename.c_str(), bytesWritten, len);
+            LOG_I(MODULE_PREFIX, "uploadBlock write ok %s (written %d == blockLen %d)", 
+                        tmpRootFilename.c_str(), bytesWritten, fileBlockInfo.blockLen);
 #endif
         }
     }
-    else if (!finalBlock)
+    else if (!fileBlockInfo.finalBlock)
     {
-        LOG_W(MODULE_PREFIX, "uploadBlock Non-final block with null ptr or len %d == 0", len);
+        LOG_W(MODULE_PREFIX, "uploadBlock Non-final block with null ptr or len %d == 0", 
+                fileBlockInfo.blockLen);
     }
 
     // Rename if last block
-    if (finalBlock)
+    if (fileBlockInfo.finalBlock)
     {
         // Check if destination file exists before renaming
         struct stat st;

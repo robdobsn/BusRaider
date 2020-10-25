@@ -5,7 +5,7 @@
 
 #include "stddef.h"
 #include "stdint.h"
-#include "wgfxfont.h"
+#include "../system/wgfxfont.h"
 #include <circle/device.h>
 
 enum DISPLAY_FX_COLOUR
@@ -48,19 +48,23 @@ public:
     virtual ~DisplayBase()
     {
     }
+    // TODO 2020 remove
+    virtual void debug()
+    {}
+
     virtual void foreground(DISPLAY_FX_COLOUR colour)
     {
     }
     virtual void background(DISPLAY_FX_COLOUR colour)
     {
     }
-    virtual void write(int col, int row, const char* pStr)
+    virtual void write(uint32_t col, uint32_t row, const char* pStr)
     {
     }
-    virtual void write(int col, int row, int ch)
+    virtual void write(uint32_t col, uint32_t row, uint32_t ch)
     {
     }
-    virtual void setPixel(int x, int y, int value, DISPLAY_FX_COLOUR colour)
+    virtual void setPixel(uint32_t x, uint32_t y, uint32_t value, DISPLAY_FX_COLOUR colour)
     {
     }
     virtual void getFrameBufferInfo(FrameBufferInfo& frameBufferInfo)

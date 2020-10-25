@@ -15,6 +15,8 @@
 
 static const char* MODULE_PREFIX = "Utils";
 
+// #define DEBUG_EXTRACT_NAME_VALUES
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Timeouts
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -524,8 +526,10 @@ void Utils::extractNameValues(const String& inStr,
         }
     }
 
+#ifdef DEBUG_EXTRACT_NAME_VALUES
     // Debug
     LOG_I(MODULE_PREFIX, "extractNameValues found %d nameValues", pairCount);
+#endif
 
     // Extract the pairs
     nameValuePairs.resize(pairCount);
@@ -577,9 +581,11 @@ void Utils::extractNameValues(const String& inStr,
         pairIdx++;
     }
 
+#ifdef DEBUG_EXTRACT_NAME_VALUES
     // Debug
     for (RdJson::NameValuePair& pair : nameValuePairs)
         LOG_I(MODULE_PREFIX, "extractNameValues name %s val %s", pair.name.c_str(), pair.value.c_str());
+#endif
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -6,14 +6,17 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "BusAccessDefs.h"
 #include "PiWiring.h"
 
-class DebugVals
+// Pi debug pin
+#define BR_DEBUG_PI_SPI0_CE0 8 // SPI0 CE0
+#define BR_DEBUG_PI_SPI0_CE0_MASK (1 << BR_DEBUG_PI_SPI0_CE0) // SPI0 CE0
+
+class DebugHelper
 {
 public:
     static const uint32_t NUM_DEBUG_VALS = 15;
-    DebugVals()
+    DebugHelper()
     {
         for (uint32_t i = 0; i < NUM_DEBUG_VALS; i++)
         {
@@ -69,9 +72,9 @@ public:
     bool _valIsValid[NUM_DEBUG_VALS];
 };
 
-extern DebugVals __debugVals;
+extern DebugHelper __debugHelper;
 
-#define DEBUG_VAL_SET(valIdx,val) __debugVals.set(valIdx, val)
-#define DEBUG_VAL_PEAK(valIdx,val) __debugVals.peak(valIdx, val)
-#define DEBUG_VAL_INC(valIdx) __debugVals.inc(valIdx)
-#define DEBUG_PULSE() __debugVals.pulse();
+#define DEBUG_VAL_SET(valIdx,val) __debugHelper.set(valIdx, val)
+#define DEBUG_VAL_PEAK(valIdx,val) __debugHelper.peak(valIdx, val)
+#define DEBUG_VAL_INC(valIdx) __debugHelper.inc(valIdx)
+#define DEBUG_PULSE() __debugHelper.pulse();

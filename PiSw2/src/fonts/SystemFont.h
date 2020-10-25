@@ -3,4 +3,6 @@
 
 #pragma once
 
+#include "wgfxfont.h"
+
 extern "C" WgfxFont __systemFont;

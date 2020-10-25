@@ -6,7 +6,8 @@ CIRCLEHOME = ../../circle
 
 OBJS	= UartMaxiSerialDevice.o \
 			lowlib.o rdutils.o jsmnR.o Utils.o \
-			PiWiring.o lowlev.o KeyConversion.o
+			PiWiring.o lowlev.o KeyConversion.o \
+			DebugHelper.o
 
 brsys.a: $(OBJS)
 	@echo "  AR    $@"

@@ -5130,7 +5130,8 @@ WgfxFont __p12x16Font = {
     .cellY = 16,
     .bytesAcross = 2,
     .bytesPerChar = 32,
-    .pFontData = __pFont12x16
+    .pFontData = __pFont12x16,
+    .fontNumChars = 256
 };
 
 

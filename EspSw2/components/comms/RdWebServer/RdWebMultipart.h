@@ -26,11 +26,20 @@ public:
         _name.clear();
         _contentType.clear();
         _contentDisp.clear();
+        _crc16 = 0;
+        _crc16Valid = false;
+        _fileLenBytes = 0;
+        _fileLenValid = false;
+
     }
     String _fileName;
     String _name;
     String _contentDisp;
     String _contentType;
+    uint32_t _crc16;
+    bool _crc16Valid;
+    uint32_t _fileLenBytes;
+    bool _fileLenValid;
 };
 
 enum RdMultipartEvent
@@ -137,6 +146,10 @@ private:
 
     // Debug
     uint32_t _debugBytesHandled;
+
+    // Valid TCHARS
+    static const uint32_t NUM_ASCII_VALS = 128;
+    static const bool IS_VALID_TCHAR[NUM_ASCII_VALS];
 
     // Helpers
     void clearCallbacks();

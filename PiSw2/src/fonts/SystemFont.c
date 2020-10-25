@@ -4618,5 +4618,6 @@ WgfxFont __systemFont = {
     .cellY = 16,
     .bytesAcross = 1,
     .bytesPerChar = 16,
-    .pFontData = __pSystemFontBin
+    .pFontData = __pSystemFontBin,
+    .fontNumChars = 256
 };

@@ -41,7 +41,8 @@ with open ("../src/systemfont.c", "w+") as outFile:
     outFile.write("    .cellY = " + str(cellHeightPix) + ",\n")
     outFile.write("    .bytesAcross = " + str(bytesAcross) + ",\n")
     outFile.write("    .bytesPerChar = " + str(bytesPerChar) + ",\n")
-    outFile.write("    .pFontData = __pSystemFontBin\n")
-    outFile.write("};\n");
+    outFile.write("    .pFontData = __pSystemFontBin,\n")
+    outFile.write("    .fontNumChars = 256\n")
+    outFile.write("};\n")
 
     

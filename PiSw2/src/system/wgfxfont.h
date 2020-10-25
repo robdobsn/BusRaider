@@ -3,11 +3,14 @@
 
 #pragma once
 
+#include <stdint.h>
+
 typedef struct WgfxFont {
-    int cellX;
-    int cellY;
-    int bytesAcross;
-    int bytesPerChar;
+    uint32_t cellX;
+    uint32_t cellY;
+    uint32_t bytesAcross;
+    uint32_t bytesPerChar;
     unsigned char* pFontData;
+    uint32_t fontNumChars;
 } WgfxFont;
 

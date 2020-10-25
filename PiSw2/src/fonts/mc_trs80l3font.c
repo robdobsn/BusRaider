@@ -5002,5 +5002,6 @@ WgfxFont __TRS80Level3Font = {
     .cellY = 24,
     .bytesAcross = 1,
     .bytesPerChar = 24,
-    .pFontData = __pTRS80Level3FontBin
+    .pFontData = __pTRS80Level3FontBin,
+    .fontNumChars = 192
 };

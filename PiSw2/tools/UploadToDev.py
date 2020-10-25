@@ -5,6 +5,9 @@ import math
 import logging
 import json
 import argparse
+import requests
+from typing import Union
+from pprint import pprint
 from LikeCommsSerial import LikeCommsSerial
 from LikeHDLC import calcCRC
 
@@ -16,28 +19,29 @@ from LikeHDLC import calcCRC
 class BusRaiderConn:
     uploadAcked = False
 
-    def __init__(self):
-        self.commsHandler = LikeCommsSerial()
+    def __init__(self) -> None:
+        self.commsHandler = LikeCommsSerial(True)
 
-    def open(self, openParams):
+    def open(self, openParams) -> bool:
         self.commsHandler.setRxFrameCB(self._onRxFrameCB)
-        openOk = self.commsHandler.open(openParams)
-
+        if not self.commsHandler.open(openParams):
+            return False
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.DEBUG)
         self.lastAddr = 10000
+        return True
 
-    def close(self):
+    def close(self) -> None:
         self.commsHandler.close()
 
-    def send(self, data):
+    def send(self, data) -> None:
         self.commsHandler.send(data)
 
-    def uploadStart(self):
+    def statsClear(self) -> None:
         self.uploadAcked = False
 
     # Received frame handler
-    def _onRxFrameCB(self, frame):
+    def _onRxFrameCB(self, frame) -> None:
         # print("Frame RX")
         msgContent = {'cmdName':''}
         termPos = frame.find(0)
@@ -61,44 +65,72 @@ class BusRaiderConn:
         elif msgContent['cmdName'] != "busStats" and msgContent['cmdName'] != "addrStats":
             print("Unknown cmd msg", frameJson)
 
-def sendFile(fileName):
+def sendFile(fileName: str, conn: Union[None, BusRaiderConn]) -> None:
     # Send new firmware
     with open(fileName, "rb") as f:
 
         # Read firmware
         binaryImage = f.read()
         binaryImageLen = len(binaryImage)
-        print(f"File {fileName} is {binaryImageLen} bytes long")
-
-        # Frames follow the approach used in the web interface start, block..., end
-        startFrame = bytearray(b"{\"cmdName\":\"ufStart\",\"fileName\":\"kernel.img\",\"fileType\":\"firmware\",\"fileLen\":\"" + \
-                        bytes(str(binaryImageLen),"ascii") + b"\"}\0")
-        emulatorConn.send(startFrame)
-
-        # Split the file into blocks
-        blockMaxSize = 1024
-        numBlocks = binaryImageLen//blockMaxSize + (0 if (binaryImageLen % blockMaxSize == 0) else 1)
-        for i in range(numBlocks):
-            blockStart = i*blockMaxSize
-            blockToSend = binaryImage[blockStart:blockStart+blockMaxSize]
-            dataFrame = bytearray(b"{\"cmdName\":\"ufBlock\",\"index\":\"" + bytes(str(blockStart),"ascii") + b"\"}\0") + blockToSend
-            emulatorConn.send(dataFrame)
-
-        # End frame            
-        endFrame = bytearray(b"{\"cmdName\":\"ufEnd\",\"blockCount\":\"" + bytes(str(numBlocks),"ascii") + b"\"}\0")
-        emulatorConn.send(endFrame)
 
         # Calc CRC
         fileCRC = calcCRC(binaryImage)
-        print(f"File {fileName} is {binaryImageLen} bytes long crc 0x{fileCRC[0]*256+fileCRC[1]:04x}")
+        crcStr = f"0x{fileCRC[0]*256+fileCRC[1]:04x}"
+        print(f"File {fileName} is {binaryImageLen} bytes long crc is {crcStr}")
 
-        # Check for end frame acknowledged
-        prevTime = time.time()
-        while True:
-            if emulatorConn.uploadAcked:
-                break
-            if time.time() - prevTime > 2:
-                break
+        # Conn type
+        if conn is None:
+
+            # Send using http
+            url = "http://" + args.ipaddr + "/uploadpisw"
+            # url = "https://httpbin.org/post"
+            files = {'file': ("kernel.img", open(fileName, 'rb'), 
+                        'application/octet-stream', 
+                        {'CRC16': crcStr, "FileLengthBytes": binaryImageLen})
+            }
+            # print("+++++++++++++++++++++++++++++++++++++++++++++++++")
+            # print(requests.Request('POST', url, files=files).prepare().body)
+            # print("+++++++++++++++++++++++++++++++++++++++++++++++++")
+            r = requests.post(url, files=files)
+            # print("+++++++++++++++++++++++++++++++++++++++++++++++++")
+            # print(r.json())
+            # print("+++++++++++++++++++++++++++++++++++++++++++++++++")
+            # pprint(r.json()['headers'])
+            # print("+++++++++++++++++++++++++++++++++++++++++++++++++")
+            print(r.text)
+
+        else:
+            # Frames follow the approach used in the web interface start, block..., end
+            startJson = {
+                    "cmdName":"ufStart", 
+                    "fileName":"kernel.img", 
+                    "fileType":"firmware", 
+                    "fileLen":str(binaryImageLen), 
+                    "CRC16": crcStr 
+            }
+            startFrame = json.dumps(startJson).encode('utf-8') + '\0'
+            emulatorConn.send(startFrame)
+
+            # Split the file into blocks
+            blockMaxSize = 1024
+            numBlocks = binaryImageLen//blockMaxSize + (0 if (binaryImageLen % blockMaxSize == 0) else 1)
+            for i in range(numBlocks):
+                blockStart = i*blockMaxSize
+                blockToSend = binaryImage[blockStart:blockStart+blockMaxSize]
+                dataFrame = bytearray(b"{\"cmdName\":\"ufBlock\",\"index\":\"" + bytes(str(blockStart),"ascii") + b"\"}\0") + blockToSend
+                emulatorConn.send(dataFrame)
+
+            # End frame            
+            endFrame = bytearray(b"{\"cmdName\":\"ufEnd\",\"blockCount\":\"" + bytes(str(numBlocks),"ascii") + b"\"}\0")
+            emulatorConn.send(endFrame)
+
+            # Check for end frame acknowledged
+            prevTime = time.time()
+            while True:
+                if emulatorConn.uploadAcked:
+                    break
+                if time.time() - prevTime > 2:
+                    break
 
 argparser = argparse.ArgumentParser(description='UploadToBusRaider')
 DEFAULT_SERIAL_PORT = "COM7"
@@ -109,9 +141,14 @@ argparser.add_argument('--port', help='Serial Port', default=DEFAULT_SERIAL_PORT
 argparser.add_argument('--baud', help='Serial Baud', default=DEFAULT_SERIAL_BAUD)
 argparser.add_argument('--ipaddr', help='IP Address', default=DEFAULT_IP_ADDRESS)
 args = argparser.parse_args()
-emulatorConn = BusRaiderConn()
-emulatorConn.open({"serialPort":args.port,"serialBaud":args.baud})
-emulatorConn.uploadStart()
-print("Upload Started")
-sendFile(args.fileName)
-emulatorConn.close()
+if len(args.ipaddr) > 0:
+    sendFile(args.fileName, None)
+else:
+    emulatorConn = BusRaiderConn()
+    if emulatorConn.open({"serialPort":args.port,"serialBaud":args.baud}):
+        emulatorConn.statsClear()
+        print("Upload Started")
+        sendFile(args.fileName, emulatorConn)
+        emulatorConn.close()
+    else:
+        print("Cannot open connection")

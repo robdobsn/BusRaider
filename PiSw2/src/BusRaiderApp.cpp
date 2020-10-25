@@ -10,14 +10,14 @@
 #include "usb_hid_keys.h"
 #include "McTerminal.h"
 #include "SelfTest.h"
-#include "DebugVals.h"
+#include "DebugHelper.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // System Name and Version
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define SYSTEM_NAME "BusRaider"
-#define SYSTEM_VERSION "3.1.7"
+#define SYSTEM_VERSION "3.1.8"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Globals
@@ -385,10 +385,10 @@ void BusRaiderApp::statusDisplayUpdate()
 
         // Debug Vals
         statusStr[0] = 0;
-        for (uint32_t i = 0; i < DebugVals::NUM_DEBUG_VALS; i++)
+        for (uint32_t i = 0; i < DebugHelper::NUM_DEBUG_VALS; i++)
         {
             int cnt = 0;
-            if (__debugVals.get(i, cnt))
+            if (__debugHelper.get(i, cnt))
             {
                 snprintf(refreshStr, sizeof(refreshStr), "[%d]=%d,", i, cnt);
                 strlcat(statusStr, refreshStr, MAX_STATUS_STR_LEN);

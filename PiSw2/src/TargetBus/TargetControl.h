@@ -127,7 +127,7 @@ private:
     void cycleClear();
     void cycleService();
     void cycleSuspend(bool suspend);
-    void cycleReqHandlePending(bool isProgramming);
+    void cycleReqHandlePending();
     void cycleReqCallback(BR_RETURN_TYPE result);
     void cycleReqAssertedBusRq();
     void cycleReqAssertedIRQ();

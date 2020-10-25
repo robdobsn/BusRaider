@@ -130,7 +130,7 @@ public:
     }
 
     // Firmware update
-    virtual bool firmwareUpdateStart(const String& fileName, size_t fileLen)
+    virtual bool firmwareUpdateStart(const char* fileName, size_t fileLen)
     {
         return false;
     }

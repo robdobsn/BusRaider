@@ -102,14 +102,11 @@ void FileManager::addRestAPIEndpoints(RestAPIEndpointManager& endpointManager)
                     NULL, 
                     NULL,
                     std::bind(&FileManager::apiUploadToFileManPart, this, 
-                            std::placeholders::_1, std::placeholders::_2, 
-                            std::placeholders::_3, std::placeholders::_4,
-                            std::placeholders::_5, std::placeholders::_6,
-                            std::placeholders::_7));
+                            std::placeholders::_1, std::placeholders::_2));
 }
 
 // Format file system
-void FileManager::apiReformatFS(String &reqStr, String& respStr)
+void FileManager::apiReformatFS(const String &reqStr, String& respStr)
 {
     // File system
     String fileSystemStr = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
@@ -120,7 +117,7 @@ void FileManager::apiReformatFS(String &reqStr, String& respStr)
 // Uses FileManager.h
 // In the reqStr the first part of the path is the file system name (e.g. sd or spiffs, can be blank to default)
 // The second part of the path is the folder - note that / must be replaced with ~ in folder
-void FileManager::apiFileList(String &reqStr, String& respStr)
+void FileManager::apiFileList(const String &reqStr, String& respStr)
 {
     // File system
     String fileSystemStr = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
@@ -148,7 +145,7 @@ void FileManager::apiFileList(String &reqStr, String& respStr)
 // Uses FileManager.h
 // In the reqStr the first part of the path is the file system name (e.g. sd or spiffs)
 // The second part of the path is the folder and filename - note that / must be replaced with ~ in folder
-void FileManager::apiFileRead(String &reqStr, String& respStr)
+void FileManager::apiFileRead(const String &reqStr, String& respStr)
 {
     // File system
     String fileSystemStr = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
@@ -165,7 +162,7 @@ void FileManager::apiFileRead(String &reqStr, String& respStr)
 // Uses FileManager.h
 // In the reqStr the first part of the path is the file system name (e.g. sd or spiffs)
 // The second part of the path is the filename - note that / must be replaced with ~ in filename
-void FileManager::apiDeleteFile(String &reqStr, String& respStr)
+void FileManager::apiDeleteFile(const String &reqStr, String& respStr)
 {
     // File system
     String fileSystemStr = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
@@ -185,7 +182,7 @@ void FileManager::apiDeleteFile(String &reqStr, String& respStr)
 }
 
 // Upload file to file system - completed
-void FileManager::apiUploadToFileManComplete(String &reqStr, String &respStr)
+void FileManager::apiUploadToFileManComplete(const String &reqStr, String &respStr)
 {
 #ifdef DEBUG_FILE_MANAGER_UPLOAD
     LOG_I(MODULE_PREFIX, "apiUploadToFileManComplete %s", reqStr.c_str());
@@ -195,11 +192,10 @@ void FileManager::apiUploadToFileManComplete(String &reqStr, String &respStr)
     }
 
 // Upload file to file system - part of file (from HTTP POST file)
-void FileManager::apiUploadToFileManPart(String& req, const String& filename, size_t contentLen, size_t index, 
-                const uint8_t *data, size_t len, bool finalBlock)
+void FileManager::apiUploadToFileManPart(const String& req, FileBlockInfo& fileBlockInfo)
 {
 #ifdef DEBUG_FILE_MANAGER_UPLOAD
     LOG_I(MODULE_PREFIX, "apiUpToFileMan %d, %d, %d, %d", contentLen, index, len, finalBlock);
 #endif
-    fileSystem.uploadAPIBlockHandler("", req, filename, contentLen, index, data, len, finalBlock);
+    fileSystem.uploadAPIBlockHandler("", req, fileBlockInfo);
 }

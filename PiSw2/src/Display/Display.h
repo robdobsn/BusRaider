@@ -37,8 +37,14 @@ public:
 
     bool init();
 
+    // TODO 2020 remove
+    virtual void debug()
+    {
+        _displayFX.debug();
+    }
+
     // Target
-    void targetLayout(
+    virtual void targetLayout(
                     int pixX, int pixY, 
                     int cellX, int cellY, 
                     int xScale, int yScale,
@@ -49,15 +55,15 @@ public:
     void statusPut(int statusElement, int statusType, const char* pStr);
 
     // Window
-    void windowForeground(int winIdx, DISPLAY_FX_COLOUR colour);
-    void windowBackground(int winIdx, DISPLAY_FX_COLOUR colour);
-    void windowWrite(int winIdx, int col, int row, const char* pStr);
-    void windowWrite(int winIdx, int col, int row, int ch);
-    void windowSetPixel(int winIdx, int x, int y, int value, DISPLAY_FX_COLOUR colour);
+    void windowForeground(uint32_t winIdx, DISPLAY_FX_COLOUR colour);
+    void windowBackground(uint32_t winIdx, DISPLAY_FX_COLOUR colour);
+    void windowWrite(uint32_t winIdx, uint32_t col, uint32_t row, const char* pStr);
+    void windowWrite(uint32_t winIdx, uint32_t col, uint32_t row, uint32_t ch);
+    void windowSetPixel(uint32_t winIdx, uint32_t x, uint32_t y, uint32_t value, DISPLAY_FX_COLOUR colour);
 
     // Console
     void consolePut(const char* pStr);
-    void consolePut(int ch);
+    void consolePut(uint32_t ch);
     void consolePut(const char* pBuffer, unsigned count);
     void consoleForeground(DISPLAY_FX_COLOUR colour);
     int consoleGetWidth();
@@ -66,17 +72,17 @@ public:
     void logDebug(const char* pSeverity, const char* pSource, const char* pMsg);
 
     // Target window
-    void foreground(DISPLAY_FX_COLOUR colour) override;
-    void background(DISPLAY_FX_COLOUR colour) override;
-    void write(int col, int row, const char* pStr) override;
-    void write(int col, int row, int ch) override;
-    void setPixel(int x, int y, int value, DISPLAY_FX_COLOUR colour) override;
+    virtual void foreground(DISPLAY_FX_COLOUR colour) override;
+    virtual void background(DISPLAY_FX_COLOUR colour) override;
+    virtual void write(uint32_t col, uint32_t row, const char* pStr) override;
+    virtual void write(uint32_t col, uint32_t row, uint32_t ch) override;
+    virtual void setPixel(uint32_t x, uint32_t y, uint32_t value, DISPLAY_FX_COLOUR colour) override;
 
     // Implementations of CDevice base class
     int Write(const void *pBuffer, size_t nCount);
 
     // RAW access
-    void getFrameBufferInfo(FrameBufferInfo& frameBufferInfo) override;
+    virtual void getFrameBufferInfo(FrameBufferInfo& frameBufferInfo) override;
 
 	/// \brief Displays rotating symbols in the upper right corner of the screen
 	/// \param nIndex Index of the rotor to be displayed (0..3)

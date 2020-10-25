@@ -1,8 +1,8 @@
 
 # Generate font from binary
 
-cellWidthPix = 8;
-cellHeightPix = 24;
+cellWidthPix = 8
+cellHeightPix = 24
 bytesAcross = 1
 bytesPerChar = 24
 
@@ -34,8 +34,9 @@ with open ("../src/mc_trs80l3font.c", "w+") as outFile:
     outFile.write("    .cellY = " + str(cellHeightPix) + ",\n")
     outFile.write("    .bytesAcross = " + str(bytesAcross) + ",\n")
     outFile.write("    .bytesPerChar = " + str(bytesPerChar) + ",\n")
-    outFile.write("    .pFontData = __pTRS80Level3FontBin\n")
-    outFile.write("};\n");
+    outFile.write("    .pFontData = __pTRS80Level3FontBin,\n")
+    outFile.write("    .fontNumChars = 192\n")
+    outFile.write("};\n")
 
     
 

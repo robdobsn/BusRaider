@@ -532,7 +532,7 @@ void SysManager::sendCmdJSON(const char* sysModName, const char* cmdJSON)
 // API endpoints
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void SysManager::apiReset(String &reqStr, String& respStr)
+void SysManager::apiReset(const String &reqStr, String& respStr)
 {
     // Register that a restart is required but don't restart immediately
     // as the acknowledgement would not get through
@@ -542,7 +542,7 @@ void SysManager::apiReset(String &reqStr, String& respStr)
     Utils::setJsonBoolResult(reqStr.c_str(), respStr, true);
 }
 
-void SysManager::apiGetVersion(String &reqStr, String& respStr)
+void SysManager::apiGetVersion(const String &reqStr, String& respStr)
 {
     LOG_I(MODULE_PREFIX, "apiGetVersion");
     char versionJson[200];
@@ -551,14 +551,14 @@ void SysManager::apiGetVersion(String &reqStr, String& respStr)
     respStr = versionJson;
 }
 
-void SysManager::apiGetSysModInfo(String &reqStr, String& respStr)
+void SysManager::apiGetSysModInfo(const String &reqStr, String& respStr)
 {
     // Get name of SysMod
     String sysModName = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
     respStr = getStatusJSON(sysModName.c_str());
 }
 
-void SysManager::apiGetSysModDebug(String &reqStr, String& respStr)
+void SysManager::apiGetSysModDebug(const String &reqStr, String& respStr)
 {
     // Get name of SysMod
     String sysModName = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
@@ -570,7 +570,7 @@ void SysManager::apiGetSysModDebug(String &reqStr, String& respStr)
 // Friendly name
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void SysManager::apiFriendlyName(String &reqStr, String& respStr)
+void SysManager::apiFriendlyName(const String &reqStr, String& respStr)
 {
     // Check if we're setting
     if (RestAPIEndpointManager::getNumArgs(reqStr.c_str()) > 1)
@@ -621,7 +621,7 @@ void SysManager::apiFriendlyName(String &reqStr, String& respStr)
 // Serial number
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void SysManager::apiSerialNumber(String &reqStr, String& respStr)
+void SysManager::apiSerialNumber(const String &reqStr, String& respStr)
 {
     // Check if we're setting
     if (RestAPIEndpointManager::getNumArgs(reqStr.c_str()) > 1)
@@ -1023,8 +1023,18 @@ bool SysManager::processRICRESTFileBlock(RICRESTMsg& ricRESTReqMsg, String& resp
         else
         {
             // Part of a file
-            fileSystem.uploadAPIBlockHandler("", _fileUploadHandler._reqStr, _fileUploadHandler._fileName, 
-                                _fileUploadHandler._fileSize, filePos, pBuffer, bufferLen, isFinalBlock);
+            FileBlockInfo fileBlockInfo(_fileUploadHandler._fileName.c_str(), 
+                                _fileUploadHandler._fileSize, 
+                                filePos, 
+                                pBuffer, 
+                                bufferLen, 
+                                isFinalBlock,
+                                _fileUploadHandler._expCRC16,
+                                _fileUploadHandler._expCRC16Valid,
+                                _fileUploadHandler._fileSize,
+                                true
+                                );
+            fileSystem.uploadAPIBlockHandler("", _fileUploadHandler._reqStr, fileBlockInfo);
         }
     }
     return false;
@@ -1076,19 +1086,27 @@ void SysManager::fileUploadStart(const String& reqStr, String& respMsg, uint32_t
     uint32_t fileLen = cmdFrame.getLong("fileLen", 0);
     String fileName = cmdFrame.getString("fileName", "");
     String fileType = cmdFrame.getString("fileType", "");
+    String crc16Str = cmdFrame.getString("CRC16", "");
+    uint32_t crc16 = 0;
+    bool crc16Valid = false;
+    if (crc16Str.length() > 0)
+    {
+        crc16Valid = true;
+        crc16 = strtoul(crc16Str.c_str(), NULL, 0);
+    }
 
     // Start file upload handler
     uint32_t fileBlockSize = 0;
     uint32_t batchAckSize = 0;
     String errorMsg;
     bool startOk = _fileUploadHandler.start(ufStartReq, fileName, fileLen, fileType, 
-                fileBlockSize, batchAckSize, channelID, errorMsg);
+                fileBlockSize, batchAckSize, channelID, errorMsg, crc16, crc16Valid);
 
     // Check if firmware
     if (startOk && _fileUploadHandler._fileIsRICFirmware)
     {
         // Start ESP OTA update
-        startOk = _pFirmwareUpdateSysMod->firmwareUpdateStart(_fileUploadHandler._fileName, 
+        startOk = _pFirmwareUpdateSysMod->firmwareUpdateStart(_fileUploadHandler._fileName.c_str(), 
                             _fileUploadHandler._fileSize);
         if (!startOk)
             errorMsg = "ESP OTA fail";

@@ -120,8 +120,8 @@ void TargetControl::programmingDone()
 
 void TargetControl::programExec(bool codeAtResetVector)
 {
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "programExec codeAtResetVector %c",
-            codeAtResetVector ? 'Y' : 'N');
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "programExec codeAtResetVector %c",
+    //         codeAtResetVector ? 'Y' : 'N');
 
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "programExec debugActive %c", 
     //                 getTargetTracker().isTrackingActive() ? 'Y' : 'N');

@@ -15,6 +15,7 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include <Utils.h>
+#include "FileBlockInfo.h"
 
 class RestAPIEndpointManager;
 
@@ -38,34 +39,33 @@ private:
     void applySetup();
 
     // Get system version
-    void apiGetVersion(String &reqStr, String& respStr);
+    void apiGetVersion(const String &reqStr, String& respStr);
 
     // Format file system
-    void apiReformatFS(String &reqStr, String& respStr);
+    void apiReformatFS(const String &reqStr, String& respStr);
 
     // List files on a file system
     // Uses FileSystem.h
     // In the reqStr the first part of the path is the file system name (e.g. sd or spiffs, can be blank to default)
     // The second part of the path is the folder - note that / must be replaced with ~ in folder
-    void apiFileList(String &reqStr, String& respStr);
+    void apiFileList(const String &reqStr, String& respStr);
 
     // Read file contents
     // Uses FileSystem.h
     // In the reqStr the first part of the path is the file system name (e.g. sd or spiffs)
     // The second part of the path is the folder and filename - note that / must be replaced with ~ in folder
-    void apiFileRead(String &reqStr, String& respStr);
+    void apiFileRead(const String &reqStr, String& respStr);
 
     // Delete file on the file system
     // Uses FileSystem.h
     // In the reqStr the first part of the path is the file system name (e.g. sd or spiffs)
     // The second part of the path is the filename - note that / must be replaced with ~ in filename
-    void apiDeleteFile(String &reqStr, String& respStr);
+    void apiDeleteFile(const String &reqStr, String& respStr);
 
     // Upload file to file system - completed
-    void apiUploadToFileManComplete(String &reqStr, String &respStr);
+    void apiUploadToFileManComplete(const String &reqStr, String &respStr);
 
     // Upload file to file system - part of file (from HTTP POST file)
-    void apiUploadToFileManPart(String& req, const String& filename, size_t contentLen, size_t index, 
-                const uint8_t *data, size_t len, bool finalBlock);
+    void apiUploadToFileManPart(const String& req, FileBlockInfo& fileBlockInfo);
 
 };

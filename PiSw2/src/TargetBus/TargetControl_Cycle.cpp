@@ -6,7 +6,7 @@
 #include "PiWiring.h"
 #include "lowlib.h"
 #include "logging.h"
-#include "DebugVals.h"
+#include "DebugHelper.h"
 
 // #define TEST_HIGH_ADDR_IS_ON_PIB
 
@@ -57,8 +57,8 @@ bool TargetControl::cycleReqAction(BusSocketInfo& busSocketInfo,
 {
     if (_programmingPending || (_cycleReqState != CYCLE_REQ_STATE_NONE))
     {
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "cycleReqAction FAILED state %d progPend %d",
-                _cycleReqState, _programmingPending);
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "cycleReqAction FAILED state %d progPend %d",
+        //         _cycleReqState, _programmingPending);
         return false;
     }
     _cycleReqInfo = &busSocketInfo;
@@ -102,12 +102,12 @@ void TargetControl::cycleService()
         _cycleReqActionType = BR_BUS_ACTION_BUSRQ;
         _cycleBusRqReason = BR_BUS_ACTION_PROGRAMMING;
         _cycleReqMaxUs = PROG_MAX_WAIT_FOR_BUSAK_US;
-        cycleReqHandlePending(true);
+        cycleReqHandlePending();
     }
     else if (_cycleReqState == CYCLE_REQ_STATE_PENDING)
     {
         // Bus actions pending
-        cycleReqHandlePending(false);
+        cycleReqHandlePending();
     }
     else if (_cycleReqState == CYCLE_REQ_STATE_ASSERTED)
     {
@@ -125,28 +125,12 @@ void TargetControl::cycleService()
 // Cycle pending helpers
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetControl::cycleReqHandlePending(bool isProgramming)
+void TargetControl::cycleReqHandlePending()
 {
-    // TODO 2020 - check if we can assert the bus action - maybe need more conditions
-    if (true) // !_busAccess.bus().waitIsActive())
-    {
-        // Initiate the cycle action
-        _busAccess.bus().setBusSignal(_cycleReqActionType, true);
-        _cycleReqAssertedUs = micros();
-        _cycleReqState = CYCLE_REQ_STATE_ASSERTED;
-    }
-    else if (!isProgramming)
-    {
-        // Check for timeout
-        if (isTimeout(micros(), _cycleReqUs, MAX_WAIT_FOR_PENDING_ACTION_US))
-        {
-            // Cancel the request
-            // LogWrite(MODULE_PREFIX, LOG_DEBUG, 
-            //          "Timeout on bus action %u type %d _waitIsActive %d", 
-            //          micros(), _cycleReqActionType, _waitIsActive);
-            cycleReqCallback(BR_NOT_HANDLED);
-        }
-    }
+    // Initiate the cycle action
+    _busAccess.bus().setBusSignal(_cycleReqActionType, true);
+    _cycleReqAssertedUs = micros();
+    _cycleReqState = CYCLE_REQ_STATE_ASSERTED;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

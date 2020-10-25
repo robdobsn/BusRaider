@@ -17,6 +17,17 @@ static const char *MODULE_PREFIX = "RdMultipart";
 // #define DEBUG_MULTIPART_PAYLOAD
 // #define DEBUG_MULTIPART_BOUNDARY
 
+const bool RdWebMultipart::IS_VALID_TCHAR[] = {
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,    // CTRL chars
+    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,    // CTRL chars
+    0,1,0,1,1,1,1,1,0,0,1,1,0,1,1,0,    // Punctuation
+    1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,    // Digits
+    0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,    // Upper case
+    1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,    // Upper case
+    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,    // Lower case
+    1,1,1,1,1,1,1,1,1,1,1,0,1,0,1,0,    // Lower case
+};
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor/Destructor
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -230,8 +241,7 @@ bool RdWebMultipart::processHeaderByte(const uint8_t *buffer, uint32_t bufPos, u
             break;
         }
 
-        uint8_t cl = lower(curByte);
-        if (cl < 'a' || cl > 'z')
+        if ((curByte >= NUM_ASCII_VALS) || !IS_VALID_TCHAR[curByte])
         {
 #ifdef WARN_ON_MULTIPART_ERRORS
             LOG_W(MODULE_PREFIX, "Header name not ascii");
@@ -306,10 +316,6 @@ bool RdWebMultipart::processPayload(const uint8_t *buffer, uint32_t bufPos, uint
 {
     // Process all data
     uint32_t payloadStartPos = bufPos;
-#ifdef DEBUG_MULTIPART_PAYLOAD
-    LOG_W(MODULE_PREFIX, "Payload start pos %d bytesHandled %d %s", bufPos, _debugBytesHandled,
-            _debugBytesHandled > _contentPos + 154 + 1440 ? "MISSING DATA" : "");
-#endif
     while (bufPos < bufLen)
     {
         // Check if we have already partially detected a boundary
@@ -500,6 +506,16 @@ void RdWebMultipart::headerValueFound(const uint8_t *pBuf, uint32_t pos, uint32_
     else if (_headerName.equalsIgnoreCase("Content-Type"))
     {
         _formInfo._contentType = headerValue;
+    }
+    else if (_headerName.equalsIgnoreCase("FileLengthBytes"))
+    {
+        _formInfo._fileLenBytes = strtoul(headerValue.c_str(), NULL, 0);
+        _formInfo._fileLenValid = true;
+    }
+    else if (_headerName.equalsIgnoreCase("CRC16"))
+    {
+        _formInfo._crc16 = strtoul(headerValue.c_str(), NULL, 0);
+        _formInfo._crc16Valid = true;
     }
 
     // Callback on header info

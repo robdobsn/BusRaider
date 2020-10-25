@@ -187,9 +187,14 @@ void RdWebResponderRestAPI::multipartOnData(const uint8_t *pBuf, uint32_t bufLen
     LOG_W(MODULE_PREFIX, "multipartData len %d filename %s contentPos %d isFinal %d", 
                 bufLen, formInfo._fileName.c_str(), contentPos, isFinalPart);
 #endif
+    // Upload info
+    FileBlockInfo fileBlockInfo(formInfo._fileName.c_str(), 
+                    _headerExtract.contentLength, contentPos, 
+                    pBuf, bufLen, isFinalPart, formInfo._crc16, formInfo._crc16Valid,
+                    formInfo._fileLenBytes, formInfo._fileLenValid);
     // Check for callback
     if (_pEndpointDef)
-        _pEndpointDef->callbackUpload(_requestStr, formInfo._fileName, _headerExtract.contentLength, contentPos, pBuf, bufLen, isFinalPart);
+        _pEndpointDef->callbackUpload(_requestStr, fileBlockInfo);
 }
 
 void RdWebResponderRestAPI::multipartOnHeaderNameValue(const String& name, const String& val)

@@ -12,8 +12,7 @@ OBJS	= BusControl.o BusSocketManager.o \
 		TargetControl_Prog.o TargetControl_Cycle.o \
 		TargetBreakpoints.o \
 		TargetCPUZ80.o TargetProgrammer.o memoryTests.o \
-		MemoryController.o \
-		DebugVals.o
+		MemoryController.o 
 		# BusAccess.o BusAccess_Control.o BusAccess_Block.o \
 		# BusAccess_Raw.o BusAccess_Wait.o BusAccess_Addr.o \
 		# BusAccess_Cycle.o

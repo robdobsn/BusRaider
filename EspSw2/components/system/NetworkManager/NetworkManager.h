@@ -45,7 +45,7 @@ private:
     
     // Helpers
     void applySetup();
-    void apiWifiSet(String &reqStr, String &respStr);
-    void apiWifiClear(String &reqStr, String &respStr);
-    void apiWiFiPause(String &reqStr, String& respStr);
+    void apiWifiSet(const String &reqStr, String &respStr);
+    void apiWifiClear(const String &reqStr, String &respStr);
+    void apiWiFiPause(const String &reqStr, String& respStr);
 };

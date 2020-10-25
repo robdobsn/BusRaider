@@ -6,6 +6,9 @@
 #include <string.h>
 #include "lowlib.h"
 #include "lowlev.h"
+#include "DebugHelper.h"
+
+static const char* MODULE_PREFIX = "DisplayFX";
 
 static const unsigned int xterm_colors[256] = {
     0x000000, 0x800000, 0x008000, 0x808000, 0x000080, 0x800080, 0x008080, 0xc0c0c0, 
@@ -60,7 +63,7 @@ DisplayFX::~DisplayFX()
 	delete _pBCMFrameBuffer;
 }
 
-bool DisplayFX::init(int displayWidth, int displayHeight)
+bool DisplayFX::init(uint32_t displayWidth, uint32_t displayHeight)
 {
     _pBCMFrameBuffer = new CBcmFrameBuffer (displayWidth, displayHeight, DEPTH);
 #if DEPTH == 8
@@ -116,7 +119,7 @@ void DisplayFX::screenClear()
         *pFrameBuf++ = _screenBackground;
 }
 
-void DisplayFX::screenRectClear(int tlx, int tly, int width, int height)
+void DisplayFX::screenRectClear(uint32_t tlx, uint32_t tly, uint32_t width, uint32_t height)
 {
     uint8_t* pDest = screenGetPFBXY(tlx, tly);
     int bytesAcross = width;
@@ -137,7 +140,7 @@ void DisplayFX::screenBackground(DISPLAY_FX_COLOUR colour)
 // Window handling
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void DisplayFX::windowPut(int winIdx, int col, int row, const char* pStr)
+void DisplayFX::windowPut(uint32_t winIdx, uint32_t col, uint32_t row, const char* pStr)
 {
     if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
         return;
@@ -149,7 +152,7 @@ void DisplayFX::windowPut(int winIdx, int col, int row, const char* pStr)
     }
 }
 
-void DisplayFX::windowPut(int winIdx, int col, int row, int ch)
+void DisplayFX::windowPut(uint32_t winIdx, uint32_t col, uint32_t row, uint32_t ch)
 {
     // Validity
     if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
@@ -161,52 +164,159 @@ void DisplayFX::windowPut(int winIdx, int col, int row, int ch)
     if (row >= _windows[winIdx].rows())
         return;
 
+    // Check char valid for font
+    if (ch >= _windows[winIdx].pFont->fontNumChars)
+        ch = 0;
+
     // Pointer to framebuffer where char cell starts
+    uint8_t* pFrameBuf = windowGetPFB(winIdx, col, row);
 
-    uint8_t* pBuf = windowGetPFB(winIdx, col, row);
-    // Pointer to font data to write into char cell
-    uint8_t* pFont = _windows[winIdx].pFont->pFontData + ch * _windows[winIdx].pFont->bytesPerChar;
+    // if ((ch == 'E') && (_pitch%4 == 0) && ((((uint32_t)pFrameBuf)&0x03)==0))
+    // {
+    //     uint32_t* pp = (uint32_t*)pFrameBuf;
+    //     // *pp = 0x03;
+    //     _windows[winIdx]._pFrameBufError8 = pFrameBuf;
+    //     _windows[winIdx]._pFrameBufError32 = pp;
 
-    // For each bit in the font character write the appropriate data to the pixel in framebuffer
-    uint8_t* pBufCur = pBuf;
-    int fgColour = (_windows[winIdx].windowForeground != -1) ? _windows[winIdx].windowForeground : _screenForeground;
-    int bgColour = (_windows[winIdx].windowBackground != -1) ? _windows[winIdx].windowBackground : _screenBackground;
-    int cellHeight = _windows[winIdx].cellHeight;
-    int yPixScale = _windows[winIdx].yPixScale;
-    int cellWidth = _windows[winIdx].cellWidth;
-    int xPixScale = _windows[winIdx].xPixScale;
-    for (int y = 0; y < cellHeight; y++) {
-        for (int i = 0; i < yPixScale; i++) {
-            uint8_t* pFontCur = pFont;
-            pBufCur = pBuf;
-            int bitMask = 0x80;
-            for (int x = 0; x < cellWidth; x++) {
-                for (register int j = 0; j < xPixScale; j++) {
-                    *pBufCur = (*pFontCur & bitMask) ? fgColour : bgColour;
-                    pBufCur++;
+    //     // Get pointer to char in cached font
+    //     uint32_t* pFont = _windows[winIdx]._pFontCache + 
+    //                         (ch * _windows[winIdx]._fontCacheUint32sPerChar);
+    //     if (!pFont)
+    //         return;
+    //     uint32_t fontUint32sPerLine = _windows[winIdx]._fontCacheUint32sPerLine;
+    //     uint32_t cellHeight = _windows[winIdx].cellHeight;
+    //     uint32_t yPixScale = _windows[winIdx].yPixScale;
+    //     uint32_t pitchDiv4 = _pitch/4;
+
+    //     // Draw character
+    //     for (uint32_t y = 0; y < cellHeight; y++) 
+    //     {
+    //         for (uint32_t pixy = 0; pixy < yPixScale; pixy++) 
+    //         {
+    //             // // uint32_t* pCurBuf = (uint32_t*)pFrameBuf;
+    //             // // *pCurBuf = 0x0f0f0f0f;
+    //             // uint8_t* pbb = pFrameBuf;
+    //             // for (uint32_t byteIdx = 0; byteIdx < 1; byteIdx++)
+    //             // {
+    //             //     *((uint32_t*)pbb) = 0x0f;
+    //             //     // *pbb++ = 0x0f;
+    //             // }
+    //             // pFrameBuf += _pitch;
+    //             // *pBuf = 0x0f;
+    //             uint32_t* pCurBuf = (uint32_t*)pFrameBuf;
+    //             for (uint32_t x = 0; x < fontUint32sPerLine; x++) 
+    //             {
+    //                 *pCurBuf++ = *pFont++;
+    //             }
+    //             pFrameBuf += pitchDiv4;
+    //         }
+    //     }
+    // }
+    // else if (ch == '0')
+    // {
+    //     // Get pointer to char in cached font
+    //     uint8_t* pFont = (uint8_t*)(_windows[winIdx]._pFontCache + 
+    //                         (ch * _windows[winIdx]._fontCacheUint32sPerChar));
+    //     if (!pFont)
+    //         return;
+    //     uint32_t fontUint8sPerLine = _windows[winIdx]._fontCacheUint32sPerLine * 4;
+    //     uint32_t cellHeight = _windows[winIdx].cellHeight;
+    //     uint32_t yPixScale = _windows[winIdx].yPixScale;
+
+    //     // Draw character
+    //     for (uint32_t y = 0; y < cellHeight; y++) 
+    //     {
+    //         for (uint32_t pixy = 0; pixy < yPixScale; pixy++) 
+    //         {
+    //             uint8_t* pCurBuf = pFrameBuf;
+    //             for (uint32_t byteIdx = 0; byteIdx < fontUint8sPerLine; byteIdx++)
+    //             {
+    //                 *pCurBuf++ = *pFont++;
+    //             }
+    //             pFrameBuf += _pitch;
+    //         }
+    //     }
+    // }
+    // else
+    // {
+        // Pointer to font data to write into char cell
+        uint8_t* pFont = _windows[winIdx].pFont->pFontData + ch * _windows[winIdx].pFont->bytesPerChar;
+
+        // For each bit in the font character write the appropriate data to the pixel in framebuffer
+        uint32_t fgColour = (_windows[winIdx].windowForeground != -1) ? 
+                    _windows[winIdx].windowForeground | _windows[winIdx].windowForeground << 8 : 
+                    _screenForeground | _screenForeground << 8;
+        uint32_t bgColour = (_windows[winIdx].windowBackground != -1) ? 
+                    _windows[winIdx].windowBackground | _windows[winIdx].windowBackground << 8: 
+                    _screenBackground | _screenBackground << 8;
+        uint32_t cellHeight = _windows[winIdx].cellHeight;
+        uint32_t cellWidth = _windows[winIdx].cellWidth;
+        uint32_t xPixScale = _windows[winIdx].xPixScale;
+        uint32_t yPixScale = _windows[winIdx].yPixScale;
+        // uint32_t lineBuf[xPixScale * cellWidth / 4];
+        for (uint32_t y = 0; y < cellHeight; y++) {
+            // if (xPixScale == 2)
+            // {
+            //     uint8_t* pFontCur = pFont;
+            //     uint32_t* pBufCur = (uint32_t*)pBuf;
+            //     int bitMask = 0x80;
+            //     uint32_t* pLineBuf = lineBuf;
+            //     for (int x = 0; x < cellWidth; x++) {
+            //         if (x % 2)
+            //             *pLineBuf++ |= ((*pFontCur & bitMask) ? fgColour : bgColour) << 16;
+            //         else
+            //             *pLineBuf = (*pFontCur & bitMask) ? fgColour : bgColour;
+            //         bitMask = bitMask >> 1;
+            //         if (bitMask == 0)
+            //         {
+            //             bitMask = 0x80;
+            //             pFontCur++;
+            //         }
+            //     }
+            //     for (int i = 0; i < yPixScale; i++) {
+            //         for (int x = 0; x < cellWidth / 2; x++) {
+            //             *pBufCur++ = lineBuf[x];
+            //         }
+            //         pBuf += _pitch;
+            //     }
+            // }
+            // else
+            // {
+                for (uint32_t i = 0; i < yPixScale; i++) {
+                    uint8_t* pFontCur = pFont;
+                    uint8_t* pBufCur = pFrameBuf;
+                    int bitMask = 0x80;
+                    for (uint32_t x = 0; x < cellWidth; x++) {
+                        for (register uint32_t j = 0; j < xPixScale; j++) {
+                            *pBufCur = (*pFontCur & bitMask) ? fgColour : bgColour;
+                            pBufCur++;
+                        }
+                        bitMask = bitMask >> 1;
+                        if (bitMask == 0)
+                        {
+                            bitMask = 0x80;
+                            pFontCur++;
+                        }
+                    }
+                    pFrameBuf += _pitch;
                 }
-                bitMask = bitMask >> 1;
-                if (bitMask == 0)
-                {
-                    bitMask = 0x80;
-                    pFontCur++;
-                }
-            }
-            pBuf += _pitch;
+            // }
+            pFont += _windows[winIdx].pFont->bytesAcross;
         }
-        pFont += _windows[winIdx].pFont->bytesAcross;
-    }
+    // }
+                    DEBUG_PULSE();
+
 }
 
-void DisplayFX::windowForeground(int winIdx, DISPLAY_FX_COLOUR colour)
+void DisplayFX::windowForeground(uint32_t winIdx, DISPLAY_FX_COLOUR colour)
 {
     // Validity
-    if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
+    if (winIdx >= DISPLAY_FX_MAX_WINDOWS)
         return;
     _windows[winIdx].windowForeground = colour;
 }
 
-void DisplayFX::windowBackground(int winIdx, DISPLAY_FX_COLOUR colour)
+void DisplayFX::windowBackground(uint32_t winIdx, DISPLAY_FX_COLOUR colour)
 {
     // Validity
     if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
@@ -214,7 +324,7 @@ void DisplayFX::windowBackground(int winIdx, DISPLAY_FX_COLOUR colour)
     _windows[winIdx].windowBackground = colour;
 }
 
-void DisplayFX::windowSetPixel(int winIdx, int x, int y, int value, DISPLAY_FX_COLOUR colour)
+void DisplayFX::windowSetPixel(uint32_t winIdx, uint32_t x, uint32_t y, uint32_t value, DISPLAY_FX_COLOUR colour)
 {
     unsigned char* pBuf = windowGetPFBXY(winIdx, x, y);
     int fgColour = ((_windows[winIdx].windowForeground != -1) ?
@@ -227,25 +337,25 @@ void DisplayFX::windowSetPixel(int winIdx, int x, int y, int value, DISPLAY_FX_C
     if ((_windows[winIdx].xPixScale & 0x03) == 0)
     {
         uint32_t pixColourL = (pixColour << 24) + (pixColour << 16) + (pixColour << 8) + pixColour;
-        for (int iy = 0; iy < _windows[winIdx].yPixScale; iy++)
+        for (uint32_t iy = 0; iy < _windows[winIdx].yPixScale; iy++)
         {
             uint32_t* pBufL = (uint32_t*) (pBuf + iy * _pitch);
-            for (int ix = 0; ix < _windows[winIdx].xPixScale/4; ix++)
+            for (uint32_t ix = 0; ix < _windows[winIdx].xPixScale/4; ix++)
                 *pBufL++ = pixColourL;
         }
     }
     else
     {
-        for (int iy = 0; iy < _windows[winIdx].yPixScale; iy++)
+        for (uint32_t iy = 0; iy < _windows[winIdx].yPixScale; iy++)
         {
             unsigned char* pBufL = pBuf + iy * _pitch;
-            for (int ix = 0; ix < _windows[winIdx].xPixScale; ix++)
+            for (uint32_t ix = 0; ix < _windows[winIdx].xPixScale; ix++)
                 *pBufL++ = pixColour;
         }
     }
 }
 
-void DisplayFX::getFramebuffer(int winIdx, FrameBufferInfo& frameBufferInfo)
+void DisplayFX::getFramebuffer(uint32_t winIdx, FrameBufferInfo& frameBufferInfo)
 {
     frameBufferInfo.pFB = _pRawFrameBuffer;
     frameBufferInfo.pixelsWidth = _screenWidth;
@@ -257,9 +367,12 @@ void DisplayFX::getFramebuffer(int winIdx, FrameBufferInfo& frameBufferInfo)
     frameBufferInfo.bytesPerPixel = 1;
 }
 
-void DisplayFX::windowSetup(int winIdx, int tlx, int tly, int width, int height,
-    int cellWidth, int cellHeight, int xPixScale, int yPixScale,
-    WgfxFont* pFont, int foregroundColour, int backgroundColour, 
+void DisplayFX::windowSetup(uint32_t winIdx, int tlx, int tly, 
+    int width, int height,
+    int cellWidth, int cellHeight, 
+    int xPixScale, int yPixScale,
+    WgfxFont* pFont, 
+    int foregroundColour, int backgroundColour, 
     int borderWidth, int borderColour)
 {
     // Check window valid
@@ -305,6 +418,8 @@ void DisplayFX::windowSetup(int winIdx, int tlx, int tly, int width, int height,
     _windows[winIdx].pFont = pFontToUse;
     _windows[winIdx].windowForeground = foregroundColour;
     _windows[winIdx].windowBackground = backgroundColour;
+    // Generate font cache
+    _windows[winIdx].genFontAtCurRes(_screenForeground, _screenBackground);
 
     // Border
     if (borderColour != -1 && borderWidth > 0)
@@ -343,35 +458,37 @@ void DisplayFX::windowSetup(int winIdx, int tlx, int tly, int width, int height,
     _windows[winIdx]._valid = true;
 }
 
-void DisplayFX::windowClear(int winIdx)
+void DisplayFX::windowClear(uint32_t winIdx)
 {
-    if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
+    if (winIdx >= DISPLAY_FX_MAX_WINDOWS)
         return;
     if (!_windows[winIdx]._valid)
         return;
 
     uint8_t* pDest = windowGetPFB(winIdx, 0, 0);
-    int bytesAcross = _windows[winIdx].width;
-    int pixDown = _windows[winIdx].height;
-    for (int i = 0; i < pixDown; i++)
+    uint32_t bytesAcross = _windows[winIdx].width;
+    uint32_t pixDown = _windows[winIdx].height;
+    for (uint32_t i = 0; i < pixDown; i++)
     {
         memset(pDest, _screenBackground, bytesAcross);
         pDest += _pitch;
     }
 }
 
-uint8_t* DisplayFX::windowGetPFB(int winIdx, int col, int row)
+uint8_t* DisplayFX::windowGetPFB(uint32_t winIdx, uint32_t col, uint32_t row)
 {
-    return _pRawFrameBuffer + ((row * _windows[winIdx].cellHeight * _windows[winIdx].yPixScale) + _windows[winIdx].tly) * _pitch + 
-            (col * _windows[winIdx].cellWidth * _windows[winIdx].xPixScale) + _windows[winIdx].tlx;
+    return _pRawFrameBuffer + ((row * _windows[winIdx].cellHeight * _windows[winIdx].yPixScale) + 
+            _windows[winIdx].tly) * _pitch + 
+            (col * _windows[winIdx].cellWidth * _windows[winIdx].xPixScale) + 
+            _windows[winIdx].tlx;
 }
 
-uint8_t* DisplayFX::screenGetPFBXY(int x, int y)
+uint8_t* DisplayFX::screenGetPFBXY(uint32_t x, uint32_t y)
 {
     return _pRawFrameBuffer + y * _pitch + x;
 }
 
-uint8_t* DisplayFX::windowGetPFBXY(int winIdx, int x, int y)
+uint8_t* DisplayFX::windowGetPFBXY(uint32_t winIdx, uint32_t x, uint32_t y)
 {
     return _pRawFrameBuffer + 
             ((y * _windows[winIdx].yPixScale) + _windows[winIdx].tly) * _pitch + 
@@ -455,9 +572,9 @@ int DisplayFX::consoleGetWidth()
     return _windows[_consoleWinIdx].cols();
 }
 
-void DisplayFX::consoleSetWindow(int winIdx)
+void DisplayFX::consoleSetWindow(uint32_t winIdx)
 {
-    if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
+    if (winIdx >= DISPLAY_FX_MAX_WINDOWS)
         return;
     _consoleWinIdx = winIdx;
 }
@@ -511,10 +628,10 @@ void DisplayFX::cursorCheck()
 // Scroll
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void DisplayFX::windowScroll(int winIdx, int rows)
+void DisplayFX::windowScroll(uint32_t winIdx, int32_t rows)
 {
     // Validity
-    if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS || rows == 0)
+    if (winIdx >= DISPLAY_FX_MAX_WINDOWS || rows == 0)
         return;
 
     // Get framebuffer location
@@ -548,19 +665,19 @@ void DisplayFX::windowScroll(int winIdx, int rows)
 // Drawing functions
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void DisplayFX::drawHorizontal(int x, int y, int len, int colour)
+void DisplayFX::drawHorizontal(uint32_t x, uint32_t y, uint32_t len, uint32_t colour)
 {
     uint8_t* pBuf = screenGetPFBXY(x, y);
-    for (int i = 0; i < len; i++)
+    for (uint32_t i = 0; i < len; i++)
     {
         *pBuf++ = colour;
     }
 }
 
-void DisplayFX::drawVertical(int x, int y, int len, int colour)
+void DisplayFX::drawVertical(uint32_t x, uint32_t y, uint32_t len, uint32_t colour)
 {
     uint8_t* pBuf = screenGetPFBXY(x, y);
-    for (int i = 0; i < len; i++)
+    for (uint32_t i = 0; i < len; i++)
     {
         *pBuf = colour;
         pBuf += _pitch;
@@ -571,10 +688,10 @@ void DisplayFX::drawVertical(int x, int y, int len, int colour)
 // Drawing functions
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void DisplayFX::screenReadCell(int winIdx, int col, int row, uint8_t* pCellBuf)
+void DisplayFX::screenReadCell(uint32_t winIdx, uint32_t col, uint32_t row, uint8_t* pCellBuf)
 {
     // Validity
-    if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
+    if (winIdx >= DISPLAY_FX_MAX_WINDOWS)
         return;
     if (col >= _windows[winIdx].cols())
         return;
@@ -588,11 +705,11 @@ void DisplayFX::screenReadCell(int winIdx, int col, int row, uint8_t* pCellBuf)
 
     // Write data from cell buffer
     uint8_t* pBufCur = pBuf;
-    for (int y = 0; y < _windows[winIdx].cellHeight; y++) {
-        for (int i = 0; i < _windows[winIdx].yPixScale; i++) {
+    for (uint32_t y = 0; y < _windows[winIdx].cellHeight; y++) {
+        for (uint32_t i = 0; i < _windows[winIdx].yPixScale; i++) {
             pBufCur = pBuf;
-            for (int x = 0; x < _windows[winIdx].cellWidth; x++) {
-                for (int j = 0; j < _windows[winIdx].xPixScale; j++) {
+            for (uint32_t x = 0; x < _windows[winIdx].cellWidth; x++) {
+                for (uint32_t j = 0; j < _windows[winIdx].xPixScale; j++) {
                     *pCellBuf++ = *pBufCur++;
                 }
             }
@@ -601,10 +718,10 @@ void DisplayFX::screenReadCell(int winIdx, int col, int row, uint8_t* pCellBuf)
     }
 }
 
-void DisplayFX::screenWriteCell(int winIdx, int col, int row, uint8_t* pCellBuf)
+void DisplayFX::screenWriteCell(uint32_t winIdx, uint32_t col, uint32_t row, uint8_t* pCellBuf)
 {
     // Validity
-    if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
+    if (winIdx >= DISPLAY_FX_MAX_WINDOWS)
         return;
     if (col >= _windows[winIdx].cols())
         return;
@@ -618,15 +735,145 @@ void DisplayFX::screenWriteCell(int winIdx, int col, int row, uint8_t* pCellBuf)
 
     // Write data from cell buffer
     uint8_t* pBufCur = pBuf;
-    for (int y = 0; y < _windows[winIdx].cellHeight; y++) {
-        for (int i = 0; i < _windows[winIdx].yPixScale; i++) {
+    for (uint32_t y = 0; y < _windows[winIdx].cellHeight; y++) {
+        for (uint32_t i = 0; i < _windows[winIdx].yPixScale; i++) {
             pBufCur = pBuf;
-            for (int x = 0; x < _windows[winIdx].cellWidth; x++) {
-                for (int j = 0; j < _windows[winIdx].xPixScale; j++) {
+            for (uint32_t x = 0; x < _windows[winIdx].cellWidth; x++) {
+                for (uint32_t j = 0; j < _windows[winIdx].xPixScale; j++) {
                     *pBufCur++ = *pCellBuf++;
                 }
             }
             pBuf += _pitch;
         }
     }
+}
+
+void DisplayWindow::genFontAtCurRes(DISPLAY_FX_COLOUR screenFG, DISPLAY_FX_COLOUR screenBG)
+{
+    // Check font valid
+    if (!pFont)
+        return;
+
+    // Discard any existing
+    delete _pFontCache;
+    _pFontCache = NULL;
+
+    // Check font
+    uint32_t fontMaxVal = 0;
+    for (uint32_t i = 0; i < pFont->bytesPerChar * pFont->fontNumChars; i++)
+    {
+        if (fontMaxVal < pFont->pFontData[i])
+            fontMaxVal = pFont->pFontData[i];
+    }
+    if (fontMaxVal == 0)
+    {
+        _fontCacheError = 1;
+    }
+
+    // Calculate size and reserve
+    _fontCacheUint32sPerLine = (pFont->bytesAcross * 8 * xPixScale / 4);
+    _fontCacheUint32sPerChar = _fontCacheUint32sPerLine * pFont->cellY;
+    uint32_t fontMemSizeInUint32s = pFont->fontNumChars * _fontCacheUint32sPerChar;
+    _pFontCache = new uint32_t[fontMemSizeInUint32s];
+    
+    // Colours
+    uint32_t colourFG = (windowForeground != -1) ? windowForeground : screenFG;
+    uint32_t colourBG = (windowBackground != -1) ? windowBackground : screenBG;
+
+    // Form the font chars
+    for (uint32_t chIdx = 0; chIdx < pFont->fontNumChars; chIdx++)
+    {
+        uint8_t* pFontSource = pFont->pFontData + chIdx * pFont->bytesPerChar;
+        for (uint32_t rowIdx = 0; rowIdx < pFont->cellY; rowIdx++)
+        {
+            uint32_t* pFontCache = _pFontCache + chIdx * _fontCacheUint32sPerChar + rowIdx * _fontCacheUint32sPerLine;
+            uint32_t byteIdx = 0;
+            const uint8_t* pFontCur = pFontSource;
+            uint32_t pixMask = 1 << ((pFont->cellX + 7) % 8);
+            for (uint32_t colIdx = 0; colIdx < pFont->cellX; colIdx++)
+            {
+                for (uint32_t pixIdx = 0; pixIdx < xPixScale; pixIdx++)
+                {
+                    if (byteIdx == 0)
+                        *pFontCache = 0;
+                    *pFontCache |= ((*pFontCur & pixMask) ?
+                                colourFG : 
+                                colourBG) << ((3-byteIdx)*8);
+                    
+                    // TODO remove
+                    if (*pFontCache == 0xffffffff)
+                        _fontCacheError = 4;
+
+                    byteIdx++;
+                    if (byteIdx == 4)
+                    {
+                        byteIdx = 0;
+                        pFontCache++;
+                    }
+                }
+                pixMask = pixMask >> 1;
+                if (pixMask == 0)
+                {
+                    pixMask = 0x80;
+                    pFontCur++;
+                }
+            }
+            pFontSource += pFont->bytesAcross;
+        }
+    }
+
+    if (_fontCacheError == 0)
+        _fontCacheError = 2;
+
+    // // Form the font chars
+    // uint32_t* pFontCache = _pFontCache;
+    // uint32_t byteIdx = 0;
+    // for (uint32_t chIdx = 0; chIdx < pFont->fontNumChars; chIdx++)
+    // {
+    //     uint8_t* pFontSource = pFont->pFontData + chIdx * pFont->bytesPerChar;
+    //     for (uint32_t rowIdx = 0; rowIdx < pFont->cellY; rowIdx++)
+    //     {
+    //         // TODO 2020 remove
+    //         static const uint8_t pFontTmp[100] = {0x55,0xaa,0x55,0xaa,0x55,0xaa};
+    //         const uint8_t* pFontCur = pFontTmp;
+    //         // const uint8_t* pFontCur = pFontSource;
+    //         uint32_t pixMask = 1 << ((pFont->cellX + 7) % 8);
+    //         for (uint32_t colIdx = 0; colIdx < pFont->cellX; colIdx++)
+    //         {
+    //             for (uint32_t pixIdx = 0; pixIdx < xPixScale; pixIdx++)
+    //             {
+    //                 if (byteIdx == 0)
+    //                     *pFontCache = 0;
+    //                 *pFontCache |= ((*pFontCur & pixMask) ?
+    //                             windowForeground : 
+    //                             windowBackground) << ((3-byteIdx)*8);
+    //                 byteIdx++;
+    //                 if (byteIdx == 4)
+    //                 {
+    //                     byteIdx = 0;
+    //                     pFontCache++;
+    //                 }
+    //             }
+    //             pixMask = pixMask >> 1;
+    //             if (pixMask == 0)
+    //             {
+    //                 pixMask = 0x80;
+    //                 pFontCur++;
+    //             }
+    //         }
+    //         pFontSource += pFont->bytesAcross;
+    //     }
+    // }
+}
+
+void DisplayWindow::debug()
+{
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "wordsPerLine %d wordsPerChar %d err %d fg %02x bg %02x",
+                _fontCacheUint32sPerLine, _fontCacheUint32sPerChar, _fontCacheError,
+                windowForeground, windowBackground);
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "%08x %08x %08x %08x %08x %08x",
+                _pFontCache[0], _pFontCache[1], _pFontCache[0x26], _pFontCache[32*0x41+17],
+                _pFontCache[32*0x46+14], _pFontCache[32*0x46+15]);
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "%08x %08x",
+                (uint32_t)_pFrameBufError8, (uint32_t)_pFrameBufError32);
 }

@@ -14,8 +14,8 @@ with open ("../src/mc_trs80l1font.c", "w+") as outFile:
     borderWidth = 4
     pixWidth = 2
     pixHeight = 3
-    cellWidthPix = 6;
-    cellHeightPix = 8;
+    cellWidthPix = 6
+    cellHeightPix = 8
     bytesAcross = 1
     bytesPerChar = 8
     charCellWidth = 24
@@ -42,7 +42,8 @@ with open ("../src/mc_trs80l1font.c", "w+") as outFile:
     outFile.write("    .cellY = " + str(cellHeightPix) + ",\n")
     outFile.write("    .bytesAcross = " + str(bytesAcross) + ",\n")
     outFile.write("    .bytesPerChar = " + str(bytesPerChar) + ",\n")
-    outFile.write("    .pFontData = __pTRS80Level1FontBin\n")
-    outFile.write("};\n");
+    outFile.write("    .pFontData = __pTRS80Level1FontBin,\n")
+    outFile.write("    .fontNumChars = 256\n")
+    outFile.write("};\n")
 
     

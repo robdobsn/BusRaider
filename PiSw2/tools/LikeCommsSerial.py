@@ -1,27 +1,27 @@
 from threading import Thread
 import serial
 import time
-from LikeHDLC import HDLC
+from LikeHDLC import LikeHDLC
 from ProtocolOverAscii import ProtocolOverAscii
 
 class LikeCommsSerial:
 
-    def __init__(self):
+    def __init__(self, asciiEscapes):
         self.isOpen = False
         self.serialReader = None
         self.serialPort = None
         self.serialThreadEn = False
         self.rxFrameCB = None
-        self._hdlc = HDLC(self._onHDLCFrame, self._onHDLCError)
+        self._hdlc = LikeHDLC(self._onHDLCFrame, self._onHDLCError, asciiEscapes)
         self.overAscii = False
 
     def __del__(self):
         self.close()
 
-    def setRxFrameCB(self, cb):
+    def setRxFrameCB(self, cb) -> None:
         self.rxFrameCB = cb
 
-    def open(self, openParams):
+    def open(self, openParams) -> bool:
         # Check not already open
         if self.isOpen:
             return True
