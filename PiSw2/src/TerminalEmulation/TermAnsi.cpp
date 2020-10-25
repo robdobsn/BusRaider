@@ -15,8 +15,13 @@
 #define P0(x) (_ansiParams[x])
 #define P1(x) (_ansiParams[x] ? _ansiParams[x] : 1)
 
+// Debug
+// #define DEBUG_TERM_ANSI
+
 // Log string
+#ifdef DEBUG_TERM_ANSI
 static const char *MODULE_PREFIX = "TermAnsi";
+#endif
 
 TermAnsi::TermAnsi()
 {

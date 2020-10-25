@@ -141,7 +141,7 @@ boolean CKernel::Initialize (void)
 
 TShutdownMode CKernel::Run (void)
 {
-	m_Logger.Write(MODULE_PREFIX, LogNotice, "Compile time: " __DATE__ " " __TIME__);
+	// m_Logger.Write(MODULE_PREFIX, LogNotice, "Compile time: " __DATE__ " " __TIME__);
 
 	CUSBKeyboardDevice *pKeyboard = (CUSBKeyboardDevice *) m_DeviceNameService.GetDevice ("ukbd1", FALSE);
 	if (pKeyboard == 0)

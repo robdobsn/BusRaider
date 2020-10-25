@@ -99,7 +99,7 @@ public:
     // Logging
     void logDebugMessage(const char* pStr);
     void logDebugJson(const char* pStr);
-    void logDebug(const char* pSeverity, const char* pSource, const char* pMsg);
+    static void logDebug(const char* pSource, const char* pSeverity, const char* pMsg);
 
     // File Receive Status
     bool getFileReceiveStatus(uint32_t& fileLen, uint32_t& filePos);
@@ -145,6 +145,9 @@ private:
     MiniHDLC _miniHDLC;
 
 private:
+    // Log microseconds time
+    bool _logMillisTime;
+
     // String lengths
     static const int CMD_HANDLER_MAX_CMD_STR_LEN = 2000;
     static const int MAX_INT_ARG_STR_LEN = 20;

@@ -31,8 +31,13 @@ const char* PROG_LINKS_1 = "https://robdobson.com/tag/raider";
 // Vars
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// Debug
+// #define DEBUG_APP
+
 // Log string
+#ifdef DEBUG_APP
 static const char* MODULE_PREFIX = "BusRaiderApp";
+#endif
 
 BusRaiderApp* BusRaiderApp::_pApp = NULL;
 
@@ -63,7 +68,6 @@ void BusRaiderApp::init()
     
     // Add socket for status handling
     _commsManager.getCommandHandler().commsSocketAdd(this, true, BusRaiderApp::handleRxMsgStatic, NULL, NULL);
-
 }
 
 void BusRaiderApp::clear()
@@ -560,6 +564,8 @@ void BusRaiderApp::getPiStatus(char* pRespJson, int maxRespLen)
 
 void BusRaiderApp::storeESP32StatusInfo(const char* pCmdJson)
 {
+    // Store prev ESP32Conn for check below
+    bool esp32WasConn = strlen(_esp32ESP32Version) > 0;
     _esp32StatusLastRxMs = millis();
     microsDelay(1000);
     // Get espHealth field
@@ -578,6 +584,13 @@ void BusRaiderApp::storeESP32StatusInfo(const char* pCmdJson)
         espHwVersion = atoi(espHwVersStr);
     _busAccess.bus().setHwVersion(espHwVersion);
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Ip Address %s", _esp32IPAddress);
+    
+    // Check for connection of ESP32 and setup logging to esp32 if so
+    if ((strlen(_esp32ESP32Version) > 0) && !esp32WasConn)
+    {
+        // Setup logging output
+        LogSetOutFn(CommandHandler::logDebug);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

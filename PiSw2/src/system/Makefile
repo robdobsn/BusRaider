@@ -6,6 +6,7 @@ CIRCLEHOME = ../../circle
 
 OBJS	= UartMaxiSerialDevice.o \
 			lowlib.o rdutils.o jsmnR.o Utils.o \
+			logging.o \
 			PiWiring.o lowlev.o KeyConversion.o \
 			DebugHelper.o
 

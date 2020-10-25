@@ -49,7 +49,7 @@ void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusControl& b
     };
 
     // Loop here until tests done
-    uint32_t startUpdateTimeMs = millis();
+    // uint32_t startUpdateTimeMs = millis();
     int issueCount = 0;
     uint32_t testSeqIdx = 0;
     while (1)
@@ -84,12 +84,12 @@ void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusControl& b
                 if (rdtolower(key) == 'y')
                 {
                     display.consolePut("\n");
-                    startUpdateTimeMs = millis();
+                    // startUpdateTimeMs = millis();
                     testState = TEST_STATE_PERFORM_RESET;
                 } else if (rdtolower(key) == 'n')
                 {
                     display.consolePut("\n");
-                    startUpdateTimeMs = millis();
+                    // startUpdateTimeMs = millis();
                     testState = TEST_STATE_CHECK_BUSRQ;
                 }
                 break;
@@ -146,12 +146,12 @@ void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusControl& b
                 if (rdtolower(key) == 'y')
                 {
                     display.consolePut("... performing test\n");
-                    startUpdateTimeMs = millis();
+                    // startUpdateTimeMs = millis();
                     testState = TEST_STATE_PERFORM_BLOCK_TEST;
                 } else if (rdtolower(key) == 'n')
                 {
                     display.consolePut("... skipping test\n");
-                    startUpdateTimeMs = millis();
+                    // startUpdateTimeMs = millis();
                     testState = TEST_STATE_DONE_BLOCK_TEST;
                 }
                 break;

@@ -122,7 +122,7 @@ void HwManager::service()
         }
     }
     if (strlen(debugJson) != 0)
-        McManager::logDebugMessage(debugJson);
+        CommandHandler::logDebugMessage(debugJson);
 #endif
 }
 

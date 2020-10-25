@@ -1,19 +1,20 @@
 // // Bus Raider
 // // Rob Dobson 2019
 
-// #include <stdio.h>
-// #include <stdarg.h>
-// #include <stddef.h>
-// #include <string.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <string.h>
 // #include "lowlib.h"
-// #include "logging.h"
+#include "logging.h"
+#include <circle/logger.h>
+#include <circle/string.h>
 
-// // Set output to be character based
-// LogOutStrFnType* __log_pOutStrFunction = NULL;
-// void LogSetOutFn(LogOutStrFnType* pOutFn)
-// {
-//     __log_pOutStrFunction = pOutFn;
-// }
+// Set output destination
+LogOutStrFnType* __log_pOutStrFunction = NULL;
+void LogSetOutFn(LogOutStrFnType* pOutFn)
+{
+    __log_pOutStrFunction = pOutFn;
+}
 
 // // Set output to be message based
 // LogOutMsgFnType* __log_pOutMsgFunction = NULL;
@@ -29,11 +30,40 @@
 // #define USPI_LOG_SEVERITY LOG_VERBOSE
 // unsigned int __logSeverity = LOG_DEBUG;
 
-// // Main logging function
-// void LogWrite(const char* pSource,
-//     unsigned severity,
-//     const char* fmt, ...)
-// {
+unsigned LogSeverityCircle(unsigned severity)
+{
+    switch(severity)
+    {
+        case LOG_PANIC: return LogPanic;
+        case LOG_ERROR: return LogError;
+        case LOG_WARNING: return LogWarning;
+        case LOG_NOTICE: return LogNotice;
+        case LOG_DEBUG: 
+        default: 
+            return LogDebug;
+    }
+}
+
+const char* LogSeverityStr(unsigned severity)
+{
+    switch(severity)
+    {
+        case LOG_PANIC: return "P";
+        case LOG_ERROR: return "E";
+        case LOG_WARNING: return "W";
+        case LOG_NOTICE: return "I";
+        case LOG_DEBUG: 
+        default: 
+            return "D";
+    }
+}
+
+// Main logging function
+void LogWrite(const char* pSource,
+    unsigned severity,
+    const char* fmt, ...)
+{
+
 //     // Check for USPI log messages
 //     if (strstr(pSource, "uspi") || strstr(pSource, "usbdev") || strstr(pSource, "dwroot"))
 //         severity = USPI_LOG_SEVERITY;
@@ -41,14 +71,21 @@
 //     if (severity > __logSeverity)
 //         return;
 
-//     // Buffer
-//     char buf[40 * 80];
-//     va_list args;
+	va_list var;
+	va_start (var, fmt);
+	CString logMsg;
+	logMsg.FormatV (fmt, var);
+	va_end (var);
 
-//     // Expand
-//     va_start(args, fmt);
-//     vsprintf(buf, fmt, args);
-//     va_end(args);
+    // Default to CLogger
+    if (!__log_pOutStrFunction)
+    {
+        CLogger::Get()->Write(pSource, (TLogSeverity)LogSeverityCircle(severity), (const char*)logMsg);
+        return;
+    }
+
+    // Send to output function
+    __log_pOutStrFunction(pSource, LogSeverityStr(severity), (const char*)logMsg);   
 
 //     // Handle message based output
 //     if (__log_pOutMsgFunction)
@@ -95,7 +132,7 @@
 //         LOG_WRITE_STRING(buf);
 //         LOG_WRITE_STRING("\n");
 //     }
-// }
+}
 
 // void LogSetLevel(int severity)
 // {

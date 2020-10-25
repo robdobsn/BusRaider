@@ -29,6 +29,7 @@ CommandHandler* CommandHandler::_pSingletonCommandHandler = NULL;
 // #define DEBUG_COMMAND_HANDLER
 // #define DEBUG_COMMAND_HANDLER_RDP
 // #define DEBUG_COMMAND_HANDLER_SOCKETS
+// #define DEBUG_CMDHDLR_LOG
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Init
@@ -55,6 +56,7 @@ CommandHandler::CommandHandler() :
     _receivedFileBufSize = 0;
     _receivedFileBytesRx = 0;
     _receivedBlockCount = 0;
+    _logMillisTime = true;
 
     // TODO
     // _rdpMsgCountIn = 0;
@@ -703,11 +705,7 @@ void CommandHandler::sendAPIReq(const char* reqLine)
 
 void CommandHandler::logDebugMessage(const char* pStr)
 {
-    char responseJson[MAX_DATAFRAME_LEN+1];
-    strlcpy(responseJson, "\"msg\":\"", MAX_DATAFRAME_LEN);
-    strlcat(responseJson, pStr, MAX_DATAFRAME_LEN);
-    strlcat(responseJson, "\"", MAX_DATAFRAME_LEN);
-    sendWithJSON("log", responseJson);
+    logDebug("", "", pStr);
 }
 
 void CommandHandler::logDebugJson(const char* pStr)
@@ -715,33 +713,35 @@ void CommandHandler::logDebugJson(const char* pStr)
     sendWithJSON("log", pStr);
 }
 
-void CommandHandler::logDebug(const char* pSeverity, const char* pSource, const char* pMsg)
+void CommandHandler::logDebug(const char *pSource, const char* severityStr, const char *pMessage)
 {
-    // Escape the message since it will be sent inside JSON
-    static const int MAX_LOG_MSG_LEN = 5000;
-    char escapedMsg[MAX_LOG_MSG_LEN];
-    jsonEscape(pMsg, escapedMsg, MAX_LOG_MSG_LEN);
-
-    // Form the message
-    char logJson[MAX_LOG_MSG_LEN+1];
-    strlcpy(logJson, "\"msg\":\"", MAX_LOG_MSG_LEN);
-    strlcat(logJson, escapedMsg, MAX_LOG_MSG_LEN);
-    strlcat(logJson, "\",", MAX_LOG_MSG_LEN);
-    strlcat(logJson, "\"lev\":\"", MAX_LOG_MSG_LEN);
-    strlcat(logJson, pSeverity, MAX_LOG_MSG_LEN);
-    strlcat(logJson, "\",", MAX_LOG_MSG_LEN);
-    strlcat(logJson, "\"src\":\"", MAX_LOG_MSG_LEN);
-#define INCLUDE_MICROS_TIME 1
-#ifdef INCLUDE_MICROS_TIME
-    char timeSrcStr[100];
-    snprintf(timeSrcStr, sizeof(timeSrcStr), "%lu %s", micros(), pSource);
-    strlcat(logJson, timeSrcStr, MAX_LOG_MSG_LEN);
-#else
-    strlcat(logJson, pSource, MAX_LOG_MSG_LEN);
+    if (!_pSingletonCommandHandler)
+        return;
+    char escapedMsg[MAX_DATAFRAME_LEN+1];
+    jsonEscape(pMessage, escapedMsg, MAX_DATAFRAME_LEN);
+    char logJson[MAX_DATAFRAME_LEN+1];
+    if (_pSingletonCommandHandler->_logMillisTime)
+    {
+        snprintf(logJson, sizeof(logJson), R"("src":"%lu %s","lev":"%s","msg":"%s")",
+                millis(), pSource, severityStr, escapedMsg);
+            
+#ifdef DEBUG_CMDHDLR_LOG
+    CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "logDebug pSource %s sev %s msg %s", 
+                pSource, severityStr, pMessage); 
 #endif
-    strlcat(logJson, "\"", MAX_LOG_MSG_LEN);
-    if (_pSingletonCommandHandler)
-        _pSingletonCommandHandler->logDebugJson(logJson);
+
+    }
+    else
+    {
+#ifdef DEBUG_CMDHDLR_LOG
+        CLogger::Get()->Write(MODULE_PREFIX, LogDebug, "logDebug pSource %s sev %s msg %s", 
+                    pSource, severityStr, pMessage); 
+#endif
+
+        snprintf(logJson, sizeof(logJson), R"("src":"%s","lev":"%s","msg":"%s")",
+                pSource, severityStr, escapedMsg);
+    }
+    _pSingletonCommandHandler->sendWithJSON("log", logJson);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

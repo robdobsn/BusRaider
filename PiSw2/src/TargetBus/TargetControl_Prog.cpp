@@ -59,7 +59,8 @@ void TargetControl::programmingWrite()
     for (uint32_t i = 0; i < _targetProgrammer.numMemoryBlocks(); i++) 
     {
         TargetProgrammer::TargetMemoryBlock* pBlock = _targetProgrammer.getMemoryBlock(i);
-        BR_RETURN_TYPE brResult = _busAccess.mem().blockWrite(pBlock->start, 
+        // BR_RETURN_TYPE brResult = 
+        _busAccess.mem().blockWrite(pBlock->start, 
                     _targetProgrammer.getMemoryImagePtr() + pBlock->start, pBlock->len,
                     BLOCK_ACCESS_MEM);
         // LogWrite(MODULE_PREFIX, LOG_DEBUG,
