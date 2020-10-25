@@ -133,7 +133,7 @@ void TargetControl::suspend(bool suspend)
 //     //     _busSocketId = _busAccess.socketAdd(    
 //     //         true,
 //     //         TargetControl::handleWaitInterruptStatic,
-//     //         TargetControl::busActionCompleteStatic,
+//     //         TargetControl::busActionActiveStatic,
 //     //         false,
 //     //         false,
 //     //         // Reset
@@ -737,21 +737,21 @@ void TargetControl::suspend(bool suspend)
 // // Handle bus actions
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// void TargetControl::busActionCompleteStatic(void* pObject, BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASON reason)
+// void TargetControl::busActionActiveStatic(void* pObject, BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASON reason)
 // {
 //     if(!pObject)
 //         return;
-//     ((TargetControl*)pObject)->busActionComplete(actionType, reason);
+//     ((TargetControl*)pObject)->busActionActive(actionType, reason);
 // }
 
-// void TargetControl::busActionComplete(BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASON reason)
+// void TargetControl::busActionActive(BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASON reason)
 // {
-//     // LogWrite(MODULE_PREFIX, LOG_DEBUG,"bus action complete type %d reason %d programPending %d", 
+//     // LogWrite(MODULE_PREFIX, LOG_DEBUG,"Bus action active type %d reason %d programPending %d", 
 //     //         actionType, reason, _busActionPendingProgramTarget);
 
 //     if (actionType == BR_BUS_ACTION_RESET)
 //     {
-//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionComplete Reset");
+//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActive Reset");
 //         _prefixTracker[0] = _prefixTracker[1] = false;
 
 //         // Since we're receiving a reset we are at the start of the program so clear prefix-tracking
@@ -761,7 +761,7 @@ void TargetControl::suspend(bool suspend)
 //         // we asked for it)
 //         if (_targetResetPending)
 //         {
-//             LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionComplete Reset pending - go straight to inject");
+//             LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActive Reset pending - go straight to inject");
 //             // Go straight into injecting mode
 //             _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
 //             _targetResetPending = false;
@@ -769,16 +769,16 @@ void TargetControl::suspend(bool suspend)
 //     }
 //     else if (actionType == BR_BUS_ACTION_RESET_END)
 //     {
-//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionComplete ResetEnd");
+//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActive ResetEnd");
 //     }
 //     else if (actionType == BR_BUS_ACTION_BUSRQ)
 //     {
-//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionComplete BUSRQ");
+//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActive BUSRQ");
 
 //         // Program target pending?
 //         if (_busActionPendingProgramTarget)
 //         {
-//             LogWrite(MODULE_PREFIX, LOG_NOTICE, "busActionComplete pendingProgramTarget numBlocks %d",
+//             LogWrite(MODULE_PREFIX, LOG_NOTICE, "busActionActive pendingProgramTarget numBlocks %d",
 //                             _targetProgrammer.numMemoryBlocks());
 
 //             // Write the blocks

@@ -571,11 +571,12 @@ void McZXSpectrum::busAccessCallback( uint32_t addr,  uint32_t data,
 // Bus actions
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Bus action complete callback
-void McZXSpectrum::busActionCompleteCallback(BR_BUS_ACTION actionType)
+// Bus action active callback
+void McZXSpectrum::busActionActiveCallback(BR_BUS_ACTION actionType, 
+                    BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
 {
     // Check for BUSRQ
-    if (actionType == BR_BUS_ACTION_BUSRQ)
+    if ((actionType == BR_BUS_ACTION_BUSRQ) && (rslt == BR_OK))
     {
         // Read memory at the location of the memory mapped screen
         if (_busAccess.blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, BLOCK_ACCESS_MEM) == BR_OK)

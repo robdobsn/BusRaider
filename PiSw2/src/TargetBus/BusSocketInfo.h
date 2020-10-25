@@ -12,7 +12,7 @@
 
 // Callback types
 typedef void BusAccessCBFnType(void* pObject, uint32_t addr, uint32_t data, uint32_t flags, uint32_t& curRetVal);
-typedef void BusActionCBFnType(void* pObject, BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
+typedef void BusActionCBFnType(void* pObject, BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt);
 typedef void BusCompleteCBFnType(void* pObject, uint32_t slotIdx, BR_RETURN_TYPE rslt);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

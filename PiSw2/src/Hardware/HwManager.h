@@ -147,8 +147,10 @@ private:
                     char* pRespJson, unsigned maxRespLen);
                     
     // Reset complete callback
-    static void busActionCompleteStatic(void* pObject, BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
-    void busActionComplete(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
+    static void busActionActiveStatic(void* pObject, BR_BUS_ACTION actionType, 
+                BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt);
+    void busActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
+                BR_RETURN_TYPE rslt);
 
     // Wait interrupt handler
     static void handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t data, 

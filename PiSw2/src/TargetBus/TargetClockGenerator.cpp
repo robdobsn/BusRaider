@@ -99,14 +99,18 @@ void TargetClockGenerator::enable(bool en)
     // Wait a little if busy
     int busyCount = 0;
     static const int MAX_BUSY_WAIT_COUNT = 100;
+#ifdef DEBUG_TARGET_CLOCK_GEN
     uint32_t lastBusy = 0;
+#endif
     for (int i = 0; i < MAX_BUSY_WAIT_COUNT; i++)
     {
         if ((read32(ARM_CM_GP0CTL) & ARM_CM_CTL_BUSY) == 0)
             break;
         microsDelay(1);
         busyCount++;
+#ifdef DEBUG_TARGET_CLOCK_GEN
         lastBusy = read32(ARM_CM_PWMCTL);
+#endif
     }
 
     // Set the output pin

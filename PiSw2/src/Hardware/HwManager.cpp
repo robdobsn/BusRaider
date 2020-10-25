@@ -68,7 +68,7 @@ void HwManager::init()
         _busSocketId = _busAccess.busSocketAdd(
             true,
             HwManager::handleWaitInterruptStatic,
-            HwManager::busActionCompleteStatic,
+            HwManager::busActionActiveStatic,
             false,
             false,
             // Reset
@@ -412,22 +412,25 @@ bool HwManager::handleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsign
 // Callbacks/Hooks
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void HwManager::busActionCompleteStatic(void* pObject, BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason)
+void HwManager::busActionActiveStatic(void* pObject, BR_BUS_ACTION actionType, 
+        BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
 {
     if (!pObject)
         return;
-    ((HwManager*)pObject)->busActionComplete(actionType, reason);
+    ((HwManager*)pObject)->busActionActive(actionType, reason, rslt);
 }
 
-void HwManager::busActionComplete(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason)
+void HwManager::busActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
+        BR_RETURN_TYPE rslt)
 {
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionComplete %d numHw %d en %s reason %d", actionType, _numHardware,
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActive %d numHw %d en %s reason %d rslt %d", 
+    //          actionType, _numHardware, rslt,
     //         (_numHardware > 0) ? (_pHw[0]->isEnabled() ? "Y" : "N") : "X", reason);
  
     // Iterate hardware
     for (int i = 0; i < _numHardware; i++)
         if (_pHw[i] && _pHw[i]->isEnabled())
-            _pHw[i]->handleBusActionComplete(actionType, reason);
+            _pHw[i]->handleBusActionActive(actionType, reason, rslt);
 }
 
 void HwManager::handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t data, 

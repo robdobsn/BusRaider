@@ -304,7 +304,6 @@ void DisplayFX::windowPut(uint32_t winIdx, uint32_t col, uint32_t row, uint32_t 
             pFont += _windows[winIdx].pFont->bytesAcross;
         }
     // }
-                    DEBUG_PULSE();
 
 }
 

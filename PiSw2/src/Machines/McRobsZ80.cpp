@@ -137,11 +137,12 @@ void McRobsZ80::busAccessCallback( uint32_t addr,  uint32_t data,
 {
 }
 
-// Bus action complete callback
-void McRobsZ80::busActionCompleteCallback(BR_BUS_ACTION actionType)
+// Bus action active callback
+void McRobsZ80::busActionActiveCallback(BR_BUS_ACTION actionType, 
+                    BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
 {
     // Check for BUSRQ
-    if (actionType == BR_BUS_ACTION_BUSRQ)
+    if ((actionType == BR_BUS_ACTION_BUSRQ) && (rslt == BR_OK))
     {
         // TODO 2020 changed from hwman
         // Read memory at the location of the memory mapped screen

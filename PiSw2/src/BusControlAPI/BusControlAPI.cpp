@@ -59,7 +59,7 @@ void BusControlAPI::init()
         _busSocketId = busAccess.busSocketAdd( 
             true,
             BusControlAPI::handleWaitInterruptStatic,
-            BusControlAPI::busActionCompleteStatic,
+            BusControlAPI::busActionActiveStatic,
             false,
             false,
             // Reset
@@ -860,33 +860,39 @@ void BusControlAPI::busLinesRead(char* pRespJson, int maxRespLen)
 // Callbacks/Hooks
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void BusControlAPI::busActionCompleteStatic(void* pObject, BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason)
+void BusControlAPI::busActionActiveStatic(void* pObject, BR_BUS_ACTION actionType, 
+            BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
 {
     if (!pObject)
         return;
-    ((BusControlAPI*)pObject)->busActionComplete(actionType, reason);
+    ((BusControlAPI*)pObject)->busActionActive(actionType, reason, rslt);
 }
 
-void BusControlAPI::busActionComplete(BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASON reason)
+void BusControlAPI::busActionActive(BR_BUS_ACTION actionType, 
+            BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
 {
 #ifdef DEBUG_BUS_ACTION_COMPLETE
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionComplete type %d reason %d", actionType, reason);
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActive type %d reason %d rslt %d", 
+                actionType, reason, rslt);
 #endif
 
     HwManager& hwManager = _hwManager;
     if ((actionType == BR_BUS_ACTION_BUSRQ) && _memAccessPending)
     {
-        if (!_memAccessWrite)
+        if (rslt == BR_OK)
         {
-            // Read
-            hwManager.blockRead(_memAccessAddr, _memAccessDataBuf, 
-                        _memAccessDataLen, false, _memAccessIo, false);
-        }
-        else
-        {
-            // Write
-            hwManager.blockWrite(_memAccessAddr, _memAccessDataBuf, 
-                        _memAccessDataLen, false, _memAccessIo, false);
+            if (!_memAccessWrite)
+            {
+                // Read
+                hwManager.blockRead(_memAccessAddr, _memAccessDataBuf, 
+                            _memAccessDataLen, false, _memAccessIo, false);
+            }
+            else
+            {
+                // Write
+                hwManager.blockWrite(_memAccessAddr, _memAccessDataBuf, 
+                            _memAccessDataLen, false, _memAccessIo, false);
+            }
         }
         _memAccessPending = false;
     }

@@ -11,6 +11,7 @@
 #include "McRobsZ80.h"
 #include "McZXSpectrum.h"
 #include "McTerminal.h"
+#include "DebugHelper.h"
 #include <circle/util.h>
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -57,7 +58,7 @@ void McManager::init()
         _busSocketId = _busAccess.sock().add(
             true,
             handleWaitInterruptStatic,
-            busActionCompleteStatic,
+            busActionActiveStatic,
             false,
             false,
             // Reset
@@ -617,16 +618,18 @@ void McManager::handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t
 // Bus action callback
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void McManager::busActionCompleteStatic(void* pObject, BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASON reason)
+void McManager::busActionActiveStatic(void* pObject, BR_BUS_ACTION actionType, 
+            BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
 {
     if (!pObject)
         return;
-    ((McManager*)pObject)->busActionComplete(actionType, reason);
+    ((McManager*)pObject)->busActionActive(actionType, reason, rslt);
 }
 
-void McManager::busActionComplete(BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASON reason)
+void McManager::busActionActive(BR_BUS_ACTION actionType, 
+            BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
 {
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG,"bus action complete type %d reason %d dispPending %d", 
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG,"busActionActive type %d reason %d dispPending %d", 
     //         actionType, reason, _busActionPendingDisplayRefresh);
 
     // We don't care what the reason for the BUSRQ is we will use it for what we need
@@ -636,7 +639,7 @@ void McManager::busActionComplete(BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASO
         if (_busActionPendingDisplayRefresh)
         {
             // Call the machine to handle
-            if (_pCurMachine)
+            if (_pCurMachine && (rslt == BR_OK))
                 _pCurMachine->refreshDisplay();
             _busActionPendingDisplayRefresh = false;    
         }

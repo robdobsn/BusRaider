@@ -538,10 +538,12 @@ uint8_t* HwRAMROM::getTracerMemory()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Handle a completed bus action
-void HwRAMROM::handleBusActionComplete(BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASON reason)
+void HwRAMROM::handleBusActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
+            BR_RETURN_TYPE rslt)
 {
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionComplete %d", actionType);
-
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActive %d", actionType);
+    if (rslt != BR_OK)
+        return;
     switch(actionType)
     {
         case BR_BUS_ACTION_RESET:

@@ -1,15 +1,15 @@
 
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG,"bus action complete type %d reason %d programPending %d dispPending %d", 
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG,"Bus action active type %d reason %d programPending %d dispPending %d", 
     //         actionType, reason, _busActionPendingProgramTarget, _busActionPendingDisplayRefresh);
     // We don't care what the reason for the BUSRQ is we will use it for what we need
     if (actionType == BR_BUS_ACTION_BUSRQ)
     {
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionCompleteStatic BUSRQ");
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActiveStatic BUSRQ");
 
         // Program target pending?
         if (_busActionPendingProgramTarget)
         {
-            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionCompleteStatic pendingProgramTarget numBlocks %d",
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActiveStatic pendingProgramTarget numBlocks %d",
             //                 getTargetProgrammer().numMemoryBlocks());
 
             // Write the blocks

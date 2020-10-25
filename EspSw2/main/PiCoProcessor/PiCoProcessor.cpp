@@ -1011,7 +1011,7 @@ void PiCoProcessor::hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen)
         String logMsg = RdJson::getString("msg", "", pRxStr);
         String msgSrc = RdJson::getString("src", "", pRxStr);
         String msgLev = RdJson::getString("lev", "", pRxStr);
-        LOG_I(msgSrc.c_str(), "%s: %s\n", msgLev.c_str(), logMsg.c_str());
+        LOG_I(msgSrc.c_str(), "%s: %s", msgLev.c_str(), logMsg.c_str());
     }
     else if (cmdName.equalsIgnoreCase("mirrorScreen"))
     {

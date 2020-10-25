@@ -310,9 +310,9 @@ private:
 //     void store16BitVal(uint8_t arry[], int offset, uint16_t val);
 //     bool handlePendingDisable();
 
-//     // Bus action complete callback
-//     static void busActionCompleteStatic(void* pObject, BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
-//     void busActionComplete(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
+//     // Bus action active callback
+//     static void busActionActiveStatic(void* pObject, BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
+//     void busActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
 
 //     // Wait interrupt handler
 //     static void handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t data, 

@@ -15,7 +15,8 @@ public:
     HwBase(HwManager& hwManager, BusAccess& busAccess);
 
     // Handle a completed bus action
-    virtual void handleBusActionComplete(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
+    virtual void handleBusActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
+            BR_RETURN_TYPE rslt);
 
     // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
     virtual void handleMemOrIOReq(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);

@@ -67,6 +67,9 @@ public:
         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
     }
     int _vals[NUM_DEBUG_VALS];
     bool _valIsValid[NUM_DEBUG_VALS];

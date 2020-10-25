@@ -316,7 +316,7 @@ void BusSocketManager::cycleActionCB(uint32_t slotIdx, BR_RETURN_TYPE rslt)
         // Inform all active sockets of the bus action completion
         if (_busSockets[i].busActionCallback)
             _busSockets[i].busActionCallback(_busSockets[i].pSourceObject, 
-                        busActionType, reason);
+                        busActionType, reason, rslt);
     }
 
     // Clear this action for all sockets

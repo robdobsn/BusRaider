@@ -42,7 +42,8 @@ void HwBase::mirrorClone()
 }
 
 // Handle a completed bus action
-void HwBase::handleBusActionComplete(BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASON reason)
+void HwBase::handleBusActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
+        BR_RETURN_TYPE rslt)
 {
 }
 
