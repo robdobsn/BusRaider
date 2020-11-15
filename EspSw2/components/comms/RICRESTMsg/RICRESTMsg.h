@@ -52,31 +52,31 @@ public:
     static void encode(const String& payload, ProtocolEndpointMsg& endpointMsg, RICRESTElemCode elemCode);
     static void encode(const uint8_t* pBuf, uint32_t len, ProtocolEndpointMsg& endpointMsg, RICRESTElemCode elemCode);
 
-    const String& getReq()
+    const String& getReq() const
     {
         return _req;
     }
-    const String& getPayloadJson()
+    const String& getPayloadJson() const
     {
         return _payloadJson;
     }
-    const uint8_t* getBinBuf()
+    const uint8_t* getBinBuf() const
     {
         return _pBinaryData;
     }
-    uint32_t getBinLen()
+    uint32_t getBinLen() const
     {
         return _binaryLen;
     }
-    uint32_t getBufferPos()
+    uint32_t getBufferPos() const
     {
         return _bufferPos;
     }
-    uint32_t getTotalBytes()
+    uint32_t getTotalBytes() const
     {
         return _totalBytes;
     }
-    RICRESTElemCode getElemCode()
+    RICRESTElemCode getElemCode() const
     {
         return _RICRESTElemCode;
     }

@@ -18,6 +18,8 @@
 
 const static char* MODULE_PREFIX = "WebConnMgr";
 
+#define RD_WEB_CONN_STACK_SIZE 5000
+
 // #define DEBUG_WEB_CONN_MANAGER 1
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -49,7 +51,7 @@ void RdWebConnManager::setup(RdWebServerSettings& settings)
 	_newConnQueue = xQueueCreate(_newConnQueueMaxLen, sizeof(struct netconn*));
 
 	// Start task to service connections
-	xTaskCreatePinnedToCore(&clientConnHandlerTask,"clientConnTask", 5000, this, 6, NULL, 0);
+	xTaskCreatePinnedToCore(&clientConnHandlerTask,"clientConnTask", RD_WEB_CONN_STACK_SIZE, this, 6, NULL, 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -13,9 +13,11 @@
 #define INADDR_NONE         ((uint32_t)0xffffffffUL)
 #endif
 
-static const char* MODULE_PREFIX = "Utils";
-
+// Debug
 // #define DEBUG_EXTRACT_NAME_VALUES
+#ifdef DEBUG_EXTRACT_NAME_VALUES
+static const char* MODULE_PREFIX = "Utils";
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Timeouts

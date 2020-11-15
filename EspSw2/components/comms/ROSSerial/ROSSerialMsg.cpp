@@ -59,46 +59,6 @@ void ROSSerialMsg::encode(uint16_t topicId, const uint8_t* pPayload, uint32_t pa
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Set from topic
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-uint32_t ROSSerialMsg::encode(uint32_t specialTopicID, const ROSTopicInfo& info)
-{
-    // Special topic ID used to say whether this is pub or sub
-    _topicID = specialTopicID;
-
-    // Store the payload
-    // topicID + 06 00 00 00 +
-    // topic_name + 0d 00 00 00 +
-    // message_type + 00 00 00 +
-    // md5 string + buffer_size
-    uint32_t payloadSize = sizeof(info.topic_id) + 4 +
-                            strlen(info.topic_name) + 4 +
-                            strlen(info.message_type) + 4 +
-                            strlen(info.md5sum) + sizeof(info.buffer_size);
-
-    uint16_t bufPos = 0;
-    _payload.resize(payloadSize);
-    _payload[bufPos++] = (uint8_t)(info.topic_id & 0x00FF);        // low byte
-    _payload[bufPos++] = (uint8_t)((info.topic_id & 0xFF00) >> 8); // high byte
-    bufPos = uint32ToPayload((uint32_t)strlen(info.topic_name), bufPos);
-    bufPos = strToPayload(info.topic_name, bufPos);
-    bufPos = uint32ToPayload((uint32_t)strlen(info.message_type), bufPos);
-    bufPos = strToPayload(info.message_type, bufPos);
-    bufPos = uint32ToPayload((uint32_t)strlen(info.md5sum), bufPos);
-    bufPos = strToPayload(info.md5sum, bufPos);
-    bufPos = uint32ToPayload(info.buffer_size, bufPos);
-
-    // Compute checksums
-    _headerChecksum = computeHeaderChecksum(_payload.size());
-    _payloadChecksum = computePayloadChecksum();
-
-    LOG_D(MODULE_PREFIX, "encode len %d bufPos %d", payloadSize, bufPos);
-
-    return bufPos;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Generate message to a vector
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

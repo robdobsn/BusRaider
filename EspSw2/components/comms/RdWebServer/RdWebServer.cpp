@@ -18,6 +18,8 @@
 
 static const char *MODULE_PREFIX = "RdWebServer";
 
+#define RD_WEB_SERVER_STACK_SIZE 3000
+
 // #define DEBUG_NEW_CONNECTION
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -52,7 +54,7 @@ void RdWebServer::setup(RdWebServerSettings& settings)
 	_connManager.setup(_webServerSettings);
 
 	// Start task to handle listen for connections
-	xTaskCreatePinnedToCore(&socketListenerTask,"socketLstnTask", 3000, this, 9, NULL, 0);
+	xTaskCreatePinnedToCore(&socketListenerTask,"socketLstnTask", RD_WEB_SERVER_STACK_SIZE, this, 9, NULL, 0);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

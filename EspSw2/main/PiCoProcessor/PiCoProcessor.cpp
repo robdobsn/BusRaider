@@ -1228,7 +1228,7 @@ bool PiCoProcessor::startUploadFromFileSystem(const String& fileSystemName,
 // Process RICRESTMsg CmdFrame - coming from websocket
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool PiCoProcessor::procRICRESTCmdFrame(const String& cmdName, RICRESTMsg& ricRESTReqMsg, 
+bool PiCoProcessor::procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg& ricRESTReqMsg, 
                         String& respMsg, uint32_t channelID)
 {
     // Handle command frames

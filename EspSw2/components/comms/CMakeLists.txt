@@ -16,7 +16,6 @@ idf_component_register(
                   "RdWebServer/RdWebSocketLink.cpp"
                   "RdWebServer/RdWebMultipart.cpp"
                   "ROSSerial/ROSSerialMsg.cpp"
-                  "ROSSerial/ROSTopicManager.cpp"
                   "ROSSerial/ROSSerialHandler.cpp"
                   "RICRESTMsg/RICRESTMsg.cpp"
                   "ProtocolRICSerial/ProtocolRICSerial.cpp"

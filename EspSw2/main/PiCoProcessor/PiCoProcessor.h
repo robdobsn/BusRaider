@@ -54,7 +54,7 @@ protected:
     }
 
     // Process RICRESTMsg CmdFrame
-    virtual bool procRICRESTCmdFrame(const String& cmdName, RICRESTMsg& ricRESTReqMsg, 
+    virtual bool procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg& ricRESTReqMsg, 
             String& respMsg, uint32_t channelID) override final;
 
 private:
