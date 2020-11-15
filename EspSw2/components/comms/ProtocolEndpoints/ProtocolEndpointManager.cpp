@@ -11,7 +11,7 @@
 #include "ProtocolEndpointManager.h"
 #include <ProtocolEndpointMsg.h>
 
-static const char* MODULE_PREFIX = "ProtocolEndpointManager";
+static const char* MODULE_PREFIX = "ProtoMgr";
 
 // #define DEBUG_OUTBOUND_RESPONSE
 // #define DEBUG_OUTBOUND_PUBLISH

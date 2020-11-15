@@ -41,8 +41,11 @@ bool ConfigFile::setup()
 }
 
 // Write configuration string
-bool ConfigFile::writeConfig()
+bool ConfigFile::writeConfig(const String& configJSONStr)
 {
+    // Set config data
+    _setConfigData(configJSONStr.c_str());
+
     // Check the limits on config size
     if (_dataStrJSON.length() >= _configMaxDataLen)
     {

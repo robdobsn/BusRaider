@@ -16,7 +16,7 @@
 #include <SysManager.h>
 
 // Log prefix
-static const char *MODULE_PREFIX = "NetworkManager";
+static const char *MODULE_PREFIX = "NetMan";
 
 // Singleton network manager
 NetworkManager* NetworkManager::_pNetworkManager = NULL;

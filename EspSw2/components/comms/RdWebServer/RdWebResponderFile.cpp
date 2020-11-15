@@ -17,7 +17,8 @@ static const char *MODULE_PREFIX = "RdWebRespFile";
 // Constructor / Destructor
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-RdWebResponderFile::RdWebResponderFile(const String& filePath, RdWebHandler* pWebHandler, const RdWebRequestParams& params)
+RdWebResponderFile::RdWebResponderFile(const String& filePath, RdWebHandler* pWebHandler, 
+                const RdWebRequestParams& params)
     : _reqParams(params)
 {
     _filePath = filePath;

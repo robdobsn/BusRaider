@@ -41,7 +41,7 @@ public:
     String getFileContents(const String& fileSystemStr, const String& filename, int maxLen=0, bool cacheIfPossible=false);
     bool setFileContents(const String& fileSystemStr, const String& filename, String& fileContents);
 
-    // Handle a file upload block - same API as ESPAsyncWebServer file handler
+    // Handle a file upload block
     void uploadAPIBlockHandler(const char* fileSystem, const String& req, FileBlockInfo& fileBlockInfo);
     void uploadAPIBlocksComplete();
 

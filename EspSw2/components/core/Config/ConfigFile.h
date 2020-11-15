@@ -48,5 +48,5 @@ public:
     virtual bool setup() override final;
 
     // Write configuration string
-    virtual bool writeConfig() override final;
+    virtual bool writeConfig(const String& configJSONStr) override final;
 };

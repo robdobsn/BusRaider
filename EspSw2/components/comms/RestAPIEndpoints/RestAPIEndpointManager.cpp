@@ -15,6 +15,7 @@ static const char* MODULE_PREFIX = "RestAPIEndpointManager";
 
 // #define DEBUG_REST_API_ENDPOINTS_ADD
 // #define DEBUG_REST_API_ENDPOINTS_GET
+// #define DEBUG_HANDLE_API_REQUEST_AND_RESPONSE
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -138,6 +139,9 @@ bool RestAPIEndpointManager::handleApiRequest(const char *requestStr, String &re
     // Call endpoint
     String reqStr(requestStr);
     pDef->callback(reqStr, retStr);
+#ifdef DEBUG_HANDLE_API_REQUEST_AND_RESPONSE
+    LOG_W(MODULE_PREFIX, "handleApiRequest %s resp %s", requestStr, retStr.c_str());
+#endif
     return true;
 }
 

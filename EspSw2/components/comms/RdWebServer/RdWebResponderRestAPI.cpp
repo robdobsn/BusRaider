@@ -128,12 +128,18 @@ uint32_t RdWebResponderRestAPI::getResponseNext(uint8_t* pBuf, uint32_t bufMaxLe
         String retStr;
         _pEndpointDef->callback(_requestStr, retStr);
 
-        // Check buffer ok
+        // Check how much of buffer to send
         respLen = bufMaxLen > retStr.length() ? retStr.length() : bufMaxLen;
         if (respLen < retStr.length())
         {
-            LOG_W(MODULE_PREFIX, "getResponseNext API response too long %d bytes URL %s",
-                        retStr.length(), _requestStr.c_str());
+            _respStr = retStr.substring(respLen);
+            LOG_I(MODULE_PREFIX, "getResponseNext API response too long %d sending first part %d URL %s",
+                        retStr.length(), respLen, _requestStr.c_str());
+        }
+        else
+        {
+            // Done response
+            _isActive = false;
         }
 
         // Copy response
@@ -142,9 +148,35 @@ uint32_t RdWebResponderRestAPI::getResponseNext(uint8_t* pBuf, uint32_t bufMaxLe
         // Endpoint done
         _endpointCalled = true;
     }
+    else if (_endpointCalled)
+    {
+        // Check how much of buffer to send
+        respLen = bufMaxLen > _respStr.length() ? _respStr.length() : bufMaxLen;
+        if (respLen < _respStr.length())
+        {
+            // Copy response
+            memcpy(pBuf, _respStr.c_str(), respLen);
 
+            // Remove sent data from _respStr
+            _respStr = _respStr.substring(respLen);
+            LOG_I(MODULE_PREFIX, "getResponseNext API next chunk len %d URL %s",
+                        respLen, _requestStr.c_str());
+        }
+        else
+        {
+            // Copy response
+            memcpy(pBuf, _respStr.c_str(), respLen);
     // Done response
     _isActive = false;
+            _respStr.clear();
+        }
+    }
+    else
+    {
+        // Done response
+        _isActive = false;
+    }
+
 #ifdef DEBUG_RESPONDER_REST_API
     LOG_I(MODULE_PREFIX, "getResponseNext respLen %d isActive %d", respLen, _isActive);
 #endif

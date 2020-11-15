@@ -9,6 +9,8 @@
 #include <Utils.h>
 #include <ConfigPinMap.h>
 
+// #define DEBUG_POWER_LED_SETUP
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Test and Monitoring
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -17,7 +19,9 @@ void powerUpLEDSet(ConfigBase config)
 {
     // Check enabled
     bool isEnabled = config.getLong("enable", 0) != 0;
-    LOG_W("PowerUpLEDSet", "setup, conf %s enable %d", config.c_str(), isEnabled);
+#ifdef DEBUG_POWER_LED_SETUP
+    LOG_I("PowerUpLEDSet", "setup, enable %d", isEnabled);
+#endif
     if (!isEnabled)
         return;
 
@@ -26,7 +30,9 @@ void powerUpLEDSet(ConfigBase config)
     int ledPin = -1;
     if (ledPinStr.length() != 0)
         ledPin = ConfigPinMap::getPinFromName(ledPinStr.c_str());
-    LOG_W("PowerUpLEDSet", "setup, ledPin %d", ledPin);
+#ifdef DEBUG_POWER_LED_SETUP
+    LOG_I("PowerUpLEDSet", "setup, ledPin %d", ledPin);
+#endif
     if (ledPin < 0)
         return;
 
@@ -35,8 +41,9 @@ void powerUpLEDSet(ConfigBase config)
     int isPix = config.getLong("isPix", 0);
     int pixIdx = config.getLong("pixIdx", 0);
 
-    LOG_W("PowerUpLEDSet", "setup, isPix %d ledVal %d", isPix, ledVal);
-
+#ifdef DEBUG_POWER_LED_SETUP
+    LOG_I("PowerUpLEDSet", "setup, isPix %d ledVal %d", isPix, ledVal);
+#endif
     // Check if pixel strip
     if (isPix)
     {
@@ -50,7 +57,9 @@ void powerUpLEDSet(ConfigBase config)
         }
         else
         {
-            LOG_W("PowerUpLEDSet", "setup ok");
+#ifdef DEBUG_POWER_LED_SETUP
+            LOG_I("PowerUpLEDSet", "setup ok");
+#endif
         }
         pixStrip.setPixelColor(pixIdx, ledVal);
         pixStrip.show();

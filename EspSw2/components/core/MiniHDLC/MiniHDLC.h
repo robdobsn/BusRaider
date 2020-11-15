@@ -48,9 +48,9 @@ public:
         _rxBufAllocFail = 0;
     }
     uint32_t _rxFrameCount;
-    uint32_t _frameCRCErrCount;
-    uint32_t _frameTooLongCount;
-    uint32_t _rxBufAllocFail;
+    uint16_t _frameCRCErrCount;
+    uint16_t _frameTooLongCount;
+    uint16_t _rxBufAllocFail;
 };
 
 // MiniHDLC
@@ -116,6 +116,12 @@ public:
         return _txBuffer.data();
     }
 
+    // Clear tx buffer
+    void clearTxBuf()
+    {
+        _txBuffer.clear();
+    }
+
     // Get frame tx len
     uint32_t getFrameTxLen()
     {
@@ -178,25 +184,25 @@ private:
     bool _bigEndianCRC;
 
     // State vars
-    unsigned _framePos;
+    uint16_t _framePos;
     uint16_t _frameCRC;
     bool _inEscapeSeq;
 
     // Bitwise state
     uint8_t _bitwiseLast8Bits;
     uint8_t _bitwiseByte;
-    int _bitwiseBitCount;
-    int _bitwiseSendOnesCount;
+    uint8_t _bitwiseBitCount;
+    uint8_t _bitwiseSendOnesCount;
 
     // Receive buffer
     SimpleBuffer _rxBuffer;
-    uint32_t _rxBufferMaxLen;
+    uint16_t _rxBufferMaxLen;
 
     // Transmit buffer
     SimpleBuffer _txBuffer;
-    uint32_t _txBufferMaxLen;
-    uint32_t _txBufferPos;
-    uint32_t _txBufferBitPos;
+    uint16_t _txBufferMaxLen;
+    uint16_t _txBufferPos;
+    uint16_t _txBufferBitPos;
 
     // Stats
     MiniHDLCStats _stats;

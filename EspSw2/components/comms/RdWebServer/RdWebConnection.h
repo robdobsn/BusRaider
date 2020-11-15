@@ -43,7 +43,8 @@ public:
     void closeAndClear();
 
     // Set a new connection
-    void setNewConn(struct netconn *pConnection, RdWebConnManager* pConnManager);
+    void setNewConn(struct netconn *pConnection, RdWebConnManager* pConnManager,
+                uint32_t maxSendBufferBytes);
 
     // True if active
     bool isActive();
@@ -54,10 +55,17 @@ public:
         return _header;
     }
 
-    // Send buffer size
-    static const uint32_t SEND_BUFFER_MAX_LEN = 5000;
+    // Get responder
+    RdWebResponder* getResponder()
+    {
+        return _pResponder;
+    }
 
 private:
+
+    // Max size of buffer permitted on the stack
+    static const uint32_t MAX_BUFFER_ALLOCATED_ON_STACK = 1000;
+
     // Connection manager
     RdWebConnManager* _pConnManager;
 
@@ -85,6 +93,9 @@ private:
     uint32_t _timeoutStartMs;
     uint32_t _timeoutDurationMs;
     bool _timeoutActive;
+
+    // Max send buffer size
+    uint32_t _maxSendBufferBytes;
 
     // Debug
     uint32_t _debugDataRxCount;
@@ -126,4 +137,7 @@ private:
 
     // Send standard headers
     void sendStandardHeaders();
+
+    // Handle response using buffer provided
+    void handleResponseWithBuffer(uint8_t* pSendBuffer);
 };

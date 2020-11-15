@@ -126,7 +126,7 @@ void CommandFile::apiFileRun(const String &reqStr, String& respStr)
         // Send command to robot controller to play the file
         char jsonPlayFile[200];
         snprintf(jsonPlayFile, sizeof(jsonPlayFile), R"("cmd":"playSound","fileName":"%s")", fileName.c_str());
-        sysModSendCmdJSON("RobotController", jsonPlayFile);
+        sysModSendCmdJSON("RobotCtrl", jsonPlayFile);
         rslt = true;
 	}
     else if (fileExt.equalsIgnoreCase(".api"))

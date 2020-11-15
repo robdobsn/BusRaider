@@ -18,12 +18,13 @@
 
 class RdWebHandler;
 class RdWebServerSettings;
+class ProtocolEndpointManager;
 
 class RdWebResponderWS : public RdWebResponder
 {
 public:
     RdWebResponderWS(RdWebHandler* pWebHandler, const RdWebRequestParams& params, 
-                const String& reqStr, RdWebSocketCB webSocketCB, 
+                const String& reqStr, ProtocolEndpointManager* pProtocolEndpointManager, 
                 const RdWebServerSettings& webServerSettings);
     virtual ~RdWebResponderWS();
 
@@ -60,6 +61,13 @@ public:
         return "WS";
     }
 
+    // Get protocolChannelID for responder
+    virtual bool getProtocolChannelID(uint32_t& protocolChannelID)
+    {
+        protocolChannelID = _reqParams.getProtocolChannelID();
+        return true;
+    }
+
 private:
     // Handler
     RdWebHandler* _pWebHandler;
@@ -72,6 +80,9 @@ private:
 
     // Websocket link
     RdWebSocketLink _webSocketLink;
+
+    // Protocol endpoint manager
+    ProtocolEndpointManager* _pProtocolEndpointManager;
 
     // Vars
     String _requestStr;
@@ -101,6 +112,9 @@ private:
     };
 
     // Queue for sending frames over the web socket
-    static const uint32_t WEB_SOCKET_TX_QUEUE_SIZE = 3;
+    static const uint32_t WEB_SOCKET_TX_QUEUE_SIZE = 10;
     RingBufferRTOS<RdWebDataFrame, WEB_SOCKET_TX_QUEUE_SIZE> _txQueue;
+
+    // Callback on websocket activity
+    void webSocketCallback(RdWebSocketEventCode eventCode, const uint8_t* pBuf, uint32_t bufLen);
 };

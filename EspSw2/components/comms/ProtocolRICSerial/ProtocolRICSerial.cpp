@@ -145,6 +145,7 @@ void ProtocolRICSerial::encodeTxMsgAndSend(ProtocolEndpointMsg& msg)
         ricSerialMsg.insert(ricSerialMsg.end(), msg.getCmdVector().begin(), msg.getCmdVector().end());
         _pHDLC->sendFrame(ricSerialMsg.data(), ricSerialMsg.size());
         msg.setFromBuffer(_pHDLC->getFrameTxBuf(), _pHDLC->getFrameTxLen());
+        _pHDLC->clearTxBuf();
 
 #endif
         // Debug

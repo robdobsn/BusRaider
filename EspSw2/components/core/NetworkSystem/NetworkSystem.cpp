@@ -196,7 +196,7 @@ void NetworkSystem::wifiEventHandler(void *arg, esp_event_base_t event_base,
         {
             if ((WIFI_CONNECT_MAX_RETRY < 0) || (_numConnectRetries < WIFI_CONNECT_MAX_RETRY))
             {
-                LOG_W(MODULE_PREFIX, "disconnected, retry to connect to the AP");
+                LOG_W(MODULE_PREFIX, "disconnected, retry to connect to the AP retries %d", _numConnectRetries);
                 if (esp_wifi_disconnect() == ESP_OK)
                 {
                     esp_wifi_connect();

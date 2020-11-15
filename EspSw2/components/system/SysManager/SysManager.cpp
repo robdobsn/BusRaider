@@ -73,6 +73,7 @@ SysManager::SysManager(const char* pModuleName, ConfigBase& defaultConfig, Confi
     // Monitoring period and monitoring timer
     _monitorPeriodMs = _sysModManConfig.getLong("monitorPeriodMs", 10000);
     _monitorTimerMs = millis();
+    _sysModManConfig.getArrayElems("reportList", _monitorReportList);
     _monitorTimerStarted = false;
 
     // System restart flag
@@ -190,7 +191,7 @@ void SysManager::setup()
     if (pauseWiFiForBLEConn)
     {
         // Hook status change on BLE
-        setStatusChangeCB("BLEManager", std::bind(&SysManager::statusChangeBLEConnCB, this));
+        setStatusChangeCB("BLEMan", std::bind(&SysManager::statusChangeBLEConnCB, this));
     }
 
     // Keep track of the firmware updater
@@ -501,6 +502,18 @@ String SysManager::getStatusJSON(const char* sysModName)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 String SysManager::getDebugStr(const char* sysModName)
 {
+    // Check if it is the SysManager's own stats that are wanted
+    if (strcasecmp(sysModName, "SysMan") == 0)
+        return statsGetString();
+
+    // Check for stats callback
+    if (strcasecmp(sysModName, "StatsCB") == 0)
+    {
+        if (_statsCB)
+            return _statsCB();
+        return "";
+    }
+
     // See if the sysmod is in the list
     for (SysModBase* pSysMod : _sysModuleList)
     {
@@ -601,8 +614,7 @@ void SysManager::apiFriendlyName(const String &reqStr, String& respStr)
         String jsonConfig = getMutableConfigJson();
         if (_pMutableConfig)
         {
-            _pMutableConfig->setConfigData(jsonConfig.c_str());
-            _pMutableConfig->writeConfig();
+            _pMutableConfig->writeConfig(jsonConfig);
         }
     }
 
@@ -654,8 +666,7 @@ void SysManager::apiSerialNumber(const String &reqStr, String& respStr)
         String jsonConfig = getMutableConfigJson();
         if (_pMutableConfig)
         {
-            _pMutableConfig->setConfigData(jsonConfig.c_str());
-            _pMutableConfig->writeConfig();
+            _pMutableConfig->writeConfig(jsonConfig);
         }
     }
 
@@ -684,61 +695,38 @@ String SysManager::getMutableConfigJson()
 
 void SysManager::statsShow()
 {
-    // Show stats
-    String infoStr;
-    infoStr = 
-        _systemName +
-        " V" + _systemVersion +
-        " Heap " + String(heap_caps_get_free_size(MALLOC_CAP_8BIT));
+    // Generate stats
+    char statsStr[500];
+    snprintf(statsStr, sizeof(statsStr), "%s V%s Heap %d (Min %d)", 
+                _systemName.c_str(),
+                _systemVersion.c_str(),
+                heap_caps_get_free_size(MALLOC_CAP_8BIT),
+                heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT));
 
-    // TODO - get reportList from config and report accordingly
-
-    String newStr = getDebugStr("NetworkManager");
-    if (newStr.length() > 0)
-        infoStr += " " + newStr;
-    
-    newStr = getDebugStr("BLEManager");
-    if (newStr.length() > 0)
-        infoStr += " " + newStr;
-
-    // MiniHDLC info
-    // MiniHDLCStats* pStats = _commandSerial.getHDLCStats();
-    // infoStr +=
-    //         " FR " + String(pStats->_rxFrameCount) + 
-    //         " CRC " + String(pStats->_frameCRCErrCount) + 
-    //         " TOO " + String(pStats->_frameTooLongCount) +
-    //         " NOM " + String(pStats->_rxBufAllocFail);
-
-    // // Robot controller info
-    // infoStr += " " + _robotController.getDebugStr();
-
-    // SysManager info
-    newStr = statsGetString();
-    if (newStr.length() > 0)
-        infoStr += " " + newStr;
-
-    newStr = getDebugStr("RobotController");
-    if (newStr.length() > 0)
-        infoStr += " " + newStr;
-
-    // OTA update debug
-    if (_pFirmwareUpdateSysMod && _pFirmwareUpdateSysMod->isBusy())
+    // Add stats
+    for (String& srcStr : _monitorReportList)
     {
-        newStr = _pFirmwareUpdateSysMod->getDebugStr();
-        if (newStr.length() > 0)
-            infoStr += " " + newStr;
+        String modStr = getDebugStr(srcStr.c_str());
+        if (modStr.length() > 0)
+        {
+            strlcat(statsStr, " ", sizeof(statsStr));
+            strlcat(statsStr, modStr.c_str(), sizeof(statsStr));
+        }
     }
 
-    // Check if there's a callback registered for additional stats
-    if (_statsCB)
+    // OTA update stats
+    if (_pFirmwareUpdateSysMod && _pFirmwareUpdateSysMod->isBusy())
     {
-        newStr = _statsCB();
+        String newStr = _pFirmwareUpdateSysMod->getDebugStr();
         if (newStr.length() > 0)
-            infoStr += " " + newStr;
+        {
+            strlcat(statsStr, " ", sizeof(statsStr));
+            strlcat(statsStr, newStr.c_str(), sizeof(statsStr));
+        }
     }
 
     // Report stats
-    LOG_I(MODULE_PREFIX, "%s", infoStr.c_str());
+    LOG_I(MODULE_PREFIX, "%s", statsStr);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -773,7 +761,7 @@ bool SysManager::getFriendlyNameIsSet()
 void SysManager::statusChangeBLEConnCB()
 {
     // Get BLE status JSON
-    ConfigBase statusBLE = getStatusJSON("BLEManager");
+    ConfigBase statusBLE = getStatusJSON("BLEMan");
     bool bleIsConnected = statusBLE.getLong("isConn", 0) != 0;
     LOG_W(MODULE_PREFIX, "BLE connection change isConn %s", bleIsConnected ? "YES" : "NO");
 

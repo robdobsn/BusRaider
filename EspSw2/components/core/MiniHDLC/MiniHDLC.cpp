@@ -213,7 +213,8 @@ void MiniHDLC::handleChar(uint8_t ch)
                                 _framePos, rxcrc, _frameCRC, (const char*)_rxBuffer.data());
                 }
 #endif
-                _stats._frameCRCErrCount++;
+                if (_stats._frameCRCErrCount < __UINT16_MAX__)
+                    _stats._frameCRCErrCount++;
             }
         }
 
@@ -222,6 +223,7 @@ void MiniHDLC::handleChar(uint8_t ch)
         _framePos = 0;
         _frameCRC = CRC16_CCITT_INIT_VAL;
         _stats._rxFrameCount++;
+        _rxBuffer.clear();
         return;
     }
 
@@ -245,7 +247,8 @@ void MiniHDLC::handleChar(uint8_t ch)
             // Too long - discard and start again
             _framePos = 0;
             _frameCRC = CRC16_CCITT_INIT_VAL;
-            _stats._frameTooLongCount++;
+            if (_stats._frameTooLongCount < __UINT16_MAX__)
+                _stats._frameTooLongCount++;
             return;
         }
         _rxBuffer.resize(_framePos+1);
@@ -257,7 +260,8 @@ void MiniHDLC::handleChar(uint8_t ch)
         // Check valid
         _framePos = 0;
         _frameCRC = CRC16_CCITT_INIT_VAL;
-        _stats._rxBufAllocFail++;
+        if (_stats._rxBufAllocFail < __UINT16_MAX__)
+            _stats._rxBufAllocFail++;
         return;
     }
 

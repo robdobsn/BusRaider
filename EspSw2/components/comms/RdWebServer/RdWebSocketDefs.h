@@ -9,6 +9,7 @@
 #pragma once
 
 #include "stdint.h"
+#include <functional>
 
 enum RdWebSocketEventCode
 {
@@ -34,4 +35,4 @@ enum WebSocketOpCodes
     WEBSOCKET_OPCODE_PONG = 0xA
 };
 
-typedef void (*RdWebSocketCB)(RdWebSocketEventCode eventCode, const uint8_t* pBuf, uint32_t bufLen);
+typedef std::function<void(RdWebSocketEventCode eventCode, const uint8_t* pBuf, uint32_t bufLen)> RdWebSocketCB;

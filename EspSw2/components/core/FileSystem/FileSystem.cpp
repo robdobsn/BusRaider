@@ -550,8 +550,11 @@ void FileSystem::uploadAPIBlockHandler(const char* fileSystem, const String& req
 #endif
 
     // Check valid
-    if ((!fileBlockInfo.filename) || strlen(fileBlockInfo.filename))
+    if ((!fileBlockInfo.filename) || (strlen(fileBlockInfo.filename) == 0))
+    {
+        LOG_W(MODULE_PREFIX, "uploadBlock file name invalid");
         return;
+    }
 
     // Check file system supported
     String nameOfFS;
@@ -563,7 +566,10 @@ void FileSystem::uploadAPIBlockHandler(const char* fileSystem, const String& req
 
     // Take mutex
     if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
+    {
+        LOG_W(MODULE_PREFIX, "uploadBlock file system semaphore problem");
         return;
+    }
 
     // Get path
     String filename = fileBlockInfo.filename;
@@ -629,8 +635,9 @@ void FileSystem::uploadAPIBlockHandler(const char* fileSystem, const String& req
             // Cached file list now invalid
             _cachedFileListValid = false;
 #ifdef DEBUG_FILE_UPLOAD
-            LOG_I(MODULE_PREFIX, "uploadBlock finalBlock rename OK fileSys %s, filename %s, total %d, pos %d, len %d", 
-                nameOfFS.c_str(), filename.c_str(), fileLength, filePos, len);
+            LOG_I(MODULE_PREFIX, "uploadBlock finalBlock rename OK fileSys %s, filename %s, contentLen %d, pos %d, len %d", 
+                nameOfFS.c_str(), filename.c_str(), fileBlockInfo.contentLen, 
+                fileBlockInfo.filePos, fileBlockInfo.blockLen);
 #endif
         }
 
@@ -649,6 +656,9 @@ void FileSystem::uploadAPIBlockHandler(const char* fileSystem, const String& req
     }
     else
     {
+#ifdef DEBUG_FILE_UPLOAD
+        LOG_W(MODULE_PREFIX, "uploadBlock non-final block");
+#endif
         // Restore semaphore
         xSemaphoreGive(_fileSysMutex);
     }

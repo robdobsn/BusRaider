@@ -23,18 +23,19 @@
 #include <ESPUtils.h>
 #include <SysManager.h>
 
-// #define DEBUG_BLE_RX_PAYLOAD 1
-// #define DEBUG_BLE_TX_MSG 1
-// #define DEBUG_BLE_TX_MSG_SPLIT 1
-// #define DEBUG_BLE_TX_MSG_DETAIL 1
-// #define DEBUG_BLE_PUBLISH 1
+// #define DEBUG_BLE_RX_PAYLOAD
+// #define DEBUG_BLE_TX_MSG
+// #define DEBUG_BLE_TX_MSG_SPLIT
+// #define DEBUG_BLE_TX_MSG_DETAIL
+// #define DEBUG_BLE_PUBLISH
+// #define DEBUG_BLE_SETUP
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Statics, etc
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Log prefix
-static const char *MODULE_PREFIX = "BLEManager";
+static const char *MODULE_PREFIX = "BLEMan";
 
 // NOTE: this is the main service in BLEGattServer
 ble_uuid128_t BLEManager::BLE_RICV2_ADVERTISING_UUID = BLEGattServer::GATT_RICV2_MAIN_SERVICE_UUID;
@@ -97,7 +98,9 @@ void BLEManager::applySetup()
 {
     // See if BLE enabled
     _enableBLE = (configGetLong("enable", 0) != 0);
-    LOG_D(MODULE_PREFIX, "applySetup BLE enabled");
+#ifdef DEBUG_BLE_SETUP
+    LOG_I(MODULE_PREFIX, "applySetup BLE enabled %c", _enableBLE ? 'Y' : 'N');
+#endif
 
     // Setup if enabled
     if (_enableBLE)
@@ -154,7 +157,9 @@ void BLEManager::applySetup()
         setIsConnected(false);
 
         // Debug
+#ifdef DEBUG_BLE_SETUP
         LOG_I(MODULE_PREFIX, "applySetup maxPktLen %d", _maxPacketLength);
+#endif
     }
     else if (_BLEDeviceInitialised)
     {
@@ -177,9 +182,10 @@ void BLEManager::applySetup()
         _BLEDeviceInitialised = false;
 
         // Debug
+#ifdef DEBUG_BLE_SETUP
         LOG_I(MODULE_PREFIX, "applySetup de-init ok");
+#endif
     }
-
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -252,11 +258,14 @@ void BLEManager::addProtocolEndpoints(ProtocolEndpointManager& endpointManager)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 String BLEManager::getStatusJSON()
 {
+    if (!_BLEDeviceInitialised)
+        return R"({"rslt":"failDisabled"})";
+
     int8_t rssiOut = 0;
     int bleGapConnRSSI = ble_gap_conn_rssi(_bleGapConnHandle, &rssiOut);
     char statusStr[200];
     snprintf(statusStr, sizeof(statusStr), 
-                "{\"rslt\":\"ok\",\"isConn\":%d,\"isAdv\":%d,\"advName\":\"%s\",\"rssi\":%d,\"BLEMAC\":\"%s\"}", 
+                R"("{"rslt":"ok","isConn":%d,"isAdv":%d,"advName":"%s","rssi":%d,"BLEMAC":"%s"})",
                 _isConnected,
                 ble_gap_adv_active(),
                 ble_svc_gap_device_name(),
@@ -272,6 +281,9 @@ String BLEManager::getStatusJSON()
 
 String BLEManager::getDebugStr()
 {
+    if (!_BLEDeviceInitialised)
+        return "";
+
     bool advertisingActive = ble_gap_adv_active();
     bool discoveryActive = ble_gap_disc_active();
     bool gapConnActive = ble_gap_conn_active();
@@ -305,6 +317,9 @@ String BLEManager::getDebugStr()
 
 void BLEManager::onSync()
 {
+    if (!_BLEDeviceInitialised)
+        return;
+
     // Validate
     int rc = ble_hs_util_ensure_addr(0);
     assert(rc == 0);
@@ -427,7 +442,6 @@ void BLEManager::startAdvertising()
 void BLEManager::print_addr(const uint8_t *addr)
 {
     const uint8_t *u8p;
-
     u8p = addr;
     LOG_I(MODULE_PREFIX, "%02x:%02x:%02x:%02x:%02x:%02x",
                 u8p[5], u8p[4], u8p[3], u8p[2], u8p[1], u8p[0]);
@@ -701,6 +715,9 @@ void BLEManager::gattAccessCallback(const char* characteristicName, bool readOp,
 
 bool BLEManager::sendBLEMsg(ProtocolEndpointMsg& msg)
 {
+    if (!_BLEDeviceInitialised)
+        return false;
+
 #ifdef DEBUG_BLE_TX_MSG
 #ifndef DEBUG_BLE_PUBLISH
     if (msg.getDirection() != MSG_DIRECTION_PUBLISH) 

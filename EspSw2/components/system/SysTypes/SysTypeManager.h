@@ -10,7 +10,7 @@
 #pragma once
 
 #include <Logger.h>
-#include <ConfigBase.h>
+#include <ConfigNVS.h>
 #include <list>
 
 class RestAPIEndpointManager;
@@ -19,10 +19,10 @@ class SysTypeManager
 {
 public:
     // Constructor
-    SysTypeManager();
+    SysTypeManager(ConfigNVS& sysTypeConfig);
 
     // Setup
-    void setup(const char** pSysTypeConfigArray, int sysTypeConfigArrayLen, ConfigBase* pSysTypeConfig);
+    void setup(const char** pSysTypeConfigArray, int sysTypeConfigArrayLen);
 
     // Add endpoints
     void addRestAPIEndpoints(RestAPIEndpointManager& endpointManager);
@@ -35,18 +35,12 @@ public:
     void getSysSettings(String& respStr);
     bool setSysSettings(const uint8_t *pData, int len);
 
-    // Get pointer to base settings (which may be hooked to handle config changes)
-    ConfigBase* getConfigBasePtr()
-    {
-        return _pSysSettings;
-    }
-
 private:
     // List of sysTypes
-    std::list<String> _sysTypesList;
+    std::list<const char*> _sysTypesList;
 
-    // Non-volatile settings
-    ConfigBase* _pSysSettings;
+    // System type configuration
+    ConfigNVS& _sysTypeConfig;
 
     // API System type
     void apiGetSysTypes(const String &reqStr, String &respStr);

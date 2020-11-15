@@ -92,6 +92,12 @@ public:
         return "NONE";
     }
 
+    // Get protocolChannelID for responder
+    virtual bool getProtocolChannelID(uint32_t& protocolChannelID)
+    {
+        return false;
+    }
+
 protected:
     // Is Active
     bool _isActive;

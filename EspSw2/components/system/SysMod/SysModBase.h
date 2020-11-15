@@ -86,11 +86,6 @@ public:
         return _combinedConfig;
     }
 
-    virtual void configSetData(const char* pConfigStr);
-
-    // Mutable config management
-    virtual void configSave();
-
     // Get JSON status string
     virtual String getStatusJSON()
     {
@@ -144,8 +139,7 @@ public:
     }
 
     // Process RICRESTMsg CmdFrame
-    virtual bool procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg& ricRESTReqMsg, 
-                    String& respMsg, uint32_t channelID)
+    virtual bool procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg& ricRESTReqMsg, String& respMsg, uint32_t channelID)
     {
         return false;
     }
@@ -186,6 +180,9 @@ protected:
 
     // Execute status change callbacks
     void executeStatusChangeCBs();
+
+    // Mutable config management
+    virtual void configSaveData(const String& pConfigStr);
 
 private:
     // Name of this module

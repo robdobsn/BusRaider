@@ -195,7 +195,9 @@ void FileManager::apiUploadToFileManComplete(const String &reqStr, String &respS
 void FileManager::apiUploadToFileManPart(const String& req, FileBlockInfo& fileBlockInfo)
 {
 #ifdef DEBUG_FILE_MANAGER_UPLOAD
-    LOG_I(MODULE_PREFIX, "apiUpToFileMan %d, %d, %d, %d", contentLen, index, len, finalBlock);
+    LOG_I(MODULE_PREFIX, "apiUpToFileMan fileLen %d filePos %d blockLen %d isFinal %d", 
+            fileBlockInfo.fileLen, fileBlockInfo.filePos,
+            fileBlockInfo.blockLen, fileBlockInfo.finalBlock);
 #endif
     fileSystem.uploadAPIBlockHandler("", req, fileBlockInfo);
 }

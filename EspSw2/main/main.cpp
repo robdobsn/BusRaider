@@ -40,14 +40,14 @@ static const char *defaultConfigJSON =
         R"("DefaultNameIsSet":0,)"
         R"("SysManager":{)"
             R"("monitorPeriodMs":10000,)"
-            R"("reportList":["NetworkManager"],)"
+            R"("reportList":["NetMan"],)"
             R"("pauseWiFiforBLE":1,)"
             R"("RICSerial":{)"
                 R"("FrameBound":"0x7E",)"
                 R"("CtrlEscape":"0x7D")"
             R"(})"
         R"(},)"
-        R"("NetworkManager":{)"
+        R"("NetMan":{)"
             R"("WiFiEnabled":1,)"
             R"("defaultHostname":")" DEFAULT_HOSTNAME R"(",)"
             R"("logLevel":"D")"
@@ -72,11 +72,16 @@ static const char *defaultConfigJSON =
             R"("webServerPort":80,)"
             R"("allowOriginAll":1,)"
             R"("apiPrefix":"",)"
+            R"("fileServer":1,)"
             R"("numConnSlots":6,)"
             R"("maxWS":3,)"
-            R"("wsPcol":"RICFrame",)"
+            R"("wsPcol":"RICSerial",)"
             R"("wsPingMs":2000,)"
-            R"("logLevel":"D")"
+            R"("logLevel":"D",)"
+            R"("sendMax":1000,)"
+            R"("taskCore":0,)"
+            R"("taskStack":3000,)"
+            R"("taskPriority":9)"            
         R"(},)"
         R"("SerialConsole":{)"
             R"("enable":1,)"
@@ -247,7 +252,7 @@ void mainTask(void *pvParameters)
 
     // Check defaultConfigJSON is valid
     int numJsonTokens = 0;
-    if (!defaultSystemConfig.validateJson(numJsonTokens))
+    if (!RdJson::validateJson(defaultConfigJSON, numJsonTokens))
     {
         LOG_E(MODULE_NAME, "mainTask defaultConfigJSON failed to parse");
     }
@@ -260,18 +265,18 @@ void mainTask(void *pvParameters)
     ///////////////////////////////////////////////////////////////////////////////////
 
     // Configuration for the system - including robot name
-    ConfigNVS _sysModMutableConfig("system", 500);
+    ConfigNVS _sysModMutableConfig("system", 500, false);
 
     // Configuration for PiCoProcessor
-    ConfigNVS _piCoProConfig("pi", 2000);
+    ConfigNVS _piCoProConfig("pi", 2000, false);
 
     // Configuration for other system modules
-    ConfigNVS _sysTypeConfig("sys", 10000);
+    ConfigNVS _sysTypeConfig("sys", 10000, false);
 
     ///////////////////////////////////////////////////////////////////////////////////
 
     // SysTypes
-    SysTypeManager _sysTypeManager;
+    SysTypeManager _sysTypeManager(_sysTypeConfig);
 
     // System Module Manager
     SysManager _SysManager("SysManager", defaultSystemConfig, &_sysModMutableConfig);
@@ -281,7 +286,7 @@ void mainTask(void *pvParameters)
     _SysManager.setRestAPIEndpoints(_restAPIEndpointManager);
 
     // ProtocolEndpointManager
-    ProtocolEndpointManager _protocolEndpointManager("ProtocolEndpointManager", defaultSystemConfig, &_sysTypeConfig, NULL);
+    ProtocolEndpointManager _protocolEndpointManager("ProtoMgr", defaultSystemConfig, &_sysTypeConfig, NULL);
     _SysManager.setProtocolEndpointManager(_protocolEndpointManager);
 
     // SerialConsole
@@ -292,7 +297,7 @@ void mainTask(void *pvParameters)
 
 #ifdef INCLUDE_WIFI_FUNCTIONALITY
     // NetworkManager
-    NetworkManager _networkManager("NetworkManager", defaultSystemConfig, &_sysTypeConfig, NULL);
+    NetworkManager _networkManager("NetMan", defaultSystemConfig, &_sysTypeConfig, NULL);
 #endif
 
     // ESP OTA Update
@@ -319,7 +324,7 @@ void mainTask(void *pvParameters)
     ESP_LOGI(MODULE_NAME, SYSTEM_NAME " " SYSTEM_VERSION " (built " __DATE__ " " __TIME__ ") Heap %d", heap_caps_get_free_size(MALLOC_CAP_8BIT));
 
     // SysTypeManager setup
-    _sysTypeManager.setup(SYS_CONFIGURATIONS, SYS_CONFIGURATIONS_LEN, &_sysTypeConfig);
+    _sysTypeManager.setup(SYS_CONFIGURATIONS, SYS_CONFIGURATIONS_LEN);
     _sysTypeManager.addRestAPIEndpoints(_restAPIEndpointManager);
 
     // System module manager
@@ -331,8 +336,8 @@ void mainTask(void *pvParameters)
     _webServer.serveStaticFiles("/files/sd", "/sd/");
     _webServer.serveStaticFiles("/", ("/" + fileSystem.getDefaultFSRoot()).c_str());
 
-    // Open websocket
-    _webServer.webSocketOpen("/ws");
+    // Serve websockets
+    _webServer.webSocketSetup("/ws");
 
     // Start webserver
     _webServer.beginServer();

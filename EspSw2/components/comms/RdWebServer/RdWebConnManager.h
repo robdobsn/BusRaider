@@ -22,6 +22,8 @@ class RdWebHandler;
 class RdWebRequestHeader;
 class RdWebResponder;
 class RdWebRequestParams;
+class ProtocolEndpointManager;
+class ProtocolEndpointMsg;
 
 class RdWebConnManager
 {
@@ -32,11 +34,15 @@ public:
     // Setup
     void setup(RdWebServerSettings& settings);
 
+    // Service
+    void service();
+
     // Handle an incoming connection
     bool handleNewConnection(struct netconn* pNewConnection);
 
     // Endpoints
-    void addEndpoints(RestAPIEndpointManager* pEndpoints);
+    void addRestAPIEndpoints(RestAPIEndpointManager* pEndpoints);
+    void addProtocolEndpoints(ProtocolEndpointManager& endpointManager);
 
     // Handler
     void addHandler(RdWebHandler* pHandler);
@@ -53,7 +59,8 @@ public:
     // Get new responder
     // NOTE: this returns a new object or NULL
     // NOTE: if a new object is returned the caller is responsible for deleting it when appropriate
-    RdWebResponder* getNewResponder(const RdWebRequestHeader& header, const RdWebRequestParams& params);
+    RdWebResponder* getNewResponder(const RdWebRequestHeader& header, 
+                const RdWebRequestParams& params, HttpStatusCode& statusCode);
 
     // Get standard response headers
     std::list<RdJson::NameValuePair>* getStdResponseHeaders()
@@ -93,6 +100,12 @@ private:
     // Connections
     std::vector<RdWebConnection> _webConnections;
 
+    // Web socket protocol channelIDs
+    std::vector<uint32_t> _webSocketProtocolChannelIDs;
+
+    // Web socket channel mapping
+    std::vector<int> _webSocketChannelMapping;
+
     // Client connection handler task
     static void clientConnHandlerTask(void* pvParameters);
 
@@ -100,5 +113,9 @@ private:
     bool accommodateConnection(struct netconn* pNewConnection);
     bool findEmptySlot(uint32_t& slotIx);
     uint32_t countWebSockets();
+    void serviceConnections();
+    bool allocateWebSocketChannelID(uint32_t& protocolChannelID);
+    bool sendWebSocketMsg(ProtocolEndpointMsg& msg);
+    bool readyToSendWebSocketMsg();
 };
 

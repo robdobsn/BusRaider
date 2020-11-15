@@ -22,6 +22,7 @@ static const char *MODULE_PREFIX = "RdWebConn";
 // #define DEBUG_WEB_REQUEST_HEADERS
 // #define DEBUG_WEB_REQUEST_HEADER_DETAIL
 // #define DEBUG_WEB_REQUEST_READ
+// #define DEBUG_WEB_REQUEST_RESP
 // #define DEBUG_WEB_REQUEST_READ_START_END
 // #define DEBUG_RESPONDER_PROGRESS
 // #define DEBUG_RESPONDER_PROGRESS_DETAIL
@@ -64,7 +65,8 @@ RdWebConnection::~RdWebConnection()
 // Set new connection
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void RdWebConnection::setNewConn(struct netconn *pConnection, RdWebConnManager* pConnManager)
+void RdWebConnection::setNewConn(struct netconn *pConnection, RdWebConnManager* pConnManager,
+                uint32_t maxSendBufferBytes)
 {
     // Error check
     if (_pConn)
@@ -83,6 +85,7 @@ void RdWebConnection::setNewConn(struct netconn *pConnection, RdWebConnManager* 
     _timeoutStartMs = millis();
     _timeoutActive = true;
     _timeoutDurationMs = MAX_STD_CONN_DURATION_MS;
+    _maxSendBufferBytes = maxSendBufferBytes;
 
     // Set connection timeout
     netconn_set_recvtimeout(pConnection, 1);
@@ -121,6 +124,7 @@ void RdWebConnection::clear()
     _timeoutActive = false;
     _parseHeaderStr = "";
     _debugDataRxCount = 0;
+    _maxSendBufferBytes = 0;
     _header.clear();
 }
 
@@ -301,6 +305,9 @@ bool RdWebConnection::serviceRxData(struct netbuf** pInbuf)
 
 bool RdWebConnection::serviceConnHeader(const uint8_t* pRxData, uint32_t dataLen, uint32_t& curBufPos)
 {
+    if (!_pConnManager)
+        return false;
+
     // Check for data
     if (dataLen == 0)
         return true;
@@ -317,7 +324,10 @@ bool RdWebConnection::serviceConnHeader(const uint8_t* pRxData, uint32_t dataLen
     // Handle data for header
     bool headerOk = handleHeaderData(pRxData, dataLen, curBufPos);
     if (!headerOk)
+    {
+        setHTTPResponseStatus(HTTP_STATUS_BADREQUEST);
         return false;
+    }
 
     // Check if header if now complete
     if (!_header.isComplete)
@@ -335,8 +345,7 @@ bool RdWebConnection::serviceConnHeader(const uint8_t* pRxData, uint32_t dataLen
 #endif
 
     // Now find a responder
-    if (_pConnManager)
-    {
+    HttpStatusCode statusCode = HTTP_STATUS_NOTFOUND;
         // Delete any existing responder - there shouldn't be one
         if (_pResponder)
         {
@@ -346,19 +355,20 @@ bool RdWebConnection::serviceConnHeader(const uint8_t* pRxData, uint32_t dataLen
         }
 
         // Get a responder (we are responsible for deletion)
-        RdWebRequestParams params(SEND_BUFFER_MAX_LEN, _pConnManager->getStdResponseHeaders(), 
+    RdWebRequestParams params(_maxSendBufferBytes, _pConnManager->getStdResponseHeaders(), 
                     std::bind(&RdWebConnection::rawSendOnConn, this, std::placeholders::_1, std::placeholders::_2));
-        _pResponder = _pConnManager->getNewResponder(_header, params);
+    _pResponder = _pConnManager->getNewResponder(_header, params, statusCode);
 #ifdef DEBUG_RESPONDER_CREATE_DELETE
         if (_pResponder)
-            LOG_W(MODULE_PREFIX, "New Responder created type %s", _pResponder->getResponderType());
+        LOG_I(MODULE_PREFIX, "New Responder created type %s", _pResponder->getResponderType());
+    else
+        LOG_W(MODULE_PREFIX, "Failed to create responder URI %s HTTP resp %d", _header.URIAndParams.c_str(), statusCode);
 #endif
-    }
 
     // Check we got a responder
     if (!_pResponder)
     {
-        setHTTPResponseStatus(HTTP_STATUS_NOTFOUND);
+        setHTTPResponseStatus(statusCode);
     }
     else
     {
@@ -392,33 +402,17 @@ bool RdWebConnection::serviceResponse(const uint8_t* pRxData, uint32_t dataLen, 
     if (_pResponder && _pResponder->isActive())
     {
         // Get next chunk of response
-        uint8_t* pSendBuffer = new uint8_t[SEND_BUFFER_MAX_LEN];
-        uint32_t respSize = _pResponder->getResponseNext(pSendBuffer, SEND_BUFFER_MAX_LEN);
-
-        // Check valid
-        if (respSize != 0)
+        if (_maxSendBufferBytes > MAX_BUFFER_ALLOCATED_ON_STACK)
         {
-            // Debug
-#ifdef DEBUG_RESPONDER_CONTENT_DETAIL
-            LOG_I(MODULE_PREFIX, "serviceResponse writing %d pConn %lx", respSize, (unsigned long)_pConn);
-#endif
-
-            // Check if standard reponse to be sent first
-            if (_isStdHeaderRequired && _pResponder->isStdHeaderRequired())
-            {
-                // Send standard headers
-                sendStandardHeaders();
-
-                // Done headers
-                _isStdHeaderRequired = false;
+            uint8_t* pSendBuffer = new uint8_t[_maxSendBufferBytes];
+            handleResponseWithBuffer(pSendBuffer);
+            delete [] pSendBuffer;
             }
-
-            // Send
-            netconn_write(_pConn, pSendBuffer, respSize, NETCONN_COPY);
+        else
+        {
+            uint8_t pSendBuffer[_maxSendBufferBytes];
+            handleResponseWithBuffer(pSendBuffer);
         }
-
-        // delete buffer
-        delete [] pSendBuffer;
     }
 
     // Send the standard response and headers if required    
@@ -430,8 +424,6 @@ bool RdWebConnection::serviceResponse(const uint8_t* pRxData, uint32_t dataLen, 
         // Done headers
         _isStdHeaderRequired = false;
     }
-
-
 
     // Debug
 #ifdef DEBUG_RESPONDER_PROGRESS_DETAIL
@@ -624,7 +616,7 @@ void RdWebConnection::parseNameValueLine(const String& reqLine)
     _header.nameValues.push_back({name, val});
 
     // Handle named headers
-    // Parsing from AsyncWebServer menodev
+    // Parsing derived from AsyncWebServer menodev
     if (name.equalsIgnoreCase("Host"))
     {
         _header.extract.host = val;
@@ -718,7 +710,9 @@ String RdWebConnection::decodeURL(const String &inURL) const
 
 void RdWebConnection::setHTTPResponseStatus(HttpStatusCode responseCode)
 {
-    LOG_W(MODULE_PREFIX, "Setting response code %s (%d)", getHTTPStatusStr(responseCode), responseCode);
+#ifdef DEBUG_WEB_REQUEST_RESP
+    LOG_I(MODULE_PREFIX, "Setting response code %s (%d)", getHTTPStatusStr(responseCode), responseCode);
+#endif
     _httpResponseStatus = responseCode;
 }
 
@@ -811,4 +805,35 @@ void RdWebConnection::sendStandardHeaders()
 
     // Send end of header line
     netconn_write(_pConn, "\r\n", 2, NETCONN_COPY);    
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Handle response with buffer provided
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void RdWebConnection::handleResponseWithBuffer(uint8_t* pSendBuffer)
+{
+    uint32_t respSize = _pResponder->getResponseNext(pSendBuffer, _maxSendBufferBytes);
+
+    // Check valid
+    if (respSize != 0)
+    {
+        // Debug
+#ifdef DEBUG_RESPONDER_CONTENT_DETAIL
+        LOG_I(MODULE_PREFIX, "serviceResponse writing %d pConn %lx", respSize, (unsigned long)_pConn);
+#endif
+
+        // Check if standard reponse to be sent first
+        if (_isStdHeaderRequired && _pResponder->isStdHeaderRequired())
+        {
+            // Send standard headers
+            sendStandardHeaders();
+
+            // Done headers
+            _isStdHeaderRequired = false;
+        }
+
+        // Send
+        netconn_write(_pConn, pSendBuffer, respSize, NETCONN_COPY);
+    }
 }

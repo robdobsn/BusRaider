@@ -37,6 +37,11 @@ public:
 #endif
     }
 
+    void clear()
+    {
+        _buffer.clear();
+    }
+
     void setMaxLen(unsigned maxLen)
     {
 #ifdef USE_FIXED_LENGTH_BUFFER_LEN

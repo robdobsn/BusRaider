@@ -62,6 +62,7 @@ private:
     // Vars
     bool _endpointCalled;
     String _requestStr;
+    String _respStr;
 
     // Data received
     uint32_t _numBytesReceived;

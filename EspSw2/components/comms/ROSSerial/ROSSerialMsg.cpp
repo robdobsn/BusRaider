@@ -11,7 +11,7 @@
 #include "ROSSerialMsg.h"
 
 // Logging
-static const char* MODULE_PREFIX = "ROSSerialMsg";
+// static const char* MODULE_PREFIX = "ROSSerialMsg";
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Decode message

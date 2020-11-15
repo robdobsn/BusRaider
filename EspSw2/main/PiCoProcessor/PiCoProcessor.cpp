@@ -536,12 +536,12 @@ void PiCoProcessor::apiQueryPiStatus(const String &reqStr, String &respStr)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// API request - Query cure machine
+// API request - Query current machine
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void PiCoProcessor::apiQueryCurMc(const String &reqStr, String &respStr)
 {
-    respStr = configGetConfig().getConfigString();
+    configGetConfig().getConfigString(respStr);
     LOG_I(MODULE_PREFIX, "apiQueryCurMc %s returning %s", reqStr.c_str(), respStr.c_str());
 }
 
@@ -571,8 +571,7 @@ void PiCoProcessor::apiSetMcJsonContent(const String &reqStr, const uint8_t *pDa
     LOG_I(MODULE_PREFIX, "apiSetMcJsonContent %s json %s",  
             reqStr.c_str(), jsonData);
     // Store in non-volatile so we can pick back up with same machine
-    configSetData(jsonData);
-    configSave();
+    SysModBase::configSaveData(String(jsonData));
     // Send to the Pi
     sendTargetData("setmcjson", pData, len, 0);
 }

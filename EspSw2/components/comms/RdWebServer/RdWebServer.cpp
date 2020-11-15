@@ -18,8 +18,7 @@
 
 static const char *MODULE_PREFIX = "RdWebServer";
 
-#define RD_WEB_SERVER_STACK_SIZE 3000
-
+#define INFO_WEB_SERVER_SETUP
 // #define DEBUG_NEW_CONNECTION
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -38,9 +37,11 @@ void RdWebServer::setup(RdWebServerSettings& settings)
 {
 	// Settings
     _webServerSettings = settings;
-
-    // Debug
-    LOG_W(MODULE_PREFIX, "setup port %d numConnSlots %d", settings.serverTCPPort, settings.numConnSlots);
+    
+#ifdef INFO_WEB_SERVER_SETUP
+    LOG_I(MODULE_PREFIX, "setup port %d numConnSlots %d enableFileServer %d", 
+            settings._serverTCPPort, settings._numConnSlots, settings._enableFileServer);
+#endif
 
     // Start network interface if not already started
 #ifdef USE_IDF_V4_1_NETIF_METHODS
@@ -54,7 +55,22 @@ void RdWebServer::setup(RdWebServerSettings& settings)
 	_connManager.setup(_webServerSettings);
 
 	// Start task to handle listen for connections
-	xTaskCreatePinnedToCore(&socketListenerTask,"socketLstnTask", RD_WEB_SERVER_STACK_SIZE, this, 9, NULL, 0);
+	xTaskCreatePinnedToCore(&socketListenerTask,"socketLstnTask", 
+            settings._taskStackSize,
+            this, 
+            settings._taskPriority, 
+            NULL, 
+            settings._taskCore);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Service
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void RdWebServer::service()
+{
+    // Service connection manager
+    _connManager.service();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -81,7 +97,7 @@ void RdWebServer::socketListenerTask(void* pvParameters)
     {
         // Create netconn and bind to port
         struct netconn* pListener = netconn_new(NETCONN_TCP);
-        netconn_bind(pListener, NULL, pWS->_webServerSettings.serverTCPPort);
+        netconn_bind(pListener, NULL, pWS->_webServerSettings._serverTCPPort);
         netconn_listen(pListener);
         LOG_I(MODULE_PREFIX, "web server listening");
 
@@ -133,10 +149,16 @@ void RdWebServer::addResponseHeader(RdJson::NameValuePair headerInfo)
 // Endpoints
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void RdWebServer::addEndpoints(RestAPIEndpointManager* pEndpointManager)
+void RdWebServer::addRestAPIEndpoints(RestAPIEndpointManager* pEndpointManager)
 {
 	// Add to handler
-	_connManager.addEndpoints(pEndpointManager);
+	_connManager.addRestAPIEndpoints(pEndpointManager);
+}
+
+void RdWebServer::addProtocolEndpoints(ProtocolEndpointManager& endpointManager)
+{
+	// Add to handler
+	_connManager.addProtocolEndpoints(endpointManager);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

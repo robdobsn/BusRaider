@@ -36,8 +36,7 @@ public:
     void sendAsyncEvent(const char* eventContent, const char* eventGroup);
 
     // Web sockets
-    void webSocketOpen(const String& websocketURL);
-    void webSocketSend(const uint8_t* pBuf, uint32_t len);
+    void webSocketSetup(const String& websocketURL);
 
 protected:
     // Setup
@@ -61,15 +60,11 @@ private:
     bool sendWebSocketMsg(ProtocolEndpointMsg& msg);
     bool readyToSendWebSocketMsg();
 
-    // Vars
+    // Server config
     bool _accessControlAllowOriginAll;
     bool _webServerEnabled;
     uint32_t _port;
     String _restAPIPrefix;
-
-    // EndpointID used to identify this message source to the ProtocolEndpointManager object
-    uint32_t _protocolEndpointID;
-    String _webSocketProtocol;
 
     // Web server setup
     bool _isWebServerSetup;
@@ -79,7 +74,4 @@ private:
 
     // Singleton
     static WebServer* _pThisWebServer;
-
-    // Handles websocket events
-    static void webSocketCallback(RdWebSocketEventCode eventCode, const uint8_t* pBuf, uint32_t bufLen);
 };

@@ -16,12 +16,17 @@ static const char* MODULE_PREFIX = "ConfigNVS";
 
 // Debug
 // #define DEBUG_NVS_CONFIG_READ_WRITE
+// #define DEBUG_NVS_CONFIG_GETS
 
-ConfigNVS::ConfigNVS(const char *configNamespace, int configMaxlen) :
+ConfigNVS::ConfigNVS(const char *configNamespace, int configMaxlen, bool cacheConfig) :
     ConfigBase(configMaxlen)
 {
     _configNamespace = configNamespace;
     _pPreferences = new Preferences();
+    _cacheConfig = cacheConfig;
+    _nonVolatileStoreEmpty = true;
+    _pStaticConfig = NULL;
+    _callsToGetNVStr = 0;
     setup();
 }
 
@@ -51,7 +56,10 @@ void ConfigNVS::clear()
     ConfigBase::clear();
 
     // Clear the config string
-    setConfigData("");
+    _setConfigData("");
+
+    // No non-volatile store
+    _nonVolatileStoreEmpty = true;
 }
 
 // Initialise
@@ -63,42 +71,43 @@ bool ConfigNVS::setup()
     // Debug
     // LOG_D(MODULE_PREFIX "Config %s ...", _configNamespace.c_str());
 
-    // Handle preferences bracketing
-    if (_pPreferences)
-    {
-        // Open preferences read-only
-        _pPreferences->begin(_configNamespace.c_str(), true);
+    // Get string from non-volatile storage
+    String configStr;
+    getNVConfigStr(configStr);
 
-        // Get config string
-        String configData = _pPreferences->getString("JSON", "{}");
-        setConfigData(configData.c_str());
+    // Check if config string to be cached in config base class
+    if (_cacheConfig)
+        _setConfigData(configStr.c_str());
 
-#ifdef DEBUG_NVS_CONFIG_READ_WRITE
-        // Debug
-        LOG_W(MODULE_PREFIX, "Config %s read: len(%d) %s maxlen %d", 
-                    _configNamespace.c_str(), configData.length(), 
-                    configData.c_str(), ConfigBase::getMaxLen());
-#endif
-
-        // Close prefs
-        _pPreferences->end();
-    }
+    // Check if we should use this config info in favour of
+    // static pointer
+    _nonVolatileStoreEmpty = (configStr.length() <= 2);
 
     // Ok
     return true;
 }
 
 // Write configuration string
-bool ConfigNVS::writeConfig()
+bool ConfigNVS::writeConfig(const String& configJSONStr)
 {
-    // Get length of string
-    if (_dataStrJSON.length() >= _configMaxDataLen)
-        _dataStrJSON = _dataStrJSON.substring(0, _configMaxDataLen-1);
+    // Check length of string
+    if (configJSONStr.length() >= _configMaxDataLen)
+    {
+        LOG_E(MODULE_PREFIX, "writeConfig config too long %d > %d", configJSONStr.length(), _configMaxDataLen);
+        return false;
+    }
+
+    // Set config data if cached
+    if (_cacheConfig)
+        _setConfigData(configJSONStr.c_str());
+
+    // Check if non-volatile data is valid
+    _nonVolatileStoreEmpty = (configJSONStr.length() <= 2);
 
 #ifdef DEBUG_NVS_CONFIG_READ_WRITE
     // Debug
     LOG_W(MODULE_PREFIX, "writeConfig %s config len: %d", 
-                _configNamespace.c_str(), _dataStrJSON.length());
+                _configNamespace.c_str(), configJSONStr.length());
 #endif
 
     // Handle preferences bracketing
@@ -108,8 +117,8 @@ bool ConfigNVS::writeConfig()
         _pPreferences->begin(_configNamespace.c_str(), false);
 
         // Set config string
-        int numPut = _pPreferences->putString("JSON", _dataStrJSON.c_str());
-        if (numPut != _dataStrJSON.length())
+        int numPut = _pPreferences->putString("JSON", configJSONStr.c_str());
+        if (numPut != configJSONStr.length())
         {
             LOG_E(MODULE_PREFIX, "writeConfig Writing Failed %s written = %d", 
                 _configNamespace.c_str(), numPut);
@@ -131,6 +140,7 @@ bool ConfigNVS::writeConfig()
             (_configChangeCallbacks[i])();
         }
     }
+
     // Ok
     return true;
 }
@@ -142,4 +152,34 @@ void ConfigNVS::registerChangeCallback(ConfigChangeCallbackType configChangeCall
     {
         _configChangeCallbacks.push_back(configChangeCallback);
     }
+}
+
+void ConfigNVS::getNVConfigStr(String& confStr)
+{
+    if (!_pPreferences)
+        return;
+
+    // Handle preferences bracketing - open read-only
+    _pPreferences->begin(_configNamespace.c_str(), true);
+
+    // Get config string
+    confStr = _pPreferences->getString("JSON", "{}");
+
+#ifdef DEBUG_NVS_CONFIG_READ_WRITE
+    // Debug
+    LOG_W(MODULE_PREFIX, "Config %s read: len(%d) %s maxlen %d", 
+                _configNamespace.c_str(), confStr.length(), 
+                confStr.c_str(), ConfigBase::getMaxLen());
+#endif
+
+    // Close prefs
+    _pPreferences->end();
+
+    // Stats
+    _callsToGetNVStr++;
+
+#ifdef DEBUG_NVS_CONFIG_GETS
+    LOG_I(MODULE_PREFIX, "getNVConfigStr count %d", _callsToGetNVStr);
+#endif
+
 }

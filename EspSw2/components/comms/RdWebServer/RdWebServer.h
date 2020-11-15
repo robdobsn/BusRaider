@@ -22,11 +22,15 @@ public:
     // Setup the web server and start listening
     void setup(RdWebServerSettings& settings); 
 
+    // Service
+    void service();
+    
     // Configure
     void addResponseHeader(RdJson::NameValuePair headerInfo);
 
     // Endpoints
-    void addEndpoints(RestAPIEndpointManager* pEndpoints);
+    void addRestAPIEndpoints(RestAPIEndpointManager* pEndpoints);
+    void addProtocolEndpoints(ProtocolEndpointManager& endpointManager);
 
     // Handler
     void addHandler(RdWebHandler* pHandler);
@@ -43,5 +47,6 @@ private:
 
     // Connection manager
     RdWebConnManager _connManager;
+
 };
 

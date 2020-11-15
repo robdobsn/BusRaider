@@ -14,17 +14,11 @@
 #include "ProtocolEndpointManager.h"
 #include <NetworkSystem.h>
 
-#ifdef USE_ASYNC_WEB_SERVER
-#include <AsyncTCP.h>
-#include <AsyncWebServer.h>
-#include <AsyncStaticFileHandler.h>
-#else
 #include <RdWebServer.h>
 #include <RdWebHandlerStaticFiles.h>
 #include <RdWebHandlerRestAPI.h>
 #include <RdWebHandlerWS.h>
 WebServer* WebServer::_pThisWebServer = NULL;
-#endif
 
 static const char* MODULE_PREFIX = "WebServer";
 
@@ -41,9 +35,6 @@ WebServer::WebServer(const char *pModuleName, ConfigBase& defaultConfig, ConfigB
     _webServerEnabled = false;
     _accessControlAllowOriginAll = true;
     _port = 80;
-
-    // EndpointID
-    _protocolEndpointID = ProtocolEndpointManager::UNDEFINED_ID;
 
     // Is setup
     _isWebServerSetup = false;
@@ -85,10 +76,13 @@ void WebServer::applySetup()
     _port = configGetLong("webServerPort", 80);
 
     // Access control allow origin all
-    _accessControlAllowOriginAll = configGetLong("allowOriginAll", 0) != 0;
+    _accessControlAllowOriginAll = configGetLong("allowOriginAll", 1) != 0;
 
     // REST API prefix
     _restAPIPrefix = configGetString("apiPrefix", "api/");
+
+    // File server enable
+    bool enableFileServer = configGetLong("fileServer", 1) != 0;
 
     // Num connection slots
     uint32_t numConnSlots = configGetLong("numConnSlots", 6);
@@ -100,7 +94,15 @@ void WebServer::applySetup()
     uint32_t pingIntervalMs = configGetLong("wsPingMs", 1000);
 
     // Websocket protocol
-    _webSocketProtocol = configGetString("wsPcol", "RICSerial");
+    String webSocketProtocol = configGetString("wsPcol", "RICSerial");
+
+    // Get Task settings
+    UBaseType_t taskCore = configGetLong("taskCore", RdWebServerSettings::DEFAULT_TASK_CORE);
+    BaseType_t taskPriority = configGetLong("taskPriority", RdWebServerSettings::DEFAULT_TASK_PRIORITY);
+    uint32_t taskStackSize = configGetLong("taskStack", RdWebServerSettings::DEFAULT_TASK_SIZE_BYTES);
+
+    // Get server send buffer max length
+    uint32_t sendBufferMaxLen = configGetLong("sendMax", RdWebServerSettings::DEFAULT_SEND_BUFFER_MAX_LEN);
 
     // Setup server if required
     if (_webServerEnabled)
@@ -108,11 +110,12 @@ void WebServer::applySetup()
         // Start server
         if (!_isWebServerSetup)
         {
-            RdWebServerSettings settings(_port, numConnSlots, maxWebSockets, pingIntervalMs);
+            RdWebServerSettings settings(_port, numConnSlots, maxWebSockets, 
+                    pingIntervalMs, webSocketProtocol, enableFileServer,
+                    taskCore, taskPriority, taskStackSize, sendBufferMaxLen);
             _rdWebServer.setup(settings);
         }
         _isWebServerSetup = true;
-
     }
 }
 
@@ -133,6 +136,8 @@ void WebServer::beginServer()
 
 void WebServer::service()
 {
+    // Service
+    _rdWebServer.service();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -150,16 +155,12 @@ void WebServer::setupEndpoints()
     LOG_I(MODULE_PREFIX, "setupEndpoints");
     RdWebHandlerRestAPI* pHandler = new RdWebHandlerRestAPI(getRestAPIEndpoints(), _restAPIPrefix);
     _rdWebServer.addHandler(pHandler);
-    }
+}
 
 void WebServer::addProtocolEndpoints(ProtocolEndpointManager& endpointManager)
 {
-    // Register as a channel for protocol messages - websocket
-    LOG_I(MODULE_PREFIX, "addProtocolEndpoints webSocketProtocol %s", _webSocketProtocol.c_str());
-    _protocolEndpointID = endpointManager.registerChannel(_webSocketProtocol.c_str(), 
-            std::bind(&WebServer::sendWebSocketMsg, this, std::placeholders::_1),
-            "WS",
-            std::bind(&WebServer::readyToSendWebSocketMsg, this));
+    // Offer to web server
+    _rdWebServer.addProtocolEndpoints(endpointManager);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -203,109 +204,18 @@ void WebServer::sendAsyncEvent(const char* eventContent, const char* eventGroup)
 // Web sockets
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void WebServer::webSocketOpen(const String& websocketURL)
+void WebServer::webSocketSetup(const String& websocketURL)
 {
     // Add websocket handler
-    LOG_I(MODULE_PREFIX, "webSocketHandler wsPath %s", websocketURL.c_str());
-    RdWebHandlerWS* pHandler = new RdWebHandlerWS(websocketURL, webSocketCallback);
+#ifdef DEBUG_WEBSOCKETS
+    LOG_I(MODULE_PREFIX, "webSocketSetup wsPath %s", websocketURL.c_str());
+#endif
+    RdWebHandlerWS* pHandler = new RdWebHandlerWS(getProtocolEndpointManager(), websocketURL);
     _rdWebServer.addHandler(pHandler);
 }
 
-void WebServer::webSocketSend(const uint8_t* pBuf, uint32_t len)
-{
-}
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Websocket callbacks
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// handles websocket events
-void WebServer::webSocketCallback(RdWebSocketEventCode eventCode, const uint8_t* pBuf, uint32_t bufLen)
-{
-#ifdef DEBUG_WEBSOCKETS
-	const static char* MODULE_PREFIX = "wsCB";
-#endif
-    if (!_pThisWebServer)
-    {
-        return; 
-    }
-
-	switch(eventCode) 
-    {
-		case WEBSOCKET_EVENT_CONNECT:
-        {
-#ifdef DEBUG_WEBSOCKETS
-			LOG_I(MODULE_PREFIX, "connected!");
-#endif
-			break;
-        }
-		case WEBSOCKET_EVENT_DISCONNECT_EXTERNAL:
-        {
-#ifdef DEBUG_WEBSOCKETS
-			LOG_I(MODULE_PREFIX, "sent a disconnect message");
-#endif
-			break;
-        }
-		case WEBSOCKET_EVENT_DISCONNECT_INTERNAL:
-        {
-#ifdef DEBUG_WEBSOCKETS
-			LOG_I(MODULE_PREFIX, "was disconnected");
-#endif
-			break;
-        }
-		case WEBSOCKET_EVENT_DISCONNECT_ERROR:
-        {
-#ifdef DEBUG_WEBSOCKETS
-			LOG_I(MODULE_PREFIX, "was disconnected due to an error");
-#endif
-			break;
-        }
-		case WEBSOCKET_EVENT_TEXT:
-        {
-            // Send the message to the ProtocolEndpointManager
-            if (_pThisWebServer->getProtocolEndpointManager() && (pBuf != NULL))
-                _pThisWebServer->getProtocolEndpointManager()->handleInboundMessage(_pThisWebServer->_protocolEndpointID, (uint8_t*) pBuf, bufLen);
-#ifdef DEBUG_WEBSOCKETS
-            String msgText;
-            if (pBuf)
-                Utils::strFromBuffer(pBuf, bufLen, msgText);
-			LOG_I(MODULE_PREFIX, "sent text message of size %i content %s", bufLen, msgText.c_str());
-#endif
-			break;
-        }
-		case WEBSOCKET_EVENT_BINARY:
-        {
-            // Send the message to the ProtocolEndpointManager
-            if (_pThisWebServer->getProtocolEndpointManager() && (pBuf != NULL))
-                _pThisWebServer->getProtocolEndpointManager()->handleInboundMessage(_pThisWebServer->_protocolEndpointID, (uint8_t*) pBuf, bufLen);
-#ifdef DEBUG_WEBSOCKETS
-			LOG_I(MODULE_PREFIX, "sent binary message of size %i", bufLen);
-#endif
-			break;
-        }
-		case WEBSOCKET_EVENT_PING:
-        {
-#ifdef DEBUG_WEBSOCKETS
-			LOG_I(MODULE_PREFIX, "pinged us with message of size %i", bufLen);
-#endif
-			break;
-        }
-		case WEBSOCKET_EVENT_PONG:
-        {
-#ifdef DEBUG_WEBSOCKETS
-			LOG_I(MODULE_PREFIX, "responded to the ping");
-#endif
-		    break;
-        }
-        default:
-        {
-            break;
-        }
-	}
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Send message over WebSocket
+// Send message over all WebSockets
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool WebServer::sendWebSocketMsg(ProtocolEndpointMsg& msg)

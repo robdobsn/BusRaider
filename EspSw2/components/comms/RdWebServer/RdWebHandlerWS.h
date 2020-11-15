@@ -18,10 +18,10 @@ class RdWebRequest;
 class RdWebHandlerWS : public RdWebHandler
 {
 public:
-    RdWebHandlerWS(const String& wsPath, RdWebSocketCB webSocketCB)
+    RdWebHandlerWS(ProtocolEndpointManager* pProtocolEndpointManager, const String& wsPath)
+            : _pProtocolEndpointManager(pProtocolEndpointManager)
     {
         _wsPath = wsPath;
-        _webSocketCB = webSocketCB;
     }
     virtual ~RdWebHandlerWS()
     {
@@ -45,7 +45,8 @@ public:
         }
 
         // Looks like we can handle this so create a new responder object
-        RdWebResponder* pResponder = new RdWebResponderWS(this, params, requestHeader.URL, _webSocketCB, webServerSettings);
+        RdWebResponder* pResponder = new RdWebResponderWS(this, params, requestHeader.URL, 
+                    _pProtocolEndpointManager, webServerSettings);
 
         // Debug
         // LOG_W("WebHandlerWS", "getNewResponder constructed new responder %lx uri %s", (unsigned long)pResponder, requestHeader.URL.c_str());
@@ -56,5 +57,5 @@ public:
 
 private:
     String _wsPath;
-    RdWebSocketCB _webSocketCB;
+    ProtocolEndpointManager* _pProtocolEndpointManager;
 };

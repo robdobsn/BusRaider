@@ -58,34 +58,17 @@ public:
     }
 
     // Write configuration data to last (in order of adding) mutable element
-    virtual bool writeConfig() override final
+    virtual bool writeConfig(const String& configJSONStr) override final
     {
         // Find last mutable element
         for (std::list<ConfigRec>::reverse_iterator rit=_configsList.rbegin(); rit != _configsList.rend(); ++rit)
         {
             if (rit->_isMutable)
-                return rit->_pConfig->writeConfig();
+                return rit->_pConfig->writeConfig(configJSONStr);
         }
 
         // Write base if not already done
-        return ConfigBase::writeConfig();
-    }
-
-    // Set the configuration data to last (in order of adding) mutable element
-    virtual void setConfigData(const char *configJSONStr) override final
-    {
-        // Find last mutable element
-        for (std::list<ConfigRec>::reverse_iterator rit=_configsList.rbegin(); rit != _configsList.rend(); ++rit)
-        {
-            if (rit->_isMutable)
-            {
-                rit->_pConfig->setConfigData(configJSONStr);
-                return;
-            }
-        }
-
-        // Set in base if not already done
-        ConfigBase::setConfigData(configJSONStr);
+        return ConfigBase::writeConfig(configJSONStr);
     }
 
     virtual String getString(const char *dataPath, const char *defaultValue) override final

@@ -34,6 +34,10 @@ public:
     {
         return NULL;
     }
+    virtual bool isFileHandler()
+    {
+        return false;
+    }
 
 private:
 };

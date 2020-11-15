@@ -9,11 +9,15 @@
 #include "RdWebResponderWS.h"
 #include <RdWebConnection.h>
 #include "RdWebServerSettings.h"
+#include "ProtocolEndpointManager.h"
 #include <Logger.h>
+#include <Utils.h>
 
 // #define DEBUG_RESPONDER_WS
 // #define DEBUG_WS_SEND_APP_DATA
-#if defined(DEBUG_RESPONDER_WS) || defined(DEBUG_WS_SEND_APP_DATA)
+// #define DEBUG_WS_SEND_APP_DATA_ASCII
+#define WARN_WS_SEND_APP_DATA_FAIL
+#if defined(DEBUG_RESPONDER_WS) || defined(DEBUG_WS_SEND_APP_DATA) || defined(WARN_WS_SEND_APP_DATA_FAIL)
 static const char *MODULE_PREFIX = "RdWebRespWS";
 #endif
 
@@ -22,16 +26,18 @@ static const char *MODULE_PREFIX = "RdWebRespWS";
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 RdWebResponderWS::RdWebResponderWS(RdWebHandler* pWebHandler, const RdWebRequestParams& params, 
-            const String& reqStr, RdWebSocketCB webSocketCB, const RdWebServerSettings& webServerSettings)
-    : _reqParams(params)
+            const String& reqStr, ProtocolEndpointManager* pProtocolEndpointManager,
+            const RdWebServerSettings& webServerSettings)
+    : _reqParams(params), _pProtocolEndpointManager(pProtocolEndpointManager)
 {
     // Store socket info
     _pWebHandler = pWebHandler;
     _requestStr = reqStr;
-    _webSocketCB = webSocketCB;
 
     // Init socket link
-    _webSocketLink.setup(webSocketCB, params.getWebConnRawSend(), webServerSettings.pingIntervalMs, true);
+    _webSocketLink.setup(std::bind(&RdWebResponderWS::webSocketCallback, this, 
+                            std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+                params.getWebConnRawSend(), webServerSettings._pingIntervalMs, true);
 }
 
 RdWebResponderWS::~RdWebResponderWS()
@@ -66,7 +72,13 @@ void RdWebResponderWS::service()
 bool RdWebResponderWS::handleData(const uint8_t* pBuf, uint32_t dataLen)
 {
 #ifdef DEBUG_RESPONDER_WS
+#ifdef DEBUG_WS_SEND_APP_DATA_ASCII
+    String outStr;
+    Utils::strFromBuffer(pBuf, dataLen, outStr, false);
+    LOG_I(MODULE_PREFIX, "handleData len %d %s", dataLen, outStr.c_str());
+#else
     LOG_I(MODULE_PREFIX, "handleData len %d", dataLen);
+#endif
 #endif
 
     // Handle it with link
@@ -122,7 +134,7 @@ uint32_t RdWebResponderWS::getResponseNext(uint8_t* pBuf, uint32_t bufMaxLen)
 
 const char* RdWebResponderWS::getContentType()
 {
-    return "application/json";
+    return "application/octet-stream";
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -142,8 +154,100 @@ void RdWebResponderWS::sendFrame(const uint8_t* pBuf, uint32_t bufLen)
 {
     // Add to queue - don't block if full
     RdWebDataFrame frame(pBuf, bufLen);
-    _txQueue.put(frame);
+    bool putRslt = _txQueue.put(frame);
+    if (!putRslt)
+    {
+#ifdef WARN_WS_SEND_APP_DATA_FAIL
+        LOG_W(MODULE_PREFIX, "sendFrame failed len %d", bufLen);
+#endif
+    }
+    else
+    {
 #ifdef DEBUG_WS_SEND_APP_DATA
     LOG_W(MODULE_PREFIX, "sendFrame len %d", bufLen);
 #endif
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Websocket callback
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void RdWebResponderWS::webSocketCallback(RdWebSocketEventCode eventCode, const uint8_t* pBuf, uint32_t bufLen)
+{
+#ifdef DEBUG_WEBSOCKETS
+	const static char* MODULE_PREFIX = "wsCB";
+#endif
+	switch(eventCode) 
+    {
+		case WEBSOCKET_EVENT_CONNECT:
+        {
+#ifdef DEBUG_WEBSOCKETS
+			LOG_I(MODULE_PREFIX, "connected!");
+#endif
+			break;
+        }
+		case WEBSOCKET_EVENT_DISCONNECT_EXTERNAL:
+        {
+#ifdef DEBUG_WEBSOCKETS
+			LOG_I(MODULE_PREFIX, "sent a disconnect message");
+#endif
+			break;
+        }
+		case WEBSOCKET_EVENT_DISCONNECT_INTERNAL:
+        {
+#ifdef DEBUG_WEBSOCKETS
+			LOG_I(MODULE_PREFIX, "was disconnected");
+#endif
+			break;
+        }
+		case WEBSOCKET_EVENT_DISCONNECT_ERROR:
+        {
+#ifdef DEBUG_WEBSOCKETS
+			LOG_I(MODULE_PREFIX, "was disconnected due to an error");
+#endif
+			break;
+        }
+		case WEBSOCKET_EVENT_TEXT:
+        {
+            // Send the message to the ProtocolEndpointManager
+            if (_pProtocolEndpointManager && (pBuf != NULL))
+                _pProtocolEndpointManager->handleInboundMessage(_reqParams.getProtocolChannelID(), (uint8_t*) pBuf, bufLen);
+#ifdef DEBUG_WEBSOCKETS
+            String msgText;
+            if (pBuf)
+                Utils::strFromBuffer(pBuf, bufLen, msgText);
+			LOG_I(MODULE_PREFIX, "sent text message of size %i content %s", bufLen, msgText.c_str());
+#endif
+			break;
+        }
+		case WEBSOCKET_EVENT_BINARY:
+        {
+            // Send the message to the ProtocolEndpointManager
+            if (_pProtocolEndpointManager && (pBuf != NULL))
+                _pProtocolEndpointManager->handleInboundMessage(_reqParams.getProtocolChannelID(), (uint8_t*) pBuf, bufLen);
+#ifdef DEBUG_WEBSOCKETS
+			LOG_I(MODULE_PREFIX, "sent binary message of size %i", bufLen);
+#endif
+			break;
+        }
+		case WEBSOCKET_EVENT_PING:
+        {
+#ifdef DEBUG_WEBSOCKETS
+			LOG_I(MODULE_PREFIX, "pinged us with message of size %i", bufLen);
+#endif
+			break;
+        }
+		case WEBSOCKET_EVENT_PONG:
+        {
+#ifdef DEBUG_WEBSOCKETS
+			LOG_I(MODULE_PREFIX, "responded to the ping");
+#endif
+		    break;
+        }
+        default:
+        {
+            break;
+        }
+	}
 }

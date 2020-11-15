@@ -35,9 +35,9 @@ const char* testJSONConfigBase =
     R"("SystemName":")" SYSTEM_NAME R"(",)"
     R"("SystemVersion":")" SYSTEM_VERSION R"(",)"
     R"("IDFVersion":")" IDF_VER R"(",)"
-    R"("SysManager":{"monitorPeriodMs":10000,"reportList":["NetworkManager","RobotController"]},)"
+    R"("SysManager":{"monitorPeriodMs":10000,"reportList":["NetMan","RobotCtrl"]},)"
     R"("DefaultSysType":"RICMarty2",)"
-    R"("NetworkManager":{"WiFiEnabled":1,"defaultHostname":"Marty","logLevel":"D"},)"
+    R"("NetMan":{"WiFiEnabled":1,"defaultHostname":"Marty","logLevel":"D"},)"
     R"("NTPClient":{"enable":1,"NTPServer":"pool.ntp.org", "GMTOffsetSecs":0, "DSTOffsetSecs":0},)"
     R"("MQTTManager":{"enable":0},)"
     R"("ESPOTAUpdate":{"enable":1,"OTADirectEnabled":0,"server":"192.168.86.235","port":5076,)"
@@ -66,9 +66,9 @@ TEST_CASE("test_getString", "[ConfigBase]")
     };
     TestElem getStringTests [] = {
         { "SystemName", "RicFirmwareESP32" },
-        { "SysManager/reportList[1]", "RobotController" },
-        { "BLEManager", R"({"enable":1,"adName":"Marty","logLevel":"D"})" },
-        { "BLEManager/adName", "Marty" },
+        { "SysManager/reportList[1]", "RobotCtrl" },
+        { "NetMan", R"({"WiFiEnabled":1,"defaultHostname":"Marty","logLevel":"D"})" },
+        { "WebServer/apiPrefix", "api/" },
         { "CommandSocket/enable", "1" },
     };
     for (int testIdx = 0; testIdx < sizeof(getStringTests)/sizeof(getStringTests[0]); testIdx++)

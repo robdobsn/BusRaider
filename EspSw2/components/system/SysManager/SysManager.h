@@ -199,6 +199,7 @@ private:
     unsigned long _monitorPeriodMs;
     unsigned long _monitorTimerMs;
     bool _monitorTimerStarted;
+    std::vector<String> _monitorReportList;
 
     // Stats available callback
     SysManager_statsCB _statsCB;

@@ -21,13 +21,15 @@ public:
     {
     }
 
-    void put(const ElemT& elem)
+    bool put(const ElemT& elem)
     {
         if (_bufPos.canPut())
         {
             _buffer[_bufPos.posToPut()] = elem;
             _bufPos.hasPut();
+            return true;
         }
+        return false;
     }
 
     bool get(ElemT& elem)

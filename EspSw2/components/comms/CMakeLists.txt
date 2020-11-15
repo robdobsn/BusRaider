@@ -39,5 +39,6 @@ idf_component_register(
                 REQUIRES
                   core
                   system
+                  comms
                 )
 

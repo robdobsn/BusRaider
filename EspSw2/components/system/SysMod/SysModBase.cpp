@@ -122,14 +122,9 @@ int SysModBase::configGetPin(const char* dataPath, const char* defaultValue)
     return ConfigPinMap::getPinFromName(pinName.c_str());
 }
 
-void SysModBase::configSetData(const char* pConfigStr)
+void SysModBase::configSaveData(const String& configStr)
 {
-    _combinedConfig.setConfigData(pConfigStr);
-}
-
-void SysModBase::configSave()
-{
-    _combinedConfig.writeConfig();
+    _combinedConfig.writeConfig(configStr);
 }
 
 // Get JSON status of another SysMod
