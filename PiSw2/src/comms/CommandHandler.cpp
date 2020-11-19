@@ -38,7 +38,7 @@ CommandHandler* CommandHandler::_pSingletonCommandHandler = NULL;
 // Constructor
 CommandHandler::CommandHandler() :
     _miniHDLC(hdlcFrameTxStatic, hdlcFrameRxStatic, 
-                0x7E, 0x7D,
+                0xE7, 0xD7,
                 10000, 10000),
     _usbKeyboardRingBufPos(MAX_USB_KEYBOARD_CHARS)
 {   

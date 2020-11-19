@@ -111,7 +111,7 @@ public:
         _msgDirection = msgDirn;
     }
 
-    ProtocolMsgProtocol getProtocol()
+    ProtocolMsgProtocol getProtocol() const
     {
         return _msgProtocol;
     }
@@ -126,7 +126,7 @@ public:
         _msgNum = num;
     }
 
-    uint32_t getMsgNumber()
+    uint32_t getMsgNumber() const
     {
         return _msgNum;
     }
@@ -136,7 +136,7 @@ public:
         _channelID = channelID;
     }
 
-    uint32_t getChannelID()
+    uint32_t getChannelID() const
     {
         return _channelID;
     }

@@ -26,6 +26,7 @@ static const char *MODULE_PREFIX = "RdWSLink";
 // #define DEBUG_WEBSOCKET_LINK_HEADER_DETAIL
 // #define DEBUG_WEBSOCKET_LINK_DATA_STR
 // #define DEBUG_WEBSOCKET_LINK_DATA_BINARY
+// #define DEBUG_WEBSOCKET_SEND
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor / Destructor
@@ -50,7 +51,7 @@ RdWebSocketLink::~RdWebSocketLink()
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void RdWebSocketLink::setup(RdWebSocketCB webSocketCB, RdWebConnSendFn rawConnSendFn,
-                uint32_t pingIntervalMs, bool roleIsServer)
+                            uint32_t pingIntervalMs, bool roleIsServer)
 {
     _webSocketCB = webSocketCB;
     _rawConnSendFn = rawConnSendFn;
@@ -178,7 +179,12 @@ bool RdWebSocketLink::sendMsg(WebSocketOpCodes opCode, const uint8_t *pBuf, uint
 
     // Check valid
     if (frameLen >= MAX_WS_MESSAGE_SIZE)
+    {
+#ifdef DEBUG_WEBSOCKET_SEND
+        LOG_W(MODULE_PREFIX, "WebSocket sendMsg too long %d > %d", frameLen, MAX_WS_MESSAGE_SIZE);
+#endif
         return false;
+    }
 
     // Buffer
     std::vector<uint8_t> frameBuffer(frameLen);
@@ -234,6 +240,11 @@ bool RdWebSocketLink::sendMsg(WebSocketOpCodes opCode, const uint8_t *pBuf, uint
     // Send
     if (_rawConnSendFn)
         _rawConnSendFn(frameBuffer.data(), frameBuffer.size());
+
+#ifdef DEBUG_WEBSOCKET_SEND
+    LOG_I(MODULE_PREFIX, "WebSocket sendMsg send %d bytes", frameBuffer.size());
+#endif
+
     return true;
 }
 
@@ -315,62 +326,62 @@ void RdWebSocketLink::handleRxPacketData(const uint8_t *pBuf, uint32_t bufLen)
     RdWebSocketEventCode callbackEventCode = WEBSOCKET_EVENT_NONE;
     switch (_wsHeader.opcode)
     {
-    case WEBSOCKET_OPCODE_CONTINUE:
-    case WEBSOCKET_OPCODE_BINARY:
-    case WEBSOCKET_OPCODE_TEXT:
-    {
-        // Get length of data to copy
-        uint32_t copyLen = bufLen - _wsHeader.dataPos;
-        if (copyLen > _wsHeader.len)
-            copyLen = _wsHeader.len;
-        else
-            _callbackData.clear();
-
-        // Handle continuation
-        uint32_t curBufSize = 0;
-        if (_wsHeader.opcode == WEBSOCKET_OPCODE_CONTINUE)
-            curBufSize = _callbackData.size();
-
-        // Check we don't try to store too much
-        if (curBufSize + copyLen > MAX_WS_MESSAGE_SIZE)
+        case WEBSOCKET_OPCODE_CONTINUE:
+        case WEBSOCKET_OPCODE_BINARY:
+        case WEBSOCKET_OPCODE_TEXT:
         {
-            LOG_W(MODULE_PREFIX, "handleRx msg > max %d", MAX_WS_MESSAGE_SIZE);
-            _callbackData.clear();
-            _wsHeader.ignoreUntilFinal = true;
-        }
+            // Get length of data to copy
+            uint32_t copyLen = bufLen - _wsHeader.dataPos;
+            if (copyLen > _wsHeader.len)
+                copyLen = _wsHeader.len;
+            else
+                _callbackData.clear();
 
-        // Add the data to any existing
-        _callbackData.resize(curBufSize + copyLen);
-        memcpy(_callbackData.data(), pBuf + _wsHeader.dataPos, copyLen);
-        if (_wsHeader.fin)
-            callbackEventCode = _wsHeader.firstFrameOpcode == WEBSOCKET_OPCODE_TEXT ? WEBSOCKET_EVENT_TEXT : WEBSOCKET_EVENT_BINARY;
-        break;
-    }
-    case WEBSOCKET_OPCODE_PING:
-    {
-        callbackEventCode = WEBSOCKET_EVENT_PING;
-        uint32_t copyLen = bufLen - _wsHeader.dataPos;
-        if (copyLen > MAX_WS_MESSAGE_SIZE)
+            // Handle continuation
+            uint32_t curBufSize = 0;
+            if (_wsHeader.opcode == WEBSOCKET_OPCODE_CONTINUE)
+                curBufSize = _callbackData.size();
+
+            // Check we don't try to store too much
+            if (curBufSize + copyLen > MAX_WS_MESSAGE_SIZE)
+            {
+                LOG_W(MODULE_PREFIX, "handleRx msg > max %d", MAX_WS_MESSAGE_SIZE);
+                _callbackData.clear();
+                _wsHeader.ignoreUntilFinal = true;
+            }
+
+            // Add the data to any existing
+            _callbackData.resize(curBufSize + copyLen);
+            memcpy(_callbackData.data(), pBuf + _wsHeader.dataPos, copyLen);
+            if (_wsHeader.fin)
+                callbackEventCode = _wsHeader.firstFrameOpcode == WEBSOCKET_OPCODE_TEXT ? WEBSOCKET_EVENT_TEXT : WEBSOCKET_EVENT_BINARY;
             break;
-        
-        // Send PONG
-        sendMsg(WEBSOCKET_OPCODE_PONG, pBuf+_wsHeader.dataPos, bufLen - _wsHeader.dataPos);
-        break;
-    }
-    case WEBSOCKET_OPCODE_PONG:
-    {
-        callbackEventCode = WEBSOCKET_EVENT_PONG;
-#ifdef DEBUG_WEBSOCKET_PING_PONG
-        LOG_I(MODULE_PREFIX, "handleRx PONG");
-#endif
-        break;
-    }
-    case WEBSOCKET_OPCODE_CLOSE:
-    {
-        callbackEventCode = WEBSOCKET_EVENT_DISCONNECT_EXTERNAL;
-        _isActive = false;
-        break;
-    }
+        }
+        case WEBSOCKET_OPCODE_PING:
+        {
+            callbackEventCode = WEBSOCKET_EVENT_PING;
+            uint32_t copyLen = bufLen - _wsHeader.dataPos;
+            if (copyLen > MAX_WS_MESSAGE_SIZE)
+                break;
+
+            // Send PONG
+            sendMsg(WEBSOCKET_OPCODE_PONG, pBuf + _wsHeader.dataPos, bufLen - _wsHeader.dataPos);
+            break;
+        }
+        case WEBSOCKET_OPCODE_PONG:
+        {
+            callbackEventCode = WEBSOCKET_EVENT_PONG;
+    #ifdef DEBUG_WEBSOCKET_PING_PONG
+            LOG_I(MODULE_PREFIX, "handleRx PONG");
+    #endif
+            break;
+        }
+        case WEBSOCKET_OPCODE_CLOSE:
+        {
+            callbackEventCode = WEBSOCKET_EVENT_DISCONNECT_EXTERNAL;
+            _isActive = false;
+            break;
+        }
     }
 
     // Check if we should do the callback

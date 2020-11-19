@@ -17,6 +17,7 @@
 // #define DEBUG_WS_SEND_APP_DATA
 // #define DEBUG_WS_SEND_APP_DATA_ASCII
 #define WARN_WS_SEND_APP_DATA_FAIL
+
 #if defined(DEBUG_RESPONDER_WS) || defined(DEBUG_WS_SEND_APP_DATA) || defined(WARN_WS_SEND_APP_DATA_FAIL)
 static const char *MODULE_PREFIX = "RdWebRespWS";
 #endif
@@ -164,7 +165,7 @@ void RdWebResponderWS::sendFrame(const uint8_t* pBuf, uint32_t bufLen)
     else
     {
 #ifdef DEBUG_WS_SEND_APP_DATA
-    LOG_W(MODULE_PREFIX, "sendFrame len %d", bufLen);
+        LOG_W(MODULE_PREFIX, "sendFrame len %d", bufLen);
 #endif
     }
 }

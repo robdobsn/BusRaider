@@ -3,7 +3,6 @@ import time
 import logging
 import random
 import os
-from datetime import datetime
 import json
 
 # This is a program for testing the BusRaider firmware
@@ -31,107 +30,84 @@ def setupTests(testName, frameCallback):
 
 def test_Comms():
     def frameCallback(frameJson, logger):
-        print("Frame callback " + json.dumps(frameJson))
-        assert(frameJson['cmdName'] == "comtestResp")
-        if frameJson['cmdName'] == "comtestResp":
-            testStats["framesRx"] += 1
-            print(frameJson['msgIdx'])
-            testStats["msgRx"][frameJson['msgIdx']] = True
+        commonTest.logger.info("Frame callback unexpected" + json.dumps(frameJson))
 
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
     commonTest = setupTests("Comms", frameCallback)
     msgIdx = 0
     testRepeatCount = 100
-    testStats = {"framesRx": 0, "msgRx":[False]*testRepeatCount}
+    testStats = {"msgRx":[False]*testRepeatCount}
     for i in range(testRepeatCount):
-        commonTest.sendFrame("comtest", b"{\"cmdName\":\"comtest\",\"msgIdx\":\"" + bytes(str(msgIdx),'utf-8') + b"\"}\0")
-        msgIdx += 1
-        time.sleep(0.05)
-    time.sleep(.1)
-    
-    # Wait for test end and cleardown
+        cmdResp = commonTest.sendFrameSync("", 
+                "{" + f'"cmdName":"comtest","msgIdx":"{str(msgIdx)}"' + "}")
+        if cmdResp.get("cmdName","") == "comtestResp" and cmdResp.get("rslt","") == "ok":
+            testStats["msgRx"][i] = True
     commonTest.cleardown()
-    assert(testStats["framesRx"] == testRepeatCount)
+    if False in testStats["msgRx"]:
+        failedMsgs = [i for i,x in enumerate(testStats["msgRx"]) if not x]
+        commonTest.logger.error(f"CommsTest failed to get valid response to one or more msg, failed msg idxs {failedMsgs}")
+    else:
+        commonTest.logger.info(f"Passed the test")
     for i in range(testRepeatCount):
         assert(testStats["msgRx"][i] == True)
 
 def test_SetMc():
+    def frameCallback(frameJson, logger):
+        commonTest.logger.info("Frame callback unexpected" + json.dumps(frameJson))
 
-    def frameCallback(msgContent, logger):
-        if msgContent['cmdName'] == "busStatusResp":
-            testStats['clrMaxUs'] = max(testStats['clrMaxUs'], msgContent['clrMaxUs'])
-        elif msgContent['cmdName'] == "getStatusResp":
-            testStats['mcList'] = msgContent['machineList']
-            if curMachine != "":
-                assert(msgContent['machineCur'] == curMachine)
-                testStats['mcCount'] += 1
-        elif msgContent['cmdName'] == "SetMcJsonResp":
-            pass
-        else:
-            testStats["unknownMsgCount"] += 1
-            logger.info(f"Unknown message {msgContent}")
-
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
+    # Setup
     commonTest = setupTests("SetMc", frameCallback)
     testRepeatCount = 2
-    testStats = {"unknownMsgCount":0, "clrMaxUs":0, "mcList":[], "mcCount":0}
 
     # Get list of machines
-    curMachine = ""
-    commonTest.sendFrame("getStatus", b"{\"cmdName\":\"getStatus\"}\0")
-    time.sleep(1)
+    mcListResp = commonTest.sendFrameSync("SetMc getStatus", '{"cmdName":"getStatus"}')
+    mcList = mcListResp.get('machineList',[])
 
     # Set machines alternately
+    rsltOkCount = 0
     for _ in range(testRepeatCount):
-        for mc in testStats['mcList']:
-            logger.debug(f"Setting machine {mc}")
-            commonTest.sendFrame("SetMcJson", b"{\"cmdName\":\"SetMcJson\"}\0{\"name\":\"" + bytes(mc,'utf-8') + b"\"}\0")
-            time.sleep(2)
-            curMachine = mc
-            commonTest.sendFrame("getStatus", b"{\"cmdName\":\"getStatus\"}\0")
-            time.sleep(.1)
-    time.sleep(1)
+        for mc in mcList:
+            commonTest.logger.debug(f"Setting machine {mc}")
+            setMcResp = commonTest.sendFrameSync("SetMcJson", '{"cmdName":"SetMcJson"}\0{"name":"' + mc + '"}\0')
+            if setMcResp.get("cmdName","") == "SetMcJsonResp" and setMcResp.get("err","") == "ok":
+                rsltOkCount += 1
+            else:
+                commonTest.logger.error(f"Failed setMc {setMcResp}")
+            # commonTest.sendFrameSync("getStatus", '{"cmdName":"getStatus"}')
 
     # Wait for test end and cleardown
     commonTest.cleardown()
-    assert(testStats["unknownMsgCount"] == 0)
-    assert(testStats["mcCount"] >= 4)
+    assert(rsltOkCount == testRepeatCount * len(mcList))
 
 def test_MemRW():
 
-    def frameCallback(msgContent, logger):
-        logger.info(f"FrameRx:{msgContent}")
-        if msgContent['cmdName'] == "RdResp":
-            curReadPos = len(readData)
-            requiredResp = ''.join(('%02x' % writtenData[curReadPos][i]) for i in range(len(writtenData[curReadPos])))
-            readData.append(msgContent['data'])
-            respOk = requiredResp == msgContent['data']
-            testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
-            testStats["msgRdRespCount"] += 1
-            if not respOk:
-                logger.error(f"Read {msgContent['data']} != expected {requiredResp}")
-        elif msgContent['cmdName'] == "WrResp":
-            testStats["msgWrRespCount"] += 1
-            try:
-                if msgContent['err'] != 'ok':
-                    testStats["msgWrRespErrCount"] += 1
-                    logger.error(f"WrResp err not ok {msgContent}")
-            except:
-                logger.error(f"WrResp doesn't contain err {msgContent}")
-                testStats["msgWrRespErrMissingCount"] += 1
-        elif msgContent['cmdName'] == "busInitResp":
-            pass
-        elif msgContent['cmdName'] == "SetMcJsonResp":
-            pass
-        elif msgContent['cmdName'] == "clockHzSetResp":
-            testStats["clockSetOk"] = True
-        else:
-            testStats["unknownMsgCount"] += 1
+    def frameCallback(frameJson, logger):
+        commonTest.logger.info("Frame callback unexpected" + json.dumps(frameJson))
 
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
+    # Setup
+    commonTest = setupTests("SetMc", frameCallback)
+    testRepeatCount = 2
+
+    # Get list of machines
+    mcListResp = commonTest.sendFrameSync("SetMc getStatus", '{"cmdName":"getStatus"}')
+    mcList = mcListResp.get('machineList',[])
+
+    # Set machines alternately
+    rsltOkCount = 0
+    for _ in range(testRepeatCount):
+        for mc in mcList:
+            commonTest.logger.debug(f"Setting machine {mc}")
+            setMcResp = commonTest.sendFrameSync("SetMcJson", '{"cmdName":"SetMcJson"}\0{"name":"' + mc + '"}\0')
+            if setMcResp.get("cmdName","") == "SetMcJsonResp" and setMcResp.get("err","") == "ok":
+                rsltOkCount += 1
+            else:
+                commonTest.logger.error(f"Failed setMc {setMcResp}")
+            # commonTest.sendFrameSync("getStatus", '{"cmdName":"getStatus"}')
+
+    # Wait for test end and cleardown
+    commonTest.cleardown()
+    assert(rsltOkCount == testRepeatCount * len(mcList))
+
+
     commonTest = setupTests("MemRW", frameCallback)
     testRepeatCount = 20
     # Test data
@@ -141,18 +117,23 @@ def test_MemRW():
     testStats = {"msgRdOk": True, "msgRdRespCount":0, "msgWrRespCount": 0, "msgWrRespErrCount":0, "msgWrRespErrMissingCount":0, "unknownMsgCount":0, "clockSetOk":False}
     # Set serial terminal machine - to avoid conflicts with display updates, etc
     mc = "Serial Terminal ANSI"
+    commonTest.logger.debug(f"Setting machine {mc}")
     commonTest.sendFrame("SetMcJson", b"{\"cmdName\":\"SetMcJson\"}\0{\"name\":\"" + bytes(mc,'utf-8') + b"\"}\0")
     time.sleep(1)
     # Processor clock
+    commonTest.logger.debug(f"Setting processor clock")
     commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":250000}\0")
     time.sleep(1)
     # Bus init
+    commonTest.logger.debug(f"Send busInit")
     commonTest.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
     time.sleep(0.01)
     for i in range(testRepeatCount):
+        commonTest.logger.debug(f"Send blockWrite {i}")
         commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":8000,\"lenDec\":10,\"isIo\":0}\0" + testWriteData)
         writtenData.append(testWriteData)
         time.sleep(0.01)
+        commonTest.logger.debug(f"Send blockRead {i}")
         commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":8000,\"lenDec\":10,\"isIo\":0}\0")
         time.sleep(0.1)
         if not testStats["msgRdOk"]:
@@ -174,7 +155,7 @@ def test_MemRW():
 def test_BankedMemRW():
 
     def frameCallback(msgContent, logger):
-        logger.info(f"FrameRx:{msgContent}")
+        commonTest.logger.info(f"FrameRx:{msgContent}")
         if msgContent['cmdName'] == "RdResp":
             print("RdResp", msgContent)
             addr = int(msgContent["addr"], 0)
@@ -185,15 +166,15 @@ def test_BankedMemRW():
             testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
             testStats["msgRdRespCount"] += 1
             if not respOk:
-                logger.error(f"Read {msgContent['data']} != expected {requiredResp}")
+                commonTest.logger.error(f"Read {msgContent['data']} != expected {requiredResp}")
         elif msgContent['cmdName'] == "WrResp":
             testStats["msgWrRespCount"] += 1
             try:
                 if msgContent['err'] != 'ok':
                     testStats["msgWrRespErrCount"] += 1
-                    logger.error(f"WrResp err not ok {msgContent}")
+                    commonTest.logger.error(f"WrResp err not ok {msgContent}")
             except:
-                logger.error(f"WrResp doesn't contain err {msgContent}")
+                commonTest.logger.error(f"WrResp doesn't contain err {msgContent}")
                 testStats["msgWrRespErrMissingCount"] += 1
         elif msgContent['cmdName'] == "busInitResp":
             pass
@@ -210,8 +191,6 @@ def test_BankedMemRW():
             testStats["unknownMsgCount"] += 1
             print("UnknownResponse", msgContent)
 
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
     commonTest = setupTests("BankedMemRW", frameCallback)
     testRepeatCount = 1
     numTestBlocks = 20
@@ -271,7 +250,6 @@ def test_BankedMemRW():
                 break
             curAddr -= testBlockInc
             blocksRead += 1
-
         time.sleep(1)
     
     # Wait for test end and cleardown
@@ -293,15 +271,15 @@ def test_TraceJMP000():
             testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
             testStats["msgRdRespCount"] += 1
             if not respOk:
-                logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
+                commonTest.logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
         elif msgContent['cmdName'] == "WrResp":
             testStats["msgWrRespCount"] += 1
             try:
                 if msgContent['err'] != 'ok':
                     testStats["msgWrRespErrCount"] += 1
-                    logger.error(f"WrResp err not ok {msgContent}")
+                    commonTest.logger.error(f"WrResp err not ok {msgContent}")
             except:
-                logger.error(f"WrResp doesn't contain err {msgContent}")
+                commonTest.logger.error(f"WrResp doesn't contain err {msgContent}")
                 testStats["msgWrRespErrMissingCount"] += 1
         elif msgContent['cmdName'] == "busInitResp":
             pass
@@ -317,11 +295,11 @@ def test_TraceJMP000():
                 msgContent['cmdName'] == "busInitResp":
             pass
         elif msgContent['cmdName'] == "tracerStatusResp":
-            logger.info(f"isrCount {msgContent['isrCount']} errors {msgContent['errors']}")
+            commonTest.logger.info(f"isrCount {msgContent['isrCount']} errors {msgContent['errors']}")
             testStats['tracerErrCount'] += msgContent['errors']
             testStats['isrCount'] += msgContent['isrCount']
             testStats['tracerRespCount'] += 1
-            logger.info(f"TracerStatus ISRCount {msgContent['isrCount']} errors {msgContent['errors']}")
+            commonTest.logger.info(f"TracerStatus ISRCount {msgContent['isrCount']} errors {msgContent['errors']}")
         elif msgContent['cmdName'] == "busStatusResp":
             testStats['clrMaxUs'] = max(testStats['clrMaxUs'], msgContent['clrMaxUs'])
         elif msgContent['cmdName'] == "hwListResp" or \
@@ -329,10 +307,8 @@ def test_TraceJMP000():
             pass
         else:
             testStats["unknownMsgCount"] += 1
-            logger.info(f"Unknown message {msgContent}")
+            commonTest.logger.info(f"Unknown message {msgContent}")
 
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
     commonTest = setupTests("TraceJMP000", frameCallback)
     # Test data - jump to 0000
     testWriteData = b"\xc3\x00\x00"
@@ -415,15 +391,15 @@ def test_TraceJMP000():
 #             testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
 #             testStats["msgRdRespCount"] += 1
 #             if not respOk:
-#                 logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
+#                 commonTest.logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
 #         elif msgContent['cmdName'] == "WrResp":
 #             testStats["msgWrRespCount"] += 1
 #             try:
 #                 if msgContent['err'] != 'ok':
 #                     testStats["msgWrRespErrCount"] += 1
-#                     logger.error(f"WrResp err not ok {msgContent}")
+#                     commonTest.logger.error(f"WrResp err not ok {msgContent}")
 #             except:
-#                 logger.error(f"WrResp doesn't contain err {msgContent}")
+#                 commonTest.logger.error(f"WrResp doesn't contain err {msgContent}")
 #                 testStats["msgWrRespErrMissingCount"] += 1
 #         elif msgContent['cmdName'] == "busInitResp":
 #             pass
@@ -439,11 +415,11 @@ def test_TraceJMP000():
 #                 msgContent['cmdName'] == "busInitResp":
 #             pass
 #         elif msgContent['cmdName'] == "tracerStatusResp":
-#             logger.info(f"isrCount {msgContent['isrCount']} errors {msgContent['errors']}")
+#             commonTest.logger.info(f"isrCount {msgContent['isrCount']} errors {msgContent['errors']}")
 #             testStats['tracerErrCount'] += msgContent['errors']
 #             testStats['isrCount'] += msgContent['isrCount']
 #             testStats['tracerRespCount'] += 1
-#             logger.info(f"TracerStatus ISRCount {msgContent['isrCount']} errors {msgContent['errors']}")
+#             commonTest.logger.info(f"TracerStatus ISRCount {msgContent['isrCount']} errors {msgContent['errors']}")
 #         elif msgContent['cmdName'] == "busStatusResp":
 #             testStats['clrMaxUs'] = max(testStats['clrMaxUs'], msgContent['clrMaxUs'])
 #         elif msgContent['cmdName'] == "hwListResp" or \
@@ -451,10 +427,10 @@ def test_TraceJMP000():
 #             pass
 #         else:
 #             testStats["unknownMsgCount"] += 1
-#             logger.info(f"Unknown message {msgContent}")
+#             commonTest.logger.info(f"Unknown message {msgContent}")
 
 #     logger = logging.getLogger(__name__)
-#     logger.setLevel(logging.DEBUG)
+#     commonTest.logger.setLevel(logging.DEBUG)
 #     setupTests("TraceManic")
 #     commonTest.setup(useIP, serialPort, serialSpeed, ipAddrOrHostName, logMsgDataFileName, logTextFileName, frameCallback)
 
@@ -482,7 +458,7 @@ def test_TraceJMP000():
 #     assert(not(romFrame is None))
 #     if not romFrame is None:
 #         # Send ROM data
-#         logger.debug(f"ROM frame len {len(romFrame)} start {romFrame[0:60]}")
+#         commonTest.logger.debug(f"ROM frame len {len(romFrame)} start {romFrame[0:60]}")
 #         commonTest.sendFrame("ZXSpectrum40KROM", romFrame)
 
 #         # Program and reset
@@ -553,15 +529,13 @@ def test_TRS80Level1RomExec():
             testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
             testStats["msgRdRespCount"] += 1
             if not respOk:
-                logger.error(f"Read {msgContent['data']} != expected {requiredResp}")
+                commonTest.logger.error(f"Read {msgContent['data']} != expected {requiredResp}")
         elif msgContent['cmdName'] == "busInitResp":
             pass
         else:
             testStats["unknownMsgCount"] += 1
-            logger.info(f"Unknown message {msgContent}")
+            commonTest.logger.info(f"Unknown message {msgContent}")
 
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
     commonTest = setupTests("TRS80Level1RomExec", frameCallback)
     testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRespCount":0}
 
@@ -600,7 +574,7 @@ def test_TRS80Level1RomExec():
         assert(not(romFrame is None))
         if not romFrame is None:
             # Send ROM data
-            logger.debug(f"ROM frame len {len(romFrame)} start {romFrame[0:60]}")
+            commonTest.logger.debug(f"ROM frame len {len(romFrame)} start {romFrame[0:60]}")
             commonTest.sendFrame("Level1Rom", romFrame)
 
             # Program and reset
@@ -631,7 +605,7 @@ def test_GalaxiansExec():
         if msgContent['cmdName'] == "busStatusResp":
             testStats['clrMaxUs'] = max(testStats['clrMaxUs'], msgContent['clrMaxUs'])
             testStats['iorqWr'] = msgContent['iorqWr']
-            logger.debug(msgContent)
+            commonTest.logger.debug(msgContent)
         elif "SetMcJsonResp" in msgContent['cmdName'] or \
                     msgContent['cmdName'] == 'ClearTargetResp' or \
                     msgContent['cmdName'] == 'FileTargetResp':
@@ -650,16 +624,14 @@ def test_GalaxiansExec():
             testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
             testStats["msgRdRespCount"] += 1
             if not respOk:
-                logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
+                commonTest.logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
         elif msgContent['cmdName'] == "busStatusClearResp" or \
                     msgContent['cmdName'] == "busInitResp":
             pass
         else:
             testStats["unknownMsgCount"] += 1
-            logger.info(f"Unknown message {msgContent}")
+            commonTest.logger.info(f"Unknown message {msgContent}")
 
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
     commonTest = setupTests("GalaxiansExec", frameCallback)
     testStats = {"unknownMsgCount":0, "clrMaxUs":0, "programAndResetCount":0, "msgRdOk":True, "msgRdRespCount":0,
             "iorqWr":0}
@@ -696,7 +668,7 @@ def test_GalaxiansExec():
         assert(not(romFrame is None))
         if not romFrame is None:
             # Send ROM data
-            logger.debug(f"ROM frame len {len(romFrame)} start {romFrame[0:60]}")
+            commonTest.logger.debug(f"ROM frame len {len(romFrame)} start {romFrame[0:60]}")
             commonTest.sendFrame("Level1Rom", romFrame)
 
             # Program and reset
@@ -712,7 +684,7 @@ def test_GalaxiansExec():
             assert(not(programFrame is None))
             if not programFrame is None:
                 # Send program data
-                logger.debug(f"Galaxians frame len {len(programFrame)} start {programFrame[0:60]}")
+                commonTest.logger.debug(f"Galaxians frame len {len(programFrame)} start {programFrame[0:60]}")
                 commonTest.sendFrame("Galaxians", programFrame)
                 time.sleep(2)
 
@@ -747,7 +719,7 @@ def test_stepSingle_RequiresPaging():
             testStats['iorqRd'] = msgContent['iorqRd']
             testStats['mreqWr'] = msgContent['mreqWr']
             testStats['mreqRd'] = msgContent['mreqRd']
-            logger.debug(msgContent)
+            commonTest.logger.debug(msgContent)
         elif "SetMcJsonResp" in msgContent['cmdName'] or \
                     msgContent['cmdName'] == 'ClearTargetResp' or \
                     msgContent['cmdName'] == 'targetResetResp' or \
@@ -775,11 +747,11 @@ def test_stepSingle_RequiresPaging():
                     msgContent['cmdName'] == "busInitResp":
             pass
         elif msgContent['cmdName'] == "getRegsResp":
-            logger.info(f"Expected register value {regsExpectedContent}")
-            logger.info(f"{msgContent['regs']}")
+            commonTest.logger.info(f"Expected register value {regsExpectedContent}")
+            commonTest.logger.info(f"{msgContent['regs']}")
             testStats["AFOK"] = (regsExpectedContent in msgContent['regs'])
             if not testStats["AFOK"]:
-                logger.error(f"AFOK not ok! {msgContent}")
+                commonTest.logger.error(f"AFOK not ok! {msgContent}")
             testStats["regsOk"] = True
         elif msgContent['cmdName'] == "stepIntoDone":
             pass
@@ -787,10 +759,8 @@ def test_stepSingle_RequiresPaging():
             pass
         else:
             testStats["unknownMsgCount"] += 1
-            logger.info(f"Unknown message {msgContent}")
+            commonTest.logger.info(f"Unknown message {msgContent}")
 
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
     commonTest = setupTests("StepSingle", frameCallback)
     # Test data - load A,6; inc A * 3 and jump to 0002
     testWriteData = b"\x3e\x06\x3c\x3c\x3c\xc3\x02\x00"
@@ -846,7 +816,7 @@ def test_stepSingle_RequiresPaging():
     assert(testStats["regsOk"])
     assert(testStats["stepCount"] == numTestLoops)
     assert(testStats["unknownMsgCount"] == 0)
-    logger.debug(f"StepCount {testStats['stepCount']}")
+    commonTest.logger.debug(f"StepCount {testStats['stepCount']}")
 
 def test_regGetTest_requiresPaging():
 
@@ -857,7 +827,7 @@ def test_regGetTest_requiresPaging():
             testStats['iorqRd'] = msgContent['iorqRd']
             testStats['mreqWr'] = msgContent['mreqWr']
             testStats['mreqRd'] = msgContent['mreqRd']
-            logger.debug(msgContent)
+            commonTest.logger.debug(msgContent)
         elif "SetMcJsonResp" in msgContent['cmdName'] or \
                     msgContent['cmdName'] == 'ClearTargetResp' or \
                     msgContent['cmdName'] == 'targetResetResp' or \
@@ -880,7 +850,7 @@ def test_regGetTest_requiresPaging():
             testStats["msgRdOk"] = testStats["msgRdOk"] and respOk
             testStats["msgRdRespCount"] += 1
             if not respOk:
-                logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
+                commonTest.logger.debug(f"Read {msgContent['data']} != expected {requiredResp}")
         elif msgContent['cmdName'] == "busStatusClearResp" or \
                     msgContent['cmdName'] == "busInitResp":
             pass
@@ -889,7 +859,7 @@ def test_regGetTest_requiresPaging():
             regsGot.append(msgContent['regs'])
             newRegsOk = (regsExpected[regsCount] in msgContent['regs'])
             if not newRegsOk:
-                logger.error(f"Regs not as expected at pos {regsCount} {regsExpected[regsCount]} != {msgContent['regs']}")
+                commonTest.logger.error(f"Regs not as expected at pos {regsCount} {regsExpected[regsCount]} != {msgContent['regs']}")
             testStats["regsOk"] = testStats["regsOk"] and newRegsOk
         elif msgContent['cmdName'] == "stepIntoDone":
             pass
@@ -897,10 +867,8 @@ def test_regGetTest_requiresPaging():
             pass
         else:
             testStats["unknownMsgCount"] += 1
-            logger.info(f"Unknown message {msgContent}")
+            commonTest.logger.info(f"Unknown message {msgContent}")
 
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
     commonTest = setupTests("RegGet", frameCallback)
     # Test data - sets all registers to known values
     # jump to 0000
@@ -947,7 +915,7 @@ def test_regGetTest_requiresPaging():
     regsGot = []
     addr = 0
     for i in range(50):
-        # logger.error(f"i={i}")
+        # commonTest.logger.error(f"i={i}")
         commonTest.sendFrame("stepInto", b"{\"cmdName\":\"stepInto\"}\0", "stepIntoDone")
         commonTest.awaitResponse(2000)
         regsStr = f"PC={addr:04x}"

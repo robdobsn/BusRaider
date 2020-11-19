@@ -11,11 +11,17 @@
 #include <Utils.h>
 #include <RestAPIEndpointManager.h>
 
-static const char* MODULE_PREFIX = "RestAPIEndpointManager";
-
 // #define DEBUG_REST_API_ENDPOINTS_ADD
 // #define DEBUG_REST_API_ENDPOINTS_GET
 // #define DEBUG_HANDLE_API_REQUEST_AND_RESPONSE
+// #define WARN_ON_NON_MATCHING_ENDPOINTS
+
+#if defined(DEBUG_REST_API_ENDPOINTS_ADD) || \
+    defined(DEBUG_REST_API_ENDPOINTS_GET) || \
+    defined(DEBUG_HANDLE_API_REQUEST_AND_RESPONSE) || \
+    defined(WARN_ON_NON_MATCHING_ENDPOINTS)
+static const char* MODULE_PREFIX = "RestAPIEndpointManager";
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -119,7 +125,9 @@ RestAPIEndpointDef* RestAPIEndpointManager::getMatchingEndpointDef(const char *r
         if (requestEndpoint.equalsIgnoreCase(endpointDef._endpointStr))
             return &endpointDef;
     }
+#ifdef WARN_ON_NON_MATCHING_ENDPOINTS
     LOG_W(MODULE_PREFIX, "getMatchingEndpointDef %s not found", requestEndpoint.c_str());
+#endif
     return NULL;    
 }
 

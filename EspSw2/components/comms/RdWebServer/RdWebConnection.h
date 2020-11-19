@@ -121,7 +121,7 @@ private:
     void selectHandler();
 
     // Service data
-    bool serviceRxData(struct netbuf** pInbuf);
+    bool getRxData(struct netbuf** pInbuf, bool& closeRequired);
 
     // Service connection header
     bool serviceConnHeader(const uint8_t* pRxData, uint32_t dataLen, uint32_t& curBufPos);

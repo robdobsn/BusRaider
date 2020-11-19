@@ -63,7 +63,7 @@ void CommandSocket::applySetup()
     _isEnabled = configGetLong("enable", 0) != 0;
 
     // Port
-    _port = configGetLong("socketPort", 80);
+    _port = configGetLong("socketPort", 24);
 
     // Protocol
     _protocol = configGetString("protocol", "RICSerial");

@@ -829,7 +829,7 @@ bool SysManager::processEndpointMsg(ProtocolEndpointMsg &cmdMsg)
             }
             case RICRESTMsg::RICREST_REST_ELEM_COMMAND_FRAME:
             {
-                processRICRESTCmdFrame(ricRESTReqMsg, respMsg, cmdMsg.getChannelID());
+                processRICRESTCmdFrame(ricRESTReqMsg, respMsg, cmdMsg);
                 break;
             }
             case RICRESTMsg::RICREST_REST_ELEM_FILEBLOCK:
@@ -908,7 +908,8 @@ bool SysManager::processRICRESTBody(RICRESTMsg& ricRESTReqMsg, String& respMsg)
 // Process RICRESTMsg CmdFrame
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SysManager::processRICRESTCmdFrame(RICRESTMsg& ricRESTReqMsg, String& respMsg, uint32_t channelID)
+bool SysManager::processRICRESTCmdFrame(RICRESTMsg& ricRESTReqMsg, String& respMsg, 
+                const ProtocolEndpointMsg &endpointMsg)
 {
     // Handle command frames
     ConfigBase cmdFrame = ricRESTReqMsg.getPayloadJson();
@@ -921,7 +922,7 @@ bool SysManager::processRICRESTCmdFrame(RICRESTMsg& ricRESTReqMsg, String& respM
     // Check file upload
     if (cmdName.equalsIgnoreCase("ufStart"))
     {
-        fileUploadStart(ricRESTReqMsg.getReq(), respMsg, channelID, cmdFrame);
+        fileUploadStart(ricRESTReqMsg.getReq(), respMsg, endpointMsg.getChannelID(), cmdFrame);
         return true;
     }
     else if (cmdName.equalsIgnoreCase("ufEnd"))
@@ -938,7 +939,7 @@ bool SysManager::processRICRESTCmdFrame(RICRESTMsg& ricRESTReqMsg, String& respM
     // Otherwise see if any SysMod wants to handle this
     for (SysModBase* pSysMod : _sysModuleList)
     {
-        if (pSysMod->procRICRESTCmdFrame(cmdName, ricRESTReqMsg, respMsg, channelID))
+        if (pSysMod->procRICRESTCmdFrame(cmdName, ricRESTReqMsg, respMsg, endpointMsg))
             return true;
     }
 

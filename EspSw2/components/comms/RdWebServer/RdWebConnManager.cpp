@@ -26,8 +26,8 @@ const static char* MODULE_PREFIX = "WebConnMgr";
 #define RD_WEB_CONN_STACK_SIZE 5000
 #endif
 
-#define DEBUG_WEB_CONN_MANAGER
-#define DEBUG_WEB_SERVER_HANDLERS
+// #define DEBUG_WEB_CONN_MANAGER
+// #define DEBUG_WEB_SERVER_HANDLERS
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -145,7 +145,7 @@ bool RdWebConnManager::accommodateConnection(struct netconn* pNewConnection)
 
 	// Debug
 #ifdef DEBUG_WEB_CONN_MANAGER
-	LOG_W(MODULE_PREFIX, "accommodateConnection new webRequest pConn %lx", (unsigned long)pNewConnection);
+	LOG_I(MODULE_PREFIX, "accommodateConnection new webRequest pConn %lx", (unsigned long)pNewConnection);
 #endif
 
 	// Place new connection in slot - after this point the WebConnection is responsible for closing

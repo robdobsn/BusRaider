@@ -55,7 +55,7 @@ protected:
 
     // Process RICRESTMsg CmdFrame
     virtual bool procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg& ricRESTReqMsg, 
-            String& respMsg, uint32_t channelID) override final;
+            String& respMsg, const ProtocolEndpointMsg &endpointMsg) override final;
 
 private:
     // Vars
@@ -143,7 +143,6 @@ private:
     static const int STATS_REPORT_TIME_MS = 60000;
 
     // RDP - remote data protocol - used for tunnelling messages between Pi and WebSocket
-    uint32_t _rdpCommandIndex;
     uint32_t _rdpChannelId;
 
     // Helpers

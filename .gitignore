@@ -12,6 +12,7 @@ tests/**/*.err
 tests/**/*.lst
 tests/**/*.bin
 logs/
+.venv
 
 # User-specific files
 *.suo

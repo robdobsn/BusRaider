@@ -20,6 +20,7 @@ typedef std::function<void()> SysMod_statusChangeCB;
 class SysManager;
 class RestAPIEndpointManager;
 class ProtocolEndpointManager;
+class ProtocolEndpointMsg;
 class RICRESTMsg;
 
 class SysModBase
@@ -139,7 +140,8 @@ public:
     }
 
     // Process RICRESTMsg CmdFrame
-    virtual bool procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg& ricRESTReqMsg, String& respMsg, uint32_t channelID)
+    virtual bool procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg& ricRESTReqMsg, 
+                String& respMsg, const ProtocolEndpointMsg &endpointMsg)
     {
         return false;
     }

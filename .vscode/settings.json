@@ -19,6 +19,9 @@
         "limits": "cpp",
         "sstream": "cpp",
         "system_error": "cpp",
-        "cstdlib": "cpp"
+        "cstdlib": "cpp",
+        "memory": "cpp",
+        "future": "cpp",
+        "istream": "cpp"
     }
 }

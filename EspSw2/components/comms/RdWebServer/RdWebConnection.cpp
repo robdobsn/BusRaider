@@ -18,6 +18,7 @@
 
 static const char *MODULE_PREFIX = "RdWebConn";
 
+#define WARN_WEB_CONN_ERROR_CLOSE
 // #define DEBUG_WEB_CONN
 // #define DEBUG_WEB_REQUEST_HEADERS
 // #define DEBUG_WEB_REQUEST_HEADER_DETAIL
@@ -189,24 +190,25 @@ void RdWebConnection::service()
 
     // Check for data
     struct netbuf *inbuf = NULL;
-    bool errorFound = false;
-    if (!serviceRxData(&inbuf))
-    {
-        LOG_W(MODULE_PREFIX, "service error getting data pConn %lx", (unsigned long)_pConn);
-        errorFound = true;
-    }
+    bool closeRequired = false;
+    bool dataReady = getRxData(&inbuf, closeRequired);
+
+    // Service responder
+    if (_pResponder)
+        _pResponder->service();
 
     // Get any found data
     uint8_t *pBuf = NULL;
     uint16_t bufLen = 0;
-    if (!errorFound && inbuf)
+    bool errorOccurred = false;
+    if (dataReady && inbuf)
     {
         // Get a buffer
         err_t err = netbuf_data(inbuf, (void **)&pBuf, &bufLen);
         if ((err != ERR_OK) || !pBuf)
         {
             LOG_W(MODULE_PREFIX, "service netconn_data err %s buf NULL pConn %lx", netconnErrToStr(err), (unsigned long)_pConn);
-            errorFound = true;
+            errorOccurred = true;
         }
         else
         {
@@ -219,18 +221,18 @@ void RdWebConnection::service()
 
     // See if we are forming the header
     uint32_t bufPos = 0;
-    if (!errorFound && !_header.isComplete)
+    if (dataReady && !errorOccurred && !_header.isComplete)
     {
         if (!serviceConnHeader(pBuf, bufLen, bufPos))
         {
             LOG_W(MODULE_PREFIX, "service connHeader error closing pConn %lx", (unsigned long)_pConn);
-            errorFound = true;
+            errorOccurred = true;
         }
     }
 
     // Service response - may take many iterations of this loop (e.g. for file-transfer / web-sockets)
-    bool closeRequired = false;
-    if (!errorFound && _header.isComplete)
+
+    if (dataReady && !errorOccurred && _header.isComplete)
     {
         if (!serviceResponse(pBuf, bufLen, bufPos))
         {
@@ -242,7 +244,7 @@ void RdWebConnection::service()
     }
 
     // Check for close
-    if (errorFound || closeRequired)
+    if (errorOccurred || closeRequired)
     {
 #ifdef DEBUG_WEB_CONN
         LOG_W(MODULE_PREFIX, "service conn closing cause %s pConn %lx", errorFound ? "ErrorFound" : "CloseRequired", (unsigned long)_pConn);
@@ -256,15 +258,16 @@ void RdWebConnection::service()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Service data reception
-// False if connection closed
+// Get Rx data
+// True if data is available
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool RdWebConnection::serviceRxData(struct netbuf** pInbuf)
+bool RdWebConnection::getRxData(struct netbuf** pInbuf, bool& closeRequired)
 {
+    closeRequired = false;
     // Debug
 #ifdef DEBUG_WEB_REQUEST_READ_START_END
-    LOG_W(MODULE_PREFIX, "service reading from client pConn %lx", (unsigned long)_pConn);
+    LOG_W(MODULE_PREFIX, "getRxData reading from client pConn %lx", (unsigned long)_pConn);
 #endif
 
     // See if data available
@@ -275,23 +278,40 @@ bool RdWebConnection::serviceRxData(struct netbuf** pInbuf)
     {
         // Debug
 #ifdef DEBUG_WEB_REQUEST_READ_START_END
-        LOG_W(MODULE_PREFIX, "service read nothing available pConn %lx", (unsigned long)_pConn);
+        LOG_W(MODULE_PREFIX, "getRxData read nothing available pConn %lx", (unsigned long)_pConn);
 #endif
 
         // Nothing to do
-        return true;
+        return false;
     }
 
-    // Check valid
+    // Check for closed
+    if (err == ERR_CLSD)
+    {
+        // Debug
+#ifdef DEBUG_WEB_REQUEST_READ_START_END
+        LOG_W(MODULE_PREFIX, "getRxData read connection closed pConn %lx", (unsigned long)_pConn);
+#endif
+
+        // Link is closed
+        closeRequired = true;
+        return false;
+    }
+
+    // Check for other error
     if (err != ERR_OK)
     {
-        LOG_W(MODULE_PREFIX, "service netconn_recv error %s pConn %lx", netconnErrToStr(err), (unsigned long)_pConn);
+#ifdef WARN_WEB_CONN_ERROR_CLOSE
+        LOG_W(MODULE_PREFIX, "getRxData netconn_recv error %s pConn %lx", 
+                    netconnErrToStr(err), (unsigned long)_pConn);
+#endif
+        closeRequired = true;
         return false;
     }
 
     // Debug
 #ifdef DEBUG_WEB_REQUEST_READ_START_END
-    LOG_W(MODULE_PREFIX, "service has read from client OK pConn %lx", (unsigned long)_pConn);
+    LOG_W(MODULE_PREFIX, "getRxData has read from client OK pConn %lx", (unsigned long)_pConn);
 #endif
 
     // Data available in pInbuf

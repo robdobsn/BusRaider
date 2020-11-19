@@ -32,13 +32,14 @@ static const char *MODULE_PREFIX = "PiCoProcessor";
 // #define DEBUG_PI_RX_STATUS_UPDATE
 // #define DEBUG_PI_RX_FRAME
 // #define DEBUG_PI_SEND_FRAME
+// #define DEBUG_PI_SEND_FRAME_STR
 // #define DEBUG_PI_SEND_TARGET_CMD
 // #define DEBUG_PI_SEND_RESP_TO_PI
 // #define DEBUG_PI_SEND_FILE_BLOCK
 // #define DEBUG_PI_TX_FRAME_TO_PI
 // #define DEBUG_RICREST_CMD_FRAMES
-#define DEBUG_RDP_MSG_FROM_PI
-#define DEBUG_PI_UPLOAD_ACKS
+// #define DEBUG_RDP_MSG_FROM_PI
+// #define DEBUG_PI_UPLOAD_ACKS
 // #define DEBUG_PI_UPLOAD_ACKS_DETAIL
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -88,7 +89,6 @@ PiCoProcessor::PiCoProcessor(const char *pModuleName, ConfigBase &defaultConfig,
     _statsTxFr = 0;
 
     // RDP
-    _rdpCommandIndex = 0;
     _rdpChannelId = 0;
 
     // Assume hardware version until detected
@@ -204,7 +204,7 @@ void PiCoProcessor::applySetup()
                 std::placeholders::_1, std::placeholders::_2),
             std::bind(&PiCoProcessor::hdlcFrameRxFromPiCB, this, 
                 std::placeholders::_1, std::placeholders::_2),
-            0x7E, 0x7D,
+            0xE7, 0xD7,
             _hdlcMaxLen, _hdlcMaxLen);
             
         // Init ok
@@ -848,6 +848,9 @@ void PiCoProcessor::sendTargetData(const String& cmdName, const uint8_t* pData, 
 
 void PiCoProcessor::sendMsgStrToPi(const char *pMsgStr)
 {
+#ifdef DEBUG_PI_SEND_FRAME_STR
+    LOG_I(MODULE_PREFIX, "sendMsgStrToPi %s", pMsgStr);
+#endif
     // Include string terminator
     sendMsgAndPayloadToPi((const uint8_t*) pMsgStr, strlen(pMsgStr)+1);
 }
@@ -973,11 +976,9 @@ void PiCoProcessor::hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen)
             uint32_t dataLen = RdJson::getLong("dataLen", payloadLen, pRxStr);
             String payloadStr;
             Utils::strFromBuffer(pFrame+payloadStartPos, payloadLen, payloadStr, true);
-            // String payloadStr = (((const char*)pFrame)+payloadStartPos);
-            payloadStr.replace("\n", "\\n");
-            LOG_I(MODULE_PREFIX, "rdp <- %s payloadLen %d dataLen %d payload ¬¬%s¬¬", 
+            LOG_I(MODULE_PREFIX, "rdp <- %s payloadLen %d dataLen %d payloadStartPos %d payload %s", 
                         pRxStr, payloadLen, dataLen,
-                        payloadStr.c_str());
+                        payloadStartPos, payloadStr.c_str());
 #endif
 
             // Send to websocket
@@ -1228,7 +1229,7 @@ bool PiCoProcessor::startUploadFromFileSystem(const String& fileSystemName,
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool PiCoProcessor::procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg& ricRESTReqMsg, 
-                        String& respMsg, uint32_t channelID)
+                        String& respMsg, const ProtocolEndpointMsg &endpointMsg)
 {
     // Handle command frames
     if (cmdName.equalsIgnoreCase("comtest"))
@@ -1237,14 +1238,19 @@ bool PiCoProcessor::procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg&
         unsigned msgIdx = cmdFrame.getLong("msgIdx", 0);
         // Response
         char extraJson[100];
-        snprintf(extraJson, sizeof(extraJson), "\"cmdName\":\"%sResp\",\"msgIdx\":%d", cmdName.c_str(), msgIdx);
+        snprintf(extraJson, sizeof(extraJson), "\"cmdName\":\"%sResp\",\"msgIdx\":%d", 
+                        cmdName.c_str(), msgIdx);
         Utils::setJsonResult(ricRESTReqMsg.getReq().c_str(), respMsg, true, NULL, extraJson);
 
 #ifdef DEBUG_RICREST_CMD_FRAMES
-        LOG_I(MODULE_PREFIX, "processRICRESTCmdFrame %s => Resp %s", cmdName.c_str(), respMsg.c_str());
+        LOG_I(MODULE_PREFIX, "procRICRESTCmdFrame comtest msgIdx %d %s => Resp %s", 
+                        msgIdx, cmdName.c_str(), respMsg.c_str());
 #endif
         return true;
     }
+
+    // Endpoint msg num
+    uint32_t endpointMsgNum = endpointMsg.getMsgNumber();
 
     // Send on to Pi as a combined message
     std::vector<uint8_t> combinedMsg;
@@ -1253,15 +1259,21 @@ bool PiCoProcessor::procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg&
     combinedMsg.resize(combinedLen);
     if (combinedMsg.size() >= combinedLen)
     {
+#ifdef DEBUG_RICREST_CMD_FRAMES
+        String combinedMsgHexStr;
+        Utils::getHexStrFromBytes(combinedMsg.data(), combinedMsg.size(), combinedMsgHexStr);
+        LOG_I(MODULE_PREFIX, "procRICRESTCmdFrame send %s", combinedMsgHexStr.c_str());
+#endif
+
         memcpy(combinedMsg.data(), ricRESTReqMsg.getPayloadJson().c_str(), jsonLen + 1);
         memcpy(combinedMsg.data() + jsonLen + 1, ricRESTReqMsg.getBinBuf(), ricRESTReqMsg.getBinLen());
-        sendTargetData("rdp", combinedMsg.data(), combinedLen, _rdpCommandIndex++);
-        _rdpChannelId  = channelID;
+        sendTargetData("rdp", combinedMsg.data(), combinedLen, endpointMsgNum);
+        _rdpChannelId  = endpointMsg.getChannelID();
         return true;
     }
 
 #ifdef DEBUG_RICREST_CMD_FRAMES
-    LOG_I(MODULE_PREFIX, "processRICRESTCmdFrame UNKNOWN %s", cmdName.c_str());
+    LOG_I(MODULE_PREFIX, "procRICRESTCmdFrame UNKNOWN %s", cmdName.c_str());
 #endif
 
     return false;
@@ -1329,10 +1341,18 @@ void PiCoProcessor::serialInterfacePump()
         if (bytesRead != 0)
         {
 #ifdef DEBUG_PI_SERIAL_GET
-            LOG_I(MODULE_PREFIX, "service charsAvail %d ch %02x", numCharsAvailable, buf[0]);
+            String byteStr;
+            Utils::getHexStrFromBytes(buf, bytesRead, byteStr);
+            LOG_I(MODULE_PREFIX, "service bytesRx %s", byteStr.c_str());
+            int curCRCErr = _pHDLC->getStats()->_frameCRCErrCount;
 #endif
             if (_pHDLC)
                 _pHDLC->handleBuffer(buf, bytesRead);
+#ifdef DEBUG_PI_SERIAL_GET
+            int finalCRCErr = _pHDLC->getStats()->_frameCRCErrCount;
+            if (curCRCErr != finalCRCErr)
+                LOG_W(MODULE_PREFIX, "CRC error count was %d now %d", curCRCErr, finalCRCErr);
+#endif
         }
         _statsRxCh += bytesRead;
     }

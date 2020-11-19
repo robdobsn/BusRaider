@@ -272,7 +272,8 @@ private:
     bool processEndpointMsg(ProtocolEndpointMsg& msg);
     bool processRICRESTURL(RICRESTMsg& ricRESTReqMsg, String& respMsg);
     bool processRICRESTBody(RICRESTMsg& ricRESTReqMsg, String& respMsg);
-    bool processRICRESTCmdFrame(RICRESTMsg& ricRESTReqMsg, String& respMsg, uint32_t channelID);
+    bool processRICRESTCmdFrame(RICRESTMsg& ricRESTReqMsg, String& respMsg, 
+                        const ProtocolEndpointMsg &endpointMsg);
     bool processRICRESTFileBlock(RICRESTMsg& ricRESTReqMsg, String& respMsg);
     void serviceFileUpload();
     void fileUploadStart(const String& reqStr, String& respMsg, uint32_t channelID, ConfigBase& cmdFrame);
