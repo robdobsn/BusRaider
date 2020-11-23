@@ -371,9 +371,9 @@ void RdWebSocketLink::handleRxPacketData(const uint8_t *pBuf, uint32_t bufLen)
         case WEBSOCKET_OPCODE_PONG:
         {
             callbackEventCode = WEBSOCKET_EVENT_PONG;
-    #ifdef DEBUG_WEBSOCKET_PING_PONG
+#ifdef DEBUG_WEBSOCKET_PING_PONG
             LOG_I(MODULE_PREFIX, "handleRx PONG");
-    #endif
+#endif
             break;
         }
         case WEBSOCKET_OPCODE_CLOSE:

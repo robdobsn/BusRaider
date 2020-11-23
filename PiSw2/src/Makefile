@@ -18,7 +18,7 @@ LIBS	= 	$(CIRCLEHOME)/lib/usb/libusb.a \
 			web/brweb.a \
 			TargetBus/brTargetBus.a \
 			Hardware/brHardware.a \
-			BusControlAPI/brBusAPI.a \
+			ControlAPI/brBusAPI.a \
 			Machines/brMachines.a \
 			SelfTest/brSelfTest.a \
 			fonts/brFonts.a \

@@ -128,7 +128,7 @@ void TargetControl::cycleService()
 void TargetControl::cycleReqHandlePending()
 {
     // Initiate the cycle action
-    _busAccess.bus().setBusSignal(_cycleReqActionType, true);
+    _busControl.bus().setBusSignal(_cycleReqActionType, true);
     _cycleReqAssertedUs = micros();
     _cycleReqState = CYCLE_REQ_STATE_ASSERTED;
 }
@@ -140,10 +140,10 @@ void TargetControl::cycleReqHandlePending()
 void TargetControl::cycleReqAssertedBusRq()
 {
     // Check for BUSACK
-    if (_busAccess.bus().rawBUSAKActive())
+    if (_busControl.bus().rawBUSAKActive())
     {
         // Take control of bus
-        _busAccess.bus().busReqTakeControl();
+        _busControl.bus().busReqTakeControl();
 
         // Check reason for request
         if (_cycleBusRqReason == BR_BUS_ACTION_PROGRAMMING)
@@ -159,7 +159,7 @@ void TargetControl::cycleReqAssertedBusRq()
         }
 
         // Release bus
-        _busAccess.bus().busReqRelease();
+        _busControl.bus().busReqRelease();
     }
     else
     {
@@ -168,7 +168,7 @@ void TargetControl::cycleReqAssertedBusRq()
         {
             // For bus requests a timeout means failure
             cycleReqCallback(BR_NOT_HANDLED);
-            _busAccess.bus().setBusSignal(BR_BUS_ACTION_BUSRQ, false);
+            _busControl.bus().setBusSignal(BR_BUS_ACTION_BUSRQ, false);
         }
     }
 
@@ -269,7 +269,7 @@ void TargetControl::cycleNewWait()
     // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
 
     // TODO 2020
-    _busAccess.bus().waitResetFlipFlops();
+    _busControl.bus().waitResetFlipFlops();
     return;
 
 //     // Check if already in wait
@@ -333,7 +333,7 @@ void TargetControl::cycleNewWait()
 //     if (_waitIsActive)
 //     {
 //         // Release wait
-//         _busAccess.bus().waitResetFlipFlops();
+//         _busControl.bus().waitResetFlipFlops();
 //         _waitIsActive = false;
 
 //         // Handle read release if required
@@ -350,9 +350,9 @@ void TargetControl::cycleNewWait()
 void TargetControl::cycleSetupForFastWait()
 {
     // Ensure PIB is inward
-    _busAccess.bus().pibSetIn();
+    _busControl.bus().pibSetIn();
     // high address is enabled on mux
-    _busAccess.bus().muxSet(BR_MUX_HADDR_OE_BAR);
+    _busControl.bus().muxSet(BR_MUX_HADDR_OE_BAR);
     // Set data bus direction in
     write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK);
 }
@@ -366,12 +366,12 @@ void TargetControl::cycleSetupForFastWait()
 void TargetControl::cycleHandleImportantWait()
 {
     // Read control lines
-    uint32_t ctrlBusVals = _busAccess.bus().controlBusRead();
+    uint32_t ctrlBusVals = _busControl.bus().controlBusRead();
 
     // Read address and data
     uint32_t addr = 0;
     uint32_t dataBusVals = 0;
-    _busAccess.bus().addrAndDataBusRead(addr, dataBusVals);
+    _busControl.bus().addrAndDataBusRead(addr, dataBusVals);
 
     // Callback to sockets
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
@@ -383,10 +383,10 @@ void TargetControl::cycleHandleImportantWait()
     {
         // Set data direction out on the data bus driver
         write32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
-        _busAccess.bus().pibSetOut();
+        _busControl.bus().pibSetOut();
 
         // Set the value for the processor to read
-        _busAccess.bus().pibSetValue(retVal & 0xff);
+        _busControl.bus().pibSetValue(retVal & 0xff);
 
         // Stay here until read cycle is complete
         uint32_t waitForReadCompleteStartUs = micros();

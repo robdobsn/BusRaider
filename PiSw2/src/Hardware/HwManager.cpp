@@ -2,7 +2,7 @@
 // Rob Dobson 2018
 
 #include "HwManager.h"
-#include "BusAccess.h"
+#include "BusControl.h"
 #include "rdutils.h"
 #include "lowlib.h"
 #include "PiWiring.h"
@@ -43,8 +43,8 @@ const char* HwManager::_pDefaultHardwareList =
 // Constructor
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-HwManager::HwManager(CommandHandler& commandHandler, BusAccess& busAccess) :
-    _commandHandler(commandHandler), _busAccess(busAccess)
+HwManager::HwManager(CommandHandler& commadHandler, BusControl& busControl) :
+    _commandHandler(commandHandler), _busControl(busControl)
 {
     _pThisInstance = this;
     // Sockets
@@ -65,7 +65,7 @@ void HwManager::init()
 {
     // Connect to the bus socket
     if (_busSocketId < 0)
-        _busSocketId = _busAccess.busSocketAdd(
+        _busSocketId = _busControl.busSocketAdd(
             true,
             HwManager::handleWaitInterruptStatic,
             HwManager::busActionActiveStatic,
@@ -96,7 +96,7 @@ void HwManager::init()
     }
     // Add hardware - HwBase constructor adds to HwManager
     // TODO 2020
-    //    new HwRAMROM(*this, _busAccess);
+    //    new HwRAMROM(*this, _busControl);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -577,7 +577,7 @@ void HwManager::setupFromJson(const char* jsonKey, const char* hwJson)
 // Check if bus can be accessed directly
 bool HwManager::busAccessAvailable()
 {
-    return !_busAccess.waitIsHeld() && !isEmulatingMemory() && 
-                    // !_busAccess.busSocketIsEnabled(_busSocketId) &&
-                    !_busAccess.isTrackingActive();
+    return !_busControl.waitIsHeld() && !isEmulatingMemory() && 
+                    // !_busControl.busSocketIsEnabled(_busSocketId) &&
+                    !_busControl.isTrackingActive();
 }

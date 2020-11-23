@@ -6,7 +6,7 @@
 class HwRAMROM : public HwBase
 {
 public:
-    HwRAMROM(HwManager& hwManager, BusAccess& busAccess);
+    HwRAMROM(HwManager& hwManager, BusControl& BusControl);
 
     // Configure
     virtual void configure(const char* jsonConfig);

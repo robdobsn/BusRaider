@@ -91,7 +91,6 @@ class CommonTest:
         #         self.commsSerial.setRxFrameCB(self.onRxFrame)
 
         #         self.logger.info(f"UnitTest BusRaider IP {ipAddr} port {self.tcpHdlcPort}")
-                
         ricComms = RICCommsWiFi()
         self.busRaider = RICInterface.RICInterface(ricComms)
         self.busRaider.open({"ipAddrOrHostname":self.ipAddr})

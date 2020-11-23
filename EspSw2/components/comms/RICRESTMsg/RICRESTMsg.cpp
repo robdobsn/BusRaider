@@ -11,7 +11,7 @@
 #include <ProtocolEndpointMsg.h>
 #include <stdio.h>
 
-// #define DEBUG_RICREST_MSG 1
+#define DEBUG_RICREST_MSG
 
 // Logging
 #ifdef DEBUG_RICREST_MSG
@@ -36,14 +36,14 @@ bool RICRESTMsg::decode(const uint8_t* pBuf, uint32_t len)
     // LOG_I(MODULE_PREFIX, "decode payloadLen %d payload %s", sz, outBuf);
 
     // Check there is a RESTElementCode
-    if (len <= RICREST_REST_ELEM_CODE_POS)
+    if (len <= RICREST_ELEM_CODE_POS)
         return false;
 
     // Extract RESTElementCode
-    _RICRESTElemCode = (RICRESTElemCode)pBuf[RICREST_REST_ELEM_CODE_POS];
+    _RICRESTElemCode = (RICRESTElemCode)pBuf[RICREST_ELEM_CODE_POS];
     switch(_RICRESTElemCode)
     {
-        case RICREST_REST_ELEM_URL:
+        case RICREST_ELEM_CODE_URL:
         {
             // Set request
             getStringFromBuf(_req, pBuf, RICREST_HEADER_PAYLOAD_POS, len, RICREST_MAX_PAYLOAD_LEN);
@@ -54,13 +54,13 @@ bool RICRESTMsg::decode(const uint8_t* pBuf, uint32_t len)
 #endif
             break;
         }
-        case RICREST_REST_ELEM_CMDRESPJSON:
+        case RICREST_ELEM_CODE_CMDRESPJSON:
         {
             getStringFromBuf(_payloadJson, pBuf, RICREST_HEADER_PAYLOAD_POS, len, RICREST_MAX_PAYLOAD_LEN);
             _req = "resp";
             break;
         }
-        case RICREST_REST_ELEM_BODY:
+        case RICREST_ELEM_CODE_BODY:
         {
             // Extract params
             uint32_t offset = RICREST_BODY_BUFFER_POS;
@@ -78,14 +78,17 @@ bool RICRESTMsg::decode(const uint8_t* pBuf, uint32_t len)
             _req = "elemBody";
             break;
         }
-        case RICREST_REST_ELEM_COMMAND_FRAME:
+        case RICREST_ELEM_CODE_COMMAND_FRAME:
         {
             // Extract params
             getStringFromBuf(_payloadJson, pBuf, RICREST_COMMAND_FRAME_PAYLOAD_POS, len, RICREST_MAX_PAYLOAD_LEN);  
+#ifdef DEBUG_RICREST_MSG
+            LOG_I(MODULE_PREFIX, "RICREST CmdFrame %s", _payloadJson.c_str());
+#endif
             _req = RdJson::getString("cmdName", "unknown", _payloadJson.c_str());          
             break;
         }
-        case RICREST_REST_ELEM_FILEBLOCK:
+        case RICREST_ELEM_CODE_FILEBLOCK:
         {
             // Extract params
             uint32_t offset = RICREST_FILEBLOCK_FILE_POS;
@@ -108,11 +111,11 @@ void RICRESTMsg::encode(const String& payload, ProtocolEndpointMsg& endpointMsg,
 {
     // Setup buffer for the RESTElementCode
     uint8_t msgPrefixBuf[RICREST_HEADER_PAYLOAD_POS];
-    msgPrefixBuf[RICREST_REST_ELEM_CODE_POS] = elemCode;
+    msgPrefixBuf[RICREST_ELEM_CODE_POS] = elemCode;
 
     // Set the response ensuring to include the string terminator although this isn't stricly necessary
     endpointMsg.setBufferSize(RICREST_HEADER_PAYLOAD_POS + payload.length() + 1);
-    endpointMsg.setPartBuffer(RICREST_REST_ELEM_CODE_POS, msgPrefixBuf, sizeof(msgPrefixBuf));
+    endpointMsg.setPartBuffer(RICREST_ELEM_CODE_POS, msgPrefixBuf, sizeof(msgPrefixBuf));
     endpointMsg.setPartBuffer(RICREST_HEADER_PAYLOAD_POS, (uint8_t*)payload.c_str(), payload.length() + 1);
 }
 
@@ -120,10 +123,10 @@ void RICRESTMsg::encode(const uint8_t* pBuf, uint32_t len, ProtocolEndpointMsg& 
 {
     // Setup buffer for the RESTElementCode
     uint8_t msgPrefixBuf[RICREST_HEADER_PAYLOAD_POS];
-    msgPrefixBuf[RICREST_REST_ELEM_CODE_POS] = elemCode;
+    msgPrefixBuf[RICREST_ELEM_CODE_POS] = elemCode;
 
     // Set the response
     endpointMsg.setBufferSize(RICREST_HEADER_PAYLOAD_POS + len);
-    endpointMsg.setPartBuffer(RICREST_REST_ELEM_CODE_POS, msgPrefixBuf, sizeof(msgPrefixBuf));
+    endpointMsg.setPartBuffer(RICREST_ELEM_CODE_POS, msgPrefixBuf, sizeof(msgPrefixBuf));
     endpointMsg.setPartBuffer(RICREST_HEADER_PAYLOAD_POS, pBuf, len);
 }

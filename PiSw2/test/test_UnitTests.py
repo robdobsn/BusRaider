@@ -84,73 +84,63 @@ def test_MemRW():
         commonTest.logger.info("Frame callback unexpected" + json.dumps(frameJson))
 
     # Setup
-    commonTest = setupTests("SetMc", frameCallback)
-    testRepeatCount = 2
-
-    # Get list of machines
-    mcListResp = commonTest.sendFrameSync("SetMc getStatus", '{"cmdName":"getStatus"}')
-    mcList = mcListResp.get('machineList',[])
-
-    # Set machines alternately
-    rsltOkCount = 0
-    for _ in range(testRepeatCount):
-        for mc in mcList:
-            commonTest.logger.debug(f"Setting machine {mc}")
-            setMcResp = commonTest.sendFrameSync("SetMcJson", '{"cmdName":"SetMcJson"}\0{"name":"' + mc + '"}\0')
-            if setMcResp.get("cmdName","") == "SetMcJsonResp" and setMcResp.get("err","") == "ok":
-                rsltOkCount += 1
-            else:
-                commonTest.logger.error(f"Failed setMc {setMcResp}")
-            # commonTest.sendFrameSync("getStatus", '{"cmdName":"getStatus"}')
-
-    # Wait for test end and cleardown
-    commonTest.cleardown()
-    assert(rsltOkCount == testRepeatCount * len(mcList))
-
-
     commonTest = setupTests("MemRW", frameCallback)
     testRepeatCount = 20
+
     # Test data
     writtenData = []
     readData = []
     testWriteData = bytearray(b"\xaa\x55\xaa\x55\xaa\x55\xaa\x55\xaa\x55")
-    testStats = {"msgRdOk": True, "msgRdRespCount":0, "msgWrRespCount": 0, "msgWrRespErrCount":0, "msgWrRespErrMissingCount":0, "unknownMsgCount":0, "clockSetOk":False}
+
     # Set serial terminal machine - to avoid conflicts with display updates, etc
     mc = "Serial Terminal ANSI"
     commonTest.logger.debug(f"Setting machine {mc}")
-    commonTest.sendFrame("SetMcJson", b"{\"cmdName\":\"SetMcJson\"}\0{\"name\":\"" + bytes(mc,'utf-8') + b"\"}\0")
-    time.sleep(1)
-    # Processor clock
+    resp = commonTest.sendFrameSync("SetMcJson", '{"cmdName":"SetMcJson"}\0{"name":"' + mc + '"}\0')
+    if resp.get("cmdName","") == "SetMcJsonResp" and resp.get("err","") == "ok":
+        commonTest.logger.debug(f"SetMcJson failed {resp}")
+    assert(resp.get("err","") == "ok")
+
+    # Set processor clock
     commonTest.logger.debug(f"Setting processor clock")
-    commonTest.sendFrame("clockHzSet", b"{\"cmdName\":\"clockHzSet\",\"clockHz\":250000}\0")
-    time.sleep(1)
+    resp = commonTest.sendFrameSync("ClockSetHz", '{"cmdName":"clockHzSet","clockHz":250000}')
+    commonTest.logger.debug(f"Set processor clock resp {resp}")
+    assert(resp.get("err","") == "ok")
+
     # Bus init
     commonTest.logger.debug(f"Send busInit")
-    commonTest.sendFrame("busInit", b"{\"cmdName\":\"busInit\"}\0")
-    time.sleep(0.01)
-    for i in range(testRepeatCount):
-        commonTest.logger.debug(f"Send blockWrite {i}")
-        commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":8000,\"lenDec\":10,\"isIo\":0}\0" + testWriteData)
-        writtenData.append(testWriteData)
-        time.sleep(0.01)
-        commonTest.logger.debug(f"Send blockRead {i}")
-        commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":8000,\"lenDec\":10,\"isIo\":0}\0")
-        time.sleep(0.1)
-        if not testStats["msgRdOk"]:
-            break
-        testWriteData = bytearray(len(testWriteData))
-        for i in range(len(testWriteData)):
-            testWriteData[i] = random.randint(0,255)
+    resp = commonTest.sendFrameSync("busInit", '{"cmdName":"busInit"}')
+    commonTest.logger.debug(f"Send busInit {resp}")
+    assert(resp.get("err","") == "ok")
+
+    # testStats = {"msgRdOk": True, "msgRdRespCount":0, "msgWrRespCount": 0, "msgWrRespErrCount":0, "msgWrRespErrMissingCount":0, "unknownMsgCount":0, "clockSetOk":False}
+
+    # for i in range(testRepeatCount):
+    #     commonTest.logger.debug(f"Send blockWrite {i}")
+    #     commonTest.sendFrame("blockWrite", b"{\"cmdName\":\"Wr\",\"addr\":8000,\"lenDec\":10,\"isIo\":0}\0" + testWriteData)
+    #     writtenData.append(testWriteData)
+    #     time.sleep(0.01)
+    #     commonTest.logger.debug(f"Send blockRead {i}")
+    #     commonTest.sendFrame("blockRead", b"{\"cmdName\":\"Rd\",\"addr\":8000,\"lenDec\":10,\"isIo\":0}\0")
+    #     time.sleep(0.1)
+    #     if not testStats["msgRdOk"]:
+    #         break
+    #     testWriteData = bytearray(len(testWriteData))
+    #     for i in range(len(testWriteData)):
+    #         testWriteData[i] = random.randint(0,255)
     
+    # # Wait for test end and cleardown
+    # commonTest.cleardown()
+    # assert(testStats["msgRdOk"] == True)
+    # assert(testStats["msgRdRespCount"] == testRepeatCount)
+    # assert(testStats["msgWrRespCount"] == testRepeatCount)
+    # assert(testStats["msgWrRespErrCount"] == 0)
+    # assert(testStats["msgWrRespErrMissingCount"] == 0)
+    # assert(testStats["unknownMsgCount"] == 0)
+    # assert(testStats["clockSetOk"] == True)
+
     # Wait for test end and cleardown
     commonTest.cleardown()
-    assert(testStats["msgRdOk"] == True)
-    assert(testStats["msgRdRespCount"] == testRepeatCount)
-    assert(testStats["msgWrRespCount"] == testRepeatCount)
-    assert(testStats["msgWrRespErrCount"] == 0)
-    assert(testStats["msgWrRespErrMissingCount"] == 0)
-    assert(testStats["unknownMsgCount"] == 0)
-    assert(testStats["clockSetOk"] == True)
+    # assert(rsltOkCount == testRepeatCount * len(mcList))
 
 def test_BankedMemRW():
 

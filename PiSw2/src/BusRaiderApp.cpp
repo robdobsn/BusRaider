@@ -48,7 +48,8 @@ BusRaiderApp* BusRaiderApp::_pApp = NULL;
 BusRaiderApp::BusRaiderApp(Display& display, CUartMaxiSerialDevice& serial) :
     _display(display),
     _commsManager(serial, NULL),
-    _mcManager(&_display, _commsManager.getCommandHandler(), _busAccess),
+    _controlAPI(_commsManager.getCommandHandler(), _busControl),
+    _mcManager(&_display, _commsManager.getCommandHandler(), _busControl),
     _keyInfoBufferPos(MAX_USB_KEYS_BUFFERED)
 {
     _pApp = this;
@@ -61,9 +62,8 @@ void BusRaiderApp::init()
     clear();
 
     _commsManager.setup();
-    _busAccess.init();
-    // TODO 2020 reinstate
-    // _busControlAPI.init();
+    _busControl.init();
+    _controlAPI.init();
     _mcManager.init();
     
     // Add socket for status handling
@@ -121,8 +121,8 @@ void BusRaiderApp::peripheralStatus(bool usbOk, bool keyboardOk)
 void BusRaiderApp::service()
 {
     // Service components
-    _busAccess.service();
-    // _busControlAPI.service();
+    _busControl.service();
+    _controlAPI.service();
     _mcManager.service();
     _commsManager.service();
 
@@ -281,7 +281,7 @@ void BusRaiderApp::statusDisplayUpdate()
         {
             strlcat(statusStr, _esp32ESP32Version, MAX_STATUS_STR_LEN);
             char tmpStr[30];
-            int hwVers = _busAccess.bus().getHwVersion(false);
+            int hwVers = _busControl.bus().getHwVersion(false);
             snprintf(tmpStr, sizeof(tmpStr), " (HW V%d.%d)", hwVers / 10, hwVers %10);
             strlcat(statusStr, tmpStr, MAX_STATUS_STR_LEN);
             strlcat(statusStr, "        ", MAX_STATUS_STR_LEN);
@@ -324,17 +324,17 @@ void BusRaiderApp::statusDisplayUpdate()
         strlcat(statusStr, "    ", MAX_STATUS_STR_LEN);
         _display.statusPut(Display::STATUS_FIELD_MACHINES, Display::STATUS_NORMAL, statusStr);
 
-        // BusAccess status
+        // Bus status
         statusStr[0] = 0;
         strlcpy(statusStr, "Bus: ", MAX_STATUS_STR_LEN);
         // TODO 2020
         // if (_mcManager.getTargetTracker().isTrackingActive())
         //     strlcat(statusStr, "Debug       ", MAX_STATUS_STR_LEN);
-        // else if (busAccess.waitIsHeld())
+        // else if (_busControl.bus().waitIsHeld())
         //     strlcat(statusStr, "Paused      ", MAX_STATUS_STR_LEN);
         // else
         //     strlcat(statusStr, "Free Running", MAX_STATUS_STR_LEN);
-        if (_busAccess.bus().busReqAcknowledged())
+        if (_busControl.bus().busReqAcknowledged())
             strlcat(statusStr, " & PiControl   ", MAX_STATUS_STR_LEN);
         _display.statusPut(Display::STATUS_FIELD_BUS_ACCESS, Display::STATUS_NORMAL, statusStr);
 
@@ -505,7 +505,7 @@ void BusRaiderApp::handleUSBKeypress(unsigned char ucModifiers,
                     {
                         // Run memory test
                         _selfTestMode = true;
-                        selfTestMemory(this, _display, _busAccess);
+                        selfTestMemory(this, _display, _busControl);
                         _selfTestMode = false;
                     }
                     else if (rdtolower(_immediateModeLine[0]) == 'b')
@@ -578,11 +578,11 @@ void BusRaiderApp::storeESP32StatusInfo(const char* pCmdJson)
     jsonGetValueForKey("espV", espHealthJson, _esp32ESP32Version, MAX_ESP_VERSION_STR);
     char espHwVersStr[MAX_ESP_VERSION_STR];
     espHwVersStr[0] = '\0';
-    int espHwVersion = _busAccess.bus().getHwVersion(true);
+    int espHwVersion = _busControl.bus().getHwVersion(true);
     jsonGetValueForKey("espHWV", espHealthJson, espHwVersStr, MAX_ESP_VERSION_STR);
     if (strlen(espHwVersStr) != 0)
         espHwVersion = atoi(espHwVersStr);
-    _busAccess.bus().setHwVersion(espHwVersion);
+    _busControl.bus().setHwVersion(espHwVersion);
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Ip Address %s", _esp32IPAddress);
     
     // Check for connection of ESP32 and setup logging to esp32 if so

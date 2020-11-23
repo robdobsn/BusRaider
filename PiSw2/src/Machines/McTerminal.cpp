@@ -71,8 +71,8 @@ McVariantTable McTerminal::_machineDescriptorTables[] = {
     }
 };
 
-McTerminal::McTerminal(McManager& mcManager, BusControl& busAccess) : 
-    McBase(mcManager, busAccess, _machineDescriptorTables, 
+McTerminal::McTerminal(McManager& mcManager, BusControl& busControl) : 
+    McBase(mcManager, busControl, _machineDescriptorTables, 
             sizeof(_machineDescriptorTables)/sizeof(_machineDescriptorTables[0])),
     _sendToTargetBufPos(MAX_SEND_TO_TARGET_CHARS)
 {

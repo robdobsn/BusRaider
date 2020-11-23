@@ -88,7 +88,7 @@ public:
 
 private:
     // Bus control
-    BusControl& _busAccess;
+    BusControl& _busControl;
 
     // Target Programmer
     TargetProgrammer _targetProgrammer;
@@ -243,7 +243,7 @@ private:
 
 // private:
 //     // Bus control
-//     BusControl& _busAccess;
+//     BusControl& _busControl;
 
 //     // Target Programmer
 //     TargetProgrammer _targetProgrammer;

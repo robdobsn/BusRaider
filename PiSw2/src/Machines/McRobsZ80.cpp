@@ -7,7 +7,7 @@
 #include "usb_hid_keys.h"
 #include "rdutils.h"
 #include "logging.h"
-#include "BusAccess.h"
+#include "BusControl.h"
 #include "TargetProgrammer.h"
 #include "McManager.h"
 #include "SystemFont.h"
@@ -68,7 +68,7 @@ void McRobsZ80::refreshDisplay()
     // TODO 2020 changed from hwman
     // Read mirror memory at the location of the memory mapped screen
     uint8_t pScrnBuffer[ROBSZ80_DISP_RAM_SIZE];
-    if (_busAccess.blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, BLOCK_ACCESS_MEM) == BR_OK)
+    if (_busControl.blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, BLOCK_ACCESS_MEM) == BR_OK)
         updateDisplayFromBuffer(pScrnBuffer, ROBSZ80_DISP_RAM_SIZE);
 }
 
@@ -147,7 +147,7 @@ void McRobsZ80::busActionActiveCallback(BR_BUS_ACTION actionType,
         // TODO 2020 changed from hwman
         // Read memory at the location of the memory mapped screen
         uint8_t pScrnBuffer[ROBSZ80_DISP_RAM_SIZE];
-        if (_busAccess.blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, BLOCK_ACCESS_MEM) == BR_OK)
+        if (_busControl.blockRead(ROBSZ80_DISP_RAM_ADDR, pScrnBuffer, ROBSZ80_DISP_RAM_SIZE, BLOCK_ACCESS_MEM) == BR_OK)
             updateDisplayFromBuffer(pScrnBuffer, ROBSZ80_DISP_RAM_SIZE);
     }
 }

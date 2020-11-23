@@ -19,7 +19,7 @@ class McBase
 {
 public:
 
-    McBase(McManager& mcManager, BusControl& busAccess, const McVariantTable* pVariantTables, uint32_t numVariants);
+    McBase(McManager& mcManager, BusControl& busControl, const McVariantTable* pVariantTables, uint32_t numVariants);
 
     // Check if name is a valid one for this machine
     virtual bool isCalled(const char* mcName, uint32_t& machineVariant);
@@ -139,7 +139,7 @@ protected:
     McManager& _mcManager;
 
     // Bus control
-    BusControl& _busAccess;
+    BusControl& _busControl;
 
 private:
     // Machine descriptor

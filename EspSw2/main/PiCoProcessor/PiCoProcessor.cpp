@@ -21,7 +21,7 @@ static const char *MODULE_PREFIX = "PiCoProcessor";
 
 // Debug
 // #define DEBUG_PI_UPLOAD_END
-// #define DEBUG_PI_SW_UPLOAD
+#define DEBUG_PI_SW_UPLOAD
 // #define DEBUG_PI_UPLOAD_FROM_FS
 // #define DEBUG_PI_QUERY_STATUS
 // #define DEBUG_PI_SERIAL_GET
@@ -520,7 +520,9 @@ void PiCoProcessor::apiUploadPiSwComplete(const String &reqStr, String &respStr)
 void PiCoProcessor::apiUploadPiSwPart(const String& req, FileBlockInfo& fileBlockInfo)
 {
 #ifdef DEBUG_PI_SW_UPLOAD
-    LOG_I(MODULE_PREFIX, "apiUploadPiSwPart %d, %d, %d, %d", contentLen, index, len, finalBlock);
+    LOG_I(MODULE_PREFIX, "apiUploadPiSwPart contentLen %d, fileLen %d, filePos %d, blockLen %d, finalBlock %d, crc %04x", 
+                    fileBlockInfo.contentLen, fileBlockInfo.fileLen, fileBlockInfo.filePos, 
+                    fileBlockInfo.blockLen, fileBlockInfo.finalBlock, fileBlockInfo.crc16);
 #endif
     uploadAPIBlockHandler("firmware", req, fileBlockInfo);
 }
@@ -988,7 +990,7 @@ void PiCoProcessor::hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen)
                 RICRESTMsg ricRESTRespMsg;
                 ProtocolEndpointMsg endpointMsg;
                 ricRESTRespMsg.encode(pFrame + payloadStartPos, payloadLen, endpointMsg, 
-                            RICRESTMsg::RICREST_REST_ELEM_CMDRESPJSON);
+                            RICRESTMsg::RICREST_ELEM_CODE_CMDRESPJSON);
                 endpointMsg.setAsResponse(_rdpChannelId, MSG_PROTOCOL_RICREST, msgIdx, MSG_DIRECTION_RESPONSE);
 
                 // Send message on the appropriate channel

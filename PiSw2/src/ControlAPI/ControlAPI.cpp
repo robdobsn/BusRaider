@@ -1,65 +1,65 @@
 // Bus Raider
 // Rob Dobson 2019
 
-#include "BusControlAPI.h"
+#include "ControlAPI.h"
 #include "PiWiring.h"
 #include "lowlib.h"
 #include "logging.h"
 #include "rdutils.h"
-#include "BusAccess.h"
-#include "BusAccess.h"
+#include "BusControl.h"
 #include "CommandHandler.h"
-#include "HwManager.h"
+// #include "HwManager.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Variables
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Module name
-static const char MODULE_PREFIX[] = "BusControlAPI";
+static const char MODULE_PREFIX[] = "ControlAPI";
 
 // This instance
-BusControlAPI* BusControlAPI::_pThisInstance = NULL;
+ControlAPI* ControlAPI::_pThisInstance = NULL;
 
 // Debug
-// #define DEBUG_RX_FRAME
-// #define DEBUG_COMMS_SOCKET
-// #define DEBUG_API_BLOCK_ACCESS_SYNC
-// #define DEBUG_BUS_ACTION_COMPLETE
+#define DEBUG_RX_FRAME
+#define DEBUG_COMMS_SOCKET
+#define DEBUG_API_BLOCK_ACCESS_SYNC
+#define DEBUG_BUS_ACTION_COMPLETE
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Construction
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Constructor
-BusControlAPI::BusControlAPI(CommandHandler& commandHandler, HwManager& hwManager, BusAccess& busAccess) :
-        _commandHandler(commandHandler), _hwManager(hwManager), _busAccess(busAccess)
+// ControlAPI::ControlAPI(CommandHandler& commandHandler, HwManager& hwManager, BusControl& busControl) :
+//         _commandHandler(commandHandler), _hwManager(hwManager), _busControl(busControl)
+ControlAPI::ControlAPI(CommandHandler& commandHandler, BusControl& busControl) :
+        _commandHandler(commandHandler), _busControl(busControl)
 {
     _pThisInstance = this;
     // Sockets
     _busSocketId = -1;
     _commsSocketId = -1;
-    // Synchronous memory access
-    _memAccessPending = false;
-    _memAccessWrite = false;
-    _memAccessDataLen = 0;
-    _memAccessAddr = 0;
-    _memAccessIo = false;
-    _memAccessRdWrErrCount = 0;
-    _memAccessRdWrTest = false;
-    _stepCompletionPending = false;
-    _targetTrackerResetPending = false;
+    // // Synchronous memory access
+    // _memAccessPending = false;
+    // _memAccessWrite = false;
+    // _memAccessDataLen = 0;
+    // _memAccessAddr = 0;
+    // _memAccessIo = false;
+    // _memAccessRdWrErrCount = 0;
+    // _memAccessRdWrTest = false;
+    // _stepCompletionPending = false;
+    // _targetTrackerResetPending = false;
 }
 
-void BusControlAPI::init()
+void ControlAPI::init()
 {
     // Connect to the bus socket
-    BusAccess& busAccess = _busAccess;
     if (_busSocketId < 0)
-        _busSocketId = busAccess.busSocketAdd( 
+        _busSocketId = _busControl.sock().add( 
             true,
-            BusControlAPI::handleWaitInterruptStatic,
-            BusControlAPI::busActionActiveStatic,
+            ControlAPI::handleWaitInterruptStatic,
+            ControlAPI::busActionActiveStatic,
             false,
             false,
             // Reset
@@ -79,7 +79,7 @@ void BusControlAPI::init()
     // Connect to the comms socket
     if (_commsSocketId < 0)
     {
-        _commsSocketId = _commandHandler.commsSocketAdd(this, true, BusControlAPI::handleRxMsgStatic, NULL, NULL);
+        _commsSocketId = _commandHandler.commsSocketAdd(this, true, ControlAPI::handleRxMsgStatic, NULL, NULL);
 #ifdef DEBUG_COMMS_SOCKET
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "init commsSocketId %d", _commsSocketId);
 #endif
@@ -90,7 +90,7 @@ void BusControlAPI::init()
 // Received message handler
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool BusControlAPI::handleRxMsgStatic(void* pObject, const char* pCmdJson, 
+bool ControlAPI::handleRxMsgStatic(void* pObject, const char* pCmdJson, 
                 const uint8_t* pParams, unsigned paramsLen,
                 char* pRespJson, unsigned maxRespLen)
 {
@@ -99,10 +99,10 @@ bool BusControlAPI::handleRxMsgStatic(void* pObject, const char* pCmdJson,
 #endif
     if (!pObject)
         return false;
-    return ((BusControlAPI*)pObject)->handleRxMsg(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+    return ((ControlAPI*)pObject)->handleRxMsg(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
 }
 
-bool BusControlAPI::handleRxMsg(const char* pCmdJson, 
+bool ControlAPI::handleRxMsg(const char* pCmdJson, 
                 const uint8_t* pParams, unsigned paramsLen,
                 char* pRespJson, unsigned maxRespLen)
 {
@@ -118,7 +118,6 @@ bool BusControlAPI::handleRxMsg(const char* pCmdJson,
         return false;
 
     // Check for memory/IO read
-    BusAccess& busAccess = _busAccess;
     if (strcasecmp(cmdName, "Rd") == 0)
     {
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Rd %s %04x", pCmdJson, read32(ARM_GPIO_GPLEV0));
@@ -152,7 +151,7 @@ bool BusControlAPI::handleRxMsg(const char* pCmdJson,
         }
         // Synchronous memory read
         uint8_t pData[MAX_MEM_BLOCK_READ_WRITE];
-        BR_RETURN_TYPE rslt = BusControlAPI::blockAccessSync(addr, pData, dataLen, isIo, false);
+        BR_RETURN_TYPE rslt = ControlAPI::blockAccessSync(addr, pData, dataLen, isIo, false);
         if (rslt != BR_OK)
         {
             strlcpy(pRespJson, "\"err\":\"fail\"", maxRespLen);
@@ -206,7 +205,7 @@ bool BusControlAPI::handleRxMsg(const char* pCmdJson,
             return true;
         }
         // Synchronous memory write
-        BR_RETURN_TYPE rslt = BusControlAPI::blockAccessSync(addr, const_cast<uint8_t*>(pParams), dataLen, isIo, true);
+        BR_RETURN_TYPE rslt = ControlAPI::blockAccessSync(addr, const_cast<uint8_t*>(pParams), dataLen, isIo, true);
         if (rslt != BR_OK)
         {
             strlcpy(pRespJson, "\"err\":\"fail\"", maxRespLen);
@@ -298,278 +297,278 @@ bool BusControlAPI::handleRxMsg(const char* pCmdJson,
     }
     else if (strcasecmp(cmdName, "rawBusControlOn") == 0)
     {
-        busAccess.rawBusControlEnable(true);
-        busLinesRead(pRespJson, maxRespLen);
+        // busAccess.rawBusControlEnable(true);
+        // busLinesRead(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusControlOff") == 0)
     {
-        busAccess.rawBusControlEnable(false);
-        busLinesRead(pRespJson, maxRespLen);
+        // busAccess.rawBusControlEnable(false);
+        // busLinesRead(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusWaitClear") == 0)
     {
-        busAccess.rawBusControlClearWait();
-        busLinesRead(pRespJson, maxRespLen);
+        // busAccess.rawBusControlClearWait();
+        // busLinesRead(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusWaitDisable") == 0)
     {
-        busAccess.rawBusControlWaitDisable();
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        // busAccess.rawBusControlWaitDisable();
+        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusClockEnable") == 0)
     {
-        busAccess.rawBusControlClockEnable(true);
-        busLinesRead(pRespJson, maxRespLen);
+        // busAccess.rawBusControlClockEnable(true);
+        // busLinesRead(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusClockDisable") == 0)
     {
-        busAccess.rawBusControlClockEnable(false);
-        busLinesRead(pRespJson, maxRespLen);
+        // busAccess.rawBusControlClockEnable(false);
+        // busLinesRead(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusTake") == 0)
     {
-        busAccess.rawBusControlTakeBus();
-        busLinesRead(pRespJson, maxRespLen);
+        // busAccess.rawBusControlTakeBus();
+        // busLinesRead(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusRelease") == 0)
     {
-        busAccess.rawBusControlReleaseBus();
-        busLinesRead(pRespJson, maxRespLen);
+        // busAccess.rawBusControlReleaseBus();
+        // busLinesRead(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusSetAddress") == 0)
     {
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "rawBusAddress %s", pCmdJson);
-        // Get address
-        uint32_t addr = 0;
-        if (!getArg("addr", 1, pCmdJson, addr))
-        {
-            strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
-            return true;
-        }
-        busAccess.rawBusControlSetAddress(addr);
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "rawBusAddress addr %04x", addr);
-        busLinesRead(pRespJson, maxRespLen);
+        // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "rawBusAddress %s", pCmdJson);
+        // // Get address
+        // uint32_t addr = 0;
+        // if (!getArg("addr", 1, pCmdJson, addr))
+        // {
+        //     strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
+        //     return true;
+        // }
+        // busAccess.rawBusControlSetAddress(addr);
+        // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "rawBusAddress addr %04x", addr);
+        // busLinesRead(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusGetData") == 0)
     {
-        busAccess.rawBusControlReadPIB();
-        busLinesRead(pRespJson, maxRespLen);
+        // busAccess.rawBusControlReadPIB();
+        // busLinesRead(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusSetData") == 0)
     {
-        // Get data
-        uint32_t data = 0;
-        if (!getArg("data", 1, pCmdJson, data))
-        {
-            strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
-            return true;
-        }
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "SET data %02x", data);
-        busAccess.rawBusControlSetData(data);
-        busLinesRead(pRespJson, maxRespLen);
+        // // Get data
+        // uint32_t data = 0;
+        // if (!getArg("data", 1, pCmdJson, data))
+        // {
+        //     strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
+        //     return true;
+        // }
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "SET data %02x", data);
+        // busAccess.rawBusControlSetData(data);
+        // busLinesRead(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusWritePIB") == 0)
     {
-        // Get data
-        uint32_t data = 0;
-        if (!getArg("data", 1, pCmdJson, data))
-        {
-            strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
-            return true;
-        }
-        busAccess.rawBusControlWritePIB(data);
-        busLinesRead(pRespJson, maxRespLen);
+        // // Get data
+        // uint32_t data = 0;
+        // if (!getArg("data", 1, pCmdJson, data))
+        // {
+        //     strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
+        //     return true;
+        // }
+        // busAccess.rawBusControlWritePIB(data);
+        // busLinesRead(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusSetPin") == 0)
     {
-        // Get pin and value
-        uint32_t pin = 0;
-        if (!getArg("pin", 1, pCmdJson, pin, NULL, 0, true))
-        {
-            strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
-            return true;
-        }
-        uint32_t value = 0;
-        if (!getArg("value", 2, pCmdJson, value))
-        {
-            strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
-            return true;
-        }
-        busAccess.rawBusControlSetPin(pin, value);
-        busLinesRead(pRespJson, maxRespLen);
+        // // Get pin and value
+        // uint32_t pin = 0;
+        // if (!getArg("pin", 1, pCmdJson, pin, NULL, 0, true))
+        // {
+        //     strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
+        //     return true;
+        // }
+        // uint32_t value = 0;
+        // if (!getArg("value", 2, pCmdJson, value))
+        // {
+        //     strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
+        //     return true;
+        // }
+        // busAccess.rawBusControlSetPin(pin, value);
+        // busLinesRead(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusGetPin") == 0)
     {
-        // Get pin and value
-        uint32_t pin = 0;
-        if (!getArg("pin", 1, pCmdJson, pin, NULL, 0, true))
-        {
-            strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
-            return true;
-        }
-        busAccess.rawBusControlGetPin(pin);
-        busLinesRead(pRespJson, maxRespLen);
+        // // Get pin and value
+        // uint32_t pin = 0;
+        // if (!getArg("pin", 1, pCmdJson, pin, NULL, 0, true))
+        // {
+        //     strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
+        //     return true;
+        // }
+        // busAccess.rawBusControlGetPin(pin);
+        // busLinesRead(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusGetLines") == 0)
     {
-        busLinesRead(pRespJson, maxRespLen);
+        // busLinesRead(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusSetLine") == 0)
     {
-        // Handle it
-        busLineHandler(pCmdJson);
-        busLinesRead(pRespJson, maxRespLen);
+        // // Handle it
+        // busLineHandler(pCmdJson);
+        // busLinesRead(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusControlMuxSet") == 0)
     {
-        // Handle it
-        muxLineHandler(pCmdJson);
-        busLinesRead(pRespJson, maxRespLen);
+        // // Handle it
+        // muxLineHandler(pCmdJson);
+        // busLinesRead(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusMuxClear") == 0)
     {
-        busAccess.rawBusControlMuxClear();
-        busLinesRead(pRespJson, maxRespLen);
+        // busAccess.rawBusControlMuxClear();
+        // busLinesRead(pRespJson, maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "busStatus") == 0)
     {
-        // Get bus status
-        BusAccessStatusInfo statusInfo;
-        busAccess.getStatus(statusInfo);
-        strlcpy(pRespJson, statusInfo.getJson(), maxRespLen);
+        // // Get bus status
+        // BusAccessStatusInfo statusInfo;
+        // busAccess.getStatus(statusInfo);
+        // strlcpy(pRespJson, statusInfo.getJson(), maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "busStatusClear") == 0)
     {
-        // Clear bus status
-        busAccess.clearStatus();
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        // // Clear bus status
+        // busAccess.clearStatus();
+        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "busInit") == 0)
     {
-        // Reinit bus
-        busAccess.busAccessReinit();
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        // // Reinit bus
+        // busAccess.busAccessReinit();
+        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "targetReset") == 0)
     {
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Target Reset");
-        // Get bus status
-        busAccess.targetReqReset(_busSocketId);
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Target Reset");
+        // // Get bus status
+        // busAccess.targetReqReset(_busSocketId);
+        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "targetBusReq") == 0)
     {
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Target Bus Req");
-        // Get bus status
-        busAccess.targetReqBus(_busSocketId, BR_BUS_ACTION_GENERAL);
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Target Bus Req");
+        // // Get bus status
+        // busAccess.targetReqBus(_busSocketId, BR_BUS_ACTION_GENERAL);
+        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "targetBusRel") == 0)
     {
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Target Bus Req");
-        // Get bus status
-        busAccess.targetReqBus(_busSocketId, BR_BUS_ACTION_GENERAL);
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Target Bus Req");
+        // // Get bus status
+        // busAccess.targetReqBus(_busSocketId, BR_BUS_ACTION_GENERAL);
+        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "clockHzGet") == 0)
     {
-        // Get clock
-        uint32_t actualHz = busAccess.clockCurFreqHz();
-        snprintf(pRespJson, maxRespLen, "\"err\":\"ok\",\"clockHz\":\"%d\"", (unsigned)actualHz);
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "clockHzGet %s", pRespJson);
+        // // Get clock
+        // uint32_t actualHz = busAccess.clockCurFreqHz();
+        // snprintf(pRespJson, maxRespLen, "\"err\":\"ok\",\"clockHz\":\"%d\"", (unsigned)actualHz);
+        // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "clockHzGet %s", pRespJson);
         return true;
     }
     else if (strcasecmp(cmdName, "clockHzSet") == 0)
     {
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "clockHzSet cmd %s params %s %02x %02x %02x %02x", pCmdJson, pParams, pParams[0], pParams[1], pParams[2], pParams[3]);
-        // Get clock rate required (may be in cmdJson or paramsJson)
-        static const int MAX_CMD_PARAM_STR = 50;
-        char paramVal[MAX_CMD_PARAM_STR+1];
-        if (!jsonGetValueForKey("clockHz", pCmdJson, paramVal, MAX_CMD_PARAM_STR))
-            if (!jsonGetValueForKey("clockHz", (const char*)pParams, paramVal, MAX_CMD_PARAM_STR))
-                return false;
-        uint32_t clockRateHz = strtoul(paramVal, NULL, 10);
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "clockHzSet %d", clockRateHz);
+        // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "clockHzSet cmd %s params %s %02x %02x %02x %02x", pCmdJson, pParams, pParams[0], pParams[1], pParams[2], pParams[3]);
+        // // Get clock rate required (may be in cmdJson or paramsJson)
+        // static const int MAX_CMD_PARAM_STR = 50;
+        // char paramVal[MAX_CMD_PARAM_STR+1];
+        // if (!jsonGetValueForKey("clockHz", pCmdJson, paramVal, MAX_CMD_PARAM_STR))
+        //     if (!jsonGetValueForKey("clockHz", (const char*)pParams, paramVal, MAX_CMD_PARAM_STR))
+        //         return false;
+        // uint32_t clockRateHz = strtoul(paramVal, NULL, 10);
+        // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "clockHzSet %d", clockRateHz);
 
-        // Set clock
-        busAccess.clockSetFreqHz(clockRateHz);
+        // // Set clock
+        // busAccess.clockSetFreqHz(clockRateHz);
 
-        // Get clock
-        uint32_t actualHz = busAccess.clockCurFreqHz();
-        snprintf(pRespJson, maxRespLen, "\"err\":\"ok\",\"clockHz\":\"%d\"", (unsigned)actualHz);
+        // // Get clock
+        // uint32_t actualHz = busAccess.clockCurFreqHz();
+        // snprintf(pRespJson, maxRespLen, "\"err\":\"ok\",\"clockHz\":\"%d\"", (unsigned)actualHz);
         return true;
     }
     else if (strcasecmp(cmdName, "waitHoldOn") == 0)
     {
-        // Hold
-        busAccess.waitHold(_busSocketId, true);
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        // // Hold
+        // busAccess.waitHold(_busSocketId, true);
+        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "waitHoldOff") == 0)
     {
-        // Hold
-        busAccess.waitHold(_busSocketId, false);
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        // // Hold
+        // busAccess.waitHold(_busSocketId, false);
+        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "waitRelease") == 0)
     {
-        // Release
-        busAccess.waitRelease();
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        // // Release
+        // busAccess.waitRelease();
+        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "waitMemoryOn") == 0)
     {
-        // Wait on memory
-        busAccess.waitOnMemory(_busSocketId, true);
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        // // Wait on memory
+        // busAccess.waitOnMemory(_busSocketId, true);
+        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "waitMemoryOff") == 0)
     {
-        // Wait on memory
-        busAccess.waitOnMemory(_busSocketId, false);
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        // // Wait on memory
+        // busAccess.waitOnMemory(_busSocketId, false);
+        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "waitIOOn") == 0)
     {
-        // Wait on IO
-        busAccess.waitOnIO(_busSocketId, true);
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        // // Wait on IO
+        // busAccess.waitOnIO(_busSocketId, true);
+        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "waitIOOff") == 0)
     {
-        // Wait on IO
-        busAccess.waitOnIO(_busSocketId, false);
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        // // Wait on IO
+        // busAccess.waitOnIO(_busSocketId, false);
+        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "targetTrackerOn") == 0)
@@ -638,15 +637,15 @@ bool BusControlAPI::handleRxMsg(const char* pCmdJson,
     }
     else if (strcasecmp(cmdName, "waitCycleUs") == 0)
     {
-        // Get params
-        static const int MAX_CMD_PARAM_STR = 50;
-        char paramVal[MAX_CMD_PARAM_STR+1];
-        if (!jsonGetValueForKey("cycleUs", pCmdJson, paramVal, MAX_CMD_PARAM_STR))
-            return false;
-        // Wait cycles
-        busAccess.waitSetCycleUs(strtoul(paramVal, NULL, 10));
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Wait cycle set to %d", strtoul(paramVal, NULL, 10));
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        // // Get params
+        // static const int MAX_CMD_PARAM_STR = 50;
+        // char paramVal[MAX_CMD_PARAM_STR+1];
+        // if (!jsonGetValueForKey("cycleUs", pCmdJson, paramVal, MAX_CMD_PARAM_STR))
+        //     return false;
+        // // Wait cycles
+        // busAccess.waitSetCycleUs(strtoul(paramVal, NULL, 10));
+        // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Wait cycle set to %d", strtoul(paramVal, NULL, 10));
+        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
 
@@ -657,7 +656,7 @@ bool BusControlAPI::handleRxMsg(const char* pCmdJson,
 // Helpers and handlers
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool BusControlAPI::getArg(const char* argName, int argNum, const char* pCmdJson, uint32_t& value, 
+bool ControlAPI::getArg(const char* argName, int argNum, const char* pCmdJson, uint32_t& value, 
             char* pOutStr, uint32_t maxOutStrLen, bool forceDecimal)
 {
     // Get from request string if possible
@@ -717,201 +716,198 @@ bool BusControlAPI::getArg(const char* argName, int argNum, const char* pCmdJson
     return false;
 }
 
-bool BusControlAPI::busLineHandler(const char* pCmdJson)
+bool ControlAPI::busLineHandler(const char* pCmdJson)
 {
-    static const int MAX_CMD_PARAM_STR = 50;
-    uint32_t lineNum_DoNotUse;
-    char lineName[MAX_CMD_PARAM_STR];
-    if (!getArg("line", 1, pCmdJson, lineNum_DoNotUse, lineName, MAX_CMD_PARAM_STR))
-    {
-        return false;
-    }
-    char* pStrEnd = strstr(lineName, "/");
-    if (pStrEnd)
-        *pStrEnd = 0;
-    uint32_t busValue = 0;
-    if (!getArg("value", 2, pCmdJson, busValue))
-    {
-        return false;
-    }
-    BusAccess& busAccess = _busAccess;
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "bussetline %s %d", lineName, busValue);
-    if (strcasecmp(lineName, "WR") == 0)
-    {
-        busAccess.rawBusControlSetPin(BR_WR_BAR, busValue);
-    }
-    else if (strcasecmp(lineName, "RD") == 0)
-    {
-        busAccess.rawBusControlSetPin(BR_RD_BAR, busValue);
-    }
-    else if (strcasecmp(lineName, "MREQ") == 0)
-    {
-        busAccess.rawBusControlSetPin(BR_MREQ_BAR, busValue);
-    }
-    else if (strcasecmp(lineName, "IORQ") == 0)
-    {
-        busAccess.rawBusControlSetPin(BR_IORQ_BAR, busValue);
-    }
-    else if (strcasecmp(lineName, "PAGE") == 0)
-    {
-        busAccess.rawBusControlSetPin(BR_IORQ_BAR, busValue);
-    }
-    else if (strcasecmp(lineName, "DATA_DIR_IN") == 0)
-    {
-        busAccess.rawBusControlSetPin(BR_DATA_DIR_IN, busValue);
-    }
-    else if (strcasecmp(lineName, "IORQ_WAIT_EN") == 0)
-    {
-        busAccess.rawBusControlSetPin(BR_IORQ_WAIT_EN, busValue);
-    }
-    else if (strcasecmp(lineName, "MREQ_WAIT_EN") == 0)
-    {
-        busAccess.rawBusControlSetPin(BR_MREQ_WAIT_EN, busValue);
-    }
-    else if (strcasecmp(lineName, "HADDR_CK") == 0)
-    {
-        busAccess.rawBusControlSetPin(BR_HADDR_CK, busValue);
-    }
-    else if (strcasecmp(lineName, "PUSH_ADDR") == 0)
-    {
-        if (busAccess.getHwVersion() == 17)
-            busAccess.rawBusControlSetPin(BR_V17_PUSH_ADDR_BAR, busValue);
-    }
-    else if (strcasecmp(lineName, "CLOCK") == 0)
-    {
-        busAccess.rawBusControlSetPin(BR_CLOCK_PIN, busValue);
-    }
-    else if (strcasecmp(lineName, "M1") == 0)
-    {
-        busAccess.rawBusControlSetPin(BR_V20_M1_BAR, busValue);
-    }
+    // static const int MAX_CMD_PARAM_STR = 50;
+    // uint32_t lineNum_DoNotUse;
+    // char lineName[MAX_CMD_PARAM_STR];
+    // if (!getArg("line", 1, pCmdJson, lineNum_DoNotUse, lineName, MAX_CMD_PARAM_STR))
+    // {
+    //     return false;
+    // }
+    // char* pStrEnd = strstr(lineName, "/");
+    // if (pStrEnd)
+    //     *pStrEnd = 0;
+    // uint32_t busValue = 0;
+    // if (!getArg("value", 2, pCmdJson, busValue))
+    // {
+    //     return false;
+    // }
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "bussetline %s %d", lineName, busValue);
+    // if (strcasecmp(lineName, "WR") == 0)
+    // {
+    //     busAccess.rawBusControlSetPin(BR_WR_BAR, busValue);
+    // }
+    // else if (strcasecmp(lineName, "RD") == 0)
+    // {
+    //     busAccess.rawBusControlSetPin(BR_RD_BAR, busValue);
+    // }
+    // else if (strcasecmp(lineName, "MREQ") == 0)
+    // {
+    //     busAccess.rawBusControlSetPin(BR_MREQ_BAR, busValue);
+    // }
+    // else if (strcasecmp(lineName, "IORQ") == 0)
+    // {
+    //     busAccess.rawBusControlSetPin(BR_IORQ_BAR, busValue);
+    // }
+    // else if (strcasecmp(lineName, "PAGE") == 0)
+    // {
+    //     busAccess.rawBusControlSetPin(BR_IORQ_BAR, busValue);
+    // }
+    // else if (strcasecmp(lineName, "DATA_DIR_IN") == 0)
+    // {
+    //     busAccess.rawBusControlSetPin(BR_DATA_DIR_IN, busValue);
+    // }
+    // else if (strcasecmp(lineName, "IORQ_WAIT_EN") == 0)
+    // {
+    //     busAccess.rawBusControlSetPin(BR_IORQ_WAIT_EN, busValue);
+    // }
+    // else if (strcasecmp(lineName, "MREQ_WAIT_EN") == 0)
+    // {
+    //     busAccess.rawBusControlSetPin(BR_MREQ_WAIT_EN, busValue);
+    // }
+    // else if (strcasecmp(lineName, "HADDR_CK") == 0)
+    // {
+    //     busAccess.rawBusControlSetPin(BR_HADDR_CK, busValue);
+    // }
+    // else if (strcasecmp(lineName, "PUSH_ADDR") == 0)
+    // {
+    //     if (busAccess.getHwVersion() == 17)
+    //         busAccess.rawBusControlSetPin(BR_V17_PUSH_ADDR_BAR, busValue);
+    // }
+    // else if (strcasecmp(lineName, "CLOCK") == 0)
+    // {
+    //     busAccess.rawBusControlSetPin(BR_CLOCK_PIN, busValue);
+    // }
+    // else if (strcasecmp(lineName, "M1") == 0)
+    // {
+    //     busAccess.rawBusControlSetPin(BR_V20_M1_BAR, busValue);
+    // }
     return true;
 }
 
-bool BusControlAPI::muxLineHandler(const char* pCmdJson)
+bool ControlAPI::muxLineHandler(const char* pCmdJson)
 {
-    static const int MAX_CMD_PARAM_STR = 50;
-    uint32_t lineNum_DoNotUse;
-    char lineName[MAX_CMD_PARAM_STR];
-    if (!getArg("line", 1, pCmdJson, lineNum_DoNotUse, lineName, MAX_CMD_PARAM_STR))
-    {
-        return false;
-    }
-    char* pStrEnd = strstr(lineName, "/");
-    if (pStrEnd)
-        *pStrEnd = 0;
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "muxSet %s", lineName);
-    BusAccess& busAccess = _busAccess;
-    if (strcasecmp(lineName, "LADDR_CLK") == 0)
-    {
-        busAccess.rawBusControlMuxSet(BR_MUX_LADDR_CLK);
-    }
-    else if (strcasecmp(lineName, "LADDR_CLR_BAR") == 0)
-    {
-        busAccess.rawBusControlMuxSet(BR_MUX_LADDR_CLR_BAR_LOW);
-    }
-    else if (strcasecmp(lineName, "DATA_OE_BAR") == 0)
-    {
-        busAccess.rawBusControlMuxSet(BR_MUX_DATA_OE_BAR_LOW);
-    }
-    else if (strcasecmp(lineName, "RESET") == 0)
-    {
-        busAccess.rawBusControlMuxSet(BR_MUX_RESET_Z80_BAR_LOW);
-    }
-    else if (strcasecmp(lineName, "IRQ") == 0)
-    {
-        busAccess.rawBusControlMuxSet(BR_MUX_IRQ_BAR_LOW);
-    }
-    else if (strcasecmp(lineName, "NMI") == 0)
-    {
-        busAccess.rawBusControlMuxSet(BR_MUX_NMI_BAR_LOW);
-    }
-    else if (strcasecmp(lineName, "LADDR_OE_BAR") == 0)
-    {
-        busAccess.rawBusControlMuxSet(BR_MUX_LADDR_OE_BAR);
-    }
-    else if (strcasecmp(lineName, "HADDR_OE_BAR") == 0)
-    {
-        busAccess.rawBusControlMuxSet(BR_MUX_HADDR_OE_BAR);
-    }
+    // static const int MAX_CMD_PARAM_STR = 50;
+    // uint32_t lineNum_DoNotUse;
+    // char lineName[MAX_CMD_PARAM_STR];
+    // if (!getArg("line", 1, pCmdJson, lineNum_DoNotUse, lineName, MAX_CMD_PARAM_STR))
+    // {
+    //     return false;
+    // }
+    // char* pStrEnd = strstr(lineName, "/");
+    // if (pStrEnd)
+    //     *pStrEnd = 0;
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "muxSet %s", lineName);
+    // if (strcasecmp(lineName, "LADDR_CLK") == 0)
+    // {
+    //     busAccess.rawBusControlMuxSet(BR_MUX_LADDR_CLK);
+    // }
+    // else if (strcasecmp(lineName, "LADDR_CLR_BAR") == 0)
+    // {
+    //     busAccess.rawBusControlMuxSet(BR_MUX_LADDR_CLR_BAR_LOW);
+    // }
+    // else if (strcasecmp(lineName, "DATA_OE_BAR") == 0)
+    // {
+    //     busAccess.rawBusControlMuxSet(BR_MUX_DATA_OE_BAR_LOW);
+    // }
+    // else if (strcasecmp(lineName, "RESET") == 0)
+    // {
+    //     busAccess.rawBusControlMuxSet(BR_MUX_RESET_Z80_BAR_LOW);
+    // }
+    // else if (strcasecmp(lineName, "IRQ") == 0)
+    // {
+    //     busAccess.rawBusControlMuxSet(BR_MUX_IRQ_BAR_LOW);
+    // }
+    // else if (strcasecmp(lineName, "NMI") == 0)
+    // {
+    //     busAccess.rawBusControlMuxSet(BR_MUX_NMI_BAR_LOW);
+    // }
+    // else if (strcasecmp(lineName, "LADDR_OE_BAR") == 0)
+    // {
+    //     busAccess.rawBusControlMuxSet(BR_MUX_LADDR_OE_BAR);
+    // }
+    // else if (strcasecmp(lineName, "HADDR_OE_BAR") == 0)
+    // {
+    //     busAccess.rawBusControlMuxSet(BR_MUX_HADDR_OE_BAR);
+    // }
     return true;
 }
 
-void BusControlAPI::busLinesRead(char* pRespJson, int maxRespLen)
+void ControlAPI::busLinesRead(char* pRespJson, int maxRespLen)
 {
-    // Read bus lines
-    BusAccess& busAccess = _busAccess;
-    uint32_t lines = busAccess.rawBusControlReadRaw();
-    bool m1Val = lines & BR_V20_M1_BAR_MASK; 
-    if (busAccess.getHwVersion() == 17)
-        m1Val = (lines & BR_V17_M1_PIB_BAR_MASK);
-    snprintf(pRespJson, maxRespLen, "\"err\":\"ok\",\"raw\":\"%02x\",\"pib\":\"%02x\",\"ctrl\":\"%c%c%c%c%c\"",
-            (unsigned)busAccess.rawBusControlReadRaw(), 
-            (unsigned)((busAccess.rawBusControlReadRaw() >> BR_DATA_BUS) & 0xff),
-            (lines & BR_MREQ_BAR_MASK) ? 'M' : '.', 
-            (lines & BR_IORQ_BAR_MASK) ? 'I' : '.', 
-            (lines & BR_RD_BAR_MASK) ? 'R' : '.', 
-            (lines & BR_WR_BAR_MASK) ? 'W' : '.',
-            m1Val ? '1' : '.'
-            );
+    // // Read bus lines
+    // uint32_t lines = busAccess.rawBusControlReadRaw();
+    // bool m1Val = lines & BR_V20_M1_BAR_MASK; 
+    // if (busAccess.getHwVersion() == 17)
+    //     m1Val = (lines & BR_V17_M1_PIB_BAR_MASK);
+    // snprintf(pRespJson, maxRespLen, "\"err\":\"ok\",\"raw\":\"%02x\",\"pib\":\"%02x\",\"ctrl\":\"%c%c%c%c%c\"",
+    //         (unsigned)busAccess.rawBusControlReadRaw(), 
+    //         (unsigned)((busAccess.rawBusControlReadRaw() >> BR_DATA_BUS) & 0xff),
+    //         (lines & BR_MREQ_BAR_MASK) ? 'M' : '.', 
+    //         (lines & BR_IORQ_BAR_MASK) ? 'I' : '.', 
+    //         (lines & BR_RD_BAR_MASK) ? 'R' : '.', 
+    //         (lines & BR_WR_BAR_MASK) ? 'W' : '.',
+    //         m1Val ? '1' : '.'
+    //         );
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Callbacks/Hooks
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void BusControlAPI::busActionActiveStatic(void* pObject, BR_BUS_ACTION actionType, 
+void ControlAPI::busActionActiveStatic(void* pObject, BR_BUS_ACTION actionType, 
             BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
 {
     if (!pObject)
         return;
-    ((BusControlAPI*)pObject)->busActionActive(actionType, reason, rslt);
+    ((ControlAPI*)pObject)->busActionActive(actionType, reason, rslt);
 }
 
-void BusControlAPI::busActionActive(BR_BUS_ACTION actionType, 
+void ControlAPI::busActionActive(BR_BUS_ACTION actionType, 
             BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
 {
-#ifdef DEBUG_BUS_ACTION_COMPLETE
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActive type %d reason %d rslt %d", 
-                actionType, reason, rslt);
-#endif
+// #ifdef DEBUG_BUS_ACTION_COMPLETE
+//     LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActive type %d reason %d rslt %d", 
+//                 actionType, reason, rslt);
+// #endif
 
-    HwManager& hwManager = _hwManager;
-    if ((actionType == BR_BUS_ACTION_BUSRQ) && _memAccessPending)
-    {
-        if (rslt == BR_OK)
-        {
-            if (!_memAccessWrite)
-            {
-                // Read
-                hwManager.blockRead(_memAccessAddr, _memAccessDataBuf, 
-                            _memAccessDataLen, false, _memAccessIo, false);
-            }
-            else
-            {
-                // Write
-                hwManager.blockWrite(_memAccessAddr, _memAccessDataBuf, 
-                            _memAccessDataLen, false, _memAccessIo, false);
-            }
-        }
-        _memAccessPending = false;
-    }
+//     HwManager& hwManager = _hwManager;
+//     if ((actionType == BR_BUS_ACTION_BUSRQ) && _memAccessPending)
+//     {
+//         if (rslt == BR_OK)
+//         {
+//             if (!_memAccessWrite)
+//             {
+//                 // Read
+//                 hwManager.blockRead(_memAccessAddr, _memAccessDataBuf, 
+//                             _memAccessDataLen, false, _memAccessIo, false);
+//             }
+//             else
+//             {
+//                 // Write
+//                 hwManager.blockWrite(_memAccessAddr, _memAccessDataBuf, 
+//                             _memAccessDataLen, false, _memAccessIo, false);
+//             }
+//         }
+//         _memAccessPending = false;
+//     }
 }
 
-void BusControlAPI::handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t data, 
+void ControlAPI::handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t data, 
         uint32_t flags, uint32_t& retVal)
 {
     if (!pObject)
         return;
-    ((BusControlAPI*)pObject)->handleWaitInterrupt(addr, data, flags, retVal);
+    ((ControlAPI*)pObject)->handleWaitInterrupt(addr, data, flags, retVal);
 }
 
-void BusControlAPI::handleWaitInterrupt( uint32_t addr,  uint32_t data, 
+void ControlAPI::handleWaitInterrupt( uint32_t addr,  uint32_t data, 
          uint32_t flags,  uint32_t& retVal)
 {
 }
 
-void BusControlAPI::service()
+void ControlAPI::service()
 {
 #ifdef USE_TARGET_TRACKER
     // Check for targettracker enable message response
@@ -930,54 +926,53 @@ void BusControlAPI::service()
 #endif
 }
 
-BR_RETURN_TYPE BusControlAPI::blockAccessSync(uint32_t addr, uint8_t* pData, uint32_t len, bool iorq, bool write)
+BR_RETURN_TYPE ControlAPI::blockAccessSync(uint32_t addr, uint8_t* pData, uint32_t len, bool iorq, bool write)
 {
-    // Request the bus
-    _memAccessPending = true;
-    _memAccessWrite = write;
-    _memAccessDataLen = len;
-    if (_memAccessDataLen > MAX_MEM_BLOCK_READ_WRITE)
-        _memAccessDataLen = MAX_MEM_BLOCK_READ_WRITE;
-    _memAccessAddr = addr;
-    _memAccessIo = iorq;
-    if (write)
-        memcopyfast(_memAccessDataBuf, pData, len);
-    BusAccess& busAccess = _busAccess;
-    busAccess.targetReqBus(_busSocketId, BR_BUS_ACTION_GENERAL);
-    // Now enter a loop to wait for the bus action to complete
-    static const uint32_t MAX_WAIT_FOR_BUS_ACCESS_US = 50000;
-    uint32_t busAccessReqStart = micros();
+//     // Request the bus
+//     _memAccessPending = true;
+//     _memAccessWrite = write;
+//     _memAccessDataLen = len;
+//     if (_memAccessDataLen > MAX_MEM_BLOCK_READ_WRITE)
+//         _memAccessDataLen = MAX_MEM_BLOCK_READ_WRITE;
+//     _memAccessAddr = addr;
+//     _memAccessIo = iorq;
+//     if (write)
+//         memcopyfast(_memAccessDataBuf, pData, len);
+//     busAccess.targetReqBus(_busSocketId, BR_BUS_ACTION_GENERAL);
+//     // Now enter a loop to wait for the bus action to complete
+//     static const uint32_t MAX_WAIT_FOR_BUS_ACCESS_US = 50000;
+//     uint32_t busAccessReqStart = micros();
 
-#ifdef DEBUG_API_BLOCK_ACCESS_SYNC
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "busControlAPI busRequestMade");
-#endif
+// #ifdef DEBUG_API_BLOCK_ACCESS_SYNC
+//     LogWrite(MODULE_PREFIX, LOG_DEBUG, "ControlAPI busRequestMade");
+// #endif
 
-    while(!isTimeout(micros(), busAccessReqStart, MAX_WAIT_FOR_BUS_ACCESS_US))
-    {
-        // Finished?
-        if (!_memAccessPending)
-        {
-#ifdef DEBUG_API_BLOCK_ACCESS_SYNC
-            LogWrite(MODULE_PREFIX, LOG_DEBUG, "busControlAPI memAccess no longer pending");
-#endif
-            break;
-        }
-        // Service the bus access - the actual read/write operation occurs in a
-        // callback during this function call
-        busAccess.service();
-    }
+//     while(!isTimeout(micros(), busAccessReqStart, MAX_WAIT_FOR_BUS_ACCESS_US))
+//     {
+//         // Finished?
+//         if (!_memAccessPending)
+//         {
+// #ifdef DEBUG_API_BLOCK_ACCESS_SYNC
+//             LogWrite(MODULE_PREFIX, LOG_DEBUG, "ControlAPI memAccess no longer pending");
+// #endif
+//             break;
+//         }
+//         // Service the bus access - the actual read/write operation occurs in a
+//         // callback during this function call
+//         busAccess.service();
+//     }
 
-#ifdef DEBUG_API_BLOCK_ACCESS_SYNC
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "busControlAPI busRequestDone");
-#endif
+// #ifdef DEBUG_API_BLOCK_ACCESS_SYNC
+//     LogWrite(MODULE_PREFIX, LOG_DEBUG, "ControlAPI busRequestDone");
+// #endif
 
-    // Check if completed ok
-    if (_memAccessPending)
-    {
-        _memAccessPending = false;
-        return BR_NO_BUS_ACK;
-    }
-    if (!write)
-        memcopyfast(pData, _memAccessDataBuf, len);
+//     // Check if completed ok
+//     if (_memAccessPending)
+//     {
+//         _memAccessPending = false;
+//         return BR_NO_BUS_ACK;
+//     }
+//     if (!write)
+//         memcopyfast(pData, _memAccessDataBuf, len);
     return BR_OK;
 }

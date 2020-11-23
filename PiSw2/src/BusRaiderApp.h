@@ -7,6 +7,7 @@
 #include "comms/CommsManager.h"
 #include "TargetBus/BusControl.h"
 #include "Machines/McManager.h"
+#include "ControlAPI/ControlAPI.h"
 
 class Display;
 class CUartMaxiSerialDevice;
@@ -52,10 +53,10 @@ private:
 	CommsManager _commsManager;
 
 	// Bus control
-	BusControl _busAccess;
+	BusControl _busControl;
 
-	// BusControlAPI
-	// BusControlAPI m_BusControlAPI;
+	// ControlAPI
+	ControlAPI _controlAPI;
 
 	// Machine Manager
 	McManager _mcManager;

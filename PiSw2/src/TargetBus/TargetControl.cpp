@@ -9,7 +9,7 @@
 
 // Constructor
 TargetControl::TargetControl(BusControl& busAccess)
-    : _busAccess(busAccess)
+    : _busControl(busAccess)
 {
     cycleClear();
     programmingClear();
@@ -68,7 +68,7 @@ void TargetControl::suspend(bool suspend)
 
 // // Constructor
 // TargetControl::TargetControl(BusControl& busAccess)
-//     : _busAccess(busAccess)
+//     : _busControl(busAccess)
 // {
 //     // Sockets
 //     _busSocketId = -1;
@@ -130,7 +130,7 @@ void TargetControl::suspend(bool suspend)
 //     // TODO 2020 removed
 //     // // Connect to the bus socket
 //     // if (_busSocketId < 0)
-//     //     _busSocketId = _busAccess.socketAdd(    
+//     //     _busSocketId = _busControl.socketAdd(    
 //     //         true,
 //     //         TargetControl::handleWaitInterruptStatic,
 //     //         TargetControl::busActionActiveStatic,
@@ -167,7 +167,7 @@ void TargetControl::suspend(bool suspend)
 //     // {
 //     //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "enable %d", en);
 //     //     // Enable the bus socket so we get bus callbacks
-//     //     _busAccess.socketEnable(_busSocketId, en);
+//     //     _busControl.socketEnable(_busSocketId, en);
 
 //     //     // Set mirror mode so we record memory accesses
 //     //     // TODO 2020
@@ -176,10 +176,10 @@ void TargetControl::suspend(bool suspend)
 
 //     //     // Wait on memory and hold at each instruction
 //     //     // TODO 2020
-//     //     // _busAccess.waitOnMemory(_busSocketId, true);
-//     //     // _busAccess.waitHold(_busSocketId, waitHold);
+//     //     // _busControl.waitOnMemory(_busSocketId, true);
+//     //     // _busControl.waitHold(_busSocketId, waitHold);
 //     //     // if (!waitHold)
-//     //     //     _busAccess.waitRelease();
+//     //     //     _busControl.waitRelease();
 //     // }
 //     // else
 //     // {
@@ -189,16 +189,16 @@ void TargetControl::suspend(bool suspend)
 //     //     // TODO 2020
 //     //     // _mcManager.getHwManager().setMirrorMode(false);
 //     //     // Remove any hold
-//     //     // _busAccess.waitHold(_busSocketId, false);
+//     //     // _busControl.waitHold(_busSocketId, false);
 //     //     // if (_targetStateAcqMode != TARGET_STATE_ACQ_INJECTING)
 //     //     // {
 //     //     //     // Disable
-//     //     //     _busAccess.waitOnMemory(_busSocketId, false);
-//     //     //     _busAccess.socketEnable(_busSocketId, en);
+//     //     //     _busControl.waitOnMemory(_busSocketId, false);
+//     //     //     _busControl.socketEnable(_busSocketId, en);
 
 //     //     //     // TODO 2020
 //     //     //     // // Remove paging for injection
-//     //     //     // _busAccess.targetPageForInjection(_busSocketId, false);
+//     //     //     // _busControl.targetPageForInjection(_busSocketId, false);
 //     //     //     _pageOutForInjectionActive = false;
 //     //     // }
 //     //     // else
@@ -213,7 +213,7 @@ void TargetControl::suspend(bool suspend)
 //     // TODO 2020
 //     // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busSocketIsEnabled %d %d", 
 //     // //             busAccess.busSocketIsEnabled(_busSocketId), _stepMode);
-//     // if (!_busAccess.socketIsEnabled(_busSocketId))
+//     // if (!_busControl.socketIsEnabled(_busSocketId))
 //     //     return false;
 //     return _stepMode == STEP_MODE_STEP_PAUSED;
 // }
@@ -221,7 +221,7 @@ void TargetControl::suspend(bool suspend)
 // bool TargetControl::isTrackingActive()
 // {
 //     // TODO 2020
-//     // return _busAccess.socketIsEnabled(_busSocketId);
+//     // return _busControl.socketIsEnabled(_busSocketId);
 //     return false;
 // }
 
@@ -229,7 +229,7 @@ void TargetControl::suspend(bool suspend)
 // {
 //     _targetResetPending = true;
 //     // TODO 2020
-//     // _busAccess.socketReqReset(_busSocketId);
+//     // _busControl.socketReqReset(_busSocketId);
 // }
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -257,7 +257,7 @@ void TargetControl::suspend(bool suspend)
 //     // _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
 
 //     // // Remove any hold to allow execution / injection
-//     // _busAccess.waitHold(_busSocketId, false);
+//     // _busControl.waitHold(_busSocketId, false);
 
 //     // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Wait release for injection");
 
@@ -569,11 +569,11 @@ void TargetControl::suspend(bool suspend)
 //     // _stepMode = STEP_MODE_STEP_INTO;
 
 //     // // Release bus hold if held
-//     // if (_busAccess.waitIsHeld())
+//     // if (_busControl.waitIsHeld())
 //     // {
 //     //     // Remove any hold to allow execution / injection
 //     //     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "stepInto waitHold = false");
-//     //     _busAccess.waitHold(_busSocketId, false);
+//     //     _busControl.waitHold(_busSocketId, false);
 //     // }
 
 //     // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Breakpoints en %d num %d", _breakpoints.isEnabled(), _breakpoints.getNumEnabled());
@@ -601,10 +601,10 @@ void TargetControl::suspend(bool suspend)
 //     // _stepMode = STEP_MODE_STEP_OVER;
 
 //     // // Release bus hold if held
-//     // if (_busAccess.waitIsHeld())
+//     // if (_busControl.waitIsHeld())
 //     // {
 //     //     // Remove any hold to allow execution / injection
-//     //     _busAccess.waitHold(_busSocketId, false);
+//     //     _busControl.waitHold(_busSocketId, false);
 //     // }
 // }
 
@@ -618,10 +618,10 @@ void TargetControl::suspend(bool suspend)
 //     // _stepMode = STEP_MODE_STEP_OVER;
 
 //     // // Release bus hold if held
-//     // if (_busAccess.waitIsHeld())
+//     // if (_busControl.waitIsHeld())
 //     // {
 //     //     // Remove any hold to allow execution / injection
-//     //     _busAccess.waitHold(_busSocketId, false);
+//     //     _busControl.waitHold(_busSocketId, false);
 //     // }
 // }
 
@@ -634,10 +634,10 @@ void TargetControl::suspend(bool suspend)
 //     // _stepMode = STEP_MODE_RUN;
 
 //     // // Release bus hold if held
-//     // if (_busAccess.waitIsHeld())
+//     // if (_busControl.waitIsHeld())
 //     // {
 //     //     // Remove any hold to allow execution / injection
-//     //     _busAccess.waitHold(_busSocketId, false);
+//     //     _busControl.waitHold(_busSocketId, false);
 //     // }
 // }
 
@@ -718,14 +718,14 @@ void TargetControl::suspend(bool suspend)
 //     //     _disablePending = false;
 
 //     //     // Disable
-//     //     _busAccess.waitOnMemory(_busSocketId, false);
-//     //     _busAccess.busSocketEnable(_busSocketId, false);
+//     //     _busControl.waitOnMemory(_busSocketId, false);
+//     //     _busControl.busSocketEnable(_busSocketId, false);
 
 //     //     // Release bus hold
-//     //     _busAccess.waitHold(_busSocketId, false);
+//     //     _busControl.waitHold(_busSocketId, false);
 
 //     //     // Remove paging for injection
-//     //     _busAccess.targetPageForInjection(_busSocketId, false);
+//     //     _busControl.targetPageForInjection(_busSocketId, false);
 //     //     _pageOutForInjectionActive = false;
 
 //     //     return true;
@@ -785,11 +785,11 @@ void TargetControl::suspend(bool suspend)
 
 //             // TODO 2020
 
-//             // // TODO 2020 - using _busaccess instead of hw for blockwrite
+//             // // TODO 2020 - using _busControl instead of hw for blockwrite
 //             // _busActionCodeWrittenAtResetVector = false;
 //             // for (int i = 0; i < _targetProgrammer.numMemoryBlocks(); i++) {
 //             //     TargetProgrammer::TargetMemoryBlock* pBlock = _targetProgrammer.getMemoryBlock(i);
-//             //     BR_RETURN_TYPE brResult = _busAccess.blockWrite(pBlock->start, 
+//             //     BR_RETURN_TYPE brResult = _busControl.blockWrite(pBlock->start, 
 //             //                 _targetProgrammer.getMemoryImagePtr() + pBlock->start, pBlock->len,
 //             //                 BLOCK_ACCESS_MEM);
 //             //     LogWrite(MODULE_PREFIX, LOG_DEBUG,"ProgramTarget done %08x len %d result %d micros %u", pBlock->start, pBlock->len, brResult, micros());
@@ -868,7 +868,7 @@ void TargetControl::suspend(bool suspend)
 //     //         {
 //     //             // Tell bus to hold at this point
 //     //             // LogWrite(MODULE_PREFIX, LOG_DEBUG, "waitISR postInject && paused -> hold = true");
-//     //             _busAccess.waitHold(_busSocketId, true);
+//     //             _busControl.waitHold(_busSocketId, true);
 //     //         }
 
 //     //         // Check for step-over, breakpoints, etc
@@ -1042,7 +1042,7 @@ void TargetControl::suspend(bool suspend)
 // //     if (!_pageOutForInjectionActive)
 // //     {
 // //         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetPageForInjection TRUE");
-// //         _busAccess.targetPageForInjection(_busSocketId, true);
+// //         _busControl.targetPageForInjection(_busSocketId, true);
 // //         _pageOutForInjectionActive = true;
 // //     }
     
@@ -1065,10 +1065,10 @@ void TargetControl::suspend(bool suspend)
 // //             // ensure BUSRQ is handled synchronously with the TargetControl operation when MREQ waits are
 // //             // enabled so that the cycle immediately following a BUSRQ in this case will be part of the 
 // //             // opcode injection cycle and the bus detail will not be required
-// //             _busAccess.waitSuspendBusDetailOneCycle();
+// //             _busControl.waitSuspendBusDetailOneCycle();
 
 // //             // Use the bus socket to request page-in
-// //             _busAccess.targetPageForInjection(_busSocketId, false);
+// //             _busControl.targetPageForInjection(_busSocketId, false);
 // //             _pageOutForInjectionActive = false;
 
 // //             // Request bus
@@ -1077,7 +1077,7 @@ void TargetControl::suspend(bool suspend)
 // //             if (_requestDisplayWhileStepping)
 // //                 busAction = BR_BUS_ACTION_DISPLAY;
 // //             _requestDisplayWhileStepping = false;
-// //             _busAccess.targetReqBus(_busSocketId, busAction);
+// //             _busControl.targetReqBus(_busSocketId, busAction);
 // //             _postInjectMemoryMirror = false;
 // //         }
 // //     }
@@ -1091,7 +1091,7 @@ void TargetControl::suspend(bool suspend)
 // //         _snippetPos = 0;
 
 // //         // Use the bus socket to request page-in delayed to next wait event
-// //         _busAccess.targetPageForInjection(_busSocketId, false);
+// //         _busControl.targetPageForInjection(_busSocketId, false);
 // //         _pageOutForInjectionActive = false;
 
 // //         // Go back to allowing a single instruction to run before reg get
@@ -1197,6 +1197,6 @@ void TargetControl::suspend(bool suspend)
 //     // if (performHardReset)
 //     // {
 //     //     // Request reset target
-//     //     _busAccess.targetReqReset(_busSocketId);
+//     //     _busControl.targetReqReset(_busSocketId);
 //     // }
 // }

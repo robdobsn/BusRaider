@@ -12,7 +12,7 @@
 #include <Logger.h>
 #include <WString.h>
 
-static const uint32_t RICREST_REST_ELEM_CODE_POS = 0;
+static const uint32_t RICREST_ELEM_CODE_POS = 0;
 static const uint32_t RICREST_HEADER_PAYLOAD_POS = 1;
 static const uint32_t RICREST_HEADER_MIN_MSG_LEN = 4;
 static const uint32_t RICREST_BODY_BUFFER_POS = 1;
@@ -32,17 +32,17 @@ class RICRESTMsg
 public:
     enum RICRESTElemCode
     {
-        RICREST_REST_ELEM_URL,
-        RICREST_REST_ELEM_CMDRESPJSON,
-        RICREST_REST_ELEM_BODY,
-        RICREST_REST_ELEM_COMMAND_FRAME,
-        RICREST_REST_ELEM_FILEBLOCK
+        RICREST_ELEM_CODE_URL,
+        RICREST_ELEM_CODE_CMDRESPJSON,
+        RICREST_ELEM_CODE_BODY,
+        RICREST_ELEM_CODE_COMMAND_FRAME,
+        RICREST_ELEM_CODE_FILEBLOCK
     };
 
     static const uint32_t MAX_REST_BODY_SIZE = 5000;
     RICRESTMsg()
     {
-        _RICRESTElemCode = RICREST_REST_ELEM_URL;
+        _RICRESTElemCode = RICREST_ELEM_CODE_URL;
         _bufferPos = 0;
         _binaryLen = 0;
         _pBinaryData = NULL;

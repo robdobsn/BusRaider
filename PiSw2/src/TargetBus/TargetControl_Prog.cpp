@@ -39,10 +39,10 @@ void TargetControl::programmingStart(bool execAfterProgramming)
         // // BUSRQ is used even if memory is emulated because it holds the processor while changes are made
         // // Give the BusAccess some service first to ensure WAIT handling is complete before requesting the bus
         // for (int i = 0; i < 3; i++)
-        //     _busAccess.service();
+        //     _busControl.service();
 
         // // Request target bus
-        // _busAccess.socketReqBus(_busSocketId, BR_BUS_ACTION_PROGRAMMING);
+        // _busControl.socketReqBus(_busSocketId, BR_BUS_ACTION_PROGRAMMING);
         // _busActionPendingProgramTarget = true;
         // _busActionPendingExecAfterProgram = execAfterProgramming;
     }
@@ -60,7 +60,7 @@ void TargetControl::programmingWrite()
     {
         TargetProgrammer::TargetMemoryBlock* pBlock = _targetProgrammer.getMemoryBlock(i);
         // BR_RETURN_TYPE brResult = 
-        _busAccess.mem().blockWrite(pBlock->start, 
+        _busControl.mem().blockWrite(pBlock->start, 
                     _targetProgrammer.getMemoryImagePtr() + pBlock->start, pBlock->len,
                     BLOCK_ACCESS_MEM);
         // LogWrite(MODULE_PREFIX, LOG_DEBUG,
@@ -108,10 +108,10 @@ void TargetControl::programmingDone()
     // _stepMode = STEP_MODE_STEP_PAUSED;
 
     // // Release bus hold if held
-    // if (_busAccess.waitIsHeld())
+    // if (_busControl.waitIsHeld())
     // {
     //     // Remove any hold to allow execution / injection
-    //     _busAccess.waitHold(_busSocketId, false);
+    //     _busControl.waitHold(_busSocketId, false);
     // }
 }
 
@@ -178,6 +178,6 @@ void TargetControl::programExec(bool codeAtResetVector)
     if (performHardReset)
     {
         // Request reset target
-        _busAccess.bus().targetReset(_busAccess.busSettings().resetDurationMs);
+        _busControl.bus().targetReset(_busControl.busSettings().resetDurationMs);
     }
 }

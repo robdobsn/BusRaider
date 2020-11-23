@@ -40,8 +40,8 @@ McVariantTable McBase::_defaultVariantTable = {
     .setRegistersCodeAddr = 0
 };
 
-McBase::McBase(McManager& mcManager, BusControl& busAccess, const McVariantTable* pVariantTables, uint32_t numVariants) :
-        _mcManager(mcManager), _busAccess(busAccess)
+McBase::McBase(McManager& mcManager, BusControl& busControl, const McVariantTable* pVariantTables, uint32_t numVariants) :
+        _mcManager(mcManager), _busControl(busControl)
 {
     // Clear machine variant table info
     for (uint32_t i = 0; i < numVariants && i < MAX_VARIANTS_FOR_MACHINE; i++)
@@ -123,10 +123,10 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
 
     // TODO 2020 - restore    
     // // Disable hardware initially
-    // _busAccess.hwDisableAll();
+    // _busControl.hwDisableAll();
 
     // // Setup hardware
-    // _busAccess.hwSetupFromJson("hw", mcJson);
+    // _busControl.hwSetupFromJson("hw", mcJson);
 
     // Setup clock
     uint32_t clockFreqHz = _machineDescriptor.clockFrequencyHz;
@@ -135,7 +135,7 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
     static const int MAX_CLOCK_SET_STR = 100;
     char clockSpeedStr[MAX_CLOCK_SET_STR];
     bool clockValid = jsonGetValueForKey("clockHz", mcJson, clockSpeedStr, MAX_CLOCK_SET_STR);
-    TargetClockGenerator& clockGen = _busAccess.clock();
+    TargetClockGenerator& clockGen = _busControl.clock();
     if (clockValid)
     {
         uint32_t clockHz = strtoul(clockSpeedStr, NULL, 10);

@@ -16,7 +16,7 @@ class McManager
 {
 public:
     // Constuction
-    McManager(DisplayBase* pDisplay, CommandHandler& commandHandler, BusControl& busAccess);
+    McManager(DisplayBase* pDisplay, CommandHandler& commandHandler, BusControl& busControl);
 
     // Init
     void init();
@@ -56,14 +56,14 @@ public:
 
     uint32_t getClockFreqInHz()
     {
-        return _busAccess.clock().getFreqInHz();
+        return _busControl.clock().getFreqInHz();
     }
 
     // IRQ on target
     void targetIrq(int durationTStates = -1)
     {
         // Generate a maskable interrupt
-        _busAccess.sock().reqIRQ(_busSocketId, durationTStates);
+        _busControl.sock().reqIRQ(_busSocketId, durationTStates);
     }
 
 private:
@@ -77,7 +77,7 @@ private:
     CommandHandler& _commandHandler;
 
     // Bus control
-    BusControl& _busAccess;
+    BusControl& _busControl;
 
     // Bus socket we're attached to and setup info
     int _busSocketId;

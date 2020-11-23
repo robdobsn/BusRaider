@@ -33,9 +33,12 @@ static const char *MODULE_PREFIX = "SysMan";
 // #define ONLY_ONE_MODULE_PER_SERVICE_LOOP 1
 
 // Debug
-// #define DEBUG_RICREST_MESSAGES
-// #define DEBUG_ENDPOINT_MESSAGES
+#define DEBUG_RICREST_MESSAGES
+#define DEBUG_ENDPOINT_MESSAGES
 #define DEBUG_SHOW_FILE_UPLOAD_STATS
+#define DEBUG_RICREST_FILEUPLOAD
+#define DEBUG_RICREST_FILEUPLOAD_BLOCK_ACK
+#define DEBUG_RICREST_FILEUPLOAD_BLOCK_ACK_DETAIL
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -811,28 +814,28 @@ bool SysManager::processEndpointMsg(ProtocolEndpointMsg &cmdMsg)
         String respMsg;
         switch(ricRESTReqMsg.getElemCode())
         {
-            case RICRESTMsg::RICREST_REST_ELEM_URL:
+            case RICRESTMsg::RICREST_ELEM_CODE_URL:
             {
                 processRICRESTURL(ricRESTReqMsg, respMsg);
                 break;
             }
-            case RICRESTMsg::RICREST_REST_ELEM_BODY:
+            case RICRESTMsg::RICREST_ELEM_CODE_BODY:
             {
                 processRICRESTBody(ricRESTReqMsg, respMsg);
                 break;
             }
-            case RICRESTMsg::RICREST_REST_ELEM_CMDRESPJSON:
+            case RICRESTMsg::RICREST_ELEM_CODE_CMDRESPJSON:
             {
                 // This message type is reserved for responses
                 LOG_W(MODULE_PREFIX, "processEndpointMsg rx RICREST JSON reserved for response");
                 break;
             }
-            case RICRESTMsg::RICREST_REST_ELEM_COMMAND_FRAME:
+            case RICRESTMsg::RICREST_ELEM_CODE_COMMAND_FRAME:
             {
                 processRICRESTCmdFrame(ricRESTReqMsg, respMsg, cmdMsg);
                 break;
             }
-            case RICRESTMsg::RICREST_REST_ELEM_FILEBLOCK:
+            case RICRESTMsg::RICREST_ELEM_CODE_FILEBLOCK:
             {
                 processRICRESTFileBlock(ricRESTReqMsg, respMsg);
                 break;
@@ -845,7 +848,7 @@ bool SysManager::processEndpointMsg(ProtocolEndpointMsg &cmdMsg)
             // Send the response back
             RICRESTMsg ricRESTRespMsg;
             ProtocolEndpointMsg endpointMsg;
-            ricRESTRespMsg.encode(respMsg, endpointMsg, RICRESTMsg::RICREST_REST_ELEM_CMDRESPJSON);
+            ricRESTRespMsg.encode(respMsg, endpointMsg, RICRESTMsg::RICREST_ELEM_CODE_CMDRESPJSON);
             endpointMsg.setAsResponse(cmdMsg);
 
             // Send message on the appropriate channel
@@ -915,7 +918,7 @@ bool SysManager::processRICRESTCmdFrame(RICRESTMsg& ricRESTReqMsg, String& respM
     ConfigBase cmdFrame = ricRESTReqMsg.getPayloadJson();
     String cmdName = cmdFrame.getString("cmdName", "");
 
-#ifdef DEBUG_RICREST_FILEUPLOAD
+#ifdef DEBUG_ENDPOINT_MESSAGES
     LOG_I(MODULE_PREFIX, "processRICRESTCmdFrame %s", cmdName.c_str());
 #endif
 
@@ -1054,7 +1057,7 @@ void SysManager::serviceFileUpload()
         // Send the response back
         RICRESTMsg ricRESTRespMsg;
         ProtocolEndpointMsg endpointMsg;
-        ricRESTRespMsg.encode(respMsg, endpointMsg, RICRESTMsg::RICREST_REST_ELEM_CMDRESPJSON);
+        ricRESTRespMsg.encode(respMsg, endpointMsg, RICRESTMsg::RICREST_ELEM_CODE_CMDRESPJSON);
         endpointMsg.setAsResponse(_fileUploadHandler._commsChannelID, MSG_PROTOCOL_RICREST, 
                     0, MSG_DIRECTION_RESPONSE);
 

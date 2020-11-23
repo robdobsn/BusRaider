@@ -8,7 +8,8 @@ cd ../src &&\
 # arm-none-eabi-objcopy kernel7.elf -O ihex kernel7.hex &&\
 cd .. &&\
 python tools/CalcCRC.py src/kernel.img
-python.exe tools/UploadToDev.py src/kernel.img $1 $2
+# python.exe tools/UploadToDev.py src/kernel.img $1 $2
+curl -F "file=@./src/kernel.img" http://$1/uploadpisw
 # if [ -z "$1" ]
 #   then
 #     echo "Done"

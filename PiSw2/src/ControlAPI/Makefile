@@ -4,8 +4,7 @@
 
 CIRCLEHOME = ../../circle
 
-OBJS	= 
-# BusControlAPI.o
+OBJS	= ControlAPI.o
 
 INCLUDE	+= -I ../system -I ../TargetBus -I ../Hardware -I ../comms
 

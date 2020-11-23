@@ -13,7 +13,7 @@ class McTRS80 : public McBase
 {
 public:
 
-    McTRS80(McManager& mcManager, BusControl& busAccess);
+    McTRS80(McManager& mcManager, BusControl& busControl);
 
     // Enable machine
     virtual void enableMachine() override;

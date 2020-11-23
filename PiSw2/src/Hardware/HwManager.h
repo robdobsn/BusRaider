@@ -6,7 +6,7 @@
 #include <string.h> 
 #include "HwBase.h"
 #include "logging.h"
-#include "BusAccess.h"
+#include "BusControl.h"
 #include "CommandHandler.h"
 
 // #define DEBUG_IO_ACCESS 1
@@ -25,7 +25,7 @@ class HwManager
 {
 public:
     // Constructor
-    HwManager(CommandHandler& commandHandler, BusAccess& busAccess);
+    HwManager(CommandHandler& commandHandler, BusControl& busControl);
 
     // Init
     void init();
@@ -104,7 +104,7 @@ private:
     CommandHandler& _commandHandler;
 
     // Bus access
-    BusAccess& _busAccess;
+    BusControl& _busControl;
 
     // Hardware slots
     static const int MAX_HARDWARE = 10;

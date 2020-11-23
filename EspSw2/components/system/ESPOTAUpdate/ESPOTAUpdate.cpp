@@ -243,7 +243,7 @@ void ESPOTAUpdate::fwUpdateAPIFinal()
 
 void ESPOTAUpdate::addRestAPIEndpoints(RestAPIEndpointManager& endpointManager)
 {
-    endpointManager.addEndpoint("espFwUpdate",
+    endpointManager.addEndpoint("espfwupdate",
                         RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                         RestAPIEndpointDef::ENDPOINT_POST,
                         std::bind(&ESPOTAUpdate::apiESPFirmwareUpdateDone, this, 

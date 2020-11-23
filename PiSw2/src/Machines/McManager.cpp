@@ -24,10 +24,10 @@ static const char MODULE_PREFIX[] = "McManager";
 // Singleton
 McManager* McManager::_pMcManager = NULL;
 
-McManager::McManager(DisplayBase* pDisplay, CommandHandler& commandHandler, BusControl& busAccess) :
+McManager::McManager(DisplayBase* pDisplay, CommandHandler& commandHandler, BusControl& busControl) :
             _pDisplay(pDisplay),
             _commandHandler(commandHandler),
-            _busAccess(busAccess)
+            _busControl(busControl)
 {
     // Sockets
     _busSocketId = -1;
@@ -55,7 +55,7 @@ void McManager::init()
 {
     // Connect to the bus socket
     if (_busSocketId < 0)
-        _busSocketId = _busAccess.sock().add(
+        _busSocketId = _busControl.sock().add(
             true,
             handleWaitInterruptStatic,
             busActionActiveStatic,
@@ -85,8 +85,8 @@ void McManager::init()
 
     // Add machines - McBase does the actual add
     // TODO 2020
-    new McTerminal(*this, _busAccess);
-    new McTRS80(*this, _busAccess);
+    new McTerminal(*this, _busControl);
+    new McTRS80(*this, _busControl);
     // new McRobsZ80(*this);
     // new McZXSpectrum(*this);
 
@@ -208,7 +208,7 @@ const char* McManager::getMachineJSON()
     strlcat(mcString, "\"", MAX_MC_JSON_LEN);
 
     // Clock info
-    uint32_t actualHz = _busAccess.clock().getFreqInHz();
+    uint32_t actualHz = _busControl.clock().getFreqInHz();
     snprintf(mcString+strlen(mcString), MAX_MC_JSON_LEN, 
                 ",\"clockHz\":\"%d\"", (int)actualHz);
 
@@ -270,7 +270,7 @@ bool McManager::setupMachine(const char* mcJson)
     _pCurMachine = pMc;
 
     // Warn bus control
-    _busAccess.machineChangeInit();
+    _busControl.machineChangeInit();
 
     // Remove step tracer
     // TODO
@@ -283,7 +283,7 @@ bool McManager::setupMachine(const char* mcJson)
     pMc->setupDisplay(_pDisplay);
 
     // Setup the bus socket
-    _busAccess.sock().setup(_busSocketId, 
+    _busControl.sock().setup(_busSocketId, 
                 pMc->isMonitorMREQEnabled(), pMc->isMonitorIORQEnabled());
 
     // See if any files to load
@@ -306,7 +306,7 @@ bool McManager::setupMachine(const char* mcJson)
     // }
 
     // Warn bus control
-    _busAccess.machineChangeComplete();
+    _busControl.machineChangeComplete();
 
     return true;
 }
@@ -337,13 +337,13 @@ void McManager::displayRefresh()
 
         // TODO 2020
         // Determine whether display is memory mapped
-        if (_pCurMachine->isDisplayMemoryMapped()) // && _busAccess.busRqNeededForMemAccess())
+        if (_pCurMachine->isDisplayMemoryMapped()) // && _busControl.busRqNeededForMemAccess())
         {
             // TODO 2020
             // if (getTargetTracker().busAccessAvailable())
             // {
                 // Asynch display refresh - start bus access request here
-                _busAccess.sock().reqBus(_busSocketId, BR_BUS_ACTION_DISPLAY);
+                _busControl.sock().reqBus(_busSocketId, BR_BUS_ACTION_DISPLAY);
                 _busActionPendingDisplayRefresh = true;
             // }
             // else if (getTargetTracker().isTrackingActive())
@@ -381,7 +381,7 @@ void McManager::displayRefresh()
 
 void McManager::machineHeartbeat()
 {
-    if (!_busAccess.ctrl().allowHeartbeat())
+    if (!_busControl.ctrl().allowHeartbeat())
         return;
     if (_pCurMachine)
         _pCurMachine->machineHeartbeat();
@@ -488,27 +488,27 @@ bool McManager::handleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsign
     if (strcasecmp(cmdName, "ClearTarget") == 0)
     {
         // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ClearTarget");
-        _busAccess.prog().clear();
+        _busControl.prog().clear();
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "ProgramTarget") == 0)
     {
-        _busAccess.ctrl().programmingStart(false);
+        _busControl.ctrl().programmingStart(false);
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if ((strcasecmp(cmdName, "ProgramAndReset") == 0) ||
             (strcasecmp(cmdName, "ProgramAndExec") == 0))
     {
-        _busAccess.ctrl().programmingStart(true);
+        _busControl.ctrl().programmingStart(true);
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "ResetTarget") == 0)
     {
         // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ResetTarget");
-        _busAccess.sock().reqReset(_busSocketId);
+        _busControl.sock().reqReset(_busSocketId);
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
@@ -517,7 +517,7 @@ bool McManager::handleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsign
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "File to Target, len %d, json %s", paramsLen, pCmdJson);
         McBase* pMc = _pMcManager->getMachine();
         if (pMc)
-            pMc->fileHandler(pCmdJson, pParams, paramsLen, _busAccess.prog());
+            pMc->fileHandler(pCmdJson, pParams, paramsLen, _busControl.prog());
         strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
@@ -595,7 +595,7 @@ bool McManager::targetFileHandler(const char* rxFileInfo, const uint8_t* pData, 
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetFileHandler");
     McBase* pMc = getMachine();
     if (pMc)
-        return pMc->fileHandler(rxFileInfo, pData, dataLen, _busAccess.prog());
+        return pMc->fileHandler(rxFileInfo, pData, dataLen, _busControl.prog());
     return false;
 }
 

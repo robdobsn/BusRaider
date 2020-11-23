@@ -6,13 +6,13 @@
 #include "TargetCPU.h"
 
 class HwManager;
-class BusAccess;
+class BusControl;
 
 class HwBase
 {
 public:
 
-    HwBase(HwManager& hwManager, BusAccess& busAccess);
+    HwBase(HwManager& hwManager, BusControl& busControl);
 
     // Handle a completed bus action
     virtual void handleBusActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
@@ -77,7 +77,7 @@ public:
 
 protected:
     HwManager& _hwManager;
-    BusAccess& _busAccess;
+    BusControl& _busControl;
     bool _enabled;
     const char* _pName;
 };

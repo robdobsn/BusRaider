@@ -3,12 +3,12 @@
 
 #include "HwBase.h"
 #include "HwManager.h"
-#include "BusAccess.h"
+#include "BusControl.h"
 
 static const char* _baseName = "UNDEFINED";
 
-HwBase::HwBase(HwManager& hwManager, BusAccess& busAccess) : 
-        _hwManager(hwManager), _busAccess(busAccess)
+HwBase::HwBase(HwManager& hwManager, BusControl& busControl) : 
+        _hwManager(hwManager), _busControl(busControl)
 {
     HwManager::addHardwareElementStatic(this);
     _enabled = false;

@@ -11,15 +11,16 @@
 #include "../TargetBus/TargetCPU.h"
 
 class CommandHandler;
-class BusAccess;
+class BusControl;
 class HwManager;
 
-class BusControlAPI
+class ControlAPI
 {
 public:
     static const int MAX_MEM_BLOCK_READ_WRITE = 1024;
 
-    BusControlAPI(CommandHandler& commandHandler, HwManager& hwManager, BusAccess& busAccess);
+    // ControlAPI(CommandHandler& commandHandler, HwManager& hwManager, BusControl& busControl);
+    ControlAPI(CommandHandler& commandHandler, BusControl& busControl);
     void init();
 
     // Service
@@ -31,16 +32,16 @@ public:
 private:
 
     // Singleton instance
-    static BusControlAPI* _pThisInstance;
+    static ControlAPI* _pThisInstance;
 
     // Command handler
     CommandHandler& _commandHandler;
 
-    // HwManager
-    HwManager& _hwManager;
+    // // HwManager
+    // HwManager& _hwManager;
 
     // Bus access
-    BusAccess& _busAccess;
+    BusControl& _busControl;
 
 //#define USE_TARGET_TRACKER
 #ifdef USE_TARGET_TRACKER
@@ -80,19 +81,19 @@ private:
                 uint32_t& value, char* pOutStr = NULL, uint32_t maxOutStrLen = 0,
                 bool forceDecimal = false);
 
-    // Synchronous bus access
-    uint8_t _memAccessDataBuf[MAX_MEM_BLOCK_READ_WRITE];
-    bool _memAccessPending;
-    bool _memAccessWrite;
-    uint32_t _memAccessDataLen;
-    uint32_t _memAccessAddr;
-    bool _memAccessIo;
-    uint32_t _memAccessRdWrErrCount;
-    static const int MAX_RDWR_ERR_STR_LEN = 200;
-    char _memAccessRdWrErrStr[MAX_RDWR_ERR_STR_LEN];
-    bool _memAccessRdWrTest;
+    // // Synchronous bus access
+    // uint8_t _memAccessDataBuf[MAX_MEM_BLOCK_READ_WRITE];
+    // bool _memAccessPending;
+    // bool _memAccessWrite;
+    // uint32_t _memAccessDataLen;
+    // uint32_t _memAccessAddr;
+    // bool _memAccessIo;
+    // uint32_t _memAccessRdWrErrCount;
+    // static const int MAX_RDWR_ERR_STR_LEN = 200;
+    // char _memAccessRdWrErrStr[MAX_RDWR_ERR_STR_LEN];
+    // bool _memAccessRdWrTest;
 
-    // Comms
-    bool _stepCompletionPending;
-    bool _targetTrackerResetPending;
+    // // Comms
+    // bool _stepCompletionPending;
+    // bool _targetTrackerResetPending;
 };

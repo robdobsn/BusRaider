@@ -3,7 +3,7 @@
 
 #include "HwRAMROM.h"
 #include "HwManager.h"
-#include "BusAccess.h"
+#include "BusControl.h"
 #include "rdutils.h"
 #include "PiWiring.h"
 #include "lowlib.h"
@@ -14,8 +14,8 @@
 static const char* MODULE_PREFIX = "HWRAMROM";
 const char* HwRAMROM::_baseName = "RAMROM";
 
-HwRAMROM::HwRAMROM(HwManager& hwManager, BusAccess& busAccess) : 
-        HwBase(hwManager, busAccess)
+HwRAMROM::HwRAMROM(HwManager& hwManager, BusControl& busControl) : 
+        HwBase(hwManager, busControl)
 {
     _memCardSizeBytes = DEFAULT_MEM_SIZE_K*1024;
     _mirrorMemoryLen = _memCardSizeBytes;
@@ -127,13 +127,13 @@ void HwRAMROM::setMemoryEmulationMode(bool pageOut)
     if (pageOut)
     {
         // Page out
-        _busAccess.busPagePinSetActive(true);
+        _busControl.busPagePinSetActive(true);
     }
     else
     {
         // Release paging unless otherwise paged out
         if (!_currentlyPagedOut)
-            _busAccess.busPagePinSetActive(false);
+            _busControl.busPagePinSetActive(false);
     }
 }
 
@@ -151,13 +151,13 @@ void HwRAMROM::pageOutForInjection(bool pageOut)
     // Page out
     if (pageOut)
     {
-        _busAccess.busPagePinSetActive(true);
+        _busControl.busPagePinSetActive(true);
     }
     else
     {
         // Release paging unless emulation in progress
         if (!_isEmulatingMemory)
-            _busAccess.busPagePinSetActive(false);
+            _busControl.busPagePinSetActive(false);
     }
 }
 
@@ -204,7 +204,7 @@ void HwRAMROM::mirrorClone()
         return;
 
     // int blockReadResult = 
-    _busAccess.blockRead(0, pDestMemory, _mirrorMemoryLen, false, false);
+    _busControl.blockRead(0, pDestMemory, _mirrorMemoryLen, false, false);
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "mirrorClone blockRead %s %02x %02x %02x",
     //             (blockReadResult == BR_OK) ? "OK" : "FAIL",
     //             pDestMemory[0], pDestMemory[1], pDestMemory[2]);
@@ -220,17 +220,17 @@ void HwRAMROM::setBanksToEmulate64KAddrSpace(bool upperChip)
     if (upperChip)
     {
         const uint8_t bankNumData[] = { 32, 33, 34, 35 };
-        _busAccess.blockWrite(BANK_16K_BASE_ADDR, bankNumData, 4, false, true);
+        _busControl.blockWrite(BANK_16K_BASE_ADDR, bankNumData, 4, false, true);
     }
     else
     {
         const uint8_t bankNumData[] = { 0, 1, 2, 3 };
-        _busAccess.blockWrite(BANK_16K_BASE_ADDR, bankNumData, 4, false, true);
+        _busControl.blockWrite(BANK_16K_BASE_ADDR, bankNumData, 4, false, true);
     }
 
     // Enable register outputs
     const uint8_t setRegEn[] = { 1 };
-    _busAccess.blockWrite(BANK_16K_PAGE_ENABLE, setRegEn, 1, false, true);
+    _busControl.blockWrite(BANK_16K_PAGE_ENABLE, setRegEn, 1, false, true);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -245,7 +245,7 @@ BR_RETURN_TYPE HwRAMROM::readWriteBankedMemory(uint32_t addr, uint8_t* pBuf, uin
 
     // Enable register outputs
     const uint8_t setRegEn[] = { 1 };
-    _busAccess.blockWrite(BANK_16K_PAGE_ENABLE, setRegEn, 1, false, true);
+    _busControl.blockWrite(BANK_16K_PAGE_ENABLE, setRegEn, 1, false, true);
 
     // Access memory using bank 0
     uint32_t initialBankOffset = addr % BANK_SIZE_BYTES;
@@ -270,13 +270,13 @@ BR_RETURN_TYPE HwRAMROM::readWriteBankedMemory(uint32_t addr, uint8_t* pBuf, uin
 
         // Write the bank number to bank register 0
         const uint8_t bankNumData[] = { bankNumber };
-        _busAccess.blockWrite(BANK_16K_BASE_ADDR, bankNumData, 1, false, true);
+        _busControl.blockWrite(BANK_16K_BASE_ADDR, bankNumData, 1, false, true);
 
         // Perform the memory operation
         if (write)
-            retVal = _busAccess.blockWrite(start, pBuf, lenInBank, false, iorq);
+            retVal = _busControl.blockWrite(start, pBuf, lenInBank, false, iorq);
         else
-            retVal = _busAccess.blockRead(start, pBuf, lenInBank, false, iorq);
+            retVal = _busControl.blockRead(start, pBuf, lenInBank, false, iorq);
         if (retVal != BR_OK)
             break;
 
@@ -288,11 +288,11 @@ BR_RETURN_TYPE HwRAMROM::readWriteBankedMemory(uint32_t addr, uint8_t* pBuf, uin
 
     // Disable memory registers
     const uint8_t setRegEnableValue[] = { _bankRegisterOutputEnable };
-    _busAccess.blockWrite(BANK_16K_PAGE_ENABLE, setRegEnableValue, 1, false, true);
+    _busControl.blockWrite(BANK_16K_PAGE_ENABLE, setRegEnableValue, 1, false, true);
 
     // Write the current bank number back to bank register 0
     const uint8_t bankNumData[] = { _bankRegisters[0] };
-    _busAccess.blockWrite(BANK_16K_BASE_ADDR, bankNumData, 1, false, true);
+    _busControl.blockWrite(BANK_16K_BASE_ADDR, bankNumData, 1, false, true);
     return retVal;
 }
 
@@ -318,8 +318,8 @@ BR_RETURN_TYPE HwRAMROM::physicalBlockAccess(uint32_t addr, const uint8_t* pBuf,
         if (addr + len <= 65536)
         {
             if (write)
-                return _busAccess.blockWrite(addr, pBuf, len, busRqAndRelease, iorq);
-            return _busAccess.blockRead(addr, const_cast<uint8_t*>(pBuf), len, busRqAndRelease, iorq);
+                return _busControl.blockWrite(addr, pBuf, len, busRqAndRelease, iorq);
+            return _busControl.blockRead(addr, const_cast<uint8_t*>(pBuf), len, busRqAndRelease, iorq);
         }
         else
         {
@@ -328,7 +328,7 @@ BR_RETURN_TYPE HwRAMROM::physicalBlockAccess(uint32_t addr, const uint8_t* pBuf,
             // Check if we need to request bus
             if (busRqAndRelease) {
                 // Request bus and take control after ack
-                BR_RETURN_TYPE ret = _busAccess.controlRequestAndTake();
+                BR_RETURN_TYPE ret = _busControl.controlRequestAndTake();
                 if (ret != BR_OK)
                 {
                     LogWrite(MODULE_PREFIX, LOG_DEBUG, "Failed to acquire bus");
@@ -338,7 +338,7 @@ BR_RETURN_TYPE HwRAMROM::physicalBlockAccess(uint32_t addr, const uint8_t* pBuf,
 
             // Switch card to banked mode
             const uint8_t setBankedMode[] = { 1 };
-            _busAccess.blockWrite(BANK_16K_LIN_TO_PAGE, setBankedMode, 1, false, true);
+            _busControl.blockWrite(BANK_16K_LIN_TO_PAGE, setBankedMode, 1, false, true);
 
             // Read/Write the banked memory block
             BR_RETURN_TYPE retVal = readWriteBankedMemory(addr, const_cast<uint8_t*>(pBuf), len, iorq, write);
@@ -347,14 +347,14 @@ BR_RETURN_TYPE HwRAMROM::physicalBlockAccess(uint32_t addr, const uint8_t* pBuf,
             if ((_memCardOpts & MEM_OPT_STAY_BANKED) == 0)
             {
                 const uint8_t clearBankedMode[] = { 0 };
-                _busAccess.blockWrite(BANK_16K_LIN_TO_PAGE, clearBankedMode, 1, false, true);
+                _busControl.blockWrite(BANK_16K_LIN_TO_PAGE, clearBankedMode, 1, false, true);
                 // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Restore to linear");
             }
 
             // Check if we need to release bus
             if (busRqAndRelease) {
                 // release bus
-                _busAccess.controlRelease();
+                _busControl.controlRelease();
             }
             return retVal;
         }
@@ -492,7 +492,7 @@ void HwRAMROM::tracerClone()
     else
     {
         // int blockReadResult = 
-        _busAccess.blockRead(0, pValMemory, _tracerMemoryLen, false, false);
+        _busControl.blockRead(0, pValMemory, _tracerMemoryLen, false, false);
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "tracerClone blockRead %s %02x %02x %02x",
         //         (blockReadResult == BR_OK) ? "OK" : "FAIL",
         //         pValMemory[0], pValMemory[1], pValMemory[2]);
@@ -558,7 +558,7 @@ void HwRAMROM::handleBusActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REA
                 //             _memCardOpts & MEM_OPT_EMULATE_LINEAR,
                 //             _memCardOpts & MEM_OPT_EMULATE_LINEAR_UPPER
                 //             );
-                _busAccess.targetReqBus(_hwManager.getBusSocketId(), BR_BUS_ACTION_HW_ACTION);
+                _busControl.targetReqBus(_hwManager.getBusSocketId(), BR_BUS_ACTION_HW_ACTION);
             }
             break;
         case BR_BUS_ACTION_PAGE_OUT_FOR_INJECT:
@@ -574,7 +574,7 @@ void HwRAMROM::handleBusActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REA
                     break;
                 // Make a copy of the enire memory while we have the chance
                 // int blockReadResult = 
-                _busAccess.blockRead(0, getMirrorMemory(), _mirrorMemoryLen, false, false);
+                _busControl.blockRead(0, getMirrorMemory(), _mirrorMemoryLen, false, false);
                 // Debug
                 // LogWrite(MODULE_PREFIX, LOG_DEBUG, "mirror memory blockRead %s addr %04x %d [0] %02x [1] %02x [2] %02x [3] %02x mirror %d %s",
                 //              (blockReadResult == BR_OK) ? "OK" : "FAIL",
@@ -592,7 +592,7 @@ void HwRAMROM::handleBusActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REA
                 if (_memCardOpts & MEM_OPT_STAY_BANKED)
                 {
                     const uint8_t setBankedMode[] = { 1 };
-                    _busAccess.blockWrite(BANK_16K_LIN_TO_PAGE, setBankedMode, 1, true, true);
+                    _busControl.blockWrite(BANK_16K_LIN_TO_PAGE, setBankedMode, 1, true, true);
                     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "HWAction Staying banked");
                 }
                 // Check if banks should be set to emulate 64K linear address space

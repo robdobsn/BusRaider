@@ -70,14 +70,14 @@
 void McManager::targetReset()
 {
     // Reset target
-    _busAccess.targetReqReset(_busSocketId);
+    _busControl.targetReqReset(_busSocketId);
 }
 
 // TODO 2020 - move to BusAccess
 void McManager::targetIrq(int durationTStates)
 {
     // Generate a maskable interrupt
-    _busAccess.targetReqIRQ(_busSocketId, durationTStates);
+    _busControl.targetReqIRQ(_busSocketId, durationTStates);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -98,11 +98,11 @@ void McManager::targetProgrammingStart(bool execAfterProgramming)
         // BUSRQ is used even if memory is emulated because it holds the processor while changes are made
         // Give the BusAccess some service first to ensure WAIT handling is complete before requesting the bus
         for (int i = 0; i < 3; i++)
-            _busAccess.service();
+            _busControl.service();
 
         // Request target bus
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetProgStart targetReqBus");
-        _busAccess.targetReqBus(_busSocketId, BR_BUS_ACTION_PROGRAMMING);
+        _busControl.targetReqBus(_busSocketId, BR_BUS_ACTION_PROGRAMMING);
         _busActionPendingProgramTarget = true;
         _busActionPendingExecAfterProgram = execAfterProgramming;
     }
@@ -169,7 +169,7 @@ void McManager::targetExec()
     if (performHardReset)
     {
         // Request reset target
-        _busAccess.targetReqReset(_busSocketId);
+        _busControl.targetReqReset(_busSocketId);
     }
 }
 
@@ -186,5 +186,5 @@ void McManager::targetExec()
 	HwManager m_HwManager;
 
 
-	m_HwManager(m_CommsManager.getCommandHandler(), m_BusAccess),
+	m_HwManager(m_CommsManager.getCommandHandler(), m_busControl),
 

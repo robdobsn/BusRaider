@@ -22,7 +22,7 @@ cd Hardware
 $make $1 $2 || exit
 cd ..
 
-cd BusControlAPI
+cd ControlAPI
 $make $1 $2 || exit
 cd ..
 

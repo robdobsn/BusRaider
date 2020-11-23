@@ -221,7 +221,7 @@ void RdWebConnection::service()
 
     // See if we are forming the header
     uint32_t bufPos = 0;
-    if (dataReady && !errorOccurred && !_header.isComplete)
+    if (!errorOccurred && !_header.isComplete)
     {
         if (!serviceConnHeader(pBuf, bufLen, bufPos))
         {
@@ -232,7 +232,7 @@ void RdWebConnection::service()
 
     // Service response - may take many iterations of this loop (e.g. for file-transfer / web-sockets)
 
-    if (dataReady && !errorOccurred && _header.isComplete)
+    if (!errorOccurred && _header.isComplete)
     {
         if (!serviceResponse(pBuf, bufLen, bufPos))
         {
@@ -247,7 +247,9 @@ void RdWebConnection::service()
     if (errorOccurred || closeRequired)
     {
 #ifdef DEBUG_WEB_CONN
-        LOG_W(MODULE_PREFIX, "service conn closing cause %s pConn %lx", errorFound ? "ErrorFound" : "CloseRequired", (unsigned long)_pConn);
+        LOG_W(MODULE_PREFIX, "service conn closing cause %s pConn %lx", 
+                errorOccurred ? "ErrorOccurred" : "CloseRequired", 
+                (unsigned long)_pConn);
 #endif
         closeAndClear();
     }

@@ -6,7 +6,7 @@
 #include "usb_hid_keys.h"
 #include "rdutils.h"
 #include "lowlib.h"
-#include "BusAccess.h"
+#include "BusControl.h"
 #include "TargetProgrammer.h"
 #include "McManager.h"
 #include "McZXSpectrumTZXFormat.h"
@@ -579,7 +579,7 @@ void McZXSpectrum::busActionActiveCallback(BR_BUS_ACTION actionType,
     if ((actionType == BR_BUS_ACTION_BUSRQ) && (rslt == BR_OK))
     {
         // Read memory at the location of the memory mapped screen
-        if (_busAccess.blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, BLOCK_ACCESS_MEM) == BR_OK)
+        if (_busControl.blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, BLOCK_ACCESS_MEM) == BR_OK)
             _screenBufferValid = true;
 
         // // TODO
