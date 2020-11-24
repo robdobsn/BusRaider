@@ -137,19 +137,18 @@ class CommonTest:
         except Exception as excp:
             self.logger.error(f"Failed to extract cmdName {fr}, {excp}")
 
-    def sendFrame(self, comment: str, content: Union[str,bytes], respExpected: bool = None):
+    def sendFrame(self, comment: str, content: Union[str,bytes], payload: bytes = None, respExpected: bool = None):
         self.respAwaited = respExpected
         self.respGot = False
         if len(comment) > 0:
             self.logger.info(comment)
-        self.busRaider.sendRICRESTCmdFrame(content)
+        self.busRaider.sendRICRESTCmdFrame(content, payload)
 
-    def sendFrameSync(self, comment: str, content: Union[str,bytes], respExpected: bool = None):
-        self.respAwaited = respExpected
+    def sendFrameSync(self, comment: str, content: Union[str,bytes], payload: bytes = None):
         self.respGot = False
         if len(comment) > 0:
             self.logger.info(comment)
-        return self.busRaider.sendRICRESTCmdFrameSync(content)
+        return self.busRaider.sendRICRESTCmdFrameSync(content, payload)
 
     def awaitResponse(self, maxWaitMs):
         if self.respAwaited is not None:

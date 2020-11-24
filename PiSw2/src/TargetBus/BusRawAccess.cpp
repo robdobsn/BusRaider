@@ -16,7 +16,8 @@ static const char MODULE_PREFIX[] = "BusRawAccess";
 // Constructor
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-BusRawAccess::BusRawAccess()
+BusRawAccess::BusRawAccess(TargetClockGenerator& targetClockGenerator) :
+        _targetClockGenerator(targetClockGenerator)
 {
     _busReqAcknowledged = false;
     _pageIsActive = false;

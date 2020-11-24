@@ -19,7 +19,8 @@ static const char MODULE_PREFIX[] = "BusControl";
 BusControl::BusControl()
     : _targetControl(*this), 
       _busSocketManager(*this), 
-      _memoryController(*this)
+      _memoryController(*this),
+      _busRawAccess(_clockGenerator)
 {
     // Not init yet
     _isInitialized = false;

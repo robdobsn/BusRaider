@@ -67,7 +67,7 @@ def test_SetMc():
     for _ in range(testRepeatCount):
         for mc in mcList:
             commonTest.logger.debug(f"Setting machine {mc}")
-            setMcResp = commonTest.sendFrameSync("SetMcJson", '{"cmdName":"SetMcJson"}\0{"name":"' + mc + '"}\0')
+            setMcResp = commonTest.sendFrameSync("SetMcJson", '{"cmdName":"SetMcJson"}','{"name":"' + mc + '"}')
             if setMcResp.get("cmdName","") == "SetMcJsonResp" and setMcResp.get("err","") == "ok":
                 rsltOkCount += 1
             else:
@@ -88,8 +88,7 @@ def test_MemRW():
     testRepeatCount = 20
 
     # Test data
-    writtenData = []
-    readData = []
+    testWriteAddr = 0x8000
     testWriteData = bytearray(b"\xaa\x55\xaa\x55\xaa\x55\xaa\x55\xaa\x55")
 
     # Set serial terminal machine - to avoid conflicts with display updates, etc
@@ -106,12 +105,24 @@ def test_MemRW():
     commonTest.logger.debug(f"Set processor clock resp {resp}")
     assert(resp.get("err","") == "ok")
 
-    # Bus init
-    commonTest.logger.debug(f"Send busInit")
-    resp = commonTest.sendFrameSync("busInit", '{"cmdName":"busInit"}')
-    commonTest.logger.debug(f"Send busInit {resp}")
-    assert(resp.get("err","") == "ok")
+    # Memory tests
+    for i in range(testRepeatCount):
+        # commonTest.logger.debug(f"Send blockWrite {i}")
+        resp = commonTest.sendFrameSync("blockWrite", 
+                    "{" + f'"cmdName":"Wr","addr":{testWriteAddr:04x},"lenDec":{len(testWriteData)},"isIo":0' + "}\0" + testWriteData)
+        assert(resp.get("err","") == "ok")
+        # commonTest.logger.debug(f"Send blockRead {i}")
+        resp = commonTest.sendFrameSync("blockRead", 
+                    "{" + f'"cmdName":"Rd","addr":{testWriteAddr:04x},"lenDec":{len(testWriteData)},"isIo":0' + "}\0")
+        if resp.get("err", "") == "ok":
+            a = resp.get("data", "")
+        # if not testStats["msgRdOk"]:
+        #     break
+        testWriteData = bytearray(len(testWriteData))
+        for i in range(len(testWriteData)):
+            testWriteData[i] = random.randint(0,255)
 
+    # 
     # testStats = {"msgRdOk": True, "msgRdRespCount":0, "msgWrRespCount": 0, "msgWrRespErrCount":0, "msgWrRespErrMissingCount":0, "unknownMsgCount":0, "clockSetOk":False}
 
     # for i in range(testRepeatCount):

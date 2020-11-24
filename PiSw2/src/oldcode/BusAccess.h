@@ -188,7 +188,7 @@ public:
 
     // Bus request/ack
     void controlRequest();
-    BR_RETURN_TYPE controlRequestAndTake();busRequestAndTake
+    BR_RETURN_TYPE controlRequestAndTake();
     void controlRelease();
     void controlTake();
     bool waitForBusAck(bool ack);

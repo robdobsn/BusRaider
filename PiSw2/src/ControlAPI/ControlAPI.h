@@ -27,7 +27,8 @@ public:
     void service();
 
     // Bus access to data
-    BR_RETURN_TYPE blockAccessSync(uint32_t addr, uint8_t* pData, uint32_t len, bool iorq, bool write);
+    BR_RETURN_TYPE blockAccessSync(uint32_t addr, uint8_t* pData, uint32_t len, bool iorq, 
+                bool read, bool write);
 
 private:
 

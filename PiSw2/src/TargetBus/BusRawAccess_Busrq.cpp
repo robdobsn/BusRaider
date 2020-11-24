@@ -12,15 +12,16 @@ static const char MODULE_PREFIX[] = "BusRawBusRq";
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Request bus, wait until available and take control
+// maxWaitForBUSACKus == 0 means use default
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-BR_RETURN_TYPE BusRawAccess::busRequestAndTake()
+BR_RETURN_TYPE BusRawAccess::busRequestAndTake(uint32_t maxWaitForBUSACKus)
 {
     // Request
     busReqStart();
 
     // Check for ack
-    if (!busReqWaitForAck(true))
+    if (!busReqWaitForAck(true, maxWaitForBUSACKus))
     {
         // We didn't get the bus
         busReqRelease();
@@ -188,9 +189,10 @@ void BusRawAccess::busReqTakeControl()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Wait for bus ack
+// maxWaitForBUSACKus == 0 means use default wait time
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool BusRawAccess::busReqWaitForAck(bool ack)
+bool BusRawAccess::busReqWaitForAck(bool ack, uint32_t maxWaitForBUSACKus)
 {
     // Initially check very frequently so the response is fast
     for (int j = 0; j < 1000; j++)
@@ -200,7 +202,9 @@ bool BusRawAccess::busReqWaitForAck(bool ack)
     // Fall-back to slower checking which can be timed against target clock speed
     if (rawBUSAKActive() != ack)
     {
-        uint32_t maxUsToWait = 500000; //BusSocketInfo::getUsFromTStates(BR_MAX_WAIT_FOR_BUSACK_T_STATES, clockCurFreqHz());
+        uint32_t maxUsToWait = (maxWaitForBUSACKus == 0) ? 
+                BusSocketInfo::getUsFromTStates(BR_MAX_WAIT_FOR_BUSACK_T_STATES, _targetClockGenerator.getFreqInHz()) : 
+                maxWaitForBUSACKus;
         if (maxUsToWait <= 0)
             maxUsToWait = 1;
         for (uint32_t j = 0; j < maxUsToWait; j++)

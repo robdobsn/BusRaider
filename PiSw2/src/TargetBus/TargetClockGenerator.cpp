@@ -25,7 +25,7 @@ TargetClockGenerator::TargetClockGenerator()
     _enabled = false;
     _outputPin = -1;
     _altMode = INPUT;
-}   
+}
 
 bool TargetClockGenerator::setup(int pin)
 {

@@ -15,7 +15,7 @@
 // Self test - memory test
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusControl& busAccess)
+void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusControl& busControl)
 {
     display.consoleForeground(DISPLAY_FX_BLUE);
     display.consolePut("\nMemory test\n");
@@ -97,22 +97,22 @@ void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusControl& b
             case TEST_STATE_PERFORM_RESET:
             {
                 // Reset the machine
-                busAccess.bus().targetReset(100);
+                busControl.bus().targetReset(100);
                 testState = TEST_STATE_CHECK_BUSRQ;
                 break;
             }
             case TEST_STATE_CHECK_BUSRQ:
             {
                 // Start raw bus access
-                busAccess.rawAccessStart();
+                busControl.rawAccessStart();
 
                 // Check if BUSRQ works
-                BR_RETURN_TYPE busAckedRetc = busAccess.bus().busRequestAndTake();
+                BR_RETURN_TYPE busAckedRetc = busControl.bus().busRequestAndTake();
                 if (busAckedRetc != BR_OK)
                 {
                     display.consoleForeground(DISPLAY_FX_RED);
                     display.consolePut("FAILED to request Z80 bus: ");
-                    display.consolePut(busAccess.retcString(busAckedRetc));
+                    display.consolePut(busControl.retcString(busAckedRetc));
                     display.consolePut("\nCheck: CLOCK jumper installed on BusRaider OR external clock\n");
                     display.consolePut("Use the test command to test the bus\n");
                     display.consolePut("Or if you have a scope/logic analyzer check:\n");
@@ -163,7 +163,7 @@ void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusControl& b
                 uint32_t blockStart = testSequence[testSeqIdx].blockStart;
                 uint32_t blockLen = testSequence[testSeqIdx].blockLen;
 
-                uint32_t rslt = memTestDevice(busAccess, blockStart, blockLen);
+                uint32_t rslt = memTestDevice(busControl, blockStart, blockLen);
                 bool blockTestFailed = false;
                 if (rslt != 0)
                 {
@@ -178,7 +178,7 @@ void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusControl& b
 
                 if (!blockTestFailed)
                 {
-                    rslt = memTestAddressBus(busAccess, blockStart, blockLen);
+                    rslt = memTestAddressBus(busControl, blockStart, blockLen);
                     if (rslt != 0)
                     {
                         display.consoleForeground(DISPLAY_FX_RED);
@@ -190,7 +190,7 @@ void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusControl& b
                         blockTestFailed = true;
                     }
 
-                    rslt = memTestDataBus(busAccess, blockStart);
+                    rslt = memTestDataBus(busControl, blockStart);
                     if (rslt != 0)
                     {
                         display.consoleForeground(DISPLAY_FX_RED);
@@ -222,8 +222,8 @@ void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusControl& b
             }
             case TEST_STATE_DONE:
             {
-                busAccess.bus().busReqRelease();
-                busAccess.rawAccessEnd();
+                busControl.bus().busReqRelease();
+                busControl.rawAccessEnd();
                 if (issueCount == 0)
                 {
                     display.consoleForeground(DISPLAY_FX_GREEN);

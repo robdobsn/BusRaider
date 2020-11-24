@@ -27,7 +27,7 @@ class BusSocketInfo;
 class BusRawAccess
 {
 public:
-    BusRawAccess();
+    BusRawAccess(TargetClockGenerator& targetClockGenerator);
 
     // Initialization
     void init();
@@ -51,11 +51,11 @@ public:
     void waitResetFlipFlops(bool forceClear = false);
 
     // Bus request
-    BR_RETURN_TYPE busRequestAndTake();
+    BR_RETURN_TYPE busRequestAndTake(uint32_t maxWaitForBUSACKus = 0);
     void busReqRelease();
     void busReqStart();
     void busReqTakeControl();
-    bool busReqWaitForAck(bool ack);
+    bool busReqWaitForAck(bool ack, uint32_t maxWaitForBUSACKus = 0);
     bool rawBUSAKActive()
     {
         return (read32(ARM_GPIO_GPLEV0) & BR_BUSACK_BAR_MASK) == 0;
@@ -121,6 +121,9 @@ private:
     // Hardware version
     // V1.7 ==> 17, V2.0 ==> 20
     int _hwVersionNumber;
+
+    // Target clock generator
+    TargetClockGenerator& _targetClockGenerator;
 
     // Wait system
     bool _rawWaitOnMem;
