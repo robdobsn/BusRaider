@@ -165,8 +165,10 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
 void McBase::setupDisplay(DisplayBase* pDisplay)
 {
     _pDisplay = pDisplay;
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "setupDisplay ResX %d ResY %d",
-                _machineDescriptor.displayPixelsX, _machineDescriptor.displayPixelsY);
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "setupDisplay mcName %s ResX %d ResY %d font %s",
+                _machineDescriptor.machineName,
+                _machineDescriptor.displayPixelsX, _machineDescriptor.displayPixelsY,
+                _machineDescriptor.pFont->fontName);
     if (!pDisplay)
         return;
 

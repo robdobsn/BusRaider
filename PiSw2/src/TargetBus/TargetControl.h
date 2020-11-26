@@ -144,7 +144,6 @@ private:
     BusAccessCBFnType* _pBusAccessCB;
     void* _pBusAccessCBObject;
 
-
     // void cycleHandleReadRelease();
     // // State
     // bool _waitIsActive;

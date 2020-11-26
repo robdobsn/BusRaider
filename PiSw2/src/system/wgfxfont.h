@@ -5,6 +5,7 @@
 
 #include <stdint.h>
 
+#define MAX_FONT_NAME_LEN 30
 typedef struct WgfxFont {
     uint32_t cellX;
     uint32_t cellY;
@@ -12,5 +13,6 @@ typedef struct WgfxFont {
     uint32_t bytesPerChar;
     unsigned char* pFontData;
     uint32_t fontNumChars;
+    char fontName[MAX_FONT_NAME_LEN];
 } WgfxFont;
 

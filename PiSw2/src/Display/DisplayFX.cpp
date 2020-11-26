@@ -8,6 +8,8 @@
 #include "lowlev.h"
 #include "DebugHelper.h"
 
+// #define DEBUG_WINDOW_PUT
+
 static const char* MODULE_PREFIX = "DisplayFX";
 
 static const unsigned int xterm_colors[256] = {
@@ -56,6 +58,7 @@ DisplayFX::DisplayFX() :
     _consoleWinIdx = 0;
     _screenBackground = DISPLAY_FX_BLACK;
     _screenForeground = DISPLAY_FX_WHITE;
+    _debugTimeLastMs = 0;
 }
 
 DisplayFX::~DisplayFX()
@@ -140,7 +143,7 @@ void DisplayFX::screenBackground(DISPLAY_FX_COLOUR colour)
 // Window handling
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void DisplayFX::windowPut(uint32_t winIdx, uint32_t col, uint32_t row, const char* pStr)
+void DisplayFX::windowPut(uint32_t winIdx, uint32_t col, uint32_t row, const uint8_t* pStr)
 {
     if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
         return;
@@ -154,6 +157,21 @@ void DisplayFX::windowPut(uint32_t winIdx, uint32_t col, uint32_t row, const cha
 
 void DisplayFX::windowPut(uint32_t winIdx, uint32_t col, uint32_t row, uint32_t ch)
 {
+#ifdef DEBUG_WINDOW_PUT
+    if (millis() > _debugTimeLastMs + 500)
+    {
+        _debugTimeLastMs = millis();
+        if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "windowPut winIdx unknown %d", winIdx);
+        else
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "windowPut winIdx %d fontName %s fontNumCh %d ch 0x%04x", 
+                        winIdx, 
+                        _windows[winIdx].pFont->fontName,
+                        _windows[winIdx].pFont->fontNumChars,
+                        ch);
+    }
+#endif
+
     // Validity
     if (winIdx < 0 || winIdx >= DISPLAY_FX_MAX_WINDOWS)
         return;

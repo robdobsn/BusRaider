@@ -57,7 +57,7 @@ public:
     // Window
     void windowForeground(uint32_t winIdx, DISPLAY_FX_COLOUR colour);
     void windowBackground(uint32_t winIdx, DISPLAY_FX_COLOUR colour);
-    void windowWrite(uint32_t winIdx, uint32_t col, uint32_t row, const char* pStr);
+    void windowWrite(uint32_t winIdx, uint32_t col, uint32_t row, const uint8_t* pStr);
     void windowWrite(uint32_t winIdx, uint32_t col, uint32_t row, uint32_t ch);
     void windowSetPixel(uint32_t winIdx, uint32_t x, uint32_t y, uint32_t value, DISPLAY_FX_COLOUR colour);
 
@@ -74,7 +74,7 @@ public:
     // Target window
     virtual void foreground(DISPLAY_FX_COLOUR colour) override;
     virtual void background(DISPLAY_FX_COLOUR colour) override;
-    virtual void write(uint32_t col, uint32_t row, const char* pStr) override;
+    virtual void write(uint32_t col, uint32_t row, const uint8_t* pStr) override;
     virtual void write(uint32_t col, uint32_t row, uint32_t ch) override;
     virtual void setPixel(uint32_t x, uint32_t y, uint32_t value, DISPLAY_FX_COLOUR colour) override;
 

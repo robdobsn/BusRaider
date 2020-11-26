@@ -37,6 +37,9 @@ public:
     const char* getMachineName();
     int getDisplayRefreshRate();
     const char* getMachineForFileType(const char* fileType);
+    
+    // Handle a key press
+    void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]);
 
     // Display updates
     void displayRefresh();

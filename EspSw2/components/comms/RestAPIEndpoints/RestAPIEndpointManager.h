@@ -48,7 +48,8 @@ public:
     bool handleApiRequest(const char *requestStr, String &retStr);
 
     // Get matching endpoint def
-    RestAPIEndpointDef* getMatchingEndpointDef(const char *requestStr);
+    RestAPIEndpointDef* getMatchingEndpointDef(const char *requestStr,
+                    RestAPIEndpointDef::EndpointMethod endpointMethod = RestAPIEndpointDef::ENDPOINT_GET);
 
     // Form a string from a char buffer with a fixed length
     static void formStringFromCharBuf(String &outStr, const char *pStr, int len);

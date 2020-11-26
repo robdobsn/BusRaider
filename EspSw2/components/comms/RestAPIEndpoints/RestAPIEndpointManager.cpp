@@ -106,7 +106,8 @@ RestAPIEndpointDef* RestAPIEndpointManager::getEndpoint(const char *pEndpointStr
 // Get endpoint def matching REST API request - or NULL if none matches
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-RestAPIEndpointDef* RestAPIEndpointManager::getMatchingEndpointDef(const char *requestStr)
+RestAPIEndpointDef* RestAPIEndpointManager::getMatchingEndpointDef(const char *requestStr,
+                    RestAPIEndpointDef::EndpointMethod endpointMethod)
 {
     // Get req endpoint name
     String requestEndpoint = getNthArgStr(requestStr, 0);
@@ -122,11 +123,14 @@ RestAPIEndpointDef* RestAPIEndpointManager::getMatchingEndpointDef(const char *r
     {
         if (endpointDef._endpointType != RestAPIEndpointDef::ENDPOINT_CALLBACK)
             continue;
+        if (endpointDef._endpointMethod != endpointMethod)
+            continue;
         if (requestEndpoint.equalsIgnoreCase(endpointDef._endpointStr))
             return &endpointDef;
     }
 #ifdef WARN_ON_NON_MATCHING_ENDPOINTS
-    LOG_W(MODULE_PREFIX, "getMatchingEndpointDef %s not found", requestEndpoint.c_str());
+    LOG_W(MODULE_PREFIX, "getMatchingEndpointDef %s method %d not found", 
+                requestEndpoint.c_str(), endpointMethod);
 #endif
     return NULL;    
 }

@@ -198,7 +198,7 @@ public:
                     int foreColour, int backColour, 
                     int borderWidth, int borderColour);
     void windowClear(uint32_t winIdx);
-    void windowPut(uint32_t winIdx, uint32_t col, uint32_t row, const char* pStr);
+    void windowPut(uint32_t winIdx, uint32_t col, uint32_t row, const uint8_t* pStr);
     void windowPut(uint32_t winIdx, uint32_t col, uint32_t row, uint32_t ch);
     void windowForeground(uint32_t winIdx, DISPLAY_FX_COLOUR colour);
     void windowBackground(uint32_t winIdx, DISPLAY_FX_COLOUR colour);
@@ -239,6 +239,9 @@ private:
 
     // Console window
     uint32_t _consoleWinIdx;
+
+    // Debug timer
+    uint32_t _debugTimeLastMs;
 
     // Get framebuffer
     uint8_t* windowGetPFB(uint32_t winIdx, uint32_t col, uint32_t row);

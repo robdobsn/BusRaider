@@ -121,58 +121,54 @@ void TargetControl::programmingDone()
 
 void TargetControl::programExec(bool codeAtResetVector)
 {
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "programExec codeAtResetVector %c",
-    //         codeAtResetVector ? 'Y' : 'N');
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "programExec codeAtResetVector %c",
+            codeAtResetVector ? 'Y' : 'N');
 
     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "programExec debugActive %c", 
     //                 getTargetTracker().isTrackingActive() ? 'Y' : 'N');
     bool performHardReset = true;
+    if (_targetProgrammer.areRegistersValid())
+    {
+        // TODO 2020
+        // // Check how to set registers
+        // if (getHwManager().getOpcodeInjectEnable() || getTargetTracker().isTrackingActive())
+        // {
+        //     // Use the TargetControl module to inject instructions to set registers
+        //     Z80Registers regs;
+        //     getTargetProgrammer().getTargetRegs(regs);
+        //     getTargetTracker().startSetRegisterSequence(&regs);
+        //     performHardReset = false;
+        // }
+        // else
+        // {
+            // If the code doesn't start at 0 or a start location has been supplied,
+            // generate a code snippet to set registers and run
+            if (!codeAtResetVector || _targetProgrammer.areRegistersValid())
+            {
+                uint8_t regSetCode[MAX_REGISTER_SET_CODE_LEN];
+                Z80Registers regs;
+                _targetProgrammer.getTargetRegs(regs);
+                static const int REGISTERS_STR_MAX_LEN = 500;
+                char regsStr[REGISTERS_STR_MAX_LEN];
+                regs.format(regsStr, REGISTERS_STR_MAX_LEN);
+                LogWrite(MODULE_PREFIX, LOG_DEBUG, "Regs: %s", regsStr);
+                uint32_t codeDestAddr = _targetProgrammer.getSetRegistersCodeAddr();
+                int codeLen = TargetCPUZ80::getSnippetToSetRegs(codeDestAddr, regs, regSetCode, MAX_REGISTER_SET_CODE_LEN);
+                if (codeLen != 0)
+                {
+                    // Reg setting code
+                    LogWrite(MODULE_PREFIX, LOG_DEBUG,"Set regs snippet at %04x len %d", codeDestAddr, codeLen);
+                    _busControl.mem().blockWrite(codeDestAddr, regSetCode, codeLen, BLOCK_ACCESS_MEM);
 
-    // TODO 2020
-    // if (getTargetProgrammer().areRegistersValid())
-    // {
-    //     // Check how to set registers
-    //     if (getHwManager().getOpcodeInjectEnable() || getTargetTracker().isTrackingActive())
-    //     {
-    //         // Use the TargetControl module to inject instructions to set registers
-    //         Z80Registers regs;
-    //         getTargetProgrammer().getTargetRegs(regs);
-    //         getTargetTracker().startSetRegisterSequence(&regs);
-    //         performHardReset = false;
-    //     }
-    //     else
-    //     {
-    //         // If the code doesn't start at 0 or a start location has been supplied,
-    //         // generate a code snippet to set registers and run
-    //         if (!_busActionCodeWrittenAtResetVector || getTargetProgrammer().areRegistersValid())
-    //         {
-    //             uint8_t regSetCode[MAX_REGISTER_SET_CODE_LEN];
-    //             Z80Registers regs;
-    //             getTargetProgrammer().getTargetRegs(regs);
-    //             static const int REGISTERS_STR_MAX_LEN = 500;
-    //             char regsStr[REGISTERS_STR_MAX_LEN];
-    //             regs.format(regsStr, REGISTERS_STR_MAX_LEN);
-    //             LogWrite(MODULE_PREFIX, LOG_DEBUG, "Regs: %s", regsStr);
-    //             uint32_t codeDestAddr = 0;
-    //             if (_pCurMachine)
-    //                 _pCurMachine->getSetRegistersCodeAddr();
-    //             int codeLen = TargetCPUZ80::getSnippetToSetRegs(codeDestAddr, regs, regSetCode, MAX_REGISTER_SET_CODE_LEN);
-    //             if (codeLen != 0)
-    //             {
-    //                 // Reg setting code
-    //                 LogWrite(MODULE_PREFIX, LOG_DEBUG,"Set regs snippet at %04x len %d", codeDestAddr, codeLen);
-    //                 getHwManager().blockWrite(codeDestAddr, regSetCode, codeLen, false, false, false);
-                    
-    //                 // Reset vector
-    //                 uint8_t jumpCmd[3] = { 0xc3, uint8_t(codeDestAddr & 0xff), uint8_t((codeDestAddr >> 8) & 0xff) };
-    //                 getHwManager().blockWrite(Z80_PROGRAM_RESET_VECTOR, jumpCmd, 3, false, false, false);
-
-    //                 // TODO 2020
-    //                 // LogDumpMemory(MODULE_PREFIX, LOG_DEBUG, regSetCode, regSetCode + codeLen);
-    //             }
-    //         }
-    //     }
-    // }
+                    // Reset vector
+                    uint8_t jumpCmd[3] = { 0xc3, uint8_t(codeDestAddr & 0xff), uint8_t((codeDestAddr >> 8) & 0xff) };
+                    _busControl.mem().blockWrite(Z80_PROGRAM_RESET_VECTOR, jumpCmd, 3, BLOCK_ACCESS_MEM);
+                    // TODO 2020
+                    // LogDumpMemory(MODULE_PREFIX, LOG_DEBUG, regSetCode, regSetCode + codeLen);
+                }
+            }
+        // }
+    }
 
     // See if we need to do a hard reset
     if (performHardReset)

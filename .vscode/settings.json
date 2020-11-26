@@ -22,6 +22,11 @@
         "cstdlib": "cpp",
         "memory": "cpp",
         "future": "cpp",
-        "istream": "cpp"
+        "istream": "cpp",
+        "*.ipp": "cpp",
+        "optional": "cpp",
+        "numeric": "cpp",
+        "cmath": "cpp",
+        "ostream": "cpp"
     }
 }

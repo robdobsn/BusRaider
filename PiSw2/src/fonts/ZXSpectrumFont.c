@@ -1356,6 +1356,7 @@ WgfxFont __pZXSpectrumFont = {
     .bytesAcross = 1,
     .bytesPerChar = 8,
     .pFontData = __pZXSpectrumFontBin,
-    .fontNumChars = 128
+    .fontNumChars = 128,
+    .fontName = "ZXSpectrumFont"
 };
 

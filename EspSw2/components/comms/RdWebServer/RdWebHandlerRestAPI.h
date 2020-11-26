@@ -43,7 +43,9 @@ public:
 
         // Remove prefix on test string
         String reqStr = requestHeader.URL.substring(_restAPIPrefix.length()+1);
-        RestAPIEndpointDef* pEndpointDef = _pEndpointManager->getMatchingEndpointDef(reqStr.c_str());
+        RestAPIEndpointDef* pEndpointDef = 
+                _pEndpointManager->getMatchingEndpointDef(reqStr.c_str(), 
+                                convToRESTAPIMethod(requestHeader.extract.method));
         if (!pEndpointDef)
             return NULL;
 
@@ -60,4 +62,16 @@ public:
 private:
     RestAPIEndpointManager* _pEndpointManager;
     String _restAPIPrefix;
+
+    // Mapping from web-server method to RESTAPI method enums
+    RestAPIEndpointDef::EndpointMethod convToRESTAPIMethod(RdWebServerMethod method)
+    {
+        switch(method)
+        {
+            case WEB_METHOD_POST: return RestAPIEndpointDef::ENDPOINT_POST;
+            case WEB_METHOD_PUT: return RestAPIEndpointDef::ENDPOINT_PUT;
+            case WEB_METHOD_DELETE: return RestAPIEndpointDef::ENDPOINT_DELETE;
+            default: return RestAPIEndpointDef::ENDPOINT_GET;
+        }
+    }
 };

@@ -8,7 +8,9 @@
 #include "rdutils.h"
 #include "BusControl.h"
 #include "CommandHandler.h"
+#include "McManager.h"
 // #include "HwManager.h"
+#include "DebugHelper.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Variables
@@ -33,8 +35,8 @@ ControlAPI* ControlAPI::_pThisInstance = NULL;
 // Constructor
 // ControlAPI::ControlAPI(CommandHandler& commandHandler, HwManager& hwManager, BusControl& busControl) :
 //         _commandHandler(commandHandler), _hwManager(hwManager), _busControl(busControl)
-ControlAPI::ControlAPI(CommandHandler& commandHandler, BusControl& busControl) :
-        _commandHandler(commandHandler), _busControl(busControl)
+ControlAPI::ControlAPI(CommandHandler& commandHandler, BusControl& busControl, McManager& mcManager) :
+        _commandHandler(commandHandler), _busControl(busControl), _mcManager(mcManager)
 {
     _pThisInstance = this;
     // Sockets
@@ -123,8 +125,94 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "handleRxMsg cmdName %s json %s", cmdName, pCmdJson);
 #endif
 
-    // Check for memory/IO read
-    if (strcasecmp(cmdName, "Rd") == 0)
+    if (strcasecmp(cmdName, "ClearTarget") == 0)
+    {
+        // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ClearTarget");
+        _busControl.prog().clear();
+        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        return true;
+    }
+    else if (strcasecmp(cmdName, "ProgramTarget") == 0)
+    {
+        _busControl.ctrl().programmingStart(false);
+        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        return true;
+    }
+    else if ((strcasecmp(cmdName, "ProgramAndReset") == 0) ||
+            (strcasecmp(cmdName, "ProgramAndExec") == 0))
+    {
+        _busControl.ctrl().programmingStart(true);
+        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        return true;
+    }
+    else if (strcasecmp(cmdName, "ResetTarget") == 0)
+    {
+        // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ResetTarget");
+        _busControl.sock().reqReset(_busSocketId);
+        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        return true;
+    }
+    else if ((strcasecmp(cmdName, "FileTarget") == 0) || ((strcasecmp(cmdName, "SRECTarget") == 0)))
+    {
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "File to Target, len %d, json %s", paramsLen, pCmdJson);
+        bool rslt = _mcManager.targetFileHandler(pCmdJson, pParams, paramsLen);
+        if (rslt)
+            strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        else
+            strlcpy(pRespJson, "\"err\":\"fail\"", maxRespLen);
+        return true;
+    }
+    // else if (strncasecmp(cmdName, "SetMachine", strlen("SetMachine")) == 0)
+    // {
+    //     // Get machine name
+    //     const char* pMcName = strstr(cmdName,"=");
+    //     if (pMcName)
+    //     {
+    //         // Move to first char of actual name
+    //         pMcName++;
+    //         setMachineByName(pMcName);
+    //         LogWrite(MODULE_PREFIX, LOG_VERBOSE, "Set Machine to %s", pMcName);
+    //     }
+    //     strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+    //     return true;
+    // }
+    else if (strcasecmp(cmdName, "SetMcJson") == 0)
+    {
+        // Get mcJson
+        static char mcJson[_commandHandler.MAX_MC_SET_JSON_LEN];
+        size_t toCopy = paramsLen+1;
+        if (toCopy > _commandHandler.MAX_MC_SET_JSON_LEN)
+            toCopy = _commandHandler.MAX_MC_SET_JSON_LEN;
+        strlcpy(mcJson, (const char*)pParams, toCopy);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "SetMachine %s", mcJson);
+        bool setupOk = _mcManager.setupMachine(mcJson); 
+        if (setupOk)
+            strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        else
+            strlcpy(pRespJson, "\"err\":\"fail\"", maxRespLen);
+        return true;
+    }
+    else if (strcasecmp(cmdName, "RxHost") == 0)
+    {
+        // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "RxFromHost, len %d", dataLen);
+        // TODO 2020 add back in
+        // hostSerialAddRxCharsToBuffer(pParams, paramsLen);
+        return true;
+    }
+    else if (strcasecmp(cmdName, "sendKey") == 0)
+    {
+        char* pEnd = NULL;
+        uint8_t usbKeyCodes[_commandHandler.NUM_USB_KEYS_PASSED];
+        memset(usbKeyCodes, 0, sizeof(usbKeyCodes));
+        unsigned asciiCode = strtoul((const char*)pParams, &pEnd, 10);
+        usbKeyCodes[0] = strtoul(pEnd, &pEnd, 10);
+        unsigned usbModCode = strtoul(pEnd, &pEnd, 10);
+        asciiCode = asciiCode;
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "SendKey, %s ascii 0x%02x usbKey 0x%02x usbMod 0x%02x", 
+        //             pParams, asciiCode, usbKeyCodes[0], usbModCode);
+        _mcManager.keyHandler(usbModCode, usbKeyCodes);
+        return true;
+    } else if (strcasecmp(cmdName, "Rd") == 0)
     {
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "Rd %s %04x", pCmdJson, read32(ARM_GPIO_GPLEV0));
 
@@ -216,6 +304,7 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
                         dataLen, isIo, true, false);
         if (rslt != BR_OK)
         {
+            LogWrite(MODULE_PREFIX, LOG_WARNING, "Wr failed %s", _busControl.retcString(rslt));
             snprintf(pRespJson, maxRespLen, R"("err":"%s")", _busControl.retcString(rslt));
             return true;
         }
@@ -566,13 +655,16 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
     }
     else if (strcasecmp(cmdName, "clockHzSet") == 0)
     {
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "clockHzSet cmd %s params %s %02x %02x %02x %02x", pCmdJson, pParams, pParams[0], pParams[1], pParams[2], pParams[3]);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "clockHzSet cmd %s params %s %02x %02x %02x %02x", pCmdJson, pParams, pParams[0], pParams[1], pParams[2], pParams[3]);
         // Get clock rate required (may be in cmdJson or paramsJson)
         static const int MAX_CMD_PARAM_STR = 50;
         char paramVal[MAX_CMD_PARAM_STR+1];
         if (!jsonGetValueForKey("clockHz", pCmdJson, paramVal, MAX_CMD_PARAM_STR))
             if (!jsonGetValueForKey("clockHz", (const char*)pParams, paramVal, MAX_CMD_PARAM_STR))
+            {
+                LogWrite(MODULE_PREFIX, LOG_WARNING, "clockHzSet clockHz param not found");
                 return false;
+            }
         uint32_t clockRateHz = strtoul(paramVal, NULL, 10);
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "clockHzSet %d", clockRateHz);
 
@@ -991,10 +1083,20 @@ void ControlAPI::service()
 BR_RETURN_TYPE ControlAPI::blockAccessSync(uint32_t addr, uint8_t* pData, uint32_t len, bool iorq, 
             bool read, bool write)
 {
+    // Start raw bus access
+    _busControl.rawAccessStart();
+
     // Assert BUSRQ and wait for the bus
+    DEBUG_PULSE();
+
     BR_RETURN_TYPE retc = _busControl.bus().busRequestAndTake();
     if (retc != BR_OK)
+    {
+        _busControl.rawAccessEnd();
         return retc;
+    }
+
+    DEBUG_PULSE();
 
     // Access the block (can both write and read)
     if (write)
@@ -1004,7 +1106,13 @@ BR_RETURN_TYPE ControlAPI::blockAccessSync(uint32_t addr, uint8_t* pData, uint32
         retc = _busControl.mem().blockRead(addr, pData, 
                  len, iorq ? BLOCK_ACCESS_IO : BLOCK_ACCESS_MEM);
 
+    DEBUG_PULSE();
+
     // Release BUSRQ
     _busControl.bus().busReqRelease();
+    _busControl.rawAccessEnd();
+
+    DEBUG_PULSE();
+
     return BR_OK;
 }

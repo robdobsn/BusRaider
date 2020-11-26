@@ -104,18 +104,4 @@ private:
     {
         return computePayloadChecksum(_topicID, _payload.data(), _payload.size());
     }
-    uint32_t uint32ToPayload(uint32_t theint, uint32_t offset)
-    {
-        _payload[offset] = (char)theint & 0xFF;
-        _payload[offset+1] = (char)((theint >> 8) & 0xFF);
-        _payload[offset+2] = (char)((theint >> (8 * 2)) & 0xFF);
-        _payload[offset+3] = (char)((theint >> (8 * 3)) & 0xFF);
-        return offset+4;
-    }
-    uint32_t strToPayload(const char* pStr, uint32_t offset)
-    {
-        char* pDestPos = ((char*)_payload.data()) + offset;
-        memcpy(pDestPos, pStr, strlen(pStr));
-        return offset + strlen(pDestPos);
-    }
 };

@@ -17,7 +17,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define SYSTEM_NAME "BusRaider"
-#define SYSTEM_VERSION "3.1.8"
+#define SYSTEM_VERSION "3.1.9"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Globals
@@ -48,7 +48,7 @@ BusRaiderApp* BusRaiderApp::_pApp = NULL;
 BusRaiderApp::BusRaiderApp(Display& display, CUartMaxiSerialDevice& serial) :
     _display(display),
     _commsManager(serial, NULL),
-    _controlAPI(_commsManager.getCommandHandler(), _busControl),
+    _controlAPI(_commsManager.getCommandHandler(), _busControl, _mcManager),
     _mcManager(&_display, _commsManager.getCommandHandler(), _busControl),
     _keyInfoBufferPos(MAX_USB_KEYS_BUFFERED)
 {

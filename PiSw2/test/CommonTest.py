@@ -137,14 +137,15 @@ class CommonTest:
         except Exception as excp:
             self.logger.error(f"Failed to extract cmdName {fr}, {excp}")
 
-    def sendFrame(self, comment: str, content: Union[str,bytes], payload: bytes = None, respExpected: bool = None):
+    def sendFrame(self, comment: str, content: Union[str,bytes], payload: Union[str,bytes] = None, 
+                                    respExpected: bool = None):
         self.respAwaited = respExpected
         self.respGot = False
         if len(comment) > 0:
             self.logger.info(comment)
         self.busRaider.sendRICRESTCmdFrame(content, payload)
 
-    def sendFrameSync(self, comment: str, content: Union[str,bytes], payload: bytes = None):
+    def sendFrameSync(self, comment: str, content: Union[str,bytes], payload: Union[str,bytes] = None):
         self.respGot = False
         if len(comment) > 0:
             self.logger.info(comment)
@@ -215,9 +216,8 @@ class CommonTest:
         return inData
 
     def formFileFrame(self, fileFolder, fileName):
-        fileFrame = bytearray(b"{\"cmdName\":\"FileTarget\",\"fileName\":\"") + bytearray(fileName, "utf-8") + b"\"}\0"
+        cmdHeader = "{" + f'"cmdName":"FileTarget","fileName":"{fileName}"' + "}"
         fileData = self.getFileData(fileFolder, fileName)
         if fileData is None:
-            return None
-        fileFrame += fileData
-        return fileFrame
+            return cmdHeader, None
+        return cmdHeader, fileData

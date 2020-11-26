@@ -5131,7 +5131,8 @@ WgfxFont __p12x16Font = {
     .bytesAcross = 2,
     .bytesPerChar = 32,
     .pFontData = __pFont12x16,
-    .fontNumChars = 256
+    .fontNumChars = 256,
+    .fontName = "font12x16"
 };
 
 

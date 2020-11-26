@@ -4619,5 +4619,6 @@ WgfxFont __systemFont = {
     .bytesAcross = 1,
     .bytesPerChar = 16,
     .pFontData = __pSystemFontBin,
-    .fontNumChars = 256
+    .fontNumChars = 256,
+    .fontName = "SystemFont"
 };

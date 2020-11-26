@@ -58,7 +58,7 @@ public:
     virtual void background(DISPLAY_FX_COLOUR colour)
     {
     }
-    virtual void write(uint32_t col, uint32_t row, const char* pStr)
+    virtual void write(uint32_t col, uint32_t row, const uint8_t* pStr)
     {
     }
     virtual void write(uint32_t col, uint32_t row, uint32_t ch)

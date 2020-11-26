@@ -594,7 +594,8 @@ void PiCoProcessor::apiTargetCommandPost(const String &reqStr, String &respStr)
 {
 }
 
-void PiCoProcessor::apiTargetCommandPostContent(const String &reqStr, const uint8_t *pData, size_t len, size_t index, size_t total)
+void PiCoProcessor::apiTargetCommandPostContent(const String &reqStr, const uint8_t *pData, 
+                size_t len, size_t index, size_t total)
 {
     // Get command
     String targetCmd = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
@@ -606,8 +607,7 @@ void PiCoProcessor::apiTargetCommandPostContent(const String &reqStr, const uint
         toCopy = MAX_JSON_DATA_LEN;
     strlcpy(jsonData, (const char*) pData, toCopy);
     // Debug
-    // Log.trace("%sapiTargetCommandPostContent %s json %s\n", MODULE_PREFIX, 
-    //         reqStr.c_str(), jsonData);
+    LOG_I(MODULE_PREFIX, "apiTargetCommandPostContent %s json %s", reqStr.c_str(), jsonData);
     // Send to the Pi
     sendTargetData(targetCmd.c_str(), pData, len, 0);
 }
@@ -940,8 +940,8 @@ void PiCoProcessor::hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen)
 
         // TODO 2020
         // if (_pTargetSerial && (asciiCode != 0))
-        //     _pTargetSerial->write((char)asciiCode);
-        LOG_I(MODULE_PREFIX, "sent target char %x", (char)asciiCode);
+        //     _pTargetSerial->write(asciiCode);
+        LOG_I(MODULE_PREFIX, "sent target char %02x", asciiCode);
     }
     else if (cmdName.equalsIgnoreCase("apiReq"))
     {

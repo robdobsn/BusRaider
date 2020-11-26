@@ -13,6 +13,7 @@
 class CommandHandler;
 class BusControl;
 class HwManager;
+class McManager;
 
 class ControlAPI
 {
@@ -20,7 +21,7 @@ public:
     static const int MAX_MEM_BLOCK_READ_WRITE = 1024;
 
     // ControlAPI(CommandHandler& commandHandler, HwManager& hwManager, BusControl& busControl);
-    ControlAPI(CommandHandler& commandHandler, BusControl& busControl);
+    ControlAPI(CommandHandler& commandHandler, BusControl& busControl, McManager& mcManager);
     void init();
 
     // Service
@@ -43,6 +44,9 @@ private:
 
     // Bus access
     BusControl& _busControl;
+
+    // Machine manager
+    McManager& _mcManager;
 
 //#define USE_TARGET_TRACKER
 #ifdef USE_TARGET_TRACKER

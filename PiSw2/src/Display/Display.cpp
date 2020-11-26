@@ -121,8 +121,9 @@ void Display::statusPut(int statusElement, int statusType, const char* pStr)
     strncpy(_statusFieldStrings[statusElement], pStr, MAX_STATUS_FIELD_STRLEN-1);
     int x = fieldPositions[statusElement].x;
     int y = fieldPositions[statusElement].y;
-    windowForeground(DISPLAY_WINDOW_STATUS, (statusType == STATUS_FAIL) ? DISPLAY_FX_RED : (statusType == STATUS_NORMAL) ? DISPLAY_FX_YELLOW : DISPLAY_FX_GREEN);
-    windowWrite(DISPLAY_WINDOW_STATUS, x, y, pStr);
+    windowForeground(DISPLAY_WINDOW_STATUS, 
+            (statusType == STATUS_FAIL) ? DISPLAY_FX_RED : (statusType == STATUS_NORMAL) ? DISPLAY_FX_YELLOW : DISPLAY_FX_GREEN);
+    windowWrite(DISPLAY_WINDOW_STATUS, x, y, (const uint8_t*)pStr);
     windowForeground(DISPLAY_WINDOW_STATUS, DISPLAY_FX_WHITE);
 }
 
@@ -169,7 +170,7 @@ void Display::windowBackground(uint32_t winIdx, DISPLAY_FX_COLOUR colour)
     _displayFX.windowBackground(winIdx, colour);
 }
 
-void Display::windowWrite(uint32_t winIdx, uint32_t col, uint32_t row, const char* pStr)
+void Display::windowWrite(uint32_t winIdx, uint32_t col, uint32_t row, const uint8_t* pStr)
 {
     if (!_displayStarted)
         return;
@@ -201,7 +202,7 @@ void Display::background(DISPLAY_FX_COLOUR colour)
     windowBackground(DISPLAY_WINDOW_TARGET, colour);
 }
 
-void Display::write(uint32_t col, uint32_t row, const char* pStr)
+void Display::write(uint32_t col, uint32_t row, const uint8_t* pStr)
 {
     windowWrite(DISPLAY_WINDOW_TARGET, col, row, pStr);
 }

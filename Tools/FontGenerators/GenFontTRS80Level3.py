@@ -35,7 +35,8 @@ with open ("../src/mc_trs80l3font.c", "w+") as outFile:
     outFile.write("    .bytesAcross = " + str(bytesAcross) + ",\n")
     outFile.write("    .bytesPerChar = " + str(bytesPerChar) + ",\n")
     outFile.write("    .pFontData = __pTRS80Level3FontBin,\n")
-    outFile.write("    .fontNumChars = 192\n")
+    outFile.write("    .fontNumChars = 192,\n")
+    outFile.write("    .fontName = \"TRS80L3Font\"\n")
     outFile.write("};\n")
 
     

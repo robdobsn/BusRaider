@@ -284,7 +284,11 @@ bool McManager::setupMachine(const char* mcJson)
 
     // Setup the bus socket
     _busControl.sock().setup(_busSocketId, 
-                pMc->isMonitorMREQEnabled(), pMc->isMonitorIORQEnabled());
+                pMc->isMonitorMREQEnabled(), 
+                pMc->isMonitorIORQEnabled());
+
+    // Setup programmer
+    _busControl.prog().setSetRegistersCodeAddr(pMc->getSetRegistersCodeAddr());
 
     // See if any files to load
     static const int MAX_FILE_NAME_LEN = 100;
@@ -461,6 +465,13 @@ void McManager::sendKeyStrToTargetStatic(const char* pKeyStr)
     _commandHandler.sendKeyStrToTargetStatic(pKeyStr);
 }
 
+// Handle a key press
+void McManager::keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6])
+{
+    if (_pCurMachine)
+        _pCurMachine->keyHandler(ucModifiers, rawKeys);
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Received message handler
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -478,100 +489,6 @@ bool McManager::handleRxMsgStatic(void* pObject, const char* pCmdJson,
 bool McManager::handleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
                 char* pRespJson, unsigned maxRespLen)
 {
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "handleRxMsg %s", pCmdJson);
-    #define MAX_CMD_NAME_STR 200
-    char cmdName[MAX_CMD_NAME_STR+1];
-    if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
-        return false;
-    pRespJson[0] = 0;
-
-    if (strcasecmp(cmdName, "ClearTarget") == 0)
-    {
-        // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ClearTarget");
-        _busControl.prog().clear();
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-        return true;
-    }
-    else if (strcasecmp(cmdName, "ProgramTarget") == 0)
-    {
-        _busControl.ctrl().programmingStart(false);
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-        return true;
-    }
-    else if ((strcasecmp(cmdName, "ProgramAndReset") == 0) ||
-            (strcasecmp(cmdName, "ProgramAndExec") == 0))
-    {
-        _busControl.ctrl().programmingStart(true);
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-        return true;
-    }
-    else if (strcasecmp(cmdName, "ResetTarget") == 0)
-    {
-        // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ResetTarget");
-        _busControl.sock().reqReset(_busSocketId);
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-        return true;
-    }
-    else if ((strcasecmp(cmdName, "FileTarget") == 0) || ((strcasecmp(cmdName, "SRECTarget") == 0)))
-    {
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "File to Target, len %d, json %s", paramsLen, pCmdJson);
-        McBase* pMc = _pMcManager->getMachine();
-        if (pMc)
-            pMc->fileHandler(pCmdJson, pParams, paramsLen, _busControl.prog());
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-        return true;
-    }
-    // else if (strncasecmp(cmdName, "SetMachine", strlen("SetMachine")) == 0)
-    // {
-    //     // Get machine name
-    //     const char* pMcName = strstr(cmdName,"=");
-    //     if (pMcName)
-    //     {
-    //         // Move to first char of actual name
-    //         pMcName++;
-    //         setMachineByName(pMcName);
-    //         LogWrite(MODULE_PREFIX, LOG_VERBOSE, "Set Machine to %s", pMcName);
-    //     }
-    //     strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-    //     return true;
-    // }
-    else if (strcasecmp(cmdName, "SetMcJson") == 0)
-    {
-        // Get mcJson
-        static char mcJson[_commandHandler.MAX_MC_SET_JSON_LEN];
-        size_t toCopy = paramsLen+1;
-        if (toCopy > _commandHandler.MAX_MC_SET_JSON_LEN)
-            toCopy = _commandHandler.MAX_MC_SET_JSON_LEN;
-        strlcpy(mcJson, (const char*)pParams, toCopy);
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "SetMachine %s", mcJson);
-        bool setupOk = setupMachine(mcJson); 
-        if (setupOk)
-            strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-        else
-            strlcpy(pRespJson, "\"err\":\"fail\"", maxRespLen);
-        return true;
-    }
-    else if (strcasecmp(cmdName, "RxHost") == 0)
-    {
-        // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "RxFromHost, len %d", dataLen);
-        hostSerialAddRxCharsToBuffer(pParams, paramsLen);
-        return true;
-    }
-    else if (strcasecmp(cmdName, "sendKey") == 0)
-    {
-        char* pEnd = NULL;
-        uint8_t usbKeyCodes[_commandHandler.NUM_USB_KEYS_PASSED];
-        memset(usbKeyCodes, 0, sizeof(usbKeyCodes));
-        unsigned asciiCode = strtoul((const char*)pParams, &pEnd, 10);
-        usbKeyCodes[0] = strtoul(pEnd, &pEnd, 10);
-        unsigned usbModCode = strtoul(pEnd, &pEnd, 10);
-        asciiCode = asciiCode;
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "SendKey, %s ascii 0x%02x usbKey 0x%02x usbMod 0x%02x", 
-        //             pParams, asciiCode, usbKeyCodes[0], usbModCode);
-        if (_pCurMachine)
-            _pCurMachine->keyHandler(usbModCode, usbKeyCodes);
-        return true;
-    }
     return false;
 }
 

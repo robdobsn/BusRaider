@@ -26,7 +26,6 @@ McVariantTable McTRS80::_machineDescriptorTables[] = {
         // Processor
         McVariantTable::PROCESSOR_Z80,
         // Required display refresh rate
-        // TODO 2020
         .displayRefreshRatePerSec = 50,
         .displayPixelsX = 8 * 64,
         .displayPixelsY = 24 * 16,
@@ -44,7 +43,7 @@ McVariantTable McTRS80::_machineDescriptorTables[] = {
         .irqRate = 0,
         // Bus monitor
         .monitorIORQ = true,
-        .monitorMREQ = true,
+        .monitorMREQ = false,
         .setRegistersCodeAddr = TRS80_DISP_RAM_ADDR
     }
 };
@@ -169,7 +168,7 @@ void McTRS80::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen)
             int cellIdx = k * cols + i;
             if (!_screenBufferValid || (_screenBuffer[cellIdx] != pScrnBuffer[cellIdx]))
             {
-                pDisplay->write(i, k, (char)pScrnBuffer[cellIdx]);
+                pDisplay->write(i, k, pScrnBuffer[cellIdx]);
                 _screenBuffer[cellIdx] = pScrnBuffer[cellIdx];
             }
         }
