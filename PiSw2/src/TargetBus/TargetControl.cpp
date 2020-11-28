@@ -539,7 +539,7 @@ void TargetControl::suspend(bool suspend)
 //     // Fill in the register values
 //     if (_snippetPos == 0)
 //     {
-//         _snippetLen = getInstructionsToSetRegs(_z80Registers, _snippetBuf, MAX_REGISTER_SET_CODE_LEN);
+//         _snippetLen = getInstructionsToSetRegs(_z80Registers, _snippetBuf, MAX_EXECUTOR_CODE_LEN);
 //         if (_snippetLen == 0)
 //         {
 //             // Nothing to do
@@ -1165,7 +1165,7 @@ void TargetControl::suspend(bool suspend)
 //     //         // generate a code snippet to set registers and run
 //     //         if (!_busActionCodeWrittenAtResetVector || getTargetProgrammer().areRegistersValid())
 //     //         {
-//     //             uint8_t regSetCode[MAX_REGISTER_SET_CODE_LEN];
+//     //             uint8_t regSetCode[MAX_EXECUTOR_CODE_LEN];
 //     //             Z80Registers regs;
 //     //             getTargetProgrammer().getTargetRegs(regs);
 //     //             static const int REGISTERS_STR_MAX_LEN = 500;
@@ -1175,7 +1175,7 @@ void TargetControl::suspend(bool suspend)
 //     //             uint32_t codeDestAddr = 0;
 //     //             if (_pCurMachine)
 //     //                 _pCurMachine->getSetRegistersCodeAddr();
-//     //             int codeLen = TargetCPUZ80::getSnippetToSetRegs(codeDestAddr, regs, regSetCode, MAX_REGISTER_SET_CODE_LEN);
+//     //             int codeLen = TargetCPUZ80::getSnippetToSetRegs(codeDestAddr, regs, regSetCode, MAX_EXECUTOR_CODE_LEN);
 //     //             if (codeLen != 0)
 //     //             {
 //     //                 // Reg setting code

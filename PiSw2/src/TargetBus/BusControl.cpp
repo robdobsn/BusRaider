@@ -20,7 +20,8 @@ BusControl::BusControl()
     : _targetControl(*this), 
       _busSocketManager(*this), 
       _memoryController(*this),
-      _busRawAccess(_clockGenerator)
+      _busRawAccess(_clockGenerator),
+      _hwManager(*this)
 {
     // Not init yet
     _isInitialized = false;

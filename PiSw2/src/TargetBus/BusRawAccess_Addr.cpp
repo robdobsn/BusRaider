@@ -6,6 +6,7 @@
 #include "lowlev.h"
 #include "lowlib.h"
 #include <circle/bcm2835.h>
+#include "DebugHelper.h"
 
 // Module name
 static const char MODULE_PREFIX[] = "BusRawAddr";

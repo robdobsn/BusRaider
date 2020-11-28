@@ -1,9 +1,10 @@
 {
     "configurations": [
         {
-            "name": "ESP32",
-            "includePath": [],
-            "forcedInclude": [],
+            "name": "EspSw2",
+            "includePath": [
+                "${workspaceFolder}/EspSw2"
+            ],
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "c11",
             "cppStandard": "c++17",
@@ -17,8 +18,7 @@
             "forcedInclude": [],
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "c11",
-            "cppStandard": "c++17",
-            "compileCommands": "${workspaceFolder}/EspSw2/build/compile_commands.json"
+            "cppStandard": "c++17"
         }
     ],
     "version": 4

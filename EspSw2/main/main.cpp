@@ -144,6 +144,7 @@ extern void mainTask(void *pvParameters);
 
 // Include WiFi functionality
 #define INCLUDE_WIFI_FUNCTIONALITY
+#define INCLUDE_WEB_SERVER_FUNCTIONALITY
 
 // Debug
 static const char* MODULE_NAME = "MainTask";
@@ -192,7 +193,9 @@ uint32_t laststatsdumpms = 0;
 #ifdef INCLUDE_WIFI_FUNCTIONALITY
 #include <NetworkManager.h>
 #include <NetDiscovery.h>
+#ifdef INCLUDE_WEB_SERVER_FUNCTIONALITY
 #include <WebServer.h>
+#endif
 #endif
 #include <CommandSerial.h>
 #include <CommandSocket.h>
@@ -303,7 +306,7 @@ void mainTask(void *pvParameters)
     // ESP OTA Update
     ESPOTAUpdate _espotaUpdate("ESPOTAUpdate", defaultSystemConfig, &_sysTypeConfig, NULL);
 
-#ifdef INCLUDE_WIFI_FUNCTIONALITY
+#ifdef INCLUDE_WEB_SERVER_FUNCTIONALITY
     // WebServer
     WebServer _webServer("WebServer", defaultSystemConfig, &_sysTypeConfig, NULL);
 #endif
@@ -330,7 +333,7 @@ void mainTask(void *pvParameters)
     // System module manager
     _SysManager.setup();
 
-#ifdef INCLUDE_WIFI_FUNCTIONALITY
+#ifdef INCLUDE_WEB_SERVER_FUNCTIONALITY
     // Web server add files
     _webServer.serveStaticFiles("/files/spiffs", "/spiffs/");
     _webServer.serveStaticFiles("/files/sd", "/sd/");

@@ -5,48 +5,47 @@
 #include <stdint.h>
 #include "TargetCPU.h"
 
-class HwManager;
 class BusControl;
 
 class HwBase
 {
 public:
 
-    HwBase(HwManager& hwManager, BusControl& busControl);
+    HwBase(BusControl& busControl);
 
-    // Handle a completed bus action
-    virtual void handleBusActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
-            BR_RETURN_TYPE rslt);
+    // // Handle a completed bus action
+    // virtual void handleBusActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
+    //         BR_RETURN_TYPE rslt);
 
-    // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
-    virtual void handleMemOrIOReq(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
+    // // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
+    // virtual void handleMemOrIOReq(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal);
 
-    // Set emulation mode
-    virtual void setMemoryEmulationMode(bool val);
+    // // Set emulation mode
+    // virtual void setMemoryEmulationMode(bool val);
 
-    // Set paging enable
-    virtual void setMemoryPagingEnable(bool val);
+    // // Set paging enable
+    // virtual void setMemoryPagingEnable(bool val);
 
-    // Page out RAM/ROM for opcode injection
-    virtual void pageOutForInjection(bool pageOut);
+    // // Page out RAM/ROM for opcode injection
+    // virtual void pageOutForInjection(bool pageOut);
 
-    // Mirror mode
-    virtual void setMirrorMode(bool val);
-    virtual void mirrorClone();
+    // // Mirror mode
+    // virtual void setMirrorMode(bool val);
+    // virtual void mirrorClone();
 
-    // Block access to hardware
-    virtual BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, 
-                bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
-    virtual BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, 
-                bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
+    // // Block access to hardware
+    // virtual BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, 
+    //             bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
+    // virtual BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, 
+    //             bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
 
-    // Get mirror memory for address
-    virtual uint8_t* getMirrorMemForAddr(uint32_t addr);
+    // // Get mirror memory for address
+    // virtual uint8_t* getMirrorMemForAddr(uint32_t addr);
 
-    // Tracer interface to hardware
-    virtual void tracerClone();
-    virtual void tracerHandleAccess(uint32_t addr, uint32_t data, 
-            uint32_t flags, uint32_t& retVal);
+    // // Tracer interface to hardware
+    // virtual void tracerClone();
+    // virtual void tracerHandleAccess(uint32_t addr, uint32_t data, 
+    //         uint32_t flags, uint32_t& retVal);
 
     // Is enabled
     virtual bool isEnabled()
@@ -76,7 +75,6 @@ public:
     }
 
 protected:
-    HwManager& _hwManager;
     BusControl& _busControl;
     bool _enabled;
     const char* _pName;

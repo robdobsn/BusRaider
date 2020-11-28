@@ -357,13 +357,12 @@ void BusSocketManager::busAccessCallback(uint32_t addr, uint32_t data,
             uint32_t flags, uint32_t& curRetVal)
 {
     // Send this to all bus sockets
-    uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
     for (uint32_t sockIdx = 0; sockIdx < _busSocketCount; sockIdx++)
     {
         if (_busSockets[sockIdx].enabled && _busSockets[sockIdx].busAccessCallback)
         {
             _busSockets[sockIdx].busAccessCallback(_busSockets[sockIdx].pSourceObject,
-                             addr, data, flags, retVal);
+                             addr, data, flags, curRetVal);
             // TODO
             // if (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK)
             //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "%d IORQ %s from %04x %02x", sockIdx,

@@ -5,11 +5,10 @@
 
 #include <string.h> 
 #include "HwBase.h"
-#include "logging.h"
-#include "BusControl.h"
-#include "CommandHandler.h"
 
 // #define DEBUG_IO_ACCESS 1
+
+class BusControl;
 
 #ifdef DEBUG_IO_ACCESS
 class DebugIOPortAccess
@@ -25,136 +24,139 @@ class HwManager
 {
 public:
     // Constructor
-    HwManager(CommandHandler& commandHandler, BusControl& busControl);
+    HwManager(BusControl& busControl);
 
-    // Init
-    void init();
+    // Get code snippet to setup hardware
+    uint32_t getSnippetToSetupHw(uint32_t codeLocation, uint8_t* pCodeBuffer, uint32_t codeMaxlen);
 
-    // Service
-    void service();
+//     // Init
+//     void init();
 
-    // Manage hardware
-    static void addHardwareElementStatic(HwBase* pHw);
+//     // Service
+//     void service();
 
-    // Memory emulation mode 
-    void setMemoryEmulationMode(bool val);
-    bool isEmulatingMemory()
-    {
-        return _isEmulatingMemory;
-    }
+//     // Manage hardware
+//     static void addHardwareElementStatic(HwBase* pHw);
 
-    // Memory paging enable 
-    void setMemoryPagingEnable(bool val);
-    bool getMemoryPagingEnable()
-    {
-        return _memoryPagingEnable;
-    }
+//     // Memory emulation mode 
+//     void setMemoryEmulationMode(bool val);
+//     bool isEmulatingMemory()
+//     {
+//         return _isEmulatingMemory;
+//     }
 
-    // Opcode inject enable 
-    void setOpcodeInjectEnable(bool val);
-    bool getOpcodeInjectEnable()
-    {
-        return _opcodeInjectEnable;
-    }
+//     // Memory paging enable 
+//     void setMemoryPagingEnable(bool val);
+//     bool getMemoryPagingEnable()
+//     {
+//         return _memoryPagingEnable;
+//     }
 
-    // Page out RAM/ROM for opcode injection
-    void pageOutForInjection(bool pageOut);
+//     // Opcode inject enable 
+//     void setOpcodeInjectEnable(bool val);
+//     bool getOpcodeInjectEnable()
+//     {
+//         return _opcodeInjectEnable;
+//     }
 
-    // Mirror memory mode - read/write to hardware enacts on mirror
-    void setMirrorMode(bool val);
-    void mirrorClone();
+//     // Page out RAM/ROM for opcode injection
+//     void pageOutForInjection(bool pageOut);
 
-    // Block access to hardware
-    uint32_t getMaxAddress();
-    BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, 
-                bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
-    BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, 
-                bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
+//     // Mirror memory mode - read/write to hardware enacts on mirror
+//     void setMirrorMode(bool val);
+//     void mirrorClone();
 
-    // Tracer interface to hardware
-    void tracerClone();
-    void tracerHandleAccess(uint32_t addr, uint32_t data, 
-            uint32_t flags, uint32_t& retVal);
+//     // Block access to hardware
+//     uint32_t getMaxAddress();
+//     BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pBuf, uint32_t len, 
+//                 bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
+//     BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pBuf, uint32_t len, 
+//                 bool busRqAndRelease, bool iorq, bool forceMirrorAccess);
 
-    // Enable/Disable
-    bool enableHw(const char* hwName, bool enable);
-    void disableAll();
-    void configureHw(const char* hwName, const char* hwDefJson);
+//     // Tracer interface to hardware
+//     void tracerClone();
+//     void tracerHandleAccess(uint32_t addr, uint32_t data, 
+//             uint32_t flags, uint32_t& retVal);
 
-    // Get mirror memory for address
-    uint8_t* getMirrorMemForAddr(uint32_t addr);
+//     // Enable/Disable
+//     bool enableHw(const char* hwName, bool enable);
+//     void disableAll();
+//     void configureHw(const char* hwName, const char* hwDefJson);
 
-    // Setup from Json
-    void setupFromJson(const char* jsonKey, const char* hwJson);
+//     // Get mirror memory for address
+//     uint8_t* getMirrorMemForAddr(uint32_t addr);
 
-    // Get bus socket ID
-    int getBusSocketId()
-    {
-        return _busSocketId;
-    }
+    // // Setup from Json
+    // void setupFromJson(const char* jsonKey, const char* hwJson);
 
-    // Check if bus can be accessed directly
-    bool busAccessAvailable();
-private:
+//     // Get bus socket ID
+//     int getBusSocketId()
+//     {
+//         return _busSocketId;
+//     }
 
-    // Singleton instance
-    static HwManager* _pThisInstance;
+//     // Check if bus can be accessed directly
+//     bool busAccessAvailable();
+// private:
 
-    // Command Handler
-    CommandHandler& _commandHandler;
+//     // Singleton instance
+//     static HwManager* _pThisInstance;
+
+//     // Command Handler
+//     CommandHandler& _commandHandler;
 
     // Bus access
     BusControl& _busControl;
 
-    // Hardware slots
-    static const int MAX_HARDWARE = 10;
-    static const int MAX_HARDWARE_NAME_LEN = 100;
-    HwBase* _pHw[MAX_HARDWARE];
-    int _numHardware;
+    // // Hardware slots
+    // static const int MAX_HARDWARE = 10;
+    // static const int MAX_HARDWARE_NAME_LEN = 100;
+    // HwBase* _pHw[MAX_HARDWARE];
+    // int _numHardware;
 
-    // Bus socket we're attached to
-    int _busSocketId;   
+//     // Bus socket we're attached to
+//     int _busSocketId;   
 
-    // Comms socket we're attached to and setup info
-    int _commsSocketId;
+//     // Comms socket we're attached to and setup info
+//     int _commsSocketId;
 
-    // Memory emulation mode
-    bool _isEmulatingMemory;
+//     // Memory emulation mode
+//     bool _isEmulatingMemory;
 
-    // Mirror memory mode
-    bool _mirrorMode;
+//     // Mirror memory mode
+//     bool _mirrorMode;
 
-    // Paging mode
-    bool _memoryPagingEnable;
+//     // Paging mode
+//     bool _memoryPagingEnable;
 
-    // Opcode injection mode
-    bool _opcodeInjectEnable;
+//     // Opcode injection mode
+//     bool _opcodeInjectEnable;
 
     // Default hardware list (to add if no hardware specified)
     static const char* _pDefaultHardwareList;
 
-#ifdef DEBUG_IO_ACCESS
-    // Debug collection of IO accesses
-    static const int DEBUG_MAX_IO_PORT_ACCESSES = 500;
-    DebugIOPortAccess _debugIOPortBuf[DEBUG_MAX_IO_PORT_ACCESSES];
-    RingBufferPosn _debugIOPortPosn;
-#endif
+// #ifdef DEBUG_IO_ACCESS
+//     // Debug collection of IO accesses
+//     static const int DEBUG_MAX_IO_PORT_ACCESSES = 500;
+//     DebugIOPortAccess _debugIOPortBuf[DEBUG_MAX_IO_PORT_ACCESSES];
+//     RingBufferPosn _debugIOPortPosn;
+// #endif
 
-    // Handle messages (telling us to start/stop)
-    static bool handleRxMsgStatic(void* pObject, const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
-                    char* pRespJson, unsigned maxRespLen);
-    bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
-                    char* pRespJson, unsigned maxRespLen);
+//     // Handle messages (telling us to start/stop)
+//     static bool handleRxMsgStatic(void* pObject, const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
+//                     char* pRespJson, unsigned maxRespLen);
+//     bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
+//                     char* pRespJson, unsigned maxRespLen);
                     
-    // Reset complete callback
-    static void busActionActiveStatic(void* pObject, BR_BUS_ACTION actionType, 
-                BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt);
-    void busActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
-                BR_RETURN_TYPE rslt);
+//     // Reset complete callback
+//     static void busActionActiveStatic(void* pObject, BR_BUS_ACTION actionType, 
+//                 BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt);
+//     void busActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
+//                 BR_RETURN_TYPE rslt);
 
-    // Wait interrupt handler
-    static void handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t data, 
-            uint32_t flags, uint32_t& retVal);
-    void handleWaitInterrupt(uint32_t addr, uint32_t data, 
-            uint32_t flags, uint32_t& retVal);
+//     // Wait interrupt handler
+//     static void handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t data, 
+//             uint32_t flags, uint32_t& retVal);
+//     void handleWaitInterrupt(uint32_t addr, uint32_t data, 
+//             uint32_t flags, uint32_t& retVal);
 };

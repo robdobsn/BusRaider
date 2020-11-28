@@ -19,6 +19,7 @@
 #include "MemoryController.h"
 #include "BusRawAccess.h"
 #include "BusControlSettings.h"
+#include "HwManager.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Bus control
@@ -79,6 +80,12 @@ public:
         return _busRawAccess;
     }
 
+    // Hardware
+    inline HwManager& hw()
+    {
+        return _hwManager;
+    }
+
     // Get return type string
     const char* retcString(BR_RETURN_TYPE retc)
     {
@@ -119,4 +126,7 @@ private:
 
     // Bus settings
     BusControlSettings _busSettings;
+
+    // Hardware manager
+    HwManager _hwManager;
 };

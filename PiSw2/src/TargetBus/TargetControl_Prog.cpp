@@ -145,7 +145,8 @@ void TargetControl::programExec(bool codeAtResetVector)
             // generate a code snippet to set registers and run
             if (!codeAtResetVector || _targetProgrammer.areRegistersValid())
             {
-                uint8_t regSetCode[MAX_REGISTER_SET_CODE_LEN];
+                // Get registers and code address to set
+                uint8_t executorCode[MAX_EXECUTOR_CODE_LEN];
                 Z80Registers regs;
                 _targetProgrammer.getTargetRegs(regs);
                 static const int REGISTERS_STR_MAX_LEN = 500;
@@ -153,18 +154,26 @@ void TargetControl::programExec(bool codeAtResetVector)
                 regs.format(regsStr, REGISTERS_STR_MAX_LEN);
                 LogWrite(MODULE_PREFIX, LOG_DEBUG, "Regs: %s", regsStr);
                 uint32_t codeDestAddr = _targetProgrammer.getSetRegistersCodeAddr();
-                int codeLen = TargetCPUZ80::getSnippetToSetRegs(codeDestAddr, regs, regSetCode, MAX_REGISTER_SET_CODE_LEN);
-                if (codeLen != 0)
+
+                // Code for hardware setup
+                uint32_t hwCodeLen = _busControl.hw().getSnippetToSetupHw(codeDestAddr, executorCode, MAX_EXECUTOR_CODE_LEN);
+
+                // Code to set regs
+                uint32_t regsCodeLen = TargetCPUZ80::getSnippetToSetRegs(codeDestAddr+hwCodeLen, regs, executorCode+hwCodeLen, 
+                                    MAX_EXECUTOR_CODE_LEN-hwCodeLen);
+                uint32_t totalCodeLen = hwCodeLen + regsCodeLen;
+                if (totalCodeLen != 0)
                 {
-                    // Reg setting code
-                    LogWrite(MODULE_PREFIX, LOG_DEBUG,"Set regs snippet at %04x len %d", codeDestAddr, codeLen);
-                    _busControl.mem().blockWrite(codeDestAddr, regSetCode, codeLen, BLOCK_ACCESS_MEM);
+                    // Executor code
+                    LogWrite(MODULE_PREFIX, LOG_DEBUG,"Set hw & regs snippet at %04x len %d starts %02x %02x %02x %02x", 
+                                codeDestAddr, totalCodeLen, executorCode[0], executorCode[1], executorCode[2], executorCode[3]);
+                    _busControl.mem().blockWrite(codeDestAddr, executorCode, totalCodeLen, BLOCK_ACCESS_MEM);
 
                     // Reset vector
                     uint8_t jumpCmd[3] = { 0xc3, uint8_t(codeDestAddr & 0xff), uint8_t((codeDestAddr >> 8) & 0xff) };
                     _busControl.mem().blockWrite(Z80_PROGRAM_RESET_VECTOR, jumpCmd, 3, BLOCK_ACCESS_MEM);
                     // TODO 2020
-                    // LogDumpMemory(MODULE_PREFIX, LOG_DEBUG, regSetCode, regSetCode + codeLen);
+                    // LogDumpMemory(MODULE_PREFIX, LOG_DEBUG, executorCode, executorCode + totalCodeLen);
                 }
             }
         // }

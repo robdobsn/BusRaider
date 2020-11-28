@@ -71,6 +71,17 @@ public:
         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
         digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
     }
+    void nopulse()
+    {
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+        digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+    }
     int _vals[NUM_DEBUG_VALS];
     bool _valIsValid[NUM_DEBUG_VALS];
 };
@@ -81,3 +92,4 @@ extern DebugHelper __debugHelper;
 #define DEBUG_VAL_PEAK(valIdx,val) __debugHelper.peak(valIdx, val)
 #define DEBUG_VAL_INC(valIdx) __debugHelper.inc(valIdx)
 #define DEBUG_PULSE() __debugHelper.pulse();
+#define DEBUG_NO_PULSE() __debugHelper.nopulse();

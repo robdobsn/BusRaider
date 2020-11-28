@@ -14,8 +14,8 @@ class TargetCPUZ80
 {
 public:
 
-    static int getInjectToSetRegs(Z80Registers& regs, uint8_t* pCodeBuffer, uint32_t codeMaxlen);
-    static int getSnippetToSetRegs(uint32_t codeLocation, Z80Registers& regs, uint8_t* pCodeBuffer, uint32_t codeMaxlen);
+    static uint32_t getInjectToSetRegs(Z80Registers& regs, uint8_t* pCodeBuffer, uint32_t codeMaxlen);
+    static uint32_t getSnippetToSetRegs(uint32_t codeLocation, Z80Registers& regs, uint8_t* pCodeBuffer, uint32_t codeMaxlen);
     static void store16BitVal(uint8_t arry[], int offset, uint16_t val);
 
 };

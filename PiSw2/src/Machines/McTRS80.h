@@ -58,6 +58,7 @@ private:
     bool _screenBufferValid;
 
     // Buffer for Keyboard mapping
+    static const int TRS80_KEY_BYTES = 8;
     uint8_t _keyBuffer[TRS80_KEYBOARD_RAM_SIZE];
     bool _keyBufferDirty;
 

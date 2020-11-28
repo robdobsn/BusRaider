@@ -13,6 +13,8 @@
 
 static const char* MODULE_PREFIX = "TRS80";
 
+#define DEBUG_TRS80_KEYBOARD
+
 extern WgfxFont __TRS80Level3Font;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -126,6 +128,17 @@ void McTRS80::refreshDisplay()
     // if (_keyBufferDirty && _busControl.isEmulatingMemory())
     if (_keyBufferDirty)
     {
+#ifdef DEBUG_TRS80_KEYBOARD
+        for (uint32_t j = 0; j < TRS80_KEYBOARD_RAM_SIZE; j++) 
+        {
+            if (_keyBuffer[j] != 0)
+            {
+                LogWrite(MODULE_PREFIX, LOG_DEBUG, "First key non 0 at %04x == %02x",
+                        TRS80_KEYBOARD_ADDR + j, _keyBuffer[j]);
+                break;
+            }
+        }
+#endif
         _busControl.mem().blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, BLOCK_ACCESS_MEM);
         _keyBufferDirty = false;
     }
@@ -184,7 +197,9 @@ void McTRS80::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen)
 
 void McTRS80::keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6])
 {
-    // LogWrite(FromTRS80, 4, "Key %02x %02x", ucModifiers, rawKeys[0]);
+#ifdef DEBUG_TRS80_KEYBOARD
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "keyHandler %02x %02x", ucModifiers, rawKeys[0]);
+#endif
 
     // TRS80 keyboard is mapped as follows
     // Addr Bit 0       1       2       3       4       5       6       7
@@ -197,7 +212,6 @@ void McTRS80::keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[
     // 3840     Enter   Clear   Break   Up      Down    Left    Right   Space
     // 3880     Shift   *****                   Control
 
-    static const int TRS80_KEY_BYTES = 8;
     uint8_t keybdBytes[TRS80_KEY_BYTES];
     for (int i = 0; i < TRS80_KEY_BYTES; i++)
         keybdBytes[i] = 0;
@@ -324,12 +338,14 @@ void McTRS80::keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[
 
     // Build RAM map
     uint8_t kbdMap[TRS80_KEYBOARD_RAM_SIZE];
-    for (uint32_t i = 0; i < TRS80_KEYBOARD_RAM_SIZE; i++) {
+    for (uint32_t i = 0; i < TRS80_KEYBOARD_RAM_SIZE; i++) 
+    {
         // Clear initially
         kbdMap[i] = 0;
         // Set all locations that would be set in real TRS80 due to
         // matrix operation of keyboard on address lines
-        for (int j = 0; j < TRS80_KEY_BYTES; j++) {
+        for (int j = 0; j < TRS80_KEY_BYTES; j++) 
+        {
             if (i & (1 << j))
                 kbdMap[i] |= keybdBytes[j];
         }
@@ -421,7 +437,7 @@ void McTRS80::busAccessCallback( uint32_t addr,  uint32_t data,
     if ((flags & BR_CTRL_BUS_RD_MASK) && (flags & BR_CTRL_BUS_IORQ_MASK))
     {
         // Decode port
-        if (addr == 0x13)  // Joystick
+        if ((addr & 0xff) == 0x13)  // Joystick
         {
             // Indicate no buttons are pressed
             retVal = 0xff;

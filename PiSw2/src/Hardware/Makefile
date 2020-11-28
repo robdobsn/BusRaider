@@ -4,17 +4,16 @@
 
 CIRCLEHOME = ../../circle
 
-OBJS	= 
-# HwManager.o HwBase.o 
+OBJS	= HwManager.o HwBase.o 
 # HwRAMROM.o
 
-INCLUDE	+= -I ../system -I ../TargetBus -I ../comms -I ../fonts
+INCLUDE	+= -I ../system -I ../TargetBus -I ../Hardware
 
 brHardware.a: $(OBJS)
 	@echo "  AR    $@"
 	@rm -f $@
 	@$(AR) cr $@ $(OBJS)
 
-include ../Rules.mk
+include $(CIRCLEHOME)/Rules.mk
 
 -include $(DEPS)

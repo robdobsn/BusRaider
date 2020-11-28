@@ -26,7 +26,7 @@ LIBS	= 	$(CIRCLEHOME)/lib/usb/libusb.a \
 			FileFormats/brFileFormats.a \
 			Display/brDisplay.a
 
-INCLUDE	+= -I system -I comms -I web -I TargetBus -I Display -I Machines -I TerminalEmulation -I SelfTest
+INCLUDE	+= -I system -I comms -I web -I TargetBus -I Display -I Machines -I TerminalEmulation -I SelfTest -I Hardware
 
 include Rules.mk
 

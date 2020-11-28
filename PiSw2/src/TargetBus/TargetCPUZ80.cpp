@@ -23,7 +23,7 @@ void TargetCPUZ80::store16BitVal(uint8_t arry[], int offset, uint16_t val)
 // Handle register setting when injecting opcodes
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int TargetCPUZ80::getInjectToSetRegs(Z80Registers& regs, uint8_t* pCodeBuffer, uint32_t codeMaxlen)
+uint32_t TargetCPUZ80::getInjectToSetRegs(Z80Registers& regs, uint8_t* pCodeBuffer, uint32_t codeMaxlen)
 {
     // Instructions to set register values
     static uint8_t regSetInstructions[] = 
@@ -90,7 +90,7 @@ int TargetCPUZ80::getInjectToSetRegs(Z80Registers& regs, uint8_t* pCodeBuffer, u
 
     if (codeMaxlen >= sizeof(regSetInstructions))
     {
-        memcopyfast(pCodeBuffer, regSetInstructions, codeMaxlen);
+        memcopyfast(pCodeBuffer, regSetInstructions, sizeof(regSetInstructions));
         return sizeof(regSetInstructions);
     }
     return 0;
@@ -100,7 +100,7 @@ int TargetCPUZ80::getInjectToSetRegs(Z80Registers& regs, uint8_t* pCodeBuffer, u
 // Handle snippet to set regs
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int TargetCPUZ80::getSnippetToSetRegs(uint32_t codeLocation, Z80Registers& regs, uint8_t* pCodeBuffer, uint32_t codeMaxlen)
+uint32_t TargetCPUZ80::getSnippetToSetRegs(uint32_t codeLocation, Z80Registers& regs, uint8_t* pCodeBuffer, uint32_t codeMaxlen)
 {
     // Instructions to set register values
     static uint8_t regSetInstructions[] = 
@@ -173,7 +173,7 @@ int TargetCPUZ80::getSnippetToSetRegs(uint32_t codeLocation, Z80Registers& regs,
 
     if (codeMaxlen >= sizeof(regSetInstructions))
     {
-        memcopyfast(pCodeBuffer, regSetInstructions, codeMaxlen);
+        memcopyfast(pCodeBuffer, regSetInstructions, sizeof(regSetInstructions));
         return sizeof(regSetInstructions);
     }
     return 0;

@@ -83,4 +83,5 @@ enum BR_BUS_ACTION_REASON {
 #define BR_CTRL_BUS_BUSRQ_MASK (1 << BR_CTRL_BUS_BUSRQ_BITNUM)
 #define BR_CTRL_BUS_BUSACK_MASK (1 << BR_CTRL_BUS_BUSACK_BITNUM)
 
-#define MAX_REGISTER_SET_CODE_LEN 100
+// Max length of code generated to execute a program
+#define MAX_EXECUTOR_CODE_LEN 200

@@ -17,7 +17,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define SYSTEM_NAME "BusRaider"
-#define SYSTEM_VERSION "3.1.9"
+#define SYSTEM_VERSION "3.1.11"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Globals
@@ -33,9 +33,13 @@ const char* PROG_LINKS_1 = "https://robdobson.com/tag/raider";
 
 // Debug
 // #define DEBUG_APP
+// #define DEBUG_APP_KEYS
+// #define DEBUG_ESP_STATUS
+// #define DEBUG_PROGRESS_BAR
+// #define DEBUG_RX_MSGS
 
 // Log string
-#ifdef DEBUG_APP
+#if defined(DEBUG_APP) || defined(DEBUG_APP_KEYS)
 static const char* MODULE_PREFIX = "BusRaiderApp";
 #endif
 
@@ -60,7 +64,6 @@ BusRaiderApp::BusRaiderApp(Display& display, CUartMaxiSerialDevice& serial) :
 void BusRaiderApp::init()
 {
     clear();
-
     _commsManager.setup();
     _busControl.init();
     _controlAPI.init();
@@ -99,7 +102,9 @@ void BusRaiderApp::peripheralStatus(bool usbOk, bool keyboardOk)
     // USB
     if (usbOk) 
     {
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Checking for keyboards...");
+#ifdef DEBUG_APP_KEYS
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Checking for keyboards...");
+#endif
         if (keyboardOk) 
         {
             _display.statusPut(Display::STATUS_FIELD_KEYBOARD, Display::STATUS_HILITE, "Keyboard OK, F2 for Settings");
@@ -157,7 +162,9 @@ void BusRaiderApp::service()
         if (!commandHandler.isFileTransferInProgress())
         {
             commandHandler.sendAPIReq("queryESPHealth");
-            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Req ESP32 status as not received recently");
+#ifdef DEBUG_ESP_STATUS
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "Req ESP32 status as not received recently");
+#endif
         }
         _esp32StatusLastRxMs = millis();
     }
@@ -169,7 +176,9 @@ void BusRaiderApp::service()
         {
             commandHandler.sendAPIReq("querycurmc");
             _esp32LastMachineReqUs = micros();
-            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Req ESP32 cur machine");
+#ifdef DEBUG_ESP_STATUS
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "Req ESP32 cur machine");
+#endif
         }
     }
 
@@ -179,12 +188,17 @@ void BusRaiderApp::service()
     // Service keyboard
     if (!_inKeyboardRoutine || _selfTestMode)
     {
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Keys in buffer %d", _keyInfoBufferPos.count());
+#ifdef DEBUG_APP_KEYS
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Keys in buffer %d", _keyInfoBufferPos.count());
+#endif
         if (_keyInfoBufferPos.canGet())
         {
             KeyInfo* pKeyInfo = &_keyInfoBuffer[_keyInfoBufferPos.posToGet()];
             _keyInfoBufferPos.hasGot();
-            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Keyattop %02x %02x %02x", pKeyInfo->rawKeys[0], pKeyInfo->rawKeys[1], pKeyInfo->rawKeys[2]);
+#ifdef DEBUG_APP_KEYS
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "KeyAtTop %02x %02x %02x", 
+                        pKeyInfo->rawKeys[0], pKeyInfo->rawKeys[1], pKeyInfo->rawKeys[2]);
+#endif
             if (!_inKeyboardRoutine)
             {
                 _inKeyboardRoutine = true;
@@ -194,7 +208,9 @@ void BusRaiderApp::service()
             else
             {
                 const char* pKeyStr = McTerminal::convertRawToKeyString(pKeyInfo->modifiers, pKeyInfo->rawKeys);
-                // LogWrite("MODULE_PREFIX", LogNotice, "Key converted to %s", pKeyStr);
+#ifdef DEBUG_APP_KEYS
+                LogWrite(MODULE_PREFIX, LOG_DEBUG, "Key converted to %s", pKeyStr);
+#endif
                 if (strlen(pKeyStr) != 0)
                     _selfTestKeyWaiting = pKeyStr[0];
             }
@@ -218,7 +234,9 @@ bool BusRaiderApp::handleRxMsgStatic(void* pObject, const char* pCmdJson,
 bool BusRaiderApp::handleRxMsg(const char* pCmdJson, const uint8_t* pParams, 
                 unsigned paramsLen, char* pRespJson, unsigned maxRespLen)
 {
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "rxMsg %s", pCmdJson);
+#ifdef DEBUG_RX_MSGS
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "rxMsg %s", pCmdJson);
+#endif
     #define MAX_CMD_NAME_STR 200
     char cmdName[MAX_CMD_NAME_STR+1];
     if (!jsonGetValueForKey("cmdName", pCmdJson, cmdName, MAX_CMD_NAME_STR))
@@ -241,7 +259,9 @@ bool BusRaiderApp::handleRxMsg(const char* pCmdJson, const uint8_t* pParams,
     else if (strcasecmp(cmdName, "queryCurMcResp") == 0)
     {
         // Set machine
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "queryCurMcResp %s", pCmdJson);
+#ifdef DEBUG_RX_MSGS
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "queryCurMcResp %s", pCmdJson);
+#endif
         _mcManager.setupMachine(pCmdJson);
         // Got ok - no need to re-request
         _esp32LastMachineValid = true;
@@ -394,12 +414,12 @@ void BusRaiderApp::statusDisplayUpdate()
             int cnt = 0;
             if (__debugHelper.get(i, cnt))
             {
-                snprintf(refreshStr, sizeof(refreshStr), "[%d]=%d,", i, cnt);
+                snprintf(refreshStr, sizeof(refreshStr), "%d=%d,", i, cnt);
                 strlcat(statusStr, refreshStr, MAX_STATUS_STR_LEN);
             }
         }
         strlcat(statusStr, "                                    ", MAX_STATUS_STR_LEN);
-        _display.statusPut(Display::STATUS_FIELD_ASSERTS, Display::STATUS_FAIL, statusStr);
+        _display.statusPut(Display::STATUS_FIELD_ASSERTS, Display::STATUS_NORMAL, statusStr);
 
         // Get file receive status
         uint32_t fileLen = 0, filePos = 0;
@@ -427,8 +447,10 @@ void BusRaiderApp::statusDisplayUpdate()
             _display.statusPut(Display::STATUS_FIELD_FILE_STATUS, Display::STATUS_FAIL, "                                                  ");
         }
 
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "filelen %d filepos %d progbarlen %d dispStr %s", 
-        //             fileLen, filePos, progressBarLen, fileStatusStr);
+#ifdef DEBUG_PROGRESS_BAR
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "filelen %d filepos %d progbarlen %d dispStr %s", 
+                    fileLen, filePos, progressBarLen, fileStatusStr);
+#endif
     }
 }
 
@@ -478,8 +500,10 @@ void BusRaiderApp::handleUSBKeypress(unsigned char ucModifiers,
         if (_immediateModeLineLen < IMM_MODE_LINE_MAXLEN)
         {
             const char* pKeyStr = McTerminal::convertRawToKeyString(ucModifiers, rawKeys);
-            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "KEY asc %02x mod %02x raw %02x %02x %02x",
-            //             pKeyStr[0], ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
+#ifdef DEBUG_APP_KEYS
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "KEY asc %02x mod %02x raw %02x %02x %02x",
+                        pKeyStr[0], ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
+#endif
             if (strlen(pKeyStr) == 0)
                 return;
             if (pKeyStr[0] == 0x08)
@@ -541,10 +565,10 @@ void BusRaiderApp::handleUSBKeypress(unsigned char ucModifiers,
     }
 
     // Send to the target machine to process
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
-    McBase* pMc = _mcManager.getMachine();
-    if (pMc)
-        pMc->keyHandler(ucModifiers, rawKeys);
+#ifdef DEBUG_APP_KEYS
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "KEY mod %02x raw %02x %02x %02x\n", ucModifiers, rawKeys[0], rawKeys[1], rawKeys[2]);
+#endif
+    _mcManager.keyHandler(ucModifiers, rawKeys);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -583,8 +607,10 @@ void BusRaiderApp::storeESP32StatusInfo(const char* pCmdJson)
     if (strlen(espHwVersStr) != 0)
         espHwVersion = atoi(espHwVersStr);
     _busControl.bus().setHwVersion(espHwVersion);
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Ip Address %s", _esp32IPAddress);
-    
+#ifdef DEBUG_ESP_STATUS
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "Ip Address %s", _esp32IPAddress);
+#endif
+
     // Check for connection of ESP32 and setup logging to esp32 if so
     if ((strlen(_esp32ESP32Version) > 0) && !esp32WasConn)
     {

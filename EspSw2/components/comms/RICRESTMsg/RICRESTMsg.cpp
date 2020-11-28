@@ -11,7 +11,7 @@
 #include <ProtocolEndpointMsg.h>
 #include <stdio.h>
 
-#define DEBUG_RICREST_MSG
+//#define DEBUG_RICREST_MSG
 
 // Logging
 #ifdef DEBUG_RICREST_MSG

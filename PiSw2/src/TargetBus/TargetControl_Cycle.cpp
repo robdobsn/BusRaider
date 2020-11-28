@@ -9,6 +9,8 @@
 #include "DebugHelper.h"
 
 // #define TEST_HIGH_ADDR_IS_ON_PIB
+// #define DEBUG_SHOW_IO_ACCESS_ADDRS_WR
+// #define DEBUG_SHOW_IO_ACCESS_ADDRS_RD
 
 // Module name
 static const char MODULE_PREFIX[] = "TargCtrlCyc";
@@ -373,10 +375,34 @@ void TargetControl::cycleHandleImportantWait()
     uint32_t dataBusVals = 0;
     _busControl.bus().addrAndDataBusRead(addr, dataBusVals);
 
+#ifdef DEBUG_SHOW_IO_ACCESS_ADDRS_WR
+    if ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) && (ctrlBusVals & BR_CTRL_BUS_WR_MASK))
+    {
+        DEBUG_VAL_SET(0, addr);
+        DEBUG_VAL_SET(1, dataBusVals);
+        DEBUG_VAL_SET(2, ctrlBusVals);
+    }
+#endif
+#ifdef DEBUG_SHOW_IO_ACCESS_ADDRS_RD
+    if ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) && (ctrlBusVals & BR_CTRL_BUS_RD_MASK))
+    {
+        DEBUG_VAL_SET(3, addr);
+        DEBUG_VAL_SET(4, dataBusVals);
+        DEBUG_VAL_SET(5, ctrlBusVals);
+    }
+#endif
+
     // Callback to sockets
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
     if (_pBusAccessCB)
+    {
         _pBusAccessCB(_pBusAccessCBObject, addr, dataBusVals, ctrlBusVals, retVal);
+    }
+
+#ifdef DEBUG_SHOW_IO_ACCESS_ADDRS_RD
+    if ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) && (ctrlBusVals & BR_CTRL_BUS_RD_MASK))
+        DEBUG_VAL_SET(6, retVal);
+#endif
 
     // Handle processor read (means we have to push data onto the data bus)
     if (CTRL_BUS_IS_READ(ctrlBusVals) && ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) == 0))
