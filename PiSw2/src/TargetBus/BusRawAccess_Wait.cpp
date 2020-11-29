@@ -26,7 +26,7 @@ void BusRawAccess::waitSystemInit()
 
     // Clock for PWM 
     uint32_t clockSource = ARM_CM_CTL_CLKSRC_PLLD;
-    uint32_t freqReqd = 31250000;
+    uint32_t freqReqd = 62500000;
 
     // Disable the clock (without changing SRC and FLIP)
     write32(ARM_CM_PWMCTL, ARM_CM_PASSWD | clockSource);
@@ -111,9 +111,9 @@ void BusRawAccess::waitResetFlipFlops(bool forceClear)
         // Write to FIFO
         uint32_t busVals = read32(ARM_GPIO_GPLEV0);
         bool ioWaitClear = (forceClear || ((busVals & BR_IORQ_BAR_MASK) == 0)) && _rawWaitOnIO;
-        write32(ARM_PWM_FIF1, ioWaitClear ? 0x00ffffff : 0);  // IORQ sequence
+        write32(ARM_PWM_FIF1, ioWaitClear ? 0x0000ffff : 0);  // IORQ sequence
         bool memWaitClear = (forceClear || ((busVals & BR_MREQ_BAR_MASK) == 0)) && _rawWaitOnMem;
-        write32(ARM_PWM_FIF1, memWaitClear ? 0x00ffffff : 0);  // MREQ sequence
+        write32(ARM_PWM_FIF1, memWaitClear ? 0x0000ffff : 0);  // MREQ sequence
     }
 }
 

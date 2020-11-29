@@ -45,7 +45,7 @@ McVariantTable McTRS80::_machineDescriptorTables[] = {
         .irqRate = 0,
         // Bus monitor
         .monitorIORQ = true,
-        .monitorMREQ = false,
+        .monitorMREQ = true,
         .setRegistersCodeAddr = TRS80_DISP_RAM_ADDR
     }
 };

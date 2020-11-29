@@ -132,7 +132,7 @@ private:
     void cycleReqAssertedBusRq();
     void cycleReqAssertedIRQ();
     void cycleReqAssertedOther();
-    void cycleNewWait();
+    void cycleCheckWait();
     void cycleSetupForFastWait();
     void cycleHandleImportantWait();
 

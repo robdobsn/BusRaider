@@ -363,7 +363,6 @@ void BusSocketManager::busAccessCallback(uint32_t addr, uint32_t data,
         {
             _busSockets[sockIdx].busAccessCallback(_busSockets[sockIdx].pSourceObject,
                              addr, data, flags, curRetVal);
-            // TODO
             // if (ctrlBusVals & BR_CTRL_BUS_IORQ_MASK)
             //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "%d IORQ %s from %04x %02x", sockIdx,
             //             (ctrlBusVals & BR_CTRL_BUS_RD_MASK) ? "RD" : ((ctrlBusVals & BR_CTRL_BUS_WR_MASK) ? "WR" : "??"),

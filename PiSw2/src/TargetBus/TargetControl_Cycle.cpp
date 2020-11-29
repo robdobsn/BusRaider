@@ -11,6 +11,7 @@
 // #define TEST_HIGH_ADDR_IS_ON_PIB
 // #define DEBUG_SHOW_IO_ACCESS_ADDRS_WR
 // #define DEBUG_SHOW_IO_ACCESS_ADDRS_RD
+#define TEST_SUPERFAST_WAIT
 
 // Module name
 static const char MODULE_PREFIX[] = "TargCtrlCyc";
@@ -94,7 +95,7 @@ void TargetControl::cycleService()
         return;
 
     // TODO 2020 - optimize
-    cycleNewWait();
+    cycleCheckWait();
 
     // Handle cycle actions
     if (_programmingPending && (_cycleReqState == CYCLE_REQ_STATE_NONE))
@@ -209,29 +210,75 @@ void TargetControl::cycleReqCallback(BR_RETURN_TYPE result)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Cycle handle new wait
+// Cycle check for new wait and handle
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetControl::cycleNewWait()
+void TargetControl::cycleCheckWait()
 {
     // Check suspended
     if (_isSuspended)
         return;
 
+#ifdef TEST_SUPERFAST_WAIT
+    static const uint32_t WAIT_LOOPS_FOR_TIME_OPT = 20;
+    uint32_t busVals = 0;
+    for (uint32_t waitLoopIdx = 0; waitLoopIdx < WAIT_LOOPS_FOR_TIME_OPT; waitLoopIdx++)
+    {
+        // Get inputs
+        busVals = read32(ARM_GPIO_GPLEV0);
+
+        // Check for WAIT active (and BUSACK not active) - otherwise nothing to do
+        if ((busVals & BR_WAIT_BAR_MASK) || (!(busVals & BR_BUSACK_BAR_MASK)))
+            continue;
+
+        // Check RD or WR is active - nothing to do if not
+        if ((busVals & BR_RD_BAR_MASK) && (busVals & BR_WR_BAR_MASK))
+            continue;
+
+        // Check if we need to do full wait processing
+        bool fullWaitProc = true;
+        if (busVals & BR_MREQ_BAR_MASK)
+        {
+            // Get high address
+            uint32_t highAddr = (busVals >> BR_DATA_BUS) & 0xff;
+
+            // Check if in watch table
+            if (_memWaitHighAddrWatch[highAddr] == 0)
+                fullWaitProc = false;
+        }
+        
+        write32(ARM_PWM_FIF1, 0x0000ffff);  // IORQ sequence
+        write32(ARM_PWM_FIF1, 0x0000ffff);  // MREQ sequence
+        break;
+    }
+#else
     // TODO 2020 - assumes simple mode - no debug:
     // - processor will not be held in wait
     // - processor read from emulated IO or MEM is handled completely
     //   in this function - right to the end of the cycle
 
-    // Get inputs
-    uint32_t busVals = read32(ARM_GPIO_GPLEV0);
+    // Loop here to reduce time to detect WAIT
+    static const uint32_t WAIT_LOOPS_FOR_TIME_OPT = 4;
+    bool waitFound = false;
+    uint32_t busVals = 0;
+    for (uint32_t waitLoopIdx = 0; waitLoopIdx < WAIT_LOOPS_FOR_TIME_OPT; waitLoopIdx++)
+    {
+        // Get inputs
+        busVals = read32(ARM_GPIO_GPLEV0);
 
-    // Check for WAIT active (and BUSACK not active) - otherwise nothing to do
-    if ((busVals & BR_WAIT_BAR_MASK) || (!(busVals & BR_BUSACK_BAR_MASK)))
-        return;
+        // Check for WAIT active (and BUSACK not active) - otherwise nothing to do
+        if ((busVals & BR_WAIT_BAR_MASK) || (!(busVals & BR_BUSACK_BAR_MASK)))
+            continue;
 
-    // Check RD or WR is active - nothing to do if not
-    if ((busVals & BR_RD_BAR_MASK) && (busVals & BR_WR_BAR_MASK))
+        // Check RD or WR is active - nothing to do if not
+        if ((busVals & BR_RD_BAR_MASK) && (busVals & BR_WR_BAR_MASK))
+            continue;
+        
+        // Found a WAIT
+        waitFound = true;
+        break;
+    }
+    if (!waitFound)
         return;
 
     // Check for IORQ
@@ -272,8 +319,7 @@ void TargetControl::cycleNewWait()
 
     // TODO 2020
     _busControl.bus().waitResetFlipFlops();
-    return;
-
+#endif
 //     // Check if already in wait
 //     if (!_waitIsActive)
 //     {
