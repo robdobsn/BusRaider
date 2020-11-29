@@ -134,7 +134,7 @@ private:
     void cycleReqAssertedOther();
     void cycleCheckWait();
     void cycleSetupForFastWait();
-    void cycleHandleImportantWait();
+    void cycleFullWaitProcessing();
 
     // Memory wait high address watch table
     static const uint32_t MEM_WAIT_HIGH_ADDR_WATCH_LEN = 256;

@@ -237,7 +237,7 @@ void TargetControl::cycleCheckWait()
 
         // Check if we need to do full wait processing
         bool fullWaitProc = true;
-        if (busVals & BR_MREQ_BAR_MASK)
+        if (!(busVals & BR_MREQ_BAR_MASK))
         {
             // Get high address
             uint32_t highAddr = (busVals >> BR_DATA_BUS) & 0xff;
@@ -246,7 +246,12 @@ void TargetControl::cycleCheckWait()
             if (_memWaitHighAddrWatch[highAddr] == 0)
                 fullWaitProc = false;
         }
+
+        // Full wait processing
+        if (fullWaitProc)
+            cycleFullWaitProcessing();
         
+        // Clear the wait
         write32(ARM_PWM_FIF1, 0x0000ffff);  // IORQ sequence
         write32(ARM_PWM_FIF1, 0x0000ffff);  // MREQ sequence
         break;
@@ -284,7 +289,7 @@ void TargetControl::cycleCheckWait()
     // Check for IORQ
     if (!(busVals & BR_IORQ_BAR_MASK))
     {
-        cycleHandleImportantWait();
+        cycleFullWaitProcessing();
     }
     else if (!(busVals & BR_MREQ_BAR_MASK))
     {
@@ -293,7 +298,7 @@ void TargetControl::cycleCheckWait()
 
         // Check if in watch table
         if (_memWaitHighAddrWatch[highAddr] != 0)
-            cycleHandleImportantWait();
+            cycleFullWaitProcessing();
     }
 
     // High address stats
@@ -364,12 +369,12 @@ void TargetControl::cycleCheckWait()
 // #endif
 //                 // TODO 2020
 //                 // _memWaitHighAddrLookup
-//                 cycleHandleImportantWait();
+//                 cycleFullWaitProcessing();
 //             }
 //             // Check for IORQ and not M1
 //             else if (((busVals & BR_IORQ_BAR_MASK) == 0) && (busVals & BR_V20_M1_BAR_MASK) != 0)
 //             {
-//                 cycleHandleImportantWait();
+//                 cycleFullWaitProcessing();
 //             }
 
 //             // TODO 2020 - handle INT_ACK and MREQ
@@ -411,7 +416,7 @@ void TargetControl::cycleSetupForFastWait()
 // Called for an MREQ wait that matches a high-addr of interest
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetControl::cycleHandleImportantWait()
+void TargetControl::cycleFullWaitProcessing()
 {
     // Read control lines
     uint32_t ctrlBusVals = _busControl.bus().controlBusRead();
