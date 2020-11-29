@@ -65,6 +65,18 @@
             "request": "launch",
             "program": "${file}",
             "console": "externalTerminal"
+        },
+        {
+            "name": "Python: ReadRam",
+            "type": "python",
+            "request": "launch",
+            "program": "PiSw2/tools/readram.py",
+            "args": [
+                "--configfile",
+                "devconfig.ini",
+                "3c00",
+                "100"
+            ]
         }
     ]
 }
