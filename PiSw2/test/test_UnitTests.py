@@ -31,7 +31,7 @@ def test_BankedMemRW():
         elif msgContent['cmdName'] == "WrResp":
             testStats["msgWrRespCount"] += 1
             try:
-                if msgContent['err'] != 'ok':
+                if msgContent["rslt"] != 'ok':
                     testStats["msgWrRespErrCount"] += 1
                     commonTest.logger.error(f"WrResp err not ok {msgContent}")
             except:
@@ -136,7 +136,7 @@ def test_TraceJMP000():
         elif msgContent['cmdName'] == "WrResp":
             testStats["msgWrRespCount"] += 1
             try:
-                if msgContent['err'] != 'ok':
+                if msgContent["rslt"] != 'ok':
                     testStats["msgWrRespErrCount"] += 1
                     commonTest.logger.error(f"WrResp err not ok {msgContent}")
             except:
@@ -256,7 +256,7 @@ def test_TraceJMP000():
 #         elif msgContent['cmdName'] == "WrResp":
 #             testStats["msgWrRespCount"] += 1
 #             try:
-#                 if msgContent['err'] != 'ok':
+#                 if msgContent["rslt"] != 'ok':
 #                     testStats["msgWrRespErrCount"] += 1
 #                     commonTest.logger.error(f"WrResp err not ok {msgContent}")
 #             except:
@@ -380,10 +380,10 @@ def test_GalaxiansExec():
         elif "SetMcJsonResp" in msgContent['cmdName'] or \
                     msgContent['cmdName'] == 'ClearTargetResp' or \
                     msgContent['cmdName'] == 'FileTargetResp':
-            assert(msgContent['err'] == 'ok')
+            assert(msgContent["rslt"] == 'ok')
         elif msgContent['cmdName'] == 'ProgramAndResetResp' or \
                     msgContent['cmdName'] == "ProgramAndExecResp":
-            assert(msgContent['err'] == 'ok')
+            assert(msgContent["rslt"] == 'ok')
             testStats['programAndResetCount'] += 1
         elif msgContent['cmdName'] == "clockHzSetResp":
             pass
@@ -496,12 +496,12 @@ def test_stepSingle_RequiresPaging():
                     msgContent['cmdName'] == 'targetResetResp' or \
                     msgContent['cmdName'] == 'targetTrackerOnResp' or \
                     msgContent['cmdName'] == 'targetTrackerOffResp':                    
-            assert(msgContent['err'] == 'ok')
+            assert(msgContent["rslt"] == 'ok')
         elif msgContent['cmdName'] == 'stepIntoResp':
             testStats['stepCount'] += 1
         elif msgContent['cmdName'] == 'ProgramAndResetResp' or \
                     msgContent['cmdName'] == "ProgramAndExecResp":
-            assert(msgContent['err'] == 'ok')
+            assert(msgContent["rslt"] == 'ok')
             testStats['programAndResetCount'] += 1
         elif msgContent['cmdName'] == "clockHzSetResp":
             pass
@@ -606,10 +606,10 @@ def test_regGetTest_requiresPaging():
                     msgContent['cmdName'] == 'stepIntoResp' or \
                     msgContent['cmdName'] == 'targetTrackerOffResp':
                     
-            assert(msgContent['err'] == 'ok')
+            assert(msgContent["rslt"] == 'ok')
         elif msgContent['cmdName'] == 'ProgramAndResetResp' or \
                     msgContent['cmdName'] == "ProgramAndExecResp":
-            assert(msgContent['err'] == 'ok')
+            assert(msgContent["rslt"] == 'ok')
             testStats['programAndResetCount'] += 1
         elif msgContent['cmdName'] == "clockHzSetResp":
             pass

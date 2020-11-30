@@ -23,15 +23,6 @@
 
 class BusControl;
 
-// Step mode
-enum STEP_MODE_TYPE
-{
-    STEP_MODE_STEP_PAUSED,
-    STEP_MODE_STEP_INTO,
-    STEP_MODE_STEP_OVER,
-    STEP_MODE_RUN
-};
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // TargetControl
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -40,7 +31,7 @@ class TargetControl
 {
 public:
     // Constructor
-    TargetControl(BusControl& busAccess);
+    TargetControl(BusControl& busControl);
 
     // Init
     void init();
@@ -56,6 +47,10 @@ public:
 
     // Suspend
     void suspend(bool suspend);
+
+    // Debugger
+    void debuggerBreak();
+    void debuggerRun();
 
     // Set callback on bus access
     void setBusAccessCallback(BusAccessCBFnType* pCB, void* pObject)
@@ -84,6 +79,12 @@ public:
     {
         // TODO 2020
         return true;
+    }
+
+    // Check if debugging
+    bool isDebugging()
+    {
+        return _debuggerState != DEBUGGER_STATE_FREE_RUNNING;
     }
 
 private:
@@ -124,9 +125,12 @@ private:
     uint32_t _cycleReqAssertedUs;
     uint32_t _cycleReqMaxUs;
     BR_BUS_ACTION_REASON _cycleBusRqReason;
+    bool _cycleHeldInWaitState;
+    bool _cycleWaitForReadCompletionRequired;
     void cycleClear();
     void cycleService();
     void cycleSuspend(bool suspend);
+    void cycleHandleActions();
     void cycleReqHandlePending();
     void cycleReqCallback(BR_RETURN_TYPE result);
     void cycleReqAssertedBusRq();
@@ -135,6 +139,9 @@ private:
     void cycleCheckWait();
     void cycleSetupForFastWait();
     void cycleFullWaitProcessing();
+    bool cycleWaitForReadCompletion();
+    void cycleHandleHeldInWait();
+    void cyclePerformActionRequest();
 
     // Memory wait high address watch table
     static const uint32_t MEM_WAIT_HIGH_ADDR_WATCH_LEN = 256;
@@ -143,6 +150,16 @@ private:
     // Callback on bus access
     BusAccessCBFnType* _pBusAccessCB;
     void* _pBusAccessCBObject;
+
+    // Debugger state
+    enum DebuggerState
+    {
+        DEBUGGER_STATE_FREE_RUNNING,
+        DEBUGGER_STATE_AT_BREAK,
+    };
+
+    // Debug state
+    volatile DebuggerState _debuggerState;
 
     // void cycleHandleReadRelease();
     // // State

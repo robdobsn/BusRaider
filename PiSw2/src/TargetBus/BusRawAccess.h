@@ -48,7 +48,8 @@ public:
     BR_RETURN_TYPE rawBlockRead(uint32_t addr, uint8_t* pData, uint32_t len, BlockAccessType accessType);
 
     // Wait hardware config
-    BR_RETURN_TYPE waitConfigure(bool waitOnMemory, bool waitOnIO);
+    BR_RETURN_TYPE waitConfigSocket(bool waitOnMemory, bool waitOnIO);
+    BR_RETURN_TYPE waitConfigDebugger(bool waitOnMemory, bool waitOnIO);
     void waitSuspend(bool suspend);
 
     // Bus request
@@ -145,11 +146,14 @@ private:
     TargetClockGenerator& _targetClockGenerator;
 
     // Wait system
-    bool _rawWaitOnMem;
-    bool _rawWaitOnIO;
+    bool _waitOnMem_Socket;
+    bool _waitOnIO_Socket;
+    bool _waitOnMem_Debugger;
+    bool _waitOnIO_Debugger;
+    bool _waitIsSuspended;
     void waitSystemInit();
     void waitClearDetected();
-    void waitRawSet(bool waitOnMemory, bool waitOnIO);
+    void waitRawSet();
 
     // Set a pin to be an output and set initial value for that pin
     void setPinOut(int pinNumber, bool val);

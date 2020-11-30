@@ -21,9 +21,9 @@ def test_TRS80Level1Rom():
     mc = "TRS80"
     commonTest.logger.debug(f"Setting machine {mc}")
     resp = commonTest.sendFrameSync("SetMcJson", '{"cmdName":"SetMcJson"}', '{' + f'"name":"{mc}"' + '}')
-    if resp.get("cmdName","") == "SetMcJsonResp" and resp.get("err","") == "ok":
+    if resp.get("cmdName","") == "SetMcJsonResp" and resp.get("rslt","") == "ok":
         commonTest.logger.debug(f"SetMcJson failed {resp}")
-    assert(resp.get("err","") == "ok")
+    assert(resp.get("rslt","") == "ok")
 
     # Loop through tests
     for _ in range(testRepeatCount):
@@ -34,11 +34,11 @@ def test_TRS80Level1Rom():
         resp = commonTest.sendFrameSync("writeTestMsg",
                 "{" + f'"cmdName":"Wr","addr":"{TRS80ScreenAddr:04x}","lenDec":{len(testWriteData)},"isIo":0' + "}",
                 testWriteData)
-        assert(resp.get("err","") == "ok")
+        assert(resp.get("rslt","") == "ok")
 
         # Clear target buffer
         resp = commonTest.sendFrameSync("ClearTarget", '{"cmdName":"ClearTarget"}')
-        assert(resp.get("err","") == "ok")
+        assert(resp.get("rslt","") == "ok")
 
         # Send ROM
         targetCodeFolder = os.path.join(Path(__file__).parent, "testdata")
@@ -49,18 +49,18 @@ def test_TRS80Level1Rom():
             # Send ROM data
             commonTest.logger.debug(f"ROM data len {len(romFrame)} start {romFrame[0:60]}")
             resp = commonTest.sendFrameSync("Level1Rom", romCmdHeader, romFrame)
-            assert(resp.get("err","") == "ok")
+            assert(resp.get("rslt","") == "ok")
 
             # Program and reset
             resp = commonTest.sendFrameSync("ProgramAndReset", '{"cmdName":"ProgramAndReset"}')
-            assert(resp.get("err","") == "ok")
+            assert(resp.get("rslt","") == "ok")
             time.sleep(1.5)
 
             # Test memory at screen location
             readDataExpected = "READY"
             rdLen = len(readDataExpected)
             resp = commonTest.sendFrameSync("blockRead", "{" + f'"cmdName":"Rd","addr":"{TRS80ScreenAddr}","lenDec":{rdLen},"isIo":0')
-            assert(resp.get("err","") == "ok")
+            assert(resp.get("rslt","") == "ok")
 
             # Check data
             expectedResp = ''.join(f'{ord(x):02x}' for x in readDataExpected)
@@ -85,9 +85,9 @@ def test_TRS80Level1Rom():
     #     elif "SetMcJsonResp" in msgContent['cmdName'] or \
     #                 msgContent['cmdName'] == 'ClearTargetResp' or \
     #                 msgContent['cmdName'] == 'FileTargetResp':
-    #         assert(msgContent['err'] == 'ok')
+    #         assert(msgContent["rslt"] == 'ok')
     #     elif msgContent['cmdName'] == 'ProgramAndResetResp':
-    #         assert(msgContent['err'] == 'ok')
+    #         assert(msgContent["rslt"] == 'ok')
     #         testStats['programAndResetCount'] += 1
     #     elif msgContent['cmdName'] == "clockHzSetResp":
     #         pass

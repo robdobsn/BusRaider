@@ -125,72 +125,39 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "handleRxMsg cmdName %s json %s", cmdName, pCmdJson);
 #endif
 
-    if (strcasecmp(cmdName, "ClearTarget") == 0)
+    if ((strcasecmp(cmdName, "progClear") == 0) || (strcasecmp(cmdName, "ClearTarget") == 0))
     {
-        // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ClearTarget");
-        _busControl.prog().clear();
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-        return true;
+        // Clear the programmer used to program the target
+        return apiProgClear(pRespJson, maxRespLen);
     }
-    else if (strcasecmp(cmdName, "ProgramTarget") == 0)
+    if ((strcasecmp(cmdName, "progWrite") == 0) || (strcasecmp(cmdName, "ProgramTarget") == 0))
     {
-        _busControl.ctrl().programmingStart(false);
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-        return true;
+        // Write the programmer contents to the target
+        return apiProgWrite(pRespJson, maxRespLen);
     }
-    else if ((strcasecmp(cmdName, "ProgramAndReset") == 0) ||
+    else if ((strcasecmp(cmdName, "progWriteAndExec") == 0) || 
+            (strcasecmp(cmdName, "ProgramAndReset") == 0) ||
             (strcasecmp(cmdName, "ProgramAndExec") == 0))
     {
-        _busControl.ctrl().programmingStart(true);
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-        return true;
+        // Write the programmer contents to the target and then start the program on the target
+        return apiProgWriteAndRun(pRespJson, maxRespLen);
     }
-    else if (strcasecmp(cmdName, "ResetTarget") == 0)
+    else if ((strcasecmp(cmdName, "targetReset") == 0) || (strcasecmp(cmdName, "ResetTarget") == 0))
     {
-        // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ResetTarget");
-        _busControl.sock().reqReset(_busSocketId);
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-        return true;
+        // Reset the target processor
+        return apiTargetReset(pRespJson, maxRespLen);
     }
-    else if ((strcasecmp(cmdName, "FileTarget") == 0) || ((strcasecmp(cmdName, "SRECTarget") == 0)))
+    else if ((strcasecmp(cmdName, "fileSend") == 0) || 
+             (strcasecmp(cmdName, "FileTarget") == 0) || 
+             (strcasecmp(cmdName, "SRECTarget") == 0))
     {
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "File to Target, len %d, json %s", paramsLen, pCmdJson);
-        bool rslt = _mcManager.targetFileHandler(pCmdJson, pParams, paramsLen);
-        if (rslt)
-            strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-        else
-            strlcpy(pRespJson, "\"err\":\"fail\"", maxRespLen);
-        return true;
+        // Send file to file-system
+        return apiFileToTarget(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
     }
-    // else if (strncasecmp(cmdName, "SetMachine", strlen("SetMachine")) == 0)
-    // {
-    //     // Get machine name
-    //     const char* pMcName = strstr(cmdName,"=");
-    //     if (pMcName)
-    //     {
-    //         // Move to first char of actual name
-    //         pMcName++;
-    //         setMachineByName(pMcName);
-    //         LogWrite(MODULE_PREFIX, LOG_VERBOSE, "Set Machine to %s", pMcName);
-    //     }
-    //     strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-    //     return true;
-    // }
     else if (strcasecmp(cmdName, "SetMcJson") == 0)
     {
-        // Get mcJson
-        static char mcJson[_commandHandler.MAX_MC_SET_JSON_LEN];
-        size_t toCopy = paramsLen+1;
-        if (toCopy > _commandHandler.MAX_MC_SET_JSON_LEN)
-            toCopy = _commandHandler.MAX_MC_SET_JSON_LEN;
-        strlcpy(mcJson, (const char*)pParams, toCopy);
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "SetMachine %s", mcJson);
-        bool setupOk = _mcManager.setupMachine(mcJson); 
-        if (setupOk)
-            strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-        else
-            strlcpy(pRespJson, "\"err\":\"fail\"", maxRespLen);
-        return true;
+        // Set a machine to emulate
+        return apiSetMcJson(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
     }
     else if (strcasecmp(cmdName, "RxHost") == 0)
     {
@@ -201,250 +168,33 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
     }
     else if (strcasecmp(cmdName, "sendKey") == 0)
     {
-        char* pEnd = NULL;
-        uint8_t usbKeyCodes[_commandHandler.NUM_USB_KEYS_PASSED];
-        memset(usbKeyCodes, 0, sizeof(usbKeyCodes));
-        unsigned asciiCode = strtoul((const char*)pParams, &pEnd, 10);
-        usbKeyCodes[0] = strtoul(pEnd, &pEnd, 10);
-        unsigned usbModCode = strtoul(pEnd, &pEnd, 10);
-        asciiCode = asciiCode;
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "SendKey, %s ascii 0x%02x usbKey 0x%02x usbMod 0x%02x", 
-        //             pParams, asciiCode, usbKeyCodes[0], usbModCode);
-        _mcManager.keyHandler(usbModCode, usbKeyCodes);
-        return true;
-    } else if (strcasecmp(cmdName, "Rd") == 0)
+        // Send a key to the target
+        return apiSendKeyToTarget(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+    } 
+    else if (strcasecmp(cmdName, "Rd") == 0)
     {
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Rd %s %04x", pCmdJson, read32(ARM_GPIO_GPLEV0));
-
-        // Get params
-        uint32_t addr = 0;
-        uint32_t dataLen = 0;
-        bool isIo = false;
-        if (!getArg("addr", 1, pCmdJson, addr))
-        {
-            strlcpy(pRespJson, R"("err":"InvArgs")", maxRespLen);
-            return true;
-        }
-        if (!getArg("len", 2, pCmdJson, dataLen))
-        {
-            strlcpy(pRespJson, R"("err":"InvArgs")", maxRespLen);
-            return true;
-        }
-        uint32_t val = 0;
-        if (!getArg("isIo", 3, pCmdJson, val))
-        {
-            isIo = val != 0;
-            strlcpy(pRespJson, R"("err":"InvArgs")", maxRespLen);
-            return true;
-        }
-        // Get data using bus access
-        if ((dataLen <= 0) || (dataLen > MAX_MEM_BLOCK_READ_WRITE))
-        {
-            strlcpy(pRespJson, R"("err":"LenTooLong")", maxRespLen);
-            return true;
-        }
-        // Synchronous memory read
-        uint8_t pData[MAX_MEM_BLOCK_READ_WRITE];
-        BR_RETURN_TYPE rslt = ControlAPI::blockAccessSync(addr, pData, dataLen, isIo, true, false);
-        if (rslt != BR_OK)
-        {
-            snprintf(pRespJson, maxRespLen, R"("err":"%s")", _busControl.retcString(rslt));
-            return true;
-        }
-
-        // Format data to reply with
-        static const int MAX_MEM_READ_RESP = MAX_MEM_BLOCK_READ_WRITE*2+100; 
-        char jsonResp[MAX_MEM_READ_RESP];
-        snprintf(jsonResp, sizeof(jsonResp), "\"err\":\"ok\",\"len\":%d,\"addr\":\"0x%04x\",\"isIo\":%d,\"data\":\"", 
-                    (int)dataLen, (unsigned int)addr, isIo);
-        int pos = strlen(jsonResp);
-        for (uint32_t i = 0; i < dataLen; i++)
-        {
-            snprintf(jsonResp+pos, sizeof(jsonResp), "%02x", pData[i]);
-            pos+=2;
-        }
-        strlcat(jsonResp, "\"", MAX_MEM_READ_RESP);
-        strlcpy(pRespJson, jsonResp, maxRespLen);
-
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Rd result ok, lastByte 0x%c%c", jsonResp[strlen(jsonResp)-3], jsonResp[strlen(jsonResp)-2]);
-
-        return true;
+        // Read from target memory
+        return apiReadFromTarget(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
     }
     else if (strcasecmp(cmdName, "Wr") == 0)
     {
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Wr %s", pCmdJson);
-        
-        // Get params
-        uint32_t addr = 0;
-        uint32_t dataLen = 0;
-        uint32_t isIo = false;
-        if (!getArg("addr", 1, pCmdJson, addr))
-        {
-            strlcpy(pRespJson, R"("err":"InvArgs")", maxRespLen);
-            return true;
-        }
-        if (!getArg("len", 2, pCmdJson, dataLen))
-        {
-            strlcpy(pRespJson, R"("err":"InvArgs")", maxRespLen);
-            return true;
-        }
-        if (!getArg("isIo", 3, pCmdJson, isIo))
-        {
-            strlcpy(pRespJson, R"("err":"InvArgs")", maxRespLen);
-            return true;
-        }
-        // Get data using bus access
-        if ((dataLen <= 0) || (dataLen > MAX_MEM_BLOCK_READ_WRITE) || (dataLen > (uint32_t)paramsLen))
-        {
-            strlcpy(pRespJson, R"("err":"LenTooLong")", maxRespLen);
-            return true;
-        }
-        // Synchronous memory write
-        BR_RETURN_TYPE rslt = ControlAPI::blockAccessSync(addr, const_cast<uint8_t*>(pParams), 
-                        dataLen, isIo, true, false);
-        if (rslt != BR_OK)
-        {
-            LogWrite(MODULE_PREFIX, LOG_WARNING, "Wr failed %s", _busControl.retcString(rslt));
-            snprintf(pRespJson, maxRespLen, R"("err":"%s")", _busControl.retcString(rslt));
-            return true;
-        }
-        strlcpy(pRespJson, R"("err":"ok")", maxRespLen);
-        return true;
+        // Write to target memory
+        return apiWriteToTarget(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
     }
     else if (strcasecmp(cmdName, "testWrRd") == 0)
     {
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "testWrRd %s", pCmdJson);
-        
-        // Get params
-        uint32_t addr = 0;
-        uint32_t dataLen = 0;
-        uint32_t isIo = false;
-        if (!getArg("addr", 1, pCmdJson, addr))
-        {
-            strlcpy(pRespJson, R"("err":"InvArgs")", maxRespLen);
-            return true;
-        }
-        if (!getArg("len", 2, pCmdJson, dataLen))
-        {
-            strlcpy(pRespJson, R"("err":"InvArgs")", maxRespLen);
-            return true;
-        }
-        if (!getArg("isIo", 3, pCmdJson, isIo))
-        {
-            strlcpy(pRespJson, R"("err":"InvArgs")", maxRespLen);
-            return true;
-        }
-        // Get data using bus access
-        if ((dataLen <= 0) || (dataLen > MAX_MEM_BLOCK_READ_WRITE) || (dataLen > (uint32_t)paramsLen))
-        {
-            strlcpy(pRespJson, R"("err":"LenTooLong")", maxRespLen);
-            return true;
-        }
-        // Synchronous memory write and then read
-        uint8_t wrAndRdData[dataLen];
-        memcpy(wrAndRdData, pParams, dataLen);
-        BR_RETURN_TYPE rslt = ControlAPI::blockAccessSync(addr, wrAndRdData, dataLen, isIo, true, true);
-        if (rslt != BR_OK)
-        {
-            snprintf(pRespJson, maxRespLen, R"("err":"%s")", _busControl.retcString(rslt));
-            return true;
-        }
-        // Format data to reply with
-        static const int MAX_MEM_READ_RESP = MAX_MEM_BLOCK_READ_WRITE*2+100; 
-        char jsonResp[MAX_MEM_READ_RESP];
-        snprintf(jsonResp, sizeof(jsonResp), "\"err\":\"ok\",\"len\":%d,\"addr\":\"0x%04x\",\"isIo\":%d,\"data\":\"", 
-                    (int)dataLen, (unsigned int)addr, isIo);
-        int pos = strlen(jsonResp);
-        for (uint32_t i = 0; i < dataLen; i++)
-        {
-            snprintf(jsonResp+pos, sizeof(jsonResp), "%02x", wrAndRdData[i]);
-            pos+=2;
-        }
-        strlcat(jsonResp, "\"", MAX_MEM_READ_RESP);
-        strlcpy(pRespJson, jsonResp, maxRespLen);
-
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "testWrRd result ok, lastByte 0x%c%c", 
-                jsonResp[strlen(jsonResp)-3], jsonResp[strlen(jsonResp)-2]);
-
-
-        //         if (_pThisInstance->_memAccessReadPending)
-        // {
-        //     _pThisInstance->_memAccessRdWrPending = false;
-        //     for (int i = 0; i < 1000; i++)
-        //     {
-        //         uint8_t writeBuf[MAX_MEM_BLOCK_READ_WRITE];
-        //         for (int j = 0; j < MAX_MEM_BLOCK_READ_WRITE; j++)
-        //             writeBuf[j] = rand() & 0xff;
-        //         busControl.blockWrite(0x3c00, writeBuf, MAX_MEM_BLOCK_READ_WRITE, false, false);
-
-        //         uint8_t readBuf[MAX_MEM_BLOCK_READ_WRITE];
-        //         busControl.blockRead(0x3c00, readBuf, MAX_MEM_BLOCK_READ_WRITE, false, false);
-
-        //         if (memcmp(writeBuf, readBuf, MAX_MEM_BLOCK_READ_WRITE) != 0)
-        //         {
-        //             if (_pThisInstance->_memAccessRdWrErrCount == 0)
-        //             {
-        //                 int errPos = 0;
-        //                 for (int k = 0; k < MAX_MEM_BLOCK_READ_WRITE; k++)
-        //                 {
-        //                     if (writeBuf[k] != readBuf[k])
-        //                     {
-        //                         errPos = k;
-        //                         break;
-        //                     }
-        //                 }
-        //                 // digitalWrite(8, 1);
-        //                 // microsDelay(100);
-        //                 // digitalWrite(8, 0);
-        //                 ee_sprintf(_pThisInstance->_memAccessRdWrErrStr, "POS %d WR %02x %02x %02x %02x RD %02x %02x %02x %02x", 
-        //                             errPos,
-        //                             writeBuf[errPos], writeBuf[errPos+1], writeBuf[errPos+2], writeBuf[errPos+3],
-        //                             readBuf[errPos+0], readBuf[errPos+1], readBuf[errPos+2], readBuf[errPos+3]);
-        //             }
-        //             _pThisInstance->_memAccessRdWrErrCount++;
-        //         }
-        //     }
-        // }
-
-        // // Request the bus
-        // _pThisInstance->_memAccessRdWrPending = true;
-        // _pThisInstance->_memAccessDataLen = MAX_MEM_BLOCK_READ_WRITE;
-        // _pThisInstance->_memAccessAddr = 0xc000;
-        // _pThisInstance->_memAccessIo = false;
-        // _pThisInstance->_memAccessRdWrErrCount = 0;
-        // _pThisInstance->_memAccessRdWrErrStr[0] = 0;
-        // busControl.targetReqBus(_busSocketId, BR_BUS_ACTION_GENERAL);
-        // // Now enter a loop to wait for the bus action to complete
-        // static const uint32_t MAX_WAIT_FOR_BUS_ACCESS_US = 50000;
-        // uint32_t busAccessReqStart = micros();
-        // while(!isTimeout(micros(), busAccessReqStart, MAX_WAIT_FOR_BUS_ACCESS_US))
-        // {
-        //     // Finished?
-        //     if (!_pThisInstance->_memAccessRdWrPending)
-        //                     break;
-        //     // Service the bus access
-        //     busControl.service();
-        //                 }
-        // // Check if completed ok
-        // if (_pThisInstance->_memAccessRdWrPending)
-        // {
-        //     _pThisInstance->_memAccessRdWrPending = false;
-        //     ee_sprintf(pRespJson, "\"err\":\"fail\"");
-        //     // digitalWrite(8,1);
-        //             // microsDelay(100);
-        //     // digitalWrite(8,0);
-        //     return true;
-        //     }
-        // if (maxRespLen > 200)
-        // {
-        //     ee_sprintf(pRespJson, "\"err\":\"%s\",\"errs\":%d,\"errStr\":\"%s\"",
-        //             _pThisInstance->_memAccessRdWrErrCount > 0 ? "fail" : "ok", 
-        //             _pThisInstance->_memAccessRdWrErrCount, 
-        //             _pThisInstance->_memAccessRdWrErrStr);
-        //     LogWrite(MODULE_PREFIX, LOG_DEBUG, pRespJson);
-        // }
-        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-        return true;
+        // Write to target memory and then read back in a single BUSRQ
+        return apiWriteReadTarget(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+    }
+    else if (strcasecmp(cmdName, "debugBreak") == 0)
+    {
+        // Break the target program execution and hold the processor
+        return apiDebuggerBreak(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+    }
+    else if (strcasecmp(cmdName, "debugRun") == 0)
+    {
+        // Break the target program execution and hold the processor
+        return apiDebuggerRun(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
     }
     else if (strcasecmp(cmdName, "rawBusControlOn") == 0)
     {
@@ -1115,4 +865,350 @@ BR_RETURN_TYPE ControlAPI::blockAccessSync(uint32_t addr, uint8_t* pData, uint32
     DEBUG_PULSE();
 
     return BR_OK;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// API
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool ControlAPI::apiProgClear(char* pRespJson, unsigned maxRespLen)
+{
+    // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ClearTarget");
+    _busControl.prog().clear();
+    strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+    return true;
+}
+
+bool ControlAPI::apiProgWrite(char* pRespJson, unsigned maxRespLen)
+{
+    _busControl.ctrl().programmingStart(false);
+    strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+    return true;
+}
+
+bool ControlAPI::apiProgWriteAndRun(char* pRespJson, unsigned maxRespLen)
+{
+    _busControl.ctrl().programmingStart(true);
+    strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+    return true;
+}
+
+bool ControlAPI::apiTargetReset(char* pRespJson, unsigned maxRespLen)
+{
+    // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ResetTarget");
+    _busControl.sock().reqReset(_busSocketId);
+    strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+    return true;
+}
+
+bool ControlAPI::apiFileToTarget(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen)
+{
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "File to Target, len %d, json %s", paramsLen, pCmdJson);
+    bool rslt = _mcManager.targetFileHandler(pCmdJson, pParams, paramsLen);
+    if (rslt)
+        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+    else
+        strlcpy(pRespJson, "\"err\":\"fail\"", maxRespLen);
+    return true;
+}
+
+bool ControlAPI::apiSetMcJson(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen)
+{
+    // Extract mcJson
+    static char mcJson[_commandHandler.MAX_MC_SET_JSON_LEN];
+    size_t toCopy = paramsLen+1;
+    if (toCopy > _commandHandler.MAX_MC_SET_JSON_LEN)
+        toCopy = _commandHandler.MAX_MC_SET_JSON_LEN;
+    strlcpy(mcJson, (const char*)pParams, toCopy);
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "SetMachine %s", mcJson);
+    bool setupOk = _mcManager.setupMachine(mcJson); 
+    if (setupOk)
+        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+    else
+        strlcpy(pRespJson, "\"err\":\"fail\"", maxRespLen);
+    return true;
+}
+
+bool ControlAPI::apiSendKeyToTarget(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen)
+{
+    char* pEnd = NULL;
+    uint8_t usbKeyCodes[_commandHandler.NUM_USB_KEYS_PASSED];
+    memset(usbKeyCodes, 0, sizeof(usbKeyCodes));
+    unsigned asciiCode = strtoul((const char*)pParams, &pEnd, 10);
+    usbKeyCodes[0] = strtoul(pEnd, &pEnd, 10);
+    unsigned usbModCode = strtoul(pEnd, &pEnd, 10);
+    asciiCode = asciiCode;
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "SendKey, %s ascii 0x%02x usbKey 0x%02x usbMod 0x%02x", 
+    //             pParams, asciiCode, usbKeyCodes[0], usbModCode);
+    _mcManager.keyHandler(usbModCode, usbKeyCodes);
+    return true;
+}
+
+bool ControlAPI::apiReadFromTarget(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen)
+{
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "Rd %s %04x", pCmdJson, read32(ARM_GPIO_GPLEV0));
+
+    // Get params
+    uint32_t addr = 0;
+    uint32_t dataLen = 0;
+    bool isIo = false;
+    if (!getArg("addr", 1, pCmdJson, addr))
+    {
+        strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
+        return true;
+    }
+    if (!getArg("len", 2, pCmdJson, dataLen))
+    {
+        strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
+        return true;
+    }
+    uint32_t val = 0;
+    if (!getArg("isIo", 3, pCmdJson, val))
+    {
+        isIo = val != 0;
+        strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
+        return true;
+    }
+    // Get data using bus access
+    if ((dataLen <= 0) || (dataLen > MAX_MEM_BLOCK_READ_WRITE))
+    {
+        strlcpy(pRespJson, R"("rslt":"LenTooLong")", maxRespLen);
+        return true;
+    }
+    // Synchronous memory read
+    uint8_t pData[MAX_MEM_BLOCK_READ_WRITE];
+    BR_RETURN_TYPE rslt = ControlAPI::blockAccessSync(addr, pData, dataLen, isIo, true, false);
+    if (rslt != BR_OK)
+    {
+        snprintf(pRespJson, maxRespLen, R"("rslt":"%s")", _busControl.retcString(rslt));
+        return true;
+    }
+
+    // Format data to reply with
+    static const int MAX_MEM_READ_RESP = MAX_MEM_BLOCK_READ_WRITE*2+100; 
+    char jsonResp[MAX_MEM_READ_RESP];
+    snprintf(jsonResp, sizeof(jsonResp), "\"err\":\"ok\",\"len\":%d,\"addr\":\"0x%04x\",\"isIo\":%d,\"data\":\"", 
+                (int)dataLen, (unsigned int)addr, isIo);
+    int pos = strlen(jsonResp);
+    for (uint32_t i = 0; i < dataLen; i++)
+    {
+        snprintf(jsonResp+pos, sizeof(jsonResp), "%02x", pData[i]);
+        pos+=2;
+    }
+    strlcat(jsonResp, "\"", MAX_MEM_READ_RESP);
+    strlcpy(pRespJson, jsonResp, maxRespLen);
+
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "Rd result ok, lastByte 0x%c%c", jsonResp[strlen(jsonResp)-3], jsonResp[strlen(jsonResp)-2]);
+
+    return true;
+}
+
+bool ControlAPI::apiWriteToTarget(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen)
+{
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "Wr %s", pCmdJson);
+    
+    // Get params
+    uint32_t addr = 0;
+    uint32_t dataLen = 0;
+    uint32_t isIo = false;
+    if (!getArg("addr", 1, pCmdJson, addr))
+    {
+        strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
+        return true;
+    }
+    if (!getArg("len", 2, pCmdJson, dataLen))
+    {
+        strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
+        return true;
+    }
+    if (!getArg("isIo", 3, pCmdJson, isIo))
+    {
+        strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
+        return true;
+    }
+    // Get data using bus access
+    if ((dataLen <= 0) || (dataLen > MAX_MEM_BLOCK_READ_WRITE) || (dataLen > (uint32_t)paramsLen))
+    {
+        strlcpy(pRespJson, R"("rslt":"LenTooLong")", maxRespLen);
+        return true;
+    }
+    // Synchronous memory write
+    BR_RETURN_TYPE rslt = ControlAPI::blockAccessSync(addr, const_cast<uint8_t*>(pParams), 
+                    dataLen, isIo, true, false);
+    if (rslt != BR_OK)
+    {
+        LogWrite(MODULE_PREFIX, LOG_WARNING, "Wr failed %s", _busControl.retcString(rslt));
+        snprintf(pRespJson, maxRespLen, R"("rslt":"%s")", _busControl.retcString(rslt));
+        return true;
+    }
+    strlcpy(pRespJson, R"("rslt":"ok")", maxRespLen);
+    return true;
+}
+
+bool ControlAPI::apiWriteReadTarget(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen)
+{
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "testWrRd %s", pCmdJson);
+        
+        // Get params
+        uint32_t addr = 0;
+        uint32_t dataLen = 0;
+        uint32_t isIo = false;
+        if (!getArg("addr", 1, pCmdJson, addr))
+        {
+            strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
+            return true;
+        }
+        if (!getArg("len", 2, pCmdJson, dataLen))
+        {
+            strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
+            return true;
+        }
+        if (!getArg("isIo", 3, pCmdJson, isIo))
+        {
+            strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
+            return true;
+        }
+        // Get data using bus access
+        if ((dataLen <= 0) || (dataLen > MAX_MEM_BLOCK_READ_WRITE) || (dataLen > (uint32_t)paramsLen))
+        {
+            strlcpy(pRespJson, R"("rslt":"LenTooLong")", maxRespLen);
+            return true;
+        }
+        // Synchronous memory write and then read
+        uint8_t wrAndRdData[dataLen];
+        memcpy(wrAndRdData, pParams, dataLen);
+        BR_RETURN_TYPE rslt = ControlAPI::blockAccessSync(addr, wrAndRdData, dataLen, isIo, true, true);
+        if (rslt != BR_OK)
+        {
+            snprintf(pRespJson, maxRespLen, R"("rslt":"%s")", _busControl.retcString(rslt));
+            return true;
+        }
+        // Format data to reply with
+        static const int MAX_MEM_READ_RESP = MAX_MEM_BLOCK_READ_WRITE*2+100; 
+        char jsonResp[MAX_MEM_READ_RESP];
+        snprintf(jsonResp, sizeof(jsonResp), "\"err\":\"ok\",\"len\":%d,\"addr\":\"0x%04x\",\"isIo\":%d,\"data\":\"", 
+                    (int)dataLen, (unsigned int)addr, isIo);
+        int pos = strlen(jsonResp);
+        for (uint32_t i = 0; i < dataLen; i++)
+        {
+            snprintf(jsonResp+pos, sizeof(jsonResp), "%02x", wrAndRdData[i]);
+            pos+=2;
+        }
+        strlcat(jsonResp, "\"", MAX_MEM_READ_RESP);
+        strlcpy(pRespJson, jsonResp, maxRespLen);
+
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "testWrRd result ok, lastByte 0x%c%c", 
+                jsonResp[strlen(jsonResp)-3], jsonResp[strlen(jsonResp)-2]);
+
+
+        //         if (_pThisInstance->_memAccessReadPending)
+        // {
+        //     _pThisInstance->_memAccessRdWrPending = false;
+        //     for (int i = 0; i < 1000; i++)
+        //     {
+        //         uint8_t writeBuf[MAX_MEM_BLOCK_READ_WRITE];
+        //         for (int j = 0; j < MAX_MEM_BLOCK_READ_WRITE; j++)
+        //             writeBuf[j] = rand() & 0xff;
+        //         busControl.blockWrite(0x3c00, writeBuf, MAX_MEM_BLOCK_READ_WRITE, false, false);
+
+        //         uint8_t readBuf[MAX_MEM_BLOCK_READ_WRITE];
+        //         busControl.blockRead(0x3c00, readBuf, MAX_MEM_BLOCK_READ_WRITE, false, false);
+
+        //         if (memcmp(writeBuf, readBuf, MAX_MEM_BLOCK_READ_WRITE) != 0)
+        //         {
+        //             if (_pThisInstance->_memAccessRdWrErrCount == 0)
+        //             {
+        //                 int errPos = 0;
+        //                 for (int k = 0; k < MAX_MEM_BLOCK_READ_WRITE; k++)
+        //                 {
+        //                     if (writeBuf[k] != readBuf[k])
+        //                     {
+        //                         errPos = k;
+        //                         break;
+        //                     }
+        //                 }
+        //                 // digitalWrite(8, 1);
+        //                 // microsDelay(100);
+        //                 // digitalWrite(8, 0);
+        //                 ee_sprintf(_pThisInstance->_memAccessRdWrErrStr, "POS %d WR %02x %02x %02x %02x RD %02x %02x %02x %02x", 
+        //                             errPos,
+        //                             writeBuf[errPos], writeBuf[errPos+1], writeBuf[errPos+2], writeBuf[errPos+3],
+        //                             readBuf[errPos+0], readBuf[errPos+1], readBuf[errPos+2], readBuf[errPos+3]);
+        //             }
+        //             _pThisInstance->_memAccessRdWrErrCount++;
+        //         }
+        //     }
+        // }
+
+        // // Request the bus
+        // _pThisInstance->_memAccessRdWrPending = true;
+        // _pThisInstance->_memAccessDataLen = MAX_MEM_BLOCK_READ_WRITE;
+        // _pThisInstance->_memAccessAddr = 0xc000;
+        // _pThisInstance->_memAccessIo = false;
+        // _pThisInstance->_memAccessRdWrErrCount = 0;
+        // _pThisInstance->_memAccessRdWrErrStr[0] = 0;
+        // busControl.targetReqBus(_busSocketId, BR_BUS_ACTION_GENERAL);
+        // // Now enter a loop to wait for the bus action to complete
+        // static const uint32_t MAX_WAIT_FOR_BUS_ACCESS_US = 50000;
+        // uint32_t busAccessReqStart = micros();
+        // while(!isTimeout(micros(), busAccessReqStart, MAX_WAIT_FOR_BUS_ACCESS_US))
+        // {
+        //     // Finished?
+        //     if (!_pThisInstance->_memAccessRdWrPending)
+        //                     break;
+        //     // Service the bus access
+        //     busControl.service();
+        //                 }
+        // // Check if completed ok
+        // if (_pThisInstance->_memAccessRdWrPending)
+        // {
+        //     _pThisInstance->_memAccessRdWrPending = false;
+        //     ee_sprintf(pRespJson, "\"err\":\"fail\"");
+        //     // digitalWrite(8,1);
+        //             // microsDelay(100);
+        //     // digitalWrite(8,0);
+        //     return true;
+        //     }
+        // if (maxRespLen > 200)
+        // {
+        //     ee_sprintf(pRespJson, "\"err\":\"%s\",\"errs\":%d,\"errStr\":\"%s\"",
+        //             _pThisInstance->_memAccessRdWrErrCount > 0 ? "fail" : "ok", 
+        //             _pThisInstance->_memAccessRdWrErrCount, 
+        //             _pThisInstance->_memAccessRdWrErrStr);
+        //     LogWrite(MODULE_PREFIX, LOG_DEBUG, pRespJson);
+        // }
+        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        return true;
+}
+
+bool ControlAPI::apiDebuggerBreak(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen)
+{
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiDebuggerBreak %s", pCmdJson);
+    _busControl.ctrl().debuggerBreak();
+    strlcpy(pRespJson, R"("rslt":"ok")", maxRespLen);
+    return true;
+}
+
+bool ControlAPI::apiDebuggerRun(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen)
+{
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiDebuggerRun %s", pCmdJson);
+    _busControl.ctrl().debuggerRun();
+    strlcpy(pRespJson, R"("rslt":"ok")", maxRespLen);
+    return true;
 }

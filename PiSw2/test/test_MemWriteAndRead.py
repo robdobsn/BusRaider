@@ -18,24 +18,24 @@ def test_MemWriteAndRead():
     mc = "Serial Terminal ANSI"
     commonTest.logger.debug(f"Setting machine {mc}")
     resp = commonTest.sendFrameSync("SetMcJson", '{"cmdName":"SetMcJson"}\0{"name":"' + mc + '"}\0')
-    if resp.get("cmdName","") == "SetMcJsonResp" and resp.get("err","") == "ok":
+    if resp.get("cmdName","") == "SetMcJsonResp" and resp.get("rslt","") == "ok":
         commonTest.logger.debug(f"SetMcJson failed {resp}")
-    assert(resp.get("err","") == "ok")
+    assert(resp.get("rslt","") == "ok")
 
     # Set processor clock
     commonTest.logger.debug(f"Setting processor clock")
     resp = commonTest.sendFrameSync("ClockSetHz", '{"cmdName":"clockHzSet","clockHz":250000}')
     commonTest.logger.debug(f"Set processor clock resp {resp}")
-    assert(resp.get("err","") == "ok")
+    assert(resp.get("rslt","") == "ok")
 
     # Memory tests
     for i in range(testRepeatCount):
         resp = commonTest.sendFrameSync("testWrRd",
                 "{" + f'"cmdName":"testWrRd","addr":"{testWriteAddr:04x}","lenDec":{len(testWriteData)},"isIo":0' + "}",
                 testWriteData)
-        if resp.get("err", "") == "ok":
+        if resp.get("rslt", "") == "ok":
             a = resp.get("data", "")
-        assert(resp.get("err","") == "ok")
+        assert(resp.get("rslt","") == "ok")
         # Check data
         expectedResp = ''.join(f'{x:02x}' for x in testWriteData)
         assert(expectedResp == resp.get("data",""))

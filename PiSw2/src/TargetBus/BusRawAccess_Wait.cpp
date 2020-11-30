@@ -21,8 +21,11 @@ void BusRawAccess::waitSystemInit()
     // of time taken between consecutive instructions and when MREQ/IORQ enable is low wait
     // states are disabled and bus operations can be missed
 
-    _rawWaitOnMem = false;
-    _rawWaitOnIO = false;
+    _waitOnMem_Socket = false;
+    _waitOnIO_Socket = false;
+    _waitOnMem_Debugger = false;
+    _waitOnIO_Debugger = false;
+    _waitIsSuspended = false;
 
     // Clock for PWM 
     uint32_t clockSource = ARM_CM_CTL_CLKSRC_PLLD;
@@ -82,16 +85,28 @@ void BusRawAccess::waitSystemInit()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Block access
-// Read a consecutive block of memory from host
+// Configure WAIT processing for socket system
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-BR_RETURN_TYPE BusRawAccess::waitConfigure(bool waitOnMemory, bool waitOnIO)
+BR_RETURN_TYPE BusRawAccess::waitConfigSocket(bool waitOnMemory, bool waitOnIO)
 {
     // Save the settings
-    _rawWaitOnMem = waitOnMemory;
-    _rawWaitOnIO = waitOnIO;
-    waitRawSet(waitOnMemory, waitOnMemory);
+    _waitOnMem_Socket = waitOnMemory;
+    _waitOnIO_Socket = waitOnIO;
+    waitRawSet();
+    return BR_OK;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Configure WAIT processing for debugger
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+BR_RETURN_TYPE BusRawAccess::waitConfigDebugger(bool waitOnMemory, bool waitOnIO)
+{
+    // Save the settings
+    _waitOnMem_Debugger = waitOnMemory;
+    _waitOnIO_Debugger = waitOnIO;
+    waitRawSet();
     return BR_OK;
 }
 
@@ -112,25 +127,27 @@ void BusRawAccess::waitClearDetected()
 
 void BusRawAccess::waitSuspend(bool suspend)
 {
-    if (suspend)
-        waitRawSet(false, false);
-    else
-        waitRawSet(_rawWaitOnMem, _rawWaitOnIO);
+    _waitIsSuspended = suspend;
+    waitRawSet();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Wait raw setup
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void BusRawAccess::waitRawSet(bool waitOnMemory, bool waitOnIO)
+void BusRawAccess::waitRawSet()
 {
+    // Decide what to wait for
+    bool waitOnMem = (_waitOnMem_Socket || _waitOnMem_Debugger) && !_waitIsSuspended;
+    bool waitOnIO = (_waitOnIO_Socket || _waitOnIO_Debugger) && !_waitIsSuspended;
+
     // Set PWM generator idle value to enable/disable wait states
     // This is done using the idle states of the PWM
     uint32_t pwmCtrl = read32(ARM_PWM_CTL);
     pwmCtrl &= ~(ARM_PWM_CTL_SBIT1 | ARM_PWM_CTL_SBIT2);
     if (waitOnIO)
         pwmCtrl |= ARM_PWM_CTL_SBIT1;
-    if (waitOnMemory)
+    if (waitOnMem)
         pwmCtrl |= ARM_PWM_CTL_SBIT2;
     write32(ARM_PWM_CTL, pwmCtrl);
 }

@@ -234,7 +234,7 @@ void BusSocketManager::socketSetAction(bool memWait, bool ioWait, int socketWith
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "WAIT ENABLEMENT mreq %d iorq %d", memWait, ioWait);
 
         // Set raw
-        _busControl.bus().waitConfigure(_waitOnMemory, _waitOnIO);
+        _busControl.bus().waitConfigSocket(_waitOnMemory, _waitOnIO);
 
         // Debug
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "WAIT UPDATE mem %d io %d", _waitOnMemory, _waitOnIO);

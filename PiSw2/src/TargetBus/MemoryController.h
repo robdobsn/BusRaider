@@ -33,6 +33,12 @@ public:
     BR_RETURN_TYPE blockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, BlockAccessType accessType);
     BR_RETURN_TYPE blockRead(uint32_t addr, uint8_t* pData, uint32_t len, BlockAccessType accessType);
 
+    // Read and write cache memory blocks
+    BR_RETURN_TYPE memCacheBlockRead(uint32_t addr, uint8_t* pData, 
+            uint32_t len, BlockAccessType accessType);
+    BR_RETURN_TYPE memCacheBlockWrite(uint32_t addr, const uint8_t* pData, 
+            uint32_t len, BlockAccessType accessType);
+
 private:
     // Bus control
     BusControl& _busControl;

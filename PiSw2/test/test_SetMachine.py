@@ -18,7 +18,7 @@ def test_SetMc():
         for mc in mcList:
             commonTest.logger.debug(f"Setting machine {mc}")
             setMcResp = commonTest.sendFrameSync("SetMcJson", '{"cmdName":"SetMcJson"}','{"name":"' + mc + '"}')
-            if setMcResp.get("cmdName","") == "SetMcJsonResp" and setMcResp.get("err","") == "ok":
+            if setMcResp.get("cmdName","") == "SetMcJsonResp" and setMcResp.get("rslt","") == "ok":
                 rsltOkCount += 1
             else:
                 commonTest.logger.error(f"Failed setMc {setMcResp}")

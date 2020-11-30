@@ -93,10 +93,21 @@ void TargetControl::cycleService()
     if (_isSuspended)
         return;
 
-    // TODO 2020 - optimize
+    // Check for WAIT and handle if asserted
     cycleCheckWait();
 
     // Handle cycle actions
+    cycleHandleActions();
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Cycle pending helpers
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TargetControl::cycleHandleActions()
+{
+    // Check for programming required
     if (_programmingPending && (_cycleReqState == CYCLE_REQ_STATE_NONE))
     {
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "cycleService Programming BUSRQ");
@@ -104,10 +115,26 @@ void TargetControl::cycleService()
         _cycleReqActionType = BR_BUS_ACTION_BUSRQ;
         _cycleBusRqReason = BR_BUS_ACTION_PROGRAMMING;
         _cycleReqMaxUs = PROG_MAX_WAIT_FOR_BUSAK_US;
-        cycleReqHandlePending();
+        _cycleReqState = CYCLE_REQ_STATE_PENDING;
     }
-    else if (_cycleReqState == CYCLE_REQ_STATE_PENDING)
+
+    // Handle cycle state
+    if (_cycleReqState == CYCLE_REQ_STATE_PENDING)
     {
+        // Deal with debugger
+        if (_debuggerState != DEBUGGER_STATE_FREE_RUNNING)
+        {
+            // TODO 2020 deal with IRQ, etc
+
+            // Handle the request as though it had been performed
+            // If this was a display refresh then the memory access
+            // will come from a cache. Other actions like programming,
+            // IRQ generation, etc will also be handled appropriately
+            // by the debugger code
+            cyclePerformActionRequest();
+            return;
+        }
+
         // Bus actions pending
         cycleReqHandlePending();
     }
@@ -148,17 +175,7 @@ void TargetControl::cycleReqAssertedBusRq()
         _busControl.bus().busReqTakeControl();
 
         // Check reason for request
-        if (_cycleBusRqReason == BR_BUS_ACTION_PROGRAMMING)
-        {
-            programmingWrite();
-            programmingDone();
-        }
-        else
-        {
-            // Callback on completion now so that any new action raised by the callback
-            // such as a reset, etc can be asserted before BUSRQ is released
-            cycleReqCallback(BR_OK);
-        }
+        cyclePerformActionRequest();
 
         // Release bus
         _busControl.bus().busReqRelease();
@@ -194,6 +211,21 @@ void TargetControl::cycleReqAssertedOther()
     cycleSetupForFastWait();
 }
 
+void TargetControl::cyclePerformActionRequest()
+{
+    if (_cycleBusRqReason == BR_BUS_ACTION_PROGRAMMING)
+    {
+        programmingWrite();
+        programmingDone();
+    }
+    else
+    {
+        // Callback on completion now so that any new action raised by the callback
+        // such as a reset, etc can be asserted before BUSRQ is released
+        cycleReqCallback(BR_OK);
+    }
+}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Cycle callback on action request
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -218,6 +250,15 @@ void TargetControl::cycleCheckWait()
     if (_isSuspended)
         return;
 
+    // Check if we need to complete a WAIT cycle
+    // This happens when in debugger break
+    if (_cycleHeldInWaitState)
+    {
+        cycleHandleHeldInWait();
+        return;
+    }
+
+    // Loop here to decrease the time to handle a WAIT
     static const uint32_t WAIT_LOOPS_FOR_TIME_OPT = 20;
     uint32_t busVals = 0;
     for (uint32_t waitLoopIdx = 0; waitLoopIdx < WAIT_LOOPS_FOR_TIME_OPT; waitLoopIdx++)
@@ -246,9 +287,9 @@ void TargetControl::cycleCheckWait()
         }
 
         // Full wait processing
-        if (fullWaitProc)
+        if (fullWaitProc || (_debuggerState != DEBUGGER_STATE_FREE_RUNNING))
         {
-            // Full wait processing - clears wait flip-flops
+            // Full wait processing - clears wait flip-flops as needed
             cycleFullWaitProcessing();
         }
         else
@@ -467,39 +508,91 @@ void TargetControl::cycleFullWaitProcessing()
         // Set the value for the processor to read
         _busControl.bus().pibSetValue(retVal & 0xff);
 
+        // Check if we are going to hold here - if so return without
+        // releasing the WAIT
+        _cycleWaitForReadCompletionRequired = true;
+        _cycleHeldInWaitState = true;
+        if (_debuggerState != DEBUGGER_STATE_FREE_RUNNING)
+            return;
+
         // Clear the wait
         BusRawAccess::waitResetFlipFlops();
         
         // Stay here until read cycle is complete
-        uint32_t waitForReadCompleteStartUs = micros();
-        while(!isTimeout(micros(), waitForReadCompleteStartUs, MAX_WAIT_FOR_END_OF_READ_US))
-        {
-            // Read the control lines
-            uint32_t busVals = read32(ARM_GPIO_GPLEV0);
-
-            // Check if a neither IORQ or MREQ asserted
-            if (((busVals & BR_MREQ_BAR_MASK) != 0) && ((busVals & BR_IORQ_BAR_MASK) != 0))
-            {
-                // TODO 2020
-                // // Check if paging in/out is required
-                // if (_targetPageInOnReadComplete)
-                // {
-                //     busAccessCallbackPageIn();
-                //     _targetPageInOnReadComplete = false;
-                // }
-
-                break;
-            }
-        }
+        cycleWaitForReadCompletion();
     }
     else
     {
+        // Check if we are going to hold here - if so return without
+        // releasing the WAIT
+        _cycleHeldInWaitState = true;
+        if (_debuggerState != DEBUGGER_STATE_FREE_RUNNING)
+            return;
+
         // Clear the wait
         BusRawAccess::waitResetFlipFlops();    
     }
 
     // Clear output and setup for fast wait
     cycleSetupForFastWait();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Wait for completion of a read operation
+// This is needed to ensure the data bus is returned to input mode once a read is completed
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool TargetControl::cycleWaitForReadCompletion()
+{
+    _cycleWaitForReadCompletionRequired = false;
+    uint32_t waitForReadCompleteStartUs = micros();
+    while(!isTimeout(micros(), waitForReadCompleteStartUs, MAX_WAIT_FOR_END_OF_READ_US))
+    {
+        // Read the control lines
+        uint32_t busVals = read32(ARM_GPIO_GPLEV0);
+
+        // Check if a neither IORQ or MREQ asserted
+        if (((busVals & BR_MREQ_BAR_MASK) != 0) && ((busVals & BR_IORQ_BAR_MASK) != 0))
+        {
+            // TODO 2020
+            // // Check if paging in/out is required
+            // if (_targetPageInOnReadComplete)
+            // {
+            //     busAccessCallbackPageIn();
+            //     _targetPageInOnReadComplete = false;
+            // }
+
+            return true;
+        }
+    }
+    return false;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Handle held in WAIT
+// This happens when a cycle is held in WAIT because of debugger
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TargetControl::cycleHandleHeldInWait()
+{
+    // Check if debugging has released
+    if (_debuggerState == DEBUGGER_STATE_FREE_RUNNING)
+    {
+        _cycleHeldInWaitState = false;
+
+        // Clear the wait
+        BusRawAccess::waitResetFlipFlops();
+
+        // Check if we need to wait until read cycle is completed
+        if (_cycleWaitForReadCompletionRequired)
+        {
+            // Stay here until read cycle is complete
+            cycleWaitForReadCompletion();
+        }
+
+        // Clear output and setup for fast wait
+        cycleSetupForFastWait();        
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

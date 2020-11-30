@@ -8,8 +8,8 @@
 #include "logging.h"
 
 // Constructor
-TargetControl::TargetControl(BusControl& busAccess)
-    : _busControl(busAccess)
+TargetControl::TargetControl(BusControl& busControl)
+    : _busControl(busControl)
 {
     cycleClear();
     programmingClear();
@@ -18,6 +18,7 @@ TargetControl::TargetControl(BusControl& busAccess)
     _pBusAccessCBObject = NULL;
     for (uint32_t i = 0; i < MEM_WAIT_HIGH_ADDR_WATCH_LEN; i++)
         _memWaitHighAddrWatch[i] = 0;
+    init();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -26,6 +27,8 @@ TargetControl::TargetControl(BusControl& busAccess)
 
 void TargetControl::init()
 {
+    _debuggerState = DEBUGGER_STATE_FREE_RUNNING;
+    _cycleWaitForReadCompletionRequired = false;
 }
 
 // Service
@@ -40,6 +43,26 @@ void TargetControl::suspend(bool suspend)
 {
     cycleSuspend(suspend);
     _isSuspended = suspend;
+}
+
+// Debugger break
+void TargetControl::debuggerBreak()
+{
+    // Go into break mode
+    _debuggerState = DEBUGGER_STATE_AT_BREAK;
+
+    // Set to wait on MREQ
+    _busControl.bus().waitConfigDebugger(true, false);
+}
+
+// Debugger run
+void TargetControl::debuggerRun()
+{
+    // Go into break mode
+    _debuggerState = DEBUGGER_STATE_FREE_RUNNING;
+
+    // Set to wait on MREQ
+    _busControl.bus().waitConfigDebugger(false, false);
 }
 
 // #define INCLUDE_DISASSEMBLER
@@ -67,8 +90,8 @@ void TargetControl::suspend(bool suspend)
 // static const char MODULE_PREFIX[] = "TargetControl";
 
 // // Constructor
-// TargetControl::TargetControl(BusControl& busAccess)
-//     : _busControl(busAccess)
+// TargetControl::TargetControl(BusControl& busControl)
+//     : _busControl(busControl)
 // {
 //     // Sockets
 //     _busSocketId = -1;
@@ -212,7 +235,7 @@ void TargetControl::suspend(bool suspend)
 // {
 //     // TODO 2020
 //     // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busSocketIsEnabled %d %d", 
-//     // //             busAccess.busSocketIsEnabled(_busSocketId), _stepMode);
+//     // //             busControl.busSocketIsEnabled(_busSocketId), _stepMode);
 //     // if (!_busControl.socketIsEnabled(_busSocketId))
 //     //     return false;
 //     return _stepMode == STEP_MODE_STEP_PAUSED;
@@ -649,10 +672,10 @@ void TargetControl::suspend(bool suspend)
 // //     _stepMode = STEP_MODE_STEP_PAUSED;
 
 // //     // Release bus hold if held
-// //     if (busAccess.waitIsHeld())
+// //     if (busControl.waitIsHeld())
 // //     {
 // //         // Remove any hold to allow execution / injection
-// //         busAccess.waitHold(_busSocketId, false);
+// //         busControl.waitHold(_busSocketId, false);
 // //     }
 // // }
 
@@ -904,7 +927,7 @@ void TargetControl::suspend(bool suspend)
 //     //         handleStepOverBkpts(addr, data, flags, retVal);
 
 //     //         // // Remove any hold to allow execution / injection
-//     //         // busAccess.waitHold(_busSocketId, false);
+//     //         // busControl.waitHold(_busSocketId, false);
 
 //     //         // If we get another first byte then start injecting
 //     //         bool firstByteOfInstr = trackPrefixedInstructions(flags, data, retVal);
@@ -963,7 +986,7 @@ void TargetControl::suspend(bool suspend)
 //     //     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "addr %04x RetVal %02x(%c) Held %c InData %02x flags %08x %c%c%c%c%c Pfx1 %d Pfx2 %d state %d startState %d", 
 //     //     //             addr, retVal & 0xff, 
 //     //     //             (retVal & BR_MEM_ACCESS_INSTR_INJECT) ? 'I' : ((retVal & BR_MEM_ACCESS_RSLT_NOT_DECODED) ? 'X' : 'D'),
-//     //     //             busAccess.waitIsHeld() ? 'Y' : 'N',
+//     //     //             busControl.waitIsHeld() ? 'Y' : 'N',
 //     //     //             data,
 //     //     //             flags, 
 //     //     //             (flags & BR_CTRL_BUS_M1_MASK) ? '1' : ' ', 
@@ -1107,7 +1130,7 @@ void TargetControl::suspend(bool suspend)
 // //         if (_stepMode == STEP_MODE_STEP_INTO)
 // //         {
 // //             // Tell bus to hold at this point
-// //             busAccess.waitHold(_busSocketId, true);
+// //             busControl.waitHold(_busSocketId, true);
 // //         }
 // // #endif
 

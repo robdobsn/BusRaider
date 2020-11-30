@@ -98,3 +98,4 @@ void BusControl::rawAccessEnd()
     _busSocketManager.suspend(false, true);
     _targetControl.suspend(false);
 }
+

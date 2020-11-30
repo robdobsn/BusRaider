@@ -86,6 +86,12 @@ public:
         return _hwManager;
     }
 
+    // Check if debugging
+    bool isDebugging()
+    {
+        return _targetControl.isDebugging();
+    }
+
     // Get return type string
     const char* retcString(BR_RETURN_TYPE retc)
     {

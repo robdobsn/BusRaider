@@ -86,6 +86,36 @@ private:
                 uint32_t& value, char* pOutStr = NULL, uint32_t maxOutStrLen = 0,
                 bool forceDecimal = false);
 
+    // Message actions
+    bool apiProgClear(char* pRespJson, unsigned maxRespLen);
+    bool apiProgWrite(char* pRespJson, unsigned maxRespLen);
+    bool apiProgWriteAndRun(char* pRespJson, unsigned maxRespLen);
+    bool apiTargetReset(char* pRespJson, unsigned maxRespLen);
+    bool apiFileToTarget(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen);
+    bool apiSetMcJson(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen);
+    bool apiSendKeyToTarget(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen);
+    bool apiReadFromTarget(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen);
+    bool apiWriteToTarget(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen);
+    bool apiWriteReadTarget(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen);
+    bool apiDebuggerBreak(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen);
+    bool apiDebuggerRun(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen);
+
     // // Synchronous bus access
     // uint8_t _memAccessDataBuf[MAX_MEM_BLOCK_READ_WRITE];
     // bool _memAccessPending;
