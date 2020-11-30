@@ -18,6 +18,8 @@
 #include "MemoryController.h"
 #include "BusRawAccess_Timing.h"
 
+// #define CHECK_ARM_PWM_STA_BEFORE_WAIT_CLEAR
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Bus raw access
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -48,7 +50,6 @@ public:
     // Wait hardware config
     BR_RETURN_TYPE waitConfigure(bool waitOnMemory, bool waitOnIO);
     void waitSuspend(bool suspend);
-    void waitResetFlipFlops(bool forceClear = false);
 
     // Bus request
     BR_RETURN_TYPE busRequestAndTake(uint32_t maxWaitForBUSACKus = 0);
@@ -113,6 +114,24 @@ public:
         _hwVersionNumber = hwVersion;
     }
 
+    // Clear wait flip-flops
+    static inline void waitResetFlipFlops()
+    {
+        // LogWrite("BusAccess", LOG_DEBUG, "WAIT waitResetFlipFlops");
+
+        // Wait flip-flops are reset using the BCM2835 PWM controller
+        // Since the PWM FIFO is shared the data output to MREQ/IORQ enable pins 
+        // will be interleaved so we need to write data for both
+#ifdef CHECK_ARM_PWM_STA_BEFORE_WAIT_CLEAR
+        if ((read32(ARM_PWM_STA) & 1) == 0)
+#endif
+        {
+            // Clear the wait
+            write32(ARM_PWM_FIF1, 0x0000ffff);  // IORQ sequence
+            write32(ARM_PWM_FIF1, 0x0000ffff);  // MREQ sequence
+        }
+    }
+
 private:
     // State
     bool _busReqAcknowledged;
@@ -146,4 +165,5 @@ private:
     void addrHighSet(uint32_t highAddrByte);
     void addrSet(unsigned int addr);
     void addrLowInc();
+
 };

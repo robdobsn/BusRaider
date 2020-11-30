@@ -100,7 +100,7 @@ void BusRawAccess::busReqRelease()
     // Clear wait detected in case we created some MREQ or IORQ cycles that
     // triggered wait
     // LogWrite("BusAccess", LOG_DEBUG, "controlRelease");
-    waitResetFlipFlops(true);
+    waitResetFlipFlops();
     
     // Clear wait detection - only does something if Pi interrupts are used
     waitClearDetected();

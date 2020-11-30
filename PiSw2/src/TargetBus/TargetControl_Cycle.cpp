@@ -11,7 +11,6 @@
 // #define TEST_HIGH_ADDR_IS_ON_PIB
 // #define DEBUG_SHOW_IO_ACCESS_ADDRS_WR
 // #define DEBUG_SHOW_IO_ACCESS_ADDRS_RD
-#define TEST_SUPERFAST_WAIT
 
 // Module name
 static const char MODULE_PREFIX[] = "TargCtrlCyc";
@@ -219,7 +218,6 @@ void TargetControl::cycleCheckWait()
     if (_isSuspended)
         return;
 
-#ifdef TEST_SUPERFAST_WAIT
     static const uint32_t WAIT_LOOPS_FOR_TIME_OPT = 20;
     uint32_t busVals = 0;
     for (uint32_t waitLoopIdx = 0; waitLoopIdx < WAIT_LOOPS_FOR_TIME_OPT; waitLoopIdx++)
@@ -249,82 +247,86 @@ void TargetControl::cycleCheckWait()
 
         // Full wait processing
         if (fullWaitProc)
+        {
+            // Full wait processing - clears wait flip-flops
             cycleFullWaitProcessing();
-        
-        // Clear the wait
-        write32(ARM_PWM_FIF1, 0x0000ffff);  // IORQ sequence
-        write32(ARM_PWM_FIF1, 0x0000ffff);  // MREQ sequence
+        }
+        else
+        {
+            // Clear the wait
+            BusRawAccess::waitResetFlipFlops();
+        }
         break;
     }
-#else
-    // TODO 2020 - assumes simple mode - no debug:
-    // - processor will not be held in wait
-    // - processor read from emulated IO or MEM is handled completely
-    //   in this function - right to the end of the cycle
+// #else
+//     // TODO 2020 - assumes simple mode - no debug:
+//     // - processor will not be held in wait
+//     // - processor read from emulated IO or MEM is handled completely
+//     //   in this function - right to the end of the cycle
 
-    // Loop here to reduce time to detect WAIT
-    static const uint32_t WAIT_LOOPS_FOR_TIME_OPT = 4;
-    bool waitFound = false;
-    uint32_t busVals = 0;
-    for (uint32_t waitLoopIdx = 0; waitLoopIdx < WAIT_LOOPS_FOR_TIME_OPT; waitLoopIdx++)
-    {
-        // Get inputs
-        busVals = read32(ARM_GPIO_GPLEV0);
+//     // Loop here to reduce time to detect WAIT
+//     static const uint32_t WAIT_LOOPS_FOR_TIME_OPT = 4;
+//     bool waitFound = false;
+//     uint32_t busVals = 0;
+//     for (uint32_t waitLoopIdx = 0; waitLoopIdx < WAIT_LOOPS_FOR_TIME_OPT; waitLoopIdx++)
+//     {
+//         // Get inputs
+//         busVals = read32(ARM_GPIO_GPLEV0);
 
-        // Check for WAIT active (and BUSACK not active) - otherwise nothing to do
-        if ((busVals & BR_WAIT_BAR_MASK) || (!(busVals & BR_BUSACK_BAR_MASK)))
-            continue;
+//         // Check for WAIT active (and BUSACK not active) - otherwise nothing to do
+//         if ((busVals & BR_WAIT_BAR_MASK) || (!(busVals & BR_BUSACK_BAR_MASK)))
+//             continue;
 
-        // Check RD or WR is active - nothing to do if not
-        if ((busVals & BR_RD_BAR_MASK) && (busVals & BR_WR_BAR_MASK))
-            continue;
+//         // Check RD or WR is active - nothing to do if not
+//         if ((busVals & BR_RD_BAR_MASK) && (busVals & BR_WR_BAR_MASK))
+//             continue;
         
-        // Found a WAIT
-        waitFound = true;
-        break;
-    }
-    if (!waitFound)
-        return;
+//         // Found a WAIT
+//         waitFound = true;
+//         break;
+//     }
+//     if (!waitFound)
+//         return;
 
-    // Check for IORQ
-    if (!(busVals & BR_IORQ_BAR_MASK))
-    {
-        cycleFullWaitProcessing();
-    }
-    else if (!(busVals & BR_MREQ_BAR_MASK))
-    {
-        // Get high address
-        uint32_t highAddr = (busVals >> BR_DATA_BUS) & 0xff;
+//     // Check for IORQ
+//     if (!(busVals & BR_IORQ_BAR_MASK))
+//     {
+//         cycleFullWaitProcessing();
+//     }
+//     else if (!(busVals & BR_MREQ_BAR_MASK))
+//     {
+//         // Get high address
+//         uint32_t highAddr = (busVals >> BR_DATA_BUS) & 0xff;
 
-        // Check if in watch table
-        if (_memWaitHighAddrWatch[highAddr] != 0)
-            cycleFullWaitProcessing();
-    }
+//         // Check if in watch table
+//         if (_memWaitHighAddrWatch[highAddr] != 0)
+//             cycleFullWaitProcessing();
+//     }
 
-    // High address stats
-    // _memWaitHighAddrLookup[highAddr]++;
-    // uint32_t foundVals = 0;
-    // for (uint32_t i = 0; i < MEM_WAIT_HIGH_ADDR_LOOKUP_LEN; i++)
-    // {
-    //     if (_memWaitHighAddrLookup[i] > 0)
-    //     {
-    //         if (foundVals < 5)
-    //             DEBUG_VAL_SET(foundVals+1, i);
-    //         foundVals++;
-    //     }
-    //     DEBUG_VAL_SET(0, foundVals);
-    // }
+//     // High address stats
+//     // _memWaitHighAddrLookup[highAddr]++;
+//     // uint32_t foundVals = 0;
+//     // for (uint32_t i = 0; i < MEM_WAIT_HIGH_ADDR_LOOKUP_LEN; i++)
+//     // {
+//     //     if (_memWaitHighAddrLookup[i] > 0)
+//     //     {
+//     //         if (foundVals < 5)
+//     //             DEBUG_VAL_SET(foundVals+1, i);
+//     //         foundVals++;
+//     //     }
+//     //     DEBUG_VAL_SET(0, foundVals);
+//     // }
 
-    // Debug
-    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-    // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+//     // Debug
+//     // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+//     // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+//     // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+//     // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+//     // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
 
-    // TODO 2020
-    _busControl.bus().waitResetFlipFlops();
-#endif
+//     // TODO 2020
+//     _busControl.bus().waitResetFlipFlops();
+// #endif
 //     // Check if already in wait
 //     if (!_waitIsActive)
 //     {
@@ -465,6 +467,9 @@ void TargetControl::cycleFullWaitProcessing()
         // Set the value for the processor to read
         _busControl.bus().pibSetValue(retVal & 0xff);
 
+        // Clear the wait
+        BusRawAccess::waitResetFlipFlops();
+        
         // Stay here until read cycle is complete
         uint32_t waitForReadCompleteStartUs = micros();
         while(!isTimeout(micros(), waitForReadCompleteStartUs, MAX_WAIT_FOR_END_OF_READ_US))
@@ -486,6 +491,11 @@ void TargetControl::cycleFullWaitProcessing()
                 break;
             }
         }
+    }
+    else
+    {
+        // Clear the wait
+        BusRawAccess::waitResetFlipFlops();    
     }
 
     // Clear output and setup for fast wait

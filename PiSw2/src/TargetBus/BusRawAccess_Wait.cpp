@@ -96,28 +96,6 @@ BR_RETURN_TYPE BusRawAccess::waitConfigure(bool waitOnMemory, bool waitOnIO)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Reset wait flip-flops
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void BusRawAccess::waitResetFlipFlops(bool forceClear)
-{
-    // LogWrite("BusAccess", LOG_DEBUG, "WAIT waitResetFlipFlops");
-
-    // Wait flip-flops are reset using the BCM2835 PWM controller
-    // Since the PWM FIFO is shared the data output to MREQ/IORQ enable pins 
-    // will be interleaved so we need to write data for both
-    if ((read32(ARM_PWM_STA) & 1) == 0)
-    {
-        // Write to FIFO
-        uint32_t busVals = read32(ARM_GPIO_GPLEV0);
-        bool ioWaitClear = (forceClear || ((busVals & BR_IORQ_BAR_MASK) == 0)) && _rawWaitOnIO;
-        write32(ARM_PWM_FIF1, ioWaitClear ? 0x0000ffff : 0);  // IORQ sequence
-        bool memWaitClear = (forceClear || ((busVals & BR_MREQ_BAR_MASK) == 0)) && _rawWaitOnMem;
-        write32(ARM_PWM_FIF1, memWaitClear ? 0x0000ffff : 0);  // MREQ sequence
-    }
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Wait clear detected
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
