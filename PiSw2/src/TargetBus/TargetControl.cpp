@@ -6,6 +6,7 @@
 #include "PiWiring.h"
 #include "lowlib.h"
 #include "logging.h"
+#include "DebugHelpergit.h"
 
 // Constructor
 TargetControl::TargetControl(BusControl& busControl)
@@ -28,7 +29,9 @@ TargetControl::TargetControl(BusControl& busControl)
 void TargetControl::init()
 {
     _debuggerState = DEBUGGER_STATE_FREE_RUNNING;
+    _debuggerStepMode = DEBUGGER_STEP_MODE_NONE;
     _cycleWaitForReadCompletionRequired = false;
+    _debuggerUsePAGE = true;
 }
 
 // Service
@@ -50,19 +53,44 @@ void TargetControl::debuggerBreak()
 {
     // Go into break mode
     _debuggerState = DEBUGGER_STATE_AT_BREAK;
+    _debuggerStepMode = DEBUGGER_STEP_MODE_NONE;
 
     // Set to wait on MREQ
     _busControl.bus().waitConfigDebugger(true, false);
 }
 
-// Debugger run
-void TargetControl::debuggerRun()
+// Debugger continue
+void TargetControl::debuggerContinue()
 {
     // Go into break mode
     _debuggerState = DEBUGGER_STATE_FREE_RUNNING;
 
     // Set to wait on MREQ
     _busControl.bus().waitConfigDebugger(false, false);
+}
+
+// Debugger step-in
+void TargetControl::debuggerStepIn()
+{
+    // Check if already in break mode
+    if (_debuggerState != DEBUGGER_STATE_FREE_RUNNING)
+    {
+        // Go into break mode
+        _debuggerState = DEBUGGER_STATE_AT_BREAK;
+        _debuggerStepMode = DEBUGGER_STEP_MODE_NONE;
+        DEBUG_PULSE();
+        DEBUG_PULSE();
+        DEBUG_PULSE();
+    }
+    else
+    {
+        // Step in
+        _debuggerStepMode = DEBUGGER_STEP_MODE_STEP_INTO;
+        DEBUG_PULSE();
+    }
+    
+    // Set to wait on MREQ
+    _busControl.bus().waitConfigDebugger(true, false);
 }
 
 // #define INCLUDE_DISASSEMBLER

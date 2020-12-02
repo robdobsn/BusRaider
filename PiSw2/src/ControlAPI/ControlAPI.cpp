@@ -191,10 +191,15 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
         // Break the target program execution and hold the processor
         return apiDebuggerBreak(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
     }
-    else if (strcasecmp(cmdName, "debugRun") == 0)
+    else if (strcasecmp(cmdName, "debugContinue") == 0)
     {
-        // Break the target program execution and hold the processor
-        return apiDebuggerRun(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+        // Continue execution
+        return apiDebuggerContinue(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+    }
+    else if (strcasecmp(cmdName, "debugStepIn") == 0)
+    {
+        // Step the processor in
+        return apiDebuggerStepIn(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
     }
     else if (strcasecmp(cmdName, "rawBusControlOn") == 0)
     {
@@ -837,16 +842,12 @@ BR_RETURN_TYPE ControlAPI::blockAccessSync(uint32_t addr, uint8_t* pData, uint32
     _busControl.rawAccessStart();
 
     // Assert BUSRQ and wait for the bus
-    DEBUG_PULSE();
-
     BR_RETURN_TYPE retc = _busControl.bus().busRequestAndTake();
     if (retc != BR_OK)
     {
         _busControl.rawAccessEnd();
         return retc;
     }
-
-    DEBUG_PULSE();
 
     // Access the block (can both write and read)
     if (write)
@@ -856,13 +857,9 @@ BR_RETURN_TYPE ControlAPI::blockAccessSync(uint32_t addr, uint8_t* pData, uint32
         retc = _busControl.mem().blockRead(addr, pData, 
                  len, iorq ? BLOCK_ACCESS_IO : BLOCK_ACCESS_MEM);
 
-    DEBUG_PULSE();
-
     // Release BUSRQ
     _busControl.bus().busReqRelease();
     _busControl.rawAccessEnd();
-
-    DEBUG_PULSE();
 
     return BR_OK;
 }
@@ -1203,12 +1200,22 @@ bool ControlAPI::apiDebuggerBreak(const char* pCmdJson,
     return true;
 }
 
-bool ControlAPI::apiDebuggerRun(const char* pCmdJson, 
+bool ControlAPI::apiDebuggerContinue(const char* pCmdJson, 
             const uint8_t* pParams, unsigned paramsLen,
             char* pRespJson, unsigned maxRespLen)
 {
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiDebuggerRun %s", pCmdJson);
-    _busControl.ctrl().debuggerRun();
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiDebuggerContinue %s", pCmdJson);
+    _busControl.ctrl().debuggerContinue();
+    strlcpy(pRespJson, R"("rslt":"ok")", maxRespLen);
+    return true;
+}
+
+bool ControlAPI::apiDebuggerStepIn(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen)
+{
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiDebuggerStepIn %s", pCmdJson);
+    _busControl.ctrl().debuggerStepIn();
     strlcpy(pRespJson, R"("rslt":"ok")", maxRespLen);
     return true;
 }

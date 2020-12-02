@@ -132,11 +132,12 @@ void TargetControl::cycleHandleActions()
             // IRQ generation, etc will also be handled appropriately
             // by the debugger code
             cyclePerformActionRequest();
-            return;
         }
-
-        // Bus actions pending
-        cycleReqHandlePending();
+        else
+        {
+            // Bus actions pending
+            cycleReqHandlePending();
+        }
     }
     else if (_cycleReqState == CYCLE_REQ_STATE_ASSERTED)
     {
@@ -217,6 +218,7 @@ void TargetControl::cyclePerformActionRequest()
     {
         programmingWrite();
         programmingDone();
+        _cycleReqState = CYCLE_REQ_STATE_NONE;
     }
     else
     {
@@ -445,12 +447,12 @@ void TargetControl::cycleCheckWait()
 
 void TargetControl::cycleSetupForFastWait()
 {
+    // Set data bus direction in
+    write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK);
     // Ensure PIB is inward
     _busControl.bus().pibSetIn();
     // high address is enabled on mux
     _busControl.bus().muxSet(BR_MUX_HADDR_OE_BAR);
-    // Set data bus direction in
-    write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -486,6 +488,9 @@ void TargetControl::cycleFullWaitProcessing()
     }
 #endif
 
+    // Handle debugger access to registers and memory
+    debuggerGrabRegsAndMemory(ctrlBusVals, addr, dataBusVals);
+
     // Callback to sockets
     uint32_t retVal = BR_MEM_ACCESS_RSLT_NOT_DECODED;
     if (_pBusAccessCB)
@@ -511,9 +516,11 @@ void TargetControl::cycleFullWaitProcessing()
         // Check if we are going to hold here - if so return without
         // releasing the WAIT
         _cycleWaitForReadCompletionRequired = true;
-        _cycleHeldInWaitState = true;
         if (_debuggerState != DEBUGGER_STATE_FREE_RUNNING)
+        {
+            _cycleHeldInWaitState = true;
             return;
+        }
 
         // Clear the wait
         BusRawAccess::waitResetFlipFlops();
@@ -525,9 +532,11 @@ void TargetControl::cycleFullWaitProcessing()
     {
         // Check if we are going to hold here - if so return without
         // releasing the WAIT
-        _cycleHeldInWaitState = true;
         if (_debuggerState != DEBUGGER_STATE_FREE_RUNNING)
+        {
+            _cycleHeldInWaitState = true;
             return;
+        }
 
         // Clear the wait
         BusRawAccess::waitResetFlipFlops();    
@@ -575,9 +584,11 @@ bool TargetControl::cycleWaitForReadCompletion()
 
 void TargetControl::cycleHandleHeldInWait()
 {
-    // Check if debugging has released
-    if (_debuggerState == DEBUGGER_STATE_FREE_RUNNING)
+    // Check if debugging has released (even for one step)
+    if ((_debuggerState == DEBUGGER_STATE_FREE_RUNNING) || 
+        (_debuggerStepMode == DEBUGGER_STEP_MODE_STEP_INTO))
     {
+        _debuggerStepMode = DEBUGGER_STEP_MODE_NONE;
         _cycleHeldInWaitState = false;
 
         // Clear the wait

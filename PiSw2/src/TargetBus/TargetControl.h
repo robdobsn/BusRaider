@@ -50,7 +50,8 @@ public:
 
     // Debugger
     void debuggerBreak();
-    void debuggerRun();
+    void debuggerContinue();
+    void debuggerStepIn();
 
     // Set callback on bus access
     void setBusAccessCallback(BusAccessCBFnType* pCB, void* pObject)
@@ -143,9 +144,15 @@ private:
     void cycleHandleHeldInWait();
     void cyclePerformActionRequest();
 
+    // Debugger handling
+    void debuggerGrabRegsAndMemory(uint32_t addr, uint32_t data, uint32_t flags);
+
     // Memory wait high address watch table
     static const uint32_t MEM_WAIT_HIGH_ADDR_WATCH_LEN = 256;
     uint8_t _memWaitHighAddrWatch[MEM_WAIT_HIGH_ADDR_WATCH_LEN];
+
+    // Debugger use PAGE
+    bool _debuggerUsePAGE;
 
     // Callback on bus access
     BusAccessCBFnType* _pBusAccessCB;
@@ -160,6 +167,16 @@ private:
 
     // Debug state
     volatile DebuggerState _debuggerState;
+
+    // Step mode
+    enum DebuggerStepMode
+    {
+        DEBUGGER_STEP_MODE_NONE,
+        DEBUGGER_STEP_MODE_STEP_INTO
+    };
+
+    // Debug step mode
+    volatile DebuggerStepMode _debuggerStepMode;
 
     // void cycleHandleReadRelease();
     // // State

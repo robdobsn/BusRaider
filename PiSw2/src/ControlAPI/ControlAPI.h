@@ -112,7 +112,10 @@ private:
     bool apiDebuggerBreak(const char* pCmdJson, 
             const uint8_t* pParams, unsigned paramsLen,
             char* pRespJson, unsigned maxRespLen);
-    bool apiDebuggerRun(const char* pCmdJson, 
+    bool apiDebuggerContinue(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen);
+    bool apiDebuggerStepIn(const char* pCmdJson, 
             const uint8_t* pParams, unsigned paramsLen,
             char* pRespJson, unsigned maxRespLen);
 
