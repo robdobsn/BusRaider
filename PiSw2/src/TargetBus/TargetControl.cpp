@@ -6,7 +6,7 @@
 #include "PiWiring.h"
 #include "lowlib.h"
 #include "logging.h"
-#include "DebugHelpergit.h"
+#include "DebugHelper.h"
 
 // Constructor
 TargetControl::TargetControl(BusControl& busControl)
@@ -73,20 +73,16 @@ void TargetControl::debuggerContinue()
 void TargetControl::debuggerStepIn()
 {
     // Check if already in break mode
-    if (_debuggerState != DEBUGGER_STATE_FREE_RUNNING)
+    if (_debuggerState == DEBUGGER_STATE_FREE_RUNNING)
     {
         // Go into break mode
         _debuggerState = DEBUGGER_STATE_AT_BREAK;
         _debuggerStepMode = DEBUGGER_STEP_MODE_NONE;
-        DEBUG_PULSE();
-        DEBUG_PULSE();
-        DEBUG_PULSE();
     }
     else
     {
         // Step in
         _debuggerStepMode = DEBUGGER_STEP_MODE_STEP_INTO;
-        DEBUG_PULSE();
     }
     
     // Set to wait on MREQ
