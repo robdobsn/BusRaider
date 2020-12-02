@@ -71,7 +71,7 @@ public:
     {
         return _targetProgrammer;
     }
-    void programmingStart(bool execAfterProgramming);
+    void programmingStart(bool execAfterProgramming, bool enterDebugger);
 
     // Request bus cycle action
     bool cycleReqAction(BusSocketInfo& busSocketInfo, 
@@ -114,6 +114,7 @@ private:
     // Programming state
     bool _programmingPending;
     bool _programmingDoExec;
+    bool _programmingEnterDebugger;
     void programmingClear();
     void programmingWrite();
     void programmingDone();

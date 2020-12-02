@@ -12,6 +12,8 @@
 // Module name
 static const char MODULE_PREFIX[] = "TargCtrlDebug";
 
+// #define DEBUG_REGISTER_GET
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Debugger grab registers and memory
 // Returns true if processor should be held at this point
@@ -175,16 +177,21 @@ bool TargetControl::debuggerHandleWaitCycle(uint32_t addr, uint32_t data, uint32
                 }
             }
 
-            LogWrite(MODULE_PREFIX, LOG_DEBUG, "regGet WR pos %d D %02x flags %c %c %c %c %c %08x", 
+#ifdef DEBUG_REGISTER_GET
+            char regsStr[200];
+            _z80Registers.format(regsStr, sizeof(regsStr));
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "regGet WR pos %d addr %04x D %02x flags %c %c %c %c %c %08x regs %s", 
                     snippetIdx,
+                    addr,
                     data,
                     (rawBusVals & BR_V20_M1_BAR_MASK) ? ' ' : '1',
                     (rawBusVals & BR_RD_BAR_MASK) ? ' ' : 'R',
                     (rawBusVals & BR_WR_BAR_MASK) ? ' ' : 'W',
                     (rawBusVals & BR_MREQ_BAR_MASK) ? ' ' : 'M',
                     (rawBusVals & BR_IORQ_BAR_MASK) ? ' ' : 'I',
-                    rawBusVals);
-
+                    rawBusVals,
+                    regsStr);
+#endif
             // Clear the wait
             BusRawAccess::waitResetFlipFlops();    
         }
@@ -198,18 +205,32 @@ bool TargetControl::debuggerHandleWaitCycle(uint32_t addr, uint32_t data, uint32
             injectVal = regQueryInstructions[snippetIdx];
             writeIdx = 0;
 
-            LogWrite(MODULE_PREFIX, LOG_DEBUG, "regGet RD pos %d D %02x flags %c %c %c %c %c %08x", 
+#ifdef DEBUG_REGISTER_GET
+            char regsStr[200];
+            _z80Registers.format(regsStr, sizeof(regsStr));
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "regGet RD pos %d addr %04x D %02x flags %c %c %c %c %c %08x regs %s", 
                     snippetIdx,
+                    addr,
                     injectVal,
                     (rawBusVals & BR_V20_M1_BAR_MASK) ? ' ' : '1',
                     (rawBusVals & BR_RD_BAR_MASK) ? ' ' : 'R',
                     (rawBusVals & BR_WR_BAR_MASK) ? ' ' : 'W',
                     (rawBusVals & BR_MREQ_BAR_MASK) ? ' ' : 'M',
                     (rawBusVals & BR_IORQ_BAR_MASK) ? ' ' : 'I',
-                    rawBusVals);
-
+                    rawBusVals,
+                    regsStr);
+#endif
             // Move to next read instruction
             snippetIdx++;
+
+            // Check if we're at the point where we should do a memory grab
+            bool memoryGrab = false;
+            if (snippetIdx == RelJumpBackStartPos)
+            {
+                // Request the bus
+                digitalWrite(BR_BUSRQ_BAR, 0);
+                memoryGrab = true;
+            }
 
             // Set data direction out on the data bus driver
             write32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
@@ -223,12 +244,46 @@ bool TargetControl::debuggerHandleWaitCycle(uint32_t addr, uint32_t data, uint32
             
             // Stay here until read cycle is complete
             cycleWaitForReadCompletion();
+
+            // Check for memory grab
+            if (memoryGrab)
+            {
+                // Wait for BUSACK
+                uint32_t waitForBUSACKStartUs = micros();
+                bool busAckOk = false;
+                while(!isTimeout(micros(), waitForBUSACKStartUs, MAX_WAIT_FOR_DEBUG_BUSACK_US))
+                {
+                    // Get raw GPIO pin values
+                    rawBusVals = read32(ARM_GPIO_GPLEV0);
+
+                    // Check BUSACK
+                    if ((rawBusVals & BR_BUSACK_BAR_MASK) == 0)
+                    {
+                        busAckOk = true;
+                        break;
+                    }
+                }
+
+                // Grab memory contents
+                if (busAckOk)
+                {
+                    // Take bus
+                    _busControl.bus().busReqTakeControl();
+
+
+                    // Release bus
+                    _busControl.bus().busReqRelease();
+                }
+
+                // Release BUSRQ
+                digitalWrite(BR_BUSRQ_BAR, 1);
+            }
         }
 
         // Clear output and setup for fast wait
         cycleSetupForFastWait();
 
-        // TODO sort
+        // Delay to ensure previous wait cycle completes
         microsDelay(1);
 
         // Stay here until next WAIT cycle starts
@@ -249,6 +304,10 @@ bool TargetControl::debuggerHandleWaitCycle(uint32_t addr, uint32_t data, uint32
 
     // Clear the PAGE line to re-enable RAM
     digitalWrite(BR_PAGING_RAM_PIN, 1);
+
+#ifdef DEBUG_REGISTER_GET
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "regGet done");
+#endif
 
     return true;
 }

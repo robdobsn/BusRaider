@@ -19,33 +19,33 @@ void TargetControl::programmingClear()
 {
     _programmingPending = false;
     _programmingDoExec = false;
+    _programmingEnterDebugger = false;
 }
 
-void TargetControl::programmingStart(bool execAfterProgramming)
+void TargetControl::programmingStart(bool execAfterProgramming, bool enterDebugger)
 {
     // Check there is something to write
     if (_targetProgrammer.numMemoryBlocks() == 0) 
     {
         // Nothing new to write
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "programmingStart - nothing to write");
-    } 
-    else 
-    {
-        // Indicate that programming is pending
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "programmingStart targetReqBus");
-        _programmingPending = true;
-        _programmingDoExec = execAfterProgramming;
-
-        // // BUSRQ is used even if memory is emulated because it holds the processor while changes are made
-        // // Give the BusAccess some service first to ensure WAIT handling is complete before requesting the bus
-        // for (int i = 0; i < 3; i++)
-        //     _busControl.service();
-
-        // // Request target bus
-        // _busControl.socketReqBus(_busSocketId, BR_BUS_ACTION_PROGRAMMING);
-        // _busActionPendingProgramTarget = true;
-        // _busActionPendingExecAfterProgram = execAfterProgramming;
     }
+
+    // Indicate that programming is pending
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "programmingStart targetReqBus");
+    _programmingPending = true;
+    _programmingDoExec = execAfterProgramming;
+    _programmingEnterDebugger = enterDebugger;
+
+    // // BUSRQ is used even if memory is emulated because it holds the processor while changes are made
+    // // Give the BusAccess some service first to ensure WAIT handling is complete before requesting the bus
+    // for (int i = 0; i < 3; i++)
+    //     _busControl.service();
+
+    // // Request target bus
+    // _busControl.socketReqBus(_busSocketId, BR_BUS_ACTION_PROGRAMMING);
+    // _busActionPendingProgramTarget = true;
+    // _busActionPendingExecAfterProgram = execAfterProgramming;
 }
 
 void TargetControl::programmingWrite()
@@ -64,7 +64,7 @@ void TargetControl::programmingWrite()
                     _targetProgrammer.getMemoryImagePtr() + pBlock->start, pBlock->len,
                     BLOCK_ACCESS_MEM);
         // LogWrite(MODULE_PREFIX, LOG_DEBUG,
-        //                     "ProgramTarget done %08x len %d result %d micros %u", 
+        //                     "progWrite done %08x len %d result %d micros %u", 
         //                     pBlock->start, pBlock->len, brResult, micros());
         if (pBlock->start == Z80_PROGRAM_RESET_VECTOR)
             codeAtResetVector = true;
@@ -94,6 +94,8 @@ void TargetControl::programmingWrite()
     // Check for exec
     if (_programmingDoExec)
         programExec(codeAtResetVector);
+    else if (_programmingEnterDebugger)
+        debuggerBreak();
 }
 
 void TargetControl::programmingDone()
@@ -182,6 +184,10 @@ void TargetControl::programExec(bool codeAtResetVector)
     // See if we need to do a hard reset
     if (performHardReset)
     {
+        // Enter debugger if required
+        if (_programmingEnterDebugger)
+            debuggerBreak();
+
         // Request reset target
         _busControl.bus().targetReset(_busControl.busSettings().resetDurationMs);
     }

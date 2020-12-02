@@ -43,9 +43,9 @@ for i in range(4096):
 setTestDataFrame = b"{\"cmdName\":\"FileTarget\",,\"fileName\":\"test.bin\",\"baseAddr\":\"4000\"}\0" 
 setTestDataFrame += testData
 
-clearFrame = b"{\"cmdName\":\"ClearTarget\"}\0"
+clearFrame = b"{\"cmdName\":\"progClear\"}\0"
 #resetFrame = b"{\"cmdName\":\"ResetTarget\"}\0"
-progFrame = b"{\"cmdName\":\"ProgramAndReset\"}\0"
+progFrame = b"{\"cmdName\":\"progWriteAndExec\"}\0"
 ioclearFrame = b"{\"cmdName\":\"IOClrTarget\"}\0"
 setMCFrame = b"{\"cmdName\":\"SetMachine=Rob's Z80\"}\0"
 

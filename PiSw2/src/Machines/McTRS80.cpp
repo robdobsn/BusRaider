@@ -13,7 +13,7 @@
 
 static const char* MODULE_PREFIX = "TRS80";
 
-#define DEBUG_TRS80_KEYBOARD
+// #define DEBUG_TRS80_KEYBOARD
 
 extern WgfxFont __TRS80Level3Font;
 

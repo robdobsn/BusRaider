@@ -33,12 +33,12 @@ static const char *MODULE_PREFIX = "SysMan";
 // #define ONLY_ONE_MODULE_PER_SERVICE_LOOP 1
 
 // Debug
-#define DEBUG_RICREST_MESSAGES
-#define DEBUG_ENDPOINT_MESSAGES
-#define DEBUG_SHOW_FILE_UPLOAD_STATS
-#define DEBUG_RICREST_FILEUPLOAD
-#define DEBUG_RICREST_FILEUPLOAD_BLOCK_ACK
-#define DEBUG_RICREST_FILEUPLOAD_BLOCK_ACK_DETAIL
+// #define DEBUG_RICREST_MESSAGES
+// #define DEBUG_ENDPOINT_MESSAGES
+// #define DEBUG_SHOW_FILE_UPLOAD_STATS
+// #define DEBUG_RICREST_FILEUPLOAD
+// #define DEBUG_RICREST_FILEUPLOAD_BLOCK_ACK
+// #define DEBUG_RICREST_FILEUPLOAD_BLOCK_ACK_DETAIL
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor

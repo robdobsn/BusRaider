@@ -395,13 +395,13 @@ uint32_t HwManager::getSnippetToSetupHw(uint32_t codeLocation, uint8_t* pCodeBuf
 //         configureHw(hwName, pCmdJson);
 
 //         // Ok
-//         snprintf(pRespJson, maxRespLen, "\"err\":\"%s\"", foundOk ? "ok" : "notFound");
+//         snprintf(pRespJson, maxRespLen, "\"rslt\":\"%s\"", foundOk ? "ok" : "notFound");
 //         return true;
 //     }
 //     else if (strcasecmp(cmdName, "hwList") == 0)
 //     {
 //         // Response string
-//         strlcpy(pRespJson, "\"err\":\"ok\",\"hwList\":[", maxRespLen);
+//         strlcpy(pRespJson, "\"rslt\":\"ok\",\"hwList\":[", maxRespLen);
 
 //         // Get info on each hw item
 //         bool commaNeeded = false;

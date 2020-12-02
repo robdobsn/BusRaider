@@ -10,8 +10,9 @@
 #include "RICRESTMsg.h"
 #include <ProtocolEndpointMsg.h>
 #include <stdio.h>
+#include <Utils.h>
 
-//#define DEBUG_RICREST_MSG
+#define DEBUG_RICREST_MSG
 
 // Logging
 #ifdef DEBUG_RICREST_MSG
@@ -21,19 +22,11 @@ static const char* MODULE_PREFIX = "RICRESTMsg";
 bool RICRESTMsg::decode(const uint8_t* pBuf, uint32_t len)
 {
     // Debug
-    // uint32_t sz = len;
-    // const uint8_t* pVals = pBuf;
-    // char outBuf[400];
-    // strcpy(outBuf, "");
-    // char tmpBuf[10];
-    // for (int i = 0; i < sz; i++)
-    // {
-    //     sprintf(tmpBuf, "%02x ", pVals[i]);
-    //     strlcat(outBuf, tmpBuf, sizeof(outBuf));
-    // }
-
-    // Debug
-    // LOG_I(MODULE_PREFIX, "decode payloadLen %d payload %s", sz, outBuf);
+#ifdef DEBUG_RICREST_MSG
+    String decodeMsgHex;
+    Utils::getHexStrFromBytes(pBuf, len, decodeMsgHex);
+    LOG_I(MODULE_PREFIX, "decode payloadLen %d payload %s", len, decodeMsgHex.c_str());
+#endif
 
     // Check there is a RESTElementCode
     if (len <= RICREST_ELEM_CODE_POS)
@@ -41,6 +34,11 @@ bool RICRESTMsg::decode(const uint8_t* pBuf, uint32_t len)
 
     // Extract RESTElementCode
     _RICRESTElemCode = (RICRESTElemCode)pBuf[RICREST_ELEM_CODE_POS];
+
+#ifdef DEBUG_RICREST_MSG
+    LOG_I(MODULE_PREFIX, "decode elemCode %d", _RICRESTElemCode);
+#endif
+
     switch(_RICRESTElemCode)
     {
         case RICREST_ELEM_CODE_URL:
@@ -80,10 +78,34 @@ bool RICRESTMsg::decode(const uint8_t* pBuf, uint32_t len)
         }
         case RICREST_ELEM_CODE_COMMAND_FRAME:
         {
-            // Extract params
-            getStringFromBuf(_payloadJson, pBuf, RICREST_COMMAND_FRAME_PAYLOAD_POS, len, RICREST_MAX_PAYLOAD_LEN);  
+            // Find any null-terminator within len
+            int terminatorFoundIdx = -1;
+            for (uint32_t i = RICREST_COMMAND_FRAME_PAYLOAD_POS; i < len; i++)
+            {
+                if (pBuf[i] == 0)
+                {
+                    terminatorFoundIdx = i;
+                    break;
+                }
+            }
+
+            // Extract json
+            getStringFromBuf(_payloadJson, pBuf, RICREST_COMMAND_FRAME_PAYLOAD_POS, 
+                    terminatorFoundIdx < 0 ? len : terminatorFoundIdx, 
+                    RICREST_MAX_PAYLOAD_LEN);
+
+            // Check for any binary element
+            if (terminatorFoundIdx >= 0)
+            {
+                if (len > terminatorFoundIdx)
+                {
+                    _pBinaryData = pBuf + terminatorFoundIdx + 1;
+                    _binaryLen = len - terminatorFoundIdx - 1;
+                }
+            }
+
 #ifdef DEBUG_RICREST_MSG
-            LOG_I(MODULE_PREFIX, "RICREST CmdFrame %s", _payloadJson.c_str());
+            LOG_I(MODULE_PREFIX, "RICREST_CMD_FRAME json %s binaryLen %d", _payloadJson.c_str(), _binaryLen);
 #endif
             _req = RdJson::getString("cmdName", "unknown", _payloadJson.c_str());          
             break;

@@ -23,10 +23,10 @@ static const char MODULE_PREFIX[] = "ControlAPI";
 ControlAPI* ControlAPI::_pThisInstance = NULL;
 
 // Debug
-#define DEBUG_RX_FRAME
-#define DEBUG_COMMS_SOCKET
-#define DEBUG_API_BLOCK_ACCESS_SYNC
-#define DEBUG_BUS_ACTION_COMPLETE
+// #define DEBUG_RX_FRAME
+// #define DEBUG_COMMS_SOCKET
+// #define DEBUG_API_BLOCK_ACCESS_SYNC
+// #define DEBUG_BUS_ACTION_COMPLETE
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Construction
@@ -125,15 +125,24 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "handleRxMsg cmdName %s json %s", cmdName, pCmdJson);
 #endif
 
+    // Default ok response
+    strlcpy(pRespJson, R"("rslt":"ok")", maxRespLen);
+
+    // Check cmdName
     if ((strcasecmp(cmdName, "progClear") == 0) || (strcasecmp(cmdName, "ClearTarget") == 0))
     {
         // Clear the programmer used to program the target
         return apiProgClear(pRespJson, maxRespLen);
     }
+    if (strcasecmp(cmdName, "progAdd") == 0)
+    {
+        // Add a memory block to the programmer used to program the target
+        return apiProgAddMemBlock(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+    }
     if ((strcasecmp(cmdName, "progWrite") == 0) || (strcasecmp(cmdName, "ProgramTarget") == 0))
     {
         // Write the programmer contents to the target
-        return apiProgWrite(pRespJson, maxRespLen);
+        return apiProgWrite(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
     }
     else if ((strcasecmp(cmdName, "progWriteAndExec") == 0) || 
             (strcasecmp(cmdName, "ProgramAndReset") == 0) ||
@@ -227,7 +236,6 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
     else if (strcasecmp(cmdName, "rawBusWaitDisable") == 0)
     {
         // busControl.rawBusControlWaitDisable();
-        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "rawBusClockEnable") == 0)
@@ -261,7 +269,7 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
         // uint32_t addr = 0;
         // if (!getArg("addr", 1, pCmdJson, addr))
         // {
-        //     strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
+        //     strlcpy(pRespJson, "\"rslt\":\"InvArgs\"", maxRespLen);
         //     return true;
         // }
         // busControl.rawBusControlSetAddress(addr);
@@ -281,7 +289,7 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
         // uint32_t data = 0;
         // if (!getArg("data", 1, pCmdJson, data))
         // {
-        //     strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
+        //     strlcpy(pRespJson, "\"rslt\":\"InvArgs\"", maxRespLen);
         //     return true;
         // }
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "SET data %02x", data);
@@ -295,7 +303,7 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
         // uint32_t data = 0;
         // if (!getArg("data", 1, pCmdJson, data))
         // {
-        //     strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
+        //     strlcpy(pRespJson, "\"rslt\":\"InvArgs\"", maxRespLen);
         //     return true;
         // }
         // busControl.rawBusControlWritePIB(data);
@@ -308,13 +316,13 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
         // uint32_t pin = 0;
         // if (!getArg("pin", 1, pCmdJson, pin, NULL, 0, true))
         // {
-        //     strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
+        //     strlcpy(pRespJson, "\"rslt\":\"InvArgs\"", maxRespLen);
         //     return true;
         // }
         // uint32_t value = 0;
         // if (!getArg("value", 2, pCmdJson, value))
         // {
-        //     strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
+        //     strlcpy(pRespJson, "\"rslt\":\"InvArgs\"", maxRespLen);
         //     return true;
         // }
         // busControl.rawBusControlSetPin(pin, value);
@@ -327,7 +335,7 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
         // uint32_t pin = 0;
         // if (!getArg("pin", 1, pCmdJson, pin, NULL, 0, true))
         // {
-        //     strlcpy(pRespJson, "\"err\":\"InvArgs\"", maxRespLen);
+        //     strlcpy(pRespJson, "\"rslt\":\"InvArgs\"", maxRespLen);
         //     return true;
         // }
         // busControl.rawBusControlGetPin(pin);
@@ -371,14 +379,12 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
     {
         // // Clear bus status
         // busControl.clearStatus();
-        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "busInit") == 0)
     {
         // // Reinit bus
         // busControl.busAccessReinit();
-        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "targetReset") == 0)
@@ -386,7 +392,6 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Target Reset");
         // // Get bus status
         // busControl.targetReqReset(_busSocketId);
-        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "targetBusReq") == 0)
@@ -394,7 +399,6 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Target Bus Req");
         // // Get bus status
         // busControl.targetReqBus(_busSocketId, BR_BUS_ACTION_GENERAL);
-        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "targetBusRel") == 0)
@@ -402,14 +406,13 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Target Bus Req");
         // // Get bus status
         // busControl.targetReqBus(_busSocketId, BR_BUS_ACTION_GENERAL);
-        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "clockHzGet") == 0)
     {
         // Get clock
         uint32_t actualHz = _busControl.clock().getFreqInHz();
-        snprintf(pRespJson, maxRespLen, "\"err\":\"ok\",\"clockHz\":\"%d\"", (unsigned)actualHz);
+        snprintf(pRespJson, maxRespLen, R"("rslt":"ok","clockHz":"%d")", (unsigned)actualHz);
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "clockHzGet %s", pRespJson);
         return true;
     }
@@ -433,56 +436,49 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
 
         // Get clock
         uint32_t actualHz = _busControl.clock().getFreqInHz();
-        snprintf(pRespJson, maxRespLen, "\"err\":\"ok\",\"clockHz\":\"%d\"", (unsigned)actualHz);
+        snprintf(pRespJson, maxRespLen, R"("rslt":"ok","clockHz":"%d")", (unsigned)actualHz);
         return true;
     }
     else if (strcasecmp(cmdName, "waitHoldOn") == 0)
     {
         // // Hold
         // busControl.waitHold(_busSocketId, true);
-        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "waitHoldOff") == 0)
     {
         // // Hold
         // busControl.waitHold(_busSocketId, false);
-        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "waitRelease") == 0)
     {
         // // Release
         // busControl.waitRelease();
-        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "waitMemoryOn") == 0)
     {
         // // Wait on memory
         // busControl.waitOnMemory(_busSocketId, true);
-        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "waitMemoryOff") == 0)
     {
         // // Wait on memory
         // busControl.waitOnMemory(_busSocketId, false);
-        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "waitIOOn") == 0)
     {
         // // Wait on IO
         // busControl.waitOnIO(_busSocketId, true);
-        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "waitIOOff") == 0)
     {
         // // Wait on IO
         // busControl.waitOnIO(_busSocketId, false);
-        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
         return true;
     }
     else if (strcasecmp(cmdName, "targetTrackerOn") == 0)
@@ -503,7 +499,7 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
             targetTracker.targetReset();
             _targetTrackerResetPending = true;
         }
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        strlcpy(pRespJson, R"("rslt":"ok")", maxRespLen);
 #endif
         return true;
     }
@@ -513,7 +509,7 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
         // Turn target tracker on
         targetTracker.enable(false, false);
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "TargettrackerOff");
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        strlcpy(pRespJson, R"("rslt":"ok")", maxRespLen);
 #endif
         return true;
     }
@@ -523,7 +519,7 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
         // Turn target tracker on
         targetTracker.stepInto();
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "TargettrackerStep %s", pCmdJson);
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        strlcpy(pRespJson, R"("rslt":"ok")", maxRespLen);
         _stepCompletionPending = true;
 #endif
         return true;
@@ -534,18 +530,7 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
 #ifdef USE_TARGET_TRACKER
         targetTracker.stepRun();
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "TargettrackerRun");
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-#endif
-        return true;
-    }
-    else if (strcasecmp(cmdName, "getRegs") == 0)
-    {
-#ifdef USE_TARGET_TRACKER
-        char regsStr[200];
-        targetTracker.getRegsFormatted(regsStr, sizeof(regsStr));
-        strlcpy(pRespJson, "\"err\":\"ok\",\"regs\":\"", maxRespLen);
-        strlcat(pRespJson, regsStr, maxRespLen);
-        strlcat(pRespJson, "\"", maxRespLen);
+        strlcpy(pRespJson, R"("rslt":"ok")", maxRespLen);
 #endif
         return true;
     }
@@ -559,9 +544,12 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
         // // Wait cycles
         // busControl.waitSetCycleUs(strtoul(paramVal, NULL, 10));
         // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Wait cycle set to %d", strtoul(paramVal, NULL, 10));
-        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        // strlcpy(pRespJson, "\"rslt\":\"ok\"", maxRespLen);
         return true;
     }
+
+    // Unknown command
+    strlcpy(pRespJson, R"("rslt":"unknownCmd")", maxRespLen);
 
     return false;
 }
@@ -748,24 +736,6 @@ bool ControlAPI::muxLineHandler(const char* pCmdJson)
     return true;
 }
 
-void ControlAPI::busLinesRead(char* pRespJson, int maxRespLen)
-{
-    // // Read bus lines
-    // uint32_t lines = busControl.rawBusControlReadRaw();
-    // bool m1Val = lines & BR_V20_M1_BAR_MASK; 
-    // if (busControl.getHwVersion() == 17)
-    //     m1Val = (lines & BR_V17_M1_PIB_BAR_MASK);
-    // snprintf(pRespJson, maxRespLen, "\"err\":\"ok\",\"raw\":\"%02x\",\"pib\":\"%02x\",\"ctrl\":\"%c%c%c%c%c\"",
-    //         (unsigned)busControl.rawBusControlReadRaw(), 
-    //         (unsigned)((busControl.rawBusControlReadRaw() >> BR_DATA_BUS) & 0xff),
-    //         (lines & BR_MREQ_BAR_MASK) ? 'M' : '.', 
-    //         (lines & BR_IORQ_BAR_MASK) ? 'I' : '.', 
-    //         (lines & BR_RD_BAR_MASK) ? 'R' : '.', 
-    //         (lines & BR_WR_BAR_MASK) ? 'W' : '.',
-    //         m1Val ? '1' : '.'
-    //         );
-}
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Callbacks/Hooks
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -828,13 +798,13 @@ void ControlAPI::service()
     TargetController& targetTracker = _mcManager.getTargetTracker();
     if (_targetTrackerResetPending && targetTracker.isStepPaused())
     {
-        _commandHandler.sendUnnumberedMsg("targetTrackerOnDone", "\"err\":\"ok\"");
+        _commandHandler.sendUnnumberedMsg("targetTrackerOnDone", "\"rslt\":\"ok\"");
         _targetTrackerResetPending = false;
     }
     // Check for step completion message response
     if (_stepCompletionPending && targetTracker.isStepPaused())
     {
-        _commandHandler.sendUnnumberedMsg("stepIntoDone", "\"err\":\"ok\"");
+        _commandHandler.sendUnnumberedMsg("stepIntoDone", "\"rslt\":\"ok\"");
         _stepCompletionPending = false;
     }
 #endif
@@ -875,23 +845,44 @@ BR_RETURN_TYPE ControlAPI::blockAccessSync(uint32_t addr, uint8_t* pData, uint32
 
 bool ControlAPI::apiProgClear(char* pRespJson, unsigned maxRespLen)
 {
-    // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ClearTarget");
+    // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "progClear");
     _busControl.prog().clear();
-    strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
     return true;
 }
 
-bool ControlAPI::apiProgWrite(char* pRespJson, unsigned maxRespLen)
+bool ControlAPI::apiProgAddMemBlock(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen)
 {
-    _busControl.ctrl().programmingStart(false);
-    strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+    // Get params
+    uint32_t addr = 0;
+    if (!getArg("addr", 1, pCmdJson, addr))
+    {
+        strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
+        return true;
+    }
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "progAdd addr 0x%04x len %d", addr, paramsLen);
+    _busControl.prog().addMemoryBlock(addr, pParams, paramsLen);
+    return true;
+}
+
+bool ControlAPI::apiProgWrite(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen)
+{
+    // Get params
+    uint32_t doExec = false;
+    uint32_t doDebug = false;
+    getArg("exec", 1, pCmdJson, doExec);
+    getArg("debug", 2, pCmdJson, doDebug);
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiProgWrite exec %d debug %d", doExec, doDebug);
+    _busControl.ctrl().programmingStart(doExec, doDebug);
     return true;
 }
 
 bool ControlAPI::apiProgWriteAndRun(char* pRespJson, unsigned maxRespLen)
 {
-    _busControl.ctrl().programmingStart(true);
-    strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+    _busControl.ctrl().programmingStart(true, false);
     return true;
 }
 
@@ -899,7 +890,6 @@ bool ControlAPI::apiTargetReset(char* pRespJson, unsigned maxRespLen)
 {
     // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ResetTarget");
     _busControl.sock().reqReset(_busSocketId);
-    strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
     return true;
 }
 
@@ -907,12 +897,10 @@ bool ControlAPI::apiFileToTarget(const char* pCmdJson,
             const uint8_t* pParams, unsigned paramsLen,
             char* pRespJson, unsigned maxRespLen)
 {
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "File to Target, len %d, json %s", paramsLen, pCmdJson);
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiFileToTarget len %d json %s", paramsLen, pCmdJson);
     bool rslt = _mcManager.targetFileHandler(pCmdJson, pParams, paramsLen);
-    if (rslt)
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-    else
-        strlcpy(pRespJson, "\"err\":\"fail\"", maxRespLen);
+    if (!rslt)
+        strlcpy(pRespJson, R"("rslt":"fail")", maxRespLen);
     return true;
 }
 
@@ -926,12 +914,10 @@ bool ControlAPI::apiSetMcJson(const char* pCmdJson,
     if (toCopy > _commandHandler.MAX_MC_SET_JSON_LEN)
         toCopy = _commandHandler.MAX_MC_SET_JSON_LEN;
     strlcpy(mcJson, (const char*)pParams, toCopy);
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "SetMachine %s", mcJson);
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiSetMcJson %s", mcJson);
     bool setupOk = _mcManager.setupMachine(mcJson); 
-    if (setupOk)
-        strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
-    else
-        strlcpy(pRespJson, "\"err\":\"fail\"", maxRespLen);
+    if (!setupOk)
+        strlcpy(pRespJson, R"("rslt":"fail")", maxRespLen);
     return true;
 }
 
@@ -956,7 +942,7 @@ bool ControlAPI::apiReadFromTarget(const char* pCmdJson,
             const uint8_t* pParams, unsigned paramsLen,
             char* pRespJson, unsigned maxRespLen)
 {
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "Rd %s %04x", pCmdJson, read32(ARM_GPIO_GPLEV0));
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiReadFromTarget %s %04x", pCmdJson, read32(ARM_GPIO_GPLEV0));
 
     // Get params
     uint32_t addr = 0;
@@ -997,7 +983,7 @@ bool ControlAPI::apiReadFromTarget(const char* pCmdJson,
     // Format data to reply with
     static const int MAX_MEM_READ_RESP = MAX_MEM_BLOCK_READ_WRITE*2+100; 
     char jsonResp[MAX_MEM_READ_RESP];
-    snprintf(jsonResp, sizeof(jsonResp), "\"err\":\"ok\",\"len\":%d,\"addr\":\"0x%04x\",\"isIo\":%d,\"data\":\"", 
+    snprintf(jsonResp, sizeof(jsonResp), R"("rslt":"ok","len":%d,"addr":"0x%04x","isIo":%d,"data":")", 
                 (int)dataLen, (unsigned int)addr, isIo);
     int pos = strlen(jsonResp);
     for (uint32_t i = 0; i < dataLen; i++)
@@ -1005,10 +991,11 @@ bool ControlAPI::apiReadFromTarget(const char* pCmdJson,
         snprintf(jsonResp+pos, sizeof(jsonResp), "%02x", pData[i]);
         pos+=2;
     }
-    strlcat(jsonResp, "\"", MAX_MEM_READ_RESP);
+    strlcat(jsonResp, R"(")", MAX_MEM_READ_RESP);
     strlcpy(pRespJson, jsonResp, maxRespLen);
 
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "Rd result ok, lastByte 0x%c%c", jsonResp[strlen(jsonResp)-3], jsonResp[strlen(jsonResp)-2]);
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiReadFromTarget result ok, lastByte 0x%c%c", 
+                jsonResp[strlen(jsonResp)-3], jsonResp[strlen(jsonResp)-2]);
 
     return true;
 }
@@ -1017,7 +1004,7 @@ bool ControlAPI::apiWriteToTarget(const char* pCmdJson,
             const uint8_t* pParams, unsigned paramsLen,
             char* pRespJson, unsigned maxRespLen)
 {
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "Wr %s", pCmdJson);
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiWriteToTarget %s", pCmdJson);
     
     // Get params
     uint32_t addr = 0;
@@ -1049,7 +1036,7 @@ bool ControlAPI::apiWriteToTarget(const char* pCmdJson,
                     dataLen, isIo, true, false);
     if (rslt != BR_OK)
     {
-        LogWrite(MODULE_PREFIX, LOG_WARNING, "Wr failed %s", _busControl.retcString(rslt));
+        LogWrite(MODULE_PREFIX, LOG_WARNING, "apiWriteToTarget failed %s", _busControl.retcString(rslt));
         snprintf(pRespJson, maxRespLen, R"("rslt":"%s")", _busControl.retcString(rslt));
         return true;
     }
@@ -1061,7 +1048,7 @@ bool ControlAPI::apiWriteReadTarget(const char* pCmdJson,
             const uint8_t* pParams, unsigned paramsLen,
             char* pRespJson, unsigned maxRespLen)
 {
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "testWrRd %s", pCmdJson);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiWriteReadTarget %s", pCmdJson);
         
         // Get params
         uint32_t addr = 0;
@@ -1100,7 +1087,7 @@ bool ControlAPI::apiWriteReadTarget(const char* pCmdJson,
         // Format data to reply with
         static const int MAX_MEM_READ_RESP = MAX_MEM_BLOCK_READ_WRITE*2+100; 
         char jsonResp[MAX_MEM_READ_RESP];
-        snprintf(jsonResp, sizeof(jsonResp), "\"err\":\"ok\",\"len\":%d,\"addr\":\"0x%04x\",\"isIo\":%d,\"data\":\"", 
+        snprintf(jsonResp, sizeof(jsonResp), R"("rslt":"ok","len":%d,"addr":"0x%04x","isIo":%d,"data":")", 
                     (int)dataLen, (unsigned int)addr, isIo);
         int pos = strlen(jsonResp);
         for (uint32_t i = 0; i < dataLen; i++)
@@ -1108,12 +1095,11 @@ bool ControlAPI::apiWriteReadTarget(const char* pCmdJson,
             snprintf(jsonResp+pos, sizeof(jsonResp), "%02x", wrAndRdData[i]);
             pos+=2;
         }
-        strlcat(jsonResp, "\"", MAX_MEM_READ_RESP);
+        strlcat(jsonResp, R"(")", MAX_MEM_READ_RESP);
         strlcpy(pRespJson, jsonResp, maxRespLen);
 
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "testWrRd result ok, lastByte 0x%c%c", 
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiWriteReadTarget result ok, lastByte 0x%c%c", 
                 jsonResp[strlen(jsonResp)-3], jsonResp[strlen(jsonResp)-2]);
-
 
         //         if (_pThisInstance->_memAccessReadPending)
         // {
@@ -1177,7 +1163,7 @@ bool ControlAPI::apiWriteReadTarget(const char* pCmdJson,
         // if (_pThisInstance->_memAccessRdWrPending)
         // {
         //     _pThisInstance->_memAccessRdWrPending = false;
-        //     ee_sprintf(pRespJson, "\"err\":\"fail\"");
+        //     ee_sprintf(pRespJson, "\"rslt\":\"fail\"");
         //     // digitalWrite(8,1);
         //             // microsDelay(100);
         //     // digitalWrite(8,0);
@@ -1185,13 +1171,13 @@ bool ControlAPI::apiWriteReadTarget(const char* pCmdJson,
         //     }
         // if (maxRespLen > 200)
         // {
-        //     ee_sprintf(pRespJson, "\"err\":\"%s\",\"errs\":%d,\"errStr\":\"%s\"",
+        //     ee_sprintf(pRespJson, "\"rslt\":\"%s\",\"errs\":%d,\"errStr\":\"%s\"",
         //             _pThisInstance->_memAccessRdWrErrCount > 0 ? "fail" : "ok", 
         //             _pThisInstance->_memAccessRdWrErrCount, 
         //             _pThisInstance->_memAccessRdWrErrStr);
         //     LogWrite(MODULE_PREFIX, LOG_DEBUG, pRespJson);
         // }
-        // strlcpy(pRespJson, "\"err\":\"ok\"", maxRespLen);
+        // strlcpy(pRespJson, "\"rslt\":\"ok\"", maxRespLen);
         return true;
 }
 
@@ -1201,7 +1187,6 @@ bool ControlAPI::apiDebuggerBreak(const char* pCmdJson,
 {
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiDebuggerBreak %s", pCmdJson);
     _busControl.ctrl().debuggerBreak();
-    strlcpy(pRespJson, R"("rslt":"ok")", maxRespLen);
     return true;
 }
 
@@ -1211,7 +1196,6 @@ bool ControlAPI::apiDebuggerContinue(const char* pCmdJson,
 {
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiDebuggerContinue %s", pCmdJson);
     _busControl.ctrl().debuggerContinue();
-    strlcpy(pRespJson, R"("rslt":"ok")", maxRespLen);
     return true;
 }
 
@@ -1221,7 +1205,6 @@ bool ControlAPI::apiDebuggerStepIn(const char* pCmdJson,
 {
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiDebuggerStepIn %s", pCmdJson);
     _busControl.ctrl().debuggerStepIn();
-    strlcpy(pRespJson, R"("rslt":"ok")", maxRespLen);
     return true;
 }
 
@@ -1236,3 +1219,4 @@ bool ControlAPI::apiDebuggerGetRegs(const char* pCmdJson,
     strlcat(pRespJson, R"(")", maxRespLen);
     return true;
 }
+

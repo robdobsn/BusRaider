@@ -52,7 +52,7 @@ public:
 private:
     // Max 1MB address range of Z180 so use that as the limit of memory
     static const uint32_t MAX_TARGET_MEMORY_SIZE = 1024 * 1024;
-    static const uint32_t MAX_TARGET_MEMORY_BLOCKS = 20;
+    static const uint32_t MAX_TARGET_MEMORY_BLOCKS = 100;
 
     // Target memory image
     uint8_t _pTargetMemoryImage[MAX_TARGET_MEMORY_SIZE];

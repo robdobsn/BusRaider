@@ -482,7 +482,7 @@
         }
 
         function uploadAndRunFile(file, i) {
-            sendCmdToTarget("cleartarget");
+            sendCmdToTarget("progClear");
             uploadFileSpecUrl("/uploadandrun", 'progress-bar-run', file, i);
         }
 
@@ -1529,8 +1529,8 @@
             </div>
             <div class="uiPanelSub">
                 <span class="button" onclick="sendCmdToTarget('resettarget')">Reset target</span>
-                <span class="button" onclick="sendCmdToTarget('cleartarget')">Clear target buffer</span>
-                <span class="button" onclick="sendCmdToTarget('programtarget')">Program from buffer</span>
+                <span class="button" onclick="sendCmdToTarget('progClear')">Clear target buffer</span>
+                <span class="button" onclick="sendCmdToTarget('progWrite')">Program from buffer</span>
                 <span class="button" onclick="sendCmdToTarget('programandexec')">Program and execute</span>
                 <span class="button radio" onclick="termShowClick(event)">Show Terminal</span>
                 <!-- <span class="button" onclick="sendCmdToTarget('pausetarget')">Pause</span>
@@ -1565,7 +1565,7 @@
             </form>
             <progress id="progress-bar-buffer" max=100 value=0></progress>
 
-            <span class="button" onclick="sendCmdToTarget('programtarget')">Send to target</span>
+            <span class="button" onclick="sendCmdToTarget('progWrite')">Send to target</span>
 
             <span class="button" onclick="sendCmdToTarget('ioclrtarget')">Clear all RC2014 IO</span> 
         </div> -->

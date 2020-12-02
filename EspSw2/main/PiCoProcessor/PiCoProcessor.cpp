@@ -21,7 +21,7 @@ static const char *MODULE_PREFIX = "PiCoProcessor";
 
 // Debug
 // #define DEBUG_PI_UPLOAD_END
-#define DEBUG_PI_SW_UPLOAD
+// #define DEBUG_PI_SW_UPLOAD
 // #define DEBUG_PI_UPLOAD_FROM_FS
 // #define DEBUG_PI_QUERY_STATUS
 // #define DEBUG_PI_SERIAL_GET
@@ -37,7 +37,7 @@ static const char *MODULE_PREFIX = "PiCoProcessor";
 // #define DEBUG_PI_SEND_RESP_TO_PI
 // #define DEBUG_PI_SEND_FILE_BLOCK
 // #define DEBUG_PI_TX_FRAME_TO_PI
-// #define DEBUG_RICREST_CMD_FRAMES
+#define DEBUG_RICREST_CMD_FRAMES
 // #define DEBUG_RDP_MSG_FROM_PI
 // #define DEBUG_PI_UPLOAD_ACKS
 // #define DEBUG_PI_UPLOAD_ACKS_DETAIL
@@ -586,7 +586,7 @@ void PiCoProcessor::apiTargetCommand(const String &reqStr, String &respStr)
 {
     // Get command
     String targetCmd = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
-    // Log.trace("%sapiTargetCommand %s\n", MODULE_PREFIX, targetCmd.c_str());
+    LOG_I(MODULE_PREFIX, "apiTargetCommand %s", targetCmd.c_str());
     sendTargetCommand(targetCmd, reqStr, respStr, true);
 }
 
@@ -619,7 +619,7 @@ void PiCoProcessor::apiTargetCommandPostContent(const String &reqStr, const uint
 void PiCoProcessor::apiSendFileToTargetBuffer(const String &reqStr, String &respStr)
 {
     // Clear target first
-    sendTargetCommand("ClearTarget", reqStr, respStr, true);
+    sendTargetCommand("progClear", reqStr, respStr, true);
     // File system
     String fileSystemStr = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
     // Filename
@@ -641,13 +641,13 @@ void PiCoProcessor::apiAppendFileToTargetBuffer(const String &reqStr, String &re
 void PiCoProcessor::apiRunFileOnTarget(const String &reqStr, String &respStr)
 {
     // Clear target first
-    sendTargetCommand("ClearTarget", reqStr, respStr, false);
+    sendTargetCommand("progClear", reqStr, respStr, false);
     // File system
     String fileSystemStr = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
     // Filename        
     String filename = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 2);
     LOG_I(MODULE_PREFIX, "runFileOnTarget filename %s", filename.c_str());
-    startUploadFromFileSystem(fileSystemStr, "", filename, "ProgramAndReset");
+    startUploadFromFileSystem(fileSystemStr, "", filename, "progWriteAndExec");
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -738,16 +738,21 @@ void PiCoProcessor::sendFileBlock(size_t index, const uint8_t *pData, size_t len
     msgData.resize(msgStrPlusPayloadLen);
     if (msgData.size() >= msgStrPlusPayloadLen)
     {
+#ifdef DEBUG_PI_SEND_FILE_BLOCK
         LOG_I(MODULE_PREFIX, "sendFileBlock blockLen %d headerLenExclTerm %d totalLen %d msgHeader %s msgDataSize %d", 
-                len, headerLen, msgStrPlusPayloadLen, msgHeader, msgData.size());         
+                len, headerLen, msgStrPlusPayloadLen, msgHeader, msgData.size());
+#endif
         memcpy(msgData.data(), msgHeader, headerLen + 1);
         memcpy(msgData.data() + headerLen + 1, pData, len);
         sendMsgAndPayloadToPi(msgData.data(), msgStrPlusPayloadLen);
     }
+    else
+    {
 #ifdef DEBUG_PI_SEND_FILE_BLOCK
-    LOG_I(MODULE_PREFIX, "sendFileBlock blockLen %d headerLenExclTerm %d totalLen %d msgHeader %s", 
+        LOG_I(MODULE_PREFIX, "sendFileBlock too-short blockLen %d headerLenExclTerm %d totalLen %d msgHeader %s", 
                 len, headerLen, msgStrPlusPayloadLen, msgHeader); 
 #endif
+    }
 }
 
 void PiCoProcessor::sendFileEndRecord(int blockCount, const char* pAdditionalJsonNameValues)
@@ -781,7 +786,7 @@ void PiCoProcessor::sendResponseToPi(const String& reqStr, String& msgJson)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Send command to target
+// Send command to Pi
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool PiCoProcessor::sendTargetCommand(const String& targetCmd, const String& reqStr, String& respStr, bool waitForResponse)
@@ -823,7 +828,7 @@ bool PiCoProcessor::sendTargetCommand(const String& targetCmd, const String& req
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Send data to target
+// Send data to Pi
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void PiCoProcessor::sendTargetData(const String& cmdName, const uint8_t* pData, int len, int index)
@@ -838,6 +843,10 @@ void PiCoProcessor::sendTargetData(const String& cmdName, const uint8_t* pData, 
     msgData.resize(msgStrPlusPayloadLen);
     if (msgData.size() >= msgStrPlusPayloadLen)
     {
+// #ifdef DEBUG_PI_SEND_FRAME
+        LOG_I(MODULE_PREFIX, "sendTargetData header %s pData %s msgStrPlusPayloadLen %d", 
+                    msgHeader, pData, msgStrPlusPayloadLen);
+// #endif
         memcpy(msgData.data(), msgHeader, headerLen + 1);
         memcpy(msgData.data() + headerLen + 1, pData, len);
         sendMsgAndPayloadToPi(msgData.data(), headerLen + len + 1);
@@ -1257,18 +1266,20 @@ bool PiCoProcessor::procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg&
     // Send on to Pi as a combined message
     std::vector<uint8_t> combinedMsg;
     unsigned jsonLen = ricRESTReqMsg.getPayloadJson().length();
-    unsigned combinedLen = jsonLen + 1 + ricRESTReqMsg.getBinLen();
+    unsigned binaryLen = ricRESTReqMsg.getBinLen();
+    unsigned combinedLen = jsonLen + 1 + binaryLen;
     combinedMsg.resize(combinedLen);
     if (combinedMsg.size() >= combinedLen)
     {
+        memcpy(combinedMsg.data(), ricRESTReqMsg.getPayloadJson().c_str(), jsonLen + 1);
+        memcpy(combinedMsg.data() + jsonLen + 1, ricRESTReqMsg.getBinBuf(), binaryLen);
+
 #ifdef DEBUG_RICREST_CMD_FRAMES
         String combinedMsgHexStr;
         Utils::getHexStrFromBytes(combinedMsg.data(), combinedMsg.size(), combinedMsgHexStr);
-        LOG_I(MODULE_PREFIX, "procRICRESTCmdFrame send %s", combinedMsgHexStr.c_str());
+        LOG_I(MODULE_PREFIX, "procRICRESTCmdFrame combinedLen %d binaryLen %d send %s", combinedLen, binaryLen, combinedMsgHexStr.c_str());
 #endif
 
-        memcpy(combinedMsg.data(), ricRESTReqMsg.getPayloadJson().c_str(), jsonLen + 1);
-        memcpy(combinedMsg.data() + jsonLen + 1, ricRESTReqMsg.getBinBuf(), ricRESTReqMsg.getBinLen());
         sendTargetData("rdp", combinedMsg.data(), combinedLen, endpointMsgNum);
         _rdpChannelId  = endpointMsg.getChannelID();
         return true;

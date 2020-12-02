@@ -37,7 +37,7 @@ def test_TRS80Level1Rom():
         assert(resp.get("rslt","") == "ok")
 
         # Clear target buffer
-        resp = commonTest.sendFrameSync("ClearTarget", '{"cmdName":"ClearTarget"}')
+        resp = commonTest.sendFrameSync("progClear", '{"cmdName":"progClear"}')
         assert(resp.get("rslt","") == "ok")
 
         # Send ROM
@@ -52,7 +52,7 @@ def test_TRS80Level1Rom():
             assert(resp.get("rslt","") == "ok")
 
             # Program and reset
-            resp = commonTest.sendFrameSync("ProgramAndReset", '{"cmdName":"ProgramAndReset"}')
+            resp = commonTest.sendFrameSync("progWriteAndExec", '{"cmdName":"progWriteAndExec"}')
             assert(resp.get("rslt","") == "ok")
             time.sleep(1.5)
 

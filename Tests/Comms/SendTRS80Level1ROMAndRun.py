@@ -29,7 +29,7 @@ def formFileFrame(fileFolder, fileName):
 
 romFrame = formFileFrame(r"TargetSW/TRS80/ROMS/", r"level1.rom")
 
-clearFrame = b"{\"cmdName\":\"ClearTarget\"}\0"
+clearFrame = b"{\"cmdName\":\"progClear\"}\0"
 #resetFrame = b"{\"cmdName\":\"ResetTarget\"}\0"
 progFrame = b"{\"cmdName\":\"ProgramAndReset\"}\0"
 setMCFrame = b"{\"cmdName\":\"SetMachine=TRS80\"}\0"
