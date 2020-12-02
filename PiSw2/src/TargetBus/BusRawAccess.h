@@ -133,10 +133,12 @@ public:
         }
     }
 
+    // Set a pin to be an output and set initial value for that pin
+    static void setPinOut(int pinNumber, bool val);
+    
 private:
     // State
     bool _busReqAcknowledged;
-    bool _pageIsActive;
 
     // Hardware version
     // V1.7 ==> 17, V2.0 ==> 20
@@ -154,9 +156,6 @@ private:
     void waitSystemInit();
     void waitClearDetected();
     void waitRawSet();
-
-    // Set a pin to be an output and set initial value for that pin
-    void setPinOut(int pinNumber, bool val);
 
     // Mux functions
     void muxDataBusOutputEnable();

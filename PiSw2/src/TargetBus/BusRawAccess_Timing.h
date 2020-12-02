@@ -27,6 +27,9 @@ static const int CYCLES_DELAY_FOR_READ_FROM_PIB = 500;
 // TODO 2020 was 10
 static const int MAX_WAIT_FOR_END_OF_READ_US = 100;
 
+// Max wait for WAIT cycle start in debug mode
+static const int MAX_WAIT_FOR_DEBUG_WAIT_US = 10000;
+
 // Delay in machine cycles for setting the pulse width when clearing/incrementing the address counter/shift-reg
 // TODO 2020 following 3 were 15
 static const int CYCLES_DELAY_FOR_CLEAR_LOW_ADDR = 500;

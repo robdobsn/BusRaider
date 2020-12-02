@@ -20,7 +20,6 @@ BusRawAccess::BusRawAccess(TargetClockGenerator& targetClockGenerator) :
         _targetClockGenerator(targetClockGenerator)
 {
     _busReqAcknowledged = false;
-    _pageIsActive = false;
 }
 
 void BusRawAccess::init()
@@ -51,7 +50,6 @@ void BusRawAccess::init()
     // Paging initially inactive (actually this is the wrong way around
     // for V1.7 hardware but will be resolved later)
     setPinOut(BR_PAGING_RAM_PIN, 1);
-    _pageIsActive = false;
 
     // Setup MREQ and IORQ enables
     waitSystemInit();

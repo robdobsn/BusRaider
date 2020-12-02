@@ -265,19 +265,11 @@ void TargetControl::cycleCheckWait()
     uint32_t rawBusVals = 0;
     for (uint32_t waitLoopIdx = 0; waitLoopIdx < WAIT_LOOPS_FOR_TIME_OPT; waitLoopIdx++)
     {
-        // Get inputs
+        // Get raw GPIO pin values
         rawBusVals = read32(ARM_GPIO_GPLEV0);
 
-        // Check for WAIT active (and BUSACK not active) - otherwise nothing to do
-        if ((rawBusVals & BR_WAIT_BAR_MASK) || (!(rawBusVals & BR_BUSACK_BAR_MASK)))
-            continue;
-
-        // Check RD or WR is active - nothing to do if not
-        if ((rawBusVals & BR_RD_BAR_MASK) && (rawBusVals & BR_WR_BAR_MASK))
-            continue;
-
-        // Check MREQ or IORQ is active - nothing to do if not
-        if ((rawBusVals & BR_IORQ_BAR_MASK) && (rawBusVals & BR_MREQ_BAR_MASK))
+        // Check control bus is stable
+        if (!CTRL_BUS_IS_WAIT(rawBusVals))
             continue;
 
         // Check if we need to do full wait processing

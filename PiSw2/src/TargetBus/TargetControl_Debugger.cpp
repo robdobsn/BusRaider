@@ -64,145 +64,191 @@ bool TargetControl::debuggerHandleWaitCycle(uint32_t addr, uint32_t data, uint32
     if (((rawBusVals & BR_V20_M1_BAR_MASK) != 0) || ((rawBusVals & BR_MREQ_BAR_MASK) != 0))
         return false;
 
-    DEBUG_PULSE();
+    // Set the PAGE line to disable RAM and allow injection
+    digitalWrite(BR_PAGING_RAM_PIN, 0);
+
+    // Iterate intructions
+    uint32_t writeIdx = 0;
+    uint32_t snippetIdx = 0;
+    while (snippetIdx < sizeof(regQueryInstructions))
+    {
+        // Check if writing
+        uint32_t injectVal = 0;
+        if ((rawBusVals & BR_WR_BAR_MASK) == 0)
+        {
+            // Store the result in registers
+            switch(snippetIdx)
+            {
+                case 1:  // push af
+                {
+                    if (writeIdx == 0)
+                    {
+                        _z80Registers.SP = addr+1;
+                        _z80Registers.AF = data << 8;
+                        regQueryInstructions[RegisterAFUpdatePos+1] = data;                     
+                        writeIdx++;
+                    }
+                    else
+                    {
+                        _z80Registers.AF = (_z80Registers.AF & 0xff00) | (data & 0xff);
+                        regQueryInstructions[RegisterAFUpdatePos] = data;                     
+                    }
+                    break;
+                }
+                case 4: // ld (hl), a (where a has the contents of r)
+                {
+                    _z80Registers.HL = addr;
+                    // R value compensates for the push af and ld r,a instructions
+                    _z80Registers.R = data - 3;
+                    // Value stored back to R compensates for ld a,NN and jr loop instructions
+                    regQueryInstructions[RegisterRUpdatePos] = _z80Registers.R - 2;                 
+                    break;
+                }
+                case 7: // ld (hl), a (where a has the contents of i)
+                {
+                    _z80Registers.I = data;                        
+                    break;
+                }
+                case 10: // ld (de), a
+                {
+                    _z80Registers.DE = addr;                        
+                    break;
+                }
+                case 11: // ld (bc), a
+                {
+                    _z80Registers.BC = addr;                        
+                    break;
+                }
+                case 13: // ld (hl), a (after EXX so hl')
+                {
+                    _z80Registers.HLDASH = addr;                        
+                    break;
+                }
+                case 14: // ld (de), a (after EXX so de')
+                {
+                    _z80Registers.DEDASH = addr;                        
+                    break;
+                }
+                case 15: // ld (bc), a (after EXX so bc')
+                {
+                    _z80Registers.BCDASH = addr;                        
+                    break;
+                }
+                case 18:  // push af (actually af')
+                {
+                    if (writeIdx == 0)
+                    {
+                        _z80Registers.AFDASH = (_z80Registers.AFDASH & 0xff) | (data << 8);
+                        writeIdx++;
+                    }
+                    else
+                    {
+                        _z80Registers.AFDASH = (_z80Registers.AFDASH & 0xff00) | (data & 0xff);
+                    }
+                    break;
+                }
+                case 23:  // push ix
+                {
+                    if (writeIdx == 0)
+                    {
+                        _z80Registers.IX = (_z80Registers.IX & 0xff) | (data << 8);
+                        writeIdx++;
+                    }
+                    else
+                    {
+                        _z80Registers.IX = (_z80Registers.IX & 0xff00) | (data & 0xff);
+                    }
+                    break;
+                }
+                case 27:  // push ix
+                {
+                    if (writeIdx == 0)
+                    {
+                        _z80Registers.IY = (_z80Registers.IY & 0xff) | (data << 8);
+                        writeIdx++;
+                    }
+                    else
+                    {
+                        _z80Registers.IY = (_z80Registers.IY & 0xff00) | (data & 0xff);
+                    }
+                    break;
+                }
+            }
+
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "regGet WR pos %d D %02x flags %c %c %c %c %c %08x", 
+                    snippetIdx,
+                    data,
+                    (rawBusVals & BR_V20_M1_BAR_MASK) ? ' ' : '1',
+                    (rawBusVals & BR_RD_BAR_MASK) ? ' ' : 'R',
+                    (rawBusVals & BR_WR_BAR_MASK) ? ' ' : 'W',
+                    (rawBusVals & BR_MREQ_BAR_MASK) ? ' ' : 'M',
+                    (rawBusVals & BR_IORQ_BAR_MASK) ? ' ' : 'I',
+                    rawBusVals);
+
+            // Clear the wait
+            BusRawAccess::waitResetFlipFlops();    
+        }
+        else
+        {
+            // First element of snippet so store PC
+            if (snippetIdx == 0)
+                _z80Registers.PC = addr;
+
+            // Send instructions to query registers
+            injectVal = regQueryInstructions[snippetIdx];
+            writeIdx = 0;
+
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "regGet RD pos %d D %02x flags %c %c %c %c %c %08x", 
+                    snippetIdx,
+                    injectVal,
+                    (rawBusVals & BR_V20_M1_BAR_MASK) ? ' ' : '1',
+                    (rawBusVals & BR_RD_BAR_MASK) ? ' ' : 'R',
+                    (rawBusVals & BR_WR_BAR_MASK) ? ' ' : 'W',
+                    (rawBusVals & BR_MREQ_BAR_MASK) ? ' ' : 'M',
+                    (rawBusVals & BR_IORQ_BAR_MASK) ? ' ' : 'I',
+                    rawBusVals);
+
+            // Move to next read instruction
+            snippetIdx++;
+
+            // Set data direction out on the data bus driver
+            write32(ARM_GPIO_GPCLR0, 1 << BR_DATA_DIR_IN);
+            _busControl.bus().pibSetOut();
+
+            // Set the value for the processor to read
+            _busControl.bus().pibSetValue(injectVal & 0xff);
+
+            // Clear the wait
+            BusRawAccess::waitResetFlipFlops();
+            
+            // Stay here until read cycle is complete
+            cycleWaitForReadCompletion();
+        }
+
+        // Clear output and setup for fast wait
+        cycleSetupForFastWait();
+
+        // TODO sort
+        microsDelay(1);
+
+        // Stay here until next WAIT cycle starts
+        uint32_t waitForWAITStartUs = micros();
+        while(!isTimeout(micros(), waitForWAITStartUs, MAX_WAIT_FOR_DEBUG_WAIT_US))
+        {
+            // Get raw GPIO pin values
+            rawBusVals = read32(ARM_GPIO_GPLEV0);
+
+            // Check control bus is stable
+            if (CTRL_BUS_IS_WAIT(rawBusVals))
+                break;
+        }
+
+        // Read address, data and control busses
+        _busControl.bus().addrAndDataBusRead(addr, data);
+    }
+
+    // Clear the PAGE line to re-enable RAM
+    digitalWrite(BR_PAGING_RAM_PIN, 1);
+
     return true;
-    
-    // // Iterate through registers
-    // for (uint32_t regInstr = 0; regInstr < )
-    // // Check if writing
-    // if (flags & BR_CTRL_BUS_WR_MASK)
-    // {
-    //     retVal = BR_MEM_ACCESS_INSTR_INJECT;
-    //     // Store the result in registers
-    //     switch(_snippetPos)
-    //     {
-    //         case 1:  // push af
-    //         {
-    //             if (_snippetWriteIdx == 0)
-    //             {
-    //                 _z80Registers.SP = addr+1;
-    //                 _z80Registers.AF = data << 8;
-    //                 regQueryInstructions[RegisterAFUpdatePos+1] = data;                     
-    //                 _snippetWriteIdx++;
-    //             }
-    //             else
-    //             {
-    //                 _z80Registers.AF = (_z80Registers.AF & 0xff00) | (data & 0xff);
-    //                 regQueryInstructions[RegisterAFUpdatePos] = data;                     
-    //             }
-    //             break;
-    //         }
-    //         case 4: // ld (hl), a (where a has the contents of r)
-    //         {
-    //             _z80Registers.HL = addr;
-    //             // R value compensates for the push af and ld r,a instructions
-    //             _z80Registers.R = data - 3;
-    //             // Value stored back to R compensates for ld a,NN and jr loop instructions
-    //             regQueryInstructions[RegisterRUpdatePos] = _z80Registers.R - 2;                 
-    //             break;
-    //         }
-    //         case 7: // ld (hl), a (where a has the contents of i)
-    //         {
-    //             _z80Registers.I = data;                        
-    //             break;
-    //         }
-    //         case 10: // ld (de), a
-    //         {
-    //             _z80Registers.DE = addr;                        
-    //             break;
-    //         }
-    //         case 11: // ld (bc), a
-    //         {
-    //             _z80Registers.BC = addr;                        
-    //             break;
-    //         }
-    //         case 13: // ld (hl), a (after EXX so hl')
-    //         {
-    //             _z80Registers.HLDASH = addr;                        
-    //             break;
-    //         }
-    //         case 14: // ld (de), a (after EXX so de')
-    //         {
-    //             _z80Registers.DEDASH = addr;                        
-    //             break;
-    //         }
-    //         case 15: // ld (bc), a (after EXX so bc')
-    //         {
-    //             _z80Registers.BCDASH = addr;                        
-    //             break;
-    //         }
-    //         case 18:  // push af (actually af')
-    //         {
-    //             if (_snippetWriteIdx == 0)
-    //             {
-    //                 _z80Registers.AFDASH = (_z80Registers.AFDASH & 0xff) | (data << 8);
-    //                 _snippetWriteIdx++;
-    //             }
-    //             else
-    //             {
-    //                 _z80Registers.AFDASH = (_z80Registers.AFDASH & 0xff00) | (data & 0xff);
-    //             }
-    //             break;
-    //         }
-    //         case 23:  // push ix
-    //         {
-    //             if (_snippetWriteIdx == 0)
-    //             {
-    //                 _z80Registers.IX = (_z80Registers.IX & 0xff) | (data << 8);
-    //                 _snippetWriteIdx++;
-    //             }
-    //             else
-    //             {
-    //                 _z80Registers.IX = (_z80Registers.IX & 0xff00) | (data & 0xff);
-    //             }
-    //             break;
-    //         }
-    //         case 27:  // push ix
-    //         {
-    //             if (_snippetWriteIdx == 0)
-    //             {
-    //                 _z80Registers.IY = (_z80Registers.IY & 0xff) | (data << 8);
-    //                 _snippetWriteIdx++;
-    //             }
-    //             else
-    //             {
-    //                 _z80Registers.IY = (_z80Registers.IY & 0xff00) | (data & 0xff);
-    //             }
-    //             break;
-    //         }
-    //     }
-    // }
-    // else
-    // {
-    //     if (_snippetPos == 0)
-    //         _z80Registers.PC = addr;
-    //     // Send instructions to query registers
-    //     retVal = regQueryInstructions[_snippetPos++] | BR_MEM_ACCESS_INSTR_INJECT;
-    //     _snippetWriteIdx = 0;
-    // }
-
-    // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "regGet pos %d D %02x flags %c %c %c %c %c %02x", 
-    // //             _snippetPos-1,
-    // //             retVal,
-    // //             (flags & BR_CTRL_BUS_M1_MASK) ? '1' : ' ',
-    // //             (flags & BR_CTRL_BUS_RD_MASK) ? 'R' : ' ',
-    // //             (flags & BR_CTRL_BUS_WR_MASK) ? 'W' : ' ',
-    // //             (flags & BR_CTRL_BUS_MREQ_MASK) ? 'M' : ' ',
-    // //             (flags & BR_CTRL_BUS_IORQ_MASK) ? 'I' : ' ',
-    // //             flags);
-
-    // // Check if complete
-    // if (_snippetPos >= sizeof(regQueryInstructions))
-    // {
-    //     _snippetPos = 0;
-    //     // char regStr[200];
-    //     // _z80Registers.format(regStr, 200);
-    //     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Reg values: %s", regStr);
-    //     return OPCODE_INJECT_DONE;
-    // }
-    // else if (_snippetPos == RelJumpBackStartPos)
-    // {
-    //     return OPCODE_INJECT_GRAB_MEMORY;
-    // }
-    // return OPCODE_INJECT_GENERAL;
 }

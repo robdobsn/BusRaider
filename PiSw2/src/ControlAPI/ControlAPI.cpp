@@ -201,6 +201,11 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
         // Step the processor in
         return apiDebuggerStepIn(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
     }
+    else if (strcasecmp(cmdName, "debugGetRegs") == 0)
+    {
+        // Get registers
+        return apiDebuggerGetRegs(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+    }
     else if (strcasecmp(cmdName, "rawBusControlOn") == 0)
     {
         // busControl.rawBusControlEnable(true);
@@ -1217,5 +1222,17 @@ bool ControlAPI::apiDebuggerStepIn(const char* pCmdJson,
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiDebuggerStepIn %s", pCmdJson);
     _busControl.ctrl().debuggerStepIn();
     strlcpy(pRespJson, R"("rslt":"ok")", maxRespLen);
+    return true;
+}
+
+bool ControlAPI::apiDebuggerGetRegs(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen)
+{
+    char regsStr[200];
+    _busControl.ctrl().getRegsFormatted(regsStr, sizeof(regsStr));
+    strlcpy(pRespJson, R"("rslt":"ok","regs":")", maxRespLen);
+    strlcat(pRespJson, regsStr, maxRespLen);
+    strlcat(pRespJson, R"(")", maxRespLen);
     return true;
 }

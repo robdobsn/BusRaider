@@ -22,6 +22,11 @@
                              (((x & BR_MREQ_BAR_MASK) == 0) || ((x & BR_IORQ_BAR_MASK) == 0))) || \
                      (((x & BR_IORQ_BAR_MASK) == 0) && ((x & BR_V20_M1_BAR_MASK) == 0)))
 
+// Test processor is in wait and signals are valid
+#define CTRL_BUS_IS_WAIT(x) (((x & BR_WAIT_BAR_MASK) == 0) && ((x & BR_BUSACK_BAR_MASK) != 0) && \
+            (((x & BR_RD_BAR_MASK) == 0) || ((x & BR_WR_BAR_MASK) == 0)) && \
+            (((x & BR_IORQ_BAR_MASK) == 0) || ((x & BR_MREQ_BAR_MASK) == 0)))
+
 class BusControl;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -89,6 +94,13 @@ public:
         return _debuggerState != DEBUGGER_STATE_FREE_RUNNING;
     }
 
+    // Regs
+    Z80Registers& getRegs()
+    {
+        return _z80Registers;
+    };
+    void getRegsFormatted(char* pBuf, int len);
+
 private:
     // Bus control
     BusControl& _busControl;
@@ -152,9 +164,6 @@ private:
     static const uint32_t MEM_WAIT_HIGH_ADDR_WATCH_LEN = 256;
     uint8_t _memWaitHighAddrWatch[MEM_WAIT_HIGH_ADDR_WATCH_LEN];
 
-    // Debugger use PAGE
-    bool _debuggerUsePAGE;
-
     // Callback on bus access
     BusAccessCBFnType* _pBusAccessCB;
     void* _pBusAccessCBObject;
@@ -198,13 +207,6 @@ private:
 //     void stepOver();
 //     void stepTo(uint32_t toAddr);
 //     // static void stepPause();
-
-//     // Regs
-//     Z80Registers& getRegs()
-//     {
-//         return _z80Registers;
-//     };
-//     void getRegsFormatted(char* pBuf, int len);
     
 //     // Get mode
 //     bool isPaused(); 
@@ -317,8 +319,8 @@ private:
 //     // Request grab display
 //     bool _requestDisplayWhileStepping;
 
-//     // Registers
-//     Z80Registers _z80Registers;
+    // Registers
+    Z80Registers _z80Registers;
     
 //     // Bus socket we're attached to and setup info
 //     int _busSocketId;
