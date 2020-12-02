@@ -160,96 +160,106 @@ void BusRawAccess::addrLowInc()
     }
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Control Bus Functions
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// // Control Bus Functions
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-uint32_t BusRawAccess::controlBusRead()
-{
-    uint32_t startGetCtrlBusUs = micros();
-    int loopCount = 0;
-    while (true)
-    {
-        // Read the control lines
-        uint32_t busVals = read32(ARM_GPIO_GPLEV0);
+// uint32_t BusRawAccess::controlBusRead()
+// {
+//     if (_hwVersionNumber != 17)
+//     {
+//         // Read the control lines
+//         uint32_t rawBusVals = read32(ARM_GPIO_GPLEV0);
+//         // Return appropriate bit mask for up-line communication
+//         return  (((rawBusVals & BR_RD_BAR_MASK) == 0) ? BR_CTRL_BUS_RD_MASK : 0) |
+//                 (((rawBusVals & BR_WR_BAR_MASK) == 0) ? BR_CTRL_BUS_WR_MASK : 0) |
+//                 (((rawBusVals & BR_MREQ_BAR_MASK) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
+//                 (((rawBusVals & BR_IORQ_BAR_MASK) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
+//                 (((rawBusVals & BR_WAIT_BAR_MASK) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
+//                 (((rawBusVals & BR_V20_M1_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0) |
+//                 (((rawBusVals & BR_BUSACK_BAR_MASK) == 0) ? BR_CTRL_BUS_BUSACK_MASK : 0);
+//     }
+//     else
+//     {
+//         uint32_t startGetCtrlBusUs = micros();
+//         int loopCount = 0;
+//         while (true)
+//         {
+//             // Read the control lines
+//             uint32_t rawBusVals = read32(ARM_GPIO_GPLEV0);
 
-        // Handle slower M1 signal on V1.7 hardware
-        if (_hwVersionNumber == 17)
-        {
-            // Check if we're in a wait - in which case FF OE will be active
-            // So we must set the data bus direction outward even if this causes a temporary
-            // conflict on the data bus
-            write32(ARM_GPIO_GPCLR0, BR_DATA_DIR_IN_MASK);
+//             // Handle slower M1 signal on V1.7 hardware
+//             // Check if we're in a wait - in which case FF OE will be active
+//             // So we must set the data bus direction outward even if this causes a temporary
+//             // conflict on the data bus
+//             write32(ARM_GPIO_GPCLR0, BR_DATA_DIR_IN_MASK);
 
-            // Delay for settling of M1
-            lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
+//             // Delay for settling of M1
+//             lowlev_cycleDelay(CYCLES_DELAY_FOR_M1_SETTLING);
 
-            // Read the control lines
-            busVals = read32(ARM_GPIO_GPLEV0);
+//             // Read the control lines
+//             rawBusVals = read32(ARM_GPIO_GPLEV0);
 
-            // Set data bus driver direction inward - onto PIB
-            write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK);
-        }
+//             // Set data bus driver direction inward - onto PIB
+//             write32(ARM_GPIO_GPSET0, BR_DATA_DIR_IN_MASK);
 
-        // Get the appropriate bits for up-line communication
-        uint32_t ctrlBusVals = 
-                (((busVals & BR_RD_BAR_MASK) == 0) ? BR_CTRL_BUS_RD_MASK : 0) |
-                (((busVals & BR_WR_BAR_MASK) == 0) ? BR_CTRL_BUS_WR_MASK : 0) |
-                (((busVals & BR_MREQ_BAR_MASK) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
-                (((busVals & BR_IORQ_BAR_MASK) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
-                (((busVals & BR_WAIT_BAR_MASK) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
-                (((busVals & BR_V20_M1_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0) |
-                (((busVals & BR_BUSACK_BAR_MASK) == 0) ? BR_CTRL_BUS_BUSACK_MASK : 0);
+//             // Get the appropriate bits for up-line communication
+//             uint32_t ctrlBusVals = 
+//                     (((rawBusVals & BR_RD_BAR_MASK) == 0) ? BR_CTRL_BUS_RD_MASK : 0) |
+//                     (((rawBusVals & BR_WR_BAR_MASK) == 0) ? BR_CTRL_BUS_WR_MASK : 0) |
+//                     (((rawBusVals & BR_MREQ_BAR_MASK) == 0) ? BR_CTRL_BUS_MREQ_MASK : 0) |
+//                     (((rawBusVals & BR_IORQ_BAR_MASK) == 0) ? BR_CTRL_BUS_IORQ_MASK : 0) |
+//                     (((rawBusVals & BR_WAIT_BAR_MASK) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
+//                     (((rawBusVals & BR_V20_M1_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0) |
+//                     (((rawBusVals & BR_BUSACK_BAR_MASK) == 0) ? BR_CTRL_BUS_BUSACK_MASK : 0);
 
-        // Handle slower M1 signal on V1.7 hardware
-        if (_hwVersionNumber == 17)
-        {
-            // Clear M1 in case set above
-            ctrlBusVals = ctrlBusVals & (~BR_CTRL_BUS_M1_MASK);
+//             // Handle slower M1 signal on V1.7 hardware
+//             // Clear M1 in case set above
+//             ctrlBusVals = ctrlBusVals & (~BR_CTRL_BUS_M1_MASK);
 
-            // Set M1 from PIB reading
-            ctrlBusVals |= (((busVals & BR_V17_M1_PIB_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
-        }
+//             // Set M1 from PIB reading
+//             ctrlBusVals |= (((rawBusVals & BR_V17_M1_PIB_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0);
 
-        // Check if valid (MREQ || IORQ) && (RD || WR)
-        bool ctrlValid = ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) || (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)) && ((ctrlBusVals & BR_CTRL_BUS_RD_MASK) || (ctrlBusVals & BR_CTRL_BUS_WR_MASK));
-        // Also valid if IORQ && M1 as this is used for interrupt ack
-        ctrlValid = ctrlValid || ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) && (ctrlBusVals & BR_CTRL_BUS_M1_MASK));
-        
-        // If ctrl is already valid then continue
-        if (ctrlValid)
-        {
-            // if (((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) == 0) && ((ctrlBusVals & BR_CTRL_BUS_MREQ_MASK) == 0))
-            // {
-            //     // TODO
-            //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-            //     microsDelay(1);
-            //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-            // }
-            return ctrlBusVals;
-        }
+//             // Check if valid (MREQ || IORQ) && (RD || WR)
+//             bool ctrlValid = ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) || (ctrlBusVals & BR_CTRL_BUS_MREQ_MASK)) && ((ctrlBusVals & BR_CTRL_BUS_RD_MASK) || (ctrlBusVals & BR_CTRL_BUS_WR_MASK));
+//             // Also valid if IORQ && M1 as this is used for interrupt ack
+//             ctrlValid = ctrlValid || ((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) && (ctrlBusVals & BR_CTRL_BUS_M1_MASK));
+            
+//             // If ctrl is already valid then continue
+//             if (ctrlValid)
+//             {
+//                 // if (((ctrlBusVals & BR_CTRL_BUS_IORQ_MASK) == 0) && ((ctrlBusVals & BR_CTRL_BUS_MREQ_MASK) == 0))
+//                 // {
+//                 //     // TODO
+//                 //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+//                 //     microsDelay(1);
+//                 //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+//                 // }
+//                 return ctrlBusVals;
+//             }
 
-        // Break out if time-out and enough loops done
-        loopCount++;
-        if ((isTimeout(micros(), startGetCtrlBusUs, MAX_WAIT_FOR_CTRL_BUS_VALID_US)) && (loopCount > MIN_LOOP_COUNT_FOR_CTRL_BUS_VALID))
-        {
-            // // TODO
-            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-            // microsDelay(1);
-            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-            // microsDelay(1);
-            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-            // microsDelay(1);
-            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-            // microsDelay(1);
-            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-            // microsDelay(1);
-            // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-            // microsDelay(1);
-            return ctrlBusVals;
-        }
-    }
-}
+//             // Break out if time-out and enough loops done
+//             loopCount++;
+//             if ((isTimeout(micros(), startGetCtrlBusUs, MAX_WAIT_FOR_CTRL_BUS_VALID_US)) && (loopCount > MIN_LOOP_COUNT_FOR_CTRL_BUS_VALID))
+//             {
+//                 // // TODO
+//                 // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+//                 // microsDelay(1);
+//                 // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+//                 // microsDelay(1);
+//                 // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+//                 // microsDelay(1);
+//                 // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+//                 // microsDelay(1);
+//                 // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
+//                 // microsDelay(1);
+//                 // digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
+//                 // microsDelay(1);
+//                 return ctrlBusVals;
+//             }
+//         }
+//     }
+// }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Address & Data Bus Functions

@@ -18,8 +18,9 @@
 
 // Test processor is reading from the data bus (inc reading an ISR vector)
 // and result is valid then put the returned data onto the bus
-#define CTRL_BUS_IS_READ(x) ((((x & BR_CTRL_BUS_RD_MASK) != 0) && (((x & BR_CTRL_BUS_MREQ_MASK) != 0) || ((x & BR_CTRL_BUS_IORQ_MASK) != 0))) || \
-                     (((x & BR_CTRL_BUS_IORQ_MASK) != 0) && ((x & BR_CTRL_BUS_M1_MASK) != 0)))
+#define CTRL_BUS_IS_READ(x) ((((x & BR_RD_BAR_MASK) == 0) && \
+                             (((x & BR_MREQ_BAR_MASK) == 0) || ((x & BR_IORQ_BAR_MASK) == 0))) || \
+                     (((x & BR_IORQ_BAR_MASK) == 0) && ((x & BR_V20_M1_BAR_MASK) == 0)))
 
 class BusControl;
 
@@ -139,13 +140,13 @@ private:
     void cycleReqAssertedOther();
     void cycleCheckWait();
     void cycleSetupForFastWait();
-    void cycleFullWaitProcessing();
+    void cycleFullWaitProcessing(uint32_t rawBusVals);
     bool cycleWaitForReadCompletion();
     void cycleHandleHeldInWait();
     void cyclePerformActionRequest();
 
-    // Debugger handling
-    void debuggerGrabRegsAndMemory(uint32_t addr, uint32_t data, uint32_t flags);
+    // Debugger wait handling
+    bool debuggerHandleWaitCycle(uint32_t addr, uint32_t data, uint32_t flags);
 
     // Memory wait high address watch table
     static const uint32_t MEM_WAIT_HIGH_ADDR_WATCH_LEN = 256;

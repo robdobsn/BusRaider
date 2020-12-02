@@ -14,12 +14,14 @@ static const char MODULE_PREFIX[] = "TargCtrlDebug";
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Debugger grab registers and memory
+// Returns true if processor should be held at this point
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetControl::debuggerGrabRegsAndMemory(uint32_t addr, uint32_t data, uint32_t flags)
+bool TargetControl::debuggerHandleWaitCycle(uint32_t addr, uint32_t data, uint32_t rawBusVals)
 {
-        // DEBUG_PULSE();
-
+    // Check if we are debugging
+    if (_debuggerState == DEBUGGER_STATE_FREE_RUNNING)
+        return false;
 
     // Instructions to get register values
     static uint8_t regQueryInstructions[] = 
@@ -58,10 +60,13 @@ void TargetControl::debuggerGrabRegsAndMemory(uint32_t addr, uint32_t data, uint
     const int RegisterAFUpdatePos = 32;
     const int RelJumpBackStartPos = 34;
 
-    // Check if this is an instruction fetch cycle
-    if (!((flags & BR_CTRL_BUS_M1_MASK) && (flags & BR_CTRL_BUS_MREQ_MASK)))
-        return;
+    // Ignore this if not an instruction fetch cycle
+    if (((rawBusVals & BR_V20_M1_BAR_MASK) != 0) || ((rawBusVals & BR_MREQ_BAR_MASK) != 0))
+        return false;
 
+    DEBUG_PULSE();
+    return true;
+    
     // // Iterate through registers
     // for (uint32_t regInstr = 0; regInstr < )
     // // Check if writing
