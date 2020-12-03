@@ -94,6 +94,12 @@ public:
         return _debuggerState != DEBUGGER_STATE_FREE_RUNNING;
     }
 
+    // Check if held at WAIT
+    bool isHeldAtWait()
+    {
+        return _cycleHeldInWaitState;
+    }
+
     // Regs
     Z80Registers& getRegs()
     {

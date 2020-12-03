@@ -1,4 +1,5 @@
 from .setupTests import setupTests
+import json
 
 def test_Comms():
     def frameCallback(frameJson, logger):

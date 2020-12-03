@@ -125,6 +125,9 @@ private:
     bool apiDebuggerGetRegs(const char *pCmdJson,
                             const uint8_t *pParams, unsigned paramsLen,
                             char *pRespJson, unsigned maxRespLen);
+    bool apiDebuggerStatus(const char *pCmdJson,
+                           const uint8_t *pParams, unsigned paramsLen,
+                           char *pRespJson, unsigned maxRespLen);
 
     // // Synchronous bus access
     // uint8_t _memAccessDataBuf[MAX_MEM_BLOCK_READ_WRITE];

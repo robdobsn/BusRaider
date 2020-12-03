@@ -17,7 +17,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define SYSTEM_NAME "BusRaider"
-#define SYSTEM_VERSION "3.1.11"
+#define SYSTEM_VERSION "3.1.12"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Globals
@@ -347,15 +347,16 @@ void BusRaiderApp::statusDisplayUpdate()
         // Bus status
         statusStr[0] = 0;
         strlcpy(statusStr, "Bus: ", MAX_STATUS_STR_LEN);
-        // TODO 2020
-        // if (_mcManager.getTargetTracker().isTrackingActive())
-        //     strlcat(statusStr, "Debug       ", MAX_STATUS_STR_LEN);
-        // else if (_busControl.bus().waitIsHeld())
-        //     strlcat(statusStr, "Paused      ", MAX_STATUS_STR_LEN);
-        // else
-        //     strlcat(statusStr, "Free Running", MAX_STATUS_STR_LEN);
+        if (_busControl.ctrl().isDebugging() && _busControl.ctrl().isHeldAtWait())
+            strlcat(statusStr, "Debug Break ", MAX_STATUS_STR_LEN);
+        else if (_busControl.ctrl().isDebugging())
+            strlcat(statusStr, "Debug       ", MAX_STATUS_STR_LEN);
+        else
+            strlcat(statusStr, "Free Running", MAX_STATUS_STR_LEN);
         if (_busControl.bus().busReqAcknowledged())
             strlcat(statusStr, " & PiControl   ", MAX_STATUS_STR_LEN);
+        else
+            strlcat(statusStr, "               ", MAX_STATUS_STR_LEN);
         _display.statusPut(Display::STATUS_FIELD_BUS_ACCESS, Display::STATUS_NORMAL, statusStr);
 
         // Refresh rate

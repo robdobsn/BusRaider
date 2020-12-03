@@ -210,7 +210,12 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
         // Step the processor in
         return apiDebuggerStepIn(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
     }
-    else if (strcasecmp(cmdName, "debugGetRegs") == 0)
+    else if (strcasecmp(cmdName, "debugStatus") == 0)
+    {
+        // Get debug status
+        return apiDebuggerStatus(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+    }
+    else if (strcasecmp(cmdName, "debugRegsFormatted") == 0)
     {
         // Get registers
         return apiDebuggerGetRegs(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
@@ -1217,6 +1222,16 @@ bool ControlAPI::apiDebuggerGetRegs(const char* pCmdJson,
     strlcpy(pRespJson, R"("rslt":"ok","regs":")", maxRespLen);
     strlcat(pRespJson, regsStr, maxRespLen);
     strlcat(pRespJson, R"(")", maxRespLen);
+    return true;
+}
+
+bool ControlAPI::apiDebuggerStatus(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen)
+{
+    snprintf(pRespJson, maxRespLen, R"("rslt":"ok","debugging":%d,"held":%d)", 
+            _busControl.ctrl().isDebugging(),
+            _busControl.ctrl().isHeldAtWait());
     return true;
 }
 

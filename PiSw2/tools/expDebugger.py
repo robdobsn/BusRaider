@@ -1,3 +1,4 @@
+from os import wait
 import time
 import logging
 import random
@@ -45,14 +46,69 @@ ric.open(ifConfig)
 ric.setDecodedMsgCB(decodedMsg)
 ric.setLogLineCB(logLine)
 
-# Turn debugging on and off repeatedly
-for i in range(100000):
+def waitUntilHeld():
+    resp = {}
+    for i in range(500):
+        resp = ric.sendRICRESTCmdFrameSync('{"cmdName":"debugStatus"}')
+        if resp.get('rslt',"") != "ok":
+            logger.error(f"Invalid response {resp}")
+        elif resp.get('held', 0) != 0:
+            break
+    if resp.get('held', 0) == 0:
+        logger.error(f"Failed to hold Z80 processor")
+        exit()
+
+# Test data - load A,6; inc A * 3 and jump to 0002
+testWriteData = b"\x3e\x06\x3c\x3c\x3c\xc3\x02\x00"
+testWriteLen = bytes(str(len(testWriteData)),'utf-8')
+testWriteAddr = 0
+
+# Clear programmer (so that reset and debug will occur without writing anything else)
+resp = ric.sendRICRESTCmdFrameSync(
+        "{" + f'"cmdName":"progClear"' + "}")
+if resp.get('rslt',"") != "ok":
+    logger.error(f"Invalid response {resp}")
+
+# Send program to programmer
+resp = ric.sendRICRESTCmdFrameSync(
+        "{" + f'"cmdName":"progAdd","addr":"{testWriteAddr:04x}"' + "}",
+        testWriteData)
+assert(resp.get("rslt","") == "ok")
+
+# # Exec and turn on debugging
+# resp = ric.sendRICRESTCmdFrameSync(
+#         "{" + f'"cmdName":"progWrite","exec":1' + "}")
+# if resp.get('rslt',"") != "ok":
+#     logger.error(f"Invalid response {resp}")
+
+# Exec and turn on debugging
+resp = ric.sendRICRESTCmdFrameSync('{"cmdName":"progWrite","exec":1,"debug":1}')
+if resp.get('rslt',"") != "ok":
+    logger.error(f"Invalid response {resp}")
+
+waitUntilHeld()
+
+resp = ric.sendRICRESTCmdFrameSync('{"cmdName":"debugRegsFormatted"}')
+if resp.get('rslt',"") != "ok":
+    logger.error(f"Invalid response {resp}")
+logger.info(resp)
+
+for i in range(100):
     resp = ric.sendRICRESTCmdFrameSync(
-            "{" + f'"cmdName":"debugBreak"' + "}")
+            "{" + f'"cmdName":"debugStepIn"' + "}")
     if resp.get('rslt',"") != "ok":
         logger.error(f"Invalid response {resp}")
+    waitUntilHeld()
     resp = ric.sendRICRESTCmdFrameSync(
-            "{" + f'"cmdName":"debugRun"' + "}")
+            "{" + f'"cmdName":"debugRegsFormatted"' + "}")
     if resp.get('rslt',"") != "ok":
         logger.error(f"Invalid response {resp}")
+    logger.info(resp)
+
+time.sleep(1)
+
+resp = ric.sendRICRESTCmdFrameSync(
+        "{" + f'"cmdName":"debugContinue"' + "}")
+if resp.get('rslt',"") != "ok":
+    logger.error(f"Invalid response {resp}")
 
