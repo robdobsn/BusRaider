@@ -25,11 +25,12 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class BusSocketInfo;
+class BusControl;
 
 class BusRawAccess
 {
 public:
-    BusRawAccess(TargetClockGenerator& targetClockGenerator);
+    BusRawAccess(BusControl& busControl, TargetClockGenerator& targetClockGenerator);
 
     // Initialization
     void init();
@@ -124,13 +125,19 @@ public:
         // Since the PWM FIFO is shared the data output to MREQ/IORQ enable pins 
         // will be interleaved so we need to write data for both
 #ifdef CHECK_ARM_PWM_STA_BEFORE_WAIT_CLEAR
-        if ((read32(ARM_PWM_STA) & 1) == 0)
-#endif
+        for (int i = 0; i < 10000; i++)
         {
-            // Clear the wait
-            write32(ARM_PWM_FIF1, 0x0000ffff);  // IORQ sequence
-            write32(ARM_PWM_FIF1, 0x0000ffff);  // MREQ sequence
+            if ((read32(ARM_PWM_STA) & 1) == 0)
+            {
+#endif
+                // Clear the wait
+                write32(ARM_PWM_FIF1, 0x0000ffff);  // IORQ sequence
+                write32(ARM_PWM_FIF1, 0x0000ffff);  // MREQ sequence
+#ifdef CHECK_ARM_PWM_STA_BEFORE_WAIT_CLEAR
+                break;
+            }
         }
+#endif
     }
 
     // Set a pin to be an output and set initial value for that pin
@@ -144,6 +151,9 @@ private:
     // V1.7 ==> 17, V2.0 ==> 20
     int _hwVersionNumber;
 
+    // Bus control
+    BusControl& _busControl;
+
     // Target clock generator
     TargetClockGenerator& _targetClockGenerator;
 
@@ -154,7 +164,6 @@ private:
     bool _waitOnIO_Debugger;
     bool _waitIsSuspended;
     void waitSystemInit();
-    void waitClearDetected();
     void waitRawSet();
 
     // Mux functions

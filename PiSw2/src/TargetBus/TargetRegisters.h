@@ -71,4 +71,21 @@ public:
                 VPS );
         strlcat(pResponse, tmpStr, maxLen);
     }
+    void json(char* pResponse, int maxLen)
+    {
+        char tmpStr[200];
+        snprintf(tmpStr, sizeof(tmpStr), 
+                R"("PC":"0x%04x","SP":"0x%04x","BC":"0x%04x","AF":"0x%04x","HL":"0x%04x","DE":"0x%04x","IX":"0x%04x","IY":"0x%04x",)",
+                PC, SP, BC, AF, HL, DE, IX, IY);
+        strlcpy(pResponse, tmpStr, maxLen);
+        snprintf(tmpStr, sizeof(tmpStr), 
+                R"("AFDASH":"0x%04x","BCDASH":"0x%04x","HLDASH":"0x%04x","DEDASH":"0x%04x","I":"0x%02x","R":"0x%02x",)",
+                AFDASH, BCDASH, HLDASH, DEDASH, I, R);
+        strlcat(pResponse, tmpStr, maxLen);
+        snprintf(tmpStr, sizeof(tmpStr), R"("IM":%d,"IFF":%d,"VPS":%d)",
+                INTMODE, 
+                INTENABLED,
+                VPS );
+        strlcat(pResponse, tmpStr, maxLen);
+    }
 };

@@ -87,7 +87,7 @@ void TargetControl::cycleClearAction()
 // Cycle service
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetControl::cycleService()
+void TargetControl::cycleService(bool serviceWaitOnly)
 {
     // Check if suspended
     if (_isSuspended)
@@ -95,6 +95,10 @@ void TargetControl::cycleService()
 
     // Check for WAIT and handle if asserted
     cycleCheckWait();
+
+    // Check if actions should be serviced
+    if (serviceWaitOnly)
+        return;
 
     // Handle cycle actions
     cycleHandleActions();
@@ -248,10 +252,6 @@ void TargetControl::cycleReqCallback(BR_RETURN_TYPE result)
 
 void TargetControl::cycleCheckWait()
 {
-    // Check suspended
-    if (_isSuspended)
-        return;
-
     // Check if we need to complete a WAIT cycle
     // This happens when in debugger break
     if (_cycleHeldInWaitState)

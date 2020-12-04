@@ -2,6 +2,7 @@
 // Rob Dobson 2018-2019
 
 #include "BusRawAccess.h"
+#include "BusControl.h"
 #include "PiWiring.h"
 #include "lowlev.h"
 #include "lowlib.h"
@@ -12,7 +13,6 @@ static const char MODULE_PREFIX[] = "BusRawBusRq";
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Request bus, wait until available and take control
-// NOTE: This will generally only work if rawAccessStart() has been called
 // maxWaitForBUSACKus == 0 means use default
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -102,11 +102,10 @@ void BusRawAccess::busReqRelease()
     // LogWrite("BusAccess", LOG_DEBUG, "controlRelease");
     waitResetFlipFlops();
     
-    // Clear wait detection - only does something if Pi interrupts are used
-    waitClearDetected();
-
+#ifdef DISABLE_WAIT_WHEN_IN_BUSRQ
     // Re-establish wait generation
     waitSuspend(false);
+#endif
 
     // TODO 2020 removed
     // Check if we need to assert any new bus requests
@@ -161,8 +160,11 @@ void BusRawAccess::busReqTakeControl()
     // Bus is under BusRaider control
     _busReqAcknowledged = true;
 
+    // TODO 2020 needed?
+#ifdef DISABLE_WAIT_WHEN_IN_BUSRQ
     // Disable wait generation while in control of bus
     waitSuspend(true);
+#endif
 
     // Set the PIB to input
     pibSetIn();
@@ -190,7 +192,6 @@ void BusRawAccess::busReqTakeControl()
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Wait for bus ack
-// NOTE: This will generally only work if rawAccessStart() has been called
 // maxWaitForBUSACKus == 0 means use default wait time
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -198,8 +199,12 @@ bool BusRawAccess::busReqWaitForAck(bool ack, uint32_t maxWaitForBUSACKus)
 {
     // Initially check very frequently so the response is fast
     for (int j = 0; j < 1000; j++)
+    {
         if (rawBUSAKActive() == ack)
             break;
+        // Service the bus to handle wait
+        _busControl.ctrl().service(true);
+    }
 
     // Fall-back to slower checking which can be timed against target clock speed
     if (rawBUSAKActive() != ack)

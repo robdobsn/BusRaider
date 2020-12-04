@@ -42,4 +42,7 @@ public:
 private:
     // Bus control
     BusControl& _busControl;
+
+    // Memory cache
+    uint8_t _memCache[STD_TARGET_MEMORY_LEN];
 };

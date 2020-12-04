@@ -34,10 +34,10 @@ void TargetControl::init()
 }
 
 // Service
-void TargetControl::service()
+void TargetControl::service(bool serviceWaitOnly)
 {
     // Service processing cycle
-    cycleService();
+    cycleService(serviceWaitOnly);
 }
 
 // Suspend
@@ -703,12 +703,17 @@ void TargetControl::debuggerStepIn()
 // // }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Status
+// Registers
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void TargetControl::getRegsFormatted(char* pBuf, int len)
 {
     _z80Registers.format(pBuf, len);
+}
+
+void TargetControl::getRegsJSON(char* pBuf, int len)
+{
+    _z80Registers.json(pBuf, len);
 }
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

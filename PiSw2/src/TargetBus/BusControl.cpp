@@ -8,6 +8,7 @@
 #include <circle/bcm2835.h>
 #include "logging.h"
 #include "circle/timer.h"
+#include "DebugHelper.h"
 
 // Module name
 static const char MODULE_PREFIX[] = "BusControl";
@@ -20,7 +21,7 @@ BusControl::BusControl()
     : _targetControl(*this), 
       _busSocketManager(*this), 
       _memoryController(*this),
-      _busRawAccess(_clockGenerator),
+      _busRawAccess(*this, _clockGenerator),
       _hwManager(*this)
 {
     // Not init yet
@@ -60,7 +61,7 @@ void BusControl::service()
     _busRawAccess.service();
 
     // Service target controller
-    _targetControl.service();
+    _targetControl.service(false);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,5 +98,40 @@ void BusControl::rawAccessEnd()
 {
     _busSocketManager.suspend(false, true);
     _targetControl.suspend(false);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Block access synchronous
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+BR_RETURN_TYPE BusControl::blockAccessSync(uint32_t addr, uint8_t* pData, uint32_t len, bool iorq, 
+            bool read, bool write)
+{
+    // Check if we are in debug mode - if so access will be via copy of memory
+    if (!isDebugging())
+    {
+        // Assert BUSRQ and wait for the bus
+        BR_RETURN_TYPE retc = _busRawAccess.busRequestAndTake();
+        if (retc != BR_OK)
+            return retc;
+    }
+
+    // Access the block (can both write and read)
+    BR_RETURN_TYPE retc = BR_OK;
+    if (write)
+        retc =_memoryController.blockWrite(addr, pData, 
+                 len, iorq ? BLOCK_ACCESS_IO : BLOCK_ACCESS_MEM);
+    if (read && (retc == BR_OK))
+        retc = _memoryController.blockRead(addr, pData, 
+                 len, iorq ? BLOCK_ACCESS_IO : BLOCK_ACCESS_MEM);
+
+    // Check if we are in debug mode again
+    if (!isDebugging())
+    {
+        // Release BUSRQ
+        _busRawAccess.busReqRelease();
+    }
+
+    return retc;
 }
 

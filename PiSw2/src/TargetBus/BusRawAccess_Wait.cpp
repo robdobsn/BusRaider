@@ -7,6 +7,7 @@
 #include "lowlev.h"
 #include "lowlib.h"
 #include <circle/bcm2835.h>
+#include "DebugHelper.h"
 
 // Module name
 static const char MODULE_PREFIX[] = "BusRawWait";
@@ -111,17 +112,6 @@ BR_RETURN_TYPE BusRawAccess::waitConfigDebugger(bool waitOnMemory, bool waitOnIO
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Wait clear detected
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void BusRawAccess::waitClearDetected()
-{
-    // TODO not currently needed as service or timer used instead of edge detection
-    // Clear currently detected edge
-    // write32(ARM_GPIO_GPEDS0, BR_ANY_EDGE_MASK);
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Suspend/restore wait
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -144,10 +134,12 @@ void BusRawAccess::waitRawSet()
     // Set PWM generator idle value to enable/disable wait states
     // This is done using the idle states of the PWM
     uint32_t pwmCtrl = read32(ARM_PWM_CTL);
+    uint32_t curPwmCtrl = pwmCtrl;
     pwmCtrl &= ~(ARM_PWM_CTL_SBIT1 | ARM_PWM_CTL_SBIT2);
     if (waitOnIO)
         pwmCtrl |= ARM_PWM_CTL_SBIT1;
     if (waitOnMem)
         pwmCtrl |= ARM_PWM_CTL_SBIT2;
-    write32(ARM_PWM_CTL, pwmCtrl);
+    if (curPwmCtrl != pwmCtrl)
+        write32(ARM_PWM_CTL, pwmCtrl);
 }

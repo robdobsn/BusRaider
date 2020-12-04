@@ -218,7 +218,12 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
     else if (strcasecmp(cmdName, "debugRegsFormatted") == 0)
     {
         // Get registers
-        return apiDebuggerGetRegs(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+        return apiDebuggerRegsFormatted(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+    }
+    else if (strcasecmp(cmdName, "debugRegsJSON") == 0)
+    {
+        // Get registers
+        return apiDebuggerRegsJSON(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
     }
     else if (strcasecmp(cmdName, "rawBusControlOn") == 0)
     {
@@ -815,35 +820,6 @@ void ControlAPI::service()
 #endif
 }
 
-BR_RETURN_TYPE ControlAPI::blockAccessSync(uint32_t addr, uint8_t* pData, uint32_t len, bool iorq, 
-            bool read, bool write)
-{
-    // Start raw bus access
-    _busControl.rawAccessStart();
-
-    // Assert BUSRQ and wait for the bus
-    BR_RETURN_TYPE retc = _busControl.bus().busRequestAndTake();
-    if (retc != BR_OK)
-    {
-        _busControl.rawAccessEnd();
-        return retc;
-    }
-
-    // Access the block (can both write and read)
-    if (write)
-        retc = _busControl.mem().blockWrite(addr, pData, 
-                 len, iorq ? BLOCK_ACCESS_IO : BLOCK_ACCESS_MEM);
-    if (read)
-        retc = _busControl.mem().blockRead(addr, pData, 
-                 len, iorq ? BLOCK_ACCESS_IO : BLOCK_ACCESS_MEM);
-
-    // Release BUSRQ
-    _busControl.bus().busReqRelease();
-    _busControl.rawAccessEnd();
-
-    return BR_OK;
-}
-
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // API
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -978,7 +954,7 @@ bool ControlAPI::apiReadFromTarget(const char* pCmdJson,
     }
     // Synchronous memory read
     uint8_t pData[MAX_MEM_BLOCK_READ_WRITE];
-    BR_RETURN_TYPE rslt = ControlAPI::blockAccessSync(addr, pData, dataLen, isIo, true, false);
+    BR_RETURN_TYPE rslt = _busControl.blockAccessSync(addr, pData, dataLen, isIo, true, false);
     if (rslt != BR_OK)
     {
         snprintf(pRespJson, maxRespLen, R"("rslt":"%s")", _busControl.retcString(rslt));
@@ -1037,7 +1013,7 @@ bool ControlAPI::apiWriteToTarget(const char* pCmdJson,
         return true;
     }
     // Synchronous memory write
-    BR_RETURN_TYPE rslt = ControlAPI::blockAccessSync(addr, const_cast<uint8_t*>(pParams), 
+    BR_RETURN_TYPE rslt = _busControl.blockAccessSync(addr, const_cast<uint8_t*>(pParams), 
                     dataLen, isIo, true, false);
     if (rslt != BR_OK)
     {
@@ -1083,7 +1059,7 @@ bool ControlAPI::apiWriteReadTarget(const char* pCmdJson,
         // Synchronous memory write and then read
         uint8_t wrAndRdData[dataLen];
         memcpy(wrAndRdData, pParams, dataLen);
-        BR_RETURN_TYPE rslt = ControlAPI::blockAccessSync(addr, wrAndRdData, dataLen, isIo, true, true);
+        BR_RETURN_TYPE rslt = _busControl.blockAccessSync(addr, wrAndRdData, dataLen, isIo, true, true);
         if (rslt != BR_OK)
         {
             snprintf(pRespJson, maxRespLen, R"("rslt":"%s")", _busControl.retcString(rslt));
@@ -1213,7 +1189,7 @@ bool ControlAPI::apiDebuggerStepIn(const char* pCmdJson,
     return true;
 }
 
-bool ControlAPI::apiDebuggerGetRegs(const char* pCmdJson, 
+bool ControlAPI::apiDebuggerRegsFormatted(const char* pCmdJson, 
             const uint8_t* pParams, unsigned paramsLen,
             char* pRespJson, unsigned maxRespLen)
 {
@@ -1222,6 +1198,17 @@ bool ControlAPI::apiDebuggerGetRegs(const char* pCmdJson,
     strlcpy(pRespJson, R"("rslt":"ok","regs":")", maxRespLen);
     strlcat(pRespJson, regsStr, maxRespLen);
     strlcat(pRespJson, R"(")", maxRespLen);
+    return true;
+}
+
+bool ControlAPI::apiDebuggerRegsJSON(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen)
+{
+    char regsStr[400];
+    _busControl.ctrl().getRegsJSON(regsStr, sizeof(regsStr));
+    strlcpy(pRespJson, R"("rslt":"ok",)", maxRespLen);
+    strlcat(pRespJson, regsStr, maxRespLen);
     return true;
 }
 

@@ -267,12 +267,27 @@ bool TargetControl::debuggerHandleWaitCycle(uint32_t addr, uint32_t data, uint32
                 // Grab memory contents
                 if (busAckOk)
                 {
+                    // Clear the PAGE line to re-enable RAM
+                    digitalWrite(BR_PAGING_RAM_PIN, 1);
+    
                     // Take bus
                     _busControl.bus().busReqTakeControl();
 
+                    // Grab
+                    uint8_t* memContents = new uint8_t[STD_TARGET_MEMORY_LEN];
+                    _busControl.bus().rawBlockRead(0, memContents, STD_TARGET_MEMORY_LEN, BLOCK_ACCESS_MEM);
+
+                    // Send to mem controller
+                    _busControl.mem().memCacheBlockWrite(0, memContents, STD_TARGET_MEMORY_LEN, BLOCK_ACCESS_MEM);
+
+                    // Clean up
+                    delete memContents;
 
                     // Release bus
                     _busControl.bus().busReqRelease();
+
+                    // Assert the PAGE line to disable RAM again
+                    digitalWrite(BR_PAGING_RAM_PIN, 0);
                 }
 
                 // Release BUSRQ

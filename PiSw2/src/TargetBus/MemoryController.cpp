@@ -54,14 +54,30 @@ BR_RETURN_TYPE MemoryController::blockWrite(uint32_t addr, const uint8_t* pData,
 BR_RETURN_TYPE MemoryController::memCacheBlockRead(uint32_t addr, uint8_t* pData, 
             uint32_t len, BlockAccessType accessType)
 {
-    // TODO 2020 implement
-    return BR_ERR;
+    // Check params
+    if (addr >= STD_TARGET_MEMORY_LEN)
+        return BR_ERR;
+    uint32_t toCopy = len;
+    if (addr + toCopy > STD_TARGET_MEMORY_LEN)
+        toCopy = STD_TARGET_MEMORY_LEN - addr;
+
+    // Copy
+    memcpy(pData, _memCache+addr, toCopy);
+    return BR_OK;
 }
 
 BR_RETURN_TYPE MemoryController::memCacheBlockWrite(uint32_t addr, const uint8_t* pData, 
             uint32_t len, BlockAccessType accessType)
 {
-    // TODO 2020 implement
-    return BR_ERR;
+    // Check params
+    if (addr >= STD_TARGET_MEMORY_LEN)
+        return BR_ERR;
+    uint32_t toCopy = len;
+    if (addr + toCopy > STD_TARGET_MEMORY_LEN)
+        toCopy = STD_TARGET_MEMORY_LEN - addr;
+
+    // Copy
+    memcpy(_memCache+addr, pData, toCopy);
+    return BR_OK;
 }
 

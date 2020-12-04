@@ -111,6 +111,10 @@ public:
         return _busSettings;
     }
 
+    // Bus access to data
+    BR_RETURN_TYPE blockAccessSync(uint32_t addr, uint8_t *pData, uint32_t len, bool iorq,
+                                   bool read, bool write);
+
 private:
     // State of bus
     bool _isInitialized;

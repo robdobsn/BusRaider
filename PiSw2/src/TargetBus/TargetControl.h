@@ -43,7 +43,7 @@ public:
     void init();
 
     // Service
-    void service();
+    void service(bool serviceWaitOnly);
 
     // Clear
     void clear()
@@ -106,6 +106,7 @@ public:
         return _z80Registers;
     };
     void getRegsFormatted(char* pBuf, int len);
+    void getRegsJSON(char* pBuf, int len);
 
 private:
     // Bus control
@@ -149,7 +150,7 @@ private:
     bool _cycleHeldInWaitState;
     bool _cycleWaitForReadCompletionRequired;
     void cycleClear();
-    void cycleService();
+    void cycleService(bool serviceWaitOnly);
     void cycleSuspend(bool suspend);
     void cycleHandleActions();
     void cycleReqHandlePending();

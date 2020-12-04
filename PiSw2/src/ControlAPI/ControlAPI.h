@@ -27,10 +27,6 @@ public:
     // Service
     void service();
 
-    // Bus access to data
-    BR_RETURN_TYPE blockAccessSync(uint32_t addr, uint8_t *pData, uint32_t len, bool iorq,
-                                   bool read, bool write);
-
 private:
     // Singleton instance
     static ControlAPI *_pThisInstance;
@@ -122,7 +118,10 @@ private:
     bool apiDebuggerStepIn(const char *pCmdJson,
                            const uint8_t *pParams, unsigned paramsLen,
                            char *pRespJson, unsigned maxRespLen);
-    bool apiDebuggerGetRegs(const char *pCmdJson,
+    bool apiDebuggerRegsFormatted(const char *pCmdJson,
+                            const uint8_t *pParams, unsigned paramsLen,
+                            char *pRespJson, unsigned maxRespLen);
+    bool apiDebuggerRegsJSON(const char *pCmdJson,
                             const uint8_t *pParams, unsigned paramsLen,
                             char *pRespJson, unsigned maxRespLen);
     bool apiDebuggerStatus(const char *pCmdJson,
