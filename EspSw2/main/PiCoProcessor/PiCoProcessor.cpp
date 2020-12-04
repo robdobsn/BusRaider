@@ -211,6 +211,13 @@ void PiCoProcessor::applySetup()
         _isInitialised = true;
     }
 
+#ifdef DEBUG_COMMS_USING_IO_21_22
+    gpio_set_direction((gpio_num_t)21, GPIO_MODE_OUTPUT);
+    gpio_set_direction((gpio_num_t)22, GPIO_MODE_OUTPUT);
+    gpio_set_level((gpio_num_t)21, 0);
+    gpio_set_level((gpio_num_t)22, 0);
+#endif
+
     // Detect hardware version
     detectHardwareVersion();    
 }
@@ -607,7 +614,7 @@ void PiCoProcessor::apiTargetCommandPostContent(const String &reqStr, const uint
         toCopy = MAX_JSON_DATA_LEN;
     strlcpy(jsonData, (const char*) pData, toCopy);
     // Debug
-    LOG_I(MODULE_PREFIX, "apiTargetCommandPostContent %s json %s", reqStr.c_str(), jsonData);
+    // LOG_I(MODULE_PREFIX, "apiTargetCommandPostContent %s json %s", reqStr.c_str(), jsonData);
     // Send to the Pi
     sendTargetData(targetCmd.c_str(), pData, len, 0);
 }
@@ -843,10 +850,10 @@ void PiCoProcessor::sendTargetData(const String& cmdName, const uint8_t* pData, 
     msgData.resize(msgStrPlusPayloadLen);
     if (msgData.size() >= msgStrPlusPayloadLen)
     {
-// #ifdef DEBUG_PI_SEND_FRAME
+#ifdef DEBUG_PI_SEND_FRAME
         LOG_I(MODULE_PREFIX, "sendTargetData header %s pData %s msgStrPlusPayloadLen %d", 
                     msgHeader, pData, msgStrPlusPayloadLen);
-// #endif
+#endif
         memcpy(msgData.data(), msgHeader, headerLen + 1);
         memcpy(msgData.data() + headerLen + 1, pData, len);
         sendMsgAndPayloadToPi(msgData.data(), headerLen + len + 1);
@@ -1005,6 +1012,11 @@ void PiCoProcessor::hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen)
                 // Send message on the appropriate channel
                 if (_pEndpointManager)
                     _pEndpointManager->handleOutboundMessage(endpointMsg);
+
+#ifdef DEBUG_COMMS_USING_IO_21_22
+                debugPulse22();
+#endif
+
             // _miniHDLCForRDPTCP.sendFrame(pFrame+payloadStartPos, dataLen);
             }
         }
@@ -1278,6 +1290,10 @@ bool PiCoProcessor::procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg&
         String combinedMsgHexStr;
         Utils::getHexStrFromBytes(combinedMsg.data(), combinedMsg.size(), combinedMsgHexStr);
         LOG_I(MODULE_PREFIX, "procRICRESTCmdFrame combinedLen %d binaryLen %d send %s", combinedLen, binaryLen, combinedMsgHexStr.c_str());
+#endif
+
+#ifdef DEBUG_COMMS_USING_IO_21_22
+        debugPulse21();
 #endif
 
         sendTargetData("rdp", combinedMsg.data(), combinedLen, endpointMsgNum);

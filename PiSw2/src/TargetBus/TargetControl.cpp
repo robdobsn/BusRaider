@@ -48,14 +48,36 @@ void TargetControl::suspend(bool suspend)
 }
 
 // Debugger break
-void TargetControl::debuggerBreak()
+bool TargetControl::debuggerBreak()
 {
+    // If already in debug mode then exit first
+    if (_debuggerState == DEBUGGER_STATE_AT_BREAK)
+    {
+        _debuggerState = DEBUGGER_STATE_FREE_RUNNING;
+        service(true);
+        service(true);
+        service(true);
+    }
+
     // Go into break mode
     _debuggerState = DEBUGGER_STATE_AT_BREAK;
     _debuggerStepMode = DEBUGGER_STEP_MODE_NONE;
 
     // Set to wait on MREQ
     _busControl.bus().waitConfigDebugger(true, false);
+
+    // Service the bus WAIT handling until break has been done
+    uint32_t startMs = millis();
+    while(!isTimeout(millis(), startMs, MAX_WAIT_FOR_DEBUG_HELD_AT_WAIT_MS))
+    {
+        _busControl.ctrl().service(true);
+        if (_busControl.ctrl().isHeldAtWait())
+            break;
+    }
+
+    // Check held at wait
+    return _busControl.ctrl().isHeldAtWait();
+
 }
 
 // Debugger continue
@@ -66,26 +88,38 @@ void TargetControl::debuggerContinue()
 
     // Set to wait on MREQ
     _busControl.bus().waitConfigDebugger(false, false);
+
+    // Service bus a couple of times to ensure running
+    _busControl.ctrl().service(true);
+    _busControl.ctrl().service(true);
 }
 
 // Debugger step-in
-void TargetControl::debuggerStepIn()
+bool TargetControl::debuggerStepIn()
 {
     // Check if already in break mode
     if (_debuggerState == DEBUGGER_STATE_FREE_RUNNING)
     {
         // Go into break mode
-        _debuggerState = DEBUGGER_STATE_AT_BREAK;
-        _debuggerStepMode = DEBUGGER_STEP_MODE_NONE;
+        return debuggerBreak();
     }
     else
     {
         // Step in
         _debuggerStepMode = DEBUGGER_STEP_MODE_STEP_INTO;
+
+        // Service the bus WAIT handling until step has been done
+        uint32_t startMs = millis();
+        while(!isTimeout(millis(), startMs, MAX_WAIT_FOR_DEBUG_HELD_AT_WAIT_MS))
+        {
+            _busControl.ctrl().service(true);
+            if (_busControl.ctrl().isHeldAtWait())
+                break;
+        }
+
+        // Check held at wait
+        return _busControl.ctrl().isHeldAtWait();
     }
-    
-    // Set to wait on MREQ
-    _busControl.bus().waitConfigDebugger(true, false);
 }
 
 // #define INCLUDE_DISASSEMBLER

@@ -27,6 +27,9 @@ ControlAPI* ControlAPI::_pThisInstance = NULL;
 // #define DEBUG_COMMS_SOCKET
 // #define DEBUG_API_BLOCK_ACCESS_SYNC
 // #define DEBUG_BUS_ACTION_COMPLETE
+// #define DEBUG_API_DEBUGGER
+// #define DEBUG_API_PROGRAMMER
+// #define DEBUG_API_DETAIL
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Construction
@@ -170,7 +173,9 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
     }
     else if (strcasecmp(cmdName, "RxHost") == 0)
     {
-        // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "RxFromHost, len %d", dataLen);
+#ifdef DEBUG_API_DETAIL
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "RxFromHost, len %d", dataLen);
+#endif
         // TODO 2020 add back in
         // hostSerialAddRxCharsToBuffer(pParams, paramsLen);
         return true;
@@ -274,7 +279,9 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
     }
     else if (strcasecmp(cmdName, "rawBusSetAddress") == 0)
     {
-        // // LogWrite(MODULE_PREFIX, LOG_DEBUG, "rawBusAddress %s", pCmdJson);
+#ifdef DEBUG_API_DETAIL
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "rawBusAddress %s", pCmdJson);
+#endif
         // // Get address
         // uint32_t addr = 0;
         // if (!getArg("addr", 1, pCmdJson, addr))
@@ -423,12 +430,16 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
         // Get clock
         uint32_t actualHz = _busControl.clock().getFreqInHz();
         snprintf(pRespJson, maxRespLen, R"("rslt":"ok","clockHz":"%d")", (unsigned)actualHz);
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "clockHzGet %s", pRespJson);
+#ifdef DEBUG_API_DETAIL
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "clockHzGet %s", pRespJson);
+#endif
         return true;
     }
     else if (strcasecmp(cmdName, "clockHzSet") == 0)
     {
+#ifdef DEBUG_API_DETAIL
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "clockHzSet cmd %s params %s %02x %02x %02x %02x", pCmdJson, pParams, pParams[0], pParams[1], pParams[2], pParams[3]);
+#endif
         // Get clock rate required (may be in cmdJson or paramsJson)
         static const int MAX_CMD_PARAM_STR = 50;
         char paramVal[MAX_CMD_PARAM_STR+1];
@@ -439,8 +450,9 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
                 return false;
             }
         uint32_t clockRateHz = strtoul(paramVal, NULL, 10);
+#ifdef DEBUG_API_DETAIL
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "clockHzSet %d", clockRateHz);
-
+#endif
         // Set clock
         _busControl.clock().setFreqHz(clockRateHz);
 
@@ -842,7 +854,9 @@ bool ControlAPI::apiProgAddMemBlock(const char* pCmdJson,
         strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
         return true;
     }
+#ifdef DEBUG_API_PROGRAMMER
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "progAdd addr 0x%04x len %d", addr, paramsLen);
+#endif
     _busControl.prog().addMemoryBlock(addr, pParams, paramsLen);
     return true;
 }
@@ -856,7 +870,9 @@ bool ControlAPI::apiProgWrite(const char* pCmdJson,
     uint32_t doDebug = false;
     getArg("exec", 1, pCmdJson, doExec);
     getArg("debug", 2, pCmdJson, doDebug);
+#ifdef DEBUG_API_PROGRAMMER
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiProgWrite exec %d debug %d", doExec, doDebug);
+#endif
     _busControl.ctrl().programmingStart(doExec, doDebug);
     return true;
 }
@@ -869,7 +885,9 @@ bool ControlAPI::apiProgWriteAndRun(char* pRespJson, unsigned maxRespLen)
 
 bool ControlAPI::apiTargetReset(char* pRespJson, unsigned maxRespLen)
 {
-    // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ResetTarget");
+#ifdef DEBUG_API_DETAIL
+    LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ResetTarget");
+#endif
     _busControl.sock().reqReset(_busSocketId);
     return true;
 }
@@ -878,7 +896,9 @@ bool ControlAPI::apiFileToTarget(const char* pCmdJson,
             const uint8_t* pParams, unsigned paramsLen,
             char* pRespJson, unsigned maxRespLen)
 {
+#ifdef DEBUG_API_DETAIL
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiFileToTarget len %d json %s", paramsLen, pCmdJson);
+#endif
     bool rslt = _mcManager.targetFileHandler(pCmdJson, pParams, paramsLen);
     if (!rslt)
         strlcpy(pRespJson, R"("rslt":"fail")", maxRespLen);
@@ -895,7 +915,9 @@ bool ControlAPI::apiSetMcJson(const char* pCmdJson,
     if (toCopy > _commandHandler.MAX_MC_SET_JSON_LEN)
         toCopy = _commandHandler.MAX_MC_SET_JSON_LEN;
     strlcpy(mcJson, (const char*)pParams, toCopy);
+#ifdef DEBUG_API_DETAIL
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiSetMcJson %s", mcJson);
+#endif
     bool setupOk = _mcManager.setupMachine(mcJson); 
     if (!setupOk)
         strlcpy(pRespJson, R"("rslt":"fail")", maxRespLen);
@@ -913,8 +935,10 @@ bool ControlAPI::apiSendKeyToTarget(const char* pCmdJson,
     usbKeyCodes[0] = strtoul(pEnd, &pEnd, 10);
     unsigned usbModCode = strtoul(pEnd, &pEnd, 10);
     asciiCode = asciiCode;
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "SendKey, %s ascii 0x%02x usbKey 0x%02x usbMod 0x%02x", 
-    //             pParams, asciiCode, usbKeyCodes[0], usbModCode);
+#ifdef DEBUG_API_DETAIL
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "SendKey, %s ascii 0x%02x usbKey 0x%02x usbMod 0x%02x", 
+                pParams, asciiCode, usbKeyCodes[0], usbModCode);
+#endif
     _mcManager.keyHandler(usbModCode, usbKeyCodes);
     return true;
 }
@@ -923,7 +947,9 @@ bool ControlAPI::apiReadFromTarget(const char* pCmdJson,
             const uint8_t* pParams, unsigned paramsLen,
             char* pRespJson, unsigned maxRespLen)
 {
+#ifdef DEBUG_API_DETAIL
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiReadFromTarget %s %04x", pCmdJson, read32(ARM_GPIO_GPLEV0));
+#endif
 
     // Get params
     uint32_t addr = 0;
@@ -975,9 +1001,10 @@ bool ControlAPI::apiReadFromTarget(const char* pCmdJson,
     strlcat(jsonResp, R"(")", MAX_MEM_READ_RESP);
     strlcpy(pRespJson, jsonResp, maxRespLen);
 
+#ifdef DEBUG_API_DETAIL
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiReadFromTarget result ok, lastByte 0x%c%c", 
                 jsonResp[strlen(jsonResp)-3], jsonResp[strlen(jsonResp)-2]);
-
+#endif
     return true;
 }
 
@@ -985,8 +1012,10 @@ bool ControlAPI::apiWriteToTarget(const char* pCmdJson,
             const uint8_t* pParams, unsigned paramsLen,
             char* pRespJson, unsigned maxRespLen)
 {
+#ifdef DEBUG_API_DETAIL
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiWriteToTarget %s", pCmdJson);
-    
+#endif 
+
     // Get params
     uint32_t addr = 0;
     uint32_t dataLen = 0;
@@ -1029,8 +1058,9 @@ bool ControlAPI::apiWriteReadTarget(const char* pCmdJson,
             const uint8_t* pParams, unsigned paramsLen,
             char* pRespJson, unsigned maxRespLen)
 {
+#ifdef DEBUG_API_DETAIL
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiWriteReadTarget %s", pCmdJson);
-        
+#endif        
         // Get params
         uint32_t addr = 0;
         uint32_t dataLen = 0;
@@ -1079,9 +1109,10 @@ bool ControlAPI::apiWriteReadTarget(const char* pCmdJson,
         strlcat(jsonResp, R"(")", MAX_MEM_READ_RESP);
         strlcpy(pRespJson, jsonResp, maxRespLen);
 
+#ifdef DEBUG_API_DETAIL
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiWriteReadTarget result ok, lastByte 0x%c%c", 
                 jsonResp[strlen(jsonResp)-3], jsonResp[strlen(jsonResp)-2]);
-
+#endif
         //         if (_pThisInstance->_memAccessReadPending)
         // {
         //     _pThisInstance->_memAccessRdWrPending = false;
@@ -1166,8 +1197,17 @@ bool ControlAPI::apiDebuggerBreak(const char* pCmdJson,
             const uint8_t* pParams, unsigned paramsLen,
             char* pRespJson, unsigned maxRespLen)
 {
+#ifdef DEBUG_API_DEBUGGER
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiDebuggerBreak %s", pCmdJson);
-    _busControl.ctrl().debuggerBreak();
+#endif
+    if (!_busControl.ctrl().debuggerBreak())
+    {
+        strlcpy(pRespJson, R"("rslt":"failedToBreak")", maxRespLen);
+    }
+    else
+    {
+        apiDebuggerRegsJSON(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+    }
     return true;
 }
 
@@ -1175,7 +1215,9 @@ bool ControlAPI::apiDebuggerContinue(const char* pCmdJson,
             const uint8_t* pParams, unsigned paramsLen,
             char* pRespJson, unsigned maxRespLen)
 {
+#ifdef DEBUG_API_DEBUGGER
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiDebuggerContinue %s", pCmdJson);
+#endif
     _busControl.ctrl().debuggerContinue();
     return true;
 }
@@ -1184,8 +1226,26 @@ bool ControlAPI::apiDebuggerStepIn(const char* pCmdJson,
             const uint8_t* pParams, unsigned paramsLen,
             char* pRespJson, unsigned maxRespLen)
 {
+#ifdef DEBUG_API_DEBUGGER
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiDebuggerStepIn %s", pCmdJson);
-    _busControl.ctrl().debuggerStepIn();
+#endif
+    if (!_busControl.ctrl().debuggerStepIn())
+    {
+        strlcpy(pRespJson, R"("rslt":"failedToStep")", maxRespLen);
+    }
+    else
+    {
+        apiDebuggerRegsJSON(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+    }
+
+    // uint32_t startMs = millis();
+    // while(!isTimeout(millis(), startMs, 10))
+    // {
+    //     for (uint32_t i = 0; i < 10; i++)
+    //         _busControl.ctrl().service(false);
+    //     if (_busControl.ctrl().isHeldAtWait())
+    //         break;
+    // }
     return true;
 }
 

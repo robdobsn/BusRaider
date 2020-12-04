@@ -13,6 +13,7 @@
 static const char MODULE_PREFIX[] = "TargCtrlDebug";
 
 // #define DEBUG_REGISTER_GET
+// #define DEBUG_M1_CYCLE
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Debugger grab registers and memory
@@ -65,6 +66,18 @@ bool TargetControl::debuggerHandleWaitCycle(uint32_t addr, uint32_t data, uint32
     // Ignore this if not an instruction fetch cycle
     if (((rawBusVals & BR_V20_M1_BAR_MASK) != 0) || ((rawBusVals & BR_MREQ_BAR_MASK) != 0))
         return false;
+
+#ifdef DEBUG_M1_CYCLE
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "DEBUG M1 addr %04x D %02x flags %c %c %c %c %c %08x", 
+            addr,
+            data,
+            (rawBusVals & BR_V20_M1_BAR_MASK) ? ' ' : '1',
+            (rawBusVals & BR_RD_BAR_MASK) ? ' ' : 'R',
+            (rawBusVals & BR_WR_BAR_MASK) ? ' ' : 'W',
+            (rawBusVals & BR_MREQ_BAR_MASK) ? ' ' : 'M',
+            (rawBusVals & BR_IORQ_BAR_MASK) ? ' ' : 'I',
+            rawBusVals);
+#endif
 
     // Set the PAGE line to disable RAM and allow injection
     digitalWrite(BR_PAGING_RAM_PIN, 0);

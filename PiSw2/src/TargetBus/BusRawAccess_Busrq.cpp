@@ -107,10 +107,6 @@ void BusRawAccess::busReqRelease()
     waitSuspend(false);
 #endif
 
-    // TODO 2020 removed
-    // Check if we need to assert any new bus requests
-    // busActionHandleStart();
-
     // No longer request bus & set all control lines high (inactive)
     uint32_t setMask = BR_BUSRQ_BAR_MASK | BR_WR_BAR_MASK | BR_RD_BAR_MASK | BR_IORQ_BAR_MASK | BR_MREQ_BAR_MASK | BR_WAIT_BAR_MASK;
     if (_hwVersionNumber != 17)

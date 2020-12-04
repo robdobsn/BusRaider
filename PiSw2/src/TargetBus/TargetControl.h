@@ -55,9 +55,9 @@ public:
     void suspend(bool suspend);
 
     // Debugger
-    void debuggerBreak();
+    bool debuggerBreak();
     void debuggerContinue();
-    void debuggerStepIn();
+    bool debuggerStepIn();
 
     // Set callback on bus access
     void setBusAccessCallback(BusAccessCBFnType* pCB, void* pObject)
@@ -166,6 +166,7 @@ private:
     void cyclePerformActionRequest();
 
     // Debugger wait handling
+    static const uint32_t MAX_WAIT_FOR_DEBUG_HELD_AT_WAIT_MS = 100;
     bool debuggerHandleWaitCycle(uint32_t addr, uint32_t data, uint32_t flags);
 
     // Memory wait high address watch table

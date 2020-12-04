@@ -58,11 +58,11 @@ def waitUntilHeld():
         logger.error(f"Failed to hold Z80 processor")
         exit()
 
-def validateRegsAndRam(stepIdx):
-    waitUntilHeld()
-    regsResp = ric.sendRICRESTCmdFrameSync('{"cmdName":"debugRegsJSON"}')
-    if regsResp.get('rslt',"") != "ok":
-        logger.error(f"Invalid response {regsResp}")
+def validateRegsAndRam(stepIdx, regsResp):
+    # waitUntilHeld()
+    # regsResp = ric.sendRICRESTCmdFrameSync('{"cmdName":"debugRegsJSON"}')
+    # if regsResp.get('rslt',"") != "ok":
+    #     logger.error(f"Invalid response {regsResp}")
     # logger.info(regsResp)
     addr = 0x0100
     length = 2
@@ -115,14 +115,20 @@ resp = ric.sendRICRESTCmdFrameSync('{"cmdName":"progWrite","exec":1,"debug":1}')
 if resp.get('rslt',"") != "ok":
     logger.error(f"Invalid response {resp}")
 
-validateRegsAndRam(0)
+waitUntilHeld()
+regsResp = ric.sendRICRESTCmdFrameSync('{"cmdName":"debugRegsJSON"}')
+if regsResp.get('rslt',"") != "ok":
+    logger.error(f"Invalid response {regsResp}")
 
-for i in range(2000):
+validateRegsAndRam(0, regsResp)
+
+for i in range(100):
     resp = ric.sendRICRESTCmdFrameSync(
             "{" + f'"cmdName":"debugStepIn"' + "}")
     if resp.get('rslt',"") != "ok":
         logger.error(f"Invalid response {resp}")
-    validateRegsAndRam(i+1)
+    validateRegsAndRam(i+1, resp)
+    # logger.info(resp)
 
 time.sleep(1)
 

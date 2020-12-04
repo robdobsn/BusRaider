@@ -15,6 +15,10 @@
 #include "MiniHDLC.h"
 #include <list>
 #include "FileBlockInfo.h"
+#include <driver/gpio.h>
+#include "Utils.h"
+
+// #define DEBUG_COMMS_USING_IO_21_22
 
 class ProtocolEndpointMsg;
 
@@ -56,6 +60,22 @@ protected:
     // Process RICRESTMsg CmdFrame
     virtual bool procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg& ricRESTReqMsg, 
             String& respMsg, const ProtocolEndpointMsg &endpointMsg) override final;
+
+    // Debugging
+#ifdef DEBUG_COMMS_USING_IO_21_22
+    void debugPulse21()
+    {
+        gpio_set_level((gpio_num_t)21, 1);
+        delayMicroseconds(1);
+        gpio_set_level((gpio_num_t)21, 0);
+    }
+    void debugPulse22()
+    {
+        gpio_set_level((gpio_num_t)22, 1);
+        delayMicroseconds(1);
+        gpio_set_level((gpio_num_t)22, 0);
+    }
+#endif
 
 private:
     // Vars

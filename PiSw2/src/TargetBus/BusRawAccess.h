@@ -133,6 +133,16 @@ public:
                 // Clear the wait
                 write32(ARM_PWM_FIF1, 0x0000ffff);  // IORQ sequence
                 write32(ARM_PWM_FIF1, 0x0000ffff);  // MREQ sequence
+
+                // Ensure clear
+                for (uint32_t i = 0; i < 100; i++)
+                {
+                    // Get raw GPIO pin values
+                    uint32_t rawBusVals = read32(ARM_GPIO_GPLEV0);
+                    // Check control bus is stable
+                    if ((rawBusVals & BR_WAIT_BAR_MASK) != 0)
+                        break;
+                }
 #ifdef CHECK_ARM_PWM_STA_BEFORE_WAIT_CLEAR
                 break;
             }
