@@ -890,7 +890,7 @@ bool ControlAPI::apiTargetReset(char* pRespJson, unsigned maxRespLen)
 #ifdef DEBUG_API_DETAIL
     LogWrite(MODULE_PREFIX, LOG_VERBOSE, "ResetTarget");
 #endif
-    _busControl.sock().reqReset(_busSocketId);
+    _busControl.ctrl().targetReset();
     return true;
 }
 

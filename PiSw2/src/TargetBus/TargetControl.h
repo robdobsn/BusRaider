@@ -112,6 +112,9 @@ public:
     void disassemble(uint32_t numLines, char* pResp, uint32_t respMaxLen, 
             uint32_t& numBytesIn1StInstruction);
 
+    // Target commands
+    void targetReset();
+
 private:
     // Bus control
     BusControl& _busControl;

@@ -83,7 +83,7 @@ bool TargetControl::debuggerBreak()
 // Debugger continue
 void TargetControl::debuggerContinue()
 {
-    // Go into break mode
+    // Go into free-running mode
     _debuggerState = DEBUGGER_STATE_FREE_RUNNING;
 
     // Set to wait on MREQ
@@ -120,6 +120,13 @@ bool TargetControl::debuggerStepIn()
         // Check held at wait
         return _busControl.ctrl().isHeldAtWait();
     }
+}
+
+// Target commands
+void TargetControl::targetReset()
+{
+    debuggerContinue();
+    _busControl.bus().targetReset(_busControl.busSettings().resetDurationMs);
 }
 
 // #define INCLUDE_DISASSEMBLER
