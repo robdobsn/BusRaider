@@ -108,6 +108,10 @@ public:
     void getRegsFormatted(char* pBuf, int len);
     void getRegsJSON(char* pBuf, int len);
 
+    // Disassemble
+    void disassemble(uint32_t numLines, char* pResp, uint32_t respMaxLen, 
+            uint32_t& numBytesIn1StInstruction);
+
 private:
     // Bus control
     BusControl& _busControl;
@@ -196,6 +200,9 @@ private:
 
     // Debug step mode
     volatile DebuggerStepMode _debuggerStepMode;
+
+    // Disassembly helper
+    char* mungeDisassembly(char* pText);
 
     // void cycleHandleReadRelease();
     // // State

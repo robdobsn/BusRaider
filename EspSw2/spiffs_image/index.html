@@ -332,7 +332,7 @@
                     }
                 }
             };
-            xmlhttp.open('POST', "/uploadtofileman");
+            xmlhttp.open('POST', "/fileupload");
             xmlhttp.send(formData);
             return true;
         }
@@ -471,7 +471,7 @@
         }
 
         function uploadOnlyFile(file, i) {
-            uploadFileSpecUrl("/uploadtofileman", 'progress-bar-file-manager', file, i)
+            uploadFileSpecUrl("/fileupload", 'progress-bar-file-manager', file, i)
         }
 
         function uploadAndRunFiles(files) {
@@ -499,10 +499,10 @@
             });
 
             xhr.addEventListener('readystatechange', function (e) {
-                if (xhr.readyState == 4 && xhr.status == 200) {
+                if (xhr.readyState === 4 && xhr.status === 200) {
                     updateProgress(i, 100, progressBarName)
                     fileListUpdate();
-                } else if (xhr.readyState == 4 && xhr.status != 200) {
+                } else if (xhr.readyState === 4 && xhr.status != 200) {
                     // Error
                 }
             });
@@ -538,6 +538,101 @@
             }
         }
 
+        function debuggerShowClick(event) {
+            event.srcElement.classList.toggle("radio-on");
+            let debuggerPanel = document.getElementById("debugger-panel");
+            if (event.srcElement.classList.contains("radio-on"))
+            {
+                debuggerPanel.classList.remove("panel-hidden");
+                event.srcElement.innerHTML = "Hide Debugger";
+            }
+            else
+            {
+                debuggerPanel.classList.add("panel-hidden");
+                event.srcElement.innerHTML = "Show Debugger";
+            }
+        }
+
+        function debuggerFlagStr(flags) {
+            const flagStr = "SZ H PNC"
+            let fMask = 0x80;
+            let rsltStr = ""
+            for (let i = 0; i < 8; i++) {
+                rsltStr += ((fMask & flags) != 0) ? flagStr[i] : " ";
+                fMask = fMask >> 1;
+            }
+            return rsltStr;
+        }
+        function enableDebugger(en) {
+            const elList = [document.getElementById('debugger-disregs'),
+                    document.getElementById('debugger-mem1'),
+                    document.getElementById('debugger-mem2')];
+            elList.forEach((el) => {
+                if (en) {
+                    el.classList.add("uiDisable");
+                } else {
+                    el.classList.remove("uiDisable");
+                }
+            });
+        }
+        function intToHex(val, digits, uc=true) {
+            let st = "0000" + val.toString(16);
+            if (uc)
+                st = st.toUpperCase();
+            return st.slice(st.length-digits);
+        }
+        function hexDisplayUpdate(jsonRslt, elementId) {
+            console.log(jsonRslt, elementId);
+            const rslt = JSON.parse(jsonRslt);
+            const memData = rslt.data;
+            const memAddr = rslt.addr;
+            const el = document.getElementById(elementId);
+            let dumpHtml = "";
+            let addr = parseInt(memAddr, 16);
+            for (let i = 0; i < memData.length; i+=2) {
+                if (i % 32 === 0) {
+                    if (i !== 0)
+                        dumpHtml += "\n";
+                    dumpHtml += intToHex(addr, 4) + " ";                    
+                    addr += 16;
+                }
+                dumpHtml += intToHex(memData.slice(i,i+2), 2) + " ";
+            }
+            el.innerHTML = dumpHtml;
+        }
+        function showHexDump(addr, memDumpElementId) {
+            callAjaxWithParam('/targetcmd/Rd/' + intToHex(addr, 4) + '/200', hexDisplayUpdate, memDumpElementId);
+        }
+        function debuggerUpdate(rslt) {
+            enableDebugger(true)
+            console.log(rslt);
+            // Regs
+            const regsObj = JSON.parse(rslt);
+            const regNames = ["PC","SP","BC","AF","HL","DE","IX","IY","AFDASH","BCDASH","HLDASH","DEDASH","I","R","IM","IFF"];
+            regNames.forEach((reg) => {
+                const el = document.getElementById("regs-" + reg);
+                const regStr = regsObj[reg]
+                el.innerHTML = typeof regStr === 'string' ? regStr.replace("0x","").toUpperCase() : regStr;
+            });
+            const f1 = document.getElementById("regs-FLAGS");
+            f1.innerHTML = debuggerFlagStr(parseInt(regsObj["AF"],16) & 0xf0);
+            const f1Dash = document.getElementById("regs-FLAGSDASH");
+            f1Dash.innerHTML = debuggerFlagStr(parseInt(regsObj["AFDASH"],16) & 0xf0);
+            // Disassembly
+            const el = document.getElementById("debugger-disasm");
+            const disasmLines = regsObj.disasm.split('%');
+            let disasmText = "";
+            for (let i = 0; i < disasmLines.length; i++) {
+                lin = disasmLines[i];
+                lin = lin.replace(/\~/g, '\t')
+                lin = lin.replace(/\^/g, '\t')
+                lin = lin.toUpperCase()
+                disasmText += lin + '<BR>';
+            }
+            el.innerHTML = disasmText;
+            showHexDumps();
+        }
+
         function mcDropDownClose() {
             if (!machinePopupClose(true))
                 sendSelectMachine();
@@ -551,7 +646,7 @@
         function sendSelectMachine() {
             let mcIdx = document.getElementById("machine-select").selectedIndex;
             let mcJson = JSON.stringify(window.pageState.machineConfigs[mcIdx]);
-            var xhr = new XMLHttpRequest();
+            let xhr = new XMLHttpRequest();
             xhr.open('POST', "/setmcjson", true);
             xhr.setRequestHeader("Content-Type", "application/json");
             xhr.send(mcJson);
@@ -570,6 +665,21 @@
                     else {
                         if ((failCallback !== undefined) && (typeof failCallback !== 'undefined'))
                             failCallback(xmlhttp);
+                    }
+                }
+            };
+
+            xmlhttp.open("GET", url, true);
+            xmlhttp.send();
+        }
+
+        function callAjaxWithParam(url, okCallback, okParam) {
+            let xmlhttp = new XMLHttpRequest();
+            xmlhttp.onreadystatechange = function () {
+                if (xmlhttp.readyState === 4) {
+                    if (xmlhttp.status === 200) {
+                        if ((okCallback !== undefined) && (typeof okCallback !== 'undefined'))
+                            okCallback(xmlhttp.responseText, okParam);
                     }
                 }
             };
@@ -623,7 +733,7 @@
                         let selection = this.parentNode.parentNode.getElementsByTagName("select")[0];
                         let prevSibling = this.parentNode.previousSibling;
                         for (let k = 0; k < selection.length; k++) {
-                            if (selection.options[k].innerHTML == this.innerHTML) {
+                            if (selection.options[k].innerHTML === this.innerHTML) {
                                 selection.selectedIndex = k;
                                 prevSibling.innerHTML = this.innerHTML;
                                 let sameAsSel = this.parentNode.getElementsByClassName("same-as-selected");
@@ -638,7 +748,7 @@
                     });
                     optionsDiv.appendChild(optionDiv);
                     // Last item only
-                    if (j == selEl.length - 1)
+                    if (j === selEl.length - 1)
                         optionDiv.setAttribute("class", "select-last-option");
                 }
                 selectS[i].appendChild(optionsDiv);
@@ -661,7 +771,7 @@
                 let selectedItems = document.getElementsByClassName("select-items");
                 let selectsSelected = document.getElementsByClassName("select-selected");
                 for (let i = 0; i < selectsSelected.length; i++) {
-                    if (elmnt == selectsSelected[i]) {
+                    if (elmnt === selectsSelected[i]) {
                         selArray.push(i)
                     }
                     else {
@@ -767,7 +877,7 @@
         }
 
         function deleteFile(filename) {
-            callAjax("/deleteFile/" + window.pageState.fsDefault + "/" + filename);
+            callAjax("/filedelete/" + window.pageState.fsDefault + "/" + filename);
             fileListUpdate();
         }
 
@@ -826,8 +936,8 @@
             return modCodes;
         }
         function termKeyDown(event) {
-            console.log(event);
-            if ((event.keyCode == 16) || (event.keyCode == 17) || (event.keyCode == 18) || (event.keyCode == 20)) {
+            // console.log(event);
+            if ((event.keyCode === 16) || (event.keyCode === 17) || (event.keyCode === 18) || (event.keyCode === 20)) {
                 // Ctrl, shift or Alt
                 return;
             }
@@ -948,6 +1058,30 @@
                 "080808", "121212", "1c1c1c", "262626", "303030", "3a3a3a", "444444", "4e4e4e",
                 "585858", "606060", "666666", "767676", "808080", "8a8a8a", "949494", "9e9e9e",
                 "a8a8a8", "b2b2b2", "bcbcbc", "c6c6c6", "d0d0d0", "dadada", "e4e4e4", "eeeeee"];
+        }
+        function validateHexInput(event, memDumpElementId) {
+            console.log(event);
+            if (event.code === "Backspace" || event.code === "Delete" || event.code === "Enter")
+                return true
+            const okKeys = "01234567890ABCDEFabcdef"
+            if (okKeys.includes(event.key))
+                return true;
+            return false
+        }
+        function onChangeHexInput(event, memDumpElementId) {
+            console.log(event);
+            const val = event.target.value
+            // const rslt = /^([0-9A-Fa-f]{1,4})$/.test(val)
+            let addr = parseInt(event.target.value,16);
+            showHexDump(isNaN(addr) ? 0 : addr, memDumpElementId)
+        }
+        function showHexDumps() {
+            let el = document.getElementById('debugger-mem1-addr');
+            let addr = parseInt(el.value,16);
+            showHexDump(addr, 'debugger-mem1');
+            el = document.getElementById('debugger-mem2-addr');
+            addr = parseInt(el.value,16);
+            showHexDump(addr, 'debugger-mem2');
         }
     </script>
     <style>
@@ -1222,6 +1356,36 @@
             background-color: rgba(0, 0, 0, 0.1);
         }
 
+        .uiDisabled {
+            opacity: 40%;
+        }
+        .uiPanel2Col {
+            display: flex;
+            flex-direction: row;
+        }
+        .uiPanelBordered {
+            border-radius: 5px;
+            border: solid 1px #444444;
+        }
+        .uiPanelSubButtons {
+            display: flex;
+            flex-direction: row;
+        }
+        .uiPanelColumn {
+            flex: 80%;
+        }
+        .uiPanelGroup {
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        @media screen and (max-width: 950px) {
+            .uiPanelCol2HideWidth {
+                display: none;
+            }
+        }
+        .uiSmallerText {
+            font-size: 0.8rem;
+        }
         .uiTable {
             border: 0;
             width: 100%;
@@ -1479,6 +1643,51 @@
             min-height: inherit;
             padding: 1px;
         }
+        #debugger-disasm {
+            background-color: #000000;
+            color: white;
+            width: 100%;
+            height: auto;
+            font-family: "Lucida Console", Monaco, monospace;
+            min-height: inherit;
+            padding: 1px;
+            white-space: pre;
+        }
+        #debugger-regs {
+            background-color: #000000;
+            color: white;
+            height: auto;
+            font-family: "Lucida Console", Monaco, monospace;
+            line-height: 0.2rem;
+            min-height: inherit;
+            padding: 1px;
+        }
+        .debugger-memory {
+            background-color: #000000;
+            color: white;
+            width: 100%;
+            height: auto;
+            font-family: "Lucida Console", Monaco, monospace;
+            min-height: inherit;
+            padding: 1px;
+            white-space: pre;
+        }
+        .uiInput-hex {
+            color: #eeeeee;
+            background-color: #000000;
+            border: none;
+            height: fit-content;
+            width: 100%;
+        }
+        .uiInput-label {
+            padding-right: 10px;
+        }
+        .regs-label {
+            font-weight: lighter;
+        }
+        .regs-val {
+            font-weight: bold;
+        }
         .term-panel {
             min-height: 1.2rem;
         }
@@ -1488,7 +1697,6 @@
         .panel-hidden {
             display: none;
         }
-
     </style>
 </head>
 
@@ -1528,23 +1736,124 @@
                 </form>
             </div>
             <div class="uiPanelSub">
-                <span class="button" onclick="sendCmdToTarget('resettarget')">Reset target</span>
-                <span class="button" onclick="sendCmdToTarget('progClear')">Clear target buffer</span>
-                <span class="button" onclick="sendCmdToTarget('progWrite')">Program from buffer</span>
-                <span class="button" onclick="sendCmdToTarget('programandexec')">Program and execute</span>
-                <span class="button radio" onclick="termShowClick(event)">Show Terminal</span>
-                <!-- <span class="button" onclick="sendCmdToTarget('pausetarget')">Pause</span>
-                <span class="button" onclick="sendCmdToTarget('releasetarget')">Release</span> -->
                 <div class="clock-setting">
                     <label>Clock</label>
                     <input id="clock-freq-hz" type="number" max=50.0 min=0 value=1.0 step=0.1 class="clock-freq" onchange="clockHzSet();">
                     <label>MHz</label>
                 </div>
+                <span class="button radio" onclick="termShowClick(event)">Show Terminal</span>
+                <span class="button radio" onclick="debuggerShowClick(event)">Show Debugger</span>
             </div>
         </div>
         <div id="term-panel" tabindex="110" class="layout-region panel-hidden" onkeydown="termKeyDown(event)">
             <div class="uiPanelSub" onkeydown="termKeyDown(event)">
                 <div id="term-text" class="term-text" onkeypress="termKeyPressed(event)" onkeydown="termKeyDown(event)"></div>
+            </div>
+        </div>
+        <div id="debugger-panel" class="layout-region panel-hidden">
+            <div class="uiPanelSub">
+                <span class="button" onclick="callAjax('/targetcmd/debugBreak', debuggerUpdate);">Break</span>
+                <span class="button" onclick="sendCmdToTarget('debugContinue'); enableDebugger(false);">Continue</span>
+                <span class="button" onclick="callAjax('/targetcmd/debugStepIn', debuggerUpdate);">Step In</span>
+            </div>
+            <div id="debugger-disregs" class="uiPanelSub uiPanel2Col uiPanelBordered uiPanelGroup uiDisable uiSmallerText">
+                <code id="debugger-disasm" class="uiPanelColumn">
+                </code>
+                <div id="debugger-regs" class="uiPanelRegsColumn">
+                    <table class="uiTable uiTableBordered uiTableFiles uiTableStripe">
+                        <tbody>
+                          <colgroup>
+                            <col style="width: fit-content;">
+                            <col style="width: fit-content;">
+                            <col style="width: fit-content;">
+                            <col style="width: fit-content;">
+                          </colgroup>
+                          <tr>
+                            <td class="regs-label">PC</td>
+                            <td id="regs-PC" class="regs-val"></td>
+                            <td class="regs-label">SP</td>
+                            <td id="regs-SP" class="regs-val"></td>
+                          </tr>
+                          <tr>
+                            <td class="regs-label">AF</td>
+                            <td id="regs-AF" class="regs-val"></td>
+                            <td class="regs-label">AF'</td>
+                            <td id="regs-AFDASH" class="regs-val"></td>
+                          </tr>
+                          <tr>
+                            <td class="regs-label">F</td>
+                            <td id="regs-FLAGS" class="regs-val"></td>
+                            <td class="regs-label">F'</td>
+                            <td id="regs-FLAGSDASH" class="regs-val"></td>
+                          </tr>
+                          <tr>
+                            <td class="regs-label">HL</td>
+                            <td id="regs-HL" class="regs-val"></td>
+                            <td class="regs-label">HL'</td>
+                            <td id="regs-HLDASH" class="regs-val"></td>
+                          </tr>
+                          <tr>
+                            <td class="regs-label">DE</td>
+                            <td id="regs-DE" class="regs-val"></td>
+                            <td class="regs-label">DE'</td>
+                            <td id="regs-DEDASH" class="regs-val"></td>
+                          </tr>
+                          <tr>
+                            <td class="regs-label">BC</td>
+                            <td id="regs-BC" class="regs-val"></td>
+                            <td class="regs-label">BC'</td>
+                            <td id="regs-BCDASH" class="regs-val"></td>
+                          </tr>
+                          <tr>
+                            <td class="regs-label">IX</td>
+                            <td id="regs-IX" class="regs-val"></td>
+                            <td class="regs-label">IY</td>
+                            <td id="regs-IY" class="regs-val"></td>
+                          </tr>
+                          <tr>
+                            <td class="regs-label">I</td>
+                            <td id="regs-I" class="regs-val"></td>
+                            <td class="regs-label">R</td>
+                            <td id="regs-R" class="regs-val"></td>
+                          </tr>
+                          <tr>
+                            <td class="regs-label">IM</td>
+                            <td id="regs-IM" class="regs-val"></td>
+                            <td class="regs-label">IFF</td>
+                            <td id="regs-IFF" class="regs-val"></td>
+                          </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div id="debugger-memdump" class="uiPanelSub uiDisable uiSmallerText">
+                <div class="uiPanelSub uiPanel2Col">
+                    <div class="uiPanelBordered uiPanelGroup uiPanelColumn">
+                        <div class="uiPanelSubButtons">
+                            <p class="uiInput-label">Memory Address</p>
+                            <input id="debugger-mem1-addr" class="uiInput-hex" value="0000" onkeydown="return validateHexInput(event, 'debugger-mem1');" 
+                                    oninput="onChangeHexInput(event, 'debugger-mem1');">
+                                </input>
+                        </div>
+                        <code id="debugger-mem1" class="debugger-memory">
+                        </code>
+                    </div>
+                    <div class="uiPanelBordered uiPanelGroup uiPanelColumn uiPanelCol2HideWidth">
+                        <div class="uiPanelSubButtons">
+                            <p class="uiInput-label">Memory Address</p>
+                            <input id="debugger-mem2-addr" class="uiInput-hex" value="0000" onkeydown="return validateHexInput(event, 'debugger-mem2');" 
+                                    oninput="onChangeHexInput(event, 'debugger-mem2');"></input>
+                        </div>
+                        <code id="debugger-mem2" class="debugger-memory">
+                        </code>
+                    </div>
+                </div>
+            </div>
+            <div class="uiPanelSub">
+                <span class="button" onclick="sendCmdToTarget('targetReset')">Reset Z80</span>
+                <span class="button" onclick="sendCmdToTarget('progClear')">Clear target buffer</span>
+                <span class="button" onclick="sendCmdToTarget('progWrite')">Program from buffer</span>
+                <span class="button" onclick="sendCmdToTarget('programandexec')">Program and execute</span>
             </div>
         </div>
         <div id="upload-and-run" class="layout-region drop-zone">

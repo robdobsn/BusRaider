@@ -174,7 +174,7 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
     else if (strcasecmp(cmdName, "RxHost") == 0)
     {
 #ifdef DEBUG_API_DETAIL
-        LogWrite(MODULE_PREFIX, LOG_DEBUG, "RxFromHost, len %d", dataLen);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "RxFromHost, len %d", paramsLen);
 #endif
         // TODO 2020 add back in
         // hostSerialAddRxCharsToBuffer(pParams, paramsLen);
@@ -589,8 +589,10 @@ bool ControlAPI::getArg(const char* argName, int argNum, const char* pCmdJson, u
     if (jsonGetValueForKey("reqStr", pCmdJson, reqStr, MAX_CMD_REQ_STR))
     {
         const char* pStr = reqStr;
+        if (*pStr == '/')
+            pStr++;
         // See if there are enough slashes
-        for (int i = 0; i < argNum+2; i++)
+        for (int i = 0; i < argNum+1; i++)
         {
             pStr = strstr(pStr, "/");
             if (!pStr)
@@ -851,7 +853,7 @@ bool ControlAPI::apiProgAddMemBlock(const char* pCmdJson,
     uint32_t addr = 0;
     if (!getArg("addr", 1, pCmdJson, addr))
     {
-        strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
+        strlcpy(pRespJson, R"("rslt":"InvArgAddr")", maxRespLen);
         return true;
     }
 #ifdef DEBUG_API_PROGRAMMER
@@ -948,30 +950,26 @@ bool ControlAPI::apiReadFromTarget(const char* pCmdJson,
             char* pRespJson, unsigned maxRespLen)
 {
 #ifdef DEBUG_API_DETAIL
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiReadFromTarget %s %04x", pCmdJson, read32(ARM_GPIO_GPLEV0));
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiReadFromTarget %s", pCmdJson);
 #endif
 
     // Get params
     uint32_t addr = 0;
     uint32_t dataLen = 0;
-    bool isIo = false;
+    uint32_t isIo = false;
     if (!getArg("addr", 1, pCmdJson, addr))
     {
-        strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiReadFromTarget %s addr not present", pCmdJson);
+        strlcpy(pRespJson, R"("rslt":"InvArgAddr")", maxRespLen);
         return true;
     }
     if (!getArg("len", 2, pCmdJson, dataLen))
     {
-        strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
+        strlcpy(pRespJson, R"("rslt":"InvArgLen")", maxRespLen);
         return true;
     }
-    uint32_t val = 0;
-    if (!getArg("isIo", 3, pCmdJson, val))
-    {
-        isIo = val != 0;
-        strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
-        return true;
-    }
+    getArg("isIo", 3, pCmdJson, isIo);
+
     // Get data using bus access
     if ((dataLen <= 0) || (dataLen > MAX_MEM_BLOCK_READ_WRITE))
     {
@@ -1022,19 +1020,15 @@ bool ControlAPI::apiWriteToTarget(const char* pCmdJson,
     uint32_t isIo = false;
     if (!getArg("addr", 1, pCmdJson, addr))
     {
-        strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
+        strlcpy(pRespJson, R"("rslt":"InvArgAddr")", maxRespLen);
         return true;
     }
     if (!getArg("len", 2, pCmdJson, dataLen))
     {
-        strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
+        strlcpy(pRespJson, R"("rslt":"InvArgData")", maxRespLen);
         return true;
     }
-    if (!getArg("isIo", 3, pCmdJson, isIo))
-    {
-        strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
-        return true;
-    }
+    getArg("isIo", 3, pCmdJson, isIo);
     // Get data using bus access
     if ((dataLen <= 0) || (dataLen > MAX_MEM_BLOCK_READ_WRITE) || (dataLen > (uint32_t)paramsLen))
     {
@@ -1067,19 +1061,15 @@ bool ControlAPI::apiWriteReadTarget(const char* pCmdJson,
         uint32_t isIo = false;
         if (!getArg("addr", 1, pCmdJson, addr))
         {
-            strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
+            strlcpy(pRespJson, R"("rslt":"InvArgAddr")", maxRespLen);
             return true;
         }
         if (!getArg("len", 2, pCmdJson, dataLen))
         {
-            strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
+            strlcpy(pRespJson, R"("rslt":"InvArgData")", maxRespLen);
             return true;
         }
-        if (!getArg("isIo", 3, pCmdJson, isIo))
-        {
-            strlcpy(pRespJson, R"("rslt":"InvArgs")", maxRespLen);
-            return true;
-        }
+        getArg("isIo", 3, pCmdJson, isIo);
         // Get data using bus access
         if ((dataLen <= 0) || (dataLen > MAX_MEM_BLOCK_READ_WRITE) || (dataLen > (uint32_t)paramsLen))
         {
@@ -1206,7 +1196,7 @@ bool ControlAPI::apiDebuggerBreak(const char* pCmdJson,
     }
     else
     {
-        apiDebuggerRegsJSON(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+        formDebuggerResponse(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
     }
     return true;
 }
@@ -1235,7 +1225,7 @@ bool ControlAPI::apiDebuggerStepIn(const char* pCmdJson,
     }
     else
     {
-        apiDebuggerRegsJSON(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+        formDebuggerResponse(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
     }
 
     // uint32_t startMs = millis();
@@ -1282,3 +1272,20 @@ bool ControlAPI::apiDebuggerStatus(const char* pCmdJson,
     return true;
 }
 
+bool ControlAPI::formDebuggerResponse(const char* pCmdJson, 
+            const uint8_t* pParams, unsigned paramsLen,
+            char* pRespJson, unsigned maxRespLen)
+{
+    uint32_t numLines = 15;
+    getArg("numLines", 1, pCmdJson, numLines);
+    apiDebuggerRegsJSON(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+    char debuggerResp[2000];
+    uint32_t numBytesIn1stInstr = 0;
+    _busControl.ctrl().disassemble(numLines, debuggerResp, sizeof(debuggerResp), numBytesIn1stInstr);
+    char debuggerJson[2000];
+    snprintf(debuggerJson, sizeof(debuggerJson), R"(,"disasm":"%s","instrBytes":%d)", 
+                debuggerResp, numBytesIn1stInstr);
+    strlcat(pRespJson, debuggerJson, maxRespLen);
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "disasm %s", pRespJson);    
+    return true;
+}

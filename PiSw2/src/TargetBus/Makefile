@@ -11,9 +11,11 @@ OBJS	= BusControl.o BusSocketManager.o \
 		TargetClockGenerator.o \
 		TargetControl.o TargetControl_Debugger.o \
 		TargetControl_Prog.o TargetControl_Cycle.o \
+		TargetControl_Disasm.o \
 		TargetBreakpoints.o \
 		TargetCPUZ80.o TargetProgrammer.o memoryTests.o \
-		MemoryController.o 
+		MemoryController.o \
+		mdZ80.o
 
 INCLUDE	+= -I ../system -I ../Hardware -I ../TargetBus
 

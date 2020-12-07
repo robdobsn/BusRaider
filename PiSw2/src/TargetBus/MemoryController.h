@@ -39,6 +39,12 @@ public:
     BR_RETURN_TYPE memCacheBlockWrite(uint32_t addr, const uint8_t* pData, 
             uint32_t len, BlockAccessType accessType);
 
+    // Access to cache memory
+    uint8_t* getCacheMemPtr()
+    {
+        return _memCache;
+    }
+
 private:
     // Bus control
     BusControl& _busControl;
