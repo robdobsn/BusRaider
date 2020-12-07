@@ -114,9 +114,9 @@ bool TargetControl::debuggerHandleWaitCycle(uint32_t addr, uint32_t data, uint32
                 {
                     _z80Registers.HL = addr;
                     // R value compensates for the push af and ld r,a instructions
-                    _z80Registers.R = data - 3;
+                    _z80Registers.R = (data + 256 - 3) & 0x7f;
                     // Value stored back to R compensates for ld a,NN and jr loop instructions
-                    regQueryInstructions[RegisterRUpdatePos] = _z80Registers.R - 2;                 
+                    regQueryInstructions[RegisterRUpdatePos] = (_z80Registers.R + 256 - 2) & 0x7f;
                     break;
                 }
                 case 7: // ld (hl), a (where a has the contents of i)
