@@ -601,7 +601,7 @@
             el.innerHTML = dumpHtml;
         }
         function showHexDump(addr, memDumpElementId) {
-            callAjaxWithParam('/targetcmd/Rd/' + intToHex(addr, 4) + '/200', hexDisplayUpdate, memDumpElementId);
+            callAjaxWithParam('/targetcmd/Rd/' + intToHex(addr, 4) + '/100', hexDisplayUpdate, memDumpElementId);
         }
         function debuggerUpdate(rslt) {
             enableDebugger(true)

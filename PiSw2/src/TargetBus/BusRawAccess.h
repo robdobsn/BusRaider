@@ -59,7 +59,7 @@ public:
     void busReqStart();
     void busReqTakeControl();
     bool busReqWaitForAck(bool ack, uint32_t maxWaitForBUSACKus = 0);
-    bool rawBUSAKActive()
+    static bool rawBUSAKActive()
     {
         return (read32(ARM_GPIO_GPLEV0) & BR_BUSACK_BAR_MASK) == 0;
     }
@@ -71,17 +71,17 @@ public:
     }
 
     // Control the PIB (bus used to transfer data to/from Pi)
-    inline void pibSetOut()
+    static inline void pibSetOut()
     {
         write32(BR_PIB_GPF_REG, (read32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_OUTPUT);
     }
 
-    inline void pibSetIn()
+    static inline void pibSetIn()
     {
         write32(BR_PIB_GPF_REG, (read32(BR_PIB_GPF_REG) & BR_PIB_GPF_MASK) | BR_PIB_GPF_INPUT);
     }
 
-    inline void pibSetValue(uint8_t val)
+    static inline void pibSetValue(uint8_t val)
     {
         uint32_t setBits = ((uint32_t)val) << BR_DATA_BUS;
         uint32_t clrBits = (~(((uint32_t)val) << BR_DATA_BUS)) & (~BR_PIB_MASK);
@@ -90,7 +90,7 @@ public:
     }
  
     // Get a value from the PIB (pins used for data/address bus access)
-    inline uint8_t pibGetValue()
+    static inline uint8_t pibGetValue()
     {
         return (read32(ARM_GPIO_GPLEV0) >> BR_DATA_BUS) & 0xff;
     }

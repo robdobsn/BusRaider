@@ -126,7 +126,7 @@ void BusRawAccess::busReqRelease()
         pinMode(BR_V20_M1_BAR, INPUT);
     }
 
-    // // Wait until BUSACK is released
+    // Wait until BUSACK is released
     busReqWaitForAck(false);
 
     // Bus no longer under BusRaider control

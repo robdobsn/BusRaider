@@ -65,8 +65,9 @@ bool TargetControl::debuggerHandleWaitCycle(uint32_t addr, uint32_t data, uint32
 
     // Ignore this if not an instruction fetch cycle
     if (((rawBusVals & BR_V20_M1_BAR_MASK) != 0) || ((rawBusVals & BR_MREQ_BAR_MASK) != 0))
+    {
         return false;
-
+    }
 #ifdef DEBUG_M1_CYCLE
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "DEBUG M1 addr %04x D %02x flags %c %c %c %c %c %08x", 
             addr,
@@ -283,10 +284,19 @@ bool TargetControl::debuggerHandleWaitCycle(uint32_t addr, uint32_t data, uint32
                     // Clear the PAGE line to re-enable RAM
                     digitalWrite(BR_PAGING_RAM_PIN, 1);
     
-                    // Take bus
-                    _busControl.bus().busReqTakeControl();
+                    // Take bus and set to input
+                    BusRawAccess::pibSetIn();
+                    write32(ARM_GPIO_GPSET0, 1 << BR_DATA_DIR_IN);
 
-                    // Grab
+                    // Control bus
+                    BusRawAccess::setPinOut(BR_WR_BAR, 1);
+                    BusRawAccess::setPinOut(BR_RD_BAR, 1);
+                    BusRawAccess::setPinOut(BR_MREQ_BAR, 1);
+                    BusRawAccess::setPinOut(BR_IORQ_BAR, 1);
+                    BusRawAccess::setPinOut(BR_WAIT_BAR_PIN, 1);
+                    BusRawAccess::setPinOut(BR_V20_M1_BAR, 1);
+
+                    // Grab memory contents
                     uint8_t* memContents = new uint8_t[STD_TARGET_MEMORY_LEN];
                     _busControl.bus().rawBlockRead(0, memContents, STD_TARGET_MEMORY_LEN, BLOCK_ACCESS_MEM);
 
@@ -297,7 +307,36 @@ bool TargetControl::debuggerHandleWaitCycle(uint32_t addr, uint32_t data, uint32
                     delete memContents;
 
                     // Release bus
-                    _busControl.bus().busReqRelease();
+                    // Set M1 high (and other control lines)
+                    write32(ARM_GPIO_GPSET0, BR_V20_M1_BAR_MASK | BR_IORQ_BAR_MASK | BR_RD_BAR_MASK | BR_WR_BAR_MASK | BR_MREQ_BAR_MASK);
+                    // Pulse MREQ to prime the FF
+                    // For V2.0 hardware this also clears the FF that controls data bus output enables (i.e. disables data bus output)
+                    // but that doesn't work on V1.7 hardware as BUSRQ holds the FF active
+                    lowlev_cycleDelay(CYCLES_DELAY_FOR_MREQ_FF_RESET);
+                    write32(ARM_GPIO_GPCLR0, BR_MREQ_BAR_MASK);
+                    lowlev_cycleDelay(CYCLES_DELAY_FOR_MREQ_FF_RESET);
+                    write32(ARM_GPIO_GPSET0, BR_MREQ_BAR_MASK);
+
+                    // Reset WAIT FFs as they may have become set while in BUSRQ/BUSAK
+                    BusRawAccess::waitResetFlipFlops();    
+
+                    // Clear BUSRQ
+                    write32(ARM_GPIO_GPSET0, BR_BUSRQ_BAR_MASK | BR_V20_M1_BAR_MASK | BR_IORQ_BAR_MASK | BR_RD_BAR_MASK | BR_WR_BAR_MASK | BR_MREQ_BAR_MASK | BR_WAIT_BAR_MASK);
+
+                    // Control bus lines to input
+                    pinMode(BR_WR_BAR, INPUT);
+                    pinMode(BR_RD_BAR, INPUT);
+                    pinMode(BR_MREQ_BAR, INPUT);
+                    pinMode(BR_IORQ_BAR, INPUT);
+                    pinMode(BR_WAIT_BAR_PIN, INPUT);
+
+                    // Wait until BUSACK is released
+                    for (uint32_t j = 0; j < MAX_WAIT_FOR_DEBUG_BUSACK_US; j++)
+                    {
+                        if (!BusRawAccess::rawBUSAKActive())
+                            break;
+                        microsDelay(1);
+                    }
 
                     // Assert the PAGE line to disable RAM again
                     digitalWrite(BR_PAGING_RAM_PIN, 0);
@@ -325,7 +364,7 @@ bool TargetControl::debuggerHandleWaitCycle(uint32_t addr, uint32_t data, uint32
             if (CTRL_BUS_IS_WAIT(rawBusVals))
                 break;
         }
-
+        
         // Read address, data and control busses
         _busControl.bus().addrAndDataBusRead(addr, data);
     }
