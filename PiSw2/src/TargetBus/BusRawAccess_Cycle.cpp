@@ -20,7 +20,7 @@
 //     _cycleReqInfo = NULL;
 //     _cycleReqCompleteCB = NULL;
 //     _cycleReqPObject = NULL;
-//     _cycleReqSlotIdx = 0;
+//     _cycleReqSocketIdx = 0;
 //     _cycleReqState = CYCLE_REQ_STATE_NONE;
 //     _cycleReqActionType = BR_BUS_ACTION_NONE;
 //     _cycleReqUs = 0;
@@ -41,7 +41,7 @@
 //     _cycleReqInfo = &busSocketInfo;
 //     _cycleReqCompleteCB = cycleCompleteCB;
 //     _cycleReqPObject = pObject;
-//     _cycleReqSlotIdx = slotIdx;
+//     _cycleReqSocketIdx = slotIdx;
 //     _cycleReqState = CYCLE_REQ_STATE_PENDING;
 //     _cycleReqActionType = busSocketInfo.getType();
 //     _cycleReqUs = micros();
@@ -104,7 +104,7 @@
 //     _cycleReqState = CYCLE_REQ_STATE_NONE;
 //     if (_cycleReqCompleteCB)
 //     {
-//         _cycleReqCompleteCB(_cycleReqPObject, _cycleReqSlotIdx, result);
+//         _cycleReqCompleteCB(_cycleReqPObject, _cycleReqSocketIdx, result);
 //     }
 // }
 

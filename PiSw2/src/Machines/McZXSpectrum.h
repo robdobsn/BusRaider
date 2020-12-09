@@ -4,12 +4,13 @@
 #include "McBase.h"
 #include "usb_hid_keys.h"
 #include "TargetRegisters.h"
+#include "logging.h"
 
 class McZXSpectrum : public McBase
 {
 public:
 
-    McZXSpectrum(McManager& mcManager);
+    McZXSpectrum(McManager& mcManager, BusControl& busControl);
 
     // Enable machine
     virtual void enableMachine() override;
@@ -43,11 +44,20 @@ public:
     virtual void busActionActiveCallback(BR_BUS_ACTION actionType, 
                     BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt) override;
 
+    // Clock frequency in Hz change
+    static const uint32_t MIN_KEY_DOWN_TIME_IN_T_STATES = 750000;
+    virtual void informClockFreqHz(uint32_t clockFreqHz) override
+    {
+        uint32_t clockInCyclesPerMs = clockFreqHz / 1000 + 1;
+        _keyBuf.setMinKeyPeriodMs(MIN_KEY_DOWN_TIME_IN_T_STATES / clockInCyclesPerMs);
+        // LogWrite(";;;", LOG_DEBUG, "informClockFreqHz %d clockPerMs %d minPeriodMs %d", 
+        //             clockFreqHz, clockInCyclesPerMs, MIN_KEY_DOWN_TIME_IN_T_STATES / clockInCyclesPerMs);
+    }
+
 private:
     static uint32_t getKeyBitmap(const int* keyCodes, int keyCodesLen, const uint8_t* currentKeyPresses);
     void updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen);
 
-private:
     static constexpr uint32_t ZXSPECTRUM_DISP_RAM_ADDR = 0x4000;
     static constexpr uint32_t ZXSPECTRUM_DISP_RAM_SIZE = 0x1b00;
     uint8_t _screenBuffer[ZXSPECTRUM_DISP_RAM_SIZE];
@@ -78,10 +88,138 @@ private:
 
     static constexpr int ZXSPECTRUM_KEYBOARD_NUM_ROWS = 8;
     static constexpr int ZXSPECTRUM_KEYS_IN_ROW = 5;
+    static constexpr int ZXSPECTRUM_BS_KEY_ROW_IDX = 0;
+    static constexpr int ZXSPECTRUM_DEL_KEY_ROW_IDX = 4;
+    static constexpr int ZXSPECTRUM_SHIFT_KEYS_ROW_IDX = 7;
 
     static McVariantTable _machineDescriptorTables[];
 
     static const int MAX_KEYS = 6;
 
-    static uint8_t _spectrumKeyboardIOBitMap[ZXSPECTRUM_KEYBOARD_NUM_ROWS];
+    // static uint8_t _spectrumKeyboardIOBitMap[ZXSPECTRUM_KEYBOARD_NUM_ROWS];
+
+    class KeyBits 
+    {
+    public:
+        KeyBits()
+        {
+            clear();
+        }
+        KeyBits(const KeyBits& other)
+        {
+            // Clear key bitmap
+            for (int i = 0; i < ZXSPECTRUM_KEYBOARD_NUM_ROWS; i++)
+                bitMap[i] = other.bitMap[i];
+        }
+        void clear()
+        {
+            // Clear key bitmap
+            for (int i = 0; i < ZXSPECTRUM_KEYBOARD_NUM_ROWS; i++)
+                bitMap[i] = 0xff;
+        }
+        inline bool operator==(const KeyBits& other)
+        {
+            for (int i = 0; i < ZXSPECTRUM_KEYBOARD_NUM_ROWS; i++)
+                if (bitMap[i] != other.bitMap[i])
+                    return false;
+            return true;
+        }
+        inline bool operator!=(const KeyBits& other)
+        {
+            return !(*this == other);
+        }
+        uint8_t bitMap[ZXSPECTRUM_KEYBOARD_NUM_ROWS];
+    };
+    class SpectrumKeyboardBuf 
+    {
+    public:
+        static const uint32_t KEY_BUFFER_MAX_SIZE = 10;
+        SpectrumKeyboardBuf()
+        {
+            _qHead = 0;
+            _qCount = 0;
+            _lastKeyChangeMs = 0;
+        }
+        bool isAvail()
+        {
+            return _qCount > 0;
+        }
+        bool isChanged()
+        {
+            return _scratchBits != _prevBits;
+        }
+        void clearScratch()
+        {
+            _scratchBits.clear();
+        }
+        void putFromScratch()
+        {
+            if (_qCount >= KEY_BUFFER_MAX_SIZE)
+                return;
+            if (!isChanged())
+            {
+                // LogWrite(";;;", LOG_DEBUG, "NOT CHAGNED");
+                return;
+            }
+            _keyQueue[_qHead] = _scratchBits;
+            _qHead = (_qHead + 1) % KEY_BUFFER_MAX_SIZE;
+            _qCount++;
+            _prevBits = _scratchBits;
+            LogWrite(";;;", LOG_DEBUG, "PUT");
+        }
+        bool getToCurBitMap()
+        {
+            if (!isAvail())
+                return false;
+            uint32_t pos = (_qHead + KEY_BUFFER_MAX_SIZE - _qCount) % KEY_BUFFER_MAX_SIZE;
+            _curBits = _keyQueue[pos];
+            _qCount--;
+            _lastKeyChangeMs = millis();
+            LogWrite(";;;", LOG_DEBUG, "GOT");
+            return true;
+        }
+        uint8_t getScratchBitMap(uint32_t idx)
+        {
+            if (idx >= ZXSPECTRUM_KEYBOARD_NUM_ROWS)
+                return 0;
+            return _scratchBits.bitMap[idx];
+        }
+        uint8_t getCurBitMap(uint32_t idx)
+        {
+            if (idx >= ZXSPECTRUM_KEYBOARD_NUM_ROWS)
+                return 0;
+            return _curBits.bitMap[idx];
+        }
+        void andScratch(uint32_t idx, uint32_t mask)
+        {
+            if (idx < ZXSPECTRUM_KEYBOARD_NUM_ROWS)
+                _scratchBits.bitMap[idx] &= mask;
+        }
+        bool keyChangeReady()
+        {
+            if (!isAvail())
+                return false;
+            // LogWrite(";;;", LOG_DEBUG, "CheckReady avail %d millis %d last %d minPeriodMs %d diff %d", 
+            //             isAvail(), millis(), _lastKeyChangeMs, _minPeriodKeyMs, millis()-_lastKeyChangeMs);
+            if (isTimeout(millis(), _lastKeyChangeMs, _minPeriodKeyMs))
+            {
+                // LogWrite(";;;", LOG_DEBUG, "READY");
+                return true;
+            }
+            return false;
+        }
+        void setMinKeyPeriodMs(uint32_t minPeriodMs)
+        {
+            _minPeriodKeyMs = minPeriodMs;
+        }
+        KeyBits _scratchBits;
+        KeyBits _prevBits;
+        KeyBits _curBits;
+        KeyBits _keyQueue[KEY_BUFFER_MAX_SIZE];
+        uint32_t _qHead;
+        uint32_t _qCount;
+        uint32_t _lastKeyChangeMs;
+        uint32_t _minPeriodKeyMs;
+    };
+    SpectrumKeyboardBuf _keyBuf;
 };

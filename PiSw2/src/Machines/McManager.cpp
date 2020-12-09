@@ -87,8 +87,8 @@ void McManager::init()
     // TODO 2020
     new McTerminal(*this, _busControl);
     new McTRS80(*this, _busControl);
-    // new McRobsZ80(*this);
-    // new McZXSpectrum(*this);
+    // new McRobsZ80(*this, _busControl);
+    new McZXSpectrum(*this, _busControl);
 
     // Refresh init
     _refreshCount = 0;

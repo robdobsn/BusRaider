@@ -134,6 +134,10 @@ public:
         return _pDisplay;
     }
 
+    virtual void informClockFreqHz(uint32_t clockFreqHz)
+    {
+    }
+
 protected:
     // Machine manager
     McManager& _mcManager;

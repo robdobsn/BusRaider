@@ -154,6 +154,7 @@ bool McBase::setupMachine(const char* mcName, const char* mcJson)
     {
         clockGen.enable(false);
     }
+    informClockFreqHz(clockFreqHz);
 
     // Enable machine
     enableMachine();

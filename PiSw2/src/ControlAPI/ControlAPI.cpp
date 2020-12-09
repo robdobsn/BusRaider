@@ -428,7 +428,7 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
     else if (strcasecmp(cmdName, "clockHzGet") == 0)
     {
         // Get clock
-        uint32_t actualHz = _busControl.clock().getFreqInHz();
+        uint32_t actualHz = _mcManager.getClockFreqInHz();
         snprintf(pRespJson, maxRespLen, R"("rslt":"ok","clockHz":"%d")", (unsigned)actualHz);
 #ifdef DEBUG_API_DETAIL
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "clockHzGet %s", pRespJson);
@@ -454,10 +454,10 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "clockHzSet %d", clockRateHz);
 #endif
         // Set clock
-        _busControl.clock().setFreqHz(clockRateHz);
+        _mcManager.setClockFreqInHz(clockRateHz);
 
         // Get clock
-        uint32_t actualHz = _busControl.clock().getFreqInHz();
+        uint32_t actualHz = _mcManager.getClockFreqInHz();
         snprintf(pRespJson, maxRespLen, R"("rslt":"ok","clockHz":"%d")", (unsigned)actualHz);
         return true;
     }

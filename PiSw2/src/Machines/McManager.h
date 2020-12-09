@@ -33,10 +33,10 @@ public:
     int getNumMachines();
     McBase* getMachine();
     const char* getMachineJSON();
-    int getMachineClock();
     const char* getMachineName();
     int getDisplayRefreshRate();
     const char* getMachineForFileType(const char* fileType);
+    void setMachineClock();
     
     // Handle a key press
     void keyHandler(unsigned char ucModifiers, const unsigned char rawKeys[6]);
@@ -56,6 +56,13 @@ public:
     // Handle target files
     static bool targetFileHandlerStatic(void* pObject, const char* rxFileInfo, const uint8_t* pData, unsigned dataLen);
     bool targetFileHandler(const char* rxFileInfo, const uint8_t* pData, unsigned dataLen);
+
+    void setClockFreqInHz(uint32_t clockRateHz)
+    {
+        _busControl.clock().setFreqHz(clockRateHz);
+        if (_pCurMachine)   
+            _pCurMachine->informClockFreqHz(clockRateHz);
+    }
 
     uint32_t getClockFreqInHz()
     {

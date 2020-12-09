@@ -74,18 +74,19 @@ public:
     void programmingStart(bool execAfterProgramming, bool enterDebugger);
 
     // Request bus cycle action
-    bool cycleReqAction(BusSocketInfo& busSocketInfo, 
+    bool cycleReqAction(BR_BUS_ACTION busActionType,
+            BR_BUS_ACTION_REASON busActionReason,
+            uint32_t socketIdx,
             uint32_t maxDurationUs,
             BusCompleteCBFnType* cycleCompleteCB, 
-            void* pObject,
-            uint32_t slotIdx);
+            void* pObject);
     void cycleClearAction();
 
     // Check if machine heartbeat is allowed
     bool allowHeartbeat()
     {
-        // TODO 2020
-        return true;
+        // TODO 2020 check if this is sufficient test
+        return !isDebugging();
     }
 
     // Check if debugging
@@ -144,10 +145,9 @@ private:
     };
 
     // Cycle Request Handling
-    BusSocketInfo* _cycleReqInfo;
     BusCompleteCBFnType* _cycleReqCompleteCB;
     void* _cycleReqPObject;
-    uint32_t _cycleReqSlotIdx;
+    uint32_t _cycleReqSocketIdx;
     CYCLE_REQ_STATE _cycleReqState;
     BR_BUS_ACTION _cycleReqActionType;
     uint32_t _cycleReqUs;
@@ -163,8 +163,7 @@ private:
     void cycleReqHandlePending();
     void cycleReqCallback(BR_RETURN_TYPE result);
     void cycleReqAssertedBusRq();
-    void cycleReqAssertedIRQ();
-    void cycleReqAssertedOther();
+    void cycleReqAssertedOther(BR_BUS_ACTION actionType);
     void cycleCheckWait();
     void cycleSetupForFastWait();
     void cycleFullWaitProcessing(uint32_t rawBusVals);

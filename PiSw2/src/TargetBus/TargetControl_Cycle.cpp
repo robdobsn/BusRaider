@@ -21,10 +21,9 @@ static const char MODULE_PREFIX[] = "TargCtrlCyc";
 
 void TargetControl::cycleClear()
 {
-    _cycleReqInfo = NULL;
     _cycleReqCompleteCB = NULL;
     _cycleReqPObject = NULL;
-    _cycleReqSlotIdx = 0;
+    _cycleReqSocketIdx = 0;
     _cycleReqState = CYCLE_REQ_STATE_NONE;
     _cycleReqActionType = BR_BUS_ACTION_NONE;
     _cycleBusRqReason = BR_BUS_ACTION_GENERAL;
@@ -51,25 +50,25 @@ void TargetControl::cycleSuspend(bool suspend)
 // Req cycle action
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool TargetControl::cycleReqAction(BusSocketInfo& busSocketInfo, 
+bool TargetControl::cycleReqAction(BR_BUS_ACTION busActionType,
+            BR_BUS_ACTION_REASON busActionReason,
+            uint32_t socketIdx,
             uint32_t maxDurationUs,
             BusCompleteCBFnType* cycleCompleteCB, 
-            void* pObject,
-            uint32_t slotIdx)
+            void* pObject)
 {
     if (_programmingPending || (_cycleReqState != CYCLE_REQ_STATE_NONE))
     {
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "cycleReqAction FAILED state %d progPend %d",
-        //         _cycleReqState, _programmingPending);
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "cycleReqAction FAILED socketIdx %d state %d progPend %d",
+        //         socketIdx, _cycleReqState, _programmingPending);
         return false;
     }
-    _cycleReqInfo = &busSocketInfo;
     _cycleReqCompleteCB = cycleCompleteCB;
     _cycleReqPObject = pObject;
-    _cycleReqSlotIdx = slotIdx;
+    _cycleReqSocketIdx = socketIdx;
     _cycleReqState = CYCLE_REQ_STATE_PENDING;
-    _cycleReqActionType = busSocketInfo.getType();
-    _cycleBusRqReason = busSocketInfo.busMasterReason;
+    _cycleReqActionType = busActionType;
+    _cycleBusRqReason = busActionReason;
     _cycleReqUs = micros();
     _cycleReqAssertedUs = 0;
     _cycleReqMaxUs = maxDurationUs; 
@@ -148,10 +147,8 @@ void TargetControl::cycleHandleActions()
         // Bus actions asserted
         if (_cycleReqActionType == BR_BUS_ACTION_BUSRQ)
             cycleReqAssertedBusRq();
-        else if (_cycleReqActionType == BR_BUS_ACTION_IRQ)
-            cycleReqAssertedIRQ();
         else
-            cycleReqAssertedOther();
+            cycleReqAssertedOther(_cycleReqActionType);
     }
 }
 
@@ -200,20 +197,22 @@ void TargetControl::cycleReqAssertedBusRq()
     cycleSetupForFastWait();
 }
 
-void TargetControl::cycleReqAssertedIRQ()
+void TargetControl::cycleReqAssertedOther(BR_BUS_ACTION actionType)
 {
-    // TODO 2020 - handle IRQ
-    
-    // Restore settings for fast-wait processing
-    cycleSetupForFastWait();
-}
+    // Check for action complete - based on time
+    if (isTimeout(micros(), _cycleReqAssertedUs, _cycleReqMaxUs))
+    {
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, 
+        //          "Timeout on bus action %u type %d _waitIsActive %d", 
+        //          micros(), _cycleReqActionType, _waitIsActive);
+        cycleReqCallback(BR_OK);
 
-void TargetControl::cycleReqAssertedOther()
-{
-    // TODO 2020 - handle other
+        // Restore settings for fast-wait processing - this also clears all
+        // actions since it uses the MUX and RESET, IRQ and NMI are generated
+        // by the mux
+        cycleSetupForFastWait();
 
-    // Restore settings for fast-wait processing
-    cycleSetupForFastWait();
+    }
 }
 
 void TargetControl::cyclePerformActionRequest()
@@ -242,7 +241,7 @@ void TargetControl::cycleReqCallback(BR_RETURN_TYPE result)
     _cycleReqState = CYCLE_REQ_STATE_NONE;
     if (_cycleReqCompleteCB)
     {
-        _cycleReqCompleteCB(_cycleReqPObject, _cycleReqSlotIdx, result);
+        _cycleReqCompleteCB(_cycleReqPObject, _cycleReqActionType, _cycleBusRqReason, _cycleReqSocketIdx, result);
     }
 }
 
@@ -276,13 +275,17 @@ void TargetControl::cycleCheckWait()
         bool fullWaitProc = true;
         if (!(rawBusVals & BR_MREQ_BAR_MASK))
         {
-            // Get high address
-            uint32_t highAddr = (rawBusVals >> BR_DATA_BUS) & 0xff;
-
-            // Check if in watch table
-            if (_memWaitHighAddrWatch[highAddr] == 0)
+            // Check mux is enabled for high-addr and mux is enabled
+            if ((rawBusVals & (BR_MUX_CTRL_BIT_MASK | BR_MUX_EN_BAR_MASK)) == BR_MUX_HADDR_OE_MASK)
             {
-                fullWaitProc = false;
+                // Get high address
+                uint32_t highAddr = (rawBusVals >> BR_DATA_BUS) & 0xff;
+
+                // Check if in watch table
+                if (_memWaitHighAddrWatch[highAddr] == 0)
+                {
+                    fullWaitProc = false;
+                }
             }
         }
 

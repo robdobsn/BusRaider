@@ -58,19 +58,16 @@ private:
     // Suspended
     bool _isSuspended;
 
-    // Socket with pending or in-process action
-    // -1 is no action
-    int _socketWithAction;
-
-    // Set action from socket manager
-    // socketWithAction == -1 if no action pending
-    void socketSetAction(bool memWait, bool ioWait, int socketWithAction);
+    // Socket action in progress
+    bool _socketActionRequested;
 
     // Helpers
-    void clearPending();
+    void clearAllPending();
     void updateAfterSocketChange();
-    static void cycleActionStaticCB(void* pObject, uint32_t slotIdx, BR_RETURN_TYPE rslt);
-    void cycleActionCB(uint32_t slotIdx, BR_RETURN_TYPE rslt);
+    static void cycleActionStaticCB(void* pObject, BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
+                    uint32_t socketIdx, BR_RETURN_TYPE rslt);
+    void cycleActionCB(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
+                    uint32_t socketIdx, BR_RETURN_TYPE rslt);
     static void busAccessCallbackStatic(void* pObject, uint32_t addr, uint32_t data, uint32_t flags, uint32_t& curRetVal);
     void busAccessCallback(uint32_t addr, uint32_t data, 
             uint32_t flags, uint32_t& curRetVal);

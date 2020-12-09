@@ -6,9 +6,9 @@ CIRCLEHOME = ../../circle
 
 OBJS	= McBase.o McManager.o \
 		  McTRS80.o \
-		  McTerminal.o 
+		  McTerminal.o \
+		  McZXSpectrum.o
 		#   McRobsZ80.o 
-		#   McZXSpectrum.o
 
 INCLUDE	+= -I ../system -I ../TargetBus -I ../comms -I ../Hardware -I ../fonts -I ../TerminalEmulation -I ../FileFormats -I ../Display
 

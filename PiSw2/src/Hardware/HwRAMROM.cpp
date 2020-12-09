@@ -645,7 +645,7 @@ void HwRAMROM::handleMemOrIOReq( uint32_t addr,  uint32_t data,
             if(flags & BR_CTRL_BUS_WR_MASK)
             {
                 _bankRegisters[ioAddr - _bankHwBaseIOAddr] = data;
-                // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B + ioAddr - _bankHwBaseIOAddr, data);
+                // DEBUG_VAL_SET(ISR_ASSERT_CODE_DEBUG_B + ioAddr - _bankHwBaseIOAddr, data);
             }
         }
         else if (ioAddr == _bankHwPageEnIOAddr)
@@ -653,7 +653,7 @@ void HwRAMROM::handleMemOrIOReq( uint32_t addr,  uint32_t data,
             if (flags & BR_CTRL_BUS_WR_MASK)
             {
                 _bankRegisterOutputEnable = ((data & 0x01) != 0);
-                // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_K, data);
+                // DEBUG_VAL_SET(ISR_ASSERT_CODE_DEBUG_K, data);
             }
         }
     }

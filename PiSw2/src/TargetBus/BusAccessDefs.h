@@ -29,6 +29,7 @@
 #define BR_MUX_NMI_BAR_LOW 0x06
 #define BR_MUX_LADDR_OE_BAR 0x03
 #define BR_MUX_HADDR_OE_BAR 0x07
+#define BR_MUX_HADDR_OE_MASK (0x07 << BR_MUX_LOW_BIT_POS)
 
 // Pi pins used for control of host bus
 #define BR_BUSRQ_BAR 19 // SPI1 MISO
@@ -85,24 +86,6 @@
 #define BR_PIB_GPF_MASK 0xff000000
 #define BR_PIB_GPF_INPUT 0x00000000
 #define BR_PIB_GPF_OUTPUT 0x00249249
-
-// Debug code for ISR
-#define ISR_ASSERT(code) _mcManager.getBusAccess().isrAssert(code)
-#define ISR_VALUE(code, val) _mcManager.getBusAccess().isrValue(code, val)
-#define ISR_PEAK(code, val) _mcManager.getBusAccess().isrPeak(code, val)
-#define ISR_ASSERT_CODE_NONE 0
-#define ISR_ASSERT_CODE_DEBUG_A 1
-#define ISR_ASSERT_CODE_DEBUG_B 2
-#define ISR_ASSERT_CODE_DEBUG_C 3
-#define ISR_ASSERT_CODE_DEBUG_D 4
-#define ISR_ASSERT_CODE_DEBUG_E 5
-#define ISR_ASSERT_CODE_DEBUG_F 6
-#define ISR_ASSERT_CODE_DEBUG_G 7
-#define ISR_ASSERT_CODE_DEBUG_H 8
-#define ISR_ASSERT_CODE_DEBUG_I 9
-#define ISR_ASSERT_CODE_DEBUG_J 10
-#define ISR_ASSERT_CODE_DEBUG_K 11
-#define ISR_ASSERT_NUM_CODES 12
 
 // Timing of a reset, NMI, IRQ and wait for BUSACK
 #define BR_RESET_PULSE_MS 500

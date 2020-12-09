@@ -8,6 +8,7 @@
 #include <circle/bcm2835.h>
 #include "logging.h"
 #include "circle/timer.h"
+#include "DebugHelper.h"
 
 // Module name
 static const char MODULE_PREFIX[] = "BusRawAccess";
@@ -106,25 +107,26 @@ void BusRawAccess::setPinOut(int pinNumber, bool val)
 
 void BusRawAccess::setBusSignal(BR_BUS_ACTION busAction, bool assert)
 {
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "setBusSignal busAction %d assert %d", busAction, assert); 
+
     switch (busAction)
     {
         case BR_BUS_ACTION_RESET: 
             assert ? muxSet(BR_MUX_RESET_Z80_BAR_LOW) : muxClear();
             // LogWrite(MODULE_PREFIX, LOG_DEBUG, "RESET"); 
-            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_E, assert);
+            // DEBUG_VAL_SET(ISR_ASSERT_CODE_DEBUG_E, assert);
             break;
         case BR_BUS_ACTION_NMI: 
             assert ? muxSet(BR_MUX_NMI_BAR_LOW) : muxClear(); 
-            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_F, assert);
+            // DEBUG_VAL_SET(ISR_ASSERT_CODE_DEBUG_F, assert);
             break;
         case BR_BUS_ACTION_IRQ: 
             assert ? muxSet(BR_MUX_IRQ_BAR_LOW) : muxClear(); 
             // LogWrite(MODULE_PREFIX, LOG_DEBUG, "IRQ"); 
-            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_I, assert);
             break;
         case BR_BUS_ACTION_BUSRQ: 
             // LogWrite(MODULE_PREFIX, LOG_DEBUG, "BUSRQ %c", assert ? 'Y' : 'N'); 
-            // ISR_VALUE(ISR_ASSERT_CODE_DEBUG_B, assert);
+            // DEBUG_VAL_SET(ISR_ASSERT_CODE_DEBUG_B, assert);
             assert ? busReqStart() : busReqRelease(); 
             break;
         default: break;

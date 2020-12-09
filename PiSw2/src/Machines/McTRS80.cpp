@@ -1,5 +1,5 @@
 // Bus Raider Machine TRS80
-// Rob Dobson 2018
+// Rob Dobson 2018-2020
 
 #include <stdlib.h>
 #include "McTRS80.h"
@@ -103,29 +103,13 @@ void McTRS80::refreshDisplay()
 {
     // LogWrite(MODULE_PREFIX, LOG_NOTICE, "refreshDisplay");
 
-    // // TODO 2020 remove
-    // uint8_t testVal = millis() & 0xff;
-    // uint8_t jmp000[] = { 0xc3, 0, 0 };
-    // _busControl.blockWrite(0, jmp000, sizeof(jmp000), BLOCK_ACCESS_MEM);
-    // unsigned char pClrBuffer[TRS80_DISP_RAM_SIZE];
-    // memset(pClrBuffer, testVal, TRS80_DISP_RAM_SIZE);
-    // _busControl.blockWrite(TRS80_DISP_RAM_ADDR, pClrBuffer, TRS80_DISP_RAM_SIZE, BLOCK_ACCESS_MEM);
-
     // Read memory at the location of the TRS80 memory mapped screen
     unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
-    // TODO 2020 remove the following line
-    // memcpy(pScrnBuffer, _screenBuffer, TRS80_DISP_RAM_SIZE);
-    // memset(pScrnBuffer, 0x3c, TRS80_DISP_RAM_SIZE/4);
-    // memset(pScrnBuffer+TRS80_DISP_RAM_SIZE/4, 0xbc, TRS80_DISP_RAM_SIZE/4);
-    // memset(pScrnBuffer+2*TRS80_DISP_RAM_SIZE/4, 0x7c, TRS80_DISP_RAM_SIZE/4);
-    // memset(pScrnBuffer+3*TRS80_DISP_RAM_SIZE/4, 0xfc, TRS80_DISP_RAM_SIZE/4);
     bool readOk = _busControl.mem().blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, BLOCK_ACCESS_MEM) == BR_OK;
     if (readOk)
         updateDisplayFromBuffer(pScrnBuffer, TRS80_DISP_RAM_SIZE);
+
     // Check for key presses and send to the TRS80 if necessary
-    // TODO 2020 - ???
-    // Only send to mirror if we are in emulation mode, otherwise store up changes for later
-    // if (_keyBufferDirty && _busControl.isEmulatingMemory())
     if (_keyBufferDirty)
     {
 #ifdef DEBUG_TRS80_KEYBOARD
@@ -169,13 +153,6 @@ void McTRS80::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen)
     int rows = getDescriptorTable().displayPixelsY / getDescriptorTable().displayCellY;
     for (int k = 0; k < rows; k++) 
     {
-        // // TODO 2020
-        // if (k == 0)
-        // {
-        //     LogWrite(MODULE_PREFIX, LOG_NOTICE, "%02x %02x %02x %02x",
-        //             pScrnBuffer[0], pScrnBuffer[1], pScrnBuffer[2], pScrnBuffer[3]);
-        // }
-
         for (int i = 0; i < cols; i++)
         {
             int cellIdx = k * cols + i;
@@ -185,8 +162,6 @@ void McTRS80::updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen)
                 _screenBuffer[cellIdx] = pScrnBuffer[cellIdx];
             }
         }
-
-
     }
     _screenBufferValid = true;
 }
@@ -421,12 +396,6 @@ bool McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
 void McTRS80::busAccessCallback( uint32_t addr,  uint32_t data, 
              uint32_t flags,  uint32_t& retVal)
 {
-    // if (flags & BR_CTRL_BUS_MREQ_MASK)
-    // {
-    //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 0);
-    //     microsDelay(1);
-    //     digitalWrite(BR_DEBUG_PI_SPI0_CE0, 1);
-    // }
     // if (flags & BR_CTRL_BUS_IORQ_MASK)
     //     LogWrite(MODULE_PREFIX, LOG_DEBUG, "IORQ %s from %04x %02x", 
     //             (flags & BR_CTRL_BUS_RD_MASK) ? "RD" : ((flags & BR_CTRL_BUS_WR_MASK) ? "WR" : "??"),
@@ -470,23 +439,4 @@ void McTRS80::handleWD1771DiskController( uint32_t addr,  uint32_t data,
 void McTRS80::busActionActiveCallback(BR_BUS_ACTION actionType, 
                     BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
 {
-    // // Check for BUSRQ
-    // if (actionType == BR_BUS_ACTION_BUSRQ)
-    // {
-    //     // Read memory of RC2014 at the location of the TRS80 memory mapped screen
-    //     unsigned char pScrnBuffer[TRS80_DISP_RAM_SIZE];
-    //     if (getHwManager().blockRead(TRS80_DISP_RAM_ADDR, pScrnBuffer, TRS80_DISP_RAM_SIZE, false, false, false) == BR_OK)
-    //         updateDisplayFromBuffer(pScrnBuffer, TRS80_DISP_RAM_SIZE);
-
-    //     // Check for key presses and send to the TRS80 if necessary
-    //     if (_keyBufferDirty)
-    //     {
-    //         if (_keyBufferDirty)
-    //             LogWrite(MODULE_PREFIX, LOG_DEBUG, "KB Dirty %02x %02x %02x %02x %02x %02x %02x %02x",
-    //                 _keyBuffer[0], _keyBuffer[1], _keyBuffer[2], _keyBuffer[4], 
-    //                 _keyBuffer[8], _keyBuffer[16], _keyBuffer[32], _keyBuffer[64], _keyBuffer[128]);
-    //         getHwManager().blockWrite(TRS80_KEYBOARD_ADDR, _keyBuffer, TRS80_KEYBOARD_RAM_SIZE, false, false, false);
-    //         _keyBufferDirty = false;
-    //     }
-    // }
 }

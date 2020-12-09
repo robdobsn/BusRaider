@@ -17,7 +17,7 @@ BusSocketManager::BusSocketManager(BusControl& busControl)
 {
     // Bus sockets
     _busSocketCount = 0;
-    _socketWithAction = -1;
+    _socketActionRequested = false;
     _isSuspended = false;
 
     // Wait settings
@@ -43,7 +43,7 @@ void BusSocketManager::suspend(bool suspend, bool clearPendingActions)
     _busControl.bus().waitSuspend(suspend);
     _isSuspended = suspend;
     if (clearPendingActions)
-        clearPending();
+        clearAllPending();
     updateAfterSocketChange();
 }
 
@@ -122,10 +122,10 @@ void BusSocketManager::setup(uint32_t busSocket, bool waitOnMem, bool waitOnIO)
 void BusSocketManager::reqIRQ(uint32_t busSocket, int durationTStates)
 {
     // Check validity
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "ReqIRQ sock %d us %d", busSocket, _busSockets[busSocket].busActionDurationUs);
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "ReqIRQ sock %d t-states %d", busSocket, durationTStates);
     if (busSocket >= _busSocketCount)
         return;
-    // Request NMI
+    // Request IRQ
     _busSockets[busSocket].irqDurationTStates = (durationTStates <= 0) ? BR_IRQ_PULSE_T_STATES : durationTStates;
     _busSockets[busSocket].irqPending = true;
     updateAfterSocketChange();
@@ -202,28 +202,6 @@ void BusSocketManager::updateAfterSocketChange()
         }
     }
 
-    // See if any actions requested
-    int busSocketWithAction = -1;
-    for (uint32_t i = 0; i < _busSocketCount; i++)
-    {
-        if (_busSockets[i].enabled && (_busSockets[i].getType() != BR_BUS_ACTION_NONE))
-        {
-            busSocketWithAction = i;
-            break;
-        }
-    }
-
-    // Inform BusControl
-    socketSetAction(memWait, ioWait, busSocketWithAction);
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Set action from socket
-// socketWithAction == -1 if no action pending
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void BusSocketManager::socketSetAction(bool memWait, bool ioWait, int socketWithAction)
-{
     // Check for changes to wait system
     if ((_waitOnMemory != memWait) || (_waitOnMemory != ioWait))
     {
@@ -240,71 +218,56 @@ void BusSocketManager::socketSetAction(bool memWait, bool ioWait, int socketWith
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "WAIT UPDATE mem %d io %d", _waitOnMemory, _waitOnIO);
     }
 
-    // Check for changes to actions
-    // LogWrite(MODULE_PREFIX, LOG_NOTICE, "socketSetAction curSockWithAction %d newSockIdx %d",
-    //             _socketWithAction, socketWithAction);
-    if (_socketWithAction != socketWithAction)
+    // See if any actions requested
+    for (uint32_t i = 0; i < _busSocketCount; i++)
     {
-        // Request action
-        if (_busControl.ctrl().cycleReqAction(_busSockets[socketWithAction], 
-                        _busSockets[socketWithAction].getAssertUs(_busControl.clock().getFreqInHz()),
-                        cycleActionStaticCB, this, socketWithAction))
+        BR_BUS_ACTION actionType = _busSockets[i].getType();
+        if (_busSockets[i].enabled && (actionType != BR_BUS_ACTION_NONE))
         {
-            // Store socket with action
-            _socketWithAction = socketWithAction;
-            // LogWrite(MODULE_PREFIX, LOG_NOTICE, "socketSetAction OK type %d reason %d",
-            //         _busSockets[socketWithAction].getType(),
-            //         _busSockets[socketWithAction].busMasterReason);
-        }
-        // else
-        // {
-        //     LogWrite(MODULE_PREFIX, LOG_NOTICE, "socketSetAction FAILED");
-        // }
-        
-    }
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "updateAfterSocketChange sockWithAction %d actionType %d", i, actionType); 
 
-#ifdef ISR_TEST
-    // Setup edge triggering on falling edge of IORQ
-    // Clear any current detected edges
-    write32(ARM_GPIO_GPEDS0, (1 << BR_IORQ_BAR) | (1 << BR_MREQ_BAR));  
-    // Set falling edge detect
-    if (_waitOnIO)
-    {
-        write32(ARM_GPIO_GPFEN0, read32(ARM_GPIO_GPFEN0) | BR_IORQ_BAR_MASK);
-        lowlev_enable_fiq();
+            // Request action
+            BR_BUS_ACTION_REASON reason = actionType == BR_BUS_ACTION_BUSRQ ? _busSockets[i].busMasterReason : BR_BUS_ACTION_GENERAL;
+            if (_busControl.ctrl().cycleReqAction(actionType,
+                            reason,
+                            i,
+                            _busSockets[i].getAssertUs(_busControl.clock().getFreqInHz()),
+                            cycleActionStaticCB, 
+                            this))
+            {
+                // Action now requested
+                _socketActionRequested = true;
+                // LogWrite(MODULE_PREFIX, LOG_NOTICE, "socketSetAction OK type %d reason %d", actionType, reason);
+            }
+            // else
+            // {
+            //     LogWrite(MODULE_PREFIX, LOG_NOTICE, "socketSetAction FAILED");
+            // }
+            break;
+        }
     }
-    else
-    {
-        write32(ARM_GPIO_GPFEN0, read32(ARM_GPIO_GPFEN0) & (~BR_IORQ_BAR_MASK));
-        lowlev_disable_fiq();
-    }
-    // if (_waitOnMemory)
-    //     write32(ARM_GPIO_GPFEN0, read32(ARM_GPIO_GPFEN0) | BR_WAIT_BAR_MASK);
-    // else
-    //     write32(ARM_GPIO_GPFEN0, read32(ARM_GPIO_GPFEN0) & (~BR_WAIT_BAR_MASK);
-#endif
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Callback on action finished
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void BusSocketManager::cycleActionStaticCB(void* pObject, uint32_t slotIdx, BR_RETURN_TYPE rslt)
+void BusSocketManager::cycleActionStaticCB(void* pObject, BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
+                    uint32_t socketIdx, BR_RETURN_TYPE rslt)
 {
     if (!pObject)
         return;
-    ((BusSocketManager*)pObject)->cycleActionCB(slotIdx, rslt);
+    ((BusSocketManager*)pObject)->cycleActionCB(actionType, reason, socketIdx, rslt);
 }
 
-void BusSocketManager::cycleActionCB(uint32_t slotIdx, BR_RETURN_TYPE rslt)
+void BusSocketManager::cycleActionCB(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
+                    uint32_t socketIdx, BR_RETURN_TYPE rslt)
 {
-    // Get action type and reason for the active action
-    if ((slotIdx >= _busSocketCount) || (slotIdx >= MAX_BUS_SOCKETS))
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "cycleActionCB socketIdx %d rslt %d", socketIdx, rslt); 
+
+    // Validity check
+    if ((socketIdx >= _busSocketCount) || (socketIdx >= MAX_BUS_SOCKETS))
         return;
-    BR_BUS_ACTION busActionType = _busSockets[slotIdx].getType();
-    BR_BUS_ACTION_REASON reason = _busSockets[slotIdx].busMasterReason;
-    if (busActionType != BR_BUS_ACTION_BUSRQ)
-        reason = BR_BUS_ACTION_GENERAL;
 
     // Bus action has called back - inform all sockets
     for (uint32_t i = 0; i < _busSocketCount; i++)
@@ -315,25 +278,28 @@ void BusSocketManager::cycleActionCB(uint32_t slotIdx, BR_RETURN_TYPE rslt)
 
         // Inform all active sockets of the bus action completion
         if (_busSockets[i].busActionCallback)
-            _busSockets[i].busActionCallback(_busSockets[i].pSourceObject, 
-                        busActionType, reason, rslt);
+            _busSockets[i].busActionCallback(_busSockets[i].pSourceObject,
+                        actionType, reason, rslt);
     }
 
     // Clear this action for all sockets
     for (uint32_t i = 0; i < _busSocketCount; i++)
-        _busSockets[i].clearDown(busActionType);
+        _busSockets[i].clearDown(actionType);
     
     // Reset indicator of socket with action
-    _socketWithAction = -1;
+    _socketActionRequested = false;
+
+    // Check for other actions
+    updateAfterSocketChange();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Clear all pending actions
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void BusSocketManager::clearPending()
+void BusSocketManager::clearAllPending()
 {
-    _socketWithAction = -1;
+    _socketActionRequested = false;
     for (uint32_t i = 0; i < _busSocketCount; i++)
     {
         _busSockets[i].clearPending();

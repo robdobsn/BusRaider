@@ -1,5 +1,5 @@
 // Bus Raider Machine ZXSpectrum
-// Rob Dobson 2018
+// Rob Dobson 2018-2020
 
 #include <stdlib.h>
 #include "McZXSpectrum.h"
@@ -14,6 +14,7 @@
 #include "McZXSpectrumZ80Format.h"
 #include "SystemFont.h"
 #include "PiWiring.h"
+#include "DebugHelper.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Vars
@@ -25,8 +26,6 @@ extern WgfxFont __pZXSpectrumFont;
 // #define USE_PI_SPI0_CE0_AS_DEBUG_PIN 1
 
 static const char* MODULE_PREFIX = "ZXSpectrum";
-
-uint8_t McZXSpectrum::_spectrumKeyboardIOBitMap[ZXSPECTRUM_KEYBOARD_NUM_ROWS];
 
 McVariantTable McZXSpectrum::_machineDescriptorTables[] = {
     {
@@ -60,8 +59,8 @@ McVariantTable McZXSpectrum::_machineDescriptorTables[] = {
 // Construction
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-McZXSpectrum::McZXSpectrum(McManager& mcManager) : 
-            McBase(mcManager, _machineDescriptorTables, 
+McZXSpectrum::McZXSpectrum(McManager& mcManager, BusControl& busControl) : 
+            McBase(mcManager, busControl, _machineDescriptorTables, 
             sizeof(_machineDescriptorTables)/sizeof(_machineDescriptorTables[0]))
 {
     // Screen needs redrawing
@@ -74,10 +73,6 @@ McZXSpectrum::McZXSpectrum(McManager& mcManager) :
     _pfbSize = 0;
     _cellsY = _machineDescriptorTables[0].displayPixelsY/_machineDescriptorTables[0].displayPixelsY;
     _cellsX = _machineDescriptorTables[0].displayPixelsX/_machineDescriptorTables[0].displayPixelsX;
-
-    // Clear key bitmap
-    for (int i = 0; i < ZXSPECTRUM_KEYBOARD_NUM_ROWS; i++)
-        _spectrumKeyboardIOBitMap[i] = 0xff;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -126,6 +121,13 @@ void McZXSpectrum::service()
         updateDisplayFromBuffer(_screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE);
         _screenBufferRefreshCount++;
     }
+
+    // Check for keys in queue
+    if (_keyBuf.keyChangeReady())
+    {
+        // Get keys to current bitmap
+        _keyBuf.getToCurBitMap();
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -135,12 +137,11 @@ void McZXSpectrum::service()
 // Handle display refresh (called at a rate indicated by the machine's descriptor table)
 void McZXSpectrum::refreshDisplay()
 {
-    // TODO 2020 - changed from hwman
     // Read mirror memory at the location of the memory mapped screen
-    if (getHwManager().blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, false, false, true) == BR_OK)
+    if (_busControl.mem().blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, BLOCK_ACCESS_MEM) == BR_OK)
     {
         _screenBufferValid = true;
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "DISP REF %d %02x %02x", pScrnBuffer, pScrnBuffer[0x1800], pScrnBuffer[0x1801]);
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "DISP REF %d %02x %02x", _screenBuffer, _screenBuffer[0x1800], _screenBuffer[0x1801]);
     }
 }
 
@@ -386,19 +387,47 @@ uint32_t McZXSpectrum::getKeyBitmap(const int* keyCodes, int keyCodesLen,
 void McZXSpectrum::keyHandler( unsigned char ucModifiers, 
                  const unsigned char* rawKeys)
 {
-    // Clear key bitmap
-    for (int i = 0; i < ZXSPECTRUM_KEYBOARD_NUM_ROWS; i++)
-        _spectrumKeyboardIOBitMap[i] = 0xff;
-
     // Note that in the following I've used the KEY_HANJA as a placeholder
     // as I think it is a key that won't normally occur
 
-    // Check for special codes in the key buffer
+    // Clear key buf scratchpad 
+    _keyBuf.clearScratch();
+
+    // Check shift & ctrl
+    bool isShift = ((ucModifiers & KEY_MOD_LSHIFT) != 0) || ((ucModifiers & KEY_MOD_RSHIFT) != 0);
+    bool isCtrl = ((ucModifiers & KEY_MOD_LCTRL) != 0) || ((ucModifiers & KEY_MOD_RCTRL) != 0);
+
+    // Regular keys mapped to Spectrum keys
+    struct KeyCodeDef {
+        uint8_t regularKeyCode;
+        bool isShifted;
+        uint8_t matrixIdx;
+        uint8_t matrixCode;
+        uint8_t shiftCode;
+    };
+    static const KeyCodeDef regularKeyMapping[] = {
+        {KEY_EQUAL, false, 6, 0xfd, 0xfd},
+        {KEY_EQUAL, true, 6, 0xfb, 0xfd},
+    };
+    
+    // Check for regular key codes in the key buffer
     bool specialKeyBackspace = false;
     for (int i = 0; i < MAX_KEYS; i++)
     {
         if (rawKeys[i] == KEY_BACKSPACE)
             specialKeyBackspace = true;
+        
+        // Check regular keys
+        for (unsigned j = 0; j < sizeof(regularKeyMapping)/sizeof(KeyCodeDef); j++)
+        {
+            // LogWrite(MODULE_PREFIX, LOG_DEBUG, "check regular mapping %d isShift %d code %02x",
+            //                     j, isShift, regularKeyMapping[j].regularKeyCode);
+            if ((rawKeys[i] == regularKeyMapping[j].regularKeyCode) && (regularKeyMapping[j].isShifted == isShift))
+            {
+                _keyBuf.andScratch(regularKeyMapping[j].matrixIdx, regularKeyMapping[j].matrixCode);
+                _keyBuf.andScratch(ZXSPECTRUM_SHIFT_KEYS_ROW_IDX, regularKeyMapping[j].shiftCode);
+            }
+        }
     }
 
     // Key table
@@ -417,32 +446,35 @@ void McZXSpectrum::keyHandler( unsigned char ucModifiers,
     for (int keyRow = 0; keyRow < ZXSPECTRUM_KEYBOARD_NUM_ROWS; keyRow++)
     {
         uint32_t keyBits = getKeyBitmap(keyTable[keyRow], ZXSPECTRUM_KEYS_IN_ROW, rawKeys);
-        _spectrumKeyboardIOBitMap[keyRow] = keyBits;
+        _keyBuf.andScratch(keyRow, keyBits);
     }
 
-    // Handle shift key modifier (inject a shift for backspace)
-    if (specialKeyBackspace || ((ucModifiers & KEY_MOD_LSHIFT) != 0) || ((ucModifiers & KEY_MOD_RSHIFT) != 0))
-        _spectrumKeyboardIOBitMap[0] &= 0xfe;
+    // Handle CAPS-SHIFT (shift on std keyboard) key modifier (inject one for backspace)
+    if (specialKeyBackspace || isShift)
+        _keyBuf.andScratch(ZXSPECTRUM_BS_KEY_ROW_IDX, 0xfe);
 
     // Handle modifier for delete (on the zero key)
     if (specialKeyBackspace)
-        _spectrumKeyboardIOBitMap[4] &= 0xfe;
+        _keyBuf.andScratch(ZXSPECTRUM_DEL_KEY_ROW_IDX, 0xfe);
 
-    // Handle Sym key (CTRL)
-    if (((ucModifiers & KEY_MOD_LCTRL) != 0) || ((ucModifiers & KEY_MOD_RCTRL) != 0))
-        _spectrumKeyboardIOBitMap[7] &= 0xfd;
+    // Handle Sym key (ctrl)
+    if (isCtrl)
+        _keyBuf.andScratch(ZXSPECTRUM_SHIFT_KEYS_ROW_IDX, 0xfd);
 
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "KeyBits %02x %02x %02x %02x %02x %02x %02x %02x", 
-    //                 _spectrumKeyboardIOBitMap[0],
-    //                 _spectrumKeyboardIOBitMap[1],
-    //                 _spectrumKeyboardIOBitMap[2],
-    //                 _spectrumKeyboardIOBitMap[3],
-    //                 _spectrumKeyboardIOBitMap[4],
-    //                 _spectrumKeyboardIOBitMap[5],
-    //                 _spectrumKeyboardIOBitMap[6],
-    //                 _spectrumKeyboardIOBitMap[7]
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "keyHandler mod %02x Key[0] %02x Key[1] %02x KeyBits %02x %02x %02x %02x %02x %02x %02x %02x", 
+    //                 ucModifiers, rawKeys[0], rawKeys[1],
+    //                 _keyBuf.getScratchBitMap(0),
+    //                 _keyBuf.getScratchBitMap(1),
+    //                 _keyBuf.getScratchBitMap(2),
+    //                 _keyBuf.getScratchBitMap(3),
+    //                 _keyBuf.getScratchBitMap(4),
+    //                 _keyBuf.getScratchBitMap(5),
+    //                 _keyBuf.getScratchBitMap(6),
+    //                 _keyBuf.getScratchBitMap(7)
     //                 );
 
+    // Add to keyboard queue
+    _keyBuf.putFromScratch();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -549,7 +581,7 @@ void McZXSpectrum::busAccessCallback( uint32_t addr,  uint32_t data,
             for (int keyRow = 0; keyRow < ZXSPECTRUM_KEYBOARD_NUM_ROWS; keyRow++)
             {
                 if ((addr & addrBitMask) == 0)
-                    retVal &= _spectrumKeyboardIOBitMap[keyRow];
+                    retVal &= _keyBuf.getCurBitMap(keyRow);
                 addrBitMask = addrBitMask << 1;
             }
         }
@@ -575,37 +607,37 @@ void McZXSpectrum::busAccessCallback( uint32_t addr,  uint32_t data,
 void McZXSpectrum::busActionActiveCallback(BR_BUS_ACTION actionType, 
                     BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
 {
-    // Check for BUSRQ
-    if ((actionType == BR_BUS_ACTION_BUSRQ) && (rslt == BR_OK))
-    {
-        // Read memory at the location of the memory mapped screen
-        if (_busControl.blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, BLOCK_ACCESS_MEM) == BR_OK)
-            _screenBufferValid = true;
+    // // Check for BUSRQ
+    // if ((actionType == BR_BUS_ACTION_BUSRQ) && (rslt == BR_OK))
+    // {
+    //     // Read memory at the location of the memory mapped screen
+    //     if (_busControl.blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, BLOCK_ACCESS_MEM) == BR_OK)
+    //         _screenBufferValid = true;
 
-        // // TODO
-        // // Read FRAMES1, FRAMES2 & FRAMES3 ZX Spectrum variables and display on screen
-        // static const int VARS_BUF_LEN = 0x3;
-        // uint8_t varsBuf[VARS_BUF_LEN];
-        // if (BusAccess::blockRead(0x5c78, varsBuf, VARS_BUF_LEN, false, false) == BR_OK)
-        // {
-        //     char buf2[100];
-        //     buf2[0] = 0;
-        //     int lineIdx = 0;
-        //     for (uint32_t i = 0; i < VARS_BUF_LEN; i++)
-        //     {
-        //         char buf1[10];
-        //         ee_sprintf(buf1, "%02x ", varsBuf[i]);
-        //         strlcat(buf2, buf1, 100);
-        //         if (i % 0x10 == 0x0f)
-        //         {
-        //             pDisplay->write(0, lineIdx, buf2);
-        //             lineIdx++;
-        //             buf2[0] = 0;
-        //         }
-        //     }
-        //     if (strlen(buf2) > 0)
-        //         pDisplay->write(0, lineIdx, buf2);
-        // }
+    //     // // TODO
+    //     // // Read FRAMES1, FRAMES2 & FRAMES3 ZX Spectrum variables and display on screen
+    //     // static const int VARS_BUF_LEN = 0x3;
+    //     // uint8_t varsBuf[VARS_BUF_LEN];
+    //     // if (BusAccess::blockRead(0x5c78, varsBuf, VARS_BUF_LEN, false, false) == BR_OK)
+    //     // {
+    //     //     char buf2[100];
+    //     //     buf2[0] = 0;
+    //     //     int lineIdx = 0;
+    //     //     for (uint32_t i = 0; i < VARS_BUF_LEN; i++)
+    //     //     {
+    //     //         char buf1[10];
+    //     //         ee_sprintf(buf1, "%02x ", varsBuf[i]);
+    //     //         strlcat(buf2, buf1, 100);
+    //     //         if (i % 0x10 == 0x0f)
+    //     //         {
+    //     //             pDisplay->write(0, lineIdx, buf2);
+    //     //             lineIdx++;
+    //     //             buf2[0] = 0;
+    //     //         }
+    //     //     }
+    //     //     if (strlen(buf2) > 0)
+    //     //         pDisplay->write(0, lineIdx, buf2);
+    //     // }
 
-    }
+    // }
 }
