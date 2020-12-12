@@ -149,9 +149,9 @@ public:
 //                     char* pRespJson, unsigned maxRespLen);
                     
 //     // Reset complete callback
-//     static void busActionActiveStatic(void* pObject, BR_BUS_ACTION actionType, 
-//                 BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt);
-//     void busActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
+//     static void busReqAckedStatic(void* pObject, BR_BUS_ACTION actionType, 
+//                 BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt);
+//     void busReqAcked(BR_BUS_ACTION actionType, BR_BUS_REQ_REASON reason, 
 //                 BR_RETURN_TYPE rslt);
 
 //     // Wait interrupt handler

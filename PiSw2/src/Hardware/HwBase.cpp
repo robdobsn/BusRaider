@@ -41,7 +41,7 @@ HwBase::HwBase(BusControl& busControl) :
 // }
 
 // // Handle a completed bus action
-// void HwBase::handleBusActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
+// void HwBase::handlebusReqAcked(BR_BUS_ACTION actionType, BR_BUS_REQ_REASON reason, 
 //         BR_RETURN_TYPE rslt)
 // {
 // }

@@ -43,7 +43,7 @@ public:
     void init();
 
     // Service
-    void service(bool serviceWaitOnly);
+    void service(bool dontStartAnyNewBusActions);
 
     // Clear
     void clear()
@@ -60,10 +60,13 @@ public:
     bool debuggerStepIn();
 
     // Set callback on bus access
-    void setBusAccessCallback(BusAccessCBFnType* pCB, void* pObject)
+    void registerCallbacks(BusAccessCBFnType* pBusAccessCB, 
+                BusReqAckedCBFnType* pBusReqAckedCB, 
+                void* pObject)
     {
-        _pBusAccessCB = pCB;
-        _pBusAccessCBObject = pObject;
+        _pBusAccessCB = pBusAccessCB;
+        _pBusReqAckedCB = pBusReqAckedCB;
+        _pBusCBObject = pObject;
     }
 
     // Target programming
@@ -73,14 +76,9 @@ public:
     }
     void programmingStart(bool execAfterProgramming, bool enterDebugger);
 
-    // Request bus cycle action
-    bool cycleReqAction(BR_BUS_ACTION busActionType,
-            BR_BUS_ACTION_REASON busActionReason,
-            uint32_t socketIdx,
-            uint32_t maxDurationUs,
-            BusCompleteCBFnType* cycleCompleteCB, 
-            void* pObject);
-    void cycleClearAction();
+    // Bus request
+    bool reqBus(BR_BUS_REQ_REASON busReqReason,
+            uint32_t socketIdx);
 
     // Check if machine heartbeat is allowed
     bool allowHeartbeat()
@@ -113,8 +111,10 @@ public:
     void disassemble(uint32_t numLines, char* pResp, uint32_t respMaxLen, 
             uint32_t& numBytesIn1StInstruction);
 
-    // Target commands
+    // INT, NMI and RESET requests
     void targetReset();
+    void targetINT();
+    void targetNMI();
 
 private:
     // Bus control
@@ -127,14 +127,13 @@ private:
     bool _isSuspended;
 
     // Programming state
-    bool _programmingPending;
+    bool _programmingStartPending;
     bool _programmingDoExec;
     bool _programmingEnterDebugger;
     void programmingClear();
     void programmingWrite();
-    void programmingDone();
     void programExec(bool codeAtResetVector);
-    static const uint32_t PROG_MAX_WAIT_FOR_BUSAK_US = 100000;
+    static const uint32_t MAX_WAIT_FOR_BUSAK_US = 100000;
 
     // Cycle request stat
     enum CYCLE_REQ_STATE
@@ -144,32 +143,87 @@ private:
         CYCLE_REQ_STATE_ASSERTED
     };
 
+    class BusReqInfo
+    {
+    public:
+        BusReqInfo()
+        {
+            clear();
+        }
+        void clear()
+        {
+            _busReqAckedCB = NULL;
+            _pObject = NULL;
+            _socketIdx = 0;
+            _reqState = CYCLE_REQ_STATE_NONE;
+            _busReqUs = 0;
+            _busReqAssertedUs = 0;
+            _busRqReason = BR_BUS_REQ_REASON_GENERAL;
+        }
+        void pending(BR_BUS_REQ_REASON busReqReason,
+            uint32_t socketIdx,
+            BusReqAckedCBFnType* completeCB, 
+            void* pObject)
+        {
+            _reqState = CYCLE_REQ_STATE_PENDING;
+            _busReqAckedCB = completeCB;
+            _pObject = pObject;
+            _socketIdx = socketIdx;
+            _busReqUs = micros();
+            _busReqAssertedUs = 0;
+            _busRqReason = busReqReason;
+        }
+        void asserted()
+        {
+            _busReqAssertedUs = micros();
+            _reqState = CYCLE_REQ_STATE_ASSERTED;
+        }
+        void complete()
+        {
+            _reqState = CYCLE_REQ_STATE_NONE;
+        }
+        BusReqAckedCBFnType* _busReqAckedCB;
+        void* _pObject;
+        uint32_t _socketIdx;
+        CYCLE_REQ_STATE _reqState;
+        uint32_t _busReqUs;
+        uint32_t _busReqAssertedUs;
+        BR_BUS_REQ_REASON _busRqReason;
+    };
+    BusReqInfo _busReqInfo;
+
+    // RESET, INT, NMI info
+    class SignalRequestInfo
+    {
+    public:
+        SignalRequestInfo()
+        {
+            clear();
+        }
+        void clear()
+        {
+            _isPending = false;
+        }
+        bool _isPending;
+    };
+    SignalRequestInfo _reqINTInfo;
+    SignalRequestInfo _reqNMIInfo;
+    SignalRequestInfo _reqRESETInfo;
+
     // Cycle Request Handling
-    BusCompleteCBFnType* _cycleReqCompleteCB;
-    void* _cycleReqPObject;
-    uint32_t _cycleReqSocketIdx;
-    CYCLE_REQ_STATE _cycleReqState;
-    BR_BUS_ACTION _cycleReqActionType;
-    uint32_t _cycleReqUs;
-    uint32_t _cycleReqAssertedUs;
-    uint32_t _cycleReqMaxUs;
-    BR_BUS_ACTION_REASON _cycleBusRqReason;
     bool _cycleHeldInWaitState;
     bool _cycleWaitForReadCompletionRequired;
     void cycleClear();
-    void cycleService(bool serviceWaitOnly);
+    void cycleService(bool dontStartAnyNewBusActions);
     void cycleSuspend(bool suspend);
-    void cycleHandleActions();
-    void cycleReqHandlePending();
-    void cycleReqCallback(BR_RETURN_TYPE result);
-    void cycleReqAssertedBusRq();
-    void cycleReqAssertedOther(BR_BUS_ACTION actionType);
     void cycleCheckWait();
     void cycleSetupForFastWait();
     void cycleFullWaitProcessing(uint32_t rawBusVals);
     bool cycleWaitForReadCompletion();
     void cycleHandleHeldInWait();
-    void cyclePerformActionRequest();
+    void cycleCheckProgPending();
+    void cycleDoProgIfPending();
+    void cycleHandleBusReq();
 
     // Debugger wait handling
     static const uint32_t MAX_WAIT_FOR_DEBUG_HELD_AT_WAIT_MS = 100;
@@ -181,7 +235,8 @@ private:
 
     // Callback on bus access
     BusAccessCBFnType* _pBusAccessCB;
-    void* _pBusAccessCBObject;
+    BusReqAckedCBFnType* _pBusReqAckedCB;
+    void* _pBusCBObject;
 
     // Debugger state
     enum DebuggerState
@@ -365,8 +420,8 @@ private:
 //     bool handlePendingDisable();
 
 //     // Bus action active callback
-//     static void busActionActiveStatic(void* pObject, BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
-//     void busActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason);
+//     static void busReqAckedStatic(void* pObject, BR_BUS_ACTION actionType, BR_BUS_REQ_REASON reason);
+//     void busReqAcked(BR_BUS_ACTION actionType, BR_BUS_REQ_REASON reason);
 
 //     // Wait interrupt handler
 //     static void handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t data, 

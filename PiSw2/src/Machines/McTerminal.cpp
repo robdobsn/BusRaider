@@ -507,11 +507,10 @@ void McTerminal::busAccessCallback( uint32_t addr,  uint32_t data,
     }
 }
 
-// Bus action active callback
-void McTerminal::busActionActiveCallback( BR_BUS_ACTION actionType, 
-                    BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
+// Bus request acknowledged callback
+void McTerminal::busReqAckedCallback(BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt)
 {
-    if ((actionType == BR_BUS_ACTION_RESET) && (rslt == BR_OK))
+    if (rslt == BR_OK)
     {
         _emulation6850NeedsReset = true;
         _emulation6850NotSetup = false;

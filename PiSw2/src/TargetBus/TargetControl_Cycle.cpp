@@ -11,9 +11,20 @@
 // #define TEST_HIGH_ADDR_IS_ON_PIB
 // #define DEBUG_SHOW_IO_ACCESS_ADDRS_WR
 // #define DEBUG_SHOW_IO_ACCESS_ADDRS_RD
+#define DEBUG_TARGET_PROGRAMMING
 
 // Module name
 static const char MODULE_PREFIX[] = "TargCtrlCyc";
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Cycle handling
+//
+// HeldInWAIT    BUSRQ  BUSACK    Reset  INT    NMI
+// ----
+// 
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Cycle clear
@@ -21,15 +32,10 @@ static const char MODULE_PREFIX[] = "TargCtrlCyc";
 
 void TargetControl::cycleClear()
 {
-    _cycleReqCompleteCB = NULL;
-    _cycleReqPObject = NULL;
-    _cycleReqSocketIdx = 0;
-    _cycleReqState = CYCLE_REQ_STATE_NONE;
-    _cycleReqActionType = BR_BUS_ACTION_NONE;
-    _cycleBusRqReason = BR_BUS_ACTION_GENERAL;
-    _cycleReqUs = 0;
-    _cycleReqAssertedUs = 0;
-    _cycleReqMaxUs = 0;
+    _busReqInfo.clear();
+    _reqINTInfo.clear();
+    _reqNMIInfo.clear();
+    _reqRESETInfo.clear();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -47,46 +53,29 @@ void TargetControl::cycleSuspend(bool suspend)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Req cycle action
+// Requests
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool TargetControl::cycleReqAction(BR_BUS_ACTION busActionType,
-            BR_BUS_ACTION_REASON busActionReason,
-            uint32_t socketIdx,
-            uint32_t maxDurationUs,
-            BusCompleteCBFnType* cycleCompleteCB, 
-            void* pObject)
+bool TargetControl::reqBus(BR_BUS_REQ_REASON busReqReason,
+            uint32_t socketIdx)
 {
-    if (_programmingPending || (_cycleReqState != CYCLE_REQ_STATE_NONE))
+    if (_busReqInfo._reqState != CYCLE_REQ_STATE_NONE)
     {
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "cycleReqAction FAILED socketIdx %d state %d progPend %d",
-        //         socketIdx, _cycleReqState, _programmingPending);
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "reqBus FAILED socketIdx %d state %d progPend %d",
+        //         socketIdx, _busReqInfo._reqState, _programmingStartPending);
         return false;
     }
-    _cycleReqCompleteCB = cycleCompleteCB;
-    _cycleReqPObject = pObject;
-    _cycleReqSocketIdx = socketIdx;
-    _cycleReqState = CYCLE_REQ_STATE_PENDING;
-    _cycleReqActionType = busActionType;
-    _cycleBusRqReason = busActionReason;
-    _cycleReqUs = micros();
-    _cycleReqAssertedUs = 0;
-    _cycleReqMaxUs = maxDurationUs; 
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "cycleReqAction type %d reason %d progPending %d",
-    //         _cycleReqActionType, _cycleBusRqReason, _programmingPending);
+    _busReqInfo.pending(busReqReason, socketIdx, _pBusReqAckedCB, _pBusCBObject);
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "reqBus reason %d progPending %d",
+    //         busReqReason, _programmingStartPending);
     return true;
-}
-
-void TargetControl::cycleClearAction()
-{
-    _cycleReqState = CYCLE_REQ_STATE_NONE;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Cycle service
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetControl::cycleService(bool serviceWaitOnly)
+void TargetControl::cycleService(bool dontStartAnyNewBusActions)
 {
     // Check if suspended
     if (_isSuspended)
@@ -96,154 +85,196 @@ void TargetControl::cycleService(bool serviceWaitOnly)
     cycleCheckWait();
 
     // Check if actions should be serviced
-    if (serviceWaitOnly)
+    if (dontStartAnyNewBusActions)
         return;
 
-    // Handle cycle actions
-    cycleHandleActions();
-}
+    // Check if programming pending
+    cycleCheckProgPending();
 
+    // Handle any BUSRQ activity
+    cycleHandleBusReq();
+}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Cycle pending helpers
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetControl::cycleHandleActions()
+void TargetControl::cycleHandleBusReq()
 {
-    // Check for programming required
-    if (_programmingPending && (_cycleReqState == CYCLE_REQ_STATE_NONE))
+    if (_busReqInfo._reqState == CYCLE_REQ_STATE_PENDING)
     {
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "cycleService Programming BUSRQ");
-        // Programming
-        _cycleReqActionType = BR_BUS_ACTION_BUSRQ;
-        _cycleBusRqReason = BR_BUS_ACTION_PROGRAMMING;
-        _cycleReqMaxUs = PROG_MAX_WAIT_FOR_BUSAK_US;
-        _cycleReqState = CYCLE_REQ_STATE_PENDING;
-    }
-
-    // Handle cycle state
-    if (_cycleReqState == CYCLE_REQ_STATE_PENDING)
-    {
-        // Deal with debugger
         if (_debuggerState != DEBUGGER_STATE_FREE_RUNNING)
         {
-            // TODO 2020 deal with IRQ, etc
+            // Do programming if required
+            cycleDoProgIfPending();
 
-            // Handle the request as though it had been performed
-            // If this was a display refresh then the memory access
-            // will come from a cache. Other actions like programming,
-            // IRQ generation, etc will also be handled appropriately
-            // by the debugger code
-            cyclePerformActionRequest();
+            // Callback to allow any access required - since we're in debugging mode
+            // this will probably be directed to a cache
+            if (_busReqInfo._busReqAckedCB)
+                _busReqInfo._busReqAckedCB(_busReqInfo._pObject, _busReqInfo._busRqReason, BR_OK);
+
+            // Now complete
+            _busReqInfo.complete();
         }
         else
         {
-            // Bus actions pending
-            cycleReqHandlePending();
+            // Initiate the bus request
+            _busControl.bus().busReqStart();
+            _busReqInfo.asserted();
         }
     }
-    else if (_cycleReqState == CYCLE_REQ_STATE_ASSERTED)
+    else if (_busReqInfo._reqState == CYCLE_REQ_STATE_ASSERTED)
     {
-        // Bus actions asserted
-        if (_cycleReqActionType == BR_BUS_ACTION_BUSRQ)
-            cycleReqAssertedBusRq();
-        else
-            cycleReqAssertedOther(_cycleReqActionType);
-    }
-}
+        // Check for BUSACK
+        if (_busControl.bus().rawBUSAKActive())
+        {
+            // Take control of bus
+            _busControl.bus().busReqTakeControl();
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Cycle pending helpers
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Do programming if required
+            cycleDoProgIfPending();
 
-void TargetControl::cycleReqHandlePending()
-{
-    // Initiate the cycle action
-    _busControl.bus().setBusSignal(_cycleReqActionType, true);
-    _cycleReqAssertedUs = micros();
-    _cycleReqState = CYCLE_REQ_STATE_ASSERTED;
-}
+            // Handle bus request acknowledged
+            if (_busReqInfo._busReqAckedCB)
+                _busReqInfo._busReqAckedCB(_busReqInfo._pObject, _busReqInfo._busRqReason, BR_OK);
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Cycle asserted helpers
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+            // Release bus
+            _busControl.bus().busReqRelease();
 
-void TargetControl::cycleReqAssertedBusRq()
-{
-    // Check for BUSACK
-    if (_busControl.bus().rawBUSAKActive())
-    {
-        // Take control of bus
-        _busControl.bus().busReqTakeControl();
-
-        // Check reason for request
-        cyclePerformActionRequest();
-
-        // Release bus
-        _busControl.bus().busReqRelease();
-    }
-    else
-    {
-        // Check for timeout on BUSACK
-        if (isTimeout(micros(), _cycleReqAssertedUs, _cycleReqMaxUs))
+            // Now complete
+            _busReqInfo.complete();
+        }
+        else if (isTimeout(micros(), _busReqInfo._busReqAssertedUs, MAX_WAIT_FOR_BUSAK_US))
         {
             // For bus requests a timeout means failure
-            cycleReqCallback(BR_NOT_HANDLED);
-            _busControl.bus().setBusSignal(BR_BUS_ACTION_BUSRQ, false);
+            if (_busReqInfo._busReqAckedCB)
+                _busReqInfo._busReqAckedCB(_busReqInfo._pObject, _busReqInfo._busRqReason, BR_NOT_HANDLED);
+            _busControl.bus().busReqRelease();
+
+            // Now complete
+            _busReqInfo.complete();
         }
     }
-
-    // Restore settings for fast-wait processing
-    cycleSetupForFastWait();
 }
 
-void TargetControl::cycleReqAssertedOther(BR_BUS_ACTION actionType)
-{
-    // Check for action complete - based on time
-    if (isTimeout(micros(), _cycleReqAssertedUs, _cycleReqMaxUs))
-    {
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, 
-        //          "Timeout on bus action %u type %d _waitIsActive %d", 
-        //          micros(), _cycleReqActionType, _waitIsActive);
-        cycleReqCallback(BR_OK);
+// void TargetControl::cycleHandleActions()
+// {
+//     // Handle cycle state
+//     if (_cycleReqState == CYCLE_REQ_STATE_PENDING)
+//     {
+//         // Deal with debugger
+//         if (_debuggerState != DEBUGGER_STATE_FREE_RUNNING)
+//         {
+//             // TODO 2020 deal with IRQ, etc
 
-        // Restore settings for fast-wait processing - this also clears all
-        // actions since it uses the MUX and RESET, IRQ and NMI are generated
-        // by the mux
-        cycleSetupForFastWait();
+//             // Handle the request as though it had been performed
+//             // If this was a display refresh then the memory access
+//             // will come from a cache. Other actions like programming,
+//             // IRQ generation, etc will also be handled appropriately
+//             // by the debugger code
+//             cyclePerformActionRequest();
+//         }
+//         else
+//         {
+//             // Bus actions pending
+//             cycleReqHandlePending();
+//         }
+//     }
+//     else if (_cycleReqState == CYCLE_REQ_STATE_ASSERTED)
+//     {
+//         // Bus actions asserted
+//         if (_cycleReqActionType == BR_BUS_ACTION_BUSRQ)
+//             cycleReqAssertedBusRq();
+//         else
+//             cycleReqAssertedOther(_cycleReqActionType);
+//     }
+// }
 
-    }
-}
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// // Cycle pending helpers
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetControl::cyclePerformActionRequest()
-{
-    if (_cycleBusRqReason == BR_BUS_ACTION_PROGRAMMING)
-    {
-        programmingWrite();
-        programmingDone();
-        _cycleReqState = CYCLE_REQ_STATE_NONE;
-    }
-    else
-    {
-        // Callback on completion now so that any new action raised by the callback
-        // such as a reset, etc can be asserted before BUSRQ is released
-        cycleReqCallback(BR_OK);
-    }
-}
+// void TargetControl::cycleReqHandlePending()
+// {
+//     // Initiate the cycle action
+//     _busControl.bus().setBusSignal(_cycleReqActionType, true);
+//     _cycleReqAssertedUs = micros();
+//     _cycleReqState = CYCLE_REQ_STATE_ASSERTED;
+// }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Cycle callback on action request
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// // Cycle asserted helpers
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void TargetControl::cycleReqCallback(BR_RETURN_TYPE result)
-{
-    // Perform cycle callback
-    _cycleReqState = CYCLE_REQ_STATE_NONE;
-    if (_cycleReqCompleteCB)
-    {
-        _cycleReqCompleteCB(_cycleReqPObject, _cycleReqActionType, _cycleBusRqReason, _cycleReqSocketIdx, result);
-    }
-}
+// void TargetControl::cycleReqAssertedBusRq()
+// {
+//     // Check for BUSACK
+//     if (_busControl.bus().rawBUSAKActive())
+//     {
+//         // Take control of bus
+//         _busControl.bus().busReqTakeControl();
+
+//         // Check reason for request
+//         cyclePerformActionRequest();
+
+//         // Release bus
+//         _busControl.bus().busReqRelease();
+//     }
+//     else
+//     {
+//         // Check for timeout on BUSACK
+//         if (isTimeout(micros(), _cycleReqAssertedUs, _cycleReqMaxUs))
+//         {
+//             // For bus requests a timeout means failure
+//             cycleReqCallback(BR_NOT_HANDLED);
+//             _busControl.bus().setBusSignal(BR_BUS_ACTION_BUSRQ, false);
+//         }
+//     }
+
+//     // Restore settings for fast-wait processing
+//     cycleSetupForFastWait();
+// }
+
+// void TargetControl::cycleReqAssertedOther(BR_BUS_ACTION actionType)
+// {
+//     // Check for action complete - based on time
+//     if (isTimeout(micros(), _cycleReqAssertedUs, _cycleReqMaxUs))
+//     {
+//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, 
+//         //          "Timeout on bus action %u type %d _waitIsActive %d", 
+//         //          micros(), _cycleReqActionType, _waitIsActive);
+//         cycleReqCallback(BR_OK);
+
+//         // Restore settings for fast-wait processing - this also clears all
+//         // actions since it uses the MUX and RESET, IRQ and NMI are generated
+//         // by the mux
+//         cycleSetupForFastWait();
+
+//     }
+// }
+
+// void TargetControl::cycleHandleBusReqAcked()
+// {
+//     // Callback to allow any access required - since we're in debugging mode
+//     // this will probably be directed to a cache
+//     _busReqInfo.complete();
+//     if (_busReqInfo._busReqAckedCB)
+//         _busReqInfo._busReqAckedCB(_busReqInfo._pObject, _busReqInfo._busRqReason, _busReqInfo._socketIdx, BR_OK);
+// }
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// // Cycle callback on action request
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// void TargetControl::cycleReqCallback(BR_RETURN_TYPE result)
+// {
+//     // Perform cycle callback
+//     _busReqInfo.complete();
+//     if (_busReqCompleteCB)
+//     {
+//         _busReqCompleteCB(_cycleReqPObject, _cycleReqActionType, _cycleBusRqReason, _cycleReqSocketIdx, result);
+//     }
+// }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Cycle check for new wait and handle
@@ -273,7 +304,7 @@ void TargetControl::cycleCheckWait()
 
         // Check if we need to do full wait processing
         bool fullWaitProc = true;
-        if (!(rawBusVals & BR_MREQ_BAR_MASK))
+        if (!(rawBusVals & BR_MREQ_BAR_MASK) && (_debuggerState == DEBUGGER_STATE_FREE_RUNNING))
         {
             // Check mux is enabled for high-addr and mux is enabled
             if ((rawBusVals & (BR_MUX_CTRL_BIT_MASK | BR_MUX_EN_BAR_MASK)) == BR_MUX_HADDR_OE_MASK)
@@ -290,14 +321,14 @@ void TargetControl::cycleCheckWait()
         }
 
         // Full wait processing
-        if (fullWaitProc || (_debuggerState != DEBUGGER_STATE_FREE_RUNNING))
+        if (fullWaitProc)
         {
             // Full wait processing - clears wait flip-flops as needed
             cycleFullWaitProcessing(rawBusVals);
         }
         else
         {
-            // Clear the wait
+            // Just clear the wait
             BusRawAccess::waitResetFlipFlops();
         }
         break;
@@ -381,7 +412,7 @@ void TargetControl::cycleFullWaitProcessing(uint32_t rawBusVals)
                 (((rawBusVals & BR_WAIT_BAR_MASK) == 0) ? BR_CTRL_BUS_WAIT_MASK : 0) |
                 (((rawBusVals & BR_V20_M1_BAR_MASK) == 0) ? BR_CTRL_BUS_M1_MASK : 0) |
                 (((rawBusVals & BR_BUSACK_BAR_MASK) == 0) ? BR_CTRL_BUS_BUSACK_MASK : 0);
-        _pBusAccessCB(_pBusAccessCBObject, addr, dataBusVals, ctrlBusVals, retVal);
+        _pBusAccessCB(_pBusCBObject, addr, dataBusVals, ctrlBusVals, retVal);
     }
 
 #ifdef DEBUG_SHOW_IO_ACCESS_ADDRS_RD
@@ -479,5 +510,42 @@ void TargetControl::cycleHandleHeldInWait()
 
         // Clear output and setup for fast wait
         cycleSetupForFastWait();        
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Cycle check if programming is pending
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TargetControl::cycleCheckProgPending()
+{
+    if (_programmingStartPending)
+    {
+        if (_busReqInfo._reqState == CYCLE_REQ_STATE_NONE)
+        {
+#ifdef DEBUG_TARGET_PROGRAMMING
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "cycleHandleProgramming");
+#endif
+            _busReqInfo.pending(BR_BUS_REQ_REASON_PROGRAMMING, 0, NULL, NULL);
+
+            // Programming start is no longer pending
+            _programmingStartPending = false;
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Cycle perform programming if pending
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TargetControl::cycleDoProgIfPending()
+{
+    // Handle programming
+    if (_busReqInfo._busRqReason == BR_BUS_REQ_REASON_PROGRAMMING)
+    {
+        programmingWrite();
+#ifdef DEBUG_TARGET_PROGRAMMING
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "programmingDone");
+#endif
     }
 }

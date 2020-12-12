@@ -18,7 +18,7 @@ class RdWebRequestParams
 public:
     RdWebRequestParams(uint32_t maxSendSize, 
             std::list<RdJson::NameValuePair>* pResponseHeaders,
-                    RdWebConnSendFn webConnRawSend)
+            RdWebConnSendFn webConnRawSend)
     {
         _maxSendSize = maxSendSize;
         _pResponseHeaders = pResponseHeaders;

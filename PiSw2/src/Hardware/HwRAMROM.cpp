@@ -537,11 +537,10 @@ uint8_t* HwRAMROM::getTracerMemory()
 // Callbacks/Hooks
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Handle a completed bus action
-void HwRAMROM::handleBusActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
-            BR_RETURN_TYPE rslt)
+// Handle a completed bus request
+void HwRAMROM::handlebusReqAcked(BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt)
 {
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActive %d", actionType);
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busReqAcked %d", actionType);
     if (rslt != BR_OK)
         return;
     switch(actionType)
@@ -558,7 +557,7 @@ void HwRAMROM::handleBusActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REA
                 //             _memCardOpts & MEM_OPT_EMULATE_LINEAR,
                 //             _memCardOpts & MEM_OPT_EMULATE_LINEAR_UPPER
                 //             );
-                _busControl.targetReqBus(_hwManager.getBusSocketId(), BR_BUS_ACTION_HW_ACTION);
+                _busControl.targetReqBus(_hwManager.getBusSocketId(), BR_BUS_REQ_REASON_HW_ACTION);
             }
             break;
         case BR_BUS_ACTION_PAGE_OUT_FOR_INJECT:
@@ -568,7 +567,7 @@ void HwRAMROM::handleBusActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REA
             pageOutForInjection(false);
             break;
         case BR_BUS_ACTION_BUSRQ:
-            if (reason == BR_BUS_ACTION_MIRROR)
+            if (reason == BR_BUS_REQ_REASON_MIRROR)
             {
                 if (!_mirrorMode)
                     break;
@@ -586,7 +585,7 @@ void HwRAMROM::handleBusActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REA
                 //              _mirrorMode,
                 //              _pName);
             }
-            if (reason == BR_BUS_ACTION_HW_ACTION)
+            if (reason == BR_BUS_REQ_REASON_HW_ACTION)
             {
                 // Switch card back to banked mode if required
                 if (_memCardOpts & MEM_OPT_STAY_BANKED)

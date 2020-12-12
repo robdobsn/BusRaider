@@ -436,7 +436,6 @@ void McTRS80::handleWD1771DiskController( uint32_t addr,  uint32_t data,
 // Bus action active callback
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void McTRS80::busActionActiveCallback(BR_BUS_ACTION actionType, 
-                    BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
+void McTRS80::busReqAckedCallback(BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt)
 {
 }

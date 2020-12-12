@@ -16,7 +16,8 @@ TargetControl::TargetControl(BusControl& busControl)
     programmingClear();
     _isSuspended = false;
     _pBusAccessCB = NULL;
-    _pBusAccessCBObject = NULL;
+    _pBusReqAckedCB = NULL;
+    _pBusCBObject = NULL;
     for (uint32_t i = 0; i < MEM_WAIT_HIGH_ADDR_WATCH_LEN; i++)
         _memWaitHighAddrWatch[i] = 0;
     init();
@@ -34,10 +35,10 @@ void TargetControl::init()
 }
 
 // Service
-void TargetControl::service(bool serviceWaitOnly)
+void TargetControl::service(bool dontStartAnyNewBusActions)
 {
     // Service processing cycle
-    cycleService(serviceWaitOnly);
+    cycleService(dontStartAnyNewBusActions);
 }
 
 // Suspend
@@ -122,11 +123,23 @@ bool TargetControl::debuggerStepIn()
     }
 }
 
-// Target commands
+// Target RESET
 void TargetControl::targetReset()
 {
     debuggerContinue();
     _busControl.bus().targetReset(_busControl.busSettings().resetDurationMs);
+}
+
+// Target INT (interrupt)
+void TargetControl::targetINT()
+{
+    // TODO 2020
+}
+
+// Target NMI (non-maskable interrupt)
+void TargetControl::targetNMI()
+{
+    // TODO 2020
 }
 
 // #define INCLUDE_DISASSEMBLER
@@ -220,7 +233,7 @@ void TargetControl::targetReset()
 //     //     _busSocketId = _busControl.socketAdd(    
 //     //         true,
 //     //         TargetControl::handleWaitInterruptStatic,
-//     //         TargetControl::busActionActiveStatic,
+//     //         TargetControl::busReqAckedStatic,
 //     //         false,
 //     //         false,
 //     //         // Reset
@@ -233,7 +246,7 @@ void TargetControl::targetReset()
 //     //         false,
 //     //         0,
 //     //         false,
-//     //         BR_BUS_ACTION_GENERAL,
+//     //         BR_BUS_REQ_REASON_GENERAL,
 //     //         false,
 //     //         this
 //     //     );
@@ -829,21 +842,21 @@ void TargetControl::getRegsJSON(char* pBuf, int len)
 // // Handle bus actions
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// void TargetControl::busActionActiveStatic(void* pObject, BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASON reason)
+// void TargetControl::busReqAckedStatic(void* pObject, BR_BUS_ACTION actionType,  BR_BUS_REQ_REASON reason)
 // {
 //     if(!pObject)
 //         return;
-//     ((TargetControl*)pObject)->busActionActive(actionType, reason);
+//     ((TargetControl*)pObject)->busReqAcked(actionType, reason);
 // }
 
-// void TargetControl::busActionActive(BR_BUS_ACTION actionType,  BR_BUS_ACTION_REASON reason)
+// void TargetControl::busReqAcked(BR_BUS_ACTION actionType,  BR_BUS_REQ_REASON reason)
 // {
 //     // LogWrite(MODULE_PREFIX, LOG_DEBUG,"Bus action active type %d reason %d programPending %d", 
 //     //         actionType, reason, _busActionPendingProgramTarget);
 
 //     if (actionType == BR_BUS_ACTION_RESET)
 //     {
-//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActive Reset");
+//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busReqAcked Reset");
 //         _prefixTracker[0] = _prefixTracker[1] = false;
 
 //         // Since we're receiving a reset we are at the start of the program so clear prefix-tracking
@@ -853,7 +866,7 @@ void TargetControl::getRegsJSON(char* pBuf, int len)
 //         // we asked for it)
 //         if (_targetResetPending)
 //         {
-//             LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActive Reset pending - go straight to inject");
+//             LogWrite(MODULE_PREFIX, LOG_DEBUG, "busReqAcked Reset pending - go straight to inject");
 //             // Go straight into injecting mode
 //             _targetStateAcqMode = TARGET_STATE_ACQ_INJECTING;
 //             _targetResetPending = false;
@@ -861,16 +874,16 @@ void TargetControl::getRegsJSON(char* pBuf, int len)
 //     }
 //     else if (actionType == BR_BUS_ACTION_RESET_END)
 //     {
-//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActive ResetEnd");
+//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busReqAcked ResetEnd");
 //     }
 //     else if (actionType == BR_BUS_ACTION_BUSRQ)
 //     {
-//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActive BUSRQ");
+//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busReqAcked BUSRQ");
 
 //         // Program target pending?
 //         if (_busActionPendingProgramTarget)
 //         {
-//             LogWrite(MODULE_PREFIX, LOG_NOTICE, "busActionActive pendingProgramTarget numBlocks %d",
+//             LogWrite(MODULE_PREFIX, LOG_NOTICE, "busReqAcked pendingProgramTarget numBlocks %d",
 //                             _targetProgrammer.numMemoryBlocks());
 
 //             // Write the blocks
@@ -1165,9 +1178,9 @@ void TargetControl::getRegsJSON(char* pBuf, int len)
 
 // //             // Request bus
 // //             // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Request bus for mirror");
-// //             BR_BUS_ACTION_REASON busAction = BR_BUS_ACTION_MIRROR;
+// //             BR_BUS_REQ_REASON busAction = BR_BUS_REQ_REASON_MIRROR;
 // //             if (_requestDisplayWhileStepping)
-// //                 busAction = BR_BUS_ACTION_DISPLAY;
+// //                 busAction = BR_BUS_REQ_REASON_DISPLAY;
 // //             _requestDisplayWhileStepping = false;
 // //             _busControl.targetReqBus(_busSocketId, busAction);
 // //             _postInjectMemoryMirror = false;

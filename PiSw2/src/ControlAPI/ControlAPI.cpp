@@ -61,24 +61,10 @@ void ControlAPI::init()
 {
     // Connect to the bus socket
     if (_busSocketId < 0)
-        _busSocketId = _busControl.sock().add( 
+        _busSocketId = _busControl.sock().addSocket( 
             true,
             ControlAPI::handleWaitInterruptStatic,
-            ControlAPI::busActionActiveStatic,
-            false,
-            false,
-            // Reset
-            false,
-            0,
-            // NMI
-            false,
-            0,
-            // IRQ
-            false,
-            0,
-            false,
-            BR_BUS_ACTION_GENERAL,
-            false,
+            ControlAPI::busReqAckedStatic,
             this);
 
     // Connect to the comms socket
@@ -415,14 +401,14 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
     {
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Target Bus Req");
         // // Get bus status
-        // busControl.targetReqBus(_busSocketId, BR_BUS_ACTION_GENERAL);
+        // busControl.targetReqBus(_busSocketId, BR_BUS_REQ_REASON_GENERAL);
         return true;
     }
     else if (strcasecmp(cmdName, "targetBusRel") == 0)
     {
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Target Bus Req");
         // // Get bus status
-        // busControl.targetReqBus(_busSocketId, BR_BUS_ACTION_GENERAL);
+        // busControl.targetReqBus(_busSocketId, BR_BUS_REQ_REASON_GENERAL);
         return true;
     }
     else if (strcasecmp(cmdName, "clockHzGet") == 0)
@@ -764,19 +750,17 @@ bool ControlAPI::muxLineHandler(const char* pCmdJson)
 // Callbacks/Hooks
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ControlAPI::busActionActiveStatic(void* pObject, BR_BUS_ACTION actionType, 
-            BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
+void ControlAPI::busReqAckedStatic(void* pObject, BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt)
 {
     if (!pObject)
         return;
-    ((ControlAPI*)pObject)->busActionActive(actionType, reason, rslt);
+    ((ControlAPI*)pObject)->busReqAcked(reason, rslt);
 }
 
-void ControlAPI::busActionActive(BR_BUS_ACTION actionType, 
-            BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
+void ControlAPI::busReqAcked(BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt)
 {
 // #ifdef DEBUG_BUS_ACTION_COMPLETE
-//     LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActive type %d reason %d rslt %d", 
+//     LogWrite(MODULE_PREFIX, LOG_DEBUG, "busReqAcked type %d reason %d rslt %d", 
 //                 actionType, reason, rslt);
 // #endif
 
@@ -1149,7 +1133,7 @@ bool ControlAPI::apiWriteReadTarget(const char* pCmdJson,
         // _pThisInstance->_memAccessIo = false;
         // _pThisInstance->_memAccessRdWrErrCount = 0;
         // _pThisInstance->_memAccessRdWrErrStr[0] = 0;
-        // busControl.targetReqBus(_busSocketId, BR_BUS_ACTION_GENERAL);
+        // busControl.targetReqBus(_busSocketId, BR_BUS_REQ_REASON_GENERAL);
         // // Now enter a loop to wait for the bus action to complete
         // static const uint32_t MAX_WAIT_FOR_BUS_ACCESS_US = 50000;
         // uint32_t busAccessReqStart = micros();

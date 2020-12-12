@@ -8,6 +8,8 @@
 #include "logging.h"
 #include "TargetCPUZ80.h"
 
+#define DEBUG_TARGET_PROGRAMMING
+
 // Module name
 static const char MODULE_PREFIX[] = "TargCtrlProg";
 
@@ -17,7 +19,7 @@ static const char MODULE_PREFIX[] = "TargCtrlProg";
 
 void TargetControl::programmingClear()
 {
-    _programmingPending = false;
+    _programmingStartPending = false;
     _programmingDoExec = false;
     _programmingEnterDebugger = false;
 }
@@ -32,8 +34,10 @@ void TargetControl::programmingStart(bool execAfterProgramming, bool enterDebugg
     }
 
     // Indicate that programming is pending
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "programmingStart targetReqBus");
-    _programmingPending = true;
+#ifdef DEBUG_TARGET_PROGRAMMING
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "programmingStart targetReqBus");
+#endif
+    _programmingStartPending = true;
     _programmingDoExec = execAfterProgramming;
     _programmingEnterDebugger = enterDebugger;
 
@@ -43,7 +47,7 @@ void TargetControl::programmingStart(bool execAfterProgramming, bool enterDebugg
     //     _busControl.service();
 
     // // Request target bus
-    // _busControl.socketReqBus(_busSocketId, BR_BUS_ACTION_PROGRAMMING);
+    // _busControl.socketReqBus(_busSocketId, BR_BUS_REQ_REASON_PROGRAMMING);
     // _busActionPendingProgramTarget = true;
     // _busActionPendingExecAfterProgram = execAfterProgramming;
 }
@@ -52,20 +56,24 @@ void TargetControl::programmingWrite()
 {
     // Program
     // LogWrite(MODULE_PREFIX, LOG_NOTICE, "programmingWrite pending %d numBlocks %d",
-    //                 _programmingPending, _targetProgrammer.numMemoryBlocks());
+    //                 _programmingStartPending, _targetProgrammer.numMemoryBlocks());
 
     // Write the blocks
     bool codeAtResetVector = false;
     for (uint32_t i = 0; i < _targetProgrammer.numMemoryBlocks(); i++) 
     {
         TargetProgrammer::TargetMemoryBlock* pBlock = _targetProgrammer.getMemoryBlock(i);
-        // BR_RETURN_TYPE brResult = 
+#ifdef DEBUG_TARGET_PROGRAMMING
+        BR_RETURN_TYPE brResult = 
+#endif
         _busControl.mem().blockWrite(pBlock->start, 
                     _targetProgrammer.getMemoryImagePtr() + pBlock->start, pBlock->len,
                     BLOCK_ACCESS_MEM);
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG,
-        //                     "progWrite done %08x len %d result %d micros %u", 
-        //                     pBlock->start, pBlock->len, brResult, micros());
+#ifdef DEBUG_TARGET_PROGRAMMING
+        LogWrite(MODULE_PREFIX, LOG_DEBUG,
+                            "progWrite done %08x len %d result %d micros %u", 
+                            pBlock->start, pBlock->len, brResult, micros());
+#endif
         if (pBlock->start == Z80_PROGRAM_RESET_VECTOR)
             codeAtResetVector = true;
     }
@@ -96,25 +104,6 @@ void TargetControl::programmingWrite()
         programExec(codeAtResetVector);
     else if (_programmingEnterDebugger)
         debuggerBreak();
-}
-
-void TargetControl::programmingDone()
-{
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "programmingDone");
-
-    // No longer pending
-    _programmingPending = false;
-
-    // TODO 2020
-    // Set flag to indicate mode
-    // _stepMode = STEP_MODE_STEP_PAUSED;
-
-    // // Release bus hold if held
-    // if (_busControl.waitIsHeld())
-    // {
-    //     // Remove any hold to allow execution / injection
-    //     _busControl.waitHold(_busSocketId, false);
-    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -167,8 +156,10 @@ void TargetControl::programExec(bool codeAtResetVector)
                 if (totalCodeLen != 0)
                 {
                     // Executor code
+#ifdef DEBUG_TARGET_PROGRAMMING
                     LogWrite(MODULE_PREFIX, LOG_DEBUG,"Set hw & regs snippet at %04x len %d starts %02x %02x %02x %02x", 
                                 codeDestAddr, totalCodeLen, executorCode[0], executorCode[1], executorCode[2], executorCode[3]);
+#endif
                     _busControl.mem().blockWrite(codeDestAddr, executorCode, totalCodeLen, BLOCK_ACCESS_MEM);
 
                     // Reset vector

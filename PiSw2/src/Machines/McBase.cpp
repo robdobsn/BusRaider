@@ -55,7 +55,7 @@ McBase::McBase(McManager& mcManager, BusControl& busControl, const McVariantTabl
         _machineDescriptor = _defaultVariantTable;
 
     // Add to machine manager
-    _mcManager.add(this);
+    _mcManager.addMachine(this);
 }
 
 // Get machine descriptor table for the machine

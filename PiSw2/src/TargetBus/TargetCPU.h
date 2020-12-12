@@ -19,33 +19,33 @@ enum BR_RETURN_TYPE {
     BR_NOT_HANDLED = 4
 };
 
-// Bus actions 
-enum BR_BUS_ACTION {
-    BR_BUS_ACTION_NONE, 
-    BR_BUS_ACTION_RESET,
-    BR_BUS_ACTION_NMI,
-    BR_BUS_ACTION_IRQ,
-    BR_BUS_ACTION_BUSRQ,
-    BR_BUS_ACTION_BUSRQ_FAIL,
-    BR_BUS_ACTION_HOLD_IN_WAIT,
-    BR_BUS_ACTION_PAGE_OUT_FOR_INJECT,
-    BR_BUS_ACTION_PAGE_IN_FOR_INJECT,
-    BR_BUS_ACTION_RESET_END,
-    BR_BUS_ACTION_COUNT
-};
+// // Bus actions 
+// enum BR_BUS_ACTION {
+//     BR_BUS_ACTION_NONE, 
+//     BR_BUS_ACTION_RESET,
+//     BR_BUS_ACTION_NMI,
+//     BR_BUS_ACTION_IRQ,
+//     BR_BUS_ACTION_BUSRQ,
+//     BR_BUS_ACTION_BUSRQ_FAIL,
+//     BR_BUS_ACTION_HOLD_IN_WAIT,
+//     BR_BUS_ACTION_PAGE_OUT_FOR_INJECT,
+//     BR_BUS_ACTION_PAGE_IN_FOR_INJECT,
+//     BR_BUS_ACTION_RESET_END,
+//     BR_BUS_ACTION_COUNT
+// };
 
 // Bus action reasons
-enum BR_BUS_ACTION_REASON {
+enum BR_BUS_REQ_REASON {
     // Request for display memory access
-    BR_BUS_ACTION_DISPLAY,
+    BR_BUS_REQ_REASON_DISPLAY,
     // Request to mirror memory during debugging
-    BR_BUS_ACTION_MIRROR,
+    BR_BUS_REQ_REASON_MIRROR,
     // Request to program the target memory
-    BR_BUS_ACTION_PROGRAMMING,
+    BR_BUS_REQ_REASON_PROGRAMMING,
     // Hardware access
-    BR_BUS_ACTION_HW_ACTION,
+    BR_BUS_REQ_REASON_HW_ACTION,
     // General indicator - used when bus action is not bus mastering
-    BR_BUS_ACTION_GENERAL
+    BR_BUS_REQ_REASON_GENERAL
 };
 
 // Return codes from wait-state ISR

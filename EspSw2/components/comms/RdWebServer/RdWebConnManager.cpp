@@ -26,7 +26,7 @@ const static char* MODULE_PREFIX = "WebConnMgr";
 #define RD_WEB_CONN_STACK_SIZE 5000
 #endif
 
-// #define DEBUG_WEB_CONN_MANAGER
+#define DEBUG_WEB_CONN_MANAGER
 // #define DEBUG_WEB_SERVER_HANDLERS
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -105,31 +105,31 @@ void RdWebConnManager::clientConnHandlerTask(void* pvParameters)
 
 void RdWebConnManager::serviceConnections() 
 {
-		// Service existing connections or close them if inactive
+	// Service existing connections or close them if inactive
 	for (RdWebConnection& webConn : _webConnections)
-		{
-			// Service connection
-			webConn.service();
-		}
+	{
+		// Service connection
+		webConn.service();
+	}
 
-		// Get any new connection from queue
-        struct netconn* pNewConnection = NULL;
+	// Get any new connection from queue
+	struct netconn* pNewConnection = NULL;
 	if (xQueueReceive(_newConnQueue, &pNewConnection, 1) == pdTRUE)
+	{
+		if(pNewConnection) 
 		{
-			if(pNewConnection) 
-			{
-				// Put the connection into our connection list if we can
+			// Put the connection into our connection list if we can
 			if (!accommodateConnection(pNewConnection))
-				{
-					// Debug
-					LOG_W(MODULE_PREFIX, "Can't handle conn pConn %lx", (unsigned long)pNewConnection);
+			{
+				// Debug
+				LOG_W(MODULE_PREFIX, "Can't handle conn pConn %lx", (unsigned long)pNewConnection);
 
-					// Need to close the connection as we can't handle it
-					netconn_close(pNewConnection);
-					netconn_delete(pNewConnection);
-				}
+				// Need to close the connection as we can't handle it
+				netconn_close(pNewConnection);
+				netconn_delete(pNewConnection);
 			}
 		}
+	}
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -251,7 +251,7 @@ RdWebResponder* RdWebConnManager::getNewResponder(const RdWebRequestHeader& head
 		{
 			statusCode = HTTP_STATUS_SERVICEUNAVAILABLE;
 			return NULL;
-	}
+		}
 		reqParams.setProtocolChannelID(protocolChannelID);
 	}
 

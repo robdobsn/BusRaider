@@ -85,7 +85,7 @@ uint32_t HwManager::getSnippetToSetupHw(uint32_t codeLocation, uint8_t* pCodeBuf
 //         _busSocketId = _busControl.busSocketAdd(
 //             true,
 //             HwManager::handleWaitInterruptStatic,
-//             HwManager::busActionActiveStatic,
+//             HwManager::busReqAckedStatic,
 //             false,
 //             false,
 //             // Reset
@@ -98,7 +98,7 @@ uint32_t HwManager::getSnippetToSetupHw(uint32_t codeLocation, uint8_t* pCodeBuf
 //             false,
 //             0,
 //             false,
-//             BR_BUS_ACTION_GENERAL,
+//             BR_BUS_REQ_REASON_GENERAL,
 //             false,
 //             this
 //         );
@@ -429,25 +429,25 @@ uint32_t HwManager::getSnippetToSetupHw(uint32_t codeLocation, uint8_t* pCodeBuf
 // Callbacks/Hooks
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// void HwManager::busActionActiveStatic(void* pObject, BR_BUS_ACTION actionType, 
-//         BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
+// void HwManager::busReqAckedStatic(void* pObject, BR_BUS_ACTION actionType, 
+//         BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt)
 // {
 //     if (!pObject)
 //         return;
-//     ((HwManager*)pObject)->busActionActive(actionType, reason, rslt);
+//     ((HwManager*)pObject)->busReqAcked(actionType, reason, rslt);
 // }
 
-// void HwManager::busActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
+// void HwManager::busReqAcked(BR_BUS_ACTION actionType, BR_BUS_REQ_REASON reason, 
 //         BR_RETURN_TYPE rslt)
 // {
-//     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busActionActive %d numHw %d en %s reason %d rslt %d", 
+//     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "busReqAcked %d numHw %d en %s reason %d rslt %d", 
 //     //          actionType, _numHardware, rslt,
 //     //         (_numHardware > 0) ? (_pHw[0]->isEnabled() ? "Y" : "N") : "X", reason);
  
 //     // Iterate hardware
 //     for (int i = 0; i < _numHardware; i++)
 //         if (_pHw[i] && _pHw[i]->isEnabled())
-//             _pHw[i]->handleBusActionActive(actionType, reason, rslt);
+//             _pHw[i]->handlebusReqAcked(actionType, reason, rslt);
 // }
 
 // void HwManager::handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t data, 

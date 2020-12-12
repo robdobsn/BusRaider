@@ -19,7 +19,7 @@
 static const char *MODULE_PREFIX = "RdWebConn";
 
 #define WARN_WEB_CONN_ERROR_CLOSE
-// #define DEBUG_WEB_CONN
+#define DEBUG_WEB_CONN_OPEN_CLOSE
 // #define DEBUG_WEB_REQUEST_HEADERS
 // #define DEBUG_WEB_REQUEST_HEADER_DETAIL
 // #define DEBUG_WEB_REQUEST_READ
@@ -92,7 +92,7 @@ void RdWebConnection::setNewConn(struct netconn *pConnection, RdWebConnManager* 
     netconn_set_recvtimeout(pConnection, 1);
 
     // Debug
-#ifdef DEBUG_WEB_CONN
+#ifdef DEBUG_WEB_CONN_OPEN_CLOSE
     LOG_I(MODULE_PREFIX, "setNewConn pConn %lx", (unsigned long)_pConn);
 #endif
 
@@ -131,7 +131,7 @@ void RdWebConnection::clear()
 
 void RdWebConnection::closeAndClear()
 {
-#ifdef DEBUG_WEB_CONN
+#ifdef DEBUG_WEB_CONN_OPEN_CLOSE
     LOG_W(MODULE_PREFIX, "closeAndClear closing pConn %lx", (unsigned long)_pConn);
 #endif
 
@@ -246,7 +246,7 @@ void RdWebConnection::service()
     // Check for close
     if (errorOccurred || closeRequired)
     {
-#ifdef DEBUG_WEB_CONN
+#ifdef DEBUG_WEB_CONN_OPEN_CLOSE
         LOG_W(MODULE_PREFIX, "service conn closing cause %s pConn %lx", 
                 errorOccurred ? "ErrorOccurred" : "CloseRequired", 
                 (unsigned long)_pConn);
@@ -368,20 +368,20 @@ bool RdWebConnection::serviceConnHeader(const uint8_t* pRxData, uint32_t dataLen
 
     // Now find a responder
     HttpStatusCode statusCode = HTTP_STATUS_NOTFOUND;
-        // Delete any existing responder - there shouldn't be one
-        if (_pResponder)
-        {
-            LOG_W(MODULE_PREFIX, "onRxData unexpectedly deleting _pResponder %lx", (unsigned long)_pResponder);
-            delete _pResponder;
-            _pResponder = NULL;
-        }
+    // Delete any existing responder - there shouldn't be one
+    if (_pResponder)
+    {
+        LOG_W(MODULE_PREFIX, "onRxData unexpectedly deleting _pResponder %lx", (unsigned long)_pResponder);
+        delete _pResponder;
+        _pResponder = NULL;
+    }
 
-        // Get a responder (we are responsible for deletion)
+    // Get a responder (we are responsible for deletion)
     RdWebRequestParams params(_maxSendBufferBytes, _pConnManager->getStdResponseHeaders(), 
-                    std::bind(&RdWebConnection::rawSendOnConn, this, std::placeholders::_1, std::placeholders::_2));
+                std::bind(&RdWebConnection::rawSendOnConn, this, std::placeholders::_1, std::placeholders::_2));
     _pResponder = _pConnManager->getNewResponder(_header, params, statusCode);
 #ifdef DEBUG_RESPONDER_CREATE_DELETE
-        if (_pResponder)
+    if (_pResponder)
         LOG_I(MODULE_PREFIX, "New Responder created type %s", _pResponder->getResponderType());
     else
         LOG_W(MODULE_PREFIX, "Failed to create responder URI %s HTTP resp %d", _header.URIAndParams.c_str(), statusCode);
@@ -429,7 +429,7 @@ bool RdWebConnection::serviceResponse(const uint8_t* pRxData, uint32_t dataLen, 
             uint8_t* pSendBuffer = new uint8_t[_maxSendBufferBytes];
             handleResponseWithBuffer(pSendBuffer);
             delete [] pSendBuffer;
-            }
+        }
         else
         {
             uint8_t pSendBuffer[_maxSendBufferBytes];

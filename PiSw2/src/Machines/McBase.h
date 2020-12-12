@@ -76,9 +76,8 @@ public:
     // Handle a request for memory or IO - or possibly something like in interrupt vector in Z80
     virtual void busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal) = 0;
 
-    // Bus action active callback
-    virtual void busActionActiveCallback(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
-                        BR_RETURN_TYPE rslt) = 0;
+    // Bus request active callback
+    virtual void busReqAckedCallback(BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt) = 0;
 
     // Mirror change buffer max length
     static const int MAX_MIRROR_CHANGE_BUF_LEN = 5000;

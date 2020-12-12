@@ -55,24 +55,10 @@ void McManager::init()
 {
     // Connect to the bus socket
     if (_busSocketId < 0)
-        _busSocketId = _busControl.sock().add(
+        _busSocketId = _busControl.sock().addSocket(
             true,
             handleWaitInterruptStatic,
-            busActionActiveStatic,
-            false,
-            false,
-            // Reset
-            false,
-            0,
-            // NMI
-            false,
-            0,
-            // IRQ
-            false,
-            0,
-            false,
-            BR_BUS_ACTION_DISPLAY,
-            false,
+            busReqAckedStatic,
             this
         );
 
@@ -220,7 +206,7 @@ const char* McManager::getMachineJSON()
 // Manage Machine List
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void McManager::add(McBase* pMachine)
+void McManager::addMachine(McBase* pMachine)
 {
     if (_numMachines >= MAX_MACHINES)
         return;
@@ -347,13 +333,13 @@ void McManager::displayRefresh()
             // if (getTargetTracker().busAccessAvailable())
             // {
                 // Asynch display refresh - start bus access request here
-                _busControl.sock().reqBus(_busSocketId, BR_BUS_ACTION_DISPLAY);
-                _busActionPendingDisplayRefresh = true;
+                _busControl.sock().reqBus(_busSocketId, BR_BUS_REQ_REASON_DISPLAY);
+                _displayRefreshPending = true;
             // }
             // else if (getTargetTracker().isTrackingActive())
             // {
             //     // Refresh from mirror hardware
-            //     _busActionPendingDisplayRefresh = true;
+            //     _displayRefreshPending = true;
             //     _pCurMachine->refreshDisplay();
             // }
             // else
@@ -535,31 +521,26 @@ void McManager::handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t
 // Bus action callback
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void McManager::busActionActiveStatic(void* pObject, BR_BUS_ACTION actionType, 
-            BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
+void McManager::busReqAckedStatic(void* pObject, BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt)
 {
     if (!pObject)
         return;
-    ((McManager*)pObject)->busActionActive(actionType, reason, rslt);
+    ((McManager*)pObject)->busReqAcked(reason, rslt);
 }
 
-void McManager::busActionActive(BR_BUS_ACTION actionType, 
-            BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
+void McManager::busReqAcked(BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt)
 {
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG,"busActionActive type %d reason %d dispPending %d", 
-    //         actionType, reason, _busActionPendingDisplayRefresh);
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG,"busReqAcked type %d reason %d dispPending %d", 
+    //         actionType, reason, _displayRefreshPending);
 
-    // We don't care what the reason for the BUSRQ is we will use it for what we need
-    if (actionType == BR_BUS_ACTION_BUSRQ)
+    // We don't care what the reason for the BUSRQ is - we will use it for what we need
+    // Display refresh pending?
+    if (_displayRefreshPending)
     {
-        // Display refresh pending?
-        if (_busActionPendingDisplayRefresh)
-        {
-            // Call the machine to handle
-            if (_pCurMachine && (rslt == BR_OK))
-                _pCurMachine->refreshDisplay();
-            _busActionPendingDisplayRefresh = false;    
-        }
+        // Call the machine to handle
+        if (_pCurMachine && (rslt == BR_OK))
+            _pCurMachine->refreshDisplay();
+        _displayRefreshPending = false;    
     }
 }
 

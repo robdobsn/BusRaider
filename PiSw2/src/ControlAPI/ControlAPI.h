@@ -61,11 +61,9 @@ private:
     bool handleRxMsg(const char *pCmdJson, const uint8_t *pParams, unsigned paramsLen,
                      char *pRespJson, unsigned maxRespLen);
 
-    // Bus action active callback
-    static void busActionActiveStatic(void *pObject, BR_BUS_ACTION actionType,
-                                      BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt);
-    void busActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason,
-                         BR_RETURN_TYPE rslt);
+    // Bus request active callback
+    static void busReqAckedStatic(void *pObject, BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt);
+    void busReqAcked(BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt);
 
     // Wait interrupt handler
     static void handleWaitInterruptStatic(void *pObject, uint32_t addr, uint32_t data,

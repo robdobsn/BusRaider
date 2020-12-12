@@ -138,8 +138,7 @@ void McRobsZ80::busAccessCallback( uint32_t addr,  uint32_t data,
 }
 
 // Bus action active callback
-void McRobsZ80::busActionActiveCallback(BR_BUS_ACTION actionType, 
-                    BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt)
+void McRobsZ80::busReqAckedCallback(BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt)
 {
     // Check for BUSRQ
     if ((actionType == BR_BUS_ACTION_BUSRQ) && (rslt == BR_OK))

@@ -25,7 +25,7 @@ public:
     void service();
 
     // Manage machines
-    void add(McBase* pMachine);
+    void addMachine(McBase* pMachine);
     bool setupMachine(const char* mcJson);
     bool setMachineByName(const char* mcName);
 
@@ -73,7 +73,7 @@ public:
     void targetIrq(int durationTStates = -1)
     {
         // Generate a maskable interrupt
-        _busControl.sock().reqIRQ(_busSocketId, durationTStates);
+        _busControl.sock().reqINT(_busSocketId);
     }
 
 private:
@@ -102,10 +102,8 @@ private:
                     char* pRespJson, unsigned maxRespLen);
 
     // Bus action active callback
-    static void busActionActiveStatic(void* pObject, BR_BUS_ACTION actionType, 
-            BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt);
-    void busActionActive(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
-            BR_RETURN_TYPE rslt);
+    static void busReqAckedStatic(void* pObject, BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt);
+    void busReqAcked(BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt);
 
     // Wait interrupt handler
     static void handleWaitInterruptStatic(void* pObject, uint32_t addr, uint32_t data, 
@@ -124,7 +122,7 @@ private:
     McBase* _pCurMachine;
 
     // Pending actions
-    bool _busActionPendingDisplayRefresh;
+    bool _displayRefreshPending;
 
     // Display refresh
     const int REFRESH_RATE_WINDOW_SIZE_MS = 1000;

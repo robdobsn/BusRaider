@@ -42,7 +42,7 @@ public:
     void targetReset(uint32_t ms);
 
     // Set signal (RESET/IRQ/NMI/BUSRQ)
-    void setBusSignal(BR_BUS_ACTION busAction, bool assert);
+    // void setBusSignal(BR_BUS_ACTION busAction, bool assert);
 
     // Read and write raw blocks - directly to bus
     BR_RETURN_TYPE rawBlockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, BlockAccessType accessType);
@@ -153,6 +153,16 @@ public:
     // Set a pin to be an output and set initial value for that pin
     static void setPinOut(int pinNumber, bool val);
     
+    // Conversion from T-States to microseconds given clock frequency
+    static uint32_t getUsFromTStates(uint32_t tStates, uint32_t clockFreqHz, uint32_t defaultTStates = 1)
+    {
+        uint32_t tS = tStates >= 1 ? tStates : defaultTStates;
+        uint32_t uS = 1000000 * tS / clockFreqHz;
+        if (uS <= 0)
+            uS = 1;
+        return uS;
+    }
+
 private:
     // State
     bool _busReqAcknowledged;

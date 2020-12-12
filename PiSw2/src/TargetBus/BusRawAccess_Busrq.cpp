@@ -206,7 +206,7 @@ bool BusRawAccess::busReqWaitForAck(bool ack, uint32_t maxWaitForBUSACKus)
     if (rawBUSAKActive() != ack)
     {
         uint32_t maxUsToWait = (maxWaitForBUSACKus == 0) ? 
-                BusSocketInfo::getUsFromTStates(BR_MAX_WAIT_FOR_BUSACK_T_STATES, _targetClockGenerator.getFreqInHz()) : 
+                getUsFromTStates(BR_MAX_WAIT_FOR_BUSACK_T_STATES, _targetClockGenerator.getFreqInHz()) : 
                 maxWaitForBUSACKus;
         if (maxUsToWait <= 0)
             maxUsToWait = 1;

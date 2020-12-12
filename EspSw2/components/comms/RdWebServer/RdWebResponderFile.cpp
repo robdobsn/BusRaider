@@ -12,6 +12,8 @@
 static const char *MODULE_PREFIX = "RdWebRespFile";
 
 // #define DEBUG_RESPONDER_FILE 1
+#define DEBUG_RESPONDER_FILE_CONTENTS
+#define DEBUG_RESPONDER_FILE_START_END
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor / Destructor
@@ -48,8 +50,8 @@ bool RdWebResponderFile::handleData(const uint8_t* pBuf, uint32_t dataLen)
 bool RdWebResponderFile::startResponding(RdWebConnection& request)
 {
     _isActive = _chunker.start(_filePath, _reqParams.getMaxSendSize(), false);
-#ifdef DEBUG_RESPONDER_FILE
-    LOG_I(MODULE_PREFIX, "startResponding isActive %d", _isActive);
+#ifdef DEBUG_RESPONDER_FILE_START_END
+    LOG_I(MODULE_PREFIX, "startResponding");
 #endif
     return _isActive;
 }
@@ -71,8 +73,13 @@ uint32_t RdWebResponderFile::getResponseNext(uint8_t* pBuf, uint32_t bufMaxLen)
     
     // Check if done
     if (finalChunk)
+    {
         _isActive = false;
-#ifdef DEBUG_RESPONDER_FILE
+#ifdef DEBUG_RESPONDER_FILE_START_END
+        LOG_I(MODULE_PREFIX, "getResponseNext endOfFile readLen %d", readLen);
+#endif
+    }
+#ifdef DEBUG_RESPONDER_FILE_CONTENTS
     LOG_I(MODULE_PREFIX, "getResponseNext readLen %d isActive %d", readLen, _isActive);
 #endif
     return readLen;

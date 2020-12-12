@@ -41,8 +41,7 @@ public:
     virtual void busAccessCallback(uint32_t addr, uint32_t data, uint32_t flags, uint32_t& retVal) override;
 
     // Bus action active callback
-    virtual void busActionActiveCallback(BR_BUS_ACTION actionType, 
-                    BR_BUS_ACTION_REASON reason, BR_RETURN_TYPE rslt) override;
+    virtual void busReqAckedCallback(BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt) override;
 
     // Clock frequency in Hz change
     static const uint32_t MIN_KEY_DOWN_TIME_IN_T_STATES = 750000;

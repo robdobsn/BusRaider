@@ -21,14 +21,15 @@ public:
     void init();
 
     // Bus Sockets - used to hook things like waitInterrupts, busControl, etc
-    int add(bool enabled, BusAccessCBFnType* busAccessCallback,
-            BusActionCBFnType* busActionCallback, 
-            bool waitOnMemory, bool waitOnIO,
-            bool resetPending, uint32_t resetDurationTStates,
-            bool nmiPending, uint32_t nmiDurationTStates,
-            bool irqPending, uint32_t irqDurationTStates,
-            bool busMasterRequest, BR_BUS_ACTION_REASON busMasterReason,
-            bool holdInWaitReq, void* pSourceObject);
+    int addSocket(bool enabled, BusAccessCBFnType* busAccessCallback,
+            BusReqAckedCBFnType* busReqAckedCallback, 
+            // bool waitOnMemory, bool waitOnIO,
+            // bool resetPending, uint32_t resetDurationTStates,
+            // bool nmiPending, uint32_t nmiDurationTStates,
+            // bool irqPending, uint32_t irqDurationTStates,
+            // bool busMasterRequest, BR_BUS_REQ_REASON busMasterReason,
+            // bool holdInWaitReq, 
+            void* pSourceObject);
     void enable(uint32_t busSocket, bool enable);
     bool isEnabled(uint32_t busSocket);
     void setup(uint32_t busSocket, bool waitOnMem, bool waitOnIO);
@@ -37,10 +38,10 @@ public:
     void suspend(bool suspend, bool clearPendingActions);
 
     // Socket requests
-    void reqIRQ(uint32_t busSocket, int durationTStates = -1);
-    void reqReset(uint32_t busSocket, int durationTStates = -1);
-    void reqNMI(uint32_t busSocket, int durationTStates = -1);
-    void reqBus(uint32_t busSocket, BR_BUS_ACTION_REASON busMasterReason);
+    void reqReset(uint32_t busSocket);
+    void reqINT(uint32_t busSocket);
+    void reqNMI(uint32_t busSocket);
+    void reqBus(uint32_t busSocket, BR_BUS_REQ_REASON busReqReason);
 
 private:
     // Sockets
@@ -62,13 +63,16 @@ private:
     bool _socketActionRequested;
 
     // Helpers
-    void clearAllPending();
+    // void clearAllPending();
     void updateAfterSocketChange();
-    static void cycleActionStaticCB(void* pObject, BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
-                    uint32_t socketIdx, BR_RETURN_TYPE rslt);
-    void cycleActionCB(BR_BUS_ACTION actionType, BR_BUS_ACTION_REASON reason, 
-                    uint32_t socketIdx, BR_RETURN_TYPE rslt);
-    static void busAccessCallbackStatic(void* pObject, uint32_t addr, uint32_t data, uint32_t flags, uint32_t& curRetVal);
+
+    // Callbacks
+    static void busReqAckedStatic(void* pObject, BR_BUS_REQ_REASON reason, 
+                        BR_RETURN_TYPE rslt);
+    void busReqAcked(BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt);
+
+    static void busAccessCallbackStatic(void* pObject, uint32_t addr, 
+                        uint32_t data, uint32_t flags, uint32_t& curRetVal);
     void busAccessCallback(uint32_t addr, uint32_t data, 
-            uint32_t flags, uint32_t& curRetVal);
+                        uint32_t flags, uint32_t& curRetVal);
 };

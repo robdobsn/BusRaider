@@ -78,7 +78,7 @@ static const char *defaultConfigJSON =
             R"("wsPcol":"RICSerial",)"
             R"("wsPingMs":2000,)"
             R"("logLevel":"D",)"
-            R"("sendMax":1000,)"
+            R"("sendMax":10000,)"
             R"("taskCore":0,)"
             R"("taskStack":3000,)"
             R"("taskPriority":9)"            

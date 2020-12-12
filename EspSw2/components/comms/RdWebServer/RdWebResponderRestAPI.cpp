@@ -166,8 +166,8 @@ uint32_t RdWebResponderRestAPI::getResponseNext(uint8_t* pBuf, uint32_t bufMaxLe
         {
             // Copy response
             memcpy(pBuf, _respStr.c_str(), respLen);
-    // Done response
-    _isActive = false;
+            // Done response
+            _isActive = false;
             _respStr.clear();
         }
     }
