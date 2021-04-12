@@ -482,7 +482,7 @@
         }
 
         function uploadAndRunFile(file, i) {
-            sendCmdToTarget("progClear");
+            sendCmdToTarget("imagerClear");
             uploadFileSpecUrl("/uploadandrun", 'progress-bar-run', file, i);
         }
 
@@ -1454,20 +1454,21 @@
 
         .tooltip .tooltiptext {
             visibility: hidden;
-            width: 120px;
-            background-color: black;
+            width: fit-content;
+            background-color: #3d3dd6;
             color: #fff;
             text-align: center;
             border-radius: 6px;
-            padding: 5px 0;
+            padding: 0 10px;
             position: absolute;
             z-index: 1;
             bottom: 100%;
             left: 50%;
-            margin-left: -100px;
+            margin-left: -50px;
             /* Fade in tooltip - takes 1 second to go from 0% to 100% opac: */
             opacity: 0;
             transition: opacity 1s;
+            line-height: 1rem;
         }
 
         .tooltip:hover .tooltiptext {
@@ -1851,9 +1852,9 @@
             </div>
             <div class="uiPanelSub">
                 <span class="button" onclick="sendCmdToTarget('targetReset')">Reset Z80</span>
-                <span class="button" onclick="sendCmdToTarget('progClear')">Clear target buffer</span>
-                <span class="button" onclick="sendCmdToTarget('progWrite')">Program from buffer</span>
-                <span class="button" onclick="sendCmdToTarget('programandexec')">Program and execute</span>
+                <span class="button" onclick="sendCmdToTarget('imagerClear')">Clear target buffer</span>
+                <span class="button" onclick="sendCmdToTarget('imagerWrite')">Program from buffer</span>
+                <span class="button" onclick="sendCmdToTarget('imagerWriteAndExec')">Program and execute</span>
             </div>
         </div>
         <div id="upload-and-run" class="layout-region drop-zone">
@@ -1874,7 +1875,7 @@
             </form>
             <progress id="progress-bar-buffer" max=100 value=0></progress>
 
-            <span class="button" onclick="sendCmdToTarget('progWrite')">Send to target</span>
+            <span class="button" onclick="sendCmdToTarget('imagerWrite')">Send to target</span>
 
             <span class="button" onclick="sendCmdToTarget('ioclrtarget')">Clear all RC2014 IO</span> 
         </div> -->

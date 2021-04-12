@@ -268,13 +268,13 @@ bool McManager::setupMachine(const char* mcJson)
     // Setup display
     pMc->setupDisplay(_pDisplay);
 
-    // Setup the bus socket
-    _busControl.sock().setup(_busSocketId, 
+    // Setup the wait handling
+    _busControl.bus().waitConfigSocket(
                 pMc->isMonitorMREQEnabled(), 
                 pMc->isMonitorIORQEnabled());
 
-    // Setup programmer
-    _busControl.prog().setSetRegistersCodeAddr(pMc->getSetRegistersCodeAddr());
+    // Setup target imager
+    _busControl.imager().setSetRegistersCodeAddr(pMc->getSetRegistersCodeAddr());
 
     // See if any files to load
     static const int MAX_FILE_NAME_LEN = 100;
@@ -498,7 +498,7 @@ bool McManager::targetFileHandler(const char* rxFileInfo, const uint8_t* pData, 
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "targetFileHandler");
     McBase* pMc = getMachine();
     if (pMc)
-        return pMc->fileHandler(rxFileInfo, pData, dataLen, _busControl.prog());
+        return pMc->fileHandler(rxFileInfo, pData, dataLen, _busControl.imager());
     return false;
 }
 

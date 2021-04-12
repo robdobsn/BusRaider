@@ -7,7 +7,7 @@
 #include "rdutils.h"
 #include "lowlib.h"
 #include "BusControl.h"
-#include "TargetProgrammer.h"
+#include "TargetImager.h"
 #include "McManager.h"
 #include "McZXSpectrumTZXFormat.h"
 #include "McZXSpectrumSNAFormat.h"
@@ -495,7 +495,7 @@ bool McZXSpectrum::canProcFileType(const char* pFileType)
 
 // Handle a file
 bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen,
-                TargetProgrammer& targetProgrammer)
+                TargetImager& targetImager)
 {
     // Get the file type (extension of file name)
     #define MAX_VALUE_STR 30
@@ -516,9 +516,9 @@ bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         // TZX
         McZXSpectrumTZXFormat formatHandler;
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing TZX file len %d", fileLen);
-        formatHandler.proc(targetProgrammer.addMemoryBlockStatic, 
-                targetProgrammer.setTargetRegistersStatic,
-                &targetProgrammer,
+        formatHandler.proc(targetImager.addMemoryBlockStatic, 
+                targetImager.setTargetRegistersStatic,
+                &targetImager,
                 pFileData, fileLen);
     }
     else if (strcasecmp(pFileType, ".z80") == 0)
@@ -527,9 +527,9 @@ bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         McZXSpectrumZ80Format formatHandler;
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing Z80 file len %d", fileLen);
         // Handle registers and injecting RET
-        formatHandler.proc(targetProgrammer.addMemoryBlockStatic, 
-                targetProgrammer.setTargetRegistersStatic,
-                &targetProgrammer,
+        formatHandler.proc(targetImager.addMemoryBlockStatic, 
+                targetImager.setTargetRegistersStatic,
+                &targetImager,
                 pFileData, fileLen);
     }
     else if (strcasecmp(pFileType, ".sna") == 0)
@@ -538,9 +538,9 @@ bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         McZXSpectrumSNAFormat formatHandler;
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing SNA file len %d", fileLen);
         // Handle the format
-        formatHandler.proc(targetProgrammer.addMemoryBlockStatic, 
-                targetProgrammer.setTargetRegistersStatic,
-                &targetProgrammer,
+        formatHandler.proc(targetImager.addMemoryBlockStatic, 
+                targetImager.setTargetRegistersStatic,
+                &targetImager,
                 pFileData, fileLen);
     }
     else
@@ -551,7 +551,7 @@ bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
             baseAddr = strtoul(baseAddrStr, NULL, 16);
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
-        targetProgrammer.addMemoryBlock(baseAddr, pFileData, fileLen);
+        targetImager.addMemoryBlock(baseAddr, pFileData, fileLen);
     }
     return true;
 }

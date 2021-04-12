@@ -17,16 +17,6 @@ static const char MODULE_PREFIX[] = "BusRawBlock";
 
 BR_RETURN_TYPE BusRawAccess::rawBlockRead(uint32_t addr, uint8_t* pData, uint32_t len, BlockAccessType accessType)
 {
-    // TODO 2020 - assumes bus is under control
-    // // Check if we need to request bus
-    // bool busRqAndRelease = !_busReqAcknowledged;
-    // if (busRqAndRelease) {
-    //     // Request bus and take control after ack
-    //     BR_RETURN_TYPE ret = controlRequestAndTake();
-    //     if (ret != BR_OK)
-    //         return ret;
-    // }
-
     // Set PIB to input
     pibSetIn();
 
@@ -138,30 +128,12 @@ BR_RETURN_TYPE BusRawAccess::rawBlockRead(uint32_t addr, uint8_t* pData, uint32_
             }
         }
     }
-
-    // TODO 2020 - assumes bus is under control
-    // // Check if we need to release bus
-    // if (busRqAndRelease) {
-    //     // release bus
-    //     controlRelease();
-    // }
     return BR_OK;
 }
 
 // Write a consecutive block of memory to host
 BR_RETURN_TYPE BusRawAccess::rawBlockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, BlockAccessType accessType)
 {
-    // TODO 2020 - assumes bus is under control
-    // // Check if we need to request bus
-    // bool busRqAndRelease = !_busReqAcknowledged;
-    // if (busRqAndRelease) {
-    //     // Request bus and take control after ack
-    //     BR_RETURN_TYPE ret = controlRequestAndTake();
-    //     if (ret != BR_OK)
-    //         return ret;
-    // }
-
-
     // Set PIB to input
     pibSetIn();
 
@@ -258,14 +230,5 @@ BR_RETURN_TYPE BusRawAccess::rawBlockWrite(uint32_t addr, const uint8_t* pData, 
 
     // Set the PIB back to INPUT
     pibSetIn();
-
-    // TODO 2020 - assumes bus is under control
-    // // Check if we need to release bus
-    // if (busRqAndRelease) {
-    //     // release bus
-    //     controlRelease();
-    // }
-
     return BR_OK;
 }
-

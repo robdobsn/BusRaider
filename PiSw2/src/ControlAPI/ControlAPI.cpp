@@ -9,7 +9,6 @@
 #include "BusControl.h"
 #include "CommandHandler.h"
 #include "McManager.h"
-// #include "HwManager.h"
 #include "DebugHelper.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -36,8 +35,6 @@ ControlAPI* ControlAPI::_pThisInstance = NULL;
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Constructor
-// ControlAPI::ControlAPI(CommandHandler& commandHandler, HwManager& hwManager, BusControl& busControl) :
-//         _commandHandler(commandHandler), _hwManager(hwManager), _busControl(busControl)
 ControlAPI::ControlAPI(CommandHandler& commandHandler, BusControl& busControl, McManager& mcManager) :
         _commandHandler(commandHandler), _busControl(busControl), _mcManager(mcManager)
 {
@@ -45,16 +42,6 @@ ControlAPI::ControlAPI(CommandHandler& commandHandler, BusControl& busControl, M
     // Sockets
     _busSocketId = -1;
     _commsSocketId = -1;
-    // // Synchronous memory access
-    // _memAccessPending = false;
-    // _memAccessWrite = false;
-    // _memAccessDataLen = 0;
-    // _memAccessAddr = 0;
-    // _memAccessIo = false;
-    // _memAccessRdWrErrCount = 0;
-    // _memAccessRdWrTest = false;
-    // _stepCompletionPending = false;
-    // _targetTrackerResetPending = false;
 }
 
 void ControlAPI::init()
@@ -118,27 +105,33 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
     strlcpy(pRespJson, R"("rslt":"ok")", maxRespLen);
 
     // Check cmdName
-    if ((strcasecmp(cmdName, "progClear") == 0) || (strcasecmp(cmdName, "ClearTarget") == 0))
+    if ((strcasecmp(cmdName, "imagerClear") == 0) || 
+        (strcasecmp(cmdName, "progClear") == 0) || 
+        (strcasecmp(cmdName, "ClearTarget") == 0))
     {
         // Clear the programmer used to program the target
-        return apiProgClear(pRespJson, maxRespLen);
+        return apiImagerClear(pRespJson, maxRespLen);
     }
-    if (strcasecmp(cmdName, "progAdd") == 0)
+    if ((strcasecmp(cmdName, "imagerAdd") == 0) ||
+        (strcasecmp(cmdName, "progAdd") == 0))
     {
         // Add a memory block to the programmer used to program the target
-        return apiProgAddMemBlock(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+        return apiImagerAddMemBlock(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
     }
-    if ((strcasecmp(cmdName, "progWrite") == 0) || (strcasecmp(cmdName, "ProgramTarget") == 0))
+    if ((strcasecmp(cmdName, "imagerWrite") == 0) || 
+        (strcasecmp(cmdName, "progWrite") == 0) || 
+        (strcasecmp(cmdName, "ProgramTarget") == 0))
     {
         // Write the programmer contents to the target
-        return apiProgWrite(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
+        return apiImagerWrite(pCmdJson, pParams, paramsLen, pRespJson, maxRespLen);
     }
-    else if ((strcasecmp(cmdName, "progWriteAndExec") == 0) || 
+    else if ((strcasecmp(cmdName, "imagerWriteAndExec") == 0) || 
+            (strcasecmp(cmdName, "progWriteAndExec") == 0) || 
             (strcasecmp(cmdName, "ProgramAndReset") == 0) ||
             (strcasecmp(cmdName, "ProgramAndExec") == 0))
     {
         // Write the programmer contents to the target and then start the program on the target
-        return apiProgWriteAndRun(pRespJson, maxRespLen);
+        return apiImagerWriteAndExec(pRespJson, maxRespLen);
     }
     else if ((strcasecmp(cmdName, "targetReset") == 0) || (strcasecmp(cmdName, "ResetTarget") == 0))
     {
@@ -373,7 +366,7 @@ bool ControlAPI::handleRxMsg(const char* pCmdJson,
     else if (strcasecmp(cmdName, "busStatus") == 0)
     {
         // // Get bus status
-        // BusAccessStatusInfo statusInfo;
+        // BusAccessStats statusInfo;
         // busControl.getStatus(statusInfo);
         // strlcpy(pRespJson, statusInfo.getJson(), maxRespLen);
         return true;
@@ -822,14 +815,14 @@ void ControlAPI::service()
 // API
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool ControlAPI::apiProgClear(char* pRespJson, unsigned maxRespLen)
+bool ControlAPI::apiImagerClear(char* pRespJson, unsigned maxRespLen)
 {
-    // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "progClear");
-    _busControl.prog().clear();
+    // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "imagerClear");
+    _busControl.imager().clear();
     return true;
 }
 
-bool ControlAPI::apiProgAddMemBlock(const char* pCmdJson, 
+bool ControlAPI::apiImagerAddMemBlock(const char* pCmdJson, 
             const uint8_t* pParams, unsigned paramsLen,
             char* pRespJson, unsigned maxRespLen)
 {
@@ -841,13 +834,13 @@ bool ControlAPI::apiProgAddMemBlock(const char* pCmdJson,
         return true;
     }
 #ifdef DEBUG_API_PROGRAMMER
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "progAdd addr 0x%04x len %d", addr, paramsLen);
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "imagerAdd addr 0x%04x len %d", addr, paramsLen);
 #endif
-    _busControl.prog().addMemoryBlock(addr, pParams, paramsLen);
+    _busControl.imager().addMemoryBlock(addr, pParams, paramsLen);
     return true;
 }
 
-bool ControlAPI::apiProgWrite(const char* pCmdJson, 
+bool ControlAPI::apiImagerWrite(const char* pCmdJson, 
             const uint8_t* pParams, unsigned paramsLen,
             char* pRespJson, unsigned maxRespLen)
 {
@@ -857,13 +850,13 @@ bool ControlAPI::apiProgWrite(const char* pCmdJson,
     getArg("exec", 1, pCmdJson, doExec);
     getArg("debug", 2, pCmdJson, doDebug);
 #ifdef DEBUG_API_PROGRAMMER
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiProgWrite exec %d debug %d", doExec, doDebug);
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiImagerWrite exec %d debug %d", doExec, doDebug);
 #endif
     _busControl.ctrl().programmingStart(doExec, doDebug);
     return true;
 }
 
-bool ControlAPI::apiProgWriteAndRun(char* pRespJson, unsigned maxRespLen)
+bool ControlAPI::apiImagerWriteAndExec(char* pRespJson, unsigned maxRespLen)
 {
     _busControl.ctrl().programmingStart(true, false);
     return true;

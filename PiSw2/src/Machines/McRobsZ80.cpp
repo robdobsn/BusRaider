@@ -8,7 +8,7 @@
 #include "rdutils.h"
 #include "logging.h"
 #include "BusControl.h"
-#include "TargetProgrammer.h"
+#include "TargetImager.h"
 #include "McManager.h"
 #include "SystemFont.h"
 
@@ -106,7 +106,7 @@ void McRobsZ80::keyHandler( unsigned char ucModifiers,  const unsigned char rawK
 
 // Handle a file
 bool McRobsZ80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int fileLen,
-                TargetProgrammer& targetProgrammer)
+                TargetImager& targetImager)
 {
     // Get the file type (extension of file name)
     #define MAX_VALUE_STR 30
@@ -127,7 +127,7 @@ bool McRobsZ80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int
     if (jsonGetValueForKey("baseAddr", pFileInfo, baseAddrStr, MAX_VALUE_STR))
         baseAddr = strtoul(baseAddrStr, NULL, 16);
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing binary file, baseAddr %04x len %d", baseAddr, fileLen);
-    targetProgrammer.addMemoryBlock(baseAddr, pFileData, fileLen);
+    targetImager.addMemoryBlock(baseAddr, pFileData, fileLen);
     return true;
 }
 

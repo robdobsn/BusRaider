@@ -6,10 +6,10 @@
 #include "../TargetBus/TargetRegisters.h"
 #include "../TargetBus/TargetCPU.h"
 
-class TargetProgrammer
+class TargetImager
 {
 public:
-    TargetProgrammer();
+    TargetImager();
 
     typedef struct TargetMemoryBlock {
         uint32_t start;

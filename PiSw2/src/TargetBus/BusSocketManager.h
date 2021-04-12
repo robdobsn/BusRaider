@@ -23,16 +23,11 @@ public:
     // Bus Sockets - used to hook things like waitInterrupts, busControl, etc
     int addSocket(bool enabled, BusAccessCBFnType* busAccessCallback,
             BusReqAckedCBFnType* busReqAckedCallback, 
-            // bool waitOnMemory, bool waitOnIO,
-            // bool resetPending, uint32_t resetDurationTStates,
-            // bool nmiPending, uint32_t nmiDurationTStates,
-            // bool irqPending, uint32_t irqDurationTStates,
-            // bool busMasterRequest, BR_BUS_REQ_REASON busMasterReason,
-            // bool holdInWaitReq, 
             void* pSourceObject);
+
+    // Enablement
     void enable(uint32_t busSocket, bool enable);
     bool isEnabled(uint32_t busSocket);
-    void setup(uint32_t busSocket, bool waitOnMem, bool waitOnIO);
 
     // Suspend socket activity
     void suspend(bool suspend, bool clearPendingActions);
@@ -52,19 +47,8 @@ private:
     // Bus control
     BusControl& _busControl;
 
-    // Wait config
-    bool _waitOnMemory;
-    bool _waitOnIO;
-
     // Suspended
     bool _isSuspended;
-
-    // Socket action in progress
-    bool _socketActionRequested;
-
-    // Helpers
-    // void clearAllPending();
-    void updateAfterSocketChange();
 
     // Callbacks
     static void busReqAckedStatic(void* pObject, BR_BUS_REQ_REASON reason, 

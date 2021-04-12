@@ -30,8 +30,8 @@ def formFileFrame(fileFolder, fileName):
 romFrame = formFileFrame(r"TargetSW/TRS80/ROMS/", r"level1.rom")
 programFrame = formFileFrame(r"TargetSW/TRS80/Games/", r"galinv1d.cmd")
 
-clearFrame = b"{\"cmdName\":\"progClear\"}\0"
-progFrame = b"{\"cmdName\":\"progWriteAndExec\"}\0"
+clearFrame = b"{\"cmdName\":\"imagerClear\"}\0"
+progFrame = b"{\"cmdName\":\"imagerWriteAndExec\"}\0"
 setMCFrame = b"{\"cmdName\":\"SetMachine=TRS80\"}\0"
 
 with serial.Serial('COM6', 115200) as s:

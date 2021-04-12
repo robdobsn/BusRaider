@@ -26,6 +26,7 @@ config = configparser.ConfigParser()
 config.read(args.configfile)
 
 # Extract config
+print(config.sections)
 fullConf = config[args.configsection]
 logConfig = {"logfolder": fullConf.get("logfolder", "./log")}
 ifConfig = {
@@ -94,24 +95,24 @@ testWriteAddr = 0
 
 # Clear programmer (so that reset and debug will occur without writing anything else)
 resp = ric.sendRICRESTCmdFrameSync(
-        "{" + f'"cmdName":"progClear"' + "}")
+        "{" + f'"cmdName":"imagerClear"' + "}")
 if resp.get('rslt',"") != "ok":
     logger.error(f"Invalid response {resp}")
 
 # Send program to programmer
 resp = ric.sendRICRESTCmdFrameSync(
-        "{" + f'"cmdName":"progAdd","addr":"{testWriteAddr:04x}"' + "}",
+        "{" + f'"cmdName":"imagerAdd","addr":"{testWriteAddr:04x}"' + "}",
         testWriteData)
 assert(resp.get("rslt","") == "ok")
 
 # # Exec and turn on debugging
 # resp = ric.sendRICRESTCmdFrameSync(
-#         "{" + f'"cmdName":"progWrite","exec":1' + "}")
+#         "{" + f'"cmdName":"imagerWrite","exec":1' + "}")
 # if resp.get('rslt',"") != "ok":
 #     logger.error(f"Invalid response {resp}")
 
 # Exec and turn on debugging
-resp = ric.sendRICRESTCmdFrameSync('{"cmdName":"progWrite","exec":1,"debug":1}')
+resp = ric.sendRICRESTCmdFrameSync('{"cmdName":"imagerWrite","exec":1,"debug":1}')
 if resp.get('rslt',"") != "ok":
     logger.error(f"Invalid response {resp}")
 

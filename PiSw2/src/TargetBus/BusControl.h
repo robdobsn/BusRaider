@@ -15,7 +15,6 @@
 #include "BusSocketManager.h"
 #include "BusAccessDefs.h"
 #include "TargetClockGenerator.h"
-#include "BusAccessStatusInfo.h"
 #include "MemoryController.h"
 #include "BusRawAccess.h"
 #include "BusControlSettings.h"
@@ -50,10 +49,10 @@ public:
         return _targetControl;
     }    
 
-    // Target programmer
-    inline TargetProgrammer& prog()
+    // Target imager
+    inline TargetImager& imager()
     {
-        return _targetControl.targetProgrammer();
+        return _targetControl.targetImager();
     }    
 
     // Bus socket manager

@@ -100,35 +100,3 @@ void BusRawAccess::setPinOut(int pinNumber, bool val)
     pinMode(pinNumber, OUTPUT);
     digitalWrite(pinNumber, val);
 }
-
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// // Set signal
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// void BusRawAccess::setBusSignal(BR_BUS_ACTION busAction, bool assert)
-// {
-//     // LogWrite(MODULE_PREFIX, LOG_DEBUG, "setBusSignal busAction %d assert %d", busAction, assert); 
-
-//     switch (busAction)
-//     {
-//         case BR_BUS_ACTION_RESET: 
-//             assert ? muxSet(BR_MUX_RESET_Z80_BAR_LOW) : muxClear();
-//             // LogWrite(MODULE_PREFIX, LOG_DEBUG, "RESET"); 
-//             // DEBUG_VAL_SET(ISR_ASSERT_CODE_DEBUG_E, assert);
-//             break;
-//         case BR_BUS_ACTION_NMI: 
-//             assert ? muxSet(BR_MUX_NMI_BAR_LOW) : muxClear(); 
-//             // DEBUG_VAL_SET(ISR_ASSERT_CODE_DEBUG_F, assert);
-//             break;
-//         case BR_BUS_ACTION_IRQ: 
-//             assert ? muxSet(BR_MUX_IRQ_BAR_LOW) : muxClear(); 
-//             // LogWrite(MODULE_PREFIX, LOG_DEBUG, "IRQ"); 
-//             break;
-//         case BR_BUS_ACTION_BUSRQ: 
-//             // LogWrite(MODULE_PREFIX, LOG_DEBUG, "BUSRQ %c", assert ? 'Y' : 'N'); 
-//             // DEBUG_VAL_SET(ISR_ASSERT_CODE_DEBUG_B, assert);
-//             assert ? busReqStart() : busReqRelease(); 
-//             break;
-//         default: break;
-//     }
-// }

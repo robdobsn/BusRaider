@@ -6,10 +6,10 @@
 // Status Info
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class BusAccessStatusInfo
+class BusAccessStats
 {
 public:
-    BusAccessStatusInfo()
+    BusAccessStats()
     {
         clear();
     }

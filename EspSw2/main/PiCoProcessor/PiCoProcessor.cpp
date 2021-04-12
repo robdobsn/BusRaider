@@ -626,7 +626,7 @@ void PiCoProcessor::apiTargetCommandPostContent(const String &reqStr, const uint
 void PiCoProcessor::apiSendFileToTargetBuffer(const String &reqStr, String &respStr)
 {
     // Clear target first
-    sendTargetCommand("progClear", reqStr, respStr, true);
+    sendTargetCommand("imagerClear", reqStr, respStr, true);
     // File system
     String fileSystemStr = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
     // Filename
@@ -648,13 +648,13 @@ void PiCoProcessor::apiAppendFileToTargetBuffer(const String &reqStr, String &re
 void PiCoProcessor::apiRunFileOnTarget(const String &reqStr, String &respStr)
 {
     // Clear target first
-    sendTargetCommand("progClear", reqStr, respStr, false);
+    sendTargetCommand("imagerClear", reqStr, respStr, false);
     // File system
     String fileSystemStr = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
     // Filename        
     String filename = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 2);
     LOG_I(MODULE_PREFIX, "runFileOnTarget filename %s", filename.c_str());
-    startUploadFromFileSystem(fileSystemStr, "", filename, "progWriteAndExec");
+    startUploadFromFileSystem(fileSystemStr, "", filename, "imagerWriteAndExec");
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

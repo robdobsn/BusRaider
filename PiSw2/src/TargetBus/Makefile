@@ -13,7 +13,7 @@ OBJS	= BusControl.o BusSocketManager.o \
 		TargetControl_Prog.o TargetControl_Cycle.o \
 		TargetControl_Disasm.o \
 		TargetBreakpoints.o \
-		TargetCPUZ80.o TargetProgrammer.o memoryTests.o \
+		TargetCPUZ80.o TargetImager.o memoryTests.o \
 		MemoryController.o \
 		mdZ80.o
 

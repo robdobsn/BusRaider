@@ -14,7 +14,6 @@
 #include "BusSocketManager.h"
 #include "BusAccessDefs.h"
 #include "TargetClockGenerator.h"
-#include "BusAccessStatusInfo.h"
 #include "MemoryController.h"
 #include "BusRawAccess_Timing.h"
 
@@ -40,9 +39,6 @@ public:
 
     // Reset target
     void targetReset(uint32_t ms);
-
-    // Set signal (RESET/IRQ/NMI/BUSRQ)
-    // void setBusSignal(BR_BUS_ACTION busAction, bool assert);
 
     // Read and write raw blocks - directly to bus
     BR_RETURN_TYPE rawBlockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, BlockAccessType accessType);

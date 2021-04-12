@@ -27,7 +27,7 @@ void TargetControl::programmingClear()
 void TargetControl::programmingStart(bool execAfterProgramming, bool enterDebugger)
 {
     // Check there is something to write
-    if (_targetProgrammer.numMemoryBlocks() == 0) 
+    if (_targetImager.numMemoryBlocks() == 0) 
     {
         // Nothing new to write
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "programmingStart - nothing to write");
@@ -40,38 +40,30 @@ void TargetControl::programmingStart(bool execAfterProgramming, bool enterDebugg
     _programmingStartPending = true;
     _programmingDoExec = execAfterProgramming;
     _programmingEnterDebugger = enterDebugger;
-
-    // // BUSRQ is used even if memory is emulated because it holds the processor while changes are made
-    // // Give the BusAccess some service first to ensure WAIT handling is complete before requesting the bus
-    // for (int i = 0; i < 3; i++)
-    //     _busControl.service();
-
-    // // Request target bus
-    // _busControl.socketReqBus(_busSocketId, BR_BUS_REQ_REASON_PROGRAMMING);
-    // _busActionPendingProgramTarget = true;
-    // _busActionPendingExecAfterProgram = execAfterProgramming;
 }
 
 void TargetControl::programmingWrite()
 {
     // Program
-    // LogWrite(MODULE_PREFIX, LOG_NOTICE, "programmingWrite pending %d numBlocks %d",
-    //                 _programmingStartPending, _targetProgrammer.numMemoryBlocks());
+#ifdef DEBUG_TARGET_PROGRAMMING
+    LogWrite(MODULE_PREFIX, LOG_NOTICE, "programmingWrite pending %d numBlocks %d",
+                    _programmingStartPending, _targetImager.numMemoryBlocks());
+#endif
 
     // Write the blocks
     bool codeAtResetVector = false;
-    for (uint32_t i = 0; i < _targetProgrammer.numMemoryBlocks(); i++) 
+    for (uint32_t i = 0; i < _targetImager.numMemoryBlocks(); i++) 
     {
-        TargetProgrammer::TargetMemoryBlock* pBlock = _targetProgrammer.getMemoryBlock(i);
+        TargetImager::TargetMemoryBlock* pBlock = _targetImager.getMemoryBlock(i);
 #ifdef DEBUG_TARGET_PROGRAMMING
         BR_RETURN_TYPE brResult = 
 #endif
         _busControl.mem().blockWrite(pBlock->start, 
-                    _targetProgrammer.getMemoryImagePtr() + pBlock->start, pBlock->len,
+                    _targetImager.getMemoryImagePtr() + pBlock->start, pBlock->len,
                     BLOCK_ACCESS_MEM);
 #ifdef DEBUG_TARGET_PROGRAMMING
         LogWrite(MODULE_PREFIX, LOG_DEBUG,
-                            "progWrite done %08x len %d result %d micros %u", 
+                            "imagerWrite done %08x len %d result %d micros %u", 
                             pBlock->start, pBlock->len, brResult, micros());
 #endif
         if (pBlock->start == Z80_PROGRAM_RESET_VECTOR)
@@ -115,10 +107,8 @@ void TargetControl::programExec(bool codeAtResetVector)
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "programExec codeAtResetVector %c",
             codeAtResetVector ? 'Y' : 'N');
 
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "programExec debugActive %c", 
-    //                 getTargetTracker().isTrackingActive() ? 'Y' : 'N');
     bool performHardReset = true;
-    if (_targetProgrammer.areRegistersValid())
+    if (_targetImager.areRegistersValid())
     {
         // TODO 2020
         // // Check how to set registers
@@ -134,17 +124,17 @@ void TargetControl::programExec(bool codeAtResetVector)
         // {
             // If the code doesn't start at 0 or a start location has been supplied,
             // generate a code snippet to set registers and run
-            if (!codeAtResetVector || _targetProgrammer.areRegistersValid())
+            if (!codeAtResetVector || _targetImager.areRegistersValid())
             {
                 // Get registers and code address to set
                 uint8_t executorCode[MAX_EXECUTOR_CODE_LEN];
                 Z80Registers regs;
-                _targetProgrammer.getTargetRegs(regs);
+                _targetImager.getTargetRegs(regs);
                 static const int REGISTERS_STR_MAX_LEN = 500;
                 char regsStr[REGISTERS_STR_MAX_LEN];
                 regs.format(regsStr, REGISTERS_STR_MAX_LEN);
                 LogWrite(MODULE_PREFIX, LOG_DEBUG, "Regs: %s", regsStr);
-                uint32_t codeDestAddr = _targetProgrammer.getSetRegistersCodeAddr();
+                uint32_t codeDestAddr = _targetImager.getSetRegistersCodeAddr();
 
                 // Code for hardware setup
                 uint32_t hwCodeLen = _busControl.hw().getSnippetToSetupHw(codeDestAddr, executorCode, MAX_EXECUTOR_CODE_LEN);

@@ -8,6 +8,8 @@
 #include "lowlib.h"
 #include <circle/bcm2835.h>
 
+// #define DEBUG_BUS_ACCESS_BUSRQ
+
 // Module name
 static const char MODULE_PREFIX[] = "BusRawBusRq";
 
@@ -218,8 +220,10 @@ bool BusRawAccess::busReqWaitForAck(bool ack, uint32_t maxWaitForBUSACKus)
         }
     }
 
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "waitForBusAck controlBusReqAcknowledged %d ack %d GPIO %d", 
-    //         controlBusReqAcknowledged(), ack, read32(ARM_GPIO_GPLEV0));
+#ifdef DEBUG_BUS_ACCESS_BUSRQ
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "waitForBusAck controlBusReqAcknowledged %d ack %d GPIO %d", 
+            controlBusReqAcknowledged(), ack, read32(ARM_GPIO_GPLEV0));
+#endif
 
     // Check we succeeded
     return rawBUSAKActive() == ack;

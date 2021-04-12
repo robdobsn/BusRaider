@@ -142,6 +142,20 @@ void TargetControl::targetNMI()
     // TODO 2020
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Registers
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void TargetControl::getRegsFormatted(char* pBuf, int len)
+{
+    _z80Registers.format(pBuf, len);
+}
+
+void TargetControl::getRegsJSON(char* pBuf, int len)
+{
+    _z80Registers.json(pBuf, len);
+}
+
 // #define INCLUDE_DISASSEMBLER
 
 // #ifdef INCLUDE_DISASSEMBLER
@@ -756,20 +770,6 @@ void TargetControl::targetNMI()
 // //     }
 // // }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Registers
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void TargetControl::getRegsFormatted(char* pBuf, int len)
-{
-    _z80Registers.format(pBuf, len);
-}
-
-void TargetControl::getRegsJSON(char* pBuf, int len)
-{
-    _z80Registers.json(pBuf, len);
-}
-
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // // Test if opcode is an instruction prefix
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -884,7 +884,7 @@ void TargetControl::getRegsJSON(char* pBuf, int len)
 //         if (_busActionPendingProgramTarget)
 //         {
 //             LogWrite(MODULE_PREFIX, LOG_NOTICE, "busReqAcked pendingProgramTarget numBlocks %d",
-//                             _targetProgrammer.numMemoryBlocks());
+//                             _targetImager.numMemoryBlocks());
 
 //             // Write the blocks
 
@@ -892,10 +892,10 @@ void TargetControl::getRegsJSON(char* pBuf, int len)
 
 //             // // TODO 2020 - using _busControl instead of hw for blockwrite
 //             // _busActionCodeWrittenAtResetVector = false;
-//             // for (int i = 0; i < _targetProgrammer.numMemoryBlocks(); i++) {
-//             //     TargetProgrammer::TargetMemoryBlock* pBlock = _targetProgrammer.getMemoryBlock(i);
+//             // for (int i = 0; i < _targetImager.numMemoryBlocks(); i++) {
+//             //     TargetImager::TargetMemoryBlock* pBlock = _targetImager.getMemoryBlock(i);
 //             //     BR_RETURN_TYPE brResult = _busControl.blockWrite(pBlock->start, 
-//             //                 _targetProgrammer.getMemoryImagePtr() + pBlock->start, pBlock->len,
+//             //                 _targetImager.getMemoryImagePtr() + pBlock->start, pBlock->len,
 //             //                 BLOCK_ACCESS_MEM);
 //             //     LogWrite(MODULE_PREFIX, LOG_DEBUG,"ProgramTarget done %08x len %d result %d micros %u", pBlock->start, pBlock->len, brResult, micros());
 //             //     if (pBlock->start == Z80_PROGRAM_RESET_VECTOR)

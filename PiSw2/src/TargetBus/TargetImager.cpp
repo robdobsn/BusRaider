@@ -1,13 +1,13 @@
 // Pi Bus Raider
 // Rob Dobson 2018
 
-#include "TargetProgrammer.h"
+#include "TargetImager.h"
 #include "logging.h"
 
 // Module name
-static const char MODULE_PREFIX[] = "TargetProgrammer";
+static const char MODULE_PREFIX[] = "TargetImager";
 
-TargetProgrammer::TargetProgrammer()
+TargetImager::TargetImager()
 {
     // Static vars
     _targetMemoryBlockLastIdx = 0;
@@ -15,7 +15,7 @@ TargetProgrammer::TargetProgrammer()
 }
 
 // Clear target
-void TargetProgrammer::clear()
+void TargetImager::clear()
 {
     _targetRegsValid = false;
     _targetMemoryBlockLastIdx = 0;
@@ -27,13 +27,13 @@ void TargetProgrammer::clear()
         _pTargetMemoryImage[i] = 0;
 }
 
-void TargetProgrammer::addMemoryBlockStatic(uint32_t addr, const uint8_t* pData, uint32_t len, void* pProgrammer)
+void TargetImager::addMemoryBlockStatic(uint32_t addr, const uint8_t* pData, uint32_t len, void* pProgrammer)
 {
     if (pProgrammer)
-        ((TargetProgrammer*)pProgrammer)->addMemoryBlock(addr, pData, len);
+        ((TargetImager*)pProgrammer)->addMemoryBlock(addr, pData, len);
 }
 
-void TargetProgrammer::addMemoryBlock(uint32_t addr, const uint8_t* pData, uint32_t len)
+void TargetImager::addMemoryBlock(uint32_t addr, const uint8_t* pData, uint32_t len)
 {
     // Check if contiguous with other data
     int blockIdx = -1;
@@ -68,45 +68,45 @@ void TargetProgrammer::addMemoryBlock(uint32_t addr, const uint8_t* pData, uint3
     }
 }
 
-uint32_t TargetProgrammer::numMemoryBlocks()
+uint32_t TargetImager::numMemoryBlocks()
 {
     return _targetMemoryBlockLastIdx;
 }
 
-TargetProgrammer::TargetMemoryBlock* TargetProgrammer::getMemoryBlock(uint32_t n)
+TargetImager::TargetMemoryBlock* TargetImager::getMemoryBlock(uint32_t n)
 {
     return &_targetMemoryBlocks[n];
 }
 
-uint8_t* TargetProgrammer::getMemoryImagePtr()
+uint8_t* TargetImager::getMemoryImagePtr()
 {
     return _pTargetMemoryImage;
 }
 
-uint32_t TargetProgrammer::getMemoryImageSize()
+uint32_t TargetImager::getMemoryImageSize()
 {
     return MAX_TARGET_MEMORY_SIZE;
 }
 
-void TargetProgrammer::setTargetRegistersStatic(const Z80Registers& regs, void* pProgrammer)
+void TargetImager::setTargetRegistersStatic(const Z80Registers& regs, void* pProgrammer)
 {
     if (pProgrammer)
-        ((TargetProgrammer*)pProgrammer)->setTargetRegisters(regs);
+        ((TargetImager*)pProgrammer)->setTargetRegisters(regs);
 }
 
-void TargetProgrammer::setTargetRegisters(const Z80Registers& regs)
+void TargetImager::setTargetRegisters(const Z80Registers& regs)
 {
     _targetRegisters = regs;
     _targetRegsValid = true;
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "SetTargetRegs PC=%04x SP=%04x", regs.PC, regs.SP);
 }
 
-bool TargetProgrammer::areRegistersValid()
+bool TargetImager::areRegistersValid()
 {
     return _targetRegsValid;
 }
 
-void TargetProgrammer::getTargetRegs(Z80Registers& regs)
+void TargetImager::getTargetRegs(Z80Registers& regs)
 {
     regs = _targetRegisters;
     LogWrite(MODULE_PREFIX, LOG_VERBOSE, "getTargetRegs PC=%04x", regs.PC);

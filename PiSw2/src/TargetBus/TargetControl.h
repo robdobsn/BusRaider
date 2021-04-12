@@ -10,7 +10,7 @@
 #include "BusSocketInfo.h"
 #include "TargetRegisters.h"
 #include "TargetBreakpoints.h"
-#include "TargetProgrammer.h"
+#include "TargetImager.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Defs
@@ -48,7 +48,7 @@ public:
     // Clear
     void clear()
     {
-        _targetProgrammer.clear();
+        _targetImager.clear();
     }
 
     // Suspend
@@ -70,9 +70,9 @@ public:
     }
 
     // Target programming
-    TargetProgrammer& targetProgrammer()
+    TargetImager& targetImager()
     {
-        return _targetProgrammer;
+        return _targetImager;
     }
     void programmingStart(bool execAfterProgramming, bool enterDebugger);
 
@@ -121,7 +121,7 @@ private:
     BusControl& _busControl;
 
     // Target Programmer
-    TargetProgrammer _targetProgrammer;
+    TargetImager _targetImager;
 
     // Suspended
     bool _isSuspended;
@@ -258,8 +258,8 @@ private:
     // Debug step mode
     volatile DebuggerStepMode _debuggerStepMode;
 
-    // Disassembly helper
-    char* mungeDisassembly(char* pText);
+    // Registers
+    Z80Registers _z80Registers;
 
     // void cycleHandleReadRelease();
     // // State
@@ -271,7 +271,7 @@ private:
 //     void enable(bool en, bool waitHold);
 //     void clear()
 //     {
-//         _targetProgrammer.clear();
+//         _targetImager.clear();
 //     }
 
 //     // Step
@@ -355,7 +355,7 @@ private:
 //     BusControl& _busControl;
 
 //     // Target Programmer
-//     TargetProgrammer _targetProgrammer;
+//     TargetImager _targetImager;
 
 //     // Can't turn off mid-injection so store flag to indicate disable pending
 //     bool _disablePending;
@@ -391,9 +391,6 @@ private:
 
 //     // Request grab display
 //     bool _requestDisplayWhileStepping;
-
-    // Registers
-    Z80Registers _z80Registers;
     
 //     // Bus socket we're attached to and setup info
 //     int _busSocketId;

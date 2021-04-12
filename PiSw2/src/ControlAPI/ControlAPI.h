@@ -80,14 +80,14 @@ private:
                 bool forceDecimal = false);
 
     // Message actions
-    bool apiProgClear(char *pRespJson, unsigned maxRespLen);
-    bool apiProgAddMemBlock(const char *pCmdJson,
+    bool apiImagerClear(char *pRespJson, unsigned maxRespLen);
+    bool apiImagerAddMemBlock(const char *pCmdJson,
                             const uint8_t *pParams, unsigned paramsLen,
                             char *pRespJson, unsigned maxRespLen);
-    bool apiProgWrite(const char *pCmdJson,
+    bool apiImagerWrite(const char *pCmdJson,
                       const uint8_t *pParams, unsigned paramsLen,
                       char *pRespJson, unsigned maxRespLen);
-    bool apiProgWriteAndRun(char *pRespJson, unsigned maxRespLen);
+    bool apiImagerWriteAndExec(char *pRespJson, unsigned maxRespLen);
     bool apiTargetReset(char *pRespJson, unsigned maxRespLen);
     bool apiFileToTarget(const char *pCmdJson,
                          const uint8_t *pParams, unsigned paramsLen,

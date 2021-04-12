@@ -11,20 +11,11 @@
 // #define TEST_HIGH_ADDR_IS_ON_PIB
 // #define DEBUG_SHOW_IO_ACCESS_ADDRS_WR
 // #define DEBUG_SHOW_IO_ACCESS_ADDRS_RD
-#define DEBUG_TARGET_PROGRAMMING
+// #define DEBUG_TARGET_PROGRAMMING
+// #define DEBUG_BUS_REQ
 
 // Module name
 static const char MODULE_PREFIX[] = "TargCtrlCyc";
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Cycle handling
-//
-// HeldInWAIT    BUSRQ  BUSACK    Reset  INT    NMI
-// ----
-// 
-
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Cycle clear
@@ -61,13 +52,17 @@ bool TargetControl::reqBus(BR_BUS_REQ_REASON busReqReason,
 {
     if (_busReqInfo._reqState != CYCLE_REQ_STATE_NONE)
     {
-        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "reqBus FAILED socketIdx %d state %d progPend %d",
-        //         socketIdx, _busReqInfo._reqState, _programmingStartPending);
+#ifdef DEBUG_BUS_REQ
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "reqBus FAILED socketIdx %d state %d progPend %d",
+                socketIdx, _busReqInfo._reqState, _programmingStartPending);
+#endif
         return false;
     }
     _busReqInfo.pending(busReqReason, socketIdx, _pBusReqAckedCB, _pBusCBObject);
-    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "reqBus reason %d progPending %d",
-    //         busReqReason, _programmingStartPending);
+#ifdef DEBUG_BUS_REQ
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "reqBus reason %d progPending %d",
+            busReqReason, _programmingStartPending);
+#endif
     return true;
 }
 
@@ -156,125 +151,6 @@ void TargetControl::cycleHandleBusReq()
         }
     }
 }
-
-// void TargetControl::cycleHandleActions()
-// {
-//     // Handle cycle state
-//     if (_cycleReqState == CYCLE_REQ_STATE_PENDING)
-//     {
-//         // Deal with debugger
-//         if (_debuggerState != DEBUGGER_STATE_FREE_RUNNING)
-//         {
-//             // TODO 2020 deal with IRQ, etc
-
-//             // Handle the request as though it had been performed
-//             // If this was a display refresh then the memory access
-//             // will come from a cache. Other actions like programming,
-//             // IRQ generation, etc will also be handled appropriately
-//             // by the debugger code
-//             cyclePerformActionRequest();
-//         }
-//         else
-//         {
-//             // Bus actions pending
-//             cycleReqHandlePending();
-//         }
-//     }
-//     else if (_cycleReqState == CYCLE_REQ_STATE_ASSERTED)
-//     {
-//         // Bus actions asserted
-//         if (_cycleReqActionType == BR_BUS_ACTION_BUSRQ)
-//             cycleReqAssertedBusRq();
-//         else
-//             cycleReqAssertedOther(_cycleReqActionType);
-//     }
-// }
-
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// // Cycle pending helpers
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// void TargetControl::cycleReqHandlePending()
-// {
-//     // Initiate the cycle action
-//     _busControl.bus().setBusSignal(_cycleReqActionType, true);
-//     _cycleReqAssertedUs = micros();
-//     _cycleReqState = CYCLE_REQ_STATE_ASSERTED;
-// }
-
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// // Cycle asserted helpers
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// void TargetControl::cycleReqAssertedBusRq()
-// {
-//     // Check for BUSACK
-//     if (_busControl.bus().rawBUSAKActive())
-//     {
-//         // Take control of bus
-//         _busControl.bus().busReqTakeControl();
-
-//         // Check reason for request
-//         cyclePerformActionRequest();
-
-//         // Release bus
-//         _busControl.bus().busReqRelease();
-//     }
-//     else
-//     {
-//         // Check for timeout on BUSACK
-//         if (isTimeout(micros(), _cycleReqAssertedUs, _cycleReqMaxUs))
-//         {
-//             // For bus requests a timeout means failure
-//             cycleReqCallback(BR_NOT_HANDLED);
-//             _busControl.bus().setBusSignal(BR_BUS_ACTION_BUSRQ, false);
-//         }
-//     }
-
-//     // Restore settings for fast-wait processing
-//     cycleSetupForFastWait();
-// }
-
-// void TargetControl::cycleReqAssertedOther(BR_BUS_ACTION actionType)
-// {
-//     // Check for action complete - based on time
-//     if (isTimeout(micros(), _cycleReqAssertedUs, _cycleReqMaxUs))
-//     {
-//         // LogWrite(MODULE_PREFIX, LOG_DEBUG, 
-//         //          "Timeout on bus action %u type %d _waitIsActive %d", 
-//         //          micros(), _cycleReqActionType, _waitIsActive);
-//         cycleReqCallback(BR_OK);
-
-//         // Restore settings for fast-wait processing - this also clears all
-//         // actions since it uses the MUX and RESET, IRQ and NMI are generated
-//         // by the mux
-//         cycleSetupForFastWait();
-
-//     }
-// }
-
-// void TargetControl::cycleHandleBusReqAcked()
-// {
-//     // Callback to allow any access required - since we're in debugging mode
-//     // this will probably be directed to a cache
-//     _busReqInfo.complete();
-//     if (_busReqInfo._busReqAckedCB)
-//         _busReqInfo._busReqAckedCB(_busReqInfo._pObject, _busReqInfo._busRqReason, _busReqInfo._socketIdx, BR_OK);
-// }
-
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// // Cycle callback on action request
-// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// void TargetControl::cycleReqCallback(BR_RETURN_TYPE result)
-// {
-//     // Perform cycle callback
-//     _busReqInfo.complete();
-//     if (_busReqCompleteCB)
-//     {
-//         _busReqCompleteCB(_cycleReqPObject, _cycleReqActionType, _cycleBusRqReason, _cycleReqSocketIdx, result);
-//     }
-// }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Cycle check for new wait and handle

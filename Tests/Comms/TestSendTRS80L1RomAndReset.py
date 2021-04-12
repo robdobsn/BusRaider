@@ -18,15 +18,15 @@ romFrame += romData
 galaxyFrame = bytearray(b"{\"cmdName\":\"filetarget\",\"fileType\":\"trs80cmd\"}\0")
 galaxyFrame += galaxyData
 
-clearFrame = b"{\"cmdName\":\"progClear\"}\0"
+clearFrame = b"{\"cmdName\":\"imagerClear\"}\0"
 resetFrame = b"{\"cmdName\":\"resettarget\"}\0"
-progFrame = b"{\"cmdName\":\"progWrite\"}\0"
+progFrame = b"{\"cmdName\":\"imagerWrite\"}\0"
 ioclearFrame = b"{\"cmdName\":\"ioclrtarget\"}\0"
 
 with serial.Serial('COM6', 921600) as s:
     h = HDLC(s)
     h.sendFrame(clearFrame)
-    print("Sent progClear len", len(clearFrame))
+    print("Sent imagerClear len", len(clearFrame))
     time.sleep(1.0)
     h.sendFrame(ioclearFrame)
     print("Sent ioclear len", len(ioclearFrame))

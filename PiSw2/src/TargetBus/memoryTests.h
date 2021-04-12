@@ -11,5 +11,4 @@ uint32_t memTestAddressBus(BusControl& busControl, uint32_t baseAddress, unsigne
 
 uint32_t memTestDevice(BusControl& busControl, uint32_t baseAddress, unsigned long nBytes);
 
-// int memTestAll(uint32_t baseAddress, uint32_t numBytes);
 
