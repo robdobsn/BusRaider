@@ -100,7 +100,7 @@ unsigned long Utils::convIPStrToAddr(String &inStr)
                 */
             if ((pp >= parts + 3) || (val > 0xff))
             {
-                return (INADDR_NONE);
+                return (IP_ADDRESS_NONE);
             }
             *pp++ = val, cp++;
         }
@@ -115,7 +115,7 @@ unsigned long Utils::convIPStrToAddr(String &inStr)
         */
     if (*cp && (!isascii(*cp) || !isspace(*cp)))
     {
-        return (INADDR_NONE);
+        return (IP_ADDRESS_NONE);
     }
 
     /*
@@ -131,7 +131,7 @@ unsigned long Utils::convIPStrToAddr(String &inStr)
     case 2: /* a.b -- 8.24 bits */
         if (val > 0xffffff)
         {
-            return (INADDR_NONE);
+            return (IP_ADDRESS_NONE);
         }
         val |= parts[0] << 24;
         break;
@@ -139,7 +139,7 @@ unsigned long Utils::convIPStrToAddr(String &inStr)
     case 3: /* a.b.c -- 8.8.16 bits */
         if (val > 0xffff)
         {
-            return (INADDR_NONE);
+            return (IP_ADDRESS_NONE);
         }
         val |= (parts[0] << 24) | (parts[1] << 16);
         break;
@@ -147,7 +147,7 @@ unsigned long Utils::convIPStrToAddr(String &inStr)
     case 4: /* a.b.c.d -- 8.8.8.8 bits */
         if (val > 0xff)
         {
-            return (INADDR_NONE);
+            return (IP_ADDRESS_NONE);
         }
         val |= (parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8);
         break;

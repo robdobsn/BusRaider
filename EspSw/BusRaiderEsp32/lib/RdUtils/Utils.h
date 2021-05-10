@@ -23,7 +23,7 @@ public:
     static void setJsonBoolResult(String& resp, bool rslt, const char* otherJson = NULL);
 
     // Following code from Unix sources
-    static const unsigned long INADDR_NONE = ((unsigned long)0xffffffff);
+    static const unsigned long IP_ADDRESS_NONE = ((unsigned long)0xffffffff);
     static unsigned long convIPStrToAddr(String &inStr);
 
     // Escape a string in JSON
