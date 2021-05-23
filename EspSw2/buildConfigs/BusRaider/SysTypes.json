@@ -1,0 +1,87 @@
+[
+	{
+		"SysType": "BusRaider",
+		"CmdsAtStart": "",
+		"WebUI": "",
+        "SysManager": {
+            "monitorPeriodMs":10000,
+            "reportList":["NetMan","SysMan","StatsCB"],
+            "pauseWiFiforBLE":1,
+            "RICSerial":{
+                "FrameBound":"0xE7",
+                "CtrlEscape":"0xD7"
+            }
+        },
+		"NetMan": {
+			"WiFiEnabled": 1,
+			"logLevel": "D"
+		},
+		"NTPClient": {
+			"enable": 1,
+			"NTPServer": "pool.ntp.org",
+			"GMTOffsetSecs": 0,
+			"DSTOffsetSecs": 0
+		},
+		"ESPOTAUpdate": {
+			"OTADirect": 1
+		},
+		"BLEMan": {
+			"enable": 0,
+			"maxPktLen": 180,
+			"logLevel": "D",
+			"nimLogLev": "E"
+		},
+		"WebServer": {
+			"enable": 1,
+			"webServerPort": 80,
+			"allowOriginAll": 1,
+			"apiPrefix": "api/",
+			"fileServer": 1,
+			"numConnSlots": 10,
+			"maxWS": 4,
+			"wsPcol": "RICSerial",
+			"wsPingMs": 2000,
+			"logLevel": "D",
+			"sendMax": 5000,
+			"taskCore": 0,
+			"taskStack": 3000,
+			"taskPriority": 9
+		},
+		"SerialConsole": {
+			"enable": 1,
+			"uartNum": 0,
+			"baudRate": 115200,
+			"crlfOnTx": 1,
+			"protocol": "RICSerial",
+			"logLevel": "D"
+		},
+		"CommandSerial": {
+			"enable": 1,
+			"uartNum": 1,
+			"baudRate": 912600,
+			"rxBufSize": 32768,
+			"rxPin": 35,
+			"txPin": 12,
+			"protocol": "RICSerial",
+			"logLevel": "D"
+		},
+		"CommandSocket": {
+			"enable": 0,
+			"socketPort": 24,
+			"protocol": "BusRaiderCSOK",
+			"logLevel": "D"
+		},
+		"FileManager": {
+			"SPIFFSEnabled": 1,
+			"SPIFFSFormatIfCorrupt": 1,
+			"CacheFileList": 0,
+			"SDEnabled": 1,
+			"DefaultSD": 1,
+			"SDMOSI": 15,
+			"SDMISO": 4,
+			"SDCLK": 14,
+			"SDCS": 13,
+			"maxCacheBytes": 0
+		}
+	}
+]

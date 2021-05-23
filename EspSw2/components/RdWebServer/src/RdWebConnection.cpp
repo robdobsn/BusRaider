@@ -376,7 +376,7 @@ void RdWebConnection::service()
     }
 
     // Service response - may remain in this state (e.g. for file-transfer / web-sockets)
-    if ((bufLen > 0) && !errorOccurred && _header.isComplete)
+    if (!errorOccurred && _header.isComplete)
     {
         if (!serviceResponse(pBuf, bufLen, bufPos))
         {
@@ -910,7 +910,7 @@ String RdWebConnection::decodeURL(const String &inURL) const
 void RdWebConnection::setHTTPResponseStatus(RdHttpStatusCode responseCode)
 {
 #ifdef DEBUG_WEB_REQUEST_RESP
-    LOG_I(MODULE_PREFIX, "Setting response code %s (%d)", getHTTPStatusStr(responseCode), responseCode);
+    LOG_I(MODULE_PREFIX, "Setting response code %s (%d)", RdWebInterface::getHTTPStatusStr(responseCode), responseCode);
 #endif
     _httpResponseStatus = responseCode;
 }

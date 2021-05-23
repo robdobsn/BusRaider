@@ -61,6 +61,9 @@ bool ConfigBase::getElement(const char *dataPath, String& elementStr, jsmntype_t
     jsmntype_t defaultValueType = JSMN_UNDEFINED;
     for (auto &&optionObj : optionObjs)
     {
+        optionObj.trim();
+        if (!optionObj.startsWith("{"))
+            break;
         std::vector<String> hwRevs;
         bool hasHwRevs = RdJson::getArrayElems("__hwRevs__", hwRevs, optionObj.c_str());
         bool hasValue = RdJson::getElement("__value__", startPos, strLen, elementType, size, optionObj.c_str());

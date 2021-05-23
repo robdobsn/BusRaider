@@ -11,12 +11,14 @@
 // System Name and Version
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define SYSTEM_NAME "BusRaiderESP32"
-#define SYSTEM_VERSION "3.1.7"
-#define DEFAULT_SYSTYPE "BusRaider"
-#define DEFAULT_SYSNAME "BusRaider"
-#define DEFAULT_HOSTNAME "BusRaider"
-#define DEFAULT_ADVNAME ""
+#define SYSTEM_VERSION "3.1.8"
+
+#define MACRO_STRINGIFY(x) #x
+#define MACRO_TOSTRING(x) MACRO_STRINGIFY(x)
+#define SYSTEM_NAME MACRO_TOSTRING(RIC_SYSTEM_NAME)
+#define DEFAULT_FRIENDLY_NAME MACRO_TOSTRING(RIC_DEFAULT_FRIENDLY_NAME)
+#define DEFAULT_HOSTNAME MACRO_TOSTRING(RIC_DEFAULT_HOSTNAME)
+#define DEFAULT_ADVNAME MACRO_TOSTRING(RIC_DEFAULT_ADVNAME)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Default system config
@@ -35,7 +37,7 @@ static const char *defaultConfigJSON =
         R"("SystemName":")" SYSTEM_NAME R"(",)"
         R"("SystemVersion":")" SYSTEM_VERSION R"(",)"
         R"("IDFVersion":")" IDF_VER R"(",)"
-        R"("DefaultName":")" DEFAULT_SYSNAME R"(",)"
+        R"("DefaultName":")" DEFAULT_FRIENDLY_NAME R"(",)"
         R"("DefaultNameIsSet":0,)"
         R"("SysManager":{)"
             R"("monitorPeriodMs":10000,)"
@@ -45,87 +47,9 @@ static const char *defaultConfigJSON =
                 R"("FrameBound":"0xE7",)"
                 R"("CtrlEscape":"0xD7")"
             R"(})"
-        R"(},)"
-        R"("NetMan":{)"
-            R"("WiFiEnabled":1,)"
-            R"("defaultHostname":")" DEFAULT_HOSTNAME R"(",)"
-            R"("logLevel":"D")"
-        R"(},)"
-        R"("NTPClient":{)"
-            R"("enable":1,)"
-            R"("NTPServer":"pool.ntp.org",)"
-            R"("GMTOffsetSecs":0,)"
-            R"("DSTOffsetSecs":0)"
-        R"(},)"
-        R"("ESPOTAUpdate":{)"
-            R"("OTADirect":1)"
-        R"(},)"
-        R"("FileManager":{)"
-            R"("SPIFFSEnabled":1,)"
-            R"("SPIFFSFormatIfCorrupt":1,)"
-            R"("SDEnabled":0,)"
-            R"("CacheFileList":0)"
-        R"(},)"
-        R"("WebServer":{)"
-            R"("enable":1,)"
-            R"("webServerPort":80,)"
-            R"("allowOriginAll":1,)"
-            R"("apiPrefix":"",)"
-            R"("fileServer":1,)"
-            R"("numConnSlots":6,)"
-            R"("maxWS":3,)"
-            R"("wsPcol":"RICSerial",)"
-            R"("wsPingMs":2000,)"
-            R"("logLevel":"D",)"
-            R"("sendMax":10000,)"
-            R"("taskCore":0,)"
-            R"("taskStack":3000,)"
-            R"("taskPriority":9)"            
-        R"(},)"
-        R"("SerialConsole":{)"
-            R"("enable":1,)"
-            R"("uartNum":0,)"
-            R"("baudRate":115200,)"
-            R"("crlfOnTx":1,)"
-            R"("protocol":"RICSerial",)"
-            R"("logLevel":"D")"
-        R"(},)"
-        R"("CommandSerial":{)"
-            R"("enable":0,)"
-            R"("uartNum":1,)"
-            R"("baudRate":912600,)"
-            R"("rxBufSize":32768,)"
-            R"("rxPin":-1,)"
-            R"("txPin":-1,)"
-            R"("protocol":"RICSerial",)"
-            R"("logLevel":"D")"
-        R"(},)"
-        R"("CommandSocket":{)"
-            R"("enable":1,)"
-            R"("socketPort":24,)"
-            R"("protocol":"BusRaiderCSOK",)"
-            R"("logLevel":"D")"
-        R"(},)"
-        R"("PiCoProcessor":{)"
-            R"("enable":1,)"
-            R"("uartNum":2,)"
-            R"("baudRate":921600,)"
-            R"("rxBufSize":32768,)"
-            R"("rxPin":16,)"
-            R"("txPin":17,)"
-            R"("hdlcMaxLen":10000,)"
-            R"("protocol":"RICSerial",)"
-            R"("logLevel":"D")"
         R"(})"
     R"(})"
 ;
-
-const char* SYS_CONFIGURATIONS[] = {
-    R"({)"
-        R"("SysType":"BusRaider")"
-    R"(})"
-};    
-extern const int SYS_CONFIGURATIONS_LEN = sizeof(SYS_CONFIGURATIONS) / sizeof(const char *);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // System Parameters
@@ -140,12 +64,6 @@ static const int MAIN_TASK_PROCESSOR_CORE = 1;
 static const int MAIN_TASK_STACK_SIZE = 16384;
 static TaskHandle_t mainTaskHandle = nullptr;
 extern void mainTask(void *pvParameters);
-
-// Include WiFi functionality
-#define FEATURE_WIFI_FUNCTIONALITY
-#define FEATURE_WEB_SERVER_OR_WEB_SOCKETS
-#define FEATURE_WEB_SERVER_STATIC_FILES
-#define FEATURE_WEB_SOCKETS
 
 // Debug
 static const char* MODULE_NAME = "MainTask";
@@ -212,6 +130,9 @@ static heap_trace_record_t trace_record[NUM_RECORDS]; // This buffer must be in 
 #include <FileSystem.h>
 #include <ESPOTAUpdate.h>
 #include <PiCoProcessor.h>
+
+// System type consts
+#include "RICSysTypes.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Standard Entry Point
@@ -333,7 +254,15 @@ void mainTask(void *pvParameters)
 
     // SysTypes
     SysTypeManager _sysTypeManager(_sysTypeConfig);
-    _sysTypeManager.setup(SYS_CONFIGURATIONS, SYS_CONFIGURATIONS_LEN);
+    _sysTypeManager.setup(RIC_SYS_TYPE_STATICS, RIC_SYS_TYPE_STATICS_LEN);
+
+    // Handle power-up LED setting as early as possible
+#ifdef FEATURE_POWER_UP_LED_ASAP
+    powerUpLEDSet("PowerUpLED", _sysTypeConfig);
+#ifdef DEBUG_TIMING_OF_STARTUP
+    LOG_I(MODULE_NAME, "powerUpLEDSet ASAP");
+#endif
+#endif
 
     // System Module Manager
     SysManager _SysManager("SysManager", defaultSystemConfig, &_sysTypeConfig, &_sysModMutableConfig);
@@ -405,12 +334,6 @@ void mainTask(void *pvParameters)
     // Start webserver
     _webServer.beginServer();
 #endif
-
-    uint8_t buf[100];
-    FILE *fd = fopen("/spiffs/index.html", "r");
-    int res = fread(buf, 1, 10, fd);
-    LOG_I(MODULE_NAME, "READ FROM INDEX HTML %d %02x %02x", res, buf[0], buf[1]);
-    fclose(fd);
 
     // Loop forever
     while (1)

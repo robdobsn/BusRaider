@@ -328,70 +328,71 @@ bool FileSystem::getFilesJSON(const char* req, const String& fileSystemStr, cons
     // Check file system is valid
     if (fsSizeBytes == 0)
     {
+        xSemaphoreGive(_fileSysMutex);
         LOG_W(MODULE_PREFIX, "getFilesJSON No valid file system");
         Utils::setJsonErrorResult(reqStr.c_str(), respStr, "nofs");
         return false;
     }
 
-    // // Open directory
-    // String rootFolder = (folderStr.startsWith("/") ? baseFolderForFS + folderStr : (baseFolderForFS + "/" + folderStr));
-    // DIR* dir = opendir(rootFolder.c_str());
-    // if (!dir)
-    // {
-    //     xSemaphoreGive(_fileSysMutex);
-    //     LOG_W(MODULE_PREFIX, "getFilesJSON Failed to open base folder %s", rootFolder.c_str());
-    //     Utils::setJsonErrorResult(reqStr.c_str(), respStr, "nofolder");
-    //     return false;
-    // }
+    // Open directory
+    String rootFolder = (folderStr.startsWith("/") ? baseFolderForFS + folderStr : (baseFolderForFS + "/" + folderStr));
+    DIR* dir = opendir(rootFolder.c_str());
+    if (!dir)
+    {
+        xSemaphoreGive(_fileSysMutex);
+        LOG_W(MODULE_PREFIX, "getFilesJSON Failed to open base folder %s", rootFolder.c_str());
+        Utils::setJsonErrorResult(reqStr.c_str(), respStr, "nofolder");
+        return false;
+    }
 
-    // // Start response JSON
-    // respStr = R"({"req":")" + reqStr + R"(","rslt":"ok","fsName":")" + nameOfFS + R"(","fsBase":")" + baseFolderForFS + 
-    //             R"(","diskSize":)" + String(fsSizeBytes) + R"(,"diskUsed":)" + fsUsedBytes +
-    //             R"(,"folder":")" + String(rootFolder) + R"(","files":[)";
-    // bool firstFile = true;
+    // Start response JSON
+    respStr = R"({"req":")" + reqStr + R"(","rslt":"ok","fsName":")" + nameOfFS + R"(","fsBase":")" + baseFolderForFS + 
+                R"(","diskSize":)" + String(fsSizeBytes) + R"(,"diskUsed":)" + fsUsedBytes +
+                R"(,"folder":")" + String(rootFolder) + R"(","files":[)";
+    bool firstFile = true;
 
-    // // Read directory entries
-    // struct dirent* ent = NULL;
-    // while ((ent = readdir(dir)) != NULL) 
-    // {
-    //     // Check for unwanted files
-    //     String fName = ent->d_name;
-    //     if (fName.equalsIgnoreCase("System Volume Information"))
-    //         continue;
-    //     if (fName.equalsIgnoreCase("thumbs.db"))
-    //         continue;
+    // Read directory entries
+    struct dirent* ent = NULL;
+    while ((ent = readdir(dir)) != NULL) 
+    {
+        // Check for unwanted files
+        String fName = ent->d_name;
+        if (fName.equalsIgnoreCase("System Volume Information"))
+            continue;
+        if (fName.equalsIgnoreCase("thumbs.db"))
+            continue;
 
-    //     // Get file info including size
-    //     size_t fileSize = 0;
-    //     struct stat st;
-    //     String filePath = (rootFolder.endsWith("/") ? rootFolder + fName : rootFolder + "/" + fName);
-    //     if (stat(filePath.c_str(), &st) == 0) 
-    //     {
-    //         fileSize = st.st_size;
-    //     }
+        // Get file info including size
+        size_t fileSize = 0;
+        struct stat st;
+        String filePath = (rootFolder.endsWith("/") ? rootFolder + fName : rootFolder + "/" + fName);
+        if (stat(filePath.c_str(), &st) == 0) 
+        {
+            fileSize = st.st_size;
+        }
 
-    //     // Form the JSON list
-    //     if (!firstFile)
-    //         respStr += ",";
-    //     firstFile = false;
-    //     respStr += R"({"name":")";
-    //     respStr += ent->d_name;
-    //     respStr += R"(","size":)";
-    //     respStr += String(fileSize);
-    //     respStr += "}";
-    // }
+        // Form the JSON list
+        if (!firstFile)
+            respStr += ",";
+        firstFile = false;
+        respStr += R"({"name":")";
+        respStr += ent->d_name;
+        respStr += R"(","size":)";
+        respStr += String(fileSize);
+        respStr += "}";
+    }
 
-    // // Finished with file list
-    // closedir(dir);
-    // xSemaphoreGive(_fileSysMutex);
+    // Finished with file list
+    closedir(dir);
+    xSemaphoreGive(_fileSysMutex);
 
-    // // Complete string and replenish cache
-    // respStr += "]}";
-    // if (_cacheFileList)
-    // {
-    //     _cachedFileListResponse = respStr;
-    //     _cachedFileListValid = true;
-    // }
+    // Complete string and replenish cache
+    respStr += "]}";
+    if (_cacheFileList)
+    {
+        _cachedFileListResponse = respStr;
+        _cachedFileListValid = true;
+    }
     return true;
 }
 

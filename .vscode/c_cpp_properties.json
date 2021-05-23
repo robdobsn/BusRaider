@@ -8,7 +8,7 @@
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "c11",
             "cppStandard": "c++17",
-            "compileCommands": "${workspaceFolder}/EspSw2/build/compile_commands.json"
+            "compileCommands": "${workspaceFolder}/EspSw2/builds/compile_commands.json"
         },
         {
             "name": "PiSw",

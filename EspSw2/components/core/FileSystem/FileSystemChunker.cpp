@@ -10,8 +10,8 @@
 #include "FileSystem.h"
 #include <Logger.h>
 
-#define DEBUG_FILE_CHUNKER
-#define DEBUG_FILE_CHUNKER_CONTENTS
+// #define DEBUG_FILE_CHUNKER
+// #define DEBUG_FILE_CHUNKER_CONTENTS
 
 #if defined(DEBUG_FILE_CHUNKER) || defined(DEBUG_FILE_CHUNKER_CONTENTS)
 static const char* MODULE_PREFIX = "FileSystemChunker";

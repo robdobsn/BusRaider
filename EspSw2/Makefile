@@ -3,6 +3,6 @@
 # project subdirectory.
 #
 
-PROJECT_NAME := BusRaiderESP32
+PROJECT_NAME := BusRaider
 
 include $(IDF_PATH)/make/project.mk

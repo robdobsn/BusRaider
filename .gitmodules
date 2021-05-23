@@ -5,3 +5,6 @@
 [submodule "PiSw2/circle"]
 	path = PiSw2/circle
 	url = https://github.com/rsta2/circle.git
+[submodule "EspSw2/components/RdWebServer"]
+	path = EspSw2/components/RdWebServer
+	url = https://github.com/robdobsn/RdWebServer

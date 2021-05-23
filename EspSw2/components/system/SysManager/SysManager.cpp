@@ -75,7 +75,7 @@ SysManager::SysManager(const char* pModuleName, ConfigBase& defaultConfig, Confi
                 defaultConfig.getString(_moduleName.c_str(), "{}");
 
     // Extract system name from config
-    _systemName = defaultConfig.getString("SystemName", "RBot");
+    _systemName = defaultConfig.getString("SystemName", "");
     _systemVersion = defaultConfig.getString("SystemVersion", "0.0.0");
 
     // Monitoring period and monitoring timer

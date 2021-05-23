@@ -14,10 +14,11 @@
 #include "MiniHDLC.h"
 #include "string.h"
 
-#define DEBUG_HDLC
-#define DEBUG_HDLC_CRC
+#define WARN_ON_HDLC_FRAME_TOO_LONG
+//#define DEBUG_HDLC
+//#define DEBUG_HDLC_CRC
 
-#if defined(DEBUG_HDLC) || defined(DEBUG_HDLC_CRC)
+#if defined(DEBUG_HDLC) || defined(DEBUG_HDLC_CRC) || defined(WARN_ON_HDLC_FRAME_TOO_LONG)
 #include <Logger.h>
 static const char* MODULE_PREFIX = "MiniHDLC";
 #endif
@@ -242,13 +243,15 @@ void MiniHDLC::handleChar(uint8_t ch)
     // Check buffer size and increase if needed & possible
     if (_framePos >= _rxBuffer.size())
     {
-        if (_framePos >= _rxBufferMaxLen)
+        if (_framePos > _rxBufferMaxLen)
         {
             // Too long - discard and start again
             if (_stats._frameTooLongCount < __UINT16_MAX__)
             {
                 _stats._frameTooLongCount++;
-                LOG_I(MODULE_PREFIX, "handleChar Frame too long len %d", _framePos);
+#ifdef WARN_ON_HDLC_FRAME_TOO_LONG
+                LOG_W(MODULE_PREFIX, "handleChar Frame too long len %d maxlen %d", _framePos, _rxBufferMaxLen);
+#endif
             }
             _framePos = 0;
             _frameCRC = CRC16_CCITT_INIT_VAL;

@@ -1,0 +1,16 @@
+# Preprocessor definitions
+add_compile_definitions(RIC_SYSTEM_NAME=BusRaider)
+add_compile_definitions(RIC_DEFAULT_FRIENDLY_NAME=BusRaider)
+add_compile_definitions(RIC_DEFAULT_HOSTNAME=BusRaider)
+add_compile_definitions(RIC_DEFAULT_ADVNAME=BusRaider)
+# add_compile_definitions(FEATURE_POWER_UP_LED_ASAP)
+add_compile_definitions(FEATURE_WIFI_FUNCTIONALITY)
+add_compile_definitions(FEATURE_WEB_SERVER_OR_WEB_SOCKETS)
+add_compile_definitions(FEATURE_WEB_SOCKETS)
+add_compile_definitions(FEATURE_WEB_SERVER_STATIC_FILES)
+# add_compile_definitions(FEATURE_EMBED_MICROPYTHON)
+# add_compile_definitions(RIC_ENABLE_SPIRAM)
+
+# CMake definitions
+set(FS_TYPE "spiffs")
+set(FS_IMAGE_PATH "${RIC_CONFIG_DIR}/FSImage")

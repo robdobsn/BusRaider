@@ -1,16 +1,18 @@
-SERIALPORT=${1:-COM5}
-BUILD_IDF_VERS=${2:-esp-idf}
-SERIALBAUD=${3:-2000000}
+BUILDREV=${1:-BusRaider}
+SERIALPORT=${2:-COM25}
+BUILD_IDF_VERS=${3:-esp-idf-v4.0.1}
+SERIALBAUD=${4:-2000000}
+IPORHOSTNAME=${5:-}
 . $HOME/esp/${BUILD_IDF_VERS}/export.sh
-idf.py build &&\
-if [ -z "$3" ]
+python ./scripts/build.py buildConfigs/$BUILDREV &&\
+if [ -z "$5" ]
   then
-    python.exe ./scripts/flashUsingPartitionCSV.py partitions.csv build BusRaiderESP32.bin spiffs.bin $SERIALPORT -b$SERIALBAUD
+    python.exe ./scripts/flashUsingPartitionCSV.py buildConfigs/$BUILDREV/partitions.csv builds/$BUILDREV BusRaider.bin spiffs.bin $SERIALPORT -b$SERIALBAUD
   else
-    echo Sending OTA
-    curl -F "file=@./build/BusRaiderESP32.bin" "http://$3/espfwupdate"
+    echo Sending to RIC OTA
+    curl -F "file=@./builds/$BUILDREV/BusRaider.bin" "http://$5/api/espFwUpdate"
 fi
 if [ $? -eq "0" ] 
   then
-    python.exe ./scripts/SerialMonitor.py $SERIALPORT -g
+    python.exe scripts/SerialMonitor.py $SERIALPORT -g
 fi
