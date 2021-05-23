@@ -38,6 +38,7 @@ public:
     virtual bool firmwareUpdateStart(const char* fileName, size_t fileLen) override final;
     virtual bool firmwareUpdateBlock(uint32_t filePos, const uint8_t *pBlock, size_t blockLen) override final;
     virtual bool firmwareUpdateEnd() override final;
+    virtual bool firmwareUpdateCancel() override final;
 
     // Get debug string
     virtual String getDebugStr() override final;
@@ -67,9 +68,11 @@ private:
     esp_ota_handle_t _otaDirectUpdateHandle;
 
     // Firmware update
-    uint64_t _fwUpdateStartTimeUs;
+    uint64_t _fwUpdateTimeStartedUs;
+    uint64_t _fwUpdateBeginTimeUs;
     uint64_t _fwUpdateWriteTimeUs;
     uint32_t _fwUpdateBytes;
+    float _fwUpdateLastRate;
 
 private:
     // Handle received data

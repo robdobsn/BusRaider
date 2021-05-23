@@ -36,18 +36,7 @@ SysModBase::SysModBase(const char *pModuleName, ConfigBase& defaultConfig, Confi
 
     // Set log level for module if specified
     String logLevel = configGetString("logLevel", "");
-    if (logLevel == "N")
-        esp_log_level_set(pModuleName, ESP_LOG_NONE);
-    else if (logLevel == "E")
-        esp_log_level_set(pModuleName, ESP_LOG_ERROR);
-    else if (logLevel == "W")
-        esp_log_level_set(pModuleName, ESP_LOG_WARN);
-    else if (logLevel == "I")
-        esp_log_level_set(pModuleName, ESP_LOG_INFO);
-    else if (logLevel == "D")
-        esp_log_level_set(pModuleName, ESP_LOG_DEBUG);
-    else if (logLevel == "V")
-        esp_log_level_set(pModuleName, ESP_LOG_VERBOSE);
+    setModuleLogLevel(pModuleName, logLevel);
 
     // Add to system module manager
     if (_pSysManager)
@@ -66,21 +55,21 @@ String SysModBase::getSystemName()
 {
     if (_pSysManager)
         return _pSysManager->getSystemName();
-    return "RBot";
+    return "RIC";
 }
 
 String SysModBase::getFriendlyName()
 {
     if (_pSysManager)
         return _pSysManager->getFriendlyName();
-    return "RBot";
+    return "RIC";
 }
 
 RestAPIEndpointManager* SysModBase::getRestAPIEndpoints()
 {
     // Check parent
     if (!_pSysManager)
-        return NULL;
+        return nullptr;
 
     // Get parent's endpoints
     return _pSysManager->getRestAPIEndpoints();
@@ -90,9 +79,9 @@ ProtocolEndpointManager* SysModBase::getProtocolEndpointManager()
 {
     // Check parent
     if (!_pSysManager)
-        return NULL;
+        return nullptr;
 
-    // Get parent's endpoints
+    // Get endpoint manager
     return _pSysManager->getProtocolEndpointManager();
 }
 
@@ -157,4 +146,11 @@ void SysModBase::executeStatusChangeCBs()
         if (statusChangeCB)
             statusChangeCB();
     }
+}
+
+SupervisorStats* SysModBase::getSysManagerStats()
+{
+    if (_pSysManager)
+        return _pSysManager->getStats();
+    return nullptr;
 }

@@ -39,7 +39,7 @@ public:
     }
 
     // Get max length
-    virtual int getMaxLen() override final;
+    virtual int getMaxLen() const override final;
 
     // Clear
     virtual void clear() override final;

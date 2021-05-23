@@ -18,7 +18,8 @@ class RestAPIEndpointManager;
 class NetworkManager : public SysModBase
 {
 public:
-    NetworkManager(const char* pModuleName, ConfigBase& defaultConfig, ConfigBase* pGlobalConfig, ConfigBase* pMutableConfig);
+    NetworkManager(const char* pModuleName, ConfigBase& defaultConfig, ConfigBase* pGlobalConfig, 
+                ConfigBase* pMutableConfig, const char* defaultHostname);
 
 protected:
     // Setup
@@ -39,6 +40,9 @@ protected:
 private:
     // Singleton NetworkManager
     static NetworkManager* _pNetworkManager;
+
+    // Default hostname
+    String _defaultHostname;
     
     // Last connection status
     NetworkSystem::ConnStateCode _prevConnState;

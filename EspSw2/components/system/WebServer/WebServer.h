@@ -11,6 +11,7 @@
 #include <ConfigBase.h>
 #include <RestAPIEndpointManager.h>
 #include <SysModBase.h>
+#include <RdWebInterface.h>
 
 class WebServerResource;
 class ProtocolEndpointMsg;
@@ -21,7 +22,8 @@ class WebServer : public SysModBase
 {
 public:
     // Constructor/destructor
-    WebServer(const char* pModuleName, ConfigBase& defaultConfig, ConfigBase* pGlobalConfig, ConfigBase* pMutableConfig);
+    WebServer(const char* pModuleName, ConfigBase& defaultConfig, 
+            ConfigBase* pGlobalConfig, ConfigBase* pMutableConfig);
     virtual ~WebServer();
 
     // Begin
@@ -57,8 +59,10 @@ private:
     void configChanged();
     void applySetup();
     void setupEndpoints();
-    bool sendWebSocketMsg(ProtocolEndpointMsg& msg);
-    bool readyToSendWebSocketMsg();
+    bool webSocketSendMsg(ProtocolEndpointMsg& msg);
+    bool webSocketCanSend(uint32_t channelID);
+    bool restAPIMatchEndpoint(const char* url, RdWebServerMethod method,
+                    RdWebServerRestEndpoint& endpoint);
 
     // Server config
     bool _accessControlAllowOriginAll;
@@ -74,4 +78,25 @@ private:
 
     // Singleton
     static WebServer* _pThisWebServer;
+
+    // Websocket protocol
+    String _webSocketProtocol;
+
+    // Websocket protocol handling
+    static const uint32_t WS_INBOUND_BLOCK_MAX_DEFAULT = 1200;
+    static const uint32_t WS_INBOUND_QUEUE_MAX_DEFAULT = 20;
+    static const uint32_t WS_OUTBOUND_BLOCK_MAX_DEFAULT = 1200;
+    static const uint32_t WS_OUTBOUND_QUEUE_MAX_DEFAULT = 5;
+
+    // Mapping from web-server method to RESTAPI method enums
+    RestAPIEndpointDef::EndpointMethod convWebToRESTAPIMethod(RdWebServerMethod method)
+    {
+        switch(method)
+        {
+            case WEB_METHOD_POST: return RestAPIEndpointDef::ENDPOINT_POST;
+            case WEB_METHOD_PUT: return RestAPIEndpointDef::ENDPOINT_PUT;
+            case WEB_METHOD_DELETE: return RestAPIEndpointDef::ENDPOINT_DELETE;
+            default: return RestAPIEndpointDef::ENDPOINT_GET;
+        }
+    }
 };

@@ -12,7 +12,8 @@
 
 #pragma once 
 
-#include "SysModStats.h"
+#include <ExecTimer.h>
+#include <SupervisorStats.h>
 #include "SysModBase.h"
 #include <list>
 #include <vector>
@@ -30,7 +31,7 @@ class SysManager
 {
 public:
     // Constructor
-    SysManager(const char* pModuleName, ConfigBase& defaultConfig, ConfigBase* pMutableConfig);
+    SysManager(const char* pModuleName, ConfigBase& defaultConfig, ConfigBase* pGlobalConfig, ConfigBase* pMutableConfig);
 
     // Setup
     void setup();
@@ -56,9 +57,6 @@ public:
     {
         _systemUniqueString = sysUniqueStr;
     }
-
-    // Get stats
-    String statsGetString();
 
     // Set stats callback (for SysManager's own stats)
     void setStatsCB(SysManager_statsCB statsCB)
@@ -108,6 +106,11 @@ public:
         return _pProtocolEndpointManager;
     }
 
+    SupervisorStats* getStats()
+    {
+        return &_supervisorStats;
+    }
+
 private:
 
     // Name of this module
@@ -116,97 +119,34 @@ private:
     // List of modules
     std::list<SysModBase*> _sysModuleList;
 
-    // Firmware update sysMod
-    SysModBase* _pFirmwareUpdateSysMod;
-
-private:
+    // Stream handler sysMod
+    SysModBase* _pStreamHandlerSysMod;
 
     // Consts
     static const uint32_t RIC_SERIAL_NUMBER_BYTES = 16;
     static constexpr const char* RIC_SERIAL_SET_MAGIC_STR = "RoboticalMagic";
 
-    // Supervisory info
-    class SysModInfo
-    {
-    public:
-        SysModInfo(SysModBase* pSysMod)
-        {
-            _pSysMod = pSysMod;
-        }
-        SysModBase* _pSysMod;
-        SysModStats _sysModStats;
-    };
-
-    // Supervisor
+    // Service loop supervisor
     void supervisorSetup();
     bool _supervisorDirty;
-    std::vector<SysModInfo> _supervisorSysModInfoVector;
-    uint32_t _supervisorCurModIdx = 0;
-    
-    // Service loop info
-    class ServiceLoopInfo
-    {
-    public:
-        ServiceLoopInfo()
-        {
-            clear();
-        }
-        void clear()
-        {
-            _loopTimeAvgSum = 0;
-            _loopTimeAvgCount = 0;
-            _loopTimeMax = 0;
-            _loopTimeMin = 0;
-            _lastLoopStartMicros = 0;
-        }
-        void startLoop();
-        void endLoop();
-        unsigned long _loopTimeAvgSum;
-        unsigned long _loopTimeAvgCount;
-        unsigned long _loopTimeMax;
-        unsigned long _loopTimeMin;
-        uint64_t _lastLoopStartMicros;
-    };
-    ServiceLoopInfo _serviceLoopInfo;
 
-    // Supervisor stats
-    class SupervisorStats
-    {
-    public:
-        SupervisorStats()
-        {
-            clear();
-        }
-        void clear()
-        {
-            _slowestSysModIdx = 0;
-            _secondSlowestSysModIdx = 0;
-            _loopTimeMinUs = 0;
-            _loopTimeMaxUs = 0;
-            _loopTimeAvgUs = 0;
-            _totalLoops = 0;
-        }
-        int _slowestSysModIdx;
-        int _secondSlowestSysModIdx;
-        unsigned long _loopTimeMinUs;
-        unsigned long _loopTimeMaxUs;
-        unsigned long _totalLoops;
-        double _loopTimeAvgUs;
-    };
+    // Service loop
+    std::vector<SysModBase*> _sysModServiceVector;
+    uint32_t _serviceLoopCurModIdx = 0;
+
+    // Supervisor statistics
     SupervisorStats _supervisorStats;
 
-    // Monitor timer and period
-    unsigned long _monitorPeriodMs;
-    unsigned long _monitorTimerMs;
-    bool _monitorTimerStarted;
-    std::vector<String> _monitorReportList;
+    // Diagnostics log timer and period
+    unsigned long _diagsLogPeriodMs;
+    unsigned long _diagsLogTimerMs;
+    bool _diagsLogTimerStarted;
+    std::vector<String> _diagsLogReportList;
 
     // Stats available callback
     SysManager_statsCB _statsCB;
 
     // Stats
-    void statsClear();
-    void statsUpdate();
     void statsShow();
 
 private:
@@ -230,7 +170,6 @@ private:
     String _friendlyNameStored;
     bool _friendlyNameIsSet;
     String _ricSerialNoStoredStr;
-
 
     // Unique string for this system
     String _systemUniqueString;
@@ -257,6 +196,9 @@ private:
 
     // Serial no
     void apiSerialNumber(const String &reqStr, String& respStr);
+
+    // Hardware (RIC) revision number
+    void apiHwRevisionNumber(const String &reqStr, String& respStr);
 
     // SysMod info and debug
     void apiGetSysModInfo(const String &reqStr, String& respStr);

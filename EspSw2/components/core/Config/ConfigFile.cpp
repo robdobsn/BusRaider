@@ -12,6 +12,8 @@
 
 static const char* MODULE_PREFIX = "ConfigFile";
 
+//#define DEBUG_CONFIG_FILE
+
 // Clear
 void ConfigFile::clear()
 {
@@ -34,8 +36,9 @@ bool ConfigFile::setup()
     // Get config string
     String configData = _fileManager.getFileContents(_fileSystem, _filename, _configMaxDataLen);
     setConfigData(configData.c_str());
-    LOG_D(MODULE_PREFIX, "Config %s read len(%d) %s", _filename.c_str(), configData.length(), configData.c_str());
-
+#ifdef DEBUG_CONFIG_FILE
+    LOG_I(MODULE_PREFIX, "Config %s read len(%d) %s", _filename.c_str(), configData.length(), configData.c_str());
+#endif
     // Ok
     return true;
 }
@@ -59,9 +62,11 @@ bool ConfigFile::writeConfig(const String& configJSONStr)
         _fileManager.setFileContents(_fileSystem, _filename, _dataStrJSON);
     }
 
-    LOG_D(MODULE_PREFIX, "Written config %s len %d%s",
+#ifdef DEBUG_CONFIG_FILE
+    LOG_I(MODULE_PREFIX, "Written config %s len %d%s",
                     _filename.c_str(), _dataStrJSON.length(),
                     (_dataStrJSON.length() >= _configMaxDataLen ? " TRUNCATED" : ""));
+#endif
 
     // Ok
     return true;

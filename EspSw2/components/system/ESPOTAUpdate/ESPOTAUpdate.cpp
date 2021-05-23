@@ -12,6 +12,7 @@
 #include <RestAPIEndpointManager.h>
 #include <Logger.h>
 #include "esp_system.h"
+#include "ArduinoTime.h"
 
 static const char* MODULE_PREFIX = "ESPOTAUpdate";
 
@@ -37,9 +38,11 @@ ESPOTAUpdate::ESPOTAUpdate(const char *pModuleName, ConfigBase& defaultConfig, C
     _otaDirectInProgress = false;
 
     // Timing of firmware update process
-    _fwUpdateStartTimeUs = 0;
+    _fwUpdateTimeStartedUs = 0;
+    _fwUpdateBeginTimeUs = 0;
     _fwUpdateWriteTimeUs = 0;
     _fwUpdateBytes = 0;
+    _fwUpdateLastRate = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -72,17 +75,21 @@ void ESPOTAUpdate::service()
 String ESPOTAUpdate::getDebugStr()
 {
     // FW update timing
+    uint32_t fwUpdateElapsedMs = (micros() - _fwUpdateTimeStartedUs) / 1000;
+    if (_otaDirectInProgress)
+        _fwUpdateLastRate = (fwUpdateElapsedMs != 0) ? 1000.0*_fwUpdateBytes/fwUpdateElapsedMs : 0;
     char tmpBuf[200];
-    snprintf(tmpBuf, sizeof(tmpBuf)-1, "OTAStart %d ms OTAWrite %d ms Bytes %d Rate %.1fBytes/s",
-        (uint32_t)(_fwUpdateStartTimeUs / 1000),
-        (uint32_t)(_fwUpdateWriteTimeUs / 1000),
+    snprintf(tmpBuf, sizeof(tmpBuf)-1, "OTARate %.1fBytes/s OTABegin %dms OTABytes %d FlashWriteRate %.1fBytes/s updateTime %.1fs",
+        _fwUpdateLastRate, 
+        (uint32_t)(_fwUpdateBeginTimeUs / 1000),
         _fwUpdateBytes,
-        _fwUpdateBytes / (_fwUpdateWriteTimeUs / 1000000.0));
+        _fwUpdateWriteTimeUs != 0 ? _fwUpdateBytes / (_fwUpdateWriteTimeUs / 1000000.0) : 0,
+        fwUpdateElapsedMs / 1000.0);
     return tmpBuf;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Handle the update
+// Firmware update start
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool ESPOTAUpdate::firmwareUpdateStart(const char* fileName, size_t fileLen)
@@ -95,8 +102,8 @@ bool ESPOTAUpdate::firmwareUpdateStart(const char* fileName, size_t fileLen)
     }
     
     // Timing
-    uint64_t fwStart = micros();
-    _fwUpdateStartTimeUs = 0;
+    _fwUpdateTimeStartedUs = micros();
+    _fwUpdateBeginTimeUs = 0;
     _fwUpdateWriteTimeUs = 0;
     _fwUpdateBytes = 0;
 
@@ -122,7 +129,7 @@ bool ESPOTAUpdate::firmwareUpdateStart(const char* fileName, size_t fileLen)
     esp_err_t err = esp_ota_begin(update_partition, OTA_SIZE_UNKNOWN, &_otaDirectUpdateHandle);
 
     // Timing
-    _fwUpdateStartTimeUs = micros() - fwStart;
+    _fwUpdateBeginTimeUs = micros() - _fwUpdateTimeStartedUs;
 
     // Check result
     if (err != ESP_OK) 
@@ -144,6 +151,10 @@ bool ESPOTAUpdate::firmwareUpdateStart(const char* fileName, size_t fileLen)
     return true;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Firmware update block (handle a firmware data block)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 bool ESPOTAUpdate::firmwareUpdateBlock(uint32_t filePos, const uint8_t *pBlock, size_t blockLen)
 {
     // Check if in progress
@@ -162,6 +173,10 @@ bool ESPOTAUpdate::firmwareUpdateBlock(uint32_t filePos, const uint8_t *pBlock, 
     }
     return true;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Firmware update end (flash and reboot)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool ESPOTAUpdate::firmwareUpdateEnd()
 {
@@ -197,6 +212,24 @@ bool ESPOTAUpdate::firmwareUpdateEnd()
         _directUpdateRestartPending = true;
     }
     return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Firmware update cancel
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool ESPOTAUpdate::firmwareUpdateCancel()
+{
+    if (_otaDirectInProgress)
+    {
+        _otaDirectInProgress = false;
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 3, 0)        
+        return esp_ota_abort(_otaDirectUpdateHandle) == ESP_OK;
+#else
+        return true;
+#endif
+    }
+    return false;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

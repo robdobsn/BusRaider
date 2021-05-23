@@ -9,263 +9,58 @@
 #include <stdint.h>
 #include <WString.h>
 #include <Logger.h>
+#include <ConfigBase.h>
+#include <Utils.h>
+#include "ArduinoTime.h"
 
-// #define DEBUG_RICREST_FILEUPLOAD 1
-// #define DEBUG_RICREST_FILEUPLOAD_BLOCK_ACK 1
-// #define DEBUG_RICREST_FILEUPLOAD_BLOCK_ACK_DETAIL 1
-
-#define FILE_UPLOAD_USE_BATCH_ACKS
+class RICRESTMsg;
+class ProtocolEndpointMsg;
+class ProtocolEndpointManager;
+class SysModBase;
 
 class FileUploadHandler
 {
 public:
-    static const uint32_t UPLOAD_FAIL_TIMEOUT = 60000;
     static const uint32_t FIRST_MSG_TIMEOUT = 3000;
     static const uint32_t BLOCK_MSGS_TIMEOUT = 1000;
     static const uint32_t MAX_BATCH_BLOCK_ACK_RETRIES = 5;
-    static const uint32_t FILE_BLOCK_SIZE = 220;
-    static const uint32_t NUM_BLOCKS_TO_CACHE = 10;
-    static const uint32_t BATCH_ACK_SIZE = 40;
-    FileUploadHandler()
+    static const uint32_t FILE_BLOCK_SIZE_DEFAULT = 220;
+    static const uint32_t BATCH_ACK_SIZE_DEFAULT = 5;
+    static const uint32_t FW_UPDATE_DELAY_START_BY_MS = 1000;
+    static const uint32_t MAX_BYTES_IN_BATCH = 50000;
+    // The overall timeout needs to be very big as BLE uploads can take over 30 minutes
+    static const uint32_t UPLOAD_FAIL_TIMEOUT_MS = 2 * 3600 * 1000;
+
+    // Constructor
+    FileUploadHandler();
+
+    // Service file upload
+    void service();
+
+    // Handle command frame
+    bool handleCmdFrame(const String& cmdName, RICRESTMsg& ricRESTReqMsg, String& respMsg, 
+                const ProtocolEndpointMsg &endpointMsg);
+
+    // Handle received file block
+    bool handleFileBlock(RICRESTMsg& ricRESTReqMsg, String& respMsg);
+
+    // Setup
+    void setup(ProtocolEndpointManager* pProtocolEndpointManager)
     {
-        // File params
-        _fileSize = 0;
-        _fileIsRICFirmware = false;
-        _commsChannelID = 0;
-        _expCRC16Valid = false;
-        _expCRC16 = 0;
-
-        // Status
-        _isUploading = false;
-        
-        // Timing
-        _startMs = 0;
-        _lastMsgMs = 0;
-
-        // Stats
-        _blockCount = 0;
-        _bytesCount = 0;
-        _blocksInWindow = 0;
-        _bytesInWindow = 0;
-        _statsWindowStartMs = millis();
-
-        // Debug
-        _debugLastStatsMs = millis();
-        _debugFinalMsgToSend = false;
-
-        // Cache
-        _cacheStartFilePos = 0;
-
-        // Batch handling
-        _expectedFilePos = 0;
-        _batchAckSize = BATCH_ACK_SIZE;
-        _batchBlockCount = 0;
-        _batchBlockAckRetry = 0;
-    }
-    bool start(String& reqStr, String& fileName, uint32_t fileSize, 
-            String& fileType, uint32_t& fileBlockSize, uint32_t& batchAckSize,
-            uint32_t channelID, String& respInfo, uint32_t crc16, bool crc16Valid)
-    {
-#ifdef FILE_UPLOAD_USE_BATCH_ACKS
-        if (_isUploading && (_expectedFilePos > 0))
-        {
-            respInfo = "uploadInProgress";
-            return false;
-        }
-        fileBlockSize = FILE_BLOCK_SIZE;
-        batchAckSize = BATCH_ACK_SIZE;
-#else
-        // Block handling
-        fileBlockSize = _blockSize;
-#endif
-
-        // File params
-        _reqStr = reqStr;
-        _fileName = fileName;
-        _fileSize = fileSize;
-        _fileType = fileType;
-        _fileIsRICFirmware = (_fileType.equalsIgnoreCase("ricfw"));
-        _commsChannelID = channelID;
-        _expCRC16 = crc16;
-        _expCRC16Valid = crc16Valid;
-
-        // Status
-        _isUploading = true;
-        
-        // Timing
-        _startMs = millis();
-        _lastMsgMs = millis();
-
-        // Stats
-        _blockCount = 0;
-        _bytesCount = 0;
-        _blocksInWindow = 0;
-        _bytesInWindow = 0;
-        _statsWindowStartMs = millis();
-
-        // Debug
-        _debugLastStatsMs = millis();
-        _debugFinalMsgToSend = false;
-
-        // Blocks
-        _blockSize = FILE_BLOCK_SIZE;
-
-        // Cache
-        _cacheStartFilePos = 0;
-        cacheInit(NUM_BLOCKS_TO_CACHE);
-
-        // Batch handling
-        _expectedFilePos = 0;
-        _batchAckSize = BATCH_ACK_SIZE;
-        _batchBlockCount = 0;
-        _batchBlockAckRetry = 0;
-        return true;
+        _pProtocolEndpointManager = pProtocolEndpointManager;
     }
 
-    void blockRx(uint32_t filePos, uint32_t blockLen, bool& blockValid, bool& isFinalBlock, bool& genAck)
+    // Set firmware updater
+    void setFWUpdater(SysModBase* pFirmwareUpdateSysMod)
     {
-        // Check uploading
-        if (!_isUploading)
-            return;
-
-        // Returned vals
-        blockValid = false;
-        isFinalBlock = false;
-        genAck = false;
-
-#ifdef FILE_UPLOAD_USE_BATCH_ACKS
-        // Add to batch
-        _batchBlockCount++;
-        _lastMsgMs = millis();
-
-        // Check
-        if (filePos != _expectedFilePos)
-        {
-#ifdef DEBUG_RICREST_FILEUPLOAD_BLOCK_ACK
-            LOG_W("FileUploadHandler", "blockRx unexpected %d != %d, blockCount %d batchBlockCount %d, batchAckSize %d", 
-                        filePos, _expectedFilePos, _blockCount, _batchBlockCount, _batchAckSize);
-#endif
-        }
-        else
-        {
-            // Valid block so bump values
-            blockValid = true;
-            _expectedFilePos += blockLen;
-            _blockCount++;
-            _bytesCount += blockLen;
-            _blocksInWindow++;
-            _bytesInWindow += blockLen;
-
-            // Check if this is the final block
-            isFinalBlock = checkFinalBlock(filePos, blockLen);
-
-#ifdef DEBUG_RICREST_FILEUPLOAD_BLOCK_ACK
-            LOG_I("FileUploadHandler", "blockRx ok blockCount %d batchBlockCount %d, batchAckSize %d",
-                        _blockCount, _batchBlockCount, _batchAckSize);
-#endif
-        }
-
-        // Generate an ack on the first block received and on completion of each batch
-        bool batchComplete = (_batchBlockCount == _batchAckSize) || (_blockCount == 1);
-        if (batchComplete)
-            _batchBlockCount = 0;
-        _batchBlockAckRetry = 0;
-        genAck = batchComplete;
-
-#else
-        _blockCount++;
-        _bytesCount += blockLen;
-        _blocksInWindow++;
-        _bytesInWindow += blockLen;
-        _lastMsgMs = millis();
-
-        // Check if the block can be cached
-        if (!((_cacheLowestPos >= filePos) && (_cacheLowestPos + _cacheMaxBlocks * _cacheBlockSize))
-            return;
-
-        // Check if already in the cache
-        for (CacheBlock& blk : _cacheBlocks)
-        {
-            if (_cacheBlocks.addrInBlock(filePos))
-                return;
-        }
-        // // Check cache
-        // int32_t cacheIdx = (filePos - _cacheStartFilePos) / _blockSize;
-        // if (cacheIdx < 0)
-        // {
-        //     LOG_W("FileUploadHandler", "CacheIdx < 0 rxFilePos %d cacheStart %d blockSize %d",
-        //                 filePos, _cacheStartFilePos, _blockSize);
-        // } else if (cacheIdx >= _cacheBlockOk.size())
-        // {
-        //     LOG_W("FileUploadHandler", "CacheIdx > Cache size rxFilePos %d cacheStart %d blockSize %d",
-        //                 filePos, _cacheStartFilePos, _blockSize);
-        // }
-        // else if (cacheIdx == 0)
-        // {
-        //     LOG_W("FileUploadHandler", "CacheIdx OK moving on filePos",
-        //                 filePos, _cacheStartFilePos, _blockSize);
-        // }
-#endif
+        LOG_I("FWUploadMan", "setFWUpdater %d", pFirmwareUpdateSysMod ? 1 : 0);
+        _pFirmwareUpdateSysMod = pFirmwareUpdateSysMod;
     }
 
-    void cancel() 
-    {
-        _isUploading = false;
-        cacheClear();
-    }
-    void end()
-    {
-        _isUploading = false;
-        _debugFinalMsgToSend = true; 
-        cacheClear();
-    }
-    uint32_t getOkTo()
-    {
-        return _expectedFilePos;
-    }
-
-    void service(bool& genAck)
-    {
-        genAck = false;
-        // Check valid
-        if (!_isUploading)
-            return;
-        
-#ifdef FILE_UPLOAD_USE_BATCH_ACKS
-        // At the start of ESP firmware update there is a long delay (3s or so)
-        // This occurs after reception of the first block
-        // So need to ensure that there is a long enough timeout
-        if (Utils::isTimeout(millis(), _lastMsgMs, _blockCount < 2 ? FIRST_MSG_TIMEOUT : BLOCK_MSGS_TIMEOUT))
-        {
-            _batchBlockAckRetry++;
-            if (_batchBlockAckRetry < MAX_BATCH_BLOCK_ACK_RETRIES)
-            {
-                LOG_W("FileUploadHandler", "service blockMsgs timeOut - okto ack needed lastMsgMs %d curMs %ld",
-                            _lastMsgMs, millis());
-                _lastMsgMs = millis();
-                genAck = true;
-                return;
-            }
-            else
-            {
-                LOG_W("FileUploadHandler", "service blockMsgs ack failed after retries");
-                _isUploading = false;
-            }
-        }
-        if (Utils::isTimeout(millis(), _lastMsgMs, UPLOAD_FAIL_TIMEOUT))
-        {
-            LOG_W("FileUploadHandler", "service timeOut");
-            _isUploading = false;
-        }
-#else
-        // Check for timeout
-        if (Utils::isTimeout(millis(), _lastMsgMs, UPLOAD_FAIL_TIMEOUT))
-        {
-            cacheClear();
-            _isUploading = false;   
-        }
-#endif        
-    }
+    // Get debug str
+    String getDebugStr();
+    
+private:
 
     double getBlockRate()
     {
@@ -289,8 +84,11 @@ public:
         char outStr[200];
         if (_debugFinalMsgToSend)
         {
-            snprintf(outStr, sizeof(outStr), "Complete OverallMsgRate %.1f/s OverallDataRate %.1f Bytes/s, TotalMsgs %d, TotalBytes %d",
-                    statsFinalMsgRate(), statsFinalDataRate(), _blockCount, _bytesCount);
+            snprintf(outStr, sizeof(outStr), "Complete OverallMsgRate %.1f/s OverallDataRate %.1f Bytes/s, TotalMsgs %d, TotalBytes %d, TotalMs %d, EndToEndRate %.1f Bytes/s",
+                    statsFinalMsgRate(), statsFinalDataRate(), 
+                    _blockCount, _bytesCount, 
+                    _lastFileUploadTotalMs,
+                    _lastFileUploadRateBytesPerSec);
         }
         else
         {
@@ -342,21 +140,6 @@ public:
         _statsWindowStartMs = millis();
     }
 
-    void cacheInit(uint32_t numBlocks)
-    {
-        _cacheVec.resize(numBlocks * _blockSize);
-        _cacheBlockOk.resize(numBlocks);
-        for (uint32_t i = 0; i < numBlocks; i++)
-            _cacheBlockOk[i] = false;
-        _cacheStartFilePos = 0;
-    }
-
-    void cacheClear()
-    {
-        _cacheVec.clear();
-        _cacheBlockOk.clear();
-    }
-
     // File info
     String _reqStr;
     uint32_t _fileSize;
@@ -370,9 +153,14 @@ public:
     bool _isUploading;
     uint32_t _startMs;
     uint32_t _lastMsgMs;
+    uint32_t _blockSizeMax;
     uint32_t _batchAckSize;
-    uint32_t _blockSize;
     uint32_t _commsChannelID;
+
+    // Delayed start to firmware update
+    bool _fwUpdateStartPending;
+    uint32_t _fwUpdateStartedMs;
+    bool _fwUpdateStartFailed;
 
     // Stats
     uint32_t _blockCount;
@@ -380,19 +168,38 @@ public:
     uint32_t _blocksInWindow;
     uint32_t _bytesInWindow;
     uint32_t _statsWindowStartMs;
+    uint32_t _fileUploadStartMs;
+    uint32_t _lastFileUploadTotalMs;
+    uint32_t _lastFileUploadTotalBytes;
+    float _lastFileUploadRateBytesPerSec;
 
     // Batch handling
     uint32_t _expectedFilePos;
     uint32_t _batchBlockCount;
     uint32_t _batchBlockAckRetry;
 
-    // Cache
-    uint32_t _cacheStartFilePos;
-    std::vector<bool> _cacheBlockOk;
-    std::vector<uint8_t> _cacheVec;
+    // Firmware update sysMod
+    SysModBase* _pFirmwareUpdateSysMod;
+
+    // Protocol endpoints
+    ProtocolEndpointManager* _pProtocolEndpointManager;
 
     // Debug
     uint32_t _debugLastStatsMs;
     static const uint32_t DEBUG_STATS_MS = 1000;
     bool _debugFinalMsgToSend;
+
+    // Message helpers
+    void handleFileUploadStartMsg(const String& reqStr, String& respMsg, uint32_t channelID, ConfigBase& cmdFrame);
+    void handleFileUploadEndMsg(const String& reqStr, String& respMsg, ConfigBase& cmdFrame);
+    void handleFileUploadCancelMsg(const String& reqStr, String& respMsg, ConfigBase& cmdFrame);
+
+    // Upload state-machine helpers
+    void uploadService(bool& genAck);
+    // Start file upload
+    bool uploadStart(String& reqStr, String& fileName, uint32_t fileSize, 
+            String& fileType, uint32_t channelID, String& respInfo, uint32_t crc16, bool crc16Valid);
+    void uploadBlockRx(uint32_t filePos, uint32_t blockLen, bool& blockValid, bool& isFinalBlock, bool& genAck);
+    void uploadCancel(const char* reasonStr = nullptr);
+    void uploadEnd();
 };

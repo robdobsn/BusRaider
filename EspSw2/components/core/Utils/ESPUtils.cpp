@@ -8,6 +8,14 @@
 #include "esp_task_wdt.h"
 #include "esp_log.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include "esp32/spiram.h"
+#ifdef __cplusplus
+}
+#endif
+
 void enableCore0WDT(){
     TaskHandle_t idle_0 = xTaskGetIdleTaskHandleForCPU(0);
     if(idle_0 == NULL || esp_task_wdt_add(idle_0) != ESP_OK){
@@ -56,7 +64,7 @@ String getSystemMACAddressStr(esp_mac_type_t macType, const char* pSeparator)
         return "";
     char outStr[50];
     snprintf(outStr, sizeof(outStr), "%02X%s%02X%s%02X%s%02X%s%02X%s%02X",
-            addr[0], pSeparator, addr[1], pSeparator, addr[2], pSeparator, 
+            addr[0], pSeparator, addr[1], pSeparator, addr[2], pSeparator,
             addr[3], pSeparator, addr[4], pSeparator, addr[5]);
     if (macType == ESP_MAC_BT)
         __systemMACAddrBT = outStr;
@@ -65,4 +73,19 @@ String getSystemMACAddressStr(esp_mac_type_t macType, const char* pSeparator)
     else if (macType == ESP_MAC_WIFI_STA)
         __systemMACAddrSTA = outStr;
     return outStr;
+}
+
+bool esp32SPIRAM_found = false;
+
+void esp32SPIRAMSetup()
+{
+#ifdef RIC_ENABLE_SPIRAM
+    esp32SPIRAM_found = esp_spiram_init() == ESP_OK;
+#endif
+}
+
+int getHwRevision()
+{
+    // Base detection on presence of SPIRAM
+    return esp32SPIRAM_found ? 2 : 1;
 }

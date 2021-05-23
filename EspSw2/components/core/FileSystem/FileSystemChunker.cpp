@@ -10,9 +10,10 @@
 #include "FileSystem.h"
 #include <Logger.h>
 
-// #define DEBUG_FILE_CHUNKER 1
+#define DEBUG_FILE_CHUNKER
+#define DEBUG_FILE_CHUNKER_CONTENTS
 
-#ifdef DEBUG_FILE_CHUNKER
+#if defined(DEBUG_FILE_CHUNKER) || defined(DEBUG_FILE_CHUNKER_CONTENTS)
 static const char* MODULE_PREFIX = "FileSystemChunker";
 #endif
 
@@ -124,6 +125,11 @@ bool FileSystemChunker::next(uint8_t* pBuf, uint32_t bufLen, uint32_t& readLen, 
         // Debug
         LOG_I(MODULE_PREFIX, "next binary filename %s readOk %s pos %d read %d busy %s", 
                 _filePath.c_str(), readOk ? "YES" : "NO", _curPos, readLen, _isBusy ? "YES" : "NO");
+#endif
+#ifdef DEBUG_FILE_CHUNKER_CONTENTS
+        String debugStr;
+        Utils::getHexStrFromBytes(pBuf, bufLen, debugStr);
+        LOG_I(MODULE_PREFIX, "CHUNK: %s", debugStr.c_str());
 #endif
 
     return readOk;

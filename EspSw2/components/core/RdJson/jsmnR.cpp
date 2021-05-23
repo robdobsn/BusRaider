@@ -13,6 +13,7 @@
 #include "jsmnR.h"
 
 static const char *MODULE_PREFIX = "jsmnR";
+// #define WARN_ON_ERROR_INVAL
 
 /**
  * Allocates a fresh unused token from the token pull.
@@ -79,7 +80,9 @@ static int jsmn_parse_primitive(jsmn_parser *parser, const char *js,
 		}
 		if (js[parser->pos] < 32 || js[parser->pos] >= 127)
 		{
-			LOG_D(MODULE_PREFIX, "JSMN_ERROR_INVAL ch bounds %d pos %d", js[parser->pos], parser->pos);
+#ifdef WARN_ON_ERROR_INVAL
+			LOG_W(MODULE_PREFIX, "JSMN_ERROR_INVAL ch bounds %d pos %d", js[parser->pos], parser->pos);
+#endif
 			parser->pos = start;
 			return JSMN_ERROR_INVAL;
 		}
@@ -173,7 +176,9 @@ static int jsmn_parse_string(jsmn_parser *parser, const char *js,
 						  (js[parser->pos] >= 65 && js[parser->pos] <= 70) || // A-F
 						  (js[parser->pos] >= 97 && js[parser->pos] <= 102)))
 					{ // a-f
-						LOG_D(MODULE_PREFIX, "JSMN_ERROR_INVAL hex bounds %d pos %d", js[parser->pos], parser->pos);
+#ifdef WARN_ON_ERROR_INVAL
+						LOG_W(MODULE_PREFIX, "JSMN_ERROR_INVAL hex bounds %d pos %d", js[parser->pos], parser->pos);
+#endif
 						parser->pos = start;
 						return JSMN_ERROR_INVAL;
 					}
@@ -183,7 +188,9 @@ static int jsmn_parse_string(jsmn_parser *parser, const char *js,
 				break;
 			// Unexpected symbol
 			default:
-				LOG_D(MODULE_PREFIX, "JSMN_ERROR_INVAL Unexpected %d pos %d", js[parser->pos], parser->pos);
+#ifdef WARN_ON_ERROR_INVAL
+				LOG_W(MODULE_PREFIX, "JSMN_ERROR_INVAL Unexpected %d pos %d", js[parser->pos], parser->pos);
+#endif
 				parser->pos = start;
 				return JSMN_ERROR_INVAL;
 			}
@@ -421,19 +428,21 @@ void jsmn_init(jsmn_parser *parser)
 // Helper function to log long strings
 void jsmn_logLongStr(const char *headerMsg, const char *toLog, bool infoLevel)
 {
-	if (infoLevel)
+	if (infoLevel) {
 		LOG_I(MODULE_PREFIX, "%s", headerMsg);
-	else
+	} else {
 		LOG_D(MODULE_PREFIX, "%s", headerMsg);
+	}
 	const int linLen = 80;
 	for (unsigned int i = 0; i < strlen(toLog); i += linLen)
 	{
 		char pBuf[linLen + 1];
 		strncpy(pBuf, toLog + i, linLen);
 		pBuf[linLen] = 0;
-		if (infoLevel)
+		if (infoLevel) {
 			LOG_I(MODULE_PREFIX, "%s", pBuf);
-		else
+		} else {
 			LOG_D(MODULE_PREFIX, "%s", pBuf);
+		}
 	}
 }

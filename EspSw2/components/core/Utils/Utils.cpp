@@ -3,10 +3,6 @@
 
 #include <Utils.h>
 #include <limits.h>
-#include "esp_timer.h"
-#include "esp_attr.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include <Logger.h>
 
 #ifndef INADDR_NONE
@@ -154,7 +150,7 @@ String Utils::escapeJSON(const String& inStr)
         if (c == '"' || c == '\\' || ('\x00' <= c && c <= '\x1f')) 
         {
             outStr += "\\u";
-            String cx = String(c, HEX);
+            String cx = String(c, 16);
             for (unsigned int j = 0; j < 4-cx.length(); j++)
                 outStr += "0";
             outStr += cx;
@@ -376,6 +372,12 @@ void Utils::getHexStrFromBytes(const uint8_t* pBuf, uint32_t bufLen, String& out
 {
     // Setup outStr
     outStr = "";
+
+    // Check valid
+    if (!pBuf)
+        return;
+
+    // Size outStr
     outStr.reserve(bufLen * 2);
 
     // Generate hex
@@ -384,6 +386,28 @@ void Utils::getHexStrFromBytes(const uint8_t* pBuf, uint32_t bufLen, String& out
         char tmpStr[10];
         snprintf(tmpStr, sizeof(tmpStr), "%02x", pBuf[i]);
         outStr += tmpStr;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Generate a hex string from bytes
+// Generates no space between hex digits (e.g. 55aa55aa, etc)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void Utils::getHexStrFromUint32(const uint32_t* pBuf, uint32_t bufLen, String& outStr, const char* separator)
+{
+    // Setup outStr
+    outStr = "";
+    outStr.reserve(bufLen * (8 + strlen(separator)));
+
+    // Generate hex
+    for (uint32_t i = 0; i < bufLen; i++)
+    {
+        char tmpStr[20];
+        snprintf(tmpStr, sizeof(tmpStr), "%08x", pBuf[i]);
+        outStr += tmpStr;
+        if (i != bufLen-1)
+            outStr += separator;
     }
 }
 
@@ -502,125 +526,4 @@ unsigned long Utils::convIPStrToAddr(String &inStr)
         break;
     }
     return (val);
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Extract name-value pairs from string
-// nameValueSep - e.g. "=" for HTTP
-// pairDelim - e.g. "&" for HTTP
-// pairDelimAlt - e.g. ";" for HTTP alternate (pass 0 if not needed)
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void Utils::extractNameValues(const String& inStr, 
-        const char* pNameValueSep, const char* pPairDelim, const char* pPairDelimAlt, 
-        std::vector<RdJson::NameValuePair>& nameValuePairs)
-{
-   // Count the pairs
-    uint32_t pairCount = 0;
-    const char* pCurSep = inStr.c_str();
-    while(pCurSep)
-    {
-        pCurSep = strstr(pCurSep, pNameValueSep);
-        if (pCurSep)
-        {
-            pairCount++;
-            pCurSep++;
-        }
-    }
-
-#ifdef DEBUG_EXTRACT_NAME_VALUES
-    // Debug
-    LOG_I(MODULE_PREFIX, "extractNameValues found %d nameValues", pairCount);
-#endif
-
-    // Extract the pairs
-    nameValuePairs.resize(pairCount);
-    pCurSep = inStr.c_str();
-    bool sepTypeIsEqualsSign = true;
-    uint32_t pairIdx = 0;
-    String name, val;
-    while(pCurSep)
-    {
-        // Each pair has the form "name=val;" (semicolon missing on last pair)
-        const char* pElemStart = pCurSep;
-        if (sepTypeIsEqualsSign)
-        {
-            // Check for missing =
-            pCurSep = strstr(pElemStart, pNameValueSep);
-            if (!pCurSep)
-                break;
-            Utils::strFromBuffer((uint8_t*)pElemStart, pCurSep-pElemStart, name);
-            pCurSep++;
-        }
-        else
-        {
-            // Handle two alternatives - sep or no sep
-            pCurSep = strstr(pElemStart, pPairDelim);
-            if (!pCurSep && pPairDelimAlt)
-                pCurSep = strstr(pElemStart, pPairDelimAlt);
-            if (pCurSep)
-            {
-                Utils::strFromBuffer((uint8_t*)pElemStart, pCurSep-pElemStart, val);
-                pCurSep++;
-            }
-            else
-            {
-                val = pElemStart;
-            }
-        }
-
-        // Next separator
-        sepTypeIsEqualsSign = !sepTypeIsEqualsSign;
-        if (!sepTypeIsEqualsSign)
-            continue;
-
-        // Store and move on
-        if (pairIdx >= pairCount)
-            break;
-        name.trim();
-        val.trim();
-        nameValuePairs[pairIdx] = {name,val};
-        pairIdx++;
-    }
-
-#ifdef DEBUG_EXTRACT_NAME_VALUES
-    // Debug
-    for (RdJson::NameValuePair& pair : nameValuePairs)
-        LOG_I(MODULE_PREFIX, "extractNameValues name %s val %s", pair.name.c_str(), pair.value.c_str());
-#endif
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Low-level time functions for Arduino compat
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-uint64_t IRAM_ATTR micros()
-{
-    return (uint64_t) (esp_timer_get_time());
-}
-
-unsigned long IRAM_ATTR millis()
-{
-    return (unsigned long) (esp_timer_get_time() / 1000ULL);
-}
-
-void IRAM_ATTR delay(uint32_t ms)
-{
-    vTaskDelay(ms / portTICK_PERIOD_MS);
-}
-
-void IRAM_ATTR delayMicroseconds(uint64_t us)
-{
-    uint64_t m = micros();
-    if(us){
-        int64_t e = (m + us);
-        if(m > e){ //overflow
-            while(micros() > e){
-                __asm__ volatile ("nop");
-            }
-        }
-        while(micros() < e){
-            __asm__ volatile ("nop");
-        }
-    }
 }

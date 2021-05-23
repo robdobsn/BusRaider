@@ -54,6 +54,12 @@ public:
         _msgDirection = msgDirection;
     }
 
+    void clear()
+    {
+        _cmdVector.clear();
+        _cmdVector.shrink_to_fit();
+    }
+
     void setFromBuffer(uint32_t channelID, ProtocolMsgProtocol msgProtocol, uint32_t msgNum, ProtocolMsgDirection msgDirection, const uint8_t* pBuf, uint32_t bufLen)
     {
         _channelID = channelID;

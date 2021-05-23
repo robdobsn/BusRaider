@@ -13,6 +13,8 @@
 #include <SysModBase.h>
 #include <list>
 
+// #define TEST_USING_LOW_LEVEL_LWIP
+
 // #define USE_ASYNC_SOCKET_FOR_COMMAND_SOCKET
 #ifdef USE_ASYNC_SOCKET_FOR_COMMAND_SOCKET
 #include <AsyncTCP.h>
@@ -46,7 +48,7 @@ private:
     void begin();
     void end();
     bool sendMsg(ProtocolEndpointMsg& msg);
-    bool readyToSend();
+    bool readyToSend(uint32_t channelID);
 
     // Vars
     bool _isEnabled;
@@ -56,6 +58,12 @@ private:
 
     // EndpointID used to identify this message channel to the ProtocolEndpointManager object
     uint32_t _protocolEndpointID;
+
+    // Protocol message handling
+    static const uint32_t INBOUND_BLOCK_MAX_DEFAULT = 5000;
+    static const uint32_t INBOUND_QUEUE_MAX_DEFAULT = 2;
+    static const uint32_t OUTBOUND_BLOCK_MAX_DEFAULT = 5000;
+    static const uint32_t OUTBOUND_QUEUE_MAX_DEFAULT = 2;        
 
 #ifdef USE_ASYNC_SOCKET_FOR_COMMAND_SOCKET
     // Socket server
@@ -73,6 +81,9 @@ private:
 
     // Mutex controlling access to clients
     SemaphoreHandle_t _clientMutex;
+#endif
+#ifdef TEST_USING_LOW_LEVEL_LWIP
+    static void tcpServerTask(void *pvParameters);
 #endif
 
     // // Handles websocket events

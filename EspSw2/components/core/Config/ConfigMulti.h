@@ -71,13 +71,13 @@ public:
         return ConfigBase::writeConfig(configJSONStr);
     }
 
-    virtual String getString(const char *dataPath, const char *defaultValue) override final
+    virtual String getString(const char *dataPath, const char *defaultValue) const override final
     {
         // Get base value
         String retVal = ConfigBase::getString(dataPath, defaultValue);
 
         // Iterate other configs in the order added
-        for (ConfigRec& rec : _configsList)
+        for (const ConfigRec& rec : _configsList)
         {
             if (rec._prefix.length() > 0)
             {
@@ -92,13 +92,13 @@ public:
         return retVal;
     }
 
-    virtual String getString(const char *dataPath, const String& defaultValue) override final
+    virtual String getString(const char *dataPath, const String& defaultValue) const override final
     {
         // Get base value
         String retVal = ConfigBase::getString(dataPath, defaultValue);
 
         // Iterate other configs in the order added
-        for (ConfigRec& rec : _configsList)
+        for (const ConfigRec& rec : _configsList)
         {
             if (rec._prefix.length() > 0)
             {
@@ -113,13 +113,13 @@ public:
         return retVal;    
     }
 
-    virtual long getLong(const char *dataPath, long defaultValue) override final
+    virtual long getLong(const char *dataPath, long defaultValue) const override final
     {
         // Get base value
         long retVal = ConfigBase::getLong(dataPath, defaultValue);
 
         // Iterate other configs in the order added
-        for (ConfigRec& rec : _configsList)
+        for (const ConfigRec& rec : _configsList)
         {
             if (!rec._pConfig)
                 continue;
@@ -136,13 +136,13 @@ public:
         return retVal;    
     }
 
-    virtual double getDouble(const char *dataPath, double defaultValue) override final
+    virtual double getDouble(const char *dataPath, double defaultValue) const override final
     {
         // Get base value
         double retVal = ConfigBase::getDouble(dataPath, defaultValue);
 
         // Iterate other configs in the order added
-        for (ConfigRec& rec : _configsList)
+        for (const ConfigRec& rec : _configsList)
         {
             if (rec._prefix.length() > 0)
             {

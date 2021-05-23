@@ -35,7 +35,8 @@ void SysTypeManager::setup(const char** pSysTypeConfigArrayStatic, int sysTypeCo
     for (int configIdx = 0; configIdx < sysTypeConfigArrayLen; configIdx++)
         _sysTypesList.push_back(pSysTypeConfigArrayStatic[configIdx]);
 
-    // If there is only one configuration in the list then choose that one
+    // If there is only one configuration in the list then choose that one as the static config
+    // it may still be overridden by config from the non-volatile storage if there is any set
     if (_sysTypesList.size() == 1)
     {
         // Check JSON is valid

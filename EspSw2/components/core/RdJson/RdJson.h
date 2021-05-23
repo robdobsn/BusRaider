@@ -102,6 +102,11 @@ public:
                           unsigned int numTokens, int startTokenIdx, 
                           int arrayElemIdx);
 
+     // Extract name value pairs from a string
+    static void extractNameValues(const String& inStr, 
+        const char* pNameValueSep, const char* pPairDelim, const char* pPairDelimAlt, 
+        std::vector<RdJson::NameValuePair>& nameValuePairs);
+        
 #ifdef RDJSON_RECREATE_JSON
     static int recreateJson(const char* js, jsmntok_t* t,
                             size_t count, int indent, String& outStr);

@@ -10,7 +10,7 @@
 #pragma once
 
 #include <ConfigBase.h>
-class Preferences;
+class RdPreferences;
 
 class ConfigNVS : public ConfigBase
 {
@@ -26,7 +26,7 @@ public:
     }
 
     // Get config raw string
-    virtual void getConfigString(String& configStr) override final
+    virtual void getConfigString(String& configStr) const override final
     {
         if (_cacheConfig)
         {
@@ -54,64 +54,12 @@ public:
     // Register change callback
     virtual void registerChangeCallback(ConfigChangeCallbackType configChangeCallback) override final;
 
-    virtual String getString(const char *dataPath, const char *defaultValue) override final
-    {
-        String configStr;
-        getConfigString(configStr);
-        return RdJson::getString(dataPath, defaultValue, configStr.c_str());
-    }
-
-    virtual String getString(const char *dataPath, const String& defaultValue) override final
-    {
-        String configStr;
-        getConfigString(configStr);
-        return RdJson::getString(dataPath, defaultValue.c_str(), configStr.c_str());
-    }
-
-    virtual long getLong(const char *dataPath, long defaultValue) override final
-    {
-        String configStr;
-        getConfigString(configStr);
-        return RdJson::getLong(dataPath, defaultValue, configStr.c_str());
-    }
-
-    virtual double getDouble(const char *dataPath, double defaultValue) override final
-    {
-        String configStr;
-        getConfigString(configStr);
-        return RdJson::getDouble(dataPath, defaultValue, configStr.c_str());
-    }
-
-    virtual bool getArrayElems(const char *dataPath, std::vector<String>& strList) override final
-    {
-        String configStr;
-        getConfigString(configStr);
-        return RdJson::getArrayElems(dataPath, strList, configStr.c_str());
-    }
-
-    virtual bool contains(const char *dataPath) override final
-    {
-        String configStr;
-        getConfigString(configStr);
-        int startPos = 0, strLen = 0;
-        jsmntype_t elemType;
-        int elemSize = 0;
-        return RdJson::getElement(dataPath, startPos, strLen, elemType, elemSize, configStr.c_str());
-    }
-
-    virtual bool getKeys(const char *dataPath, std::vector<String>& keysVector) override final
-    {
-        String configStr;
-        getConfigString(configStr);
-        return RdJson::getKeys(dataPath, keysVector, configStr.c_str());
-    }
-
 private:
     // Namespace used for Preferences lib
     String _configNamespace;
 
     // Preferences instance
-    Preferences* _pPreferences;
+    RdPreferences* _pPreferences;
 
     // List of callbacks on change of config
     std::vector<ConfigChangeCallbackType> _configChangeCallbacks;
@@ -127,7 +75,7 @@ private:
     const char* _pStaticConfig;
 
     // Get non-volatile config str
-    void getNVConfigStr(String& configStr);
+    void getNVConfigStr(String& configStr) const;
 
     // Stats on calls to getNVConfigStr
     uint32_t _callsToGetNVStr;

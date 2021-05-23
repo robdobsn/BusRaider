@@ -10,7 +10,8 @@ idf_component_register(
                   "RdJson/RdJson.cpp"
                   "RdJson/jsmnR.cpp"
                   "Config/ConfigNVS.cpp"
-                  "Preferences/Preferences.cpp"
+                  "Config/ConfigBase.cpp"
+                  "RdPreferences/RdPreferences.cpp"
                   "FileSystem/FileSystem.cpp"
                   "FileSystem/FileSystemChunker.cpp"
                   "NetworkSystem/NetworkSystem.cpp"
@@ -19,23 +20,31 @@ idf_component_register(
                   "ExpressionEval/ExpressionContext.cpp"
                   "ExpressionEval/tinyexpr.c"
                   "DebounceButton/DebounceButton.cpp"
+                  "ArduinoUtils/ArduinoTime.cpp"
+                  "ArduinoUtils/ArduinoGPIO.cpp"
+                  "RdI2C/RdI2C.cpp"
+                  "SupervisorStats/SupervisorStats.cpp"
                 INCLUDE_DIRS
                   "Logger"
                   "ConfigPinMap"
                   "Config"
-                  "RingBuffer"
+                  "ThreadSafeQueue"
                   "Utils"
                   "RdJson"
-                  "Preferences"
+                  "RdPreferences"
                   "MiniHDLC"
                   "FileSystem"
                   "NetworkSystem"
                   "libb64"
                   "ExpressionEval"
                   "DebounceButton"
+                  "ArduinoUtils"
+                  "RdI2C"
+                  "SupervisorStats"
                 REQUIRES
                   nvs_flash
                   spiffs
                   fatfs
+                  mdns
                 )
                 

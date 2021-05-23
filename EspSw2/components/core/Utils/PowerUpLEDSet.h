@@ -7,6 +7,7 @@
 #include <Logger.h>
 #include <ConfigBase.h>
 #include <Utils.h>
+#include <ArduinoGPIO.h>
 #include <ConfigPinMap.h>
 
 // #define DEBUG_POWER_LED_SETUP
@@ -15,8 +16,11 @@
 // Test and Monitoring
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void powerUpLEDSet(ConfigBase config)
+void powerUpLEDSet(const char *pModuleName, ConfigBase &mainConfig)
 {
+    // Get configuration
+    ConfigBase config = mainConfig.getString(pModuleName, "{}");
+
     // Check enabled
     bool isEnabled = config.getLong("enable", 0) != 0;
 #ifdef DEBUG_POWER_LED_SETUP
@@ -36,14 +40,33 @@ void powerUpLEDSet(ConfigBase config)
     if (ledPin < 0)
         return;
 
-    // Get value
+    // Get LED settings and default ledVal
     int ledVal = config.getLong("ledVal", 0);
     int isPix = config.getLong("isPix", 0);
     int pixIdx = config.getLong("pixIdx", 0);
 
+    // Check for USB sensing pin
+    String usbSensePinStr = config.getString("usbSnsPin", "");
+    int usbSenseThreshold = config.getLong("usbSnsThresh", 0);
+    int usbSenseLedVal = config.getLong("usbSnsVal", 0);
+    int usbSensePin = -1;
+    if (usbSensePinStr.length() != 0)
+        usbSensePin = ConfigPinMap::getPinFromName(usbSensePinStr.c_str());
 #ifdef DEBUG_POWER_LED_SETUP
-    LOG_I("PowerUpLEDSet", "setup, isPix %d ledVal %d", isPix, ledVal);
+    LOG_I("PowerUpLEDSet", "setup, usbSensePin %d usbSenseThreshold %d usbSenseLedVal %06x", 
+                usbSensePin, usbSenseThreshold, usbSenseLedVal);
 #endif
+    if (usbSensePin >= 0)
+    {
+        uint16_t adcVal = analogRead(usbSensePin);
+        if (adcVal > usbSenseThreshold)
+            ledVal = usbSenseLedVal;
+    }
+
+#ifdef DEBUG_POWER_LED_SETUP
+    LOG_I("PowerUpLEDSet", "setup, isPix %d ledVal %06x", isPix, ledVal);
+#endif
+
     // Check if pixel strip
     if (isPix)
     {
@@ -63,7 +86,6 @@ void powerUpLEDSet(ConfigBase config)
         }
         pixStrip.setPixelColor(pixIdx, ledVal);
         pixStrip.show();
-        delay(100);
     }
     else
     {

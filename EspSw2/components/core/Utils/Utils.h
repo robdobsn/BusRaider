@@ -7,7 +7,6 @@
 #include <vector>
 #include <Logger.h>
 #include <stdio.h>
-#include <RdJson.h>
 
 class Utils
 {
@@ -31,13 +30,13 @@ public:
     static uint64_t timeElapsed(uint64_t curTime, uint64_t lastTime);
 
     // Setup a result string
-    static void setJsonBoolResult(const char* req, String& resp, bool rslt, const char* otherJson = NULL);
+    static void setJsonBoolResult(const char* req, String& resp, bool rslt, const char* otherJson = nullptr);
 
     // Set a result error
-    static void setJsonErrorResult(const char* req, String& resp, const char* errorMsg, const char* otherJson = NULL);
+    static void setJsonErrorResult(const char* req, String& resp, const char* errorMsg, const char* otherJson = nullptr);
 
     // Set a JSON result
-    static void setJsonResult(const char* pReq, String& resp, bool rslt, const char* errorMsg = NULL, const char* otherJson = NULL);
+    static void setJsonResult(const char* pReq, String& resp, bool rslt, const char* errorMsg = nullptr, const char* otherJson = nullptr);
 
     // Following code from Unix sources
     static unsigned long convIPStrToAddr(String &inStr);
@@ -55,7 +54,7 @@ public:
     // Get a uint8_t value from the uint8_t pointer passed in
     // Increment the pointer (by 1)
     // Also checks endStop pointer value if provided
-    static uint16_t getUint8AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = NULL)
+    static uint16_t getUint8AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = nullptr)
     {
         if (pEndStop && (pVal >= pEndStop))
             return 0;
@@ -67,7 +66,7 @@ public:
     // Get an int8_t value from the uint8_t pointer passed in
     // Increment the pointer (by 1)
     // Also checks endStop pointer value if provided
-    static int16_t getInt8AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = NULL)
+    static int16_t getInt8AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = nullptr)
     {
         if (pEndStop && (pVal >= pEndStop))
             return 0;
@@ -79,7 +78,7 @@ public:
     // Get a uint16_t little endian value from the uint8_t pointer passed in
     // Increment the pointer (by 2)
     // Also checks endStop pointer value if provided
-    static uint16_t getLEUint16AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = NULL)
+    static uint16_t getLEUint16AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = nullptr)
     {
         if (pEndStop && (pVal + 1 >= pEndStop))
             return 0;
@@ -91,7 +90,7 @@ public:
     // Get a int16_t little endian value from the uint8_t pointer passed in
     // Increment the pointer (by 2)
     // Also checks endStop pointer value if provided
-    static int16_t getLEInt16AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = NULL)
+    static int16_t getLEInt16AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = nullptr)
     {
         if (pEndStop && (pVal + 1 >= pEndStop))
             return 0;
@@ -105,9 +104,9 @@ public:
     // Get a uint16_t big endian value from the uint8_t pointer passed in
     // Increment the pointer (by 2)
     // Also checks endStop pointer value if provided
-    static uint16_t getBEUint16AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = NULL)
+    static uint16_t getBEUint16AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = nullptr)
     {
-        if (pEndStop && (pVal + 1 >= pEndStop))
+        if (pVal && pEndStop && (pVal + 1 >= pEndStop))
             return 0;
         uint16_t val = ((((uint16_t)(*(pVal))) * 256) + *(pVal+1));
         pVal += 2;
@@ -117,9 +116,9 @@ public:
     // Get a int16_t big endian value from the uint8_t pointer passed in
     // Increment the pointer (by 2)
     // Also checks endStop pointer value if provided
-    static int16_t getBEInt16AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = NULL)
+    static int16_t getBEInt16AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = nullptr)
     {
-        if (pEndStop && (pVal + 1 >= pEndStop))
+        if (pVal && pEndStop && (pVal + 1 >= pEndStop))
             return 0;
         uint32_t val = ((((uint32_t)(*(pVal))) * 256) + *(pVal+1));
         pVal += 2;
@@ -128,12 +127,25 @@ public:
         return val-65536;
     }
 
+    // Get a uint32_t big endian value from the uint8_t pointer passed in
+    // Increment the pointer (by 4)
+    // Also checks endStop pointer value if provided
+    static uint32_t getBEUint32AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = nullptr)
+    {
+        if (pVal && pEndStop && (pVal + 3 >= pEndStop))
+            return 0;
+        uint32_t val = ((((uint32_t)(*pVal)) << 24) + (((uint32_t)(*(pVal+1))) << 16) +
+                        + (((uint32_t)(*(pVal+2))) << 8) + *(pVal+3));
+        pVal += 4;
+        return val;
+    }
+
     // Get a float32_t big endian value from the uint8_t pointer passed in
     // Increment the pointer (by 4)
     // Also checks endStop pointer value if provided
-    static float getBEfloat32AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = NULL)
+    static float getBEfloat32AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = nullptr)
     {
-        if (pEndStop && (pVal + 3 >= pEndStop))
+        if (pVal && pEndStop && (pVal + 3 >= pEndStop))
             return 0;
         
         float val = 0;
@@ -167,6 +179,15 @@ public:
     {
         *(pBuf+offset) = (val >> 8) & 0x0ff;
         *(pBuf+offset+1) = val & 0xff;
+    }
+
+    // Set values into a buffer
+    static void setBEUint32(uint8_t* pBuf, uint32_t offset, uint32_t val)
+    {
+        *(pBuf+offset) = (val >> 24) & 0x0ff;
+        *(pBuf+offset+1) = (val >> 16) & 0x0ff;
+        *(pBuf+offset+2) = (val >> 8) & 0x0ff;
+        *(pBuf+offset+3) = val & 0xff;
     }
 
     // Set values into a buffer
@@ -212,7 +233,7 @@ public:
     // Get RGB from hex string
     static RGBValue getRGBFromHex(const String& colourStr)
     {
-        uint32_t colourRGB = strtoul(colourStr.c_str(), NULL, 16);
+        uint32_t colourRGB = strtoul(colourStr.c_str(), nullptr, 16);
         return RGBValue((colourRGB >> 16) & 0xff, (colourRGB >> 8) & 0xff, colourRGB & 0xff);
     }
 
@@ -232,7 +253,11 @@ public:
 
     // Generate a hex string from bytes
     static void getHexStrFromBytes(const uint8_t* pBuf, uint32_t bufLen, String& outStr);
-
+    
+    // Generate a hex string from uint32_t
+    static void getHexStrFromUint32(const uint32_t* pBuf, uint32_t bufLen, String& outStr, 
+                const char* separator);
+    
     // Find match in buffer (like strstr for unterminated strings)
     // Returns position in buffer of val or -1 if not found
     static int findInBuf(const uint8_t* pBuf, uint32_t bufLen, 
@@ -259,9 +284,12 @@ public:
 
     static void logHexBuf(const uint8_t* pBuf, uint32_t bufLen, const char* logPrefix, const char* logIntro)
     {
+        if (!pBuf)
+            return;
         // Output log string with prefix and length only if > 16 bytes
-        if (bufLen > 16)
+        if (bufLen > 16) {
             LOG_I(logPrefix, "%s len %d", logIntro, bufLen);
+        }
 
         // Iterate over buffer
         uint32_t bufPos = 0;
@@ -278,17 +306,25 @@ public:
                 bufPos++;
                 linePos++;
             }
-            if (bufLen <= 16)
+            if (bufLen <= 16) {
                 LOG_I(logPrefix, "%s len %d: %s", logIntro, bufLen, outBuf);
-            else
+            } else {
                 LOG_I(logPrefix, "%s", outBuf);
+            }
         }
     }
 
-     // Extract name value pairs from a string
-    static void extractNameValues(const String& inStr, 
-        const char* pNameValueSep, const char* pPairDelim, const char* pPairDelimAlt, 
-        std::vector<RdJson::NameValuePair>& nameValuePairs);
+    // ISR safe max function
+    static inline uint32_t IRAM_ATTR isrSafeMax(uint32_t a, uint32_t b)
+    {
+        return a > b ? a : b;
+    }
+
+    // ISR safe abs function
+    static inline uint32_t IRAM_ATTR isrSafeAbs(int32_t a)
+    {
+        return a >= 0 ? a : -a;
+    }
 };
 
 // Name value pair double
@@ -302,10 +338,4 @@ struct NameValuePairDouble
     String name;
     double value;
 };
-
-// From arduino-esp32
-uint64_t micros();
-unsigned long millis();
-void delay(uint32_t);
-void delayMicroseconds(uint64_t us);
 

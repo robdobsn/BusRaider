@@ -16,6 +16,7 @@
 #include <list>
 #include <Utils.h>
 #include "FileBlockInfo.h"
+#include "ArduinoTime.h"
 
 class FileSystem
 {

@@ -83,12 +83,23 @@
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define ROS_ROBOT_STATUS_BYTES 2
+#define ROS_ROBOT_STATUS_BYTES 24
 #define ROS_ROBOT_STATUS_MOTION_FLAGS 0
 #define ROS_ROBOT_STATUS_IS_MOVING_MASK 0x01
 #define ROS_ROBOT_STATUS_IS_PAUSED_MASK 0x02
 #define ROS_ROBOT_STATUS_FW_UPDATE_MASK 0x04
 #define ROS_ROBOT_STATUS_QUEUED_WORK_COUNT 1
+#define ROS_ROBOT_STATUS_HEAP_FREE_POS 2
+#define ROS_ROBOT_STATUS_HEAP_FREE_BYTES 4
+#define ROS_ROBOT_STATUS_HEAP_MIN_POS 6
+#define ROS_ROBOT_STATUS_HEAP_MIN_BYTES 4
+#define ROS_ROBOT_STATUS_INDICATORS_POS 10
+#define ROS_ROBOT_STATUS_INDICATOR_BYTES 4
+#define ROS_ROBOT_STATUS_INDICATORS_NUM 3
+#define ROS_ROBOT_STATUS_SYSMOD_LOOPMS_AVG_POS 22
+#define ROS_ROBOT_STATUS_SYSMOD_LOOPMS_AVG_SIZE 1
+#define ROS_ROBOT_STATUS_SYSMOD_LOOPMS_MAX_POS 23
+#define ROS_ROBOT_STATUS_SYSMOD_LOOPMS_MAX_SIZE 1
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //

@@ -35,16 +35,16 @@ static const char *MODULE_PREFIX = "SysMan";
 // Debug
 // #define DEBUG_RICREST_MESSAGES
 // #define DEBUG_ENDPOINT_MESSAGES
-// #define DEBUG_SHOW_FILE_UPLOAD_STATS
-// #define DEBUG_RICREST_FILEUPLOAD
-// #define DEBUG_RICREST_FILEUPLOAD_BLOCK_ACK
-// #define DEBUG_RICREST_FILEUPLOAD_BLOCK_ACK_DETAIL
+#define DEBUG_SHOW_FILE_UPLOAD_STATS
+// #define DEBUG_RICREST_CMDFRAME
+// #define DEBUG_LIST_SYSMODS
+// #define DEBUG_SYSMOD_WITH_GLOBAL_VALUE
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-SysManager::SysManager(const char* pModuleName, ConfigBase& defaultConfig, ConfigBase* pMutableConfig)
+SysManager::SysManager(const char* pModuleName, ConfigBase& defaultConfig, ConfigBase* pGlobalConfig, ConfigBase* pMutableConfig)
 {
     // Store mutable config
     _pMutableConfig = pMutableConfig;
@@ -59,25 +59,30 @@ SysManager::SysManager(const char* pModuleName, ConfigBase& defaultConfig, Confi
     // Module name
     _moduleName = pModuleName;
 
+    // Stream handler
+    _pStreamHandlerSysMod = nullptr;
+
     // Status change callback
     _statsCB = NULL;
 
-    // Supervisor vector needs update
+    // Supervisor vector needs an update
     _supervisorDirty = false;
-    _supervisorCurModIdx = 0;
+    _serviceLoopCurModIdx = 0;
 
     // Extract info from config
-    _sysModManConfig = defaultConfig.getString(_moduleName.c_str(), "{}");
+    _sysModManConfig = pGlobalConfig ? 
+                pGlobalConfig->getString(_moduleName.c_str(), "{}") :
+                defaultConfig.getString(_moduleName.c_str(), "{}");
 
     // Extract system name from config
     _systemName = defaultConfig.getString("SystemName", "RBot");
     _systemVersion = defaultConfig.getString("SystemVersion", "0.0.0");
 
     // Monitoring period and monitoring timer
-    _monitorPeriodMs = _sysModManConfig.getLong("monitorPeriodMs", 10000);
-    _monitorTimerMs = millis();
-    _sysModManConfig.getArrayElems("reportList", _monitorReportList);
-    _monitorTimerStarted = false;
+    _diagsLogPeriodMs = _sysModManConfig.getLong("monitorPeriodMs", 10000);
+    _diagsLogTimerMs = millis();
+    _sysModManConfig.getArrayElems("reportList", _diagsLogReportList);
+    _diagsLogTimerStarted = false;
 
     // System restart flag
     _systemRestartPending = false;
@@ -90,9 +95,6 @@ SysManager::SysManager(const char* pModuleName, ConfigBase& defaultConfig, Confi
     // System unique string - use BT MAC address
     _systemUniqueString = getSystemMACAddressStr(ESP_MAC_BT, "");
 
-    // Firmware updater
-    _pFirmwareUpdateSysMod = NULL;
-
     // Get mutable config info
     _friendlyNameIsSet = false;
     if (_pMutableConfig)
@@ -100,6 +102,10 @@ SysManager::SysManager(const char* pModuleName, ConfigBase& defaultConfig, Confi
         _friendlyNameStored = _pMutableConfig->getString("friendlyName", "");
         _friendlyNameIsSet = _pMutableConfig->getLong("nameSet", 0);
         _ricSerialNoStoredStr = _pMutableConfig->getString("serialNo", "");
+
+        // Setup network system hostname
+        if (_friendlyNameIsSet)
+            networkSystem.setHostname(_friendlyNameStored.c_str());
     }
 
     // Debug
@@ -113,9 +119,6 @@ SysManager::SysManager(const char* pModuleName, ConfigBase& defaultConfig, Confi
 
 void SysManager::setup()
 {
-    // Clear firmware update SysMod
-    _pFirmwareUpdateSysMod = NULL;
-
     // Clear status change callbacks for sysmods (they are added again in postSetup)
     clearAllStatusChangeCBs();
 
@@ -140,6 +143,9 @@ void SysManager::setup()
         _pRestAPIEndpointManager->addEndpoint("serialno", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET,
                 std::bind(&SysManager::apiSerialNumber, this, std::placeholders::_1, std::placeholders::_2),
                 "Serial number");
+        _pRestAPIEndpointManager->addEndpoint("hwrevno", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET,
+                std::bind(&SysManager::apiHwRevisionNumber, this, std::placeholders::_1, std::placeholders::_2),
+                "HW revision number");
     }
 
     // Add support for RICSerial
@@ -197,18 +203,36 @@ void SysManager::setup()
         setStatusChangeCB("BLEMan", std::bind(&SysManager::statusChangeBLEConnCB, this));
     }
 
-    // Keep track of the firmware updater
+    // Setup file upload handler
+    _fileUploadHandler.setup(_pProtocolEndpointManager);
+
+    // Keep track of special-purpose sys-mods - assumes there is only
+    // one of each special type
+    _pStreamHandlerSysMod = nullptr;
     for (SysModBase* pSysMod : _sysModuleList)
     {
         if (pSysMod)
         {
             if (pSysMod->isFirmwareUpdateModule())
             {
-                _pFirmwareUpdateSysMod = pSysMod;
-                break;
+                _fileUploadHandler.setFWUpdater(pSysMod);
+            }
+            if (pSysMod->isStreamHandlerModule())
+            {
+                _pStreamHandlerSysMod = pSysMod;
             }
         }
     }
+
+#ifdef DEBUG_LIST_SYSMODS
+    uint32_t sysModIdx = 0;
+    for (SysModBase* pSysMod : _sysModuleList)
+    {
+        LOG_I(MODULE_PREFIX, "SysMod %d: %s", sysModIdx++, 
+                pSysMod ? pSysMod->modName() : "UNKNOWN");
+            
+    }
+#endif
 
 }
 
@@ -227,56 +251,57 @@ void SysManager::service()
         _supervisorDirty = false;
     }
        
-    // Service monitor periodically records timing
-    if (_monitorTimerStarted)
+    // Diagnostics log periodic output
+    if (_diagsLogTimerStarted)
     {
-        // Check if monitor period is up
-        if (Utils::isTimeout(millis(), _monitorTimerMs, _monitorPeriodMs))
+        // Check if time to output diagnostic log is up
+        if (Utils::isTimeout(millis(), _diagsLogTimerMs, _diagsLogPeriodMs))
         {
-            // Record current stats
-            statsUpdate();
+            // Calculate supervisory stats
+            _supervisorStats.calculate();
 
             // Show stats
             statsShow();
 
-            // Clear stats for start of next monitor period
-            statsClear();
+            // Clear stats for start of next diagnostics period
+            _supervisorStats.clear();
 
             // Wait until next period
-            _monitorTimerMs = millis();
+            _diagsLogTimerMs = millis();
         }
     }
     else
     {
         // Start monitoring
-        statsClear();
-        _monitorTimerMs = millis();
-        _monitorTimerStarted = true;
+        _supervisorStats.clear();
+        _diagsLogTimerMs = millis();
+        _diagsLogTimerStarted = true;
     }
 
-    // Check empty list
-    uint32_t numSysMods = _supervisorSysModInfoVector.size();
+    // Check the index into list of sys-mods to services is valid
+    uint32_t numSysMods = _sysModServiceVector.size();
     if (numSysMods == 0)
         return;
-    if (_supervisorCurModIdx >= numSysMods)
-        _supervisorCurModIdx = 0;
+    if (_serviceLoopCurModIdx >= numSysMods)
+        _serviceLoopCurModIdx = 0;
 
     // Monitor how long it takes to go around loop
-    _serviceLoopInfo.startLoop();
+    _supervisorStats.outerLoopStarted();
 
 #ifndef ONLY_ONE_MODULE_PER_SERVICE_LOOP
-    for (_supervisorCurModIdx = 0; _supervisorCurModIdx < _supervisorSysModInfoVector.size(); _supervisorCurModIdx++)
+    for (_serviceLoopCurModIdx = 0; _serviceLoopCurModIdx < numSysMods; _serviceLoopCurModIdx++)
     {
 #endif
 
-    // Service one module on each loop
-    SysModInfo& sysModInfo = _supervisorSysModInfoVector[_supervisorCurModIdx];
-    if (sysModInfo._pSysMod)
+    if (_sysModServiceVector[_serviceLoopCurModIdx])
     {
+#ifdef DEBUG_SYSMOD_WITH_GLOBAL_VALUE
+        DEBUG_GLOB_VAR_NAME(DEBUG_GLOB_SYSMAN) = _serviceLoopCurModIdx;
+#endif
         // Start SysMod timer
-        sysModInfo._sysModStats.started();
-        sysModInfo._pSysMod->service();
-        sysModInfo._sysModStats.ended();
+        _supervisorStats.execStarted(_serviceLoopCurModIdx);
+        _sysModServiceVector[_serviceLoopCurModIdx]->service();
+        _supervisorStats.execEnded(_serviceLoopCurModIdx);
     }
 
 #ifndef ONLY_ONE_MODULE_PER_SERVICE_LOOP
@@ -284,10 +309,10 @@ void SysManager::service()
 #endif
 
     // Debug
-    // LOG_D(MODULE_PREFIX, "%sService module %s", "SysManager", sysModInfo._pSysMod->modName());
+    // LOG_D(MODULE_PREFIX, "Service module %s", sysModInfo._pSysMod->modName());
 
     // Next SysMod
-    _supervisorCurModIdx++;
+    _serviceLoopCurModIdx++;
 
     // Check system restart pending
     if (_systemRestartPending)
@@ -300,10 +325,10 @@ void SysManager::service()
     }
 
     // End loop
-    _serviceLoopInfo.endLoop();
+    _supervisorStats.outerLoopEnded();
 
     // Service upload
-    serviceFileUpload();
+    _fileUploadHandler.service();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -330,124 +355,23 @@ void SysManager::add(SysModBase* pSysMod)
 void SysManager::supervisorSetup()
 {
     // Reset iterator to start of list
-    _supervisorCurModIdx = 0;
+    _serviceLoopCurModIdx = 0;
 
-    // Remove all supervisor info
-    _supervisorSysModInfoVector.clear();
+    // Clear stats
+    _supervisorStats.clear();
 
-    // Reserve storage for the list
-    _supervisorSysModInfoVector.reserve(_sysModuleList.size());
+    // Clear and reserve sysmods from service vector
+    _sysModServiceVector.clear();
+    _sysModServiceVector.reserve(_sysModuleList.size());
 
     // Add modules to list and initialise stats
     for (SysModBase* pSysMod : _sysModuleList)
     {
         if (pSysMod)
         {
-            _supervisorSysModInfoVector.push_back(SysModInfo(pSysMod));
+            _sysModServiceVector.push_back(pSysMod);
+            _supervisorStats.add(pSysMod->modName());
         }
-    }
-
-    // Clear info about overall service timing
-    _serviceLoopInfo.clear();
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Service Loop Timing - Start and End Loop
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void SysManager::ServiceLoopInfo::startLoop()
-{
-    _lastLoopStartMicros = micros();
-}
-
-void SysManager::ServiceLoopInfo::endLoop()
-{
-    int64_t loopTime = Utils::timeElapsed(micros(), _lastLoopStartMicros);
-    _loopTimeAvgSum += loopTime;
-    _loopTimeAvgCount++;
-    if (_loopTimeMin > loopTime)
-        _loopTimeMin = loopTime;
-    if (_loopTimeMax < loopTime)
-        _loopTimeMax = loopTime;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Service Loop Timing - Gen Stats
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void SysManager::statsUpdate()
-{
-    // Overall loop times
-    _supervisorStats._totalLoops = _serviceLoopInfo._loopTimeAvgCount;
-    _supervisorStats._loopTimeMinUs = _serviceLoopInfo._loopTimeMin;
-    _supervisorStats._loopTimeMaxUs = _serviceLoopInfo._loopTimeMax;
-    _supervisorStats._loopTimeAvgUs = 0;
-    if (_serviceLoopInfo._loopTimeAvgCount > 0)
-        _supervisorStats._loopTimeAvgUs = (1.0 * _serviceLoopInfo._loopTimeAvgSum) / _serviceLoopInfo._loopTimeAvgCount;
-
-    // Slowest SysMod
-    _supervisorStats._slowestSysModIdx = 0;
-    for (std::size_t i = 0; i < _supervisorSysModInfoVector.size(); i++)
-    {
-        if (_supervisorSysModInfoVector[i]._sysModStats._execMaxTimeUs > 
-                    _supervisorSysModInfoVector[_supervisorStats._slowestSysModIdx]._sysModStats._execMaxTimeUs)
-            _supervisorStats._slowestSysModIdx = i;
-    }
-
-    // Second slowest SysMod
-    _supervisorStats._secondSlowestSysModIdx = 0;
-    for (int i = 1; i < _supervisorSysModInfoVector.size(); i++)
-    {
-        if ((i != _supervisorStats._slowestSysModIdx) &&
-                    (_supervisorSysModInfoVector[i]._sysModStats._execMaxTimeUs > 
-                                    _supervisorSysModInfoVector[_supervisorStats._secondSlowestSysModIdx]._sysModStats._execMaxTimeUs))
-            _supervisorStats._secondSlowestSysModIdx = i;
-    }
-
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Service Loop Timing - Get Stats String
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-String SysManager::statsGetString()
-{
-    // Min and max values
-    char maxMinStr[100];
-    sprintf(maxMinStr, "Max %luuS Min %luuS", _supervisorStats._loopTimeMaxUs, _supervisorStats._loopTimeMinUs);
-
-    // Average loop time
-    char averageStr[30];
-    strcpy(averageStr, "N/A");
-    if (_supervisorStats._totalLoops > 0)
-        sprintf(averageStr, "%4.2f", _supervisorStats._loopTimeAvgUs);
-
-    // Slowest loop activity
-    String slowestStr;
-    if ((_supervisorSysModInfoVector.size() > 0) && (_supervisorSysModInfoVector[_supervisorStats._slowestSysModIdx]._sysModStats._execMaxTimeUs != 0))
-        slowestStr = "Slowest " + _supervisorSysModInfoVector[_supervisorStats._slowestSysModIdx]._pSysMod->modNameStr() + " " + 
-                        String((uint32_t)_supervisorSysModInfoVector[_supervisorStats._slowestSysModIdx]._sysModStats._execMaxTimeUs) + "uS";
-
-    // Second slowest
-    if ((_supervisorSysModInfoVector.size() > 0) && (_supervisorStats._secondSlowestSysModIdx != _supervisorStats._slowestSysModIdx) && 
-                    (_supervisorSysModInfoVector[_supervisorStats._secondSlowestSysModIdx]._sysModStats._execMaxTimeUs != 0))
-        slowestStr += ", " + _supervisorSysModInfoVector[_supervisorStats._secondSlowestSysModIdx]._pSysMod->modNameStr() + " " + 
-                        String((uint32_t)_supervisorSysModInfoVector[_supervisorStats._secondSlowestSysModIdx]._sysModStats._execMaxTimeUs) + "uS";
-
-    // Combine
-    return String("Avg ") + averageStr + String("uS ") + maxMinStr + String(" ") + slowestStr;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Service Loop Timing - Clear Stats
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void SysManager::statsClear()
-{
-    _serviceLoopInfo.clear();
-    for (SysModInfo& sysModInfo : _supervisorSysModInfoVector)
-    {
-        sysModInfo._sysModStats.clear();
     }
 }
 
@@ -507,7 +431,7 @@ String SysManager::getDebugStr(const char* sysModName)
 {
     // Check if it is the SysManager's own stats that are wanted
     if (strcasecmp(sysModName, "SysMan") == 0)
-        return statsGetString();
+        return _supervisorStats.getSummaryString();
 
     // Check for stats callback
     if (strcasecmp(sysModName, "StatsCB") == 0)
@@ -560,10 +484,12 @@ void SysManager::apiReset(const String &reqStr, String& respStr)
 
 void SysManager::apiGetVersion(const String &reqStr, String& respStr)
 {
-    LOG_I(MODULE_PREFIX, "apiGetVersion");
-    char versionJson[200];
-    snprintf(versionJson, sizeof(versionJson), R"({"req":"%s","rslt":"ok","SystemName":"%s","SystemVersion":"%s","SerialNo":"%s","MAC":"%s"})", 
-                reqStr.c_str(), _systemName.c_str(), _systemVersion.c_str(), _ricSerialNoStoredStr.c_str(), _systemUniqueString.c_str());
+    char versionJson[225];
+    snprintf(versionJson, sizeof(versionJson),
+             R"({"req":"%s","rslt":"ok","SystemName":"%s","SystemVersion":"%s","SerialNo":"%s",)"
+             R"("MAC":"%s","RicHwRevNo":%d})",
+             reqStr.c_str(), _systemName.c_str(), _systemVersion.c_str(), _ricSerialNoStoredStr.c_str(),
+             _systemUniqueString.c_str(), getHwRevision());
     respStr = versionJson;
 }
 
@@ -612,6 +538,10 @@ void SysManager::apiFriendlyName(const String &reqStr, String& respStr)
         }
         _friendlyNameStored = friendlyName;
         _friendlyNameIsSet = nameIsSet;
+
+        // Setup network system hostname
+        if (_friendlyNameIsSet)
+            networkSystem.setHostname(_friendlyNameStored.c_str());
 
         // Store the new name (even if it is blank)
         String jsonConfig = getMutableConfigJson();
@@ -680,6 +610,18 @@ void SysManager::apiSerialNumber(const String &reqStr, String& respStr)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// HW revision number
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void SysManager::apiHwRevisionNumber(const String &reqStr, String& respStr)
+{
+    // Create response JSON
+    char jsonOut[30];
+    snprintf(jsonOut, sizeof(jsonOut), R"("RicHwRevNo":%d)", getHwRevision());
+    Utils::setJsonBoolResult(reqStr.c_str(), respStr, true, jsonOut);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Get mutable config JSON string
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -699,7 +641,7 @@ String SysManager::getMutableConfigJson()
 void SysManager::statsShow()
 {
     // Generate stats
-    char statsStr[500];
+    char statsStr[700];
     snprintf(statsStr, sizeof(statsStr), "%s V%s Heap %d (Min %d)", 
                 _systemName.c_str(),
                 _systemVersion.c_str(),
@@ -707,7 +649,7 @@ void SysManager::statsShow()
                 heap_caps_get_minimum_free_size(MALLOC_CAP_8BIT));
 
     // Add stats
-    for (String& srcStr : _monitorReportList)
+    for (String& srcStr : _diagsLogReportList)
     {
         String modStr = getDebugStr(srcStr.c_str());
         if (modStr.length() > 0)
@@ -718,14 +660,11 @@ void SysManager::statsShow()
     }
 
     // OTA update stats
-    if (_pFirmwareUpdateSysMod && _pFirmwareUpdateSysMod->isBusy())
+    String newStr = _fileUploadHandler.getDebugStr();
+    if (newStr.length() > 0)
     {
-        String newStr = _pFirmwareUpdateSysMod->getDebugStr();
-        if (newStr.length() > 0)
-        {
-            strlcat(statsStr, " ", sizeof(statsStr));
-            strlcat(statsStr, newStr.c_str(), sizeof(statsStr));
-        }
+        strlcat(statsStr, " ", sizeof(statsStr));
+        strlcat(statsStr, newStr.c_str(), sizeof(statsStr));
     }
 
     // Report stats
@@ -766,7 +705,7 @@ void SysManager::statusChangeBLEConnCB()
     // Get BLE status JSON
     ConfigBase statusBLE = getStatusJSON("BLEMan");
     bool bleIsConnected = statusBLE.getLong("isConn", 0) != 0;
-    LOG_W(MODULE_PREFIX, "BLE connection change isConn %s", bleIsConnected ? "YES" : "NO");
+    LOG_I(MODULE_PREFIX, "BLE connection change isConn %s", bleIsConnected ? "YES" : "NO");
 
     // Check if WiFi should be paused
     bool pauseWiFiForBLEConn = _sysModManConfig.getString("pauseWiFiforBLE", 0);
@@ -798,7 +737,6 @@ bool SysManager::processEndpointMsg(ProtocolEndpointMsg &cmdMsg)
     {
         // Handle ROSSerial messages by sending to the robot
         // Not implemented since move from RobotController & currently unused in this direction
-        // return _pRobot->addCommand(cmdMsg);
     }
     else if (protocol == MSG_PROTOCOL_RICREST)
     {
@@ -837,7 +775,13 @@ bool SysManager::processEndpointMsg(ProtocolEndpointMsg &cmdMsg)
             }
             case RICRESTMsg::RICREST_ELEM_CODE_FILEBLOCK:
             {
-                processRICRESTFileBlock(ricRESTReqMsg, respMsg);
+                _fileUploadHandler.handleFileBlock(ricRESTReqMsg, respMsg);
+                break;
+            }
+            case RICRESTMsg::RICREST_ELEM_CODE_STREAMBLOCK:
+            {
+                if (_pStreamHandlerSysMod)
+                    _pStreamHandlerSysMod->handleStreamBlock(ricRESTReqMsg, respMsg);
                 break;
             }
         }
@@ -846,9 +790,8 @@ bool SysManager::processEndpointMsg(ProtocolEndpointMsg &cmdMsg)
         if (respMsg.length() != 0)
         {
             // Send the response back
-            RICRESTMsg ricRESTRespMsg;
             ProtocolEndpointMsg endpointMsg;
-            ricRESTRespMsg.encode(respMsg, endpointMsg, RICRESTMsg::RICREST_ELEM_CODE_CMDRESPJSON);
+            RICRESTMsg::encode(respMsg, endpointMsg, RICRESTMsg::RICREST_ELEM_CODE_CMDRESPJSON);
             endpointMsg.setAsResponse(cmdMsg);
 
             // Send message on the appropriate channel
@@ -918,26 +861,17 @@ bool SysManager::processRICRESTCmdFrame(RICRESTMsg& ricRESTReqMsg, String& respM
     ConfigBase cmdFrame = ricRESTReqMsg.getPayloadJson();
     String cmdName = cmdFrame.getString("cmdName", "");
 
-#ifdef DEBUG_ENDPOINT_MESSAGES
+#ifdef DEBUG_RICREST_CMDFRAME
     LOG_I(MODULE_PREFIX, "processRICRESTCmdFrame %s", cmdName.c_str());
 #endif
 
     // Check file upload
-    if (cmdName.equalsIgnoreCase("ufStart"))
-    {
-        fileUploadStart(ricRESTReqMsg.getReq(), respMsg, endpointMsg.getChannelID(), cmdFrame);
+    if (_fileUploadHandler.handleCmdFrame(cmdName, ricRESTReqMsg, respMsg, endpointMsg))
         return true;
-    }
-    else if (cmdName.equalsIgnoreCase("ufEnd"))
-    {
-        fileUploadEnd(ricRESTReqMsg.getReq(), respMsg, cmdFrame);
+
+    // Check streaming
+    if (_pStreamHandlerSysMod && _pStreamHandlerSysMod->procRICRESTCmdFrame(cmdName, ricRESTReqMsg, respMsg, endpointMsg))
         return true;
-    } 
-    else if (cmdName.equalsIgnoreCase("ufCancel"))
-    {
-        fileUploadCancel(ricRESTReqMsg.getReq(), respMsg, cmdFrame);
-        return true;
-    }
 
     // Otherwise see if any SysMod wants to handle this
     for (SysModBase* pSysMod : _sysModuleList)
@@ -949,230 +883,3 @@ bool SysManager::processRICRESTCmdFrame(RICRESTMsg& ricRESTReqMsg, String& respM
     return false;
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Process RICRESTMsg URL
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool SysManager::processRICRESTFileBlock(RICRESTMsg& ricRESTReqMsg, String& respMsg)
-{
-    // Handle the upload block
-    uint32_t filePos = ricRESTReqMsg.getBufferPos();
-    const uint8_t* pBuffer = ricRESTReqMsg.getBinBuf();
-    uint32_t bufferLen = ricRESTReqMsg.getBinLen();
-
-    // Update state machine with block
-    bool batchValid = false;
-    bool isFinalBlock = false;
-    bool genAck = false;
-    _fileUploadHandler.blockRx(filePos, bufferLen, batchValid, isFinalBlock, genAck);
-
-    // Debug
-    if (isFinalBlock)
-    {
-        LOG_W(MODULE_PREFIX, "RICRESTFileBlock isFinal %d", isFinalBlock);
-    }
-
-    if (genAck)
-    {
-        // block returns true when an acknowledgement is required - so send that ack
-        char ackJson[100];
-        snprintf(ackJson, sizeof(ackJson), "\"okto\":%d", _fileUploadHandler.getOkTo());
-        Utils::setJsonBoolResult(ricRESTReqMsg.getReq().c_str(), respMsg, true, ackJson);
-
-#ifdef DEBUG_RICREST_FILEUPLOAD_BLOCK_ACK
-        LOG_I(MODULE_PREFIX, "RICRESTFileBlock BatchOK Sending OkTo %d rxBlockFilePos %d len %d batchCount %d resp %s", 
-                _fileUploadHandler.getOkTo(), filePos, bufferLen, _fileUploadHandler._batchBlockCount, respMsg.c_str());
-#endif
-    }
-    else
-    {
-        // Check if we are actually uploading
-        if (!_fileUploadHandler._isUploading)
-        {
-            LOG_W(MODULE_PREFIX, "RICRESTFileBlock NO UPLOAD IN PROGRESS filePos %d len %d", filePos, bufferLen);
-            // Not uploading
-            Utils::setJsonBoolResult(ricRESTReqMsg.getReq().c_str(), respMsg, true, "\"noUpload\"");
-        }
-        else
-        {
-#ifdef DEBUG_RICREST_FILEUPLOAD_BLOCK_ACK_DETAIL
-            LOG_I(MODULE_PREFIX, "RICRESTFileBlock filePos %d len %d batchCount %d resp %s", 
-                    filePos, bufferLen, _fileUploadHandler._batchBlockCount, respMsg.c_str());
-#endif
-            // Just another block - don't ack yet
-        }
-    }
-
-    // Check valid
-    if (batchValid)
-    {
-        // Handle as a file block or firmware block
-        if (_fileUploadHandler._fileIsRICFirmware) 
-        {
-            // Part of system firmware
-            _pFirmwareUpdateSysMod->firmwareUpdateBlock(filePos, pBuffer, bufferLen);
-        }
-        else
-        {
-            // Part of a file
-            FileBlockInfo fileBlockInfo(_fileUploadHandler._fileName.c_str(), 
-                                _fileUploadHandler._fileSize, 
-                                filePos, 
-                                pBuffer, 
-                                bufferLen, 
-                                isFinalBlock,
-                                _fileUploadHandler._expCRC16,
-                                _fileUploadHandler._expCRC16Valid,
-                                _fileUploadHandler._fileSize,
-                                true
-                                );
-            fileSystem.uploadAPIBlockHandler("", _fileUploadHandler._reqStr, fileBlockInfo);
-        }
-    }
-    return false;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Service file upload
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void SysManager::serviceFileUpload()
-{
-#ifdef DEBUG_SHOW_FILE_UPLOAD_STATS
-    // Stats display
-    if (_fileUploadHandler.debugStatsReady())
-    {
-        LOG_I(MODULE_PREFIX, "fileUploadStats %s", _fileUploadHandler.debugStatsStr().c_str());
-    }
-#endif
-    bool genBatchAck = false;
-    _fileUploadHandler.service(genBatchAck);
-    if (genBatchAck)
-    {
-        char ackJson[100];
-        snprintf(ackJson, sizeof(ackJson), "\"okto\":%d", _fileUploadHandler.getOkTo());
-        String respMsg;
-        Utils::setJsonBoolResult("ufBlock", respMsg, true, ackJson);
-
-        // Send the response back
-        RICRESTMsg ricRESTRespMsg;
-        ProtocolEndpointMsg endpointMsg;
-        ricRESTRespMsg.encode(respMsg, endpointMsg, RICRESTMsg::RICREST_ELEM_CODE_CMDRESPJSON);
-        endpointMsg.setAsResponse(_fileUploadHandler._commsChannelID, MSG_PROTOCOL_RICREST, 
-                    0, MSG_DIRECTION_RESPONSE);
-
-        // Debug
-        LOG_W(MODULE_PREFIX, "serviceFileUpload timed-out block receipt Sending OkTo %d batchCount %d", 
-                _fileUploadHandler.getOkTo(), _fileUploadHandler._batchBlockCount);
-
-        // Send message on the appropriate channel
-        if (_pProtocolEndpointManager)
-            _pProtocolEndpointManager->handleOutboundMessage(endpointMsg);
-    }
-}
-
-void SysManager::fileUploadStart(const String& reqStr, String& respMsg, uint32_t channelID, ConfigBase& cmdFrame)
-{
-    // Get params
-    String ufStartReq = cmdFrame.getString("reqStr", "");
-    uint32_t fileLen = cmdFrame.getLong("fileLen", 0);
-    String fileName = cmdFrame.getString("fileName", "");
-    String fileType = cmdFrame.getString("fileType", "");
-    String crc16Str = cmdFrame.getString("CRC16", "");
-    uint32_t crc16 = 0;
-    bool crc16Valid = false;
-    if (crc16Str.length() > 0)
-    {
-        crc16Valid = true;
-        crc16 = strtoul(crc16Str.c_str(), NULL, 0);
-    }
-
-    // Start file upload handler
-    uint32_t fileBlockSize = 0;
-    uint32_t batchAckSize = 0;
-    String errorMsg;
-    bool startOk = _fileUploadHandler.start(ufStartReq, fileName, fileLen, fileType, 
-                fileBlockSize, batchAckSize, channelID, errorMsg, crc16, crc16Valid);
-
-    // Check if firmware
-    if (startOk && _fileUploadHandler._fileIsRICFirmware)
-    {
-        // Start ESP OTA update
-        startOk = _pFirmwareUpdateSysMod->firmwareUpdateStart(_fileUploadHandler._fileName.c_str(), 
-                            _fileUploadHandler._fileSize);
-        if (!startOk)
-            errorMsg = "ESP OTA fail";
-    }
-
-    // Response
-    char extraJson[100];
-    snprintf(extraJson, sizeof(extraJson), "\"batchMsgSize\":%d,\"batchAckSize\":%d", fileBlockSize, batchAckSize);
-    Utils::setJsonResult(reqStr.c_str(), respMsg, startOk, errorMsg.c_str(), extraJson);
-
-    LOG_I(MODULE_PREFIX, "fileUploadStart reqStr %s filename %s fileType %s fileLen %d", 
-                _fileUploadHandler._reqStr.c_str(),
-                _fileUploadHandler._fileName.c_str(), 
-                _fileUploadHandler._fileType.c_str(), 
-                _fileUploadHandler._fileSize);
-}
-
-void SysManager::fileUploadEnd(const String& reqStr, String& respMsg, ConfigBase& cmdFrame)
-{
-    // Handle file end
-#ifdef DEBUG_RICREST_FILEUPLOAD
-    uint32_t blocksSent = cmdFrame.getLong("blockCount", 0);
-#endif
-
-    // Check if firmware
-    bool rslt = true;
-    if (_fileUploadHandler._fileIsRICFirmware)
-    {
-        // Start ESP OTA update
-        rslt = _pFirmwareUpdateSysMod->firmwareUpdateEnd();
-    }
-
-    // Response
-    Utils::setJsonBoolResult(reqStr.c_str(), respMsg, rslt);
-
-    // Debug
-    // LOG_I(MODULE_PREFIX, "fileUploadEnd blockCount %d blockRate %f rslt %s", 
-    //                 _fileUploadHandler._blockCount, _fileUploadHandler.getBlockRate(), rslt ? "OK" : "FAIL");
-
-    // Debug
-#ifdef DEBUG_RICREST_FILEUPLOAD
-    String fileName = cmdFrame.getString("fileName", "");
-    String fileType = cmdFrame.getString("fileType", "");
-    uint32_t fileLen = cmdFrame.getLong("fileLen", 0);
-    LOG_I(MODULE_PREFIX, "fileUploadEnd reqStr %s fileName %s fileType %s fileLen %d blocksSent %d", 
-                _fileUploadHandler._reqStr.c_str(),
-                fileName.c_str(), 
-                fileType.c_str(), 
-                fileLen, 
-                blocksSent);
-#endif
-
-    // End upload
-    _fileUploadHandler.end();
-}
-
-void SysManager::fileUploadCancel(const String& reqStr, String& respMsg, ConfigBase& cmdFrame)
-{
-    // Handle file cancel
-    String fileName = cmdFrame.getString("fileName", "");
-
-    // Cancel upload
-    _fileUploadHandler.cancel();
-
-    // Response
-    Utils::setJsonBoolResult(reqStr.c_str(), respMsg, true);
-
-    // Debug
-    LOG_I(MODULE_PREFIX, "fileUploadCancel fileName %s", fileName.c_str());
-
-    // Debug
-#ifdef DEBUG_RICREST_FILEUPLOAD
-    LOG_I(MODULE_PREFIX, "fileUploadCancel reqStr %s fileName %s", 
-                _fileUploadHandler._reqStr.c_str(),
-                fileName.c_str());
-#endif
-}

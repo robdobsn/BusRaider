@@ -23,12 +23,34 @@
 #include <ESPUtils.h>
 #include <SysManager.h>
 
+#define WARN_ON_BLE_INIT_FAILED
+#define WARN_ON_BLE_ADVERTISING_ERROR
+#define WARN_ON_ONSYNC_ADDR_ERROR
+// #define DEBUG_ONSYNC_ADDR
+// #define DEBUG_BLE_ADVERTISING
+// #define DEBUG_BLE_ON_RESET
 // #define DEBUG_BLE_RX_PAYLOAD
 // #define DEBUG_BLE_TX_MSG
 // #define DEBUG_BLE_TX_MSG_SPLIT
 // #define DEBUG_BLE_TX_MSG_DETAIL
 // #define DEBUG_BLE_PUBLISH
 // #define DEBUG_BLE_SETUP
+// #define DEBUG_LOG_CONNECT
+// #define DEBUG_LOG_CONNECT_DETAIL
+#define DEBUG_LOG_DISCONNECT_DETAIL
+// #define DEBUG_LOG_CONN_UPDATE_DETAIL
+// #define DEBUG_LOG_CONN_UPDATE
+// #define DEBUG_LOG_GAP_EVENT
+// #define DEBUG_GAP_EVENT_DISC
+// #define DEBUG_BLE_ENC_CHANGE
+// #define DEBUG_BLE_ENC_CHANGE_DETAIL
+// #define DEBUG_BLE_EVENT_NOTIFY_RX
+// #define DEBUG_BLE_EVENT_NOTIFY_TX
+// #define DEBUG_BLE_EVENT_SUBSCRIBE
+// #define DEBUG_BLE_EVENT_MTU
+// #define DEBUG_BLE_TASK_STARTED
+
+// #define INCLUDE_RSSI_IN_DEBUG_SEEMS_TO_CRASH_IDF_V4_3
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Statics, etc
@@ -50,6 +72,9 @@ uint8_t BLEManager::own_addr_type = 0;
 bool BLEManager::_isConnected = false;
 uint16_t BLEManager::_bleGapConnHandle = 0;
 
+// Advertising name
+String BLEManager::_configuredAdvertisingName;
+
 #ifdef USE_TIMED_ADVERTISING_CHECK
 // Advertising check ms
 bool BLEManager::_advertisingCheckRequired = false;
@@ -60,12 +85,14 @@ uint32_t BLEManager::_advertisingCheckMs = millis();
 // Constructor
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-BLEManager::BLEManager(const char *pModuleName, ConfigBase &defaultConfig, ConfigBase *pGlobalConfig, ConfigBase *pMutableConfig)
+BLEManager::BLEManager(const char *pModuleName, ConfigBase &defaultConfig, ConfigBase *pGlobalConfig, 
+                ConfigBase *pMutableConfig, const char* defaultAdvName)
     : SysModBase(pModuleName, defaultConfig, pGlobalConfig, pMutableConfig)
 {
     // BLE interface
     _enableBLE = false;
     _BLEDeviceInitialised = false;
+    _defaultAdvName = defaultAdvName;
 
     // EndpointID
     _protocolEndpointID = ProtocolEndpointManager::UNDEFINED_ID;
@@ -79,6 +106,9 @@ BLEManager::BLEManager(const char *pModuleName, ConfigBase &defaultConfig, Confi
 
     // Outbound msg timing
     _lastOutboundMsgMs = 0;
+
+    // Outbound queue
+    _bleOutboundQueue.setMaxLen(BLE_OUTBOUND_MSG_QUEUE_SIZE);
 }
 
 BLEManager::~BLEManager()
@@ -114,16 +144,27 @@ void BLEManager::applySetup()
             esp_err_t err = esp_nimble_hci_and_controller_init();
             if (err != ESP_OK)
             {
+#ifdef WARN_ON_BLE_INIT_FAILED
                 LOG_E(MODULE_PREFIX, "applySetup nimble init failed err=%d", err);
+#endif
                 return;
             }
+
+            // Log level for NimBLE module is set in here so if we want to override it
+            // we have to do so after this call
             nimble_port_init();
         }
         _BLEDeviceInitialised = true;
 
+        // Get NimBLE log level 
+        String nimLogLev = configGetString("nimLogLev", "");
+        setModuleLogLevel("NimBLE", nimLogLev);
+
         // onReset callback
         ble_hs_cfg.reset_cb = [](int reason) {
-            LOG_D(MODULE_PREFIX, "onReset() reason=%d", reason);
+#ifdef DEBUG_BLE_ON_RESET            
+            LOG_I(MODULE_PREFIX, "onReset() reason=%d", reason);
+#endif
         };
 
         // onSync callback
@@ -144,7 +185,8 @@ void BLEManager::applySetup()
         assert(rc == 0);
 
         // Set the advertising name
-        rc = ble_svc_gap_device_name_set(getAdvertisingName().c_str());
+        _configuredAdvertisingName = getAdvertisingName();
+        rc = ble_svc_gap_device_name_set(_configuredAdvertisingName.c_str());
         assert(rc == 0);
 
         // Set the callback
@@ -177,7 +219,9 @@ void BLEManager::applySetup()
         esp_err_t err = esp_nimble_hci_and_controller_deinit();
         if (err != ESP_OK)
         {
+#ifdef WARN_ON_BLE_INIT_FAILED
             LOG_W(MODULE_PREFIX, "applySetup deinit failed");
+#endif
         }
         _BLEDeviceInitialised = false;
 
@@ -208,14 +252,24 @@ void BLEManager::service()
             if (!ble_gap_adv_active())
             {
                 // Debug
+#ifdef WARN_ON_BLE_ADVERTISING_ERROR
                 LOG_W(MODULE_PREFIX, "service not conn or adv so start advertising");
+#endif
 
                 // Start advertising
                 startAdvertising();
+
+                // Debug
+#ifdef WARN_ON_BLE_ADVERTISING_ERROR
+                LOG_W(MODULE_PREFIX, "service start advertising ok");
+                delay(50);
+#endif
             }
             else
             {
+#ifdef DEBUG_BLE_ADVERTISING
                 LOG_I(MODULE_PREFIX, "service BLE advertising check ok");
+#endif
                 _advertisingCheckRequired = false;
             }
             _advertisingCheckMs = millis();
@@ -250,7 +304,11 @@ void BLEManager::addProtocolEndpoints(ProtocolEndpointManager& endpointManager)
     _protocolEndpointID = endpointManager.registerChannel("RICSerial", 
             std::bind(&BLEManager::sendBLEMsg, this, std::placeholders::_1),
             "BLE",
-            std::bind(&BLEManager::readyToSend, this));
+            std::bind(&BLEManager::readyToSend, this, std::placeholders::_1),
+            BLE_INBOUND_BLOCK_MAX_DEFAULT,
+            BLE_INBOUND_QUEUE_MAX_DEFAULT,
+            BLE_OUTBOUND_BLOCK_MAX_DEFAULT,
+            BLE_OUTBOUND_QUEUE_MAX_DEFAULT);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -265,7 +323,7 @@ String BLEManager::getStatusJSON()
     int bleGapConnRSSI = ble_gap_conn_rssi(_bleGapConnHandle, &rssiOut);
     char statusStr[200];
     snprintf(statusStr, sizeof(statusStr), 
-                R"("{"rslt":"ok","isConn":%d,"isAdv":%d,"advName":"%s","rssi":%d,"BLEMAC":"%s"})",
+                R"({"rslt":"ok","isConn":%d,"isAdv":%d,"advName":"%s","rssi":%d,"BLEMAC":"%s"})",
                 _isConnected,
                 ble_gap_adv_active(),
                 ble_svc_gap_device_name(),
@@ -287,6 +345,8 @@ String BLEManager::getDebugStr()
     bool advertisingActive = ble_gap_adv_active();
     bool discoveryActive = ble_gap_disc_active();
     bool gapConnActive = ble_gap_conn_active();
+
+#ifdef INCLUDE_RSSI_IN_DEBUG_SEEMS_TO_CRASH_IDF_V4_3
     int8_t rssiOut = 0;
     char tmpRssi[20];
     strlcpy(tmpRssi, "", sizeof(tmpRssi));
@@ -296,16 +356,23 @@ String BLEManager::getDebugStr()
         if (bleGapConnRSSI == 0)
             snprintf(tmpRssi, sizeof(tmpRssi), "%ddB", rssiOut);
     }
+#endif
+
     // Also ble_gap_conn_desc can be obtained
     String advertisingName = " ";
     advertisingName += ble_svc_gap_device_name();
     char tmpBuf[200];
-    snprintf(tmpBuf, sizeof(tmpBuf)-1, "BLE%s%s%s%s%s Rx%d Tx%d",
+    snprintf(tmpBuf, sizeof(tmpBuf)-1, 
+        "BLE%s%s%s%s%s Rx%d Tx%d",
         _isConnected ? " Conn" : (advertisingActive ? "Adv" : ""),
         gapConnActive ? " Actv" : "",
         advertisingActive ? advertisingName.c_str() : "",
         discoveryActive ? " Discov" : "",
+#ifdef INCLUDE_RSSI_IN_DEBUG_SEEMS_TO_CRASH_IDF_V4_3
         tmpRssi,
+#else
+        "",
+#endif
         _rxTotalCount,
         _txTotalCount);
 
@@ -328,15 +395,19 @@ void BLEManager::onSync()
     rc = ble_hs_id_infer_auto(0, &own_addr_type);
     if (rc != 0)
     {
+#ifdef WARN_ON_ONSYNC_ADDR_ERROR
         LOG_W(MODULE_PREFIX, "onSync() error determining address type; rc=%d", rc);
+#endif
         return;
     }
 
     // Debug showing addr
     uint8_t addrVal[6] = {0};
     rc = ble_hs_id_copy_addr(own_addr_type, addrVal, NULL);
+#ifdef DEBUG_ONSYNC_ADDR
     LOG_I(MODULE_PREFIX, "onSync() Device Address: %x:%x:%x:%x:%x:%x",
               addrVal[5], addrVal[4], addrVal[3], addrVal[2], addrVal[1], addrVal[0]);
+#endif
 
     // Start advertising
     startAdvertising();
@@ -356,11 +427,12 @@ void BLEManager::startAdvertising()
     // Check if already advertising
     if (ble_gap_adv_active())
     {
-        LOG_I(MODULE_PREFIX, "startAdv - already adv");
+#ifdef DEBUG_BLE_ADVERTISING
+        LOG_I(MODULE_PREFIX, "startAdvertising - already advertising");
+#endif
         return;
     }
 
-    LOG_I(MODULE_PREFIX, "startAdv Entry");
     struct ble_gap_adv_params adv_params;
     struct ble_hs_adv_fields fields;
 
@@ -395,7 +467,9 @@ void BLEManager::startAdvertising()
     int rc = ble_gap_adv_set_fields(&fields);
     if (rc != 0)
     {
+#ifdef WARN_ON_BLE_ADVERTISING_ERROR
         LOG_E(MODULE_PREFIX, "error setting adv fields; rc=%d", rc);
+#endif
         return;
     }
 
@@ -403,9 +477,11 @@ void BLEManager::startAdvertising()
     memset(&fields, 0, sizeof fields);
 
     // Set the advertising name
-    if (ble_svc_gap_device_name_set(getAdvertisingName().c_str()) != 0)
+    if (ble_svc_gap_device_name_set(_configuredAdvertisingName.c_str()) != 0)
     {
+#ifdef WARN_ON_BLE_ADVERTISING_ERROR
         LOG_E(MODULE_PREFIX, "error setting adv name rc=%d", rc);
+#endif
     }
 
     const char *name = ble_svc_gap_device_name();
@@ -416,7 +492,9 @@ void BLEManager::startAdvertising()
     rc = ble_gap_adv_rsp_set_fields(&fields);
     if (rc != 0)
     {
+#ifdef WARN_ON_BLE_ADVERTISING_ERROR
         LOG_E(MODULE_PREFIX, "error setting adv rsp fields; rc=%d", rc);
+#endif
         return;
     }
 
@@ -428,41 +506,51 @@ void BLEManager::startAdvertising()
                            &adv_params, nimbleGapEvent, NULL);
     if (rc != 0)
     {
+#ifdef WARN_ON_BLE_ADVERTISING_ERROR
         LOG_E(MODULE_PREFIX, "error enabling adv; rc=%d", rc);
+#endif
         return;
     }
-
-    LOG_I(MODULE_PREFIX, "startAdv Complete");
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Helpers
+// Log information about a connection to the console.
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void BLEManager::print_addr(const uint8_t *addr)
-{
-    const uint8_t *u8p;
-    u8p = addr;
-    LOG_I(MODULE_PREFIX, "%02x:%02x:%02x:%02x:%02x:%02x",
-                u8p[5], u8p[4], u8p[3], u8p[2], u8p[1], u8p[0]);
-}
-/**
- * Logs information about a connection to the console.
- */
 void BLEManager::logConnectionInfo(struct ble_gap_conn_desc *desc)
 {
-    LOG_I(MODULE_PREFIX, "handle=%d our_ota_addr_type=%d our_ota_addr=",
-                desc->conn_handle, desc->our_ota_addr.type);
-    print_addr(desc->our_ota_addr.val);
-    LOG_I(MODULE_PREFIX, " our_id_addr_type=%d our_id_addr=",
-                desc->our_id_addr.type);
-    print_addr(desc->our_id_addr.val);
-    LOG_I(MODULE_PREFIX, " peer_ota_addr_type=%d peer_ota_addr=",
-                desc->peer_ota_addr.type);
-    print_addr(desc->peer_ota_addr.val);
-    LOG_I(MODULE_PREFIX, " peer_id_addr_type=%d peer_id_addr=",
-                desc->peer_id_addr.type);
-    print_addr(desc->peer_id_addr.val);
+    LOG_I(MODULE_PREFIX, "handle=%d our_ota_addr_type=%d our_ota_addr=%02x:%02x:%02x:%02x:%02x:%02x",
+                desc->conn_handle, desc->our_ota_addr.type, 
+                desc->our_ota_addr.val[0],
+				desc->our_ota_addr.val[1],
+				desc->our_ota_addr.val[2],
+				desc->our_ota_addr.val[3],
+				desc->our_ota_addr.val[4],
+				desc->our_ota_addr.val[5]);
+    LOG_I(MODULE_PREFIX, " our_id_addr_type=%d our_id_addr=%02x:%02x:%02x:%02x:%02x:%02x",
+                desc->our_id_addr.type, 
+                desc->our_id_addr.val[0],
+				desc->our_id_addr.val[1],
+				desc->our_id_addr.val[2],
+				desc->our_id_addr.val[3],
+				desc->our_id_addr.val[4],
+				desc->our_id_addr.val[5]);
+    LOG_I(MODULE_PREFIX, " peer_ota_addr_type=%d peer_ota_addr=%02x:%02x:%02x:%02x:%02x:%02x",
+                desc->peer_ota_addr.type, 
+                desc->peer_ota_addr.val[0],
+				desc->peer_ota_addr.val[1],
+				desc->peer_ota_addr.val[2],
+				desc->peer_ota_addr.val[3],
+				desc->peer_ota_addr.val[4],
+				desc->peer_ota_addr.val[5]);
+    LOG_I(MODULE_PREFIX, " peer_id_addr_type=%d peer_id_addr=%02x:%02x:%02x:%02x:%02x:%02x",
+                desc->peer_id_addr.type, 
+                desc->peer_id_addr.val[0],
+				desc->peer_id_addr.val[1],
+				desc->peer_id_addr.val[2],
+				desc->peer_id_addr.val[3],
+				desc->peer_id_addr.val[4],
+				desc->peer_id_addr.val[5]);
     LOG_I(MODULE_PREFIX, " conn_itvl=%d conn_latency=%d supervision_timeout=%d "
                       "encrypted=%d authenticated=%d bonded=%d",
                 desc->conn_itvl, desc->conn_latency,
@@ -499,15 +587,19 @@ int BLEManager::nimbleGapEvent(struct ble_gap_event *event, void *arg)
         case BLE_GAP_EVENT_CONNECT:
         {
             // A new connection was established or a connection attempt failed
-            LOG_W(MODULE_PREFIX, "GAPEvent connection %s (%d) ",
+#ifdef DEBUG_LOG_CONNECT
+            LOG_I(MODULE_PREFIX, "GAPEvent connection %s (%d) ",
                         event->connect.status == 0 ? "established" : "failed",
                         event->connect.status);
+#endif
             if (event->connect.status == 0)
             {
                 setIsConnected(true, event->connect.conn_handle);
                 int rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
                 assert(rc == 0);
+#ifdef DEBUG_LOG_CONNECT_DETAIL
                 logConnectionInfo(&desc);
+#endif
             }
             else
             {
@@ -523,7 +615,9 @@ int BLEManager::nimbleGapEvent(struct ble_gap_event *event, void *arg)
         {
             LOG_W(MODULE_PREFIX, "GAPEvent disconnect; reason=%d ", event->disconnect.reason);
             setIsConnected(false);
+#ifdef DEBUG_LOG_DISCONNECT_DETAIL
             logConnectionInfo(&event->disconnect.conn);
+#endif
 
             // Connection terminated; resume advertising
             // LOG_W(MODULE_PREFIX, "GAPEvent disconnect - requesting startAdvertising");
@@ -531,76 +625,104 @@ int BLEManager::nimbleGapEvent(struct ble_gap_event *event, void *arg)
             return 0;
         }
         case BLE_GAP_EVENT_CONN_UPDATE:
-        { // The central has updated the connection parameters
-            LOG_W(MODULE_PREFIX, "GAPEvent connection updated; status=%d ",
+        { 
+            // The central has updated the connection parameters
+#ifdef DEBUG_LOG_CONN_UPDATE
+            LOG_I(MODULE_PREFIX, "GAPEvent connection updated; status=%d ",
                         event->conn_update.status);
+#endif
             int rc = ble_gap_conn_find(event->conn_update.conn_handle, &desc);
             assert(rc == 0);
+#ifdef DEBUG_LOG_CONN_UPDATE_DETAIL
             logConnectionInfo(&desc);
+#endif
             return 0;
         }
         case BLE_GAP_EVENT_CONN_UPDATE_REQ:
         {
-            LOG_W(MODULE_PREFIX, "GAPEvent connection update request");
+#ifdef DEBUG_LOG_CONN_UPDATE
+            LOG_I(MODULE_PREFIX, "GAPEvent connection update request");
+#endif
             return 0;
         }
         case BLE_GAP_EVENT_L2CAP_UPDATE_REQ:
         {
-            LOG_W(MODULE_PREFIX, "GAPEvent L2CAP update request");
+#ifdef DEBUG_LOG_CONN_UPDATE
+            LOG_I(MODULE_PREFIX, "GAPEvent L2CAP update request");
+#endif
             return 0;
         }
         case BLE_GAP_EVENT_TERM_FAILURE:
         {
-            LOG_W(MODULE_PREFIX, "GAPEvent term failure");
+#ifdef DEBUG_LOG_GAP_EVENT
+            LOG_I(MODULE_PREFIX, "GAPEvent term failure");
+#endif
             return 0;
         }
         case BLE_GAP_EVENT_DISC:
         {
-            LOG_W(MODULE_PREFIX, "GAPEvent DISC");
+#ifdef DEBUG_GAP_EVENT_DISC
+            LOG_I(MODULE_PREFIX, "GAPEvent DISC");
+#endif
             return 0;
         }
         case BLE_GAP_EVENT_DISC_COMPLETE:
         {
-            LOG_W(MODULE_PREFIX, "GAPEvent DISC COMPLETE");
+#ifdef DEBUG_GAP_EVENT_DISC
+            LOG_I(MODULE_PREFIX, "GAPEvent DISC COMPLETE");
+#endif
             return 0;
         }
         case BLE_GAP_EVENT_ADV_COMPLETE:
         {
-            LOG_W(MODULE_PREFIX, "GAPEvent advertise complete; reason=%d",
+#ifdef DEBUG_BLE_ADVERTISING
+            LOG_I(MODULE_PREFIX, "GAPEvent advertise complete; reason=%d",
                         event->adv_complete.reason);
+#endif
             startAdvertising();
             return 0;
         }
         case BLE_GAP_EVENT_ENC_CHANGE:
         {
             // Encryption has been enabled or disabled for this connection
-            LOG_W(MODULE_PREFIX, "GAPEvent encryption change; status=%d ",
+#ifdef DEBUG_BLE_ENC_CHANGE
+            LOG_I(MODULE_PREFIX, "GAPEvent encryption change; status=%d ",
                         event->enc_change.status);
+#endif
             int rc = ble_gap_conn_find(event->enc_change.conn_handle, &desc);
             assert(rc == 0);
+#ifdef DEBUG_BLE_ENC_CHANGE_DETAIL
             logConnectionInfo(&desc);
+#endif
             return 0;
         }
         case BLE_GAP_EVENT_PASSKEY_ACTION:
         {
-            LOG_W(MODULE_PREFIX, "GAPEvent PASSKEY action");
+#ifdef DEBUG_BLE_ENC_CHANGE_DETAIL
+            LOG_I(MODULE_PREFIX, "GAPEvent PASSKEY action");
+#endif
             return 0;
         }
         case BLE_GAP_EVENT_NOTIFY_RX:
         {
-            LOG_W(MODULE_PREFIX, "GAPEvent notify RX");
+#ifdef DEBUG_BLE_EVENT_NOTIFY_RX
+            LOG_I(MODULE_PREFIX, "GAPEvent notify RX");
+#endif
             return 0;
         }
         case BLE_GAP_EVENT_NOTIFY_TX:
         {
             _pBLEManager->_txTotalCount++;
-            // LOG_I(MODULE_PREFIX, "GAPEvent notify TX");
+#ifdef DEBUG_BLE_EVENT_NOTIFY_TX
+            LOG_I(MODULE_PREFIX, "GAPEvent notify TX");
+#endif
             // Every transmission from GAP - could be used for stats if other stats not available
             return 0;
         }
         case BLE_GAP_EVENT_SUBSCRIBE:
         {
-            LOG_W(MODULE_PREFIX, "GAPEvent subscribe conn_handle=%d attr_handle=%d "
+#ifdef DEBUG_BLE_EVENT_SUBSCRIBE
+            LOG_I(MODULE_PREFIX, "GAPEvent subscribe conn_handle=%d attr_handle=%d "
                             "reason=%d prevn=%d curn=%d previ=%d curi=%d",
                         event->subscribe.conn_handle,
                         event->subscribe.attr_handle,
@@ -609,28 +731,33 @@ int BLEManager::nimbleGapEvent(struct ble_gap_event *event, void *arg)
                         event->subscribe.cur_notify,
                         event->subscribe.prev_indicate,
                         event->subscribe.cur_indicate);
-
+#endif
             // Handle subscription to GATT attr
             BLEGattServer::handleSubscription(event, _bleGapConnHandle);
             return 0;
         }
         case BLE_GAP_EVENT_MTU:
         {
-            LOG_W(MODULE_PREFIX, "mtu update event; conn_handle=%d cid=%d mtu=%d",
+#ifdef DEBUG_BLE_EVENT_MTU
+            LOG_I(MODULE_PREFIX, "mtu update event; conn_handle=%d cid=%d mtu=%d",
                         event->mtu.conn_handle,
                         event->mtu.channel_id,
                         event->mtu.value);
+#endif
             return 0;
         }
         case BLE_GAP_EVENT_IDENTITY_RESOLVED:
         {
-            LOG_W(MODULE_PREFIX, "GAPEvent identity resolved");
+#ifdef DEBUG_LOG_GAP_EVENT
+            LOG_I(MODULE_PREFIX, "GAPEvent identity resolved");
+#endif
             return 0;
         }
         case BLE_GAP_EVENT_REPEAT_PAIRING:
         { 
-            LOG_W(MODULE_PREFIX, "GAPEvent Repeat Pairing");
-
+#ifdef DEBUG_LOG_GAP_EVENT
+            LOG_I(MODULE_PREFIX, "GAPEvent Repeat Pairing");
+#endif
             /* We already have a bond with the peer, but it is attempting to
             * establish a new secure link.  This app sacrifices security for
             * convenience: just throw away the old bond and accept the new link.
@@ -647,12 +774,16 @@ int BLEManager::nimbleGapEvent(struct ble_gap_event *event, void *arg)
         }
         case BLE_GAP_EVENT_PHY_UPDATE_COMPLETE:
         {
-            LOG_W(MODULE_PREFIX, "GAPEvent PHY update complete");
+#ifdef DEBUG_LOG_GAP_EVENT
+            LOG_I(MODULE_PREFIX, "GAPEvent PHY update complete");
+#endif
             return 0;
         }
         case BLE_GAP_EVENT_EXT_DISC:
         {
-            LOG_W(MODULE_PREFIX, "GAPEvent EXT DISC");
+#ifdef DEBUG_GAP_EVENT_DISC
+            LOG_I(MODULE_PREFIX, "GAPEvent EXT DISC");
+#endif
             return 0;
         }
     }
@@ -667,7 +798,9 @@ int BLEManager::nimbleGapEvent(struct ble_gap_event *event, void *arg)
 void BLEManager::bleHostTask(void *param)
 {
     // This function will return only when nimble_port_stop() is executed
+#ifdef DEBUG_BLE_TASK_STARTED
     LOG_I(MODULE_PREFIX, "BLE Host Task Started");
+#endif
     nimble_port_run();
     nimble_port_freertos_deinit();
 }
@@ -748,8 +881,9 @@ bool BLEManager::sendBLEMsg(ProtocolEndpointMsg& msg)
         _bleOutboundQueue.put(bleOutMsg);
 
 #ifdef DEBUG_BLE_TX_MSG_SPLIT
-        if (msg.getBufLen() > _maxPacketLength)
+        if (msg.getBufLen() > _maxPacketLength) {
             LOG_W(MODULE_PREFIX, "sendBLEMsg msgIdx %d partLen %d totalLen %d rsltOk %d", msgIdx, msgLen, msg.getBufLen(), rsltOk);
+        }
 #endif
 #ifdef DEBUG_BLE_TX_MSG_DETAIL
         if (msg.getBufLen() > _maxPacketLength)
@@ -772,7 +906,7 @@ bool BLEManager::sendBLEMsg(ProtocolEndpointMsg& msg)
 // Ready to send indicator
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool BLEManager::readyToSend()
+bool BLEManager::readyToSend(uint32_t channelID)
 {
     // Check if BLE connected
     return BLEGattServer::readyToSend();
@@ -810,9 +944,11 @@ String BLEManager::getAdvertisingName()
         return "";
 
     // Name
-    String adName = _pBLEManager->configGetString("adName", _pBLEManager->getSystemName().c_str());
+    String adName = _pBLEManager->configGetString("adName", "");
     if (adName.length() == 0)
         adName = _pBLEManager->getFriendlyName();
+    if ((adName.length() == 0) && (_pBLEManager))
+        adName = _pBLEManager->_defaultAdvName;
     if (adName.length() == 0)
         adName = _pBLEManager->getSystemName();
     return adName;

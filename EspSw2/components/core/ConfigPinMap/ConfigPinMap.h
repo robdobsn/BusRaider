@@ -3,14 +3,18 @@
 
 #pragma once
 
+class ConfigBase;
+
+static const int GPIO_IOMODE_NONE = -1;
+
 class ConfigPinMap
 {
 public:
     enum {
-        OUTPUT,
-        INPUT,
-        INPUT_PULLUP,
-        INPUT_PULLDOWN
+        GPIO_OUTPUT,
+        GPIO_INPUT,
+        GPIO_INPUT_PULLUP,
+        GPIO_INPUT_PULLDOWN
     };
 
     static const char *_pinMapOtherStr[];
@@ -24,6 +28,10 @@ public:
     static int getPinFromName(const char *pinName);
 
     // Conversion from strings like:
-    // PULLUP, PULLDOWN to INPUT_PULLUP, etc
+    // GPIO_PULLUP, GPIO_PULLDOWN to GPIO_INPUT_PULLUP, etc
     static int getInputType(const char *inputTypeStr);
+
+    // Configure multople IOs
+    static void configMultiple(ConfigBase& config, const char* pPinNames[], int pinModeArray[], 
+            int pinInitial[], int* pinValues[], int numPins);
 };

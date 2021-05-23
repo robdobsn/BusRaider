@@ -17,6 +17,20 @@
 #define LOG_D( tag, format, ... ) ESP_LOGD( tag, format, ##__VA_ARGS__ )
 #define LOG_V( tag, format, ... ) ESP_LOGV( tag, format, ##__VA_ARGS__ )
 
+#define DEBUG_GLOB_SYSMAN 0
+#define DEBUG_GLOB_ROBOTCTRL 1
+#define DEBUG_GLOB_HWMAN 2
+
+#define DEBUG_GLOBAL_VALUE
+#ifdef DEBUG_GLOBAL_VALUE
+extern volatile int32_t __loggerGlobalDebugValue0;
+extern volatile int32_t __loggerGlobalDebugValue1;
+extern volatile int32_t __loggerGlobalDebugValue2;
+extern volatile int32_t __loggerGlobalDebugValue3;
+extern volatile int32_t __loggerGlobalDebugValue4;
+#define DEBUG_GLOB_VAR_NAME(x) __loggerGlobalDebugValue ## x
+#endif
+
 // class Logger
 // {
 // public:

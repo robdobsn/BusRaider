@@ -174,7 +174,11 @@ void CommandSerial::addProtocolEndpoints(ProtocolEndpointManager &endpointManage
     _protocolEndpointID = endpointManager.registerChannel(_protocol.c_str(),
             std::bind(&CommandSerial::sendMsg, this, std::placeholders::_1),
             modName(),
-            std::bind(&CommandSerial::readyToSend, this));
+            std::bind(&CommandSerial::readyToSend, this, std::placeholders::_1),
+            INBOUND_BLOCK_MAX_DEFAULT,
+            INBOUND_QUEUE_MAX_DEFAULT,
+            OUTBOUND_BLOCK_MAX_DEFAULT,
+            OUTBOUND_QUEUE_MAX_DEFAULT);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -206,7 +210,7 @@ bool CommandSerial::sendMsg(ProtocolEndpointMsg& msg)
 // Ready to send indicator
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool CommandSerial::readyToSend()
+bool CommandSerial::readyToSend(uint32_t channelID)
 {
     // TODO - handle ready to send
     return true;

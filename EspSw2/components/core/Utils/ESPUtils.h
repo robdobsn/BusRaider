@@ -21,3 +21,11 @@ void disableCore1WDT();
 // BT is base +2
 // Ethernet is base +3
 String getSystemMACAddressStr(esp_mac_type_t macType, const char* pSeparator);
+
+// Setup SPIRAM
+extern bool esp32SPIRAM_found;
+extern bool esp32SPIRAM_initCalled;
+void esp32SPIRAMSetup();
+
+// Detect hardware revision number of this RIC
+int getHwRevision();

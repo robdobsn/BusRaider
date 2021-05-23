@@ -13,6 +13,7 @@
 
 static const char* MODULE_PREFIX = "ProtoMgr";
 
+// #define WARN_ON_NO_CHANNEL_MATCH
 // #define DEBUG_OUTBOUND_RESPONSE
 // #define DEBUG_OUTBOUND_PUBLISH
 // #define DEBUG_INBOUND_MESSAGE
@@ -20,7 +21,9 @@ static const char* MODULE_PREFIX = "ProtoMgr";
 // #define DEBUG_CHANNEL_ID
 // #define DEBUG_PROTOCOL_HANDLER
 // #define DEBUG_FRAME_SEND
-// #define WARN_ON_NO_CHANNEL_MATCH
+// #define DEBUG_REGISTER_CHANNEL
+// #define DEBUG_OUTBOUND_MSG_ALL_CHANNELS
+// #define DEBUG_INBOUND_BLOCK_MAX
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -53,7 +56,7 @@ void ProtocolEndpointManager::service()
     for (int channelID = 0; channelID < _endpointsVec.size(); channelID++)
     {
         // Check if channel can accept an outbound message
-        if (_endpointsVec[channelID]->checkChannelReady())
+        if (_endpointsVec[channelID]->checkChannelReady(channelID))
         {
             // Check for outbound message
             ProtocolEndpointMsg msg;
@@ -75,21 +78,30 @@ void ProtocolEndpointManager::service()
         // Process inbound message - possibly multiple messages
         for (int msgIdx = 0; msgIdx < MAX_INBOUND_MSGS_IN_LOOP; msgIdx++)
         {
-            _endpointsVec[channelID]->processInboundQueue();
+            if (!_endpointsVec[channelID]->processInboundQueue())
+                break;
         }
     }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Register a channel
+// The blockMax and queueMaxLen values can be left at 0 for default values to be applied
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 uint32_t ProtocolEndpointManager::registerChannel(const char* protocolName, ProtocolEndpointMsgCB msgCB, 
-                    const char* interfaceName, ChannelReadyCBType channelReadyCB)
+                    const char* interfaceName, ChannelReadyCBType channelReadyCB,
+                    uint32_t inboundBlockMax, uint32_t inboundQueueMaxLen,
+                    uint32_t outboundBlockMax, uint32_t outboundQueueMaxLen)
 {
     // Create new command definition and add
-    _endpointsList.push_back(ProtocolEndpointDef(protocolName, msgCB, interfaceName, channelReadyCB));
+    _endpointsList.push_back(ProtocolEndpointDef(protocolName, msgCB, interfaceName, channelReadyCB,
+                    inboundBlockMax, inboundQueueMaxLen, outboundBlockMax, outboundQueueMaxLen));
     _endpointsVec.push_back(&_endpointsList.back());
+
+#ifdef DEBUG_REGISTER_CHANNEL
+    LOG_I(MODULE_PREFIX, "registerChannel protocolName %s interfaceName %s", protocolName, interfaceName);
+#endif
 
     // Return current callback number
     return _endpointsVec.size()-1;
@@ -130,20 +142,36 @@ int32_t ProtocolEndpointManager::lookupChannelID(const char* interfaceName, cons
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Get channel IDs that use a specific protocol
+// Get channel IDs
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ProtocolEndpointManager::getChannelIDsWithProtocol(const char* protocolName, std::vector<uint32_t>& channelIDsWithProtocol)
+void ProtocolEndpointManager::getChannelIDs(std::vector<uint32_t>& channelIDs)
 {
     // Iterate and check
-    channelIDsWithProtocol.clear();
-    channelIDsWithProtocol.reserve(_endpointsVec.size());
+    channelIDs.clear();
+    channelIDs.reserve(_endpointsVec.size());
     for (uint32_t channelID = 0; channelID < _endpointsVec.size(); channelID++)
     {
-        if (_endpointsVec[channelID]->getSourceProtocolName() == protocolName)
-            channelIDsWithProtocol.push_back(channelID);
+        channelIDs.push_back(channelID);
     }
-    channelIDsWithProtocol.shrink_to_fit();
+    channelIDs.shrink_to_fit();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Check if we can accept inbound message
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool ProtocolEndpointManager::canAcceptInbound(uint32_t channelID)
+{
+    // Check the channel
+    if (channelID >= _endpointsVec.size())
+        return false;
+
+    // Ensure we have a handler
+    ensureProtocolHandlerExists(channelID);
+
+    // Check validity
+    return _endpointsVec[channelID]->canAcceptData();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -187,13 +215,17 @@ void ProtocolEndpointManager::handleOutboundMessage(ProtocolEndpointMsg& msg)
     }
     else if (channelID == MSG_CHANNEL_ID_ALL)
     {
-        // Send on all open channels with this protocol
-        std::vector<uint32_t> channelIDsWithProtocol;
-        getChannelIDsWithProtocol("RICSerial", channelIDsWithProtocol);
-        for (uint32_t specificChannelID : channelIDsWithProtocol)
+        // Send on all open channels with an appropriate protocol
+        std::vector<uint32_t> channelIDs;
+        getChannelIDs(channelIDs);
+        for (uint32_t specificChannelID : channelIDs)
         {
             msg.setChannelID(specificChannelID);
             handleOutboundMessageOnChannel(msg, specificChannelID);
+#ifdef DEBUG_OUTBOUND_MSG_ALL_CHANNELS
+            LOG_W(MODULE_PREFIX, "handleOutboundMessage, all chanId: %u msglen %d", 
+                            specificChannelID, msg.getBufLen());
+#endif            
         }
     }
     else
@@ -202,12 +234,37 @@ void ProtocolEndpointManager::handleOutboundMessage(ProtocolEndpointMsg& msg)
     }
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Get the max inbound comms block size
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uint32_t ProtocolEndpointManager::getInboundBlockMax(uint32_t channelID, uint32_t defaultSize)
+{
+    // Get the optimal block size
+    if (channelID >= _endpointsVec.size())
+        return defaultSize;
+
+    // Ensure we have a handler
+    ensureProtocolHandlerExists(channelID);
+
+    // Check validity
+    uint32_t blockMax = _endpointsVec[channelID]->getInboundBlockMax();
+#ifdef DEBUG_INBOUND_BLOCK_MAX
+    LOG_I(MODULE_PREFIX, "getInboundBlockMax channelID %d %d", channelID, blockMax);
+#endif
+    return blockMax;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Handle outbound message on a specific channel
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void ProtocolEndpointManager::handleOutboundMessageOnChannel(ProtocolEndpointMsg& msg, uint32_t channelID)
 {
     // Check for message direction, this controls whether a publish message or response
     // response messages are placed in a regular queue
     // publish messages are handled such that only the latest one of any address is sent
-    if (msg.getDirection() == MSG_DIRECTION_RESPONSE)
+    if (msg.getDirection() != MSG_DIRECTION_PUBLISH)
     {
 #ifdef DEBUG_OUTBOUND_RESPONSE
         // Debug
@@ -234,7 +291,7 @@ void ProtocolEndpointManager::handleOutboundMessageOnChannel(ProtocolEndpointMsg
 #endif
 
             // Check if channel can accept an outbound message and send if so
-            if (_endpointsVec[channelID] && _endpointsVec[channelID]->checkChannelReady())
+            if (_endpointsVec[channelID] && _endpointsVec[channelID]->checkChannelReady(channelID))
                 _endpointsVec[channelID]->callProtocolHandlerWithTxMsg(msg);
     }
 }

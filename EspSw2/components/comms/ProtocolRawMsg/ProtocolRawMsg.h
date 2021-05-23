@@ -25,6 +25,12 @@ public:
         _cmdVector.assign(pBuf, pBuf+bufLen);
     }
 
+    void clear()
+    {
+        _cmdVector.resize(0);
+        _cmdVector.shrink_to_fit();
+    }
+
     void setFromBuffer(const uint8_t* pBuf, uint32_t bufLen)
     {
         _cmdVector.assign(pBuf, pBuf+bufLen);

@@ -9,6 +9,7 @@
 
 #include <Logger.h>
 #include "NetworkSystem.h"
+#include "mdns.h"
 
 static const char* MODULE_PREFIX = "NetworkSystem";
 
@@ -43,8 +44,9 @@ NetworkSystem::NetworkSystem()
 
     // Create the default event loop
     esp_err_t err = esp_event_loop_create_default();
-    if (err != ESP_OK)
+    if (err != ESP_OK) {
         LOG_E(MODULE_PREFIX, "failed to create default event loop");
+    }
 
     // Create an RTOS event group to record events
     _wifiRTOSEventGroup = xEventGroupCreate();
@@ -53,6 +55,9 @@ NetworkSystem::NetworkSystem()
     xEventGroupClearBits(_wifiRTOSEventGroup, WIFI_CONNECTED_BIT);
     xEventGroupClearBits(_wifiRTOSEventGroup, IP_CONNECTED_BIT);
     xEventGroupClearBits(_wifiRTOSEventGroup, WIFI_FAIL_BIT);
+
+    // WiFi log level
+    esp_log_level_set("wifi", ESP_LOG_WARN);    
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -67,7 +72,7 @@ void NetworkSystem::setup(bool enableWiFi, bool enableEthernet, const char* defa
     // Start netif if not done already
     if ((enableWiFi || enableEthernet) && (!_netifStarted))
     {
-#ifdef USE_IDF_V4_1_NETIF_METHODS
+#ifdef USE_IDF_V4_1_PLUS_NETIF_METHODS
         if (esp_netif_init() == ESP_OK)
             _netifStarted = true;
         else
@@ -89,12 +94,11 @@ void NetworkSystem::setup(bool enableWiFi, bool enableEthernet, const char* defa
         // Connect
         if (!isWiFiStaConnectedWithIP())
         {
-            LOG_D(MODULE_PREFIX, "applySetup caling connect");
             wifi_config_t configFromNVS;
-            esp_err_t err = esp_wifi_get_config(ESP_IF_WIFI_STA, &configFromNVS);
+            esp_err_t err = esp_wifi_get_config(ESP_IDF_WIFI_STA_MODE_FLAG, &configFromNVS);
             if (err == ESP_OK)
             {
-                esp_wifi_set_config(ESP_IF_WIFI_STA, &configFromNVS);
+                esp_wifi_set_config(ESP_IDF_WIFI_STA_MODE_FLAG, &configFromNVS);
                 configFromNVS.sta.ssid[sizeof(configFromNVS.sta.ssid)-1] = 0;
                 LOG_I(MODULE_PREFIX, "applySetup from NVS ... connect to ssid %s", configFromNVS.sta.ssid);
             }
@@ -188,6 +192,16 @@ void NetworkSystem::wifiEventHandler(void *arg, esp_event_base_t event_base,
         strlcpy(ssidStr, (const char*)(event->ssid), ssidLen+1);
         _staSSID = ssidStr;
         xEventGroupSetBits(_wifiRTOSEventGroup, WIFI_CONNECTED_BIT);
+
+        // Set hostname using mDNS service
+        esp_err_t espErr = mdns_init();
+        if (espErr == ESP_OK)
+        {
+            LOG_I(MODULE_PREFIX, "MDNS initialization %s", 
+                            networkSystem.getHostname().c_str());
+            // Set hostname
+            mdns_hostname_set(networkSystem.getHostname().c_str());
+        }
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
@@ -263,7 +277,7 @@ bool NetworkSystem::startStationMode()
 #endif
 
     // Create the default WiFi STA
-#ifdef USE_IDF_V4_1_NETIF_METHODS
+#ifdef USE_IDF_V4_1_PLUS_NETIF_METHODS
     esp_netif_create_default_wifi_sta();
 #endif
 
@@ -294,14 +308,15 @@ bool NetworkSystem::startStationMode()
     err = esp_wifi_set_mode(WIFI_MODE_STA);
     if (err != ESP_OK)
     {
-        LOG_E(MODULE_PREFIX, "startStationMode failed to set mode err %d", err);
+        LOG_E(MODULE_PREFIX, "startStationMode failed to set mode err %s (%d)", esp_err_to_name(err), err);
         return false;
     }
 
+    // Start WiFi
     err = esp_wifi_start();
     if (err != ESP_OK)
     {
-        LOG_E(MODULE_PREFIX, "startStationMode failed to start WiFi err %d", err);
+        LOG_E(MODULE_PREFIX, "startStationMode failed to start WiFi err %s (%d)", esp_err_to_name(err), err);
         return false;
     }
 
@@ -323,6 +338,7 @@ bool NetworkSystem::configureWiFi(const String& ssid, const String& pw, const St
         _hostname = _defaultHostname;
     else
         _hostname = hostname;
+    _hostname = hostnameMakeValid(_hostname);
 
     // Check if both SSID and pw have now been set
     if (ssid.length() != 0 && pw.length() != 0)
@@ -338,17 +354,21 @@ bool NetworkSystem::configureWiFi(const String& ssid, const String& pw, const St
                 .channel = 0,
                 .listen_interval = 0,
                 .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
-                .threshold = {.rssi = 0, .authmode = WIFI_AUTH_OPEN}
-#ifdef USE_V4_0_1_PLUS_NET_STRUCTS                
-                ,
-                .pmf_cfg = {.capable = 0, .required = 0}
+                .threshold = {.rssi = 0, .authmode = WIFI_AUTH_OPEN},
+#ifdef USE_V4_0_1_PLUS_NET_STRUCTS
+                .pmf_cfg = {.capable = 0, .required = 0},
+#endif
+#ifdef USE_IDF_V4_3_PLUS_WIFI_METHODS
+                .rm_enabled = 1,
+                .btm_enabled = 0,
+                .reserved = 0,
 #endif
                 }};
         strlcpy((char *)wifiConfig.sta.ssid, ssid.c_str(), 32);
         strlcpy((char *)wifiConfig.sta.password, pw.c_str(), 64);
 
         // Set configuration
-        esp_err_t err = esp_wifi_set_config(ESP_IF_WIFI_STA, &wifiConfig);
+        esp_err_t err = esp_wifi_set_config(ESP_IDF_WIFI_STA_MODE_FLAG, &wifiConfig);
         if (err != ESP_OK)
         {
             LOG_E(MODULE_PREFIX, "startStationMode *** WiFi failed to set configuration err %s (%d) ***", esp_err_to_name(err), err);
@@ -375,11 +395,15 @@ bool NetworkSystem::configureWiFi(const String& ssid, const String& pw, const St
 esp_err_t NetworkSystem::clearCredentials()
 {
     // Restore to system defaults
+    esp_wifi_disconnect();
+    _staSSID = "";
+    _wifiIPV4Addr = "";
     esp_err_t err = esp_wifi_restore();
-    if (err == ESP_OK)
+    if (err == ESP_OK) {
         LOG_I(MODULE_PREFIX, "apiWifiClear CLEARED WiFi Credentials");
-    else
+    } else {
         LOG_W(MODULE_PREFIX, "apiWifiClear Failed to clear WiFi credentials esp_err %s (%d)", esp_err_to_name(err), err);
+    }
     return err;
 }
 
@@ -417,4 +441,19 @@ void NetworkSystem::pauseWiFi(bool pause)
         LOG_I(MODULE_PREFIX, "pauseWiFi - WiFi reconnect requested");
     }
     _isPaused = pause;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Hostname can only contain certain characters
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+String NetworkSystem::hostnameMakeValid(const String& hostname)
+{
+    String okHostname;
+    for (uint32_t i = 0; i < hostname.length(); i++)
+    {
+        if (isalpha(hostname[i]) || isdigit(hostname[i] || (hostname[i] == '-')))
+            okHostname += hostname[i];
+    }
+    return okHostname;
 }

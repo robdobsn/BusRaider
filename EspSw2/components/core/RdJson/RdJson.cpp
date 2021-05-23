@@ -15,6 +15,8 @@
 
 static const char *MODULE_PREFIX = "RdJson";
 
+#define DEBUG_PARSE_FAILURE
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // getElement
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -459,7 +461,10 @@ jsmntok_t *RdJson::parseJson(const char *jsonStr, int &numTokens,
                                      NULL, maxTokens);
     if (tokenCountRslt < 0)
     {
-        LOG_D(MODULE_PREFIX, "parseJson result %d maxTokens %d jsonLen %d", tokenCountRslt, maxTokens, strlen(jsonStr));
+#ifdef DEBUG_PARSE_FAILURE
+        LOG_I(MODULE_PREFIX, "parseJson result %d maxTokens %d jsonLen %d jsonStr %s", tokenCountRslt, 
+                        maxTokens, strlen(jsonStr), jsonStr);
+#endif
         jsmn_logLongStr("RdJson: jsonStr", jsonStr, false);
         return NULL;
     }
@@ -475,8 +480,12 @@ jsmntok_t *RdJson::parseJson(const char *jsonStr, int &numTokens,
                                  pTokens, tokenCountRslt);
     if (tokenCountRslt < 0)
     {
+#ifdef WARN_ON_PARSE_FAILURE
         LOG_W(MODULE_PREFIX, "parseJson result: %d", tokenCountRslt);
-        LOG_D(MODULE_PREFIX, "parseJson jsonStr %s numTok %d maxTok %d", jsonStr, numTokens, maxTokens);
+#endif
+#ifdef DEBUG_PARSE_FAILURE
+        LOG_I(MODULE_PREFIX, "parseJson jsonStr %s numTok %d maxTok %d", jsonStr, numTokens, maxTokens);
+#endif
         delete[] pTokens;
         return NULL;
     }
@@ -493,7 +502,9 @@ bool RdJson::validateJson(const char* pSourceStr, int& numTokens)
     // Check for null source string
     if (pSourceStr == NULL)
     {
-        LOG_D(MODULE_PREFIX, "validateJson input is NULL");
+#ifdef DEBUG_PARSE_FAILURE
+        LOG_I(MODULE_PREFIX, "validateJson input is NULL");
+#endif
         return false;
     }
 
@@ -504,8 +515,10 @@ bool RdJson::validateJson(const char* pSourceStr, int& numTokens)
                                      NULL, RDJSON_MAX_TOKENS);
     if (numTokens < 0)
     {
-        LOG_D(MODULE_PREFIX, "validateJson result %d maxTokens %d jsonLen %d", 
+#ifdef DEBUG_PARSE_FAILURE
+        LOG_I(MODULE_PREFIX, "validateJson result %d maxTokens %d jsonLen %d", 
                 numTokens, RDJSON_MAX_TOKENS, strlen(pSourceStr));
+#endif
         jsmn_logLongStr("RdJson: jsonStr", pSourceStr, false);
         return false;
     }
@@ -911,9 +924,9 @@ void RdJson::debugDumpParseResult(const char* pSourceStr, jsmntok_t* pTokens, in
     {
         String elemStr;
         Utils::strFromBuffer((uint8_t*)pSourceStr+pTokens[i].start, pTokens[i].end-pTokens[i].start, elemStr);
-        LOG_I(MODULE_PREFIX, "Token %d type %s size %d start %d end %d parent %d str %s", i, getElemTypeStr(pTokens[i].type), 
-                    pTokens[i].size, pTokens[i].start, pTokens[i].end, pTokens[i].parent,
-                    elemStr.c_str());
+        LOG_I(MODULE_PREFIX, "Token %2d type %9s size %d start %4d end %4d parent %3d str %s",
+                i, getElemTypeStr(pTokens[i].type), pTokens[i].size, pTokens[i].start, pTokens[i].end,
+                pTokens[i].parent, elemStr.c_str());
     }
 }
 
@@ -942,6 +955,91 @@ String RdJson::getNameValuePairsJSON(std::vector<NameValuePair>& nameValuePairs,
     return jsonStr;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Extract name-value pairs from string
+// nameValueSep - e.g. "=" for HTTP
+// pairDelim - e.g. "&" for HTTP
+// pairDelimAlt - e.g. ";" for HTTP alternate (pass 0 if not needed)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void RdJson::extractNameValues(const String& inStr, 
+        const char* pNameValueSep, const char* pPairDelim, const char* pPairDelimAlt, 
+        std::vector<RdJson::NameValuePair>& nameValuePairs)
+{
+   // Count the pairs
+    uint32_t pairCount = 0;
+    const char* pCurSep = inStr.c_str();
+    while(pCurSep)
+    {
+        pCurSep = strstr(pCurSep, pNameValueSep);
+        if (pCurSep)
+        {
+            pairCount++;
+            pCurSep++;
+        }
+    }
+
+#ifdef DEBUG_EXTRACT_NAME_VALUES
+    // Debug
+    LOG_I(MODULE_PREFIX, "extractNameValues found %d nameValues", pairCount);
+#endif
+
+    // Extract the pairs
+    nameValuePairs.resize(pairCount);
+    pCurSep = inStr.c_str();
+    bool sepTypeIsEqualsSign = true;
+    uint32_t pairIdx = 0;
+    String name, val;
+    while(pCurSep)
+    {
+        // Each pair has the form "name=val;" (semicolon missing on last pair)
+        const char* pElemStart = pCurSep;
+        if (sepTypeIsEqualsSign)
+        {
+            // Check for missing =
+            pCurSep = strstr(pElemStart, pNameValueSep);
+            if (!pCurSep)
+                break;
+            Utils::strFromBuffer((uint8_t*)pElemStart, pCurSep-pElemStart, name);
+            pCurSep++;
+        }
+        else
+        {
+            // Handle two alternatives - sep or no sep
+            pCurSep = strstr(pElemStart, pPairDelim);
+            if (!pCurSep && pPairDelimAlt)
+                pCurSep = strstr(pElemStart, pPairDelimAlt);
+            if (pCurSep)
+            {
+                Utils::strFromBuffer((uint8_t*)pElemStart, pCurSep-pElemStart, val);
+                pCurSep++;
+            }
+            else
+            {
+                val = pElemStart;
+            }
+        }
+
+        // Next separator
+        sepTypeIsEqualsSign = !sepTypeIsEqualsSign;
+        if (!sepTypeIsEqualsSign)
+            continue;
+
+        // Store and move on
+        if (pairIdx >= pairCount)
+            break;
+        name.trim();
+        val.trim();
+        nameValuePairs[pairIdx] = {name,val};
+        pairIdx++;
+    }
+
+#ifdef DEBUG_EXTRACT_NAME_VALUES
+    // Debug
+    for (RdJson::NameValuePair& pair : nameValuePairs)
+        LOG_I(MODULE_PREFIX, "extractNameValues name %s val %s", pair.name.c_str(), pair.value.c_str());
+#endif
+}
 
 #ifdef RDJSON_RECREATE_JSON
 int RdJson::recreateJson(const char *js, jsmntok_t *t,

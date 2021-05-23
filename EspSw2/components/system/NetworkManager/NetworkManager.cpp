@@ -25,10 +25,12 @@ NetworkManager* NetworkManager::_pNetworkManager = NULL;
 // Constructor
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-NetworkManager::NetworkManager(const char *pModuleName, ConfigBase &defaultConfig, ConfigBase *pGlobalConfig, ConfigBase *pMutableConfig)
+NetworkManager::NetworkManager(const char *pModuleName, ConfigBase &defaultConfig, ConfigBase *pGlobalConfig, 
+            ConfigBase *pMutableConfig, const char* defaultHostname)
     : SysModBase(pModuleName, defaultConfig, pGlobalConfig, pMutableConfig)
 {
     _prevConnState = NetworkSystem::CONN_STATE_NONE;
+    _defaultHostname = defaultHostname;
 
     // Singleton
     _pNetworkManager = this;
@@ -48,11 +50,11 @@ void NetworkManager::applySetup()
     // Extract info from config
     bool isWiFiEnabled = (configGetLong("WiFiEnabled", 0) != 0);
     bool isEthEnabled = (configGetLong("EthEnabled", 0) != 0);
-    String defaultHostname = configGetString("defaultHostname", "");
-    networkSystem.setup(isWiFiEnabled, isEthEnabled, defaultHostname.c_str());
+    String hostname = configGetString("defaultHostname", _defaultHostname.c_str());
+    networkSystem.setup(isWiFiEnabled, isEthEnabled, hostname.c_str());
 
     // Debug
-    LOG_D(MODULE_PREFIX, "setup isEnabled %s defaultHostname %s", isWiFiEnabled ? "YES" : "NO", defaultHostname.c_str());
+    LOG_D(MODULE_PREFIX, "setup isEnabled %s hostname %s", isWiFiEnabled ? "YES" : "NO", hostname.c_str());
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -104,7 +106,7 @@ String NetworkManager::getDebugStr()
         // TODO - show hostname
         return "SSID " + networkSystem.getSSID() + " IP " + networkSystem.getWiFiIPV4AddrStr();
     }
-    else if (networkSystem.isPaused())
+    else if (networkSystem.isPaused() && (!networkSystem.getSSID().equals("")))
     {
         return "WiFi Paused";
     }
@@ -164,6 +166,10 @@ void NetworkManager::apiWifiSet(const String &reqStr, String &respStr)
 
 void NetworkManager::apiWifiClear(const String &reqStr, String &respStr)
 {
+    // See if system restart required
+    String sysRestartStr = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
+    bool sysRestart = !sysRestartStr.equalsIgnoreCase("norestart");
+
     // Clear stored credentials back to default
     esp_err_t err = networkSystem.clearCredentials();
 
@@ -173,10 +179,10 @@ void NetworkManager::apiWifiClear(const String &reqStr, String &respStr)
     // Response
     if (err == ESP_OK)
     {
-        Utils::setJsonBoolResult(reqStr.c_str(), respStr, true);
+        Utils::setJsonResult(reqStr.c_str(), respStr, true, nullptr, R"("norestart":1)");
 
         // Request a system restart
-        if (getSysManager())
+        if (sysRestart && getSysManager())
             getSysManager()->systemRestart();
         return;
     }

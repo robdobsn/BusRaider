@@ -23,10 +23,18 @@
 
 #include "esp_idf_version.h"
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 1, 0)
-#define USE_IDF_V4_1_NETIF_METHODS
+// #pragma message "Using V4.1+ NETIF methods"
+#define USE_IDF_V4_1_PLUS_NETIF_METHODS
+#endif
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 3, 0)
+// #pragma message "Using V4.3+ WiFi methods"
+#define ESP_IDF_WIFI_STA_MODE_FLAG WIFI_IF_STA
+#define USE_IDF_V4_2_PLUS_WIFI_METHODS
+#else
+#define ESP_IDF_WIFI_STA_MODE_FLAG ESP_IF_WIFI_STA
 #endif
 
-#ifdef USE_IDF_V4_1_NETIF_METHODS
+#ifdef USE_IDF_V4_1_PLUS_NETIF_METHODS
 #include "esp_netif.h"
 #else
 #include "tcpip_adapter.h"
@@ -59,6 +67,11 @@ public:
         return _hostname;
     }
 
+    void setHostname(const char* hostname)
+    {
+        _hostname = hostnameMakeValid(hostname);
+    }
+
     String getSSID()
     {
         return _staSSID;
@@ -88,6 +101,9 @@ public:
     {
         return _isPaused;
     }
+
+    // Hostname
+    String hostnameMakeValid(const String& hostname);
 
 private:
 

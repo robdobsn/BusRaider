@@ -8,7 +8,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <Logger.h>
-#include <Preferences.h>
+#include <RdPreferences.h>
 #include <ConfigNVS.h>
 
 // Logging
@@ -22,7 +22,7 @@ ConfigNVS::ConfigNVS(const char *configNamespace, int configMaxlen, bool cacheCo
     ConfigBase(configMaxlen)
 {
     _configNamespace = configNamespace;
-    _pPreferences = new Preferences();
+    _pPreferences = new RdPreferences();
     _cacheConfig = cacheConfig;
     _nonVolatileStoreEmpty = true;
     _pStaticConfig = NULL;
@@ -154,7 +154,7 @@ void ConfigNVS::registerChangeCallback(ConfigChangeCallbackType configChangeCall
     }
 }
 
-void ConfigNVS::getNVConfigStr(String& confStr)
+void ConfigNVS::getNVConfigStr(String& confStr) const
 {
     if (!_pPreferences)
         return;
@@ -176,7 +176,7 @@ void ConfigNVS::getNVConfigStr(String& confStr)
     _pPreferences->end();
 
     // Stats
-    _callsToGetNVStr++;
+    const_cast<ConfigNVS*>(this)->_callsToGetNVStr++;
 
 #ifdef DEBUG_NVS_CONFIG_GETS
     LOG_I(MODULE_PREFIX, "getNVConfigStr count %d", _callsToGetNVStr);

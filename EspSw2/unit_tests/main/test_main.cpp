@@ -9,6 +9,16 @@
 #include <stdio.h>
 #include <string.h>
 #include "unity.h"
+#include "ArduinoTime.h"
+
+// Main task parameters
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "esp_task_wdt.h"
+static const int PRO_TASK_PROCESSOR_CORE = 0;
+static const int MAIN_TASK_PROCESSOR_CORE = 1;
+
+#include "driver/uart.h"
 
 static void print_banner(const char* text);
 
@@ -35,6 +45,22 @@ extern "C" void app_main(void)
     // unity_run_tests_by_tag("[fails]", true);
     // UNITY_END();
 
+    // Disable the watchdog timer on the idle task of both cores
+    TaskHandle_t idleTaskOnMainTaskCore = xTaskGetIdleTaskHandleForCPU(MAIN_TASK_PROCESSOR_CORE);
+    if (idleTaskOnMainTaskCore)
+        esp_task_wdt_delete(idleTaskOnMainTaskCore);
+    TaskHandle_t idleTaskOnProCore = xTaskGetIdleTaskHandleForCPU(PRO_TASK_PROCESSOR_CORE);
+    if (idleTaskOnProCore)
+        esp_task_wdt_delete(idleTaskOnProCore);
+
+    // Setup UART buffered IO with event queue
+    const int uart_buffer_size = (1024 * 2);
+    QueueHandle_t uart_queue;
+    // Install UART driver using an event queue here
+    ESP_ERROR_CHECK(uart_driver_install((uart_port_t)0, uart_buffer_size, \
+                                            uart_buffer_size, 10, &uart_queue, 0));
+    uart_set_baudrate((uart_port_t)0, 115200);
+                                            
     print_banner("Running all the registered tests");
     UNITY_BEGIN();
     unity_run_all_tests();

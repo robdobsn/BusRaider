@@ -24,7 +24,10 @@ public:
 
     // Register as an external message channel
     // Returns an ID used to identify this channel
-    uint32_t registerChannel(const char* protocolName, ProtocolEndpointMsgCB msgCB, const char* channelName, ChannelReadyCBType channelReadyCB);
+    uint32_t registerChannel(const char* protocolName, ProtocolEndpointMsgCB msgCB, 
+                const char* channelName, ChannelReadyCBType channelReadyCB,
+                uint32_t inboundBlockMax, uint32_t inboundQueueMaxLen,
+                uint32_t outboundBlockMax, uint32_t outboundQueueMaxLen);
 
     // Register as an internal message sink
     uint32_t registerSink(ProtocolEndpointMsgCB msgCB);
@@ -35,11 +38,17 @@ public:
     // Lookup channel ID
     int32_t lookupChannelID(const char* interfaceName, const char* protocolName);
 
+    // Check if we can accept inbound message
+    bool canAcceptInbound(uint32_t channelID);
+    
     // Handle channel message
     void handleInboundMessage(uint32_t channelID, const uint8_t* pMsg, uint32_t msgLen);
 
     // Handle outbound message
     void handleOutboundMessage(ProtocolEndpointMsg& msg);
+
+    // Get the optimal comms block size
+    uint32_t getInboundBlockMax(uint32_t channelID, uint32_t defaultSize);
 
     // Undefined endpointID
     static const uint32_t UNDEFINED_ID = 0xffff;
@@ -68,8 +77,8 @@ private:
     // Helpers
     void ensureProtocolHandlerExists(uint32_t channelID);
     void handleOutboundMessageOnChannel(ProtocolEndpointMsg& msg, uint32_t channelID);
-    void getChannelIDsWithProtocol(const char* protocolName, std::vector<uint32_t>& channelIDsWithProtocol);
+    void getChannelIDs(std::vector<uint32_t>& channelIDs);
 
     // Consts
-    static const int MAX_INBOUND_MSGS_IN_LOOP = 1;
+    static const int MAX_INBOUND_MSGS_IN_LOOP = 10;
 };

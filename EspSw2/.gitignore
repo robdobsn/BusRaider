@@ -1,4 +1,5 @@
 build
+builds
 sdkconfig
 compile_commands_win.json
 *.pyc
@@ -9,3 +10,4 @@ scripts/config.ini
 .venv
 test/eepromPartitionTest/prewritedata.bin
 test/eepromPartitionTest/readbackdata.bin
+

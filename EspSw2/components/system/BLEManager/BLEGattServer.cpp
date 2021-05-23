@@ -15,10 +15,18 @@
 // #include "host/ble_uuid.h"
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
+#include "ArduinoTime.h"
 
+#define WARN_ON_BLE_CHAR_WRITE_FAIL
+#define WARN_ON_BLE_CHAR_READ_UNEXPECTED
+#define WARN_ON_BLE_CHAR_WRITE_UNEXPECTED
+#define WARN_ON_BLE_CHAR_WRITE_TAKING_TOO_LONG
 // #define DEBUG_CMD_CHARACTERISTIC
 // #define DEBUG_RESP_CHARACTERISTIC
 // #define DEBUG_RESP_SUBSCRIPTION
+// #define DEBUG_BLE_REG_SERVICES
+// #define DEBUG_BLE_REG_CHARACTERISTIC
+// #define DEBUG_BLE_REG_DESCRIPTOR
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Statics, etc
@@ -152,7 +160,9 @@ int BLEGattServer::commandCharAccess(uint16_t conn_handle, uint16_t attr_handle,
             }
             else
             {
+#ifdef WARN_ON_BLE_CHAR_WRITE_FAIL
                 LOG_W(MODULE_PREFIX, "cmdCharCB opWrite rxFromCentral failed to get mbuf rc=%d", rc);
+#endif
             }
 
             // Callback with data
@@ -165,7 +175,9 @@ int BLEGattServer::commandCharAccess(uint16_t conn_handle, uint16_t attr_handle,
         {
             // This is not expected to happen as the central is not expected
             // to read from this characteristic
+#ifdef WARN_ON_BLE_CHAR_READ_UNEXPECTED
             LOG_W(MODULE_PREFIX, "cmdCharCB unexpected opRead");
+#endif
             return BLE_ATT_ERR_UNLIKELY;
         }
         default:
@@ -194,14 +206,18 @@ int BLEGattServer::responseCharAccess(uint16_t conn_handle, uint16_t attr_handle
     {
         // This is not expected to happen as the central does not sent data
         // on this characteristic
+#ifdef WARN_ON_BLE_CHAR_WRITE_UNEXPECTED
         LOG_W(MODULE_PREFIX, "respCharCB unexpected opWrite");
+#endif
         return 0;
     }
     case BLE_GATT_ACCESS_OP_READ_CHR:
     {
         // This is not expected to happen as the central receives data via
         // a subscription and isn't expected to read from the characteristic directly
+#ifdef WARN_ON_BLE_CHAR_READ_UNEXPECTED
         LOG_W(MODULE_PREFIX, "respCharCB unexpected opRead");
+#endif
         return 0;
     }
     default:
@@ -218,31 +234,38 @@ int BLEGattServer::responseCharAccess(uint16_t conn_handle, uint16_t attr_handle
 
 void BLEGattServer::registrationCallback(struct ble_gatt_register_ctxt *ctxt, void *arg)
 {
-    char buf[BLE_UUID_STR_LEN];
-
     switch (ctxt->op)
     {
     case BLE_GATT_REGISTER_OP_SVC:
     {
+#ifdef DEBUG_BLE_REG_SERVICES
+        char buf[BLE_UUID_STR_LEN];
         LOG_W(MODULE_PREFIX, "registered service %s with handle=%d",
                     ble_uuid_to_str(ctxt->svc.svc_def->uuid, buf),
                     ctxt->svc.handle);
+#endif
         break;
     }
     case BLE_GATT_REGISTER_OP_CHR:
     {
+#ifdef DEBUG_BLE_REG_CHARACTERISTIC
+        char buf[BLE_UUID_STR_LEN];
         LOG_W(MODULE_PREFIX, "registering characteristic %s with "
                            "def_handle=%d val_handle=%d\n",
                     ble_uuid_to_str(ctxt->chr.chr_def->uuid, buf),
                     ctxt->chr.def_handle,
                     ctxt->chr.val_handle);
+#endif
         break;
     }
     case BLE_GATT_REGISTER_OP_DSC:
     {
+#ifdef DEBUG_BLE_REG_DESCRIPTOR
+        char buf[BLE_UUID_STR_LEN];
         LOG_W(MODULE_PREFIX, "registering descriptor %s with handle=%d",
                     ble_uuid_to_str(ctxt->dsc.dsc_def->uuid, buf),
                     ctxt->dsc.handle);
+#endif
         break;
     }
     default:
@@ -281,7 +304,17 @@ bool BLEGattServer::sendToCentral(const uint8_t* pBuf, uint32_t bufLen)
 #ifdef DEBUG_RESP_CHARACTERISTIC
     LOG_I(MODULE_PREFIX, "sendToCentral sending bufLen %d", bufLen);
 #endif
+#ifdef WARN_ON_BLE_CHAR_WRITE_TAKING_TOO_LONG
+    uint64_t nowUS = micros();
+#endif
     int rc = ble_gattc_notify_custom(BLEGattServer::_bleGapConnHandle, BLEGattServer::_bleGattMessageResponseHandle, om);
+#ifdef WARN_ON_BLE_CHAR_WRITE_TAKING_TOO_LONG
+    uint64_t elapsedUs = micros() - nowUS;
+    if (elapsedUs > 50000)
+    {
+        LOG_W(MODULE_PREFIX, "sendToCentral took %llduS", elapsedUs);
+    }
+#endif
     if (rc != 0)
     {
         LOG_W(MODULE_PREFIX, "sendToCentral failed rc = %d", rc);

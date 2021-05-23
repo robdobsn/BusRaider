@@ -14,8 +14,8 @@
 #include "MiniHDLC.h"
 #include "string.h"
 
-// #define DEBUG_HDLC
-// #define DEBUG_HDLC_CRC
+#define DEBUG_HDLC
+#define DEBUG_HDLC_CRC
 
 #if defined(DEBUG_HDLC) || defined(DEBUG_HDLC_CRC)
 #include <Logger.h>
@@ -245,10 +245,13 @@ void MiniHDLC::handleChar(uint8_t ch)
         if (_framePos >= _rxBufferMaxLen)
         {
             // Too long - discard and start again
+            if (_stats._frameTooLongCount < __UINT16_MAX__)
+            {
+                _stats._frameTooLongCount++;
+                LOG_I(MODULE_PREFIX, "handleChar Frame too long len %d", _framePos);
+            }
             _framePos = 0;
             _frameCRC = CRC16_CCITT_INIT_VAL;
-            if (_stats._frameTooLongCount < __UINT16_MAX__)
-                _stats._frameTooLongCount++;
             return;
         }
         _rxBuffer.resize(_framePos+1);

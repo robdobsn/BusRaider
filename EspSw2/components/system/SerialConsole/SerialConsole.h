@@ -93,6 +93,12 @@ private:
     // EndpointID used to identify this message channel to the ProtocolEndpointManager object
     uint32_t _protocolEndpointID;
 
+    // Protocol message handling
+    static const uint32_t INBOUND_BLOCK_MAX_DEFAULT = 5000;
+    static const uint32_t INBOUND_QUEUE_MAX_DEFAULT = 2;
+    static const uint32_t OUTBOUND_BLOCK_MAX_DEFAULT = 5000;
+    static const uint32_t OUTBOUND_QUEUE_MAX_DEFAULT = 2;    
+
     // ProtocolOverAscii to handle comms through this serial port with MSB set
     static const uint32_t PROTOCOL_OVER_ASCII_MSG_MAX_LEN = 1000;
     ProtocolOverAscii _protocolOverAscii;
@@ -100,5 +106,5 @@ private:
     // Helpers
     void showEndpoints();
     bool sendMsg(ProtocolEndpointMsg& msg);
-    bool readyToSend();    
+    bool readyToSend(uint32_t channelID);    
 };

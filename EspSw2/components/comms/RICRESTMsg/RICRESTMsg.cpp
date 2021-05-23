@@ -61,17 +61,18 @@ bool RICRESTMsg::decode(const uint8_t* pBuf, uint32_t len)
         case RICREST_ELEM_CODE_BODY:
         {
             // Extract params
-            uint32_t offset = RICREST_BODY_BUFFER_POS;
-            _bufferPos = uint32From(pBuf, offset, len);
-            _totalBytes = uint32From(pBuf, offset, len);
+            const uint8_t* pData = pBuf + RICREST_BODY_BUFFER_POS;
+            const uint8_t* pEndStop = pBuf + len;
+            _bufferPos = Utils::getBEUint32AndInc(pData, pEndStop);
+            _totalBytes = Utils::getBEUint32AndInc(pData, pEndStop);
             if (_totalBytes > MAX_REST_BODY_SIZE)
                 _totalBytes = MAX_REST_BODY_SIZE;
             if (_bufferPos > _totalBytes)
                 _bufferPos = 0;
-            if (offset < len)
+            if (pData < pEndStop)
             {
-                _pBinaryData = pBuf + offset;
-                _binaryLen = len-offset;
+                _pBinaryData = pData;
+                _binaryLen = pEndStop-pData;
             }
             _req = "elemBody";
             break;
@@ -113,14 +114,30 @@ bool RICRESTMsg::decode(const uint8_t* pBuf, uint32_t len)
         case RICREST_ELEM_CODE_FILEBLOCK:
         {
             // Extract params
-            uint32_t offset = RICREST_FILEBLOCK_FILE_POS;
-            _bufferPos = uint32From(pBuf, offset, len);
-            if (offset < len)
+            const uint8_t* pData = pBuf + RICREST_FILEBLOCK_FILE_POS;
+            const uint8_t* pEndStop = pBuf + len;
+            _bufferPos = Utils::getBEUint32AndInc(pData, pEndStop);
+            if (pData < pEndStop)
             {
-                _pBinaryData = pBuf + offset;
-                _binaryLen = len-offset;
+                _pBinaryData = pData;
+                _binaryLen = pEndStop-pData;
             }
             _req = "ufBlock";
+            break;
+        }
+        case RICREST_ELEM_CODE_STREAMBLOCK:
+        {
+            // Extract params
+            const uint8_t* pData = pBuf + RICREST_STREAMBLOCK_ID_POS;
+            const uint8_t* pEndStop = pBuf + len;
+            _streamId = Utils::getUint8AndInc(pData, pEndStop);
+            _bufferPos = Utils::getBEUint32AndInc(pData, pEndStop);
+            if (pData < pEndStop)
+            {
+                _pBinaryData = pData;
+                _binaryLen = pEndStop-pData;
+            }
+            _req = "stBlock";
             break;
         }
         default:

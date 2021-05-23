@@ -14,6 +14,7 @@
 #include <functional>
 #include <ConfigMulti.h>
 #include <list>
+#include <Logger.h>
 
 typedef std::function<void()> SysMod_statusChangeCB;
 
@@ -22,6 +23,7 @@ class RestAPIEndpointManager;
 class ProtocolEndpointManager;
 class ProtocolEndpointMsg;
 class RICRESTMsg;
+class SupervisorStats;
 
 class SysModBase
 {
@@ -107,6 +109,7 @@ public:
     {
         return _pSysManager;
     }
+    SupervisorStats* getSysManagerStats();
 
     // Logging destination functionality - ensure no Log calls are made while logging!
     virtual void logSilently(const char* pLogStr)
@@ -125,6 +128,12 @@ public:
         return false;
     }
 
+    // Stream handler
+    virtual bool isStreamHandlerModule()
+    {
+        return false;
+    }
+
     // Firmware update
     virtual bool firmwareUpdateStart(const char* fileName, size_t fileLen)
     {
@@ -138,10 +147,20 @@ public:
     {
         return false;
     }
+    virtual bool firmwareUpdateCancel()
+    {
+        return true;
+    }
 
     // Process RICRESTMsg CmdFrame
     virtual bool procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg& ricRESTReqMsg, 
                 String& respMsg, const ProtocolEndpointMsg &endpointMsg)
+    {
+        return false;
+    }
+
+    // Process stream block
+    virtual bool handleStreamBlock(RICRESTMsg& ricRESTReqMsg, String& respMsg)
     {
         return false;
     }
@@ -174,6 +193,23 @@ public:
     void clearStatusChangeCBs()
     {
         _statusChangeCBs.clear();
+    }
+
+    // Set log level of module
+    static void setModuleLogLevel(const char* pModuleName, const String& logLevel)
+    {
+        if (logLevel.startsWith("N"))
+            esp_log_level_set(pModuleName, ESP_LOG_NONE);
+        else if (logLevel.startsWith("E"))
+            esp_log_level_set(pModuleName, ESP_LOG_ERROR);
+        else if (logLevel.startsWith("W"))
+            esp_log_level_set(pModuleName, ESP_LOG_WARN);
+        else if (logLevel.startsWith("I"))
+            esp_log_level_set(pModuleName, ESP_LOG_INFO);
+        else if (logLevel.startsWith("D"))
+            esp_log_level_set(pModuleName, ESP_LOG_DEBUG);
+        else if (logLevel.startsWith("V"))
+            esp_log_level_set(pModuleName, ESP_LOG_VERBOSE);
     }
 
 protected:

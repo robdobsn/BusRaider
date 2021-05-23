@@ -104,7 +104,11 @@ void SerialConsole::addProtocolEndpoints(ProtocolEndpointManager &endpointManage
     _protocolEndpointID = endpointManager.registerChannel(_protocol.c_str(),
             std::bind(&SerialConsole::sendMsg, this, std::placeholders::_1),
             modName(),
-            std::bind(&SerialConsole::readyToSend, this));
+            std::bind(&SerialConsole::readyToSend, this, std::placeholders::_1),
+            INBOUND_BLOCK_MAX_DEFAULT,
+            INBOUND_QUEUE_MAX_DEFAULT,
+            OUTBOUND_BLOCK_MAX_DEFAULT,
+            OUTBOUND_QUEUE_MAX_DEFAULT);            
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -333,7 +337,7 @@ bool SerialConsole::sendMsg(ProtocolEndpointMsg& msg)
 // Ready to send indicator
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool SerialConsole::readyToSend()
+bool SerialConsole::readyToSend(uint32_t channelID)
 {
     // TODO - handle ready to send
     return true;

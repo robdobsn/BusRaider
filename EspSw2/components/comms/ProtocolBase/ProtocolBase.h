@@ -24,7 +24,7 @@ typedef std::function<bool(ProtocolEndpointMsg& msg)> ProtocolEndpointMsgCB;
 // Create protocol instance
 typedef std::function<ProtocolBase* (uint32_t channelID, const char* pConfigJSON, ProtocolEndpointMsgCB msgTxCB, ProtocolEndpointMsgCB msgRxCB)> ProtocolCreateFnType;
 // Channel ready function type
-typedef std::function<bool()> ChannelReadyCBType;
+typedef std::function<bool(uint32_t channelID)> ChannelReadyCBType;
 
 class ProtocolBase
 {
@@ -38,6 +38,11 @@ public:
     }
     virtual void addRxData(const uint8_t* pData, uint32_t dataLen) = 0;
     virtual void encodeTxMsgAndSend(ProtocolEndpointMsg& msg) = 0;
+
+    uint32_t getChannelID()
+    {
+        return _channelID;
+    }
 
 protected:
     // The channelID for messages handled by this protocol handler

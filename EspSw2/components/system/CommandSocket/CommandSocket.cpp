@@ -15,6 +15,14 @@
 
 static const char *MODULE_PREFIX = "CommandSocket";
 
+#ifdef TEST_USING_LOW_LEVEL_LWIP
+#include "lwip/err.h"
+#include "lwip/sockets.h"
+#include "lwip/sys.h"
+#include <lwip/netdb.h>
+#include <memory.h>
+#endif
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -141,7 +149,11 @@ void CommandSocket::addProtocolEndpoints(ProtocolEndpointManager &endpointManage
     _protocolEndpointID = endpointManager.registerChannel(_protocol.c_str(),
             std::bind(&CommandSocket::sendMsg, this, std::placeholders::_1),
             modName(),
-            std::bind(&CommandSocket::readyToSend, this));
+            std::bind(&CommandSocket::readyToSend, this, std::placeholders::_1),
+            INBOUND_BLOCK_MAX_DEFAULT,
+            INBOUND_QUEUE_MAX_DEFAULT,
+            OUTBOUND_BLOCK_MAX_DEFAULT,
+            OUTBOUND_QUEUE_MAX_DEFAULT);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -160,6 +172,12 @@ void CommandSocket::begin()
         // Debug
         LOG_I(MODULE_PREFIX, "has started on port %d", _port);
     }
+#endif
+#ifdef TEST_USING_LOW_LEVEL_LWIP
+    xTaskCreate(tcpServerTask, "CommandSockTCP", 10000, NULL, 5, NULL);
+    // Debug
+    LOG_I(MODULE_PREFIX, "has started on port %d", _port);
+    _begun = true;
 #endif
 }
 
@@ -289,8 +307,166 @@ bool CommandSocket::sendMsg(ProtocolEndpointMsg& msg)
 // Ready to send indicator
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool CommandSocket::readyToSend()
+bool CommandSocket::readyToSend(uint32_t channelID)
 {
     // TODO - handle ready to send
     return true;
 }
+
+#ifdef TEST_USING_LOW_LEVEL_LWIP
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// TCP Server Task
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void CommandSocket::tcpServerTask(void *pvParameters)
+{
+    char rx_buffer[2000];	// char array to store received data
+    char addr_str[128];		// char array to store client IP
+    int bytes_received;		// immediate bytes received
+    int addr_family;		// Ipv4 address protocol variable
+    int _expFrameCount = 0;
+    int _okRunCount = 0;
+    char _remainBuf[4000];
+    int _remainBufLen = 0;
+
+    struct sockaddr_in destAddr;
+    destAddr.sin_addr.s_addr = htonl(INADDR_ANY); //Change hostname to network byte order
+    destAddr.sin_family = AF_INET;		//Define address family as Ipv4
+    destAddr.sin_port = htons(24); 	    //Define PORT
+    addr_family = AF_INET;				//Define address family as Ipv4
+    inet_ntoa_r(destAddr.sin_addr, addr_str, sizeof(addr_str) - 1);
+
+    /* Create TCP socket*/
+    int socket_id = socket(addr_family, SOCK_STREAM, IPPROTO_TCP);
+    if (socket_id < 0)
+    {
+        ESP_LOGE(MODULE_PREFIX, "Unable to create socket: errno %d", errno);
+        return;
+    }
+    LOG_I(MODULE_PREFIX, "Socket created");
+
+    /* Bind a socket to a specific IP + port */
+    int bind_err = bind(socket_id, (struct sockaddr *)&destAddr, sizeof(destAddr));
+    if (bind_err != 0)
+    {
+        ESP_LOGE(MODULE_PREFIX, "Socket unable to bind: errno %d", errno);
+        return;
+    }
+    LOG_I(MODULE_PREFIX, "Socket bound");
+
+    /* Begin listening for clients on socket */
+    int listen_error = listen(socket_id, 3);
+    if (listen_error != 0)
+    {
+        ESP_LOGE(MODULE_PREFIX, "Error occured during listen: errno %d", errno);
+        return;
+    }
+    LOG_I(MODULE_PREFIX, "Socket listening");
+
+    while (1)
+    {
+        struct sockaddr_in sourceAddr; // Large enough for IPv4
+        uint addrLen = sizeof(sourceAddr);
+        /* Accept connection to incoming client */
+        int client_socket = accept(socket_id, (struct sockaddr *)&sourceAddr, &addrLen);
+        if (client_socket < 0)
+        {
+            ESP_LOGE(MODULE_PREFIX, "Unable to accept connection: errno %d", errno);
+            break;
+        }
+        LOG_I(MODULE_PREFIX, "Socket accepted");
+
+        //Optionally set O_NONBLOCK
+        //If O_NONBLOCK is set then recv() will return, otherwise it will stall until data is received or the connection is lost.
+        //fcntl(client_socket,F_SETFL,O_NONBLOCK);
+
+        // Clear rx_buffer, and fill with zero's
+        bzero(rx_buffer, sizeof(rx_buffer));
+        vTaskDelay(500 / portTICK_PERIOD_MS);
+        while(1)
+        {
+            // LOG_I(MODULE_PREFIX, "Waiting for data");
+            bytes_received = recv(client_socket, rx_buffer, sizeof(rx_buffer) - 1, 0);
+            // LOG_I(MODULE_PREFIX, "Received Data");
+
+            // Error occured during receiving
+            if (bytes_received < 0)
+            {
+                LOG_I(MODULE_PREFIX, "Error on rx");
+                vTaskDelay(10 / portTICK_PERIOD_MS);
+            }
+            // Connection closed
+            else if (bytes_received == 0)
+            {
+                LOG_I(MODULE_PREFIX, "Connection closed");
+                break;
+            }
+            // Data received
+            else
+            {
+                // Add to remain buf
+                if (bytes_received + _remainBufLen + 1 >= sizeof(_remainBuf))
+                {
+                    LOG_I(MODULE_PREFIX, "OVERFLOWED REMAIN BUF");
+                    _remainBufLen = 0;
+                    continue;
+                }
+                memcpy(_remainBuf+_remainBufLen, rx_buffer, bytes_received);
+                _remainBufLen += bytes_received;
+                _remainBuf[_remainBufLen] = 0;
+
+                // Take from buffer
+                while (_remainBufLen > 6)
+                {
+                    // Find end
+                    char* endOfFrame = strstr(_remainBuf, "~");
+                    if (endOfFrame == NULL)
+                        break;
+
+                    // Get frame count
+                    uint32_t frameCount = 0;
+                    uint32_t mul = 1;
+                    for (int i = 0; i < 6; i++)
+                    {
+                        frameCount += (_remainBuf[5-i]-'0')*mul;
+                        mul *= 10;
+                    }
+
+                    // rx_buffer[bytes_received] = 0; // Null-terminate whatever we received and treat like a string
+                    LOG_I(MODULE_PREFIX, "Fr %d", frameCount);
+
+                    // Check sequence
+                    if (frameCount == _expFrameCount)
+                    {
+                        _expFrameCount++;
+                        _okRunCount++;
+                        if ((_expFrameCount % 10) == 9)
+                        {
+                            LOG_I(MODULE_PREFIX, "Rx frame %d ok run %d", frameCount, _okRunCount);
+                        }
+                    }
+                    else
+                    {
+                        LOG_I(MODULE_PREFIX, "Expected %d got %d okRun %d", _expFrameCount, frameCount, _okRunCount);
+                        _expFrameCount = frameCount+1;
+                        _okRunCount = 0;
+                    }
+
+                    // Remove the frame
+                    int frameLen = endOfFrame - _remainBuf + 1;
+                    _remainBufLen -= frameLen;
+                    memmove(_remainBuf, endOfFrame+1, _remainBufLen);
+                    _remainBuf[_remainBufLen] = 0;
+                }
+
+                // Clear rx_buffer, and fill with zero's
+                bzero(rx_buffer, sizeof(rx_buffer));
+
+            }
+        }
+    }
+    vTaskDelete(NULL);
+}
+
+#endif

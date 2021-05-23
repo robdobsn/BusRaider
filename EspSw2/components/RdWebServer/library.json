@@ -1,0 +1,24 @@
+{
+    "name": "RdWebServer",
+    "version": "1.0.0",
+    "description": "Reliable Web Server for ESP32 (with file/REST API/WebSocket/Server-Side-Events/etc)",
+    "keywords": "web, server, webserver, esp32, websocket, sse",
+    "repository":
+    {
+      "type": "git",
+      "url": "https://github.com/robdobsn/RdWebServer"
+    },
+    "authors":
+    [
+      {
+        "name": "Rob Dobson",
+        "email": "rob@dobson.com",
+        "url": "https://robdobson.com",
+        "maintainer": true
+      }
+    ],
+    "license": "MIT",
+    "homepage": "https://robdobson.com/reliable-web-serving-on-esp32",
+    "frameworks": ["arduino"],
+    "platforms": ["espressif32", "espressif8266"]
+  }

@@ -22,7 +22,7 @@ public:
     SysTypeManager(ConfigNVS& sysTypeConfig);
 
     // Setup
-    void setup(const char** pSysTypeConfigArray, int sysTypeConfigArrayLen);
+    void setup(const char** pSysTypeConfigArrayStatic, int sysTypeConfigArrayLen);
 
     // Add endpoints
     void addRestAPIEndpoints(RestAPIEndpointManager& endpointManager);

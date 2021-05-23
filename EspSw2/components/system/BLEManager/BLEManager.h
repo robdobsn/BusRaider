@@ -13,7 +13,7 @@
 #include <ConfigBase.h>
 #include <SysModBase.h>
 #include "host/ble_uuid.h"
-#include <RingBufferRTOS.h>
+#include <ThreadSafeQueue.h>
 #include <ProtocolRawMsg.h>
 
 #define USE_TIMED_ADVERTISING_CHECK 1
@@ -27,7 +27,8 @@ class ProtocolEndpointMsg;
 class BLEManager : public SysModBase
 {
 public:
-    BLEManager(const char *pModuleName, ConfigBase &defaultConfig, ConfigBase *pGlobalConfig, ConfigBase *pMutableConfig);
+    BLEManager(const char *pModuleName, ConfigBase &defaultConfig, ConfigBase *pGlobalConfig, 
+                ConfigBase *pMutableConfig, const char* defaultAdvName);
     virtual ~BLEManager();
 
 protected:
@@ -59,6 +60,12 @@ private:
     // BLE device initialised
     bool _BLEDeviceInitialised;
 
+    // Default advertising name
+    String _defaultAdvName;
+
+    // Configured advertising name
+    static String _configuredAdvertisingName;
+
     // Addr type
     static uint8_t own_addr_type;
 
@@ -68,6 +75,12 @@ private:
     // EndpointID used to identify this message channel to the ProtocolEndpointManager object
     uint32_t _protocolEndpointID;
 
+    // Protocol message handling
+    static const uint32_t BLE_INBOUND_BLOCK_MAX_DEFAULT = 220;
+    static const uint32_t BLE_INBOUND_QUEUE_MAX_DEFAULT = 5;
+    static const uint32_t BLE_OUTBOUND_BLOCK_MAX_DEFAULT = 220;
+    static const uint32_t BLE_OUTBOUND_QUEUE_MAX_DEFAULT = 5;
+
     // Status
     static bool _isConnected;
     static uint16_t _bleGapConnHandle;
@@ -76,9 +89,9 @@ private:
     static const uint32_t MAX_BLE_PACKET_LEN_DEFAULT = 180;
     uint32_t _maxPacketLength;
     
-    // Outbound message queue (
+    // Outbound message queue
     static const int BLE_OUTBOUND_MSG_QUEUE_SIZE = 30;
-    RingBufferRTOS<ProtocolRawMsg, BLE_OUTBOUND_MSG_QUEUE_SIZE> _bleOutboundQueue;
+    ThreadSafeQueue<ProtocolRawMsg> _bleOutboundQueue;
 
     // Min time between adjacent outbound messages
     static const uint32_t BLE_MIN_TIME_BETWEEN_OUTBOUND_MSGS_MS = 25;
@@ -106,7 +119,7 @@ private:
     static void gattAccessCallbackStatic(const char* characteristicName, bool readOp, const uint8_t *payloadbuffer, int payloadlength);
     void gattAccessCallback(const char* characteristicName, bool readOp, const uint8_t *payloadbuffer, int payloadlength);
     bool sendBLEMsg(ProtocolEndpointMsg& msg);
-    bool readyToSend();
+    bool readyToSend(uint32_t channelID);
     static void setIsConnected(bool isConnected, uint16_t connHandle = 0);
     static String getAdvertisingName();
 

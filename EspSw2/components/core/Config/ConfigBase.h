@@ -9,10 +9,10 @@
 
 #pragma once
 
-#include <vector>
 #include <functional>
-#include <RdJson.h>
 #include <vector>
+
+#include <RdJson.h>
 #include <WString.h>
 
 typedef std::function<void()> ConfigChangeCallbackType;
@@ -54,7 +54,7 @@ public:
     }
 
     // Get config raw string
-    virtual void getConfigString(String& configStr)
+    virtual void getConfigString(String& configStr) const
     {
         configStr = _dataStrJSON;
     }
@@ -70,58 +70,118 @@ public:
     }
 
     // Get max length
-    int getMaxLen()
+    int getMaxLen() const
     {
         return _configMaxDataLen;
     }
 
-    virtual String getString(const char *dataPath, const char *defaultValue)
-    {
-        return RdJson::getString(dataPath, defaultValue, _dataStrJSON.c_str());
-    }
+    /**
+     * @brief Retrieve a JSON element as a string.
+     *
+     * Calls ConfigBase::getElement() to interpret `dataPath`.
+     *
+     * @param dataPath     path of element to return
+     * @param defaultValue default value to use if `dataPath` does not refer to
+     *                     a value
+     *
+     * @return retrieved value or default
+     */
+    virtual String getString(const char *dataPath, const char *defaultValue) const;
 
-    virtual String getString(const char *dataPath, const String& defaultValue)
-    {
-        return RdJson::getString(dataPath, defaultValue.c_str(), _dataStrJSON.c_str());
-    }
+    /**
+     * @overload String ConfigBase::getString(const char *dataPath, const char *defaultValue)
+     */
+    virtual String getString(const char *dataPath, const String& defaultValue) const;
 
-    virtual long getLong(const char *dataPath, long defaultValue)
-    {
-        return RdJson::getLong(dataPath, defaultValue, _dataStrJSON.c_str());
-    }
+    /**
+     * @brief Retrieve an integer value.
+     *
+     * Calls ConfigBase::getElement() to interpret `dataPath`.
+     *
+     * @param dataPath     path of element to return
+     * @param defaultValue default value to use if `dataPath` does not refer to
+     *                     a value
+     * @return `defaultValue` if `dataPath` does not refer to a value, zero if
+     *         that value cannot be interpreted by strtol(), and the retrieved
+     *         integer otherwise.
+     */
+    virtual long getLong(const char *dataPath, long defaultValue) const;
 
-    virtual double getDouble(const char *dataPath, double defaultValue)
-    {
-        return RdJson::getDouble(dataPath, defaultValue, _dataStrJSON.c_str());
-    }
+    /**
+     * @brief Retrieve a decimal value.
+     *
+     * Calls ConfigBase::getElement() to interpret `dataPath`.
+     *
+     * @param dataPath     path of element to return
+     * @param defaultValue default value to use if `dataPath` does not refer to
+     *                     a value
+     * @return `defaultValue` if `dataPath` does not refer to a value, zero if
+     *         that value cannot be interpreted by strtod(), and the retrieved
+     *         number otherwise.
+     */
+    virtual double getDouble(const char *dataPath, double defaultValue) const;
 
-    virtual bool getArrayElems(const char *dataPath, std::vector<String>& strList)
-    {
-        return RdJson::getArrayElems(dataPath, strList, _dataStrJSON.c_str());
-    }
+    /**
+     * @brief Retrieve elements of a JSON array if `dataPath` refers to one.
+     *
+     * Calls ConfigBase::getElement() to interpret `dataPath`.
+     *
+     * @param[in]  dataPath   path of element to return
+     * @param[out] arrayElems elems of array to return
+     *
+     * @return `true` if a JSON array was found at `dataPath`
+     */
+    virtual bool getArrayElems(const char *dataPath, std::vector<String>& strList) const;
 
-    virtual bool contains(const char *dataPath)
-    {
-        int startPos = 0, strLen = 0;
-        jsmntype_t elemType;
-        int elemSize = 0;
-        return RdJson::getElement(dataPath, startPos, strLen, elemType, elemSize, _dataStrJSON.c_str());
-    }
+    /**
+     * @brief Check if `dataPath` refers to a value in this config.
+     *
+     * Calls ConfigBase::getElement() to interpret `dataPath`.
+     *
+     * @param[in] dataPath path of element to check
+     * @return `true` if this config has a value for `dataPath`
+     */
+    virtual bool contains(const char *dataPath) const;
 
-    virtual bool getKeys(const char *dataPath, std::vector<String>& keysVector)
-    {
-        return RdJson::getKeys(dataPath, keysVector, _dataStrJSON.c_str());
-    }
+    /**
+     * @brief Retrieve keys of a JSON object if `dataPath` refers to one.
+     *
+     * Calls ConfigBase::getElement() to interpret `dataPath`.
+     *
+     * @param[in]  dataPath   path of element to return
+     * @param[out] keysVector elems of array to return
+     *
+     * @return `true` if a JSON object was found at `dataPath`
+     */
+    virtual bool getKeys(const char *dataPath, std::vector<String>& keysVector) const;
 
 protected:
+    /**
+     * @brief Retrieve a JSON element specified by `dataPath`.
+     *
+     * If `dataPath` refers to a revision switch array, this is interpreted and
+     * the value for the currrent HW revision is used.
+     *
+     * Revision switch arrays along the `dataPath` are not interpreted.
+     *
+     * @param[in]  dataPath    Path to an element in this config's internal JSON.
+     * @param[out] elementStr  String representation of the JSON element found at
+     *          `dataPath` (accounting for revision switching). Not modified if
+     *          `dataPath` does not exist. Set to the revision switch array if
+     *          there is one at `dataPath` but it does not contain a value for
+     *          the current HW. May be set to the revision switch array or a
+     *          default value if the revision switch array is corrupted.
+     * @param[out] elementType Type of the retrieved element, if one was found.
+     *          Not modified if `dataPath` does not exist. Invalid otherwise.
+     *
+     * @return `true` if `dataPath` exists and either does not point to a revision
+     *         switch array or this array is valid and contains a value for the
+     *         current HW revision (even if only the default value).
+     */
+    bool getElement(const char *dataPath, String& elementStr, jsmntype_t& elementType) const;
+
     // Set the configuration data directly
-    virtual void _setConfigData(const char* configJSONStr)
-    {
-        if (strlen(configJSONStr) == 0)
-            _dataStrJSON = "{}";
-        else
-            _dataStrJSON = configJSONStr;
-    }
+    virtual void _setConfigData(const char* configJSONStr);
 
     // Data is stored in a single string as JSON
     String _dataStrJSON;

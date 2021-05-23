@@ -25,7 +25,11 @@ static const char* MODULE_PREFIX = "FileSystem";
 
 FileSystem fileSystem;
 
+// #define WARN_ON_FILE_NOT_FOUND
+#define WARN_ON_FILE_SYSTEM_ERRORS
+#define WARN_ON_FILE_TOO_BIG
 // #define DEBUG_FILE_UPLOAD 1
+// #define DEBUG_FILE_SYSTEM
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -81,22 +85,24 @@ void FileSystem::setup(bool enableSPIFFS, bool spiffsFormatIfCorrupt, bool enabl
         esp_err_t ret = esp_vfs_spiffs_register(&conf);
         if (ret != ESP_OK)
         {
-            if (ret == ESP_FAIL)
+            if (ret == ESP_FAIL) {
                 LOG_W(MODULE_PREFIX, "setup failed mount/format SPIFFS");
-            else if (ret == ESP_ERR_NOT_FOUND)
+            } else if (ret == ESP_ERR_NOT_FOUND) {
                 LOG_W(MODULE_PREFIX, "setup failed to find SPIFFS partition");
-            else
+            } else {
                 LOG_W(MODULE_PREFIX, "setup failed to init SPIFFS (error %s)", esp_err_to_name(ret));
+            }
         }
         else
         {
             // Get SPIFFS info
             size_t total = 0, used = 0;
             esp_err_t ret = esp_spiffs_info(NULL, &total, &used);
-            if (ret != ESP_OK)
+            if (ret != ESP_OK) {
                 LOG_W(MODULE_PREFIX, "setup failed to get SPIFFS info (error %s)", esp_err_to_name(ret));
-            else
+            } else {
                 LOG_I(MODULE_PREFIX, "setup SPIFFS partition size total %d, used %d", total, used);
+            }
 
             // SPIFFS ok
             _spiffsIsOk = true;
@@ -140,10 +146,11 @@ void FileSystem::setup(bool enableSPIFFS, bool spiffsFormatIfCorrupt, bool enabl
             sdmmc_card_t* pCard;
             esp_err_t ret = esp_vfs_fat_sdmmc_mount("/sd", &host, &slot_config, &mount_config, &pCard);
             if (ret != ESP_OK) {
-                if (ret == ESP_FAIL)
+                if (ret == ESP_FAIL) {
                     LOG_W(MODULE_PREFIX, "setup failed mount SD");
-                else
+                } else {
                     LOG_I(MODULE_PREFIX, "setup failed to init SD (error %s)", esp_err_to_name(ret));
+                }
             }
             else
             {
@@ -224,13 +231,17 @@ bool FileSystem::getFileInfo(const String& fileSystemStr, const String& filename
     if (stat(rootFilename.c_str(), &st) != 0)
     {
         xSemaphoreGive(_fileSysMutex);
-        LOG_D(MODULE_PREFIX, "getFileInfo %s cannot stat", rootFilename.c_str());
+#ifdef WARN_ON_FILE_NOT_FOUND
+        LOG_W(MODULE_PREFIX, "getFileInfo %s cannot stat", rootFilename.c_str());
+#endif
         return false;
     }
     if (!S_ISREG(st.st_mode))
     {
         xSemaphoreGive(_fileSysMutex);
-        LOG_D(MODULE_PREFIX, "getFileInfo %s is a folder", rootFilename.c_str());
+#ifdef WARN_ON_FILE_SYSTEM_ERRORS
+        LOG_W(MODULE_PREFIX, "getFileInfo %s is a folder", rootFilename.c_str());
+#endif
         return false;
     }
     fileLength = st.st_size;
@@ -322,65 +333,65 @@ bool FileSystem::getFilesJSON(const char* req, const String& fileSystemStr, cons
         return false;
     }
 
-    // Open directory
-    String rootFolder = (folderStr.startsWith("/") ? baseFolderForFS + folderStr : (baseFolderForFS + "/" + folderStr));
-    DIR* dir = opendir(rootFolder.c_str());
-    if (!dir)
-    {
-        xSemaphoreGive(_fileSysMutex);
-        LOG_W(MODULE_PREFIX, "getFilesJSON Failed to open base folder %s", rootFolder.c_str());
-        Utils::setJsonErrorResult(reqStr.c_str(), respStr, "nofolder");
-        return false;
-    }
+    // // Open directory
+    // String rootFolder = (folderStr.startsWith("/") ? baseFolderForFS + folderStr : (baseFolderForFS + "/" + folderStr));
+    // DIR* dir = opendir(rootFolder.c_str());
+    // if (!dir)
+    // {
+    //     xSemaphoreGive(_fileSysMutex);
+    //     LOG_W(MODULE_PREFIX, "getFilesJSON Failed to open base folder %s", rootFolder.c_str());
+    //     Utils::setJsonErrorResult(reqStr.c_str(), respStr, "nofolder");
+    //     return false;
+    // }
 
-    // Start response JSON
-    respStr = R"({"req":")" + reqStr + R"(","rslt":"ok","fsName":")" + nameOfFS + R"(","fsBase":")" + baseFolderForFS + 
-                R"(","diskSize":)" + String(fsSizeBytes) + R"(,"diskUsed":)" + fsUsedBytes +
-                R"(,"folder":")" + String(rootFolder) + R"(","files":[)";
-    bool firstFile = true;
+    // // Start response JSON
+    // respStr = R"({"req":")" + reqStr + R"(","rslt":"ok","fsName":")" + nameOfFS + R"(","fsBase":")" + baseFolderForFS + 
+    //             R"(","diskSize":)" + String(fsSizeBytes) + R"(,"diskUsed":)" + fsUsedBytes +
+    //             R"(,"folder":")" + String(rootFolder) + R"(","files":[)";
+    // bool firstFile = true;
 
-    // Read directory entries
-    struct dirent* ent = NULL;
-    while ((ent = readdir(dir)) != NULL) 
-    {
-        // Check for unwanted files
-        String fName = ent->d_name;
-        if (fName.equalsIgnoreCase("System Volume Information"))
-            continue;
-        if (fName.equalsIgnoreCase("thumbs.db"))
-            continue;
+    // // Read directory entries
+    // struct dirent* ent = NULL;
+    // while ((ent = readdir(dir)) != NULL) 
+    // {
+    //     // Check for unwanted files
+    //     String fName = ent->d_name;
+    //     if (fName.equalsIgnoreCase("System Volume Information"))
+    //         continue;
+    //     if (fName.equalsIgnoreCase("thumbs.db"))
+    //         continue;
 
-        // Get file info including size
-        size_t fileSize = 0;
-        struct stat st;
-        String filePath = (rootFolder.endsWith("/") ? rootFolder + fName : rootFolder + "/" + fName);
-        if (stat(filePath.c_str(), &st) == 0) 
-        {
-            fileSize = st.st_size;
-        }
+    //     // Get file info including size
+    //     size_t fileSize = 0;
+    //     struct stat st;
+    //     String filePath = (rootFolder.endsWith("/") ? rootFolder + fName : rootFolder + "/" + fName);
+    //     if (stat(filePath.c_str(), &st) == 0) 
+    //     {
+    //         fileSize = st.st_size;
+    //     }
 
-        // Form the JSON list
-        if (!firstFile)
-            respStr += ",";
-        firstFile = false;
-        respStr += R"({"name":")";
-        respStr += ent->d_name;
-        respStr += R"(","size":)";
-        respStr += String(fileSize);
-        respStr += "}";
-    }
+    //     // Form the JSON list
+    //     if (!firstFile)
+    //         respStr += ",";
+    //     firstFile = false;
+    //     respStr += R"({"name":")";
+    //     respStr += ent->d_name;
+    //     respStr += R"(","size":)";
+    //     respStr += String(fileSize);
+    //     respStr += "}";
+    // }
 
-    // Finished with file list
-    closedir(dir);
-    xSemaphoreGive(_fileSysMutex);
+    // // Finished with file list
+    // closedir(dir);
+    // xSemaphoreGive(_fileSysMutex);
 
-    // Complete string and replenish cache
-    respStr += "]}";
-    if (_cacheFileList)
-    {
-        _cachedFileListResponse = respStr;
-        _cachedFileListValid = true;
-    }
+    // // Complete string and replenish cache
+    // respStr += "]}";
+    // if (_cacheFileList)
+    // {
+    //     _cachedFileListResponse = respStr;
+    //     _cachedFileListValid = true;
+    // }
     return true;
 }
 
@@ -395,7 +406,7 @@ String FileSystem::getFileContents(const String& fileSystemStr, const String& fi
     String nameOfFS;
     if (!checkFileSystem(fileSystemStr, nameOfFS))
     {
-        LOG_D(MODULE_PREFIX, "getContents %s invalid file system %s", filename.c_str(), fileSystemStr.c_str());
+        LOG_W(MODULE_PREFIX, "getContents %s invalid file system %s", filename.c_str(), fileSystemStr.c_str());
         return "";
     }
 
@@ -422,13 +433,17 @@ String FileSystem::getFileContents(const String& fileSystemStr, const String& fi
     if (stat(rootFilename.c_str(), &st) != 0)
     {
         xSemaphoreGive(_fileSysMutex);
-        LOG_D(MODULE_PREFIX, "getContents %s cannot stat", rootFilename.c_str());
+#ifdef WARN_ON_FILE_NOT_FOUND
+        LOG_W(MODULE_PREFIX, "getContents %s cannot stat", rootFilename.c_str());
+#endif
         return "";
     }
     if (!S_ISREG(st.st_mode))
     {
         xSemaphoreGive(_fileSysMutex);
-        LOG_D(MODULE_PREFIX, "getContents %s is a folder", rootFilename.c_str());
+#ifdef DEBUG_FILE_SYSTEM
+        LOG_I(MODULE_PREFIX, "getContents %s is a folder", rootFilename.c_str());
+#endif
         return "";
     }
 
@@ -440,7 +455,9 @@ String FileSystem::getFileContents(const String& fileSystemStr, const String& fi
     if (st.st_size >= maxLen-1)
     {
         xSemaphoreGive(_fileSysMutex);
-        LOG_D(MODULE_PREFIX, "getContents %s free heap %d size %d too big to read", rootFilename.c_str(), maxLen, (int)st.st_size);
+#ifdef WARN_ON_FILE_TOO_BIG
+        LOG_W(MODULE_PREFIX, "getContents %s free heap %d size %d too big to read", rootFilename.c_str(), maxLen, (int)st.st_size);
+#endif
         return "";
     }
     int fileSize = st.st_size;
@@ -450,7 +467,9 @@ String FileSystem::getFileContents(const String& fileSystemStr, const String& fi
     if (!pFile)
     {
         xSemaphoreGive(_fileSysMutex);
-        LOG_D(MODULE_PREFIX, "getContents failed to open file to read %s", rootFilename.c_str());
+#ifdef WARN_ON_FILE_NOT_FOUND
+        LOG_W(MODULE_PREFIX, "getContents failed to open file to read %s", rootFilename.c_str());
+#endif
         return "";
     }
 
@@ -460,7 +479,9 @@ String FileSystem::getFileContents(const String& fileSystemStr, const String& fi
     {
         fclose(pFile);
         xSemaphoreGive(_fileSysMutex);
-        LOG_D(MODULE_PREFIX, "getContents failed to allocate %d", fileSize);
+#ifdef WARN_ON_FILE_TOO_BIG
+        LOG_W(MODULE_PREFIX, "getContents failed to allocate %d", fileSize);
+#endif
         return "";
     }
 
@@ -514,7 +535,9 @@ bool FileSystem::setFileContents(const String& fileSystemStr, const String& file
     if (!pFile)
     {
         xSemaphoreGive(_fileSysMutex);
-        LOG_D(MODULE_PREFIX, "setContents failed to open file to write %s", rootFilename.c_str());
+#ifdef WARN_ON_FILE_SYSTEM_ERRORS
+        LOG_W(MODULE_PREFIX, "setContents failed to open file to write %s", rootFilename.c_str());
+#endif
         return "";
     }
 

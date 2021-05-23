@@ -324,10 +324,11 @@ void ExpressionEval::evalStatements(const char* pImmutableVarsJSON)
     }
 
 #ifdef DEBUG_EXPRESSION_EVAL
-    if (programCounter >= _compiledStatements.size())
+    if (programCounter >= _compiledStatements.size()) {
         LOG_I(MODULE_PREFIX, "evalStatements execution finished (pc at end)"); 
-    else
+    } else {
         LOG_I(MODULE_PREFIX, "evalStatements execution terminated (too many steps)"); 
+    }
 #endif
 }
 

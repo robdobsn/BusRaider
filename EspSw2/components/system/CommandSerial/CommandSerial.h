@@ -41,7 +41,7 @@ private:
     void begin();
     void end();
     bool sendMsg(ProtocolEndpointMsg& msg);
-    bool readyToSend();
+    bool readyToSend(uint32_t channelID);
 
     // Vars
     bool _isEnabled;
@@ -60,4 +60,10 @@ private:
 
     // EndpointID used to identify this message channel to the ProtocolEndpointManager object
     uint32_t _protocolEndpointID;
+
+    // Protocol message handling
+    static const uint32_t INBOUND_BLOCK_MAX_DEFAULT = 5000;
+    static const uint32_t INBOUND_QUEUE_MAX_DEFAULT = 2;
+    static const uint32_t OUTBOUND_BLOCK_MAX_DEFAULT = 5000;
+    static const uint32_t OUTBOUND_QUEUE_MAX_DEFAULT = 2;    
 };

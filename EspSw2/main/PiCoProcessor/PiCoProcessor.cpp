@@ -16,6 +16,7 @@
 #include <ESPUtils.h>
 #include <driver/uart.h>
 #include <driver/gpio.h>
+#include <ArduinoTime.h>
 
 static const char *MODULE_PREFIX = "PiCoProcessor";
 

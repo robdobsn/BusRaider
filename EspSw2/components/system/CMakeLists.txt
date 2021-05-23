@@ -2,6 +2,7 @@ idf_component_register(
                 SRCS 
                   "SysMod/SysModBase.cpp"
                   "SysManager/SysManager.cpp"
+                  "SysManager/FileUploadHandler.cpp"
                   "SysTypes/SysTypeManager.cpp"
                   "BLEManager/BLEManager.cpp"
                   "BLEManager/BLEGattServer.cpp"
@@ -31,7 +32,9 @@ idf_component_register(
                 REQUIRES 
                   core
                   comms
+                  RdWebServer
                   bt
                   spiffs
                   fatfs
-                  app_update)
+                  app_update
+                  )
