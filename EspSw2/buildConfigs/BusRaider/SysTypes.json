@@ -42,7 +42,7 @@
 			"wsPcol": "RICSerial",
 			"wsPingMs": 2000,
 			"logLevel": "D",
-			"sendMax": 5000,
+			"sendMax": 1000,
 			"taskCore": 0,
 			"taskStack": 3000,
 			"taskPriority": 9
