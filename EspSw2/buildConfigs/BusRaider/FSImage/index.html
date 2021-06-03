@@ -57,7 +57,7 @@
             });
 
             // Populate machine list
-            callAjax("/querystatus", populateMcList);
+            callAjax("/api/querystatus", populateMcList);
 
             // Request file list to display
             fileListUpdate();
@@ -223,7 +223,7 @@
 
         function queryStatusUpdate()
         {
-            callAjax("/querystatus", updateMachineInfo);
+            callAjax("/api/querystatus", updateMachineInfo);
         }
 
         function updateMachineInfo(jsonResp)
@@ -258,7 +258,7 @@
                 return;
             let fileName = window.pageState.machineList[fileIdx]
             window.pageState.machineConfigCurIdx = fileIdx;
-            callAjax("/files/" + window.pageState.fsDefault + "/" + fileName + ".json", machineConfigGot, machineConfigGetFailed);
+            callAjax("/api/files/" + window.pageState.fsDefault + "/" + fileName + ".json", machineConfigGot, machineConfigGetFailed);
         }
 
         function machineConfigGot(jsonResp) {
@@ -524,7 +524,7 @@
             if (event.srcElement.classList.contains("radio-on"))
             {
                 termPanel.classList.remove("panel-hidden");
-                callAjax("/targetcmd/mirrorscreenon");
+                callAjax("/api/targetcmd/mirrorscreenon");
                 document.onkeydown = "termKeyDown(event)";
                 event.srcElement.innerHTML = "Hide Terminal";
                 termPanel.focus();
@@ -532,7 +532,7 @@
             else
             {
                 termPanel.classList.add("panel-hidden");
-                callAjax("/targetcmd/mirrorscreenoff");
+                callAjax("/api/targetcmd/mirrorscreenoff");
                 document.onkeydown = null;
                 event.srcElement.innerHTML = "Show Terminal";
             }
@@ -601,7 +601,7 @@
             el.innerHTML = dumpHtml;
         }
         function showHexDump(addr, memDumpElementId) {
-            callAjaxWithParam('/targetcmd/Rd/' + intToHex(addr, 4) + '/100', hexDisplayUpdate, memDumpElementId);
+            callAjaxWithParam('/api/targetcmd/Rd/' + intToHex(addr, 4) + '/100', hexDisplayUpdate, memDumpElementId);
         }
         function debuggerUpdate(rslt) {
             enableDebugger(true)
@@ -794,20 +794,20 @@
             event.srcElement.classList.toggle("radio-on");
             if (event.srcElement.classList.contains("radio-on"))
             {
-                callAjax("/targetcmd/defaultfs/sd");
+                callAjax("/api/targetcmd/defaultfs/sd");
                 window.pageState.fsDefault = "sd";
                 event.srcElement.innerHTML = "File System = SD";
             }
             else
             {
-                callAjax("/targetcmd/defaultfs/spiffs");
+                callAjax("/api/targetcmd/defaultfs/spiffs");
                 window.pageState.fsDefault = "spiffs";
                 event.srcElement.innerHTML = "File System = SPIFFS";
             }
         }
 
         function fileListUpdate() {
-            callAjax("/filelist/" + window.pageState.fsDefault + "/", fileListUpdateOk, fileListUpdateFail);
+            callAjax("/api/filelist/" + window.pageState.fsDefault + "/", fileListUpdateOk, fileListUpdateFail);
         }
 
         function fileListUpdateFail() {
@@ -877,20 +877,20 @@
         }
 
         function deleteFile(filename) {
-            callAjax("/filedelete/" + window.pageState.fsDefault + "/" + filename);
+            callAjax("/api/filedelete/" + window.pageState.fsDefault + "/" + filename);
             fileListUpdate();
         }
 
         function sendFileToTargetBuffer(filename) {
-            callAjax("/sendfiletotargetbuffer/" + window.pageState.fsDefault + "/" + filename);
+            callAjax("/api/sendfiletotargetbuffer/" + window.pageState.fsDefault + "/" + filename);
         }
 
         function appendFileToTargetBuffer(filename) {
-            callAjax("/appendfiletotargetbuffer/" + window.pageState.fsDefault + "/" + filename);
+            callAjax("/api/appendfiletotargetbuffer/" + window.pageState.fsDefault + "/" + filename);
         }
 
         function runFileOnTarget(filename) {
-            callAjax("/runfileontarget/" + window.pageState.fsDefault + "/" + filename);
+            callAjax("/api/runfileontarget/" + window.pageState.fsDefault + "/" + filename);
         }
 
         function enableTabInsertion(elementId) {
@@ -922,7 +922,7 @@
             // //     uniCh += 32;
             // let ch = String.fromCharCode(uniCh);
             // console.log(ch, "stt", uniCh, event.ctrlKey, event.shiftKey);
-            // callAjax("/sendKey/" + uniCh.toString());
+            // callAjax("/api/sendKey/" + uniCh.toString());
         }
         function getKeyModCodes(event) {
             let modCodes = 0;
@@ -1007,18 +1007,18 @@
                 usbKeyCode = 0x52;
             }
 
-            callAjax("/sendKey/" + uniCh.toString() + "/" + usbKeyCode.toString() + "/" + getKeyModCodes(event).toString());
+            callAjax("/api/sendKey/" + uniCh.toString() + "/" + usbKeyCode.toString() + "/" + getKeyModCodes(event).toString());
             event.preventDefault();
             //     if (event.ctrlKey) {
             //         event.preventDefault();
             //         uniCh -= 64;
             //         let ch = String.fromCharCode(uniCh);
             //         console.log(ch, "stt", uniCh, event.ctrlKey, event.shiftKey);
-            //         callAjax("/sendKey/" + uniCh.toString());
+            //         callAjax("/api/sendKey/" + uniCh.toString());
             //         return;
             //     }
             // } else if (uniCh == 38) {
-            //     callAjax("/sendKey/");
+            //     callAjax("/api/sendKey/");
             // if (((uniCh >= 64) && (uniCh <= 90)) && (event.ctrlKey))
             //     uniCh -= 64;
             // else if (((uniCh >= 65) && (uniCh <= 90)) && (event.shiftKey == event.getModifierState("CapsLock")))
@@ -1753,9 +1753,9 @@
         </div>
         <div id="debugger-panel" class="layout-region panel-hidden">
             <div class="uiPanelSub">
-                <span class="button" onclick="callAjax('/targetcmd/debugBreak', debuggerUpdate);">Break</span>
+                <span class="button" onclick="callAjax('/api/targetcmd/debugBreak', debuggerUpdate);">Break</span>
                 <span class="button" onclick="sendCmdToTarget('debugContinue'); enableDebugger(false);">Continue</span>
-                <span class="button" onclick="callAjax('/targetcmd/debugStepIn', debuggerUpdate);">Step In</span>
+                <span class="button" onclick="callAjax('/api/targetcmd/debugStepIn', debuggerUpdate);">Step In</span>
             </div>
             <div id="debugger-disregs" class="uiPanelSub uiPanel2Col uiPanelBordered uiPanelGroup uiDisable uiSmallerText">
                 <code id="debugger-disasm" class="uiPanelColumn">
