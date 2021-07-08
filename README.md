@@ -14,7 +14,7 @@ The following resources will help get started with BusRaider:
 * [Full Documentation](https://github.com/robdobsn/PiBusRaider/wiki)
 
 Some background information about why BusRaider exists is in the blog posts [https://robdobson.com/2018/08/trs80-galaxy-invasion-on-rc2014/](https://robdobson.com/2018/08/trs80-galaxy-invasion-on-rc2014/)
-and [https://robdobson.com/2018/08/trs80-galaxy-invasion-on-rc2014/](https://robdobson.com/2018/09/raid-the-bus-and-the-speccy-lives/)
+and [https://robdobson.com/2018/09/raid-the-bus-and-the-speccy-lives/](https://robdobson.com/2018/09/raid-the-bus-and-the-speccy-lives/)
 
 ## License
 
