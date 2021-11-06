@@ -1,0 +1,14 @@
+{
+    "name": "BusRaider ESP32 Firmware",
+    "builds": [
+      {
+        "chipFamily": "ESP32",
+        "improv": true,
+        "parts": [
+          { "path": "https://github.com/robdobsn/BusRaider/releases/download/V2.2.61/bootcode.bin", "offset": 4096 },
+          { "path": "https://github.com/robdobsn/BusRaider/releases/download/V2.2.61/partitions.bin", "offset": 32768 },
+          { "path": "https://github.com/robdobsn/BusRaider/releases/download/V2.2.61/firmware.bin", "offset": 65536 }
+        ]
+      }
+    ]
+  }
