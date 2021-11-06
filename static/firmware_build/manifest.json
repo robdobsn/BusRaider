@@ -5,9 +5,9 @@
         "chipFamily": "ESP32",
         "improv": true,
         "parts": [
-          { "path": "/releases/download/V2.2.61/bootcode.bin", "offset": 4096 },
-          { "path": "/releases/download/V2.2.61/partitions.bin", "offset": 32768 },
-          { "path": "/releases/download/V2.2.61/firmware.bin", "offset": 65536 }
+          { "path": "V2.2.61/bootcode.bin", "offset": 4096 },
+          { "path": "V2.2.61/partitions.bin", "offset": 32768 },
+          { "path": "V2.2.61/firmware.bin", "offset": 65536 }
         ]
       }
     ]
