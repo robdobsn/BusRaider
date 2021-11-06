@@ -3,7 +3,6 @@
     "builds": [
       {
         "chipFamily": "ESP32",
-        "improv": false,
         "parts": [
           { "path": "V2.2.61/bootcode.bin", "offset": 4096 },
           { "path": "V2.2.61/partitions.bin", "offset": 32768 },
