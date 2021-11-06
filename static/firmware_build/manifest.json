@@ -1,5 +1,5 @@
 {
-    "name": "BusRaider ESP32 Firmware",
+    "name": "BusRaider ESP32 Firmware Latest V2.2.61",
     "builds": [
       {
         "chipFamily": "ESP32",
