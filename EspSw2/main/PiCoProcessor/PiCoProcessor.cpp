@@ -21,11 +21,13 @@
 static const char *MODULE_PREFIX = "PiCoProcessor";
 
 // Debug
+#define WARN_PI_SERIAL_GET_CRC_ERROR
 // #define DEBUG_PI_UPLOAD_END
 // #define DEBUG_PI_SW_UPLOAD
 // #define DEBUG_PI_UPLOAD_FROM_FS
 // #define DEBUG_PI_QUERY_STATUS
 // #define DEBUG_PI_SERIAL_GET
+// #define DEBUG_PI_SERIAL_GET_DETAIL
 // #define DEBUG_PI_QUERY_ESP_HEALTH
 // #define DEBUG_PI_UPLOAD_COMMON_BLOCK
 // #define DEBUG_PI_UPLOAD_COMMON_BLOCK_DETAIL
@@ -37,7 +39,8 @@ static const char *MODULE_PREFIX = "PiCoProcessor";
 // #define DEBUG_PI_SEND_TARGET_CMD
 // #define DEBUG_PI_SEND_RESP_TO_PI
 // #define DEBUG_PI_SEND_FILE_BLOCK
-// #define DEBUG_PI_TX_FRAME_TO_PI
+// #define DEBUG_TX_FRAME_TO_PI
+// #define DEBUG_TX_FRAME_TO_PI_DETAIL
 // #define DEBUG_RICREST_CMD_FRAMES
 // #define DEBUG_RDP_MSG_FROM_PI
 // #define DEBUG_PI_UPLOAD_ACKS
@@ -1056,7 +1059,10 @@ void PiCoProcessor::hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen)
 
 void PiCoProcessor::hdlcFrameTxToPiCB(const uint8_t* pFrame, int frameLen)
 {
-#ifdef DEBUG_PI_TX_FRAME_TO_PI
+#ifdef DEBUG_TX_FRAME_TO_PI
+    LOG_I(MODULE_PREFIX, "hdlcFrameTxToPiCB len %d", frameLen);
+#endif
+#ifdef DEBUG_TX_FRAME_TO_PI_DETAIL
     // Debug
     Utils::logHexBuf(pFrame, frameLen, MODULE_PREFIX, "Frame to send");
 #endif
@@ -1371,14 +1377,19 @@ void PiCoProcessor::serialInterfacePump()
         if (bytesRead != 0)
         {
 #ifdef DEBUG_PI_SERIAL_GET
+            LOG_I(MODULE_PREFIX, "service bytesRx len %d", bytesRead);
+#endif
+#ifdef DEBUG_PI_SERIAL_GET_DETAIL
             String byteStr;
             Utils::getHexStrFromBytes(buf, bytesRead, byteStr);
             LOG_I(MODULE_PREFIX, "service bytesRx %s", byteStr.c_str());
+#endif
+#ifdef WARN_PI_SERIAL_GET_CRC_ERROR
             int curCRCErr = _pHDLC->getStats()->_frameCRCErrCount;
 #endif
             if (_pHDLC)
                 _pHDLC->handleBuffer(buf, bytesRead);
-#ifdef DEBUG_PI_SERIAL_GET
+#ifdef WARN_PI_SERIAL_GET_CRC_ERROR
             int finalCRCErr = _pHDLC->getStats()->_frameCRCErrCount;
             if (curCRCErr != finalCRCErr)
                 LOG_W(MODULE_PREFIX, "CRC error count was %d now %d", curCRCErr, finalCRCErr);

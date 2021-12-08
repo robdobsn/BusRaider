@@ -20,22 +20,22 @@
 static const char *MODULE_PREFIX = "RdWebConn";
 
 #define WARN_WEB_CONN_ERROR_CLOSE
-// #define DEBUG_WEB_CONN
+#define DEBUG_WEB_CONN
 // #define DEBUG_WEB_REQUEST_HEADERS
 // #define DEBUG_WEB_REQUEST_HEADER_DETAIL
 // #define DEBUG_WEB_REQUEST_READ
 // #define DEBUG_WEB_REQUEST_RESP
 // #define DEBUG_WEB_REQUEST_READ_START_END
-// #define DEBUG_RESPONDER_PROGRESS
+#define DEBUG_RESPONDER_PROGRESS
 // #define DEBUG_RESPONDER_PROGRESS_DETAIL
-// #define DEBUG_RESPONDER_HEADER_DETAIL
+#define DEBUG_RESPONDER_HEADER_DETAIL
 // #define DEBUG_RESPONDER_CONTENT_DETAIL
 // #define DEBUG_RESPONDER_CREATE_DELETE
-// #define DEBUG_WEB_SOCKET_SEND
+#define DEBUG_WEB_SOCKET_SEND
 // #define DEBUG_WEB_SSEVENT_SEND
 // #define DEBUG_WEB_CONNECTION_DATA_PACKETS
 // #define DEBUG_WEB_CONNECTION_DATA_PACKETS_CONTENTS
-// #define DEBUG_WEB_CONN_OPEN_CLOSE
+#define DEBUG_WEB_CONN_OPEN_CLOSE
 // #define DEBUG_WEB_CONN_SERVICE_TIME
 
 #ifdef DEBUG_TRACE_HEAP_USAGE_WEB_CONN
@@ -286,14 +286,15 @@ void RdWebConnection::service()
                 bufLen = 0;
                 break;
             default:
-                LOG_W(MODULE_PREFIX, "service read error %d", errno);
+                LOG_W(MODULE_PREFIX, "service read errno %d conn %ld", errno, (unsigned long)_connClient);
+                bufLen = 0;
                 errorOccurred = true;
                 break;
         }
     }
     else if (bufLen == 0)
     {
-        LOG_W(MODULE_PREFIX, "service read conn closed %d", errno);
+        LOG_W(MODULE_PREFIX, "service read conn returned 0 errno %d conn %ld", errno, (unsigned long)_connClient);
         closeRequired = true;
     }
     else
@@ -625,7 +626,7 @@ bool RdWebConnection::serviceResponse(const uint8_t* pRxData, uint32_t dataLen, 
     // Debug
 #ifdef DEBUG_RESPONDER_PROGRESS_DETAIL
     LOG_I(MODULE_PREFIX, "serviceResponse atEnd responder %s isActive %s pConn %ld", 
-                _pResponder ? "YES" : "NO", 
+                _pResponder ? _pResponder->getResponderType() : "NO", 
                 (_pResponder && _pResponder->isActive()) ? "YES" : "NO", 
                 (unsigned long)_connClient);
 #endif
