@@ -48,12 +48,14 @@ void SupervisorStats::clear()
 // Add a module
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void SupervisorStats::add(const char *name)
+uint32_t SupervisorStats::add(const char *name)
 {
     if (_moduleList.size() > MAX_MODULES)
-        return;
+        return 0;
     ModInfo modInfo(name);
+    uint32_t idxAdded = _moduleList.size();
     _moduleList.push_back(modInfo);
+    return idxAdded;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -120,7 +122,7 @@ String SupervisorStats::getSummaryString()
     if (_summaryInfo._totalLoops > 0)
     {
         char outerLoopTmp[150];
-        snprintf(outerLoopTmp, sizeof(outerLoopTmp), "Avg %4.2fuS Max %luuS Min %luuS ", 
+        snprintf(outerLoopTmp, sizeof(outerLoopTmp), R"("avgUs":%4.2f,"maxUs":%lu,"minUs":%lu)", 
                 _summaryInfo._loopTimeAvgUs,
                 _summaryInfo._loopTimeMaxUs,
                 _summaryInfo._loopTimeMinUs);
@@ -143,14 +145,18 @@ String SupervisorStats::getSummaryString()
         if (sizeof(slowestStr) <= strPos + 1)
             break;
         snprintf(slowestStr + strPos, sizeof(slowestStr) - strPos,
-                 isFirst ? "Slow %s %llduS" : ", %s %llduS",
+                 isFirst ? R"("slowUs":{"%s":%lld)" : R"(,"%s":%lld)",
                  _moduleList[modIdx]._modName.c_str(),
                  _moduleList[modIdx].execTimer.getMaxUs());
         isFirst = false;
     }
-
-    // Combine
-    return outerLoopStr + slowestStr;
+    if (strlen(slowestStr) > 0)
+    {
+        if (outerLoopStr.length() > 0)
+            outerLoopStr += ",";
+        outerLoopStr += String(slowestStr) + "}";
+    }
+    return "{" + outerLoopStr + "}";
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

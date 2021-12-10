@@ -14,7 +14,7 @@
 #include "FileSystemChunker.h"
 #include "MiniHDLC.h"
 #include <list>
-#include "FileBlockInfo.h"
+#include "FileStreamBlock.h"
 #include <driver/gpio.h>
 #include "Utils.h"
 
@@ -57,9 +57,9 @@ protected:
         return _uploadFromAPIInProgress || _uploadFromFSInProgress;
     }
 
-    // Process RICRESTMsg CmdFrame
-    virtual bool procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg& ricRESTReqMsg, 
-            String& respMsg, const ProtocolEndpointMsg &endpointMsg) override final;
+    // // Process RICRESTMsg CmdFrame
+    // virtual bool procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg& ricRESTReqMsg, 
+    //         String& respMsg, const ProtocolEndpointMsg &endpointMsg) override final;
 
     // Debugging
 #ifdef DEBUG_COMMS_USING_IO_21_22
@@ -180,7 +180,7 @@ private:
     // API commands
     void apiQueryESPHealth(const String &reqStr, String &respStr);
     void apiUploadPiSwComplete(const String &reqStr, String &respStr);
-    void apiUploadPiSwPart(const String& req, FileBlockInfo& fileBlockInfo);
+    void apiUploadPiSwPart(const String& req, FileStreamBlock& fileStreamBlock);
     void apiQueryPiStatus(const String &reqStr, String &respStr);
     void apiQueryCurMc(const String &reqStr, String &respStr);
     void apiSetMcJson(const String &reqStr, String &respStr);
@@ -193,8 +193,8 @@ private:
     void apiRunFileOnTarget(const String &reqStr, String &respStr);
 
     // Upload
-    void uploadAPIBlockHandler(const char* fileType, const String& req, FileBlockInfo& fileBlockInfo);
-    bool uploadCommonBlockHandler(const char* fileType, const String& req, FileBlockInfo& fileBlockInfo);
+    void uploadAPIBlockHandler(const char* fileType, const String& req, FileStreamBlock& fileStreamBlock);
+    bool uploadCommonBlockHandler(const char* fileType, const String& req, FileStreamBlock& fileStreamBlock);
     void sendFileStartRecord(const char* fileType, const String& req, const String& filename, int fileLength);
     void sendFileBlock(size_t index, const uint8_t *pData, size_t len);
     void sendFileEndRecord(int blockCount, const char* pAdditionalJsonNameValues);

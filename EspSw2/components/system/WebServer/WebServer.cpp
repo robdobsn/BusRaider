@@ -23,7 +23,6 @@ WebServer* WebServer::_pThisWebServer = NULL;
 static const char* MODULE_PREFIX = "WebServer";
 
 // #define DEBUG_WEBSOCKETS
-// #define DEBUG_ADD_HANDLERS
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -163,26 +162,6 @@ void WebServer::setupEndpoints()
         delete pHandler;
 }
 
-bool WebServer::restAPIMatchEndpoint(const char* url, RdWebServerMethod method,
-                    RdWebServerRestEndpoint& endpoint)
-{
-    // Check valid
-    if (!getRestAPIEndpoints())
-        return false;
-
-    // Rest API match
-    RestAPIEndpointDef::EndpointMethod restAPIMethod = convWebToRESTAPIMethod(method);
-    RestAPIEndpointDef* pEndpointDef = getRestAPIEndpoints()->getMatchingEndpointDef(url, restAPIMethod);
-    if (pEndpointDef)
-    {
-        endpoint.restApiFn = pEndpointDef->_callback;
-        endpoint.restApiFnBody = pEndpointDef->_callbackBody;
-        endpoint.restApiFnUpload = pEndpointDef->_callbackUpload;
-        return true;
-    }
-    return false;
-}
-
 void WebServer::addProtocolEndpoints(ProtocolEndpointManager& endpointManager)
 {
 }
@@ -219,11 +198,11 @@ void WebServer::serveStaticFiles(const char* baseUrl, const char* baseFolder, co
 // Async Events
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void WebServer::enableAsyncEvents(const String& eventsURL)
+void WebServer::enableServerSideEvents(const String& eventsURL)
 {
 }
 
-void WebServer::sendAsyncEvent(const char* eventContent, const char* eventGroup)
+void WebServer::sendServerSideEvent(const char* eventContent, const char* eventGroup)
 {
 }
 
@@ -295,3 +274,27 @@ bool WebServer::webSocketCanSend(uint32_t channelID)
     return _rdWebServer.webSocketCanSend(channelID);
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Callback used to match endpoints
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool WebServer::restAPIMatchEndpoint(const char* url, RdWebServerMethod method,
+                    RdWebServerRestEndpoint& endpoint)
+{
+    // Check valid
+    if (!getRestAPIEndpoints())
+        return false;
+
+    // Rest API match
+    RestAPIEndpointDef::EndpointMethod restAPIMethod = convWebToRESTAPIMethod(method);
+    RestAPIEndpointDef* pEndpointDef = getRestAPIEndpoints()->getMatchingEndpointDef(url, restAPIMethod);
+    if (pEndpointDef)
+    {
+        endpoint.restApiFn = pEndpointDef->_callbackMain;
+        endpoint.restApiFnBody = pEndpointDef->_callbackBody;
+        endpoint.restApiFnChunk = pEndpointDef->_callbackChunk;
+        endpoint.restApiFnIsReady = pEndpointDef->_callbackIsReady;
+        return true;
+    }
+    return false;
+}

@@ -2,6 +2,7 @@ idf_component_register(
                 SRCS 
                   "RestAPIEndpoints/RestAPIEndpointManager.cpp"
                   "ProtocolEndpoints/ProtocolEndpointManager.cpp"
+                  "ProtocolEndpoints/ProtocolEndpointDef.cpp"
                   "ProtocolEndpointMsg/ProtocolEndpointMsg.cpp"
                   "ProtocolRawMsg/ProtocolRawMsg.cpp"
                   "ProtocolBase/ProtocolBase.cpp"
@@ -10,7 +11,11 @@ idf_component_register(
                   "RICRESTMsg/RICRESTMsg.cpp"
                   "ProtocolRICSerial/ProtocolRICSerial.cpp"
                   "ProtocolRICFrame/ProtocolRICFrame.cpp"
+                  "ProtocolRICJSON/ProtocolRICJSON.cpp"
                   "ProtocolOverAscii/ProtocolOverAscii.cpp"
+                  "ProtocolFileStream/ProtocolFileStream.cpp"
+                  "ProtocolExchange/ProtocolExchange.cpp"
+                  "ProtocolExchange/FileStreamSession.cpp"
                 INCLUDE_DIRS
                   "RestAPIEndpoints"
                   "ProtocolEndpoints"
@@ -21,7 +26,10 @@ idf_component_register(
                   "RICRESTMsg"
                   "ProtocolRICSerial"
                   "ProtocolRICFrame"
+                  "ProtocolRICJSON"
                   "ProtocolOverAscii"
+                  "ProtocolFileStream"
+                  "ProtocolExchange"
                 REQUIRES
                   core
                   system

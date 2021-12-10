@@ -69,7 +69,7 @@ void NetworkManager::service()
     {
         // Inform hooks of status change
         if (_pNetworkManager)
-            _pNetworkManager->executeStatusChangeCBs();
+            _pNetworkManager->executeStatusChangeCBs(connState == NetworkSystem::ConnStateCode::CONN_STATE_WIFI_AND_IP);
         _prevConnState = connState;
     }
 }
@@ -99,18 +99,16 @@ String NetworkManager::getStatusJSON()
 // Debug
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-String NetworkManager::getDebugStr()
+String NetworkManager::getDebugJSON()
 {
+    String debugStr;
     if (networkSystem.isWiFiStaConnectedWithIP())
-    {
-        // TODO - show hostname
-        return "SSID " + networkSystem.getSSID() + " IP " + networkSystem.getWiFiIPV4AddrStr();
-    }
-    else if (networkSystem.isPaused() && (!networkSystem.getSSID().equals("")))
-    {
-        return "WiFi Paused";
-    }
-    return "No WiFi";
+        debugStr += R"({"s":"conn","SSID":")" + networkSystem.getSSID() + R"(","IP":")" + networkSystem.getWiFiIPV4AddrStr() + R"("})";
+    else if (networkSystem.isPaused())
+        debugStr += R"({"s":"paused"})";
+    else
+        debugStr += R"({"s":"none"})";
+    return debugStr;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -120,23 +118,23 @@ String NetworkManager::getDebugStr()
 void NetworkManager::addRestAPIEndpoints(RestAPIEndpointManager &endpointManager)
 {
     endpointManager.addEndpoint("w", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET,
-                          std::bind(&NetworkManager::apiWifiSet, this, std::placeholders::_1, std::placeholders::_2),
+                          std::bind(&NetworkManager::apiWifiSet, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
                           "Setup WiFi SSID/password/hostname");
     endpointManager.addEndpoint("wc", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET,
-                          std::bind(&NetworkManager::apiWifiClear, this, std::placeholders::_1, std::placeholders::_2),
+                          std::bind(&NetworkManager::apiWifiClear, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
                           "Clear WiFi settings");
     // endpointManager.addEndpoint("wax", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET,
-    //                       std::bind(&NetworkManager::apiWifiExtAntenna, this, std::placeholders::_1, std::placeholders::_2),
+    //                       std::bind(&NetworkManager::apiWifiExtAntenna, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
     //                       "Set external WiFi Antenna");
     // endpointManager.addEndpoint("wai", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET,
-    //                       std::bind(&NetworkManager::apiWifiIntAntenna, this, std::placeholders::_1, std::placeholders::_2),
+    //                       std::bind(&NetworkManager::apiWifiIntAntenna, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
     //                       "Set internal WiFi Antenna");
     endpointManager.addEndpoint("wifipause", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET, 
-            std::bind(&NetworkManager::apiWiFiPause, this, std::placeholders::_1, std::placeholders::_2), 
+            std::bind(&NetworkManager::apiWiFiPause, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), 
             "WiFi pause, wifipause/pause, wifipause/resume");
 }
 
-void NetworkManager::apiWifiSet(const String &reqStr, String &respStr)
+void NetworkManager::apiWifiSet(const String &reqStr, String &respStr, const APISourceInfo& sourceInfo)
 {
     // LOG_I(MODULE_PREFIX, "apiWifiSet incoming %s", reqStr.c_str());
 
@@ -164,7 +162,7 @@ void NetworkManager::apiWifiSet(const String &reqStr, String &respStr)
     Utils::setJsonBoolResult(reqStr.c_str(), respStr, rslt);
 }
 
-void NetworkManager::apiWifiClear(const String &reqStr, String &respStr)
+void NetworkManager::apiWifiClear(const String &reqStr, String &respStr, const APISourceInfo& sourceInfo)
 {
     // See if system restart required
     String sysRestartStr = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
@@ -179,7 +177,7 @@ void NetworkManager::apiWifiClear(const String &reqStr, String &respStr)
     // Response
     if (err == ESP_OK)
     {
-        Utils::setJsonResult(reqStr.c_str(), respStr, true, nullptr, R"("norestart":1)");
+        Utils::setJsonResult(reqStr.c_str(), respStr, true, nullptr, sysRestart ? R"("norestart":1)" : R"("norestart":0)");
 
         // Request a system restart
         if (sysRestart && getSysManager())
@@ -205,7 +203,7 @@ void NetworkManager::apiWifiClear(const String &reqStr, String &respStr)
 // Control WiFi pause on BLE connection
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void NetworkManager::apiWiFiPause(const String &reqStr, String& respStr)
+void NetworkManager::apiWiFiPause(const String &reqStr, String& respStr, const APISourceInfo& sourceInfo)
 {
     // Get pause arg
     String arg = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1, false);

@@ -15,10 +15,11 @@
 #include "string.h"
 
 #define WARN_ON_HDLC_FRAME_TOO_LONG
-//#define DEBUG_HDLC
-//#define DEBUG_HDLC_CRC
+// #define DEBUG_HDLC
+// #define DEBUG_HDLC_CRC
+// #define DEBUG_HDLC_DETAIL
 
-#if defined(DEBUG_HDLC) || defined(DEBUG_HDLC_CRC) || defined(WARN_ON_HDLC_FRAME_TOO_LONG)
+#if defined(DEBUG_HDLC) || defined(DEBUG_HDLC_CRC) || defined(DEBUG_HDLC_DETAIL) || defined(WARN_ON_HDLC_FRAME_TOO_LONG)
 #include <Logger.h>
 static const char* MODULE_PREFIX = "MiniHDLC";
 #endif
@@ -163,6 +164,9 @@ void MiniHDLC::handleChar(uint8_t ch)
     // Check boundary
     if (ch == _frameBoundaryOctet) 
     {
+#ifdef DEBUG_HDLC_DETAIL
+        LOG_I(MODULE_PREFIX, "handleChar frameBoundary pos %d crc %d", _framePos, _frameCRC);
+#endif
         if (_framePos >= 2)
         {
             // Valid frame ?
@@ -233,10 +237,16 @@ void MiniHDLC::handleChar(uint8_t ch)
     {
         _inEscapeSeq = false;
         ch ^= INVERT_OCTET;
+#ifdef DEBUG_HDLC_DETAIL
+        LOG_I(MODULE_PREFIX, "handleChar ch inverted %02x pos %d crc %d", ch, _framePos, _frameCRC);
+#endif
     }
     else if (ch == _controlEscapeOctet)
     {
         _inEscapeSeq = true;
+#ifdef DEBUG_HDLC_DETAIL
+        LOG_I(MODULE_PREFIX, "handleChar escape code pos %d crc %d", _framePos, _frameCRC);
+#endif
         return;
     }
 
@@ -273,6 +283,10 @@ void MiniHDLC::handleChar(uint8_t ch)
 
     // Store char
     _rxBuffer.setAt(_framePos, ch);
+
+#ifdef DEBUG_HDLC_DETAIL
+    LOG_I(MODULE_PREFIX, "handleChar ch %02x pos %d crc %d", ch, _framePos, _frameCRC);
+#endif
 
     // Update checksum if needed
     if (_framePos >= 2) 

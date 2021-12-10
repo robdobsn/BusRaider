@@ -21,9 +21,6 @@ static const uint32_t RICREST_BODY_PAYLOAD_POS = 9;
 static const uint32_t RICREST_COMMAND_FRAME_PAYLOAD_POS = 1;
 static const uint32_t RICREST_FILEBLOCK_FILE_POS = 1;
 static const uint32_t RICREST_FILEBLOCK_PAYLOAD_POS = 5;
-static const uint32_t RICREST_STREAMBLOCK_ID_POS = 1;
-static const uint32_t RICREST_STREAMBLOCK_STREAM_POS = 2;
-static const uint32_t RICREST_STREAMBLOCK_PAYLOAD_POS = 6;
 
 // TODO - ensure this is long enough for all needs
 static const uint32_t RICREST_MAX_PAYLOAD_LEN = 5000;
@@ -39,16 +36,15 @@ public:
         RICREST_ELEM_CODE_CMDRESPJSON,
         RICREST_ELEM_CODE_BODY,
         RICREST_ELEM_CODE_COMMAND_FRAME,
-        RICREST_ELEM_CODE_FILEBLOCK,
-        RICREST_ELEM_CODE_STREAMBLOCK
+        RICREST_ELEM_CODE_FILEBLOCK
     };
 
     static const uint32_t MAX_REST_BODY_SIZE = 5000;
     RICRESTMsg()
     {
         _RICRESTElemCode = RICREST_ELEM_CODE_URL;
-        _streamId = 0;
         _bufferPos = 0;
+        _streamID = 0;
         _binaryLen = 0;
         _pBinaryData = NULL;
         _totalBytes = 0;
@@ -73,13 +69,13 @@ public:
     {
         return _binaryLen;
     }
-    uint32_t getStreamId() const
-    {
-        return _streamId;
-    }
     uint32_t getBufferPos() const
     {
         return _bufferPos;
+    }
+    uint32_t getstreamID() const
+    {
+        return _streamID;
     }
     uint32_t getTotalBytes() const
     {
@@ -115,9 +111,9 @@ private:
     // Parameters
     String _req;
     String _payloadJson;
-    uint32_t _streamId;
     uint32_t _bufferPos;
     uint32_t _binaryLen;
     uint32_t _totalBytes;
+    uint32_t _streamID;
     const uint8_t* _pBinaryData;
 };

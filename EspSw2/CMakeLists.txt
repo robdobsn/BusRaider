@@ -1,6 +1,6 @@
-# The following lines of boilerplate have to be in your project's CMakeLists
-# in this exact order for cmake to work correctly
-cmake_minimum_required(VERSION 3.5)
+# Ensure CMake supports FetchContent
+cmake_minimum_required(VERSION 3.14)
+include(FetchContent)
 
 set(SUPPORTED_TARGETS esp32)
 
@@ -25,9 +25,48 @@ message(STATUS "Configuring a build system for ${_ric_revision_name}")
 # Clean up helper variables
 unset(_ric_revision_name)
 
+# Fetch the littlefs library
+FetchContent_Declare(
+  esp_littlefs
+  GIT_REPOSITORY https://github.com/joltwallet/esp_littlefs.git
+)
+
+# Fetch the littlefs image build tool
+FetchContent_Declare(
+  mklittlefs
+  GIT_REPOSITORY https://github.com/earlephilhower/mklittlefs.git
+)
+
+# Fetch the RdWebServer library
+FetchContent_Declare(
+  rd_webserver
+  GIT_REPOSITORY https://github.com/robdobsn/RdWebServer
+)
+
+# Fetch Micropython
+# FetchContent_Declare(
+#  micropython_release
+#  GIT_REPOSITORY https://github.com/micropython/Micropython
+#  GIT_TAG        v1.17
+#  # GIT_SUBMODULES "docs"
+#)
+
+# Populate first so we have a folder that we can add in EXTRA_COMPONENT_DIRS
+FetchContent_Populate(esp_littlefs)
+FetchContent_Populate(rd_webserver)
+# message(STATUS "fetching micropython - this can take some time, please wait ...")
+# FetchContent_Populate(micropython_release)
+# message(STATUS "micropython_source folder " ${micropython_release_SOURCE_DIR})
+# set(MICROPYTHON_SOURCE_DIR ${micropython_release_SOURCE_DIR})
+message(STATUS "esp_littlefs folder " ${esp_littlefs_SOURCE_DIR})
+set(EXTRA_COMPONENT_DIRS ${esp_littlefs_SOURCE_DIR} ${rd_webserver_SOURCE_DIR})
+FetchContent_MakeAvailable(esp_littlefs mklittlefs rd_webserver)
+
 # Configure ESP-IDF project
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(BusRaider)
+
+# Define the project name
+project(BusRaider DEPENDS esp_littlefs rd_webserver micropython_release)
 
 # Update compile_commands.json for VS Code
 

@@ -8,7 +8,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <Logger.h>
-#include <RdPreferences.h>
+#include <ArPreferences.h>
 #include <ConfigNVS.h>
 
 // Logging
@@ -17,13 +17,17 @@ static const char* MODULE_PREFIX = "ConfigNVS";
 // Debug
 // #define DEBUG_NVS_CONFIG_READ_WRITE
 // #define DEBUG_NVS_CONFIG_GETS
+// #define DEBUG_NVS_CONFIG_DETAIL
 
-ConfigNVS::ConfigNVS(const char *configNamespace, int configMaxlen, bool cacheConfig) :
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Constructor / Destructor
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+ConfigNVS::ConfigNVS(const char *configNamespace, int configMaxlen) :
     ConfigBase(configMaxlen)
 {
     _configNamespace = configNamespace;
-    _pPreferences = new RdPreferences();
-    _cacheConfig = cacheConfig;
+    _pPreferences = new ArPreferences();
     _nonVolatileStoreEmpty = true;
     _pStaticConfig = NULL;
     _callsToGetNVStr = 0;
@@ -36,7 +40,10 @@ ConfigNVS::~ConfigNVS()
         delete _pPreferences;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Clear
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void ConfigNVS::clear()
 {
     // Setup preferences
@@ -62,7 +69,10 @@ void ConfigNVS::clear()
     _nonVolatileStoreEmpty = true;
 }
 
-// Initialise
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Setup
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 bool ConfigNVS::setup()
 {
     // Setup base class
@@ -72,12 +82,10 @@ bool ConfigNVS::setup()
     // LOG_D(MODULE_PREFIX "Config %s ...", _configNamespace.c_str());
 
     // Get string from non-volatile storage
-    String configStr;
-    getNVConfigStr(configStr);
+    String configStr = getNVConfigStr();
 
-    // Check if config string to be cached in config base class
-    if (_cacheConfig)
-        _setConfigData(configStr.c_str());
+    // Store value in config base class
+    _setConfigData(configStr.c_str());
 
     // Check if we should use this config info in favour of
     // static pointer
@@ -87,7 +95,10 @@ bool ConfigNVS::setup()
     return true;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Write configuration string
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 bool ConfigNVS::writeConfig(const String& configJSONStr)
 {
     // Check length of string
@@ -97,9 +108,8 @@ bool ConfigNVS::writeConfig(const String& configJSONStr)
         return false;
     }
 
-    // Set config data if cached
-    if (_cacheConfig)
-        _setConfigData(configJSONStr.c_str());
+    // Set config data
+    _setConfigData(configJSONStr.c_str());
 
     // Check if non-volatile data is valid
     _nonVolatileStoreEmpty = (configJSONStr.length() <= 2);
@@ -145,6 +155,10 @@ bool ConfigNVS::writeConfig(const String& configJSONStr)
     return true;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// registerChangeCallback
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void ConfigNVS::registerChangeCallback(ConfigChangeCallbackType configChangeCallback)
 {
     // Save callback if required
@@ -154,20 +168,24 @@ void ConfigNVS::registerChangeCallback(ConfigChangeCallbackType configChangeCall
     }
 }
 
-void ConfigNVS::getNVConfigStr(String& confStr) const
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// getNVConfigStr
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+String ConfigNVS::getNVConfigStr() const
 {
     if (!_pPreferences)
-        return;
+        return "";
 
     // Handle preferences bracketing - open read-only
     _pPreferences->begin(_configNamespace.c_str(), true);
 
     // Get config string
-    confStr = _pPreferences->getString("JSON", "{}");
+    String confStr = _pPreferences->getString("JSON", "{}");
 
 #ifdef DEBUG_NVS_CONFIG_READ_WRITE
     // Debug
-    LOG_W(MODULE_PREFIX, "Config %s read: len(%d) %s maxlen %d", 
+    LOG_W(MODULE_PREFIX, "getNVConfigStr %s read: len(%d) %s maxlen %d", 
                 _configNamespace.c_str(), confStr.length(), 
                 confStr.c_str(), ConfigBase::getMaxLen());
 #endif
@@ -182,4 +200,79 @@ void ConfigNVS::getNVConfigStr(String& confStr) const
     LOG_I(MODULE_PREFIX, "getNVConfigStr count %d", _callsToGetNVStr);
 #endif
 
+    return confStr;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// getString
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+String ConfigNVS::getString(const char *dataPath, const char *defaultValue) const
+{
+    // Check source
+    if (_helperContains(dataPath, _dataStrJSON.c_str()))
+        return ConfigBase::getString(dataPath, defaultValue);
+    if (_pStaticConfig)
+        return _helperGetString(dataPath, defaultValue, _pStaticConfig);
+    return defaultValue;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// getString
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+long ConfigNVS::getLong(const char *dataPath, long defaultValue) const
+{
+    // Check source
+    if (_helperContains(dataPath, _dataStrJSON.c_str()))
+    {
+        long retVal = ConfigBase::getLong(dataPath, defaultValue);
+#ifdef DEBUG_NVS_CONFIG_DETAIL
+        LOG_I(MODULE_PREFIX, "getLong nvs contains %s retVal %ld", dataPath, retVal);
+#endif
+        return retVal;
+    }
+    if (_pStaticConfig)
+    {
+        long retVal = _helperGetLong(dataPath, defaultValue, _pStaticConfig);
+#ifdef DEBUG_NVS_CONFIG_DETAIL
+        LOG_I(MODULE_PREFIX, "getLong not in nvs .. from static %s retVal %ld", dataPath, retVal);
+#endif
+        return retVal;
+    }
+#ifdef DEBUG_NVS_CONFIG_DETAIL
+    LOG_I(MODULE_PREFIX, "getLong default val ret for %s", dataPath);
+#endif
+    return defaultValue;
+}
+
+// Get double
+double ConfigNVS::getDouble(const char *dataPath, double defaultValue) const
+{
+    // Check source
+    if (_helperContains(dataPath, _dataStrJSON.c_str()))
+        return ConfigBase::getDouble(dataPath, defaultValue);
+    if (_pStaticConfig)
+        return _helperGetDouble(dataPath, defaultValue, _pStaticConfig);
+    return defaultValue;
+}
+
+bool ConfigNVS::getArrayElems(const char *dataPath, std::vector<String>& strList) const
+{
+    // Check source
+    if (_helperContains(dataPath, _dataStrJSON.c_str()))
+        return ConfigBase::getArrayElems(dataPath, strList);
+    if (_pStaticConfig)
+        return _helperGetArrayElems(dataPath, strList, _pStaticConfig);
+    return false;
+}
+
+bool ConfigNVS::contains(const char *dataPath) const
+{
+    // Check source
+    if (_helperContains(dataPath, _dataStrJSON.c_str()))
+        return true;
+    if (_pStaticConfig)
+        return _helperContains(dataPath, _pStaticConfig);
+    return false;
 }

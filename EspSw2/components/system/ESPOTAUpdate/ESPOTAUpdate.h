@@ -13,9 +13,10 @@
 #include <ConfigBase.h>
 #include <SysModBase.h>
 #include "esp_ota_ops.h"
-#include "FileBlockInfo.h"
+#include "FileStreamBlock.h"
 
 class RestAPIEndpointManager;
+class APISourceInfo;
 
 class ESPOTAUpdate : public SysModBase
 {
@@ -28,20 +29,13 @@ public:
         return _otaDirectInProgress;
     }
 
-    // Is this a firmware update module SysMod
-    virtual bool isFirmwareUpdateModule()
-    {
-        return true;
-    }
-
-    // Firmware update method
-    virtual bool firmwareUpdateStart(const char* fileName, size_t fileLen) override final;
-    virtual bool firmwareUpdateBlock(uint32_t filePos, const uint8_t *pBlock, size_t blockLen) override final;
-    virtual bool firmwareUpdateEnd() override final;
-    virtual bool firmwareUpdateCancel() override final;
+    // Start/Data/Cancel methods
+    virtual bool fileStreamStart(const char* fileName, size_t fileLen) override final;
+    virtual bool fileStreamDataBlock(FileStreamBlock& fileStreamBlock) override final;
+    virtual bool fileStreamCancelEnd(bool isNormalEnd) override final;
 
     // Get debug string
-    virtual String getDebugStr() override final;
+    virtual String getDebugJSON() override final;
 
 protected:
     // Setup
@@ -73,16 +67,18 @@ private:
     uint64_t _fwUpdateWriteTimeUs;
     uint32_t _fwUpdateBytes;
     float _fwUpdateLastRate;
+    uint16_t _blockSizeLast;
 
 private:
     // Handle received data
     void onDataReceived(uint8_t *pDataReceived, size_t dataReceivedLen);
 
     // API ESP Firmware update
-    void apiESPFirmwarePart(const String& req, FileBlockInfo& fileBlockInfo);
-    void apiESPFirmwareUpdateDone(const String &reqStr, String &respStr);
+    void apiESPFirmwarePart(const String& req, FileStreamBlock& fileStreamBlock, const APISourceInfo& sourceInfo);
+    void apiESPFirmwareUpdateDone(const String &reqStr, String &respStr, const APISourceInfo& sourceInfo);
 
     // Direct firmware update
-    virtual void fwUpdateAPIPart(FileBlockInfo& fileBlockInfo);
+    virtual void fwUpdateAPIPart(FileStreamBlock& fileStreamBlock);
     void fwUpdateAPIFinal();
+    bool firmwareUpdateEnd();
 };

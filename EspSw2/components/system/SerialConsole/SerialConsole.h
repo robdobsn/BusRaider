@@ -51,6 +51,9 @@ protected:
     // Add protocol endpoints
     virtual void addProtocolEndpoints(ProtocolEndpointManager &endpointManager) override final;
 
+    // Handle JSON command
+    virtual void receiveCmdJSON(const char* cmdJSON) override final;
+
 public:
     // XON/XOFF hadnling
     static constexpr char ASCII_XOFF = 0x13;
@@ -74,6 +77,10 @@ private:
     int _uartNum;
     int _baudRate;
 
+    // Buffer sizes
+    uint32_t _rxBufferSize;
+    uint32_t _txBufferSize;
+
     // Procotol
     String _protocol;
 
@@ -95,9 +102,9 @@ private:
 
     // Protocol message handling
     static const uint32_t INBOUND_BLOCK_MAX_DEFAULT = 5000;
-    static const uint32_t INBOUND_QUEUE_MAX_DEFAULT = 2;
+    static const uint32_t INBOUND_QUEUE_MAX_DEFAULT = 20;
     static const uint32_t OUTBOUND_BLOCK_MAX_DEFAULT = 5000;
-    static const uint32_t OUTBOUND_QUEUE_MAX_DEFAULT = 2;    
+    static const uint32_t OUTBOUND_QUEUE_MAX_DEFAULT = 5;    
 
     // ProtocolOverAscii to handle comms through this serial port with MSB set
     static const uint32_t PROTOCOL_OVER_ASCII_MSG_MAX_LEN = 1000;

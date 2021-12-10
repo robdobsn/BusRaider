@@ -11,6 +11,8 @@
 #include <ExpressionEval.h>
 #include <Logger.h>
 
+// #define DEBUG_EXPRESSIONS
+
 static const char* MODULE_PREFIX = "ExprUnitTest";
 
 ExpressionEval evaluator;
@@ -45,6 +47,7 @@ static const char* initJSON =
         R"("DIR_BACK":1,)"
         R"("DIR_LEFT":0,)"
         R"("DIR_LEFT":0,)"
+        R"("$persistentVar1":1073,)"
         R"("moveTime":1500,)"
         R"("leanAmount":30,)"
         R"("stepLength":50)"
@@ -68,6 +71,17 @@ TEST_CASE("Expression test 1", "[expressions]")
         { "maxAngle", 180 },
         { "moveTimeMin", 400 },
         { "moveTime", 1500 },
+        { "hipAngleMax", 35 },
+        { "stepLengthMax", 100 },
+        { "leanMultMax", 1 },
+        { "leftHip", 0 },
+        { "leftKnee", 2 },
+        { "DIR_BACK", 1 },
+        { "DIR_LEFT", 0 },
+        { "DIR_LEFT", 0 },
+        { "leanAmount", 30 },
+        { "stepLength", 50 },
+        { "$persistentVar1", 1073 }
         };
     for (int testIdx = 0; testIdx < sizeof(initialVarAssertions)/sizeof(initialVarAssertions[0]); testIdx++)
     {
@@ -76,9 +90,9 @@ TEST_CASE("Expression test 1", "[expressions]")
                         initialVarAssertions[testIdx].expVal), tokStartStr.c_str());
     }
 
-    // Add expressions
+    // Add expression
     uint32_t errorLine = 0;
-    evaluator.addExpressions("a = max(moveTimeMin, moveTime) * 2", errorLine);
+    evaluator.addExpressions("a = max(moveTimeMin, moveTime) * 2\nnewVar=$persistentVar1 + 17", errorLine);
     evaluator.evalStatements("{}");
     TestElem finalVarAssertions [] = {
         { "minAngle", -180 },
@@ -86,6 +100,18 @@ TEST_CASE("Expression test 1", "[expressions]")
         { "moveTimeMin", 400 },
         { "moveTime", 1500 },
         { "a", 3000 },
+        { "hipAngleMax", 35 },
+        { "stepLengthMax", 100 },
+        { "leanMultMax", 1 },
+        { "leftHip", 0 },
+        { "leftKnee", 2 },
+        { "DIR_BACK", 1 },
+        { "DIR_LEFT", 0 },
+        { "DIR_LEFT", 0 },
+        { "leanAmount", 30 },
+        { "stepLength", 50 },
+        { "$persistentVar1", 1073 },
+        { "newVar", 1073 + 17 }
     };
     for (int testIdx = 0; testIdx < sizeof(finalVarAssertions)/sizeof(finalVarAssertions[0]); testIdx++)
     {
@@ -93,55 +119,8 @@ TEST_CASE("Expression test 1", "[expressions]")
         TEST_ASSERT_MESSAGE(true == checkVal(evaluator, finalVarAssertions[testIdx].varName, 
                         finalVarAssertions[testIdx].expVal), tokStartStr.c_str());
     }
+
 }
-
-
-// R"({)"
-// 	R"("joints": {)"
-// 		R"("leftHip": [{)"
-// 				R"("time": 0.375,)"
-// 				R"("angle": "$NO_MOVE")"
-// 			R"(},)"
-// 			R"({)"
-// 				R"("time": 0.25,)"
-// 				R"("angle": "$stepLength * $maxHipAngle * $DIR_BACK")"
-// 			R"(},)"
-// 			R"({)"
-// 				R"("time": 0.375,)"
-// 				R"("angle": "$NO_MOVE")"
-// 			R"(})"
-// 		R"(],)"
-// 		R"("leftKnee": [{)"
-// 			R"("time": 0.25,)"
-// 			R"("angle": "$leanAmount * $leanMult * $DIR_LEFT")"
-// 		R"(}])"
-// 	R"(},)"
-// 	R"("variables": {)"
-// 		R"("maxHipAngle": {)"
-// 			R"("value": 35)"
-// 		R"(},)"
-// 		R"("leanAmount": {)"
-// 			R"("value": 30)"
-// 		R"(},)"
-// 		R"("leanMult": {)"
-// 			R"("value": "$moveTime * 0.001",)"
-// 			R"("max": 1)"
-// 		R"(},)"
-// 		R"("moveTime": {)"
-// 			R"("default": 1500,)"
-// 			R"("min": 400)"
-// 		R"(})"
-// 	R"(},)"
-// 	R"("sounds": [{)"
-// 			R"("time": 0.25,)"
-// 			R"("file": "mySound")"
-// 		R"(},)"
-// 		R"({)"
-// 			R"("time": 0.75,)"
-// 			R"("file": "anotherSound")"
-// 		R"(})"
-// 	R"(])"
-// R"(})"
 
 static const char* initJSON2 =
     R"({)"
@@ -176,7 +155,9 @@ playsound(0.75, "anotherSound")
 
 static double testServoPos(double a, double b, double c)
 {
+#ifdef DEBUG_EXPRESSIONS
     LOG_I(MODULE_PREFIX, "testServoPos %f %f %f", a, b, c);
+#endif
     return c;
 }
 
@@ -184,7 +165,9 @@ static double testPlaySound(double a, double b)
 {
     // Get string constant
     String strConst = evaluator.getStringConst(b);
+#ifdef DEBUG_EXPRESSIONS
     LOG_I(MODULE_PREFIX, "testPlaySound %f %s (idx %d)", a, strConst.c_str(), int(b));
+#endif
     return 0;
 }
 
@@ -193,9 +176,10 @@ TEST_CASE("Expression test 2", "[expressions]")
     // Set values
     evaluator.clear();
     evaluator.addVariables(initJSON2, false);
-    uint32_t numVars, numFuncs;
-    evaluator.getNumVarsAndFuncs(numVars, numFuncs);
-    TEST_ASSERT_MESSAGE(numVars == 11, "Incorrect number of vars");
+    uint32_t numLocalVars, numGlobalVars, numFuncs;
+    evaluator.getNumVarsAndFuncs(numLocalVars, numGlobalVars, numFuncs);
+    // LOG_I(MODULE_PREFIX, "numLocalVars %d numGlobalVars %d numFuncs %d", numLocalVars, numGlobalVars, numFuncs);
+    TEST_ASSERT_MESSAGE(numLocalVars == 11, "Incorrect number of local vars");
 
     // Debug
     // evaluator.debugLogVars();
@@ -307,9 +291,10 @@ TEST_CASE("Expression test 3", "[expressions]")
     // Set values
     evaluator.clear();
     evaluator.addVariables(initJSON3, false);
-    uint32_t numVars, numFuncs;
-    evaluator.getNumVarsAndFuncs(numVars, numFuncs);
-    TEST_ASSERT_MESSAGE(numVars == 0, "Incorrect number of vars");
+    uint32_t numLocalVars, numGlobalVars, numFuncs;
+    evaluator.getNumVarsAndFuncs(numLocalVars, numGlobalVars, numFuncs);
+    TEST_ASSERT_MESSAGE(numLocalVars == 0, "Incorrect number of local vars");
+    TEST_ASSERT_MESSAGE(numGlobalVars == 1, "Incorrect number of global vars");
 
     // Debug
     // evaluator.debugLogVars();
@@ -338,8 +323,77 @@ TEST_CASE("Expression test 3", "[expressions]")
     };
     for (int testIdx = 0; testIdx < sizeof(varAssertions)/sizeof(varAssertions[0]); testIdx++)
     {
-        String tokStartStr = "testExpressions finalTestIdx=" + String(testIdx);
+        String tokStartStr = "testExpressions3 finalTestIdx=" + String(testIdx);
         TEST_ASSERT_MESSAGE(checkVal(evaluator, varAssertions[testIdx].varName, 
                         varAssertions[testIdx].expVal), tokStartStr.c_str());
     }
+}
+
+static const char* testTraj4 =
+R"(
+    isDefined1 = defined($persistentVar1)
+    isDefined2 = defined($persistentVar2)
+    if: isDefined1
+      $persistentVar1 = $persistentVar1 + 1
+    else:
+      $persistentVar1 = 123
+    end:
+    if: isDefined2
+      $persistentVar2 = $persistentVar2 + 1
+    else:
+      $persistentVar2 = 12
+    end:
+    notANumber = nan
+)"
+;
+
+TEST_CASE("Expression test 4", "[expressions]")
+{
+    // Set values
+    evaluator.clear();
+    evaluator.addVariables(initJSON2, false);
+    uint32_t numLocalVars, numGlobalVars, numFuncs;
+    evaluator.getNumVarsAndFuncs(numLocalVars, numGlobalVars, numFuncs);
+    // LOG_I(MODULE_PREFIX, "numLocalVars %d numGlobalVars %d numFuncs %d", numLocalVars, numGlobalVars, numFuncs);
+    TEST_ASSERT_MESSAGE(numLocalVars == 11, "Incorrect number of local vars");
+    TEST_ASSERT_MESSAGE(numGlobalVars == 1, "Incorrect number of global vars");
+
+    // Add expressions
+    uint32_t errorLine = 0;
+    TEST_ASSERT_MESSAGE(evaluator.addExpressions(testTraj4, errorLine), "Add Expressions Failed");
+
+    // Eval
+    evaluator.evalStatements("");
+
+    // Check values
+    struct TestElem
+    {
+        const char* varName;
+        double expVal;
+    };
+    TestElem varAssertions [] = {
+        { "isDefined1", 1 },
+        { "isDefined2", 0 },
+        { "$persistentVar1", 1074 },
+        { "$persistentVar2", 12 }
+    };
+    for (int testIdx = 0; testIdx < sizeof(varAssertions)/sizeof(varAssertions[0]); testIdx++)
+    {
+        String tokStartStr = "testExpressions4 finalTestIdx=" + String(testIdx);
+        TEST_ASSERT_MESSAGE(checkVal(evaluator, varAssertions[testIdx].varName, 
+                        varAssertions[testIdx].expVal), tokStartStr.c_str());
+    }
+
+    // Check NAN
+    bool isValid = false;
+    double val = evaluator.getVal("notANumber", isValid);
+    TEST_ASSERT_MESSAGE(isValid, "notANumber is not valid");
+    TEST_ASSERT_MESSAGE(isnan(val), "notANumber is not NAN");
+
+    // Check local and global vars
+    evaluator.getNumVarsAndFuncs(numLocalVars, numGlobalVars, numFuncs);
+    // LOG_I(MODULE_PREFIX, "numLocalVars %d numGlobalVars %d numFuncs %d", numLocalVars, numGlobalVars, numFuncs);
+    TEST_ASSERT_MESSAGE(numLocalVars == 14, "Incorrect number of local vars");
+    TEST_ASSERT_MESSAGE(numGlobalVars == 2, "Incorrect number of global vars");
+
 }

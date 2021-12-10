@@ -22,7 +22,7 @@ public:
         for (uint32_t pos = 0; pos < payloadLen / ROS_ADDON_GROUP_BYTES; pos++)
         {
             // Check IDNo
-            uint8_t* pBlock = pPayload+pos;
+            uint8_t* pBlock = pPayload+(pos * ROS_ADDON_GROUP_BYTES);
             if (pBlock[ROS_ADDON_IDNO_POS] == elemIDNo)
             {
                 // Extract data

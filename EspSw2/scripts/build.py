@@ -12,7 +12,7 @@ logging.basicConfig(format="[%(asctime)s] %(levelname)s:%(name)s: %(message)s",
 _log = logging.getLogger(__name__ if __name__ != '__main__' else Path(__file__).name)
 
 CONFIG_DIRS_PATH = "buildConfigs"
-REPO_ROOT = Path(__file__).parent.resolve().parent.resolve()
+REPO_ROOT = Path(__file__).resolve().parent.parent
 BUILD_CONFIGS_DIR = REPO_ROOT / CONFIG_DIRS_PATH
 
 
@@ -38,10 +38,12 @@ def parse_args():
 
 def get_all_config_dirs():
     unwanted_paths = ["",".",".."]
+    common_folder = "Common"
     return [cnf_dir for cnf_dir in BUILD_CONFIGS_DIR.glob("*")
             if os.path.isdir(cnf_dir)
             and cnf_dir not in unwanted_paths
-            and not cnf_dir.name.startswith('.')]
+            and not cnf_dir.name.startswith('.')
+            and not cnf_dir.name.endswith(common_folder)]
 
 def run_idf_for_config(config_dir: Path, action: str = 'build',
                        extra_idf_options: Optional[list] = None):

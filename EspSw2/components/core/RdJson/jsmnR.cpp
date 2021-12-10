@@ -13,7 +13,12 @@
 #include "jsmnR.h"
 
 static const char *MODULE_PREFIX = "jsmnR";
-// #define WARN_ON_ERROR_INVAL
+
+// Warn
+#define WARN_ON_ERROR_INVAL
+
+// Debug
+// #define DEBUG_ON_ERROR_INVAL_DETAIL
 
 /**
  * Allocates a fresh unused token from the token pull.
@@ -81,7 +86,15 @@ static int jsmn_parse_primitive(jsmn_parser *parser, const char *js,
 		if (js[parser->pos] < 32 || js[parser->pos] >= 127)
 		{
 #ifdef WARN_ON_ERROR_INVAL
-			LOG_W(MODULE_PREFIX, "JSMN_ERROR_INVAL ch bounds %d pos %d", js[parser->pos], parser->pos);
+			LOG_W(MODULE_PREFIX, "JSMN_ERROR_INVAL ch bounds %d pos %d"
+#ifdef DEBUG_ON_ERROR_INVAL_DETAIL
+						" in %s"
+#endif
+						, js[parser->pos], parser->pos
+#ifdef DEBUG_ON_ERROR_INVAL_DETAIL
+						, js
+#endif
+						);
 #endif
 			parser->pos = start;
 			return JSMN_ERROR_INVAL;
@@ -177,7 +190,15 @@ static int jsmn_parse_string(jsmn_parser *parser, const char *js,
 						  (js[parser->pos] >= 97 && js[parser->pos] <= 102)))
 					{ // a-f
 #ifdef WARN_ON_ERROR_INVAL
-						LOG_W(MODULE_PREFIX, "JSMN_ERROR_INVAL hex bounds %d pos %d", js[parser->pos], parser->pos);
+						LOG_W(MODULE_PREFIX, "JSMN_ERROR_INVAL escaped char code isn't hex %02x pos %d"
+#ifdef DEBUG_ON_ERROR_INVAL_DETAIL
+						" in %s"
+#endif
+						, js[parser->pos], parser->pos
+#ifdef DEBUG_ON_ERROR_INVAL_DETAIL
+						, js
+#endif
+						);
 #endif
 						parser->pos = start;
 						return JSMN_ERROR_INVAL;
@@ -189,7 +210,15 @@ static int jsmn_parse_string(jsmn_parser *parser, const char *js,
 			// Unexpected symbol
 			default:
 #ifdef WARN_ON_ERROR_INVAL
-				LOG_W(MODULE_PREFIX, "JSMN_ERROR_INVAL Unexpected %d pos %d", js[parser->pos], parser->pos);
+				LOG_W(MODULE_PREFIX, "JSMN_ERROR_INVAL Unexpected %d pos %d"
+#ifdef DEBUG_ON_ERROR_INVAL_DETAIL
+						" in %s"
+#endif
+						, js[parser->pos], parser->pos
+#ifdef DEBUG_ON_ERROR_INVAL_DETAIL
+						, js
+#endif
+						);
 #endif
 				parser->pos = start;
 				return JSMN_ERROR_INVAL;

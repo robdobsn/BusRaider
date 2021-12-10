@@ -1,0 +1,613 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Helvetica;
+    line-height: 1.4em;
+    font-size: 12pt;
+    margin: 0;
+    color: #e0e0e0;
+    background-color: #DFDBE5;
+    /* This pattern is from http://www.heropatterns.com/ */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 304 304' width='304' height='304'%3E%3Cpath fill='%239C92AC' fill-opacity='0.5' d='M44.1 224a5 5 0 1 1 0 2H0v-2h44.1zm160 48a5 5 0 1 1 0 2H82v-2h122.1zm57.8-46a5 5 0 1 1 0-2H304v2h-42.1zm0 16a5 5 0 1 1 0-2H304v2h-42.1zm6.2-114a5 5 0 1 1 0 2h-86.2a5 5 0 1 1 0-2h86.2zm-256-48a5 5 0 1 1 0 2H0v-2h12.1zm185.8 34a5 5 0 1 1 0-2h86.2a5 5 0 1 1 0 2h-86.2zM258 12.1a5 5 0 1 1-2 0V0h2v12.1zm-64 208a5 5 0 1 1-2 0v-54.2a5 5 0 1 1 2 0v54.2zm48-198.2V80h62v2h-64V21.9a5 5 0 1 1 2 0zm16 16V64h46v2h-48V37.9a5 5 0 1 1 2 0zm-128 96V208h16v12.1a5 5 0 1 1-2 0V210h-16v-76.1a5 5 0 1 1 2 0zm-5.9-21.9a5 5 0 1 1 0 2H114v48H85.9a5 5 0 1 1 0-2H112v-48h12.1zm-6.2 130a5 5 0 1 1 0-2H176v-74.1a5 5 0 1 1 2 0V242h-60.1zm-16-64a5 5 0 1 1 0-2H114v48h10.1a5 5 0 1 1 0 2H112v-48h-10.1zM66 284.1a5 5 0 1 1-2 0V274H50v30h-2v-32h18v12.1zM236.1 176a5 5 0 1 1 0 2H226v94h48v32h-2v-30h-48v-98h12.1zm25.8-30a5 5 0 1 1 0-2H274v44.1a5 5 0 1 1-2 0V146h-10.1zm-64 96a5 5 0 1 1 0-2H208v-80h16v-14h-42.1a5 5 0 1 1 0-2H226v18h-16v80h-12.1zm86.2-210a5 5 0 1 1 0 2H272V0h2v32h10.1zM98 101.9V146H53.9a5 5 0 1 1 0-2H96v-42.1a5 5 0 1 1 2 0zM53.9 34a5 5 0 1 1 0-2H80V0h2v34H53.9zm60.1 3.9V66H82v64H69.9a5 5 0 1 1 0-2H80V64h32V37.9a5 5 0 1 1 2 0zM101.9 82a5 5 0 1 1 0-2H128V37.9a5 5 0 1 1 2 0V82h-28.1zm16-64a5 5 0 1 1 0-2H146v44.1a5 5 0 1 1-2 0V18h-26.1zm102.2 270a5 5 0 1 1 0 2H98v14h-2v-16h124.1zM242 149.9V160h16v34h-16v62h48v48h-2v-46h-48v-66h16v-30h-16v-12.1a5 5 0 1 1 2 0zM53.9 18a5 5 0 1 1 0-2H64V2H48V0h18v18H53.9zm112 32a5 5 0 1 1 0-2H192V0h50v2h-48v48h-28.1zm-48-48a5 5 0 0 1-9.8-2h2.07a3 3 0 1 0 5.66 0H178v34h-18V21.9a5 5 0 1 1 2 0V32h14V2h-58.1zm0 96a5 5 0 1 1 0-2H137l32-32h39V21.9a5 5 0 1 1 2 0V66h-40.17l-32 32H117.9zm28.1 90.1a5 5 0 1 1-2 0v-76.51L175.59 80H224V21.9a5 5 0 1 1 2 0V82h-49.59L146 112.41v75.69zm16 32a5 5 0 1 1-2 0v-99.51L184.59 96H300.1a5 5 0 0 1 3.9-3.9v2.07a3 3 0 0 0 0 5.66v2.07a5 5 0 0 1-3.9-3.9H185.41L162 121.41v98.69zm-144-64a5 5 0 1 1-2 0v-3.51l48-48V48h32V0h2v50H66v55.41l-48 48v2.69zM50 53.9v43.51l-48 48V208h26.1a5 5 0 1 1 0 2H0v-65.41l48-48V53.9a5 5 0 1 1 2 0zm-16 16V89.41l-34 34v-2.82l32-32V69.9a5 5 0 1 1 2 0zM12.1 32a5 5 0 1 1 0 2H9.41L0 43.41V40.6L8.59 32h3.51zm265.8 18a5 5 0 1 1 0-2h18.69l7.41-7.41v2.82L297.41 50H277.9zm-16 160a5 5 0 1 1 0-2H288v-71.41l16-16v2.82l-14 14V210h-28.1zm-208 32a5 5 0 1 1 0-2H64v-22.59L40.59 194H21.9a5 5 0 1 1 0-2H41.41L66 216.59V242H53.9zm150.2 14a5 5 0 1 1 0 2H96v-56.6L56.6 162H37.9a5 5 0 1 1 0-2h19.5L98 200.6V256h106.1zm-150.2 2a5 5 0 1 1 0-2H80v-46.59L48.59 178H21.9a5 5 0 1 1 0-2H49.41L82 208.59V258H53.9zM34 39.8v1.61L9.41 66H0v-2h8.59L32 40.59V0h2v39.8zM2 300.1a5 5 0 0 1 3.9 3.9H3.83A3 3 0 0 0 0 302.17V256h18v48h-2v-46H2v42.1zM34 241v63h-2v-62H0v-2h34v1zM17 18H0v-2h16V0h2v18h-1zm273-2h14v2h-16V0h2v16zm-32 273v15h-2v-14h-14v14h-2v-16h18v1zM0 92.1A5.02 5.02 0 0 1 6 97a5 5 0 0 1-6 4.9v-2.07a3 3 0 1 0 0-5.66V92.1zM80 272h2v32h-2v-32zm37.9 32h-2.07a3 3 0 0 0-5.66 0h-2.07a5 5 0 0 1 9.8 0zM5.9 0A5.02 5.02 0 0 1 0 5.9V3.83A3 3 0 0 0 3.83 0H5.9zm294.2 0h2.07A3 3 0 0 0 304 3.83V5.9a5 5 0 0 1-3.9-5.9zm3.9 300.1v2.07a3 3 0 0 0-1.83 1.83h-2.07a5 5 0 0 1 3.9-3.9zM97 100a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0-16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-48 32a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm32 48a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-16 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm32-16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0-32a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16 32a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm32 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0-16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-16-64a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16 96a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16-144a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 32a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16-32a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16-16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-96 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16-32a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm96 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-16-64a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16-16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-32 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0-16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-16 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-16 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-16 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM49 36a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-32 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm32 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM33 68a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16-48a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 240a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16 32a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-16-64a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-16-32a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm80-176a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-16-16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm32 48a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16-16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0-32a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm112 176a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm-16 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM17 180a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 16a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0-32a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM17 84a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm32 64a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm16-16a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'%3E%3C/path%3E%3C/svg%3E");
+}
+
+a {
+    color: #369;
+}
+
+th {
+    text-align: left;
+    font-weight: normal;
+    color: #e0e0e0;
+}
+
+td,
+th {
+    padding: 0;
+    display: table-cell;
+    text-align: left;
+}
+
+table {
+    border-spacing: 0;
+    border-collapse: collapse;
+}
+
+a {
+    text-decoration: none;
+    background-color: transparent;
+    cursor: pointer;
+    color: #e0e0e0;
+}
+
+td>a {
+    color: #337ab7;
+}
+
+.layout-region {
+    border: 2px #ccc;
+    border-radius: 20px;
+    width: 98%;
+    margin: 15px auto;
+    padding: 20px;
+    background: #202020;
+}
+
+.drop-zone {
+    border: 2px dashed #ccc;
+}
+
+.drop-zone.highlight {
+    border: 2px solid #9595de;
+}
+
+p {
+    margin-top: 0;
+}
+
+.file-upload-form {
+    margin-bottom: 10px;
+}
+
+.button {
+    display: inline-block;
+    padding: 5px 10px;
+    background: #444;
+    cursor: pointer;
+    border-radius: 5px;
+    border: 1px solid #666;
+    margin-bottom: 10px;
+}
+
+.button:hover {
+    background: #666;
+}
+
+.btn {
+    display: inline-block;
+    padding: 6px 12px;
+    margin-bottom: 0;
+    font-size: 14px;
+    font-weight: normal;
+    line-height: 1.42857143;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+    touch-action: manipulation;
+    cursor: pointer;
+    user-select: none;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    text-decoration: none;
+}
+
+.btn-fileaction {
+    padding: 0 5px;
+}
+
+.btn-config {
+    padding: 6px 3px 6px 5px;
+    margin-left: 10px;
+    height: 40px;
+    border: none;
+}
+
+.btn-ok {
+    color:white;
+}
+
+.btn-cancel {
+    color:white;
+}
+
+.icon-config {
+    color: #e0e0e0;
+    fill: #e0e0e0;
+    width: 30px;
+    height: 30px;
+    vertical-align: middle;
+}
+
+.icon-action {
+    color: #e0e0e0;
+    fill: #e0e0e0;
+    width: 32px;
+    height: 32px;
+    vertical-align: middle;
+}
+
+#fileElemRun {
+    display: none;
+}
+
+#fileElemUpload {
+    display: none;
+}
+
+progress {
+    width: 100%;
+    min-height: 100%;
+    background-color: #444;
+    border-color: #333;
+    border-radius: 5px;
+    color: #9595de;
+    margin-bottom: 6px;
+}
+
+progress::-webkit-progress-bar {
+    width: 100%;
+    min-height: 100%;
+    background-color: #444;
+    border-color: #333;
+    border-radius: 5px;
+}
+
+/* Firefox */
+progress::-moz-progress-bar {
+    background-color: #9595de;
+    border-radius: 5px;
+    border-color: #333;
+}
+
+/* Chrome */
+progress::-webkit-progress-value {
+    background-color: #9595de;
+    border-radius: 5px;
+    border-color: #333;
+}
+
+#footer-area p {
+    font-size: 0.8rem;
+    font-style: italic;
+    color: #9595de;
+    margin: 0;
+}
+
+#heading-area h1 {
+    text-align: center;
+    margin: 5px 0;
+}
+
+#control-area span {
+    margin: 5px 0;
+}
+
+.select-style {
+    position: relative;
+}
+
+.select-style select {
+    display: none;
+}
+
+.select-selected {
+    background-color: #444;
+    margin-bottom: 10px;
+    height: 40px;
+}
+
+/* Style arrow in select element */
+.select-selected:after {
+    position: absolute;
+    content: "";
+    top: 14px;
+    right: 10px;
+    width: 0;
+    height: 0;
+    border: 6px solid transparent;
+    border-color: #fff transparent transparent transparent;
+}
+
+/* Point arrow upwards when the select open*/
+.select-selected.select-arrow-active:after {
+    border-color: transparent transparent #fff transparent;
+    top: 7px;
+}
+
+/* Style items including the selected */
+.select-items div,
+.select-selected {
+    padding: 8px;
+    border: 1px solid transparent;
+    border-color: transparent transparent rgba(0, 0, 0, 0.1) transparent;
+    cursor: pointer;
+    user-select: none;
+    border-radius: 5px;
+}
+
+.select-selected.select-arrow-active {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.select-last-option {
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+/* Style items */
+.select-items {
+    position: absolute;
+    background-color: #444;
+    top: 80%;
+    left: 0;
+    right: 0;
+    z-index: 99;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+/* Hide items when the select closed */
+.select-hide {
+    display: none;
+}
+
+.select-items div:hover,
+.same-as-selected {
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+.uiDisabled {
+    opacity: 40%;
+}
+.uiPanel2Col {
+    display: flex;
+    flex-direction: row;
+}
+.uiPanelBordered {
+    border-radius: 5px;
+    border: solid 1px #444444;
+}
+.uiPanelSubButtons {
+    display: flex;
+    flex-direction: row;
+}
+.uiPanelColumn {
+    flex: 80%;
+}
+.uiPanelGroup {
+    padding: 10px;
+    margin-bottom: 10px;
+}
+@media screen and (max-width: 950px) {
+    .uiPanelCol2HideWidth {
+        display: none;
+    }
+}
+.uiSmallerText {
+    font-size: 0.8rem;
+}
+.uiTable {
+    border: 0;
+    width: 100%;
+    max-width: 100%;
+    border-spacing: 0;
+    border-collapse: collapse;
+    background-color: transparent;
+    text-align: center;
+    vertical-align: middle !important;
+}
+
+.uiTable>thead>tr>th {
+    vertical-align: bottom;
+    border-bottom: 2px solid #666;
+}
+
+.uiTable>thead>tr>th,
+.uiTable>tbody>tr>th,
+.uiTable>tfoot>tr>th,
+.uiTable>thead>tr>td,
+.uiTable>tbody>tr>td,
+.uiTable>tfoot>tr>td {
+    padding: 8px;
+    line-height: 1.42857143;
+    vertical-align: center;
+    border-top: 1px solid #666;
+}
+
+.uiTable>caption+thead>tr:first-child>th,
+.uiTable>colgroup+thead>tr:first-child>th,
+.uiTable>thead:first-child>tr:first-child>th,
+.uiTable>caption+thead>tr:first-child>td,
+.uiTable>colgroup+thead>tr:first-child>td,
+.uiTable>thead:first-child>tr:first-child>td {
+    border-top: 0;
+}
+
+.uiTableBordered>thead>tr>th,
+.uiTableBordered>tbody>tr>th,
+.uiTableBordered>tfoot>tr>th,
+.uiTableBordered>thead>tr>td,
+.uiTableBordered>tbody>tr>td,
+.uiTableBordered>tfoot>tr>td {
+    border: 1px solid #666;
+}
+
+.uiTableBordered>thead>tr>th,
+.table-bordered>thead>tr>td {
+    border-bottom-width: 2px;
+}
+
+.uiTableBordered {
+    border: 1px solid #666;
+    vertical-align: center;
+}
+
+.uiTableFiles {
+    margin-bottom: 15px;
+}
+
+.tooltip {
+    position: relative;
+    display: inline-block;
+    border-bottom: 1px dotted black;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: fit-content;
+    background-color: #3d3dd6;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 0 10px;
+    position: absolute;
+    z-index: 1;
+    bottom: 100%;
+    left: 50%;
+    margin-left: -50px;
+    /* Fade in tooltip - takes 1 second to go from 0% to 100% opac: */
+    opacity: 0;
+    transition: opacity 1s;
+    line-height: 1rem;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+.rdcheckoptions {
+    display: inline-block;
+    margin-right: 20px;
+}
+
+.rdcheckcontainer {
+    display: inline-block;
+    position: relative;
+    padding-left: 25px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+.rdcheckcontainer input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    height: 0;
+    width: 0;
+}
+
+/* custom checkbox */
+.rdcheckmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 20px;
+    width: 20px;
+    background-color: #555;
+}
+
+/* Mouse-over add background */
+.rdcheckcontainer:hover input~.rdcheckmark {
+    background-color: #999;
+}
+
+/* When checked add background */
+.rdcheckcontainer input:checked~.rdcheckmark {
+    background-color: #555;
+}
+
+/* Create the checkmark/indicator (hidden when not checked) */
+.rdcheckmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+/* Show the checkmark when checked */
+.rdcheckcontainer input:checked~.rdcheckmark:after {
+    display: block;
+}
+
+/* Style the checkmark/indicator */
+.rdcheckcontainer .rdcheckmark:after {
+    left: 7px;
+    top: 1px;
+    width: 4px;
+    height: 12px;
+    border: solid white;
+    border-width: 0 3px 3px 0;
+    -webkit-transform: rotate(45deg);
+    -ms-transform: rotate(45deg);
+    transform: rotate(45deg);
+}
+
+.compound-line {
+    display: inline-flex;
+    width: 100%;
+}
+
+.compound-line-first {
+    flex-grow: 1;
+}
+
+/* .mfp-zoom-in {
+
+    .mfp-with-anim {
+        opacity: 0;
+        transition: all 0.2s ease-in-out;
+        transform: scale(0.8);
+    }
+
+    &.mfp-bg {
+        opacity: 0;
+        transition: all 0.3s ease-out;
+    }
+
+    &.mfp-ready {
+        .mfp-with-anim {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        &.mfp-bg {
+            opacity: 0.8;
+        }
+    }
+
+    &.mfp-removing {
+
+        .mfp-with-anim {
+            transform: scale(0.8);
+            opacity: 0;
+        }
+
+        &.mfp-bg {
+            opacity: 0;
+        }
+
+    }
+} */
+.popup-machine {
+    position: relative;
+    background: #444444;
+    padding: 5px;
+    /* margin: 0 auto;  */
+    margin-bottom: 10px;
+
+}
+.popup-machine textarea {
+    background: #444444;
+    width:100%;
+    min-height: 6rem;
+    color: white;
+    border: none;
+}
+.popup-hidden {
+    display: none;
+}
+.data-invalid {
+    color: red;
+    font-weight: bold;
+    margin-left: 20px;
+}
+.data-valid {
+    color: green;
+    font-weight: normal;
+    margin-left: 20px;
+}
+.clock-setting {
+    display: inline-block;
+    padding: 5px 10px;
+    background: #444;
+    border-radius: 5px;
+    border: 1px solid #666;
+}
+.clock-setting input {
+    background: #444;
+    /* border: 1px solid grey; */
+    border: none;
+    font-size: 1rem;
+    color: white;
+}
+.term-text {
+    background-color: #000000;
+    color: white;
+    width: 100%;
+    height: auto;
+    font-family: "Lucida Console", Monaco, monospace;
+    line-height: 0.2rem;
+    min-height: inherit;
+    padding: 1px;
+}
+#debugger-disasm {
+    background-color: #000000;
+    color: white;
+    width: 100%;
+    height: auto;
+    font-family: "Lucida Console", Monaco, monospace;
+    min-height: inherit;
+    padding: 1px;
+    white-space: pre;
+}
+#debugger-regs {
+    background-color: #000000;
+    color: white;
+    height: auto;
+    font-family: "Lucida Console", Monaco, monospace;
+    line-height: 0.2rem;
+    min-height: inherit;
+    padding: 1px;
+}
+.debugger-memory {
+    background-color: #000000;
+    color: white;
+    width: 100%;
+    height: auto;
+    font-family: "Lucida Console", Monaco, monospace;
+    min-height: inherit;
+    padding: 1px;
+    white-space: pre;
+}
+.uiInput-hex {
+    color: #eeeeee;
+    background-color: #000000;
+    border: none;
+    height: fit-content;
+    width: 100%;
+}
+.uiInput-label {
+    padding-right: 10px;
+}
+.regs-label {
+    font-weight: lighter;
+}
+.regs-val {
+    font-weight: bold;
+}
+.term-panel {
+    min-height: 1.2rem;
+}
+.radio-on {
+    background-color: #602020;
+}
+.panel-hidden {
+    display: none;
+}

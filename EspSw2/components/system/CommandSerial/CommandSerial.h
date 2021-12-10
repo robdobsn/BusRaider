@@ -63,7 +63,7 @@ private:
 
     // Protocol message handling
     static const uint32_t INBOUND_BLOCK_MAX_DEFAULT = 5000;
-    static const uint32_t INBOUND_QUEUE_MAX_DEFAULT = 2;
+    static const uint32_t INBOUND_QUEUE_MAX_DEFAULT = 20;
     static const uint32_t OUTBOUND_BLOCK_MAX_DEFAULT = 5000;
-    static const uint32_t OUTBOUND_QUEUE_MAX_DEFAULT = 2;    
+    static const uint32_t OUTBOUND_QUEUE_MAX_DEFAULT = 5;    
 };

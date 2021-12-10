@@ -54,9 +54,9 @@ public:
     }
 
     // Get config raw string
-    virtual void getConfigString(String& configStr) const
+    virtual String getConfigString() const
     {
-        configStr = _dataStrJSON;
+        return _dataStrJSON;
     }
 
     virtual bool writeConfig(const String& configJSONStr)
@@ -70,7 +70,7 @@ public:
     }
 
     // Get max length
-    int getMaxLen() const
+    virtual int getMaxLen() const
     {
         return _configMaxDataLen;
     }
@@ -155,6 +155,12 @@ public:
      */
     virtual bool getKeys(const char *dataPath, std::vector<String>& keysVector) const;
 
+    // Set hardware revision
+    static void setHwRevision(int hwRevision)
+    {
+        _hwRevision = hwRevision;
+    }
+    
 protected:
     /**
      * @brief Retrieve a JSON element specified by `dataPath`.
@@ -173,19 +179,36 @@ protected:
      *          default value if the revision switch array is corrupted.
      * @param[out] elementType Type of the retrieved element, if one was found.
      *          Not modified if `dataPath` does not exist. Invalid otherwise.
+     * @param[in]  pConfigStr   Source string.
      *
      * @return `true` if `dataPath` exists and either does not point to a revision
      *         switch array or this array is valid and contains a value for the
      *         current HW revision (even if only the default value).
      */
-    bool getElement(const char *dataPath, String& elementStr, jsmntype_t& elementType) const;
+    static bool _helperGetElement(const char *dataPath, String& elementStr, jsmntype_t& elementType, const char* pConfigStr);
 
     // Set the configuration data directly
     virtual void _setConfigData(const char* configJSONStr);
+
+    // Helpers
+    virtual const char* _getConfigCStr() const
+    {
+        return _dataStrJSON.c_str();
+    }
+    static String _helperGetString(const char *dataPath, const char *defaultValue, const char* sourceStr);
+    static long _helperGetLong(const char *dataPath, long defaultValue, const char* pSourceStr);
+    static double _helperGetDouble(const char *dataPath, double defaultValue, const char* pSourceStr);
+    static bool _helperGetArrayElems(const char *dataPath, std::vector<String>& strList, const char* pSourceStr);
+    static bool _helperGetKeys(const char *dataPath, std::vector<String>& keysVector, const char* pSourceStr);
+    static bool _helperContains(const char *dataPath, const char* pSourceStr);
 
     // Data is stored in a single string as JSON
     String _dataStrJSON;
 
     // Max length of config data
     unsigned int _configMaxDataLen;
+
+    // Hardware revision
+    static const int DEFAULT_HARDWARE_REVISION_NUMBER = 1;
+    static int _hwRevision;
 };

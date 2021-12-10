@@ -33,11 +33,20 @@ public:
 
     virtual void addRxData(const uint8_t* pData, uint32_t dataLen) override final;
     static bool decodeParts(const uint8_t* pData, uint32_t dataLen, uint32_t& msgNumber, 
-                    uint32_t& msgProtocolCode, uint32_t& msgDirectionCode, uint32_t& payloadStartPos);
+                    uint32_t& msgProtocolCode, uint32_t& msgTypeCode, uint32_t& payloadStartPos);
 
     virtual void encodeTxMsgAndSend(ProtocolEndpointMsg& msg) override final;
     static void encode(ProtocolEndpointMsg& msg, std::vector<uint8_t>& outMsg);
 
+    virtual const char* getProtocolName() override final
+    {
+        return getProtocolNameStatic();
+    }
+
+    static const char* getProtocolNameStatic()
+    {
+        return "RICFrame";
+    }
 
 private:
     // Consts

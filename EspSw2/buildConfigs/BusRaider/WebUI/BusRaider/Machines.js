@@ -1,0 +1,450 @@
+
+    class Machines {
+        constructor() {
+            this.state = {
+                machineConfigs: [],
+                machineConfigCurIdx: 0,
+                machineList: [],
+                machinePopupIdx: 0,
+            }
+            this.scaderName = "Machines";
+            this.friendlyName = "Machines";
+            this.configObj = {};                
+    }
+
+        init() {
+            // Config
+            if (!(this.scaderName in window.appState.configObj)) {
+                window.appState.configObj[this.scaderName] = this.defaultConfig();
+            }
+            this.configObj = window.appState.configObj[this.scaderName]
+        }
+
+        postInit() {
+            // Select
+            this.setupMachineDropDownList(this.mcDropDownActive, this.mcDropDownClose);
+            // Insert tabs when tab pressed in machine popup
+            this.enableTabInsertion('popup-machine-text');
+            // Populate machine list
+            ajaxGet("/api/querystatus", this.populateMcList);            
+        }
+
+        getId() {
+            return this.scaderName;
+        }
+
+        defaultConfig() {
+            return {
+                enable: false
+            }
+        }
+
+        updateUI() {
+            // Get or create the documentElement
+            const mainDocElem = commonGetOrCreateDocElem(this.scaderName);
+
+            // Generate the div for the main UI
+            const mainDiv = document.createElement("div");
+            mainDiv.id = this.scaderName + "-main";
+            mainDocElem.appendChild(mainDiv);
+
+            // Populate the main div
+            this.updateMainDiv(mainDocElem);
+        }
+
+        setupMachineDropDownList(callbackOpen, callbackSet) {
+            const selEl = document.getElementById("machine-select");
+            if (selEl.options.length === 0)
+                continue;
+            if (selEl.selectedIndex < 0)
+                selEl.selectedIndex = 0;
+            // Selected item div
+            let selItemDiv = document.createElement("div");
+            selItemDiv.setAttribute("class", "select-selected");
+            selItemDiv.innerHTML = selEl.options[selEl.selectedIndex].innerHTML;
+            selectS[i].appendChild(selItemDiv);
+            // Options div
+            let optionsDiv = document.createElement("div");
+            optionsDiv.setAttribute("class", "select-items select-hide");
+            for (let j = 0; j < selEl.length; j++) {
+                // Option div (for each option)
+                let optionDiv = document.createElement("div");
+                optionDiv.innerHTML = selEl.options[j].innerHTML;
+                optionDiv.addEventListener("click", (event) => {
+                    // Handle item click = select item
+                    let selection = this.parentNode.parentNode.getElementsByTagName("select")[0];
+                    let prevSibling = this.parentNode.previousSibling;
+                    for (let k = 0; k < selection.length; k++) {
+                        if (selection.options[k].innerHTML === this.innerHTML) {
+                            selection.selectedIndex = k;
+                            prevSibling.innerHTML = this.innerHTML;
+                            let sameAsSel = this.parentNode.getElementsByClassName("same-as-selected");
+                            for (n = 0; n < sameAsSel.length; n++) {
+                                sameAsSel[n].removeAttribute("class");
+                            }
+                            this.setAttribute("class", "same-as-selected");
+                            break;
+                        }
+                    }
+                    prevSibling.click();
+                });
+                optionsDiv.appendChild(optionDiv);
+                // Last item only
+                if (j === selEl.length - 1)
+                    optionDiv.setAttribute("class", "select-last-option");
+            }
+            selectS[i].appendChild(optionsDiv);
+            selItemDiv.addEventListener("click", (event) => {
+                // Select box clicked = close other select boxes & open/close current
+                event.stopPropagation();
+                closeAllSelect(this);
+                this.nextSibling.classList.toggle("select-hide");
+                this.classList.toggle("select-arrow-active");
+                if (this.nextSibling.classList.contains("select-hide"))
+                    callbackSet();
+                else
+                    callbackOpen();
+            });
+
+            function closeAllSelect(elmnt) {
+                // Close all selects
+                let selArray = [];
+                let selectedItems = document.getElementsByClassName("select-items");
+                let selectsSelected = document.getElementsByClassName("select-selected");
+                for (let i = 0; i < selectsSelected.length; i++) {
+                    if (elmnt === selectsSelected[i]) {
+                        selArray.push(i)
+                    }
+                    else {
+                        selectsSelected[i].classList.remove("select-arrow-active");
+                    }
+                }
+                for (let i = 0; i < selectedItems.length; i++) {
+                    if (selArray.indexOf(i)) {
+                        selectedItems[i].classList.add("select-hide");
+                    }
+                }
+            }
+
+            // Click outside the document - close all selects
+            document.addEventListener("click", closeAllSelect);
+        }
+
+        mcDropDownClose() {
+            if (!machinePopupClose(true))
+                sendSelectMachine();
+        }
+
+        mcDropDownActive() {
+            // Close popup and set machine if it was active and changed
+            machinePopupClose(true);
+        }
+
+        sendSelectMachine() {
+            let mcIdx = document.getElementById("machine-select").selectedIndex;
+            let mcJson = JSON.stringify(this.state.machineConfigs[mcIdx]);
+            let xhr = new XMLHttpRequest();
+            xhr.open('POST', "/setmcjson", true);
+            xhr.setRequestHeader("Content-Type", "application/json");
+            xhr.send(mcJson);
+            // Update details
+            setTimeout(queryStatusUpdate, 1100);
+        }
+
+        enableTabInsertion(elementId) {
+            let el = document.getElementById(elementId);
+            el.onkeydown = (e) => {
+                let handled = false;
+                if (e.code === 9) {
+                    let val = this.value;
+                    let selStart = this.selectionStart;
+                    let selEnd = this.selectionEnd;
+                    this.value = val.substring(0, selStart) + '\t' + val.substring(selEnd);
+                    this.selectionStart = this.selectionEnd = selStart + 1;
+                    handled = true;
+                }
+                return !handled;
+            }
+            el.onkeyup = (e) => {
+                // Validate json
+                machineConfigValidateForm();
+            }
+        }    
+        
+        populateMcList(jsonResp) {
+            let status = JSON.parse(jsonResp);
+            this.state.machineList = status.machineList;
+            if (this.state.machineList === undefined)
+                this.state.machineList = [];
+            // Clear list and fill
+            let mcListSelect = document.getElementById("machine-select");
+            if (mcListSelect && this.state.machineList) {
+                for (let i = 0; i < mcListSelect.options.length; i++)
+                    mcListSelect.remove(i);
+                for (let i = 0; i < this.state.machineList.length; i++) {
+                    let option = document.createElement('option');
+                    option.text = this.state.machineList[i];
+                    option.value = this.state.machineList[i];
+                    mcListSelect.add(option);
+                }
+                // Set current machine
+                mcListSelect.value = status.machineCur;
+            }
+            // Re-setup select
+            this.setupMachineDropDownList(this.mcDropDownActive, this.mcDropDownClose);
+            // Setup machine config files for each machine
+            this.state.machineConfigs = [];
+            for (let i = 0; i < this.state.machineList.length; i++) {
+                // setup config file
+                let configContent = {}; 
+                this.state.machineConfigs.push(configContent);
+            }
+            // Show frequency
+            showFrequency(status);
+            // Start getting first machine's config
+            machineConfigReq(true);
+        }        
+
+        queryStatusUpdate()
+        {
+            ajaxGet("/api/querystatus", updateMachineInfo);
+        }
+
+        updateMachineInfo(jsonResp)
+        {
+            let status = JSON.parse(jsonResp);
+            // Show frequency
+            showFrequency(status);
+        }
+
+        showFrequency(status)
+        {
+            try
+            {
+                let clockHz = status.clockHz;
+                if ((clockHz > 0) && (clockHz < 1000000000))
+                {
+                    let clockDisp = document.getElementById('clock-freq-hz');
+                    clockDisp.value = clockHz / 1000000;
+                }
+            }
+            catch(e)
+            {
+            }
+        }
+
+        machineConfigReq(first)
+        {
+            let fileIdx = 0
+            if (!first)
+                fileIdx = this.state.machineConfigCurIdx + 1;
+            if (fileIdx >= this.state.machineList.length)
+                return;
+            let fileName = this.state.machineList[fileIdx]
+            this.state.machineConfigCurIdx = fileIdx;
+            ajaxGet("/api/files/" + this.state.fsDefault + "/" + fileName + ".json", machineConfigGot, machineConfigGetFailed);
+        }
+
+        machineConfigGot(jsonResp) {
+            console.log(jsonResp);
+            let fileIdx = this.state.machineConfigCurIdx;
+            let fileName = this.state.machineList[fileIdx]
+            try
+            {
+                this.state.machineConfigs[fileIdx] = JSON.parse(jsonResp);
+            }
+            catch (e)
+            {
+                console.log("Failed to parse received JSON", jsonResp, e);
+            }
+            // Get next config if there is one
+            machineConfigReq(false);
+        }
+
+        machineConfigGetFailed(jsonResp) {
+            console.log("File not found");
+            let fileIdx = this.state.machineConfigCurIdx;
+            let fileName = this.state.machineList[fileIdx]
+            let fileContent = { name: fileName, hw: [] };
+            this.state.machineConfigs[fileIdx] = fileContent;
+            // Get next config if there is one
+            machineConfigReq(false);
+        }
+
+        machineConfigCancel(event) {
+            event.preventDefault();
+            machinePopupClose(false);
+        }
+
+        machineConfigOk(event) {
+            event.preventDefault();
+            let mcName = this.state.machineList[this.state.machinePopupIdx];
+            // Get Json from form
+            let formJson = document.getElementById('popup-machine-text').value;
+            // Check for no changes
+            if (formJson == JSON.stringify(this.state.machineConfigs[this.state.machinePopupIdx], null, 2))
+            {
+                machinePopupClose(false);
+                return false;
+            }
+            if (!machineConfigValidateForm())
+                return false;
+            // Format Json and ensure machine name is right
+            let unJson = JSON.parse(formJson);
+            unJson["name"] = mcName;
+            this.state.machineConfigBeingWritten = unJson;
+            formJson = JSON.stringify(unJson, null, 2);
+            // Upload file
+            let formData = new FormData();
+            let contentBlob = new Blob([formJson], {type: 'plain/text'});
+            formData.append("file", contentBlob, mcName + ".json");
+            let xmlhttp = new XMLHttpRequest();
+            xmlhttp.onreadystatechange = () =>
+            {
+                if (xmlhttp.readyState === 4) {
+                    if (xmlhttp.status === 200) {
+                        console.log("Save response " + xmlhttp.responseText);
+                        machinePopupClose(false);
+                        // Update 
+                        this.state.machineConfigs[this.state.machinePopupIdx] = this.state.machineConfigBeingWritten;
+                        // Set machine
+                        sendSelectMachine();
+                    }
+                    else {
+                        console.log("Save failed " + xmlhttp.responseText);
+                        alert("Save config failed");
+                    }
+                }
+            };
+            xmlhttp.open('POST', "/fileupload");
+            xmlhttp.send(formData);
+            return true;
+        }
+
+        machinePopupToggle() {
+            event.preventDefault();
+            let pop = document.getElementById('popup-machine');
+            if (pop.classList.contains('popup-hidden'))
+                machinePopupShow();
+            else
+                machinePopupClose(true);
+        }
+
+        machinePopupShow() {
+            let pop = document.getElementById('popup-machine');
+            if (!pop.classList.contains('popup-hidden'))
+                return;
+            pop.classList.remove('popup-hidden');
+            let selIdx = document.getElementById("machine-select").selectedIndex;
+            this.state.machinePopupIdx = selIdx;
+            let popText = document.getElementById('popup-machine-text');
+            popText.value = JSON.stringify(this.state.machineConfigs[selIdx], null, 2)
+            machineConfigValidateForm();
+        }
+
+        machinePopupClose(doSave) {
+            let pop = document.getElementById('popup-machine');
+            if (pop.classList.contains('popup-hidden'))
+                return false;
+            
+            pop.classList.add('popup-hidden');
+            if (doSave)
+            {
+                return machineConfigOk();
+            }
+            return false;
+        }
+
+        machineConfigValidateForm()
+        {
+            let valid = false;
+            let errorText = ""
+            let formJson = document.getElementById('popup-machine-text').value;
+            try
+            {
+                let unJson = JSON.parse(formJson);
+                valid = true;
+            }
+            catch (e)
+            {
+                errorText = e.text;
+            }
+            let confStatus = document.getElementById('popup-machine-status');
+            if (valid)
+            {
+                confStatus.innerHTML = "Valid";
+                confStatus.classList.add('data-valid')
+                confStatus.classList.remove('data-invalid')
+            }
+            else
+            {
+                confStatus.innerHTML = "Invalid JSON " + errorText;
+                confStatus.classList.add('data-invalid')
+                confStatus.classList.remove('data-valid')
+            }
+            return valid;
+        }
+
+        clockHzSet() {
+            try
+            {
+                let clockDisp = document.getElementById('clock-freq-hz');
+                let clockHz = Math.floor(clockDisp.value * 1000000);
+                if ((clockHz > 0) && (clockHz < 1000000000))
+                {
+                    let clockHzJson = {clockHz:clockHz};
+                    postAjax('/targetcmd/clockhzset', clockHzJson)
+                }
+            }
+            catch (e)
+            {
+
+            }        
+        }
+
+        updateMainDiv(docElem) {
+
+            docElem.innerHTML = 
+            `
+            <div id="machine-select-area" class="layout-region">
+                <div class="uiPanelSub">
+                    <form class="machine-select-form">
+                        <p>Select target machine</p>
+                        <div class="compound-line">
+                            <div class="compound-line-first select-style">
+                                <select id="machine-select">
+                                </select>
+                            </div>
+                            <div>
+                                <a class="button btn-config tooltip" onclick="machinePopupToggle();">
+                                    <svg class="icon-config">
+                                        <use xlink:href="#icon-config"></use>
+                                    </svg>
+                                    <span class="tooltiptext">Configure Machine</span>
+                                </a>
+                            </div>
+                        </div>
+                        <!-- Machine config -->
+                        <div id="popup-machine" class="popup-machine popup-hidden">
+                            <textarea id='popup-machine-text'>{}</textarea>
+                            <div>
+                                <button id='popup-machine-ok' class="button btn-ok" onclick="machineConfigOk();">Ok</button>
+                                <button class="button btn-cancel" onclick="machineConfigCancel();">Cancel</button>
+                                <label id="popup-machine-status"></label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="uiPanelSub">
+                    <div class="clock-setting">
+                        <label>Clock</label>
+                        <input id="clock-freq-hz" type="number" max=50.0 min=0 value=1.0 step=0.1 class="clock-freq" onchange="clockHzSet();">
+                        <label>MHz</label>
+                    </div>
+                    <span class="button radio" onclick="termShowClick(event)">Show Terminal</span>
+                    <span class="button radio" onclick="debuggerShowClick(event)">Show Debugger</span>
+                </div>
+            </div>
+            `
+        }
+    }

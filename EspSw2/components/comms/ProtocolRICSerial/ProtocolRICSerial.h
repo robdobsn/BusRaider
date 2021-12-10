@@ -35,6 +35,16 @@ public:
     virtual void addRxData(const uint8_t* pData, uint32_t dataLen) override final;
     virtual void encodeTxMsgAndSend(ProtocolEndpointMsg& msg) override final;
 
+    virtual const char* getProtocolName() override final
+    {
+        return getProtocolNameStatic();
+    }
+
+    static const char* getProtocolNameStatic()
+    {
+        return "RICSerial";
+    }
+
 private:
     // HDLC
     MiniHDLC* _pHDLC;

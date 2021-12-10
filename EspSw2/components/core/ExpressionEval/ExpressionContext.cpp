@@ -1,15 +1,16 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// ExpressionEval
-// Handles mathematical expressions with variables
+// ExpressionContext
+// Handles variables for ExpressionEval
 //
-// Rob Dobson 2017-2020
+// Rob Dobson 2017-2021
 // Originally from RBotFirmware
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include "ExpressionContext.h"
 #include <Logger.h>
+#include "math.h"
 
 // #define DEBUG_EVALUATOR_EXPRESSIONS 1
 
@@ -28,18 +29,42 @@ ExpressionContext::ExpressionContext()
 
 ExpressionContext::~ExpressionContext()
 {
-    clear();
+    clear(true);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Clean up
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ExpressionContext::clear()
+void ExpressionContext::clear(bool includeGlobals)
 {
-    // Clear maps
-    _mapVars.clear();
+    // Clear variables
+    if (includeGlobals)
+    {
+        // Clear all variables including globals
+        _mapVars.clear();
+    }
+    else
+    {
+        // Make a copy of the globals
+        std::map<String, double> mapGlobals;
+        for (auto it = _mapVars.begin(); it != _mapVars.end(); ++it)
+        {
+            if (it->first.startsWith(GLOBAL_VAR_PREFIX))
+                mapGlobals[it->first] = it->second;
+        }
+
+        // Clear all variables
+        _mapVars.clear();
+
+        // Restore globals
+        _mapVars = mapGlobals;
+    }
+
+    // Clear functions
     _mapFuncs.clear();
+
+    // Clear tinyexpression variables
     _teVars.clear();
 }
 
@@ -117,11 +142,20 @@ void ExpressionContext::addFunction(const char* name, const void* pFn, uint32_t 
 
 double ExpressionContext::getVal(const char* varName, bool& isValid)
 {
-    // Get the value
+    // Check for global value assumes the prefix is a single character (it is ok because both are null terminated strings)
     isValid = false;
+    double retVal = 0;
+    if (varName[0] == GLOBAL_VAR_PREFIX[0])
+    {
+        // Default to valid and not-a-number (NaN) if a global variable is requested and not defined
+        isValid = true;
+        retVal = NAN;
+    }
+
+    // Get the value
     std::map<String, double>::const_iterator pos = _mapVars.find(varName);
     if (pos == _mapVars.end())
-        return 0;
+        return retVal;
     isValid = true;
     return pos->second;
 }

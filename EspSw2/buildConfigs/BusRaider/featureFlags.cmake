@@ -10,7 +10,21 @@ add_compile_definitions(FEATURE_WEB_SOCKETS)
 add_compile_definitions(FEATURE_WEB_SERVER_STATIC_FILES)
 # add_compile_definitions(FEATURE_EMBED_MICROPYTHON)
 # add_compile_definitions(RIC_ENABLE_SPIRAM)
+# add_compile_definitions(FEATURE_INCLUDE_ROBOT_CONTROLLER)
+add_compile_definitions(CONFIG_LITTLEFS_MAX_PARTITIONS=3)
+add_compile_definitions(CONFIG_LITTLEFS_PAGE_SIZE=256)
+add_compile_definitions(CONFIG_LITTLEFS_READ_SIZE=128)
+add_compile_definitions(CONFIG_LITTLEFS_WRITE_SIZE=128)
+add_compile_definitions(CONFIG_LITTLEFS_LOOKAHEAD_SIZE=128)
+add_compile_definitions(CONFIG_LITTLEFS_CACHE_SIZE=512)
+add_compile_definitions(CONFIG_LITTLEFS_BLOCK_CYCLES=512)
+
+# Additional hardware definitions
+# add_compile_definitions(FEATURE_INCLUDE_SCADER)
 
 # CMake definitions
-set(FS_TYPE "spiffs")
+set(WEB_UI_GEN_FLAGS --nogzip)
+set(FS_TYPE "littlefs")
 set(FS_IMAGE_PATH "${RIC_CONFIG_DIR}/FSImage")
+set(UI_SOURCE_PATH "${RIC_CONFIG_DIR}/WebUI")
+

@@ -16,7 +16,10 @@
 #include "unity.h"
 #include <jsmnR.h>
 #include <Utils.h>
+#include <ArduinoTime.h>
 #include <ConfigBase.h>
+
+#define DEBUG_RDJSON_PERF_TEST
 
 static const char* MODULE_PREFIX = "RdJsonPerfTest";
 
@@ -289,8 +292,10 @@ TEST_CASE("test_rdjson_perf", "[rdjsonperf]")
     // TEST_ASSERT_MESSAGE(true == testGetObjectKeys("consts", expectedKeys, sizeof(expectedKeys)/sizeof(expectedKeys[0]), testJSON), "getKeys1");
 
     // Dump timings
+#ifdef DEBUG_RDJSON_PERF_TEST
     LOG_I(MODULE_PREFIX, "Parse %fms FindElemEnd %fms FindKey %fms GetStr1 %f", 
                 perfParseUs/1000.0, perfFindElemEndUs/1000.0, perfFindKeyUs/1000.0, perfGetString1Us/1000.0/100.0);
+#endif
 }
 
 TEST_CASE("test_rdjson_perf2", "[rdjsonperf]")

@@ -188,8 +188,8 @@ void CommandSerial::addProtocolEndpoints(ProtocolEndpointManager &endpointManage
 bool CommandSerial::sendMsg(ProtocolEndpointMsg& msg)
 {
     // Debug
-    // LOG_I(MODULE_PREFIX, "sendMsg channelID %d, direction %s msgNum %d, len %d",
-    //         msg.getChannelID(), msg.getDirectionAsString(msg.getDirection()), msg.getMsgNumber(), msg.getBufLen());
+    // LOG_I(MODULE_PREFIX, "sendMsg channelID %d, msgType %s msgNum %d, len %d",
+    //         msg.getChannelID(), msg.getMsgTypeAsString(msg.getMsgTypeCode()), msg.getMsgNumber(), msg.getBufLen());
 
     if (!_isInitialised)
         return false;
@@ -198,8 +198,8 @@ bool CommandSerial::sendMsg(ProtocolEndpointMsg& msg)
     int bytesSent = uart_write_bytes((uart_port_t)_uartNum, (const char*)msg.getBuf(), msg.getBufLen());
     if (bytesSent != msg.getBufLen())
     {
-        LOG_W(MODULE_PREFIX, "sendMsg channelID %d, direction %s msgNum %d, len %d only wrote %d bytes",
-                msg.getChannelID(), msg.getDirectionAsString(msg.getDirection()), msg.getMsgNumber(), msg.getBufLen(), bytesSent);
+        LOG_W(MODULE_PREFIX, "sendMsg channelID %d, msgType %s msgNum %d, len %d only wrote %d bytes",
+                msg.getChannelID(), msg.getMsgTypeAsString(msg.getMsgTypeCode()), msg.getMsgNumber(), msg.getBufLen(), bytesSent);
 
         return false;
     }

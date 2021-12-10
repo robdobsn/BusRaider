@@ -27,7 +27,7 @@ static bool testFindElemEnd(jsmntok_t* pTokens, int numTokens, int tokenIdx, int
     // LOG_I(MODULE_PREFIX, "testFindElemEnd startTok %d endTok %d", tokenIdx, endPos);
     if (expEndPos != endPos)
     {
-        LOG_I(MODULE_PREFIX, "testFindElemEnd endPos expected %d != %d", expEndPos, endPos);
+        LOG_I(MODULE_PREFIX, "testFindElemEnd endPos expected %d != %d, tokenIdx %d", expEndPos, endPos, tokenIdx);
         return false;
     }
     return true;
@@ -106,7 +106,7 @@ static bool testGetObjectKeys(const char* dataPath, const char* expStrs[], int n
     }
     if (numStrs != arrayElems.size())
     {
-        LOG_I(MODULE_PREFIX, "testGetObjectKeys failed expected len %d != %d", numStrs, arrayElems.size());
+        LOG_I(MODULE_PREFIX, "testGetObjectKeys failed expected len %d != %d (dataPath %s)", numStrs, arrayElems.size(), dataPath);
         return false;
     }
     for (int i = 0; i < numStrs; i++)
@@ -142,7 +142,9 @@ TEST_CASE("test_rdjson", "[rdjson]")
             R"( 	"comarr": [6, 5, 4, 3, 3,           )"
             R"( 		{"fish": "stew"}                )"
             R"( 	],                                  )"
-            R"( 	"lastly": "elephant"                )"
+            R"( 	"lastly": "elephant",               )"
+            R"( 	"bool1":false,                      )"
+            R"( 	"bool2": 	  true                  )"
             R"( }                                       )"
             R"(}                                        )";
 
@@ -161,7 +163,7 @@ TEST_CASE("test_rdjson", "[rdjson]")
     // RdJson::debugDumpParseResult(testJSON, pTokens, numTokens);
 
     // Test the findElemEnd function
-    int endTokens[] = {44,2,44,4,5,
+    int endTokens[] = {48,2,48,4,5,
                     6,30,8,30,10,
                     11,12,30,14,18,
                     16,17,18,19,20,
@@ -194,6 +196,8 @@ TEST_CASE("test_rdjson", "[rdjson]")
         { "consts/comarr/[4]", "3" },
         { "consts/comarr/[5]/fish", "stew" },
         { "consts/lastly", "elephant" },
+        { "consts/bool1", "false" },
+        { "consts/bool2", "true" },
     };
     for (int testIdx = 0; testIdx < sizeof(findKeyTests)/sizeof(findKeyTests[0]); testIdx++)
     {
@@ -209,13 +213,15 @@ TEST_CASE("test_rdjson", "[rdjson]")
     TEST_ASSERT_MESSAGE(true == testGetString("consts/oxis/coo[3]/minotaur", "[1,3,4]", testJSON), "getString1");
     TEST_ASSERT_MESSAGE(true == testGetString("consts/lastly", "elephant", testJSON), "getString2");
     TEST_ASSERT_MESSAGE(5 == RdJson::getLong("consts/comarr/[1]", -1, testJSON), "getLong1");
+    TEST_ASSERT_MESSAGE(0 == RdJson::getLong("consts/bool1", -1, testJSON), "getLongBool1");
+    TEST_ASSERT_MESSAGE(1 == RdJson::getLong("consts/bool2", -1, testJSON), "getLongBool2");
 
     // Test array elements
     const char* expectedStrs[] = {"6", "5", "4", "3", "3", "{\"fish\": \"stew\"}"};
     TEST_ASSERT_MESSAGE(true == testGetArrayElems("consts/comarr", expectedStrs, sizeof(expectedStrs)/sizeof(expectedStrs[0]), testJSON), "getArrayElems1");
 
     // Test object keys
-    const char* expectedKeys[] = {"axis", "oxis", "exis", "comarr", "lastly"};
+    const char* expectedKeys[] = {"axis", "oxis", "exis", "comarr", "lastly", "bool1", "bool2"};
     TEST_ASSERT_MESSAGE(true == testGetObjectKeys("consts", expectedKeys, sizeof(expectedKeys)/sizeof(expectedKeys[0]), testJSON), "getKeys1");
 
 }

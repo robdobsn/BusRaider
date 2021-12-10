@@ -17,7 +17,7 @@
 static const char* MODULE_PREFIX = "ESPOTAUpdate";
 
 // Debug
-#define DEBUG_ESP_OTA_UPDATE 1
+#define DEBUG_ESP_OTA_UPDATE
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -43,6 +43,7 @@ ESPOTAUpdate::ESPOTAUpdate(const char *pModuleName, ConfigBase& defaultConfig, C
     _fwUpdateWriteTimeUs = 0;
     _fwUpdateBytes = 0;
     _fwUpdateLastRate = 0;
+    _blockSizeLast = 0;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -72,19 +73,20 @@ void ESPOTAUpdate::service()
 // Debug
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-String ESPOTAUpdate::getDebugStr()
+String ESPOTAUpdate::getDebugJSON()
 {
     // FW update timing
     uint32_t fwUpdateElapsedMs = (micros() - _fwUpdateTimeStartedUs) / 1000;
     if (_otaDirectInProgress)
         _fwUpdateLastRate = (fwUpdateElapsedMs != 0) ? 1000.0*_fwUpdateBytes/fwUpdateElapsedMs : 0;
     char tmpBuf[200];
-    snprintf(tmpBuf, sizeof(tmpBuf)-1, "OTARate %.1fBytes/s OTABegin %dms OTABytes %d FlashWriteRate %.1fBytes/s updateTime %.1fs",
+    snprintf(tmpBuf, sizeof(tmpBuf)-1, R"({"Bps":%.1f,"stMs":%d,"bytes":%d,"wrPS":%.1f,"elapS":%.1f,"blk":%d})",
         _fwUpdateLastRate, 
         (uint32_t)(_fwUpdateBeginTimeUs / 1000),
         _fwUpdateBytes,
-        _fwUpdateWriteTimeUs != 0 ? _fwUpdateBytes / (_fwUpdateWriteTimeUs / 1000000.0) : 0,
-        fwUpdateElapsedMs / 1000.0);
+        _fwUpdateWriteTimeUs != 0 ? _fwUpdateBytes / (_fwUpdateWriteTimeUs / 1000000.0) : 0.0,
+        fwUpdateElapsedMs / 1000.0,
+        _blockSizeLast);
     return tmpBuf;
 }
 
@@ -92,12 +94,12 @@ String ESPOTAUpdate::getDebugStr()
 // Firmware update start
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool ESPOTAUpdate::firmwareUpdateStart(const char* fileName, size_t fileLen)
+bool ESPOTAUpdate::fileStreamStart(const char* fileName, size_t fileLen)
 {
     // Check enabled
     if (!_otaDirectEnabled)
     {
-        LOG_W(MODULE_PREFIX, "firmwareUpdateStart OTA Direct Disabled");
+        LOG_W(MODULE_PREFIX, "fileStreamStart OTA Direct Disabled");
         return false;
     }
     
@@ -106,23 +108,24 @@ bool ESPOTAUpdate::firmwareUpdateStart(const char* fileName, size_t fileLen)
     _fwUpdateBeginTimeUs = 0;
     _fwUpdateWriteTimeUs = 0;
     _fwUpdateBytes = 0;
+    _blockSizeLast = 0;
 
     // Get update partition
     const esp_partition_t* update_partition = esp_ota_get_next_update_partition(NULL);
 
 #ifdef DEBUG_ESP_OTA_UPDATE
     // Debug
-    LOG_I(MODULE_PREFIX, "firmwareUpdateStart fileName %s fileLen %d", fileName, fileLen);
+    LOG_I(MODULE_PREFIX, "fileStreamStart fileName %s fileLen %d", fileName, fileLen);
 #endif
 
     // const esp_partition_t *configured = esp_ota_get_boot_partition();
     const esp_partition_t *running = esp_ota_get_running_partition();
 
     // Info
-    LOG_I(MODULE_PREFIX, "firmwareUpdateStart running partition type %d subtype %d (offset 0x%x)",
+    LOG_I(MODULE_PREFIX, "fileStreamStart running partition type %d subtype %d (offset 0x%x)",
                 running->type, running->subtype, running->address);
 
-    LOG_I(MODULE_PREFIX, "firmwareUpdateStart writing to partition subtype %d at offset 0x%x",
+    LOG_I(MODULE_PREFIX, "fileStreamStart writing to partition subtype %d at offset 0x%x",
             update_partition->subtype, update_partition->address);
 
     // Start OTA update
@@ -136,7 +139,7 @@ bool ESPOTAUpdate::firmwareUpdateStart(const char* fileName, size_t fileLen)
     {
 #ifdef DEBUG_ESP_OTA_UPDATE
         // Debug
-        LOG_E(MODULE_PREFIX, "firmwareUpdateStart esp_ota_begin failed, error=%d", err);
+        LOG_E(MODULE_PREFIX, "fileStreamStart esp_ota_begin failed, error=%d", err);
         return false;
 #endif
     }
@@ -145,7 +148,7 @@ bool ESPOTAUpdate::firmwareUpdateStart(const char* fileName, size_t fileLen)
         _otaDirectInProgress = true;
 #ifdef DEBUG_ESP_OTA_UPDATE
         // Debug
-        LOG_I(MODULE_PREFIX, "firmwareUpdateStart esp_ota_begin succeeded");
+        LOG_I(MODULE_PREFIX, "fileStreamStart esp_ota_begin succeeded");
 #endif
     }
     return true;
@@ -155,8 +158,20 @@ bool ESPOTAUpdate::firmwareUpdateStart(const char* fileName, size_t fileLen)
 // Firmware update block (handle a firmware data block)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool ESPOTAUpdate::firmwareUpdateBlock(uint32_t filePos, const uint8_t *pBlock, size_t blockLen)
+bool ESPOTAUpdate::fileStreamDataBlock(FileStreamBlock& fileStreamBlock)
 {
+    // Get params
+    const uint8_t *pBlock = fileStreamBlock.pBlock;
+    size_t blockLen = fileStreamBlock.blockLen;
+
+    // Check if not in progress and first block
+    if (!_otaDirectInProgress && fileStreamBlock.firstBlock)
+    {
+        if (!fileStreamStart(fileStreamBlock.filename, 
+                    fileStreamBlock.fileLenValid ? fileStreamBlock.fileLen : fileStreamBlock.contentLen))
+            return false;
+    }
+
     // Check if in progress
     if (_otaDirectInProgress)
     {
@@ -164,6 +179,7 @@ bool ESPOTAUpdate::firmwareUpdateBlock(uint32_t filePos, const uint8_t *pBlock, 
         esp_err_t err = esp_ota_write(_otaDirectUpdateHandle, (const void *)pBlock, blockLen);
         _fwUpdateWriteTimeUs += micros() - fwStart;
         _fwUpdateBytes += blockLen;
+        _blockSizeLast = blockLen;
         if (err != ESP_OK) 
         {
             _otaDirectInProgress = false;
@@ -171,6 +187,14 @@ bool ESPOTAUpdate::firmwareUpdateBlock(uint32_t filePos, const uint8_t *pBlock, 
             return false;
         }
     }
+
+    // Check if final
+    if (fileStreamBlock.finalBlock)
+    {
+        if (!firmwareUpdateEnd())
+            return false;
+    }
+
     return true;
 }
 
@@ -218,7 +242,7 @@ bool ESPOTAUpdate::firmwareUpdateEnd()
 // Firmware update cancel
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool ESPOTAUpdate::firmwareUpdateCancel()
+bool ESPOTAUpdate::fileStreamCancelEnd(bool isNormalEnd)
 {
     if (_otaDirectInProgress)
     {
@@ -236,27 +260,12 @@ bool ESPOTAUpdate::firmwareUpdateCancel()
 // Handle the API update
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ESPOTAUpdate::fwUpdateAPIPart(FileBlockInfo& fileBlockInfo)
+void ESPOTAUpdate::fwUpdateAPIPart(FileStreamBlock& fileStreamBlock)
 {
     // LOG_I(MODULE_PREFIX, "fwUpdateAPIPart %d, %d, %d, %d", contentLen, index, len, finalBlock);
 
-    // Start if at the beginning
-    if (fileBlockInfo.filePos == 0)
-        if (!firmwareUpdateStart(fileBlockInfo.filename, 
-                    fileBlockInfo.fileLenValid ? fileBlockInfo.fileLen : fileBlockInfo.contentLen))
-            return;
-
     // Update block
-    if (!firmwareUpdateBlock(fileBlockInfo.filePos, fileBlockInfo.pBlock, fileBlockInfo.blockLen))
-        return;
-
-    // Check if final block
-    if (fileBlockInfo.finalBlock)
-        if (!firmwareUpdateEnd())
-            return;
-
-    // All done
-    return;
+    fileStreamDataBlock(fileStreamBlock);
 }
 
 void ESPOTAUpdate::fwUpdateAPIFinal()
@@ -264,10 +273,7 @@ void ESPOTAUpdate::fwUpdateAPIFinal()
     // This may not get called as we may be rebooting if successful
     LOG_I(MODULE_PREFIX, "fwUpdateAPIFinal DONE");
     delay(100);
-    if (_otaDirectInProgress)
-    {
-        esp_ota_end(_otaDirectUpdateHandle);
-    }
+    firmwareUpdateEnd();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -280,7 +286,7 @@ void ESPOTAUpdate::addRestAPIEndpoints(RestAPIEndpointManager& endpointManager)
                         RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                         RestAPIEndpointDef::ENDPOINT_POST,
                         std::bind(&ESPOTAUpdate::apiESPFirmwareUpdateDone, this, 
-                                std::placeholders::_1, std::placeholders::_2),
+                                std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
                         "Update ESP32 firmware", 
                         "application/json", 
                         NULL,
@@ -288,21 +294,21 @@ void ESPOTAUpdate::addRestAPIEndpoints(RestAPIEndpointManager& endpointManager)
                         NULL, 
                         NULL,
                         std::bind(&ESPOTAUpdate::apiESPFirmwarePart, this, 
-                                std::placeholders::_1, std::placeholders::_2));
+                                std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
 // ESP Firmware update
-void ESPOTAUpdate::apiESPFirmwarePart(const String& reqStr, FileBlockInfo& fileBlockInfo)
+void ESPOTAUpdate::apiESPFirmwarePart(const String& reqStr, FileStreamBlock& fileStreamBlock, const APISourceInfo& sourceInfo)
 {
     // Handle with OTA update
 #ifdef DEBUG_ESP_OTA_UPDATE
     // Debug
     // LOG_I(MODULE_PREFIX, "apiESPFirmwarePart");
 #endif
-    fwUpdateAPIPart(fileBlockInfo);
+    fwUpdateAPIPart(fileStreamBlock);
 }
 
-void ESPOTAUpdate::apiESPFirmwareUpdateDone(const String &reqStr, String &respStr)
+void ESPOTAUpdate::apiESPFirmwareUpdateDone(const String &reqStr, String &respStr, const APISourceInfo& sourceInfo)
 {
     // Handle with OTA update
 #ifdef DEBUG_ESP_OTA_UPDATE

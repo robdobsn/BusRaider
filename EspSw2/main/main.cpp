@@ -11,7 +11,7 @@
 // System Name and Version
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define SYSTEM_VERSION "3.1.8"
+#define SYSTEM_VERSION "3.1.9"
 
 #define MACRO_STRINGIFY(x) #x
 #define MACRO_TOSTRING(x) MACRO_STRINGIFY(x)
@@ -116,6 +116,7 @@ static heap_trace_record_t trace_record[NUM_RECORDS]; // This buffer must be in 
 #include <SysManager.h>
 #include <SerialConsole.h>
 #include <FileManager.h>
+#include <StreamManager.h>
 #include <BLEManager.h>
 #ifdef FEATURE_WIFI_FUNCTIONALITY
 #include <NetworkManager.h>
@@ -127,12 +128,46 @@ static heap_trace_record_t trace_record[NUM_RECORDS]; // This buffer must be in 
 #include <CommandSerial.h>
 #include <CommandSocket.h>
 #include <CommandFile.h>
+#include <StatePublisher.h>
+
+#ifdef FEATURE_INCLUDE_ROBOT_CONTROLLER
+#include <RobotController.h>
+#endif
+
 #include <FileSystem.h>
 #include <ESPOTAUpdate.h>
+#include <ProtocolExchange.h>
+
+#ifdef FEATURE_TARGET_RIC_HARDWARE
+#include <RICUtils.h>
+#endif
+
+#include <MQTTManager.h>
+
+#ifdef FEATURE_HWELEM_STEPPERS
+#include <HWElemSteppers.h>
+#endif
+
+#ifdef FEATURE_POWER_UP_LED_ASAP
+#include <PowerUpLEDSet.h>
+#endif
+
+#ifdef FEATURE_EMBED_MICROPYTHON
+#include "MicropythonRICIF.h"
+#endif
+
 #include <PiCoProcessor.h>
 
 // System type consts
 #include "RICSysTypes.h"
+
+#ifdef FEATURE_INCLUDE_SCADER
+// Scader components
+#include "ScaderRelays.h"
+#include "ScaderShades.h"
+#include "ScaderOpener.h"
+#include "ScaderCat.h"
+#endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Standard Entry Point
@@ -189,9 +224,9 @@ extern "C" void app_main(void)
         esp_task_wdt_delete(idleTaskOnMainTaskCore);
 
     // TODO - decide if this is necessary - seems to be on new hardware??
-    // TaskHandle_t idleTaskOnProCore = xTaskGetIdleTaskHandleForCPU(PRO_TASK_PROCESSOR_CORE);
-    // if (idleTaskOnProCore)
-    //     esp_task_wdt_delete(idleTaskOnProCore);
+    // TaskHandle_t idleTaskOnOtherTaskCore = xTaskGetIdleTaskHandleForCPU(MAIN_TASK_PROCESSOR_CORE == 0 ? 1 : 0);
+    // if (idleTaskOnOtherTaskCore)
+    //     esp_task_wdt_delete(idleTaskOnOtherTaskCore);
 
     // Start the mainTask
     xTaskCreatePinnedToCore(mainTask, "mainTask", MAIN_TASK_STACK_SIZE, nullptr, MAIN_TASK_PRIORITY, &mainTaskHandle, MAIN_TASK_PROCESSOR_CORE);
@@ -224,6 +259,14 @@ void mainTask(void *pvParameters)
 #ifdef DEBUG_HEAP_ALLOCATION
     heap_trace_init_standalone(trace_record, NUM_RECORDS);
 #endif
+    // Set hardware revision - ensure this runs early as some methods for determining
+    // hardware revision may get disabled later on (e.g. GPIO pins later used for output)
+#ifdef FEATURE_TARGET_RIC_HARDWARE
+    ConfigBase::setHwRevision(getRICRevision());
+#else
+    ConfigBase::setHwRevision(1);
+#endif
+
     // Config for hardware
     ConfigBase defaultSystemConfig(defaultConfigJSON);
 
@@ -242,13 +285,13 @@ void mainTask(void *pvParameters)
     ///////////////////////////////////////////////////////////////////////////////////
 
     // Configuration for the system - including robot name
-    ConfigNVS _sysModMutableConfig("system", 500, false);
+    ConfigNVS _sysModMutableConfig("system", 500);
 
     // Configuration for PiCoProcessor
-    ConfigNVS _piCoProConfig("pi", 2000, false);
+    ConfigNVS _piCoProConfig("pi", 2000);
 
     // Configuration for other system modules
-    ConfigNVS _sysTypeConfig("sys", 10000, false);
+    ConfigNVS _sysTypeConfig("sys", 10000);
 
     ///////////////////////////////////////////////////////////////////////////////////
 
@@ -266,13 +309,29 @@ void mainTask(void *pvParameters)
 
     // System Module Manager
     SysManager _SysManager("SysManager", defaultSystemConfig, &_sysTypeConfig, &_sysModMutableConfig);
+    _sysTypeManager.setSysManager(&_SysManager);
+
+#ifdef FEATURE_INCLUDE_ROBOT_CONTROLLER
+    // Robot Controller
+    RobotController _robotController("RobotCtrl", defaultSystemConfig, &_sysTypeConfig, &_robotMutableConfig,
+                "Robot", &_addOnMutableConfig);
+    // Register serial bus
+    _robotController.busRegister("serial", BusSerial::createFn);
+    // Register HWElemTypes
+    _robotController.hwElemRegister("I2SOut", HWElemAudioOut::createFn);
+    _robotController.hwElemRegister("GPIO", HWElemGPIO::createFn);
+#endif
+
+#ifdef FEATURE_HWELEM_STEPPERS
+    _robotController.hwElemRegister("Steppers", HWElemSteppers::createFn);
+#endif
 
     // API Endpoints
     RestAPIEndpointManager _restAPIEndpointManager;
     _SysManager.setRestAPIEndpoints(_restAPIEndpointManager);
 
     // ProtocolEndpointManager
-    ProtocolEndpointManager _protocolEndpointManager("ProtoMgr", defaultSystemConfig, &_sysTypeConfig, nullptr);
+    ProtocolEndpointManager _protocolEndpointManager("ProtMan", defaultSystemConfig, &_sysTypeConfig, nullptr);
     _SysManager.setProtocolEndpointManager(_protocolEndpointManager);
 
     // SerialConsole
@@ -280,6 +339,9 @@ void mainTask(void *pvParameters)
 
     // FileManager
     FileManager _fileManager("FileManager", defaultSystemConfig, &_sysTypeConfig, nullptr);
+
+    // StreamManager
+    StreamManager _streamManager("StreamMan", defaultSystemConfig, &_sysTypeConfig, nullptr);
 
 #ifdef FEATURE_WIFI_FUNCTIONALITY
     // NetworkManager
@@ -289,6 +351,11 @@ void mainTask(void *pvParameters)
     // ESP OTA Update
     ESPOTAUpdate _espotaUpdate("ESPOTAUpdate", defaultSystemConfig, &_sysTypeConfig, nullptr);
 
+    // ProtocolExchange
+    ProtocolExchange _protocolExchange("ProtExchg", defaultSystemConfig, &_sysTypeConfig, nullptr);
+    _protocolExchange.setHandlers(&_fileManager, &_streamManager, &_espotaUpdate);
+    _fileManager.setProtocolExchange(_protocolExchange);
+
     // NetDiscovery
     // NetDiscovery _netDiscovery("NetDiscovery", defaultSystemConfig, &_sysTypeConfig, nullptr);
 
@@ -297,14 +364,36 @@ void mainTask(void *pvParameters)
     WebServer _webServer("WebServer", defaultSystemConfig, &_sysTypeConfig, nullptr);
 #endif
 
+    // BLEManager
+    BLEManager _bleManager("BLEMan", defaultSystemConfig, &_sysTypeConfig, nullptr, DEFAULT_ADVNAME);
+
     // Command Serial
     CommandSerial _commandSerial("CommandSerial", defaultSystemConfig, &_sysTypeConfig, nullptr);
 
     // Command Socket
     CommandSocket _commandSocket("CommandSocket", defaultSystemConfig, &_sysTypeConfig, nullptr);
 
-    //Command File
+    // Command File
     CommandFile _commandFile("CommandFile", defaultSystemConfig, &_sysTypeConfig, nullptr);
+
+    // MQTT
+    MQTTManager _mqttManager("MQTTMan", defaultSystemConfig, &_sysTypeConfig, nullptr);
+
+    // State Publisher
+    StatePublisher _statePublisher("Publish", defaultSystemConfig, &_sysTypeConfig, nullptr);
+
+#ifdef FEATURE_EMBED_MICROPYTHON
+    // Micropython
+    MicropythonRICIF _micropythonRICIF("uPy", defaultSystemConfig, &_sysTypeConfig, nullptr);
+#endif
+
+#ifdef FEATURE_INCLUDE_SCADER
+    // Scader components
+    ScaderRelays _scaderRelays("ScaderRelays", defaultSystemConfig, &_sysTypeConfig, nullptr);
+    ScaderShades _scaderShades("ScaderShades", defaultSystemConfig, &_sysTypeConfig, nullptr);
+    ScaderOpener _scaderOpener("ScaderOpener", defaultSystemConfig, &_sysTypeConfig, nullptr);
+    ScaderCat _scaderCat("ScaderCat", defaultSystemConfig, &_sysTypeConfig, nullptr);
+#endif
 
     // Pi CoProcessor
     PiCoProcessor _piCoPorcessor("PiCoProcessor", defaultSystemConfig, &_sysTypeConfig, &_piCoProConfig, SYSTEM_VERSION);
@@ -320,7 +409,7 @@ void mainTask(void *pvParameters)
 
 #ifdef FEATURE_WEB_SERVER_STATIC_FILES
     // Web server add files
-    _webServer.serveStaticFiles("/files/spiffs", "/spiffs/");
+    _webServer.serveStaticFiles("/files/local", "/local/");
     _webServer.serveStaticFiles("/files/sd", "/sd/");
     _webServer.serveStaticFiles("/", ("/" + fileSystem.getDefaultFSRoot()).c_str());
 #endif

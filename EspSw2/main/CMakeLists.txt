@@ -32,11 +32,28 @@ unset(_custom_headers_dir)
 unset(_systypes_header)
 unset(_systypes_json)
 
-# Create a SPIFFS image from the contents of the 'spiffs_image' directory
+# Process WebUI files
+add_custom_target(generateWebUI
+                    COMMAND python3 ${WEB_UI_GEN_FLAGS} ${CMAKE_SOURCE_DIR}/scripts/UITemplater.py ${UI_SOURCE_PATH} ${FS_IMAGE_PATH}
+                    COMMENT "Generating UI"
+                    )
+add_dependencies(${COMPONENT_LIB} generateWebUI)
+
+# Create a SPIFFS image from the contents of the FS_IMAGE_PATH directory
 # that fits the partition named 'spiffs'. FLASH_IN_PROJECT indicates that
 # the generated image should be flashed when the entire project is flashed to
 # the target with 'idf.py -p PORT flash'.
 if(FS_TYPE STREQUAL "spiffs")
     message(STATUS "Configuring SPIFFS file system")
-    spiffs_create_partition_image(spiffs ${FS_IMAGE_PATH} FLASH_IN_PROJECT)
+    spiffs_create_partition_image(spiffs ${FS_IMAGE_PATH} FLASH_IN_PROJECT DEPENDS generateWebUI)
+endif()
+
+# Create a LittleFS image from the contents of the FS_IMAGE_PATH directory
+# that fits the partition named 'spiffs' (not littlefs!). FLASH_IN_PROJECT indicates that
+# the generated image should be flashed when the entire project is flashed to
+# the target with 'idf.py -p PORT flash'.
+include("${CMAKE_SOURCE_DIR}/scripts/littlefs_create_partition_image.cmake")
+if(FS_TYPE STREQUAL "littlefs")
+    message(STATUS "Configuring LittleFS file system")
+    littlefs_create_partition_image(spiffs ${FS_IMAGE_PATH} FLASH_IN_PROJECT DEPENDS generateWebUI)
 endif()

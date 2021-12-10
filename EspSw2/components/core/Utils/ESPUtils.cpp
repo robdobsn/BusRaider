@@ -1,5 +1,12 @@
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 // ESPUtils
-// Rob Dobson 2020
+//
+// Rob Dobson 2020-2021
+//
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#ifndef ESP8266
 
 #include <ESPUtils.h>
 #include <limits.h>
@@ -7,13 +14,15 @@
 #include "freertos/task.h"
 #include "esp_task_wdt.h"
 #include "esp_log.h"
-
+#include "sdkconfig.h"
+#ifdef CONFIG_ESP32_SPIRAM_SUPPORT
 #ifdef __cplusplus
 extern "C" {
 #endif
 #include "esp32/spiram.h"
 #ifdef __cplusplus
 }
+#endif
 #endif
 
 void enableCore0WDT(){
@@ -75,17 +84,24 @@ String getSystemMACAddressStr(esp_mac_type_t macType, const char* pSeparator)
     return outStr;
 }
 
-bool esp32SPIRAM_found = false;
-
-void esp32SPIRAMSetup()
+// Get size of SPIRAM (returns 0 if not available)
+uint32_t utilsGetSPIRAMSize()
 {
-#ifdef RIC_ENABLE_SPIRAM
-    esp32SPIRAM_found = esp_spiram_init() == ESP_OK;
+#ifdef CONFIG_ESP32_SPIRAM_SUPPORT
+    switch (esp_spiram_get_chip_size())
+    {
+        case ESP_SPIRAM_SIZE_16MBITS:
+            return 2 * 1024 * 1024;
+        case ESP_SPIRAM_SIZE_32MBITS:
+        case ESP_SPIRAM_SIZE_64MBITS:
+            // Note that only 4MBytes is usable
+            return 4 * 1024 * 1024;
+        default:
+            return 0;
+    }
+#else
+    return 0;
 #endif
 }
 
-int getHwRevision()
-{
-    // Base detection on presence of SPIRAM
-    return esp32SPIRAM_found ? 2 : 1;
-}
+#endif

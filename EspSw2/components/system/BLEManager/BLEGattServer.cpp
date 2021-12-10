@@ -11,11 +11,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <Logger.h>
+#include <Utils.h>
+#include <ArduinoTime.h>
 #include "BLEGattServer.h"
 // #include "host/ble_uuid.h"
 #include "services/gap/ble_svc_gap.h"
 #include "services/gatt/ble_svc_gatt.h"
-#include "ArduinoTime.h"
 
 #define WARN_ON_BLE_CHAR_WRITE_FAIL
 #define WARN_ON_BLE_CHAR_READ_UNEXPECTED
@@ -64,8 +65,10 @@ ble_uuid128_t BLEGattServer::GATT_RICV2_MESSAGE_RESPONSE_UUID =
 
 // Statics
 uint16_t BLEGattServer::_bleGattMessageResponseHandle = 0;
-uint8_t BLEGattServer::_responseNotifyState = 0;
+bool BLEGattServer::_responseNotifyState = false;
 uint16_t BLEGattServer::_bleGapConnHandle = 0;
+uint32_t BLEGattServer::_lastBLEErrorMsgMs = 0;
+uint32_t BLEGattServer::_lastBLEErrorMsgCode = 0;
 
 // List of services
 #pragma GCC diagnostic push
@@ -312,12 +315,18 @@ bool BLEGattServer::sendToCentral(const uint8_t* pBuf, uint32_t bufLen)
     uint64_t elapsedUs = micros() - nowUS;
     if (elapsedUs > 50000)
     {
-        LOG_W(MODULE_PREFIX, "sendToCentral took %llduS", elapsedUs);
+        LOG_W(MODULE_PREFIX, "sendToCentral SLOW took %llduS", elapsedUs);
     }
 #endif
     if (rc != 0)
     {
-        LOG_W(MODULE_PREFIX, "sendToCentral failed rc = %d", rc);
+        if (Utils::isTimeout(millis(), _lastBLEErrorMsgMs, MIN_TIME_BETWEEN_ERROR_MSGS_MS) || 
+                    (_lastBLEErrorMsgCode != rc))
+        {
+            LOG_W(MODULE_PREFIX, "sendToCentral failed rc = %d", rc);
+            _lastBLEErrorMsgCode = rc;
+            _lastBLEErrorMsgMs = millis();
+        }
         return false;
     }
     return true;
@@ -379,10 +388,10 @@ void BLEGattServer::deinitServer()
 void BLEGattServer::handleSubscription(struct ble_gap_event * pEvent, uint16_t connHandle)
 {
     if (pEvent->subscribe.attr_handle == _bleGattMessageResponseHandle) {
-        _responseNotifyState = pEvent->subscribe.cur_notify;
+        _responseNotifyState = pEvent->subscribe.cur_notify != 0;
         // debug_test_nofify_reset();
     } else if (pEvent->subscribe.attr_handle != _bleGattMessageResponseHandle) {
-        _responseNotifyState = pEvent->subscribe.cur_notify;
+        _responseNotifyState = pEvent->subscribe.cur_notify != 0;
         // debug_test_notify_stop();
     }
 #ifdef DEBUG_RESP_SUBSCRIPTION

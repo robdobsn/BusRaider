@@ -3,15 +3,23 @@
 		"SysType": "BusRaider",
 		"CmdsAtStart": "",
 		"WebUI": "",
-        "SysManager": {
-            "monitorPeriodMs":10000,
-            "reportList":["NetMan","SysMan","StatsCB"],
-            "pauseWiFiforBLE":1,
-            "RICSerial":{
-                "FrameBound":"0xE7",
-                "CtrlEscape":"0xD7"
-            }
-        },
+		"SysManager": {
+			"monitorPeriodMs": 10000,
+			"reportList": [
+				"NetMan",
+				"SysMan",
+				"ProtExchg",
+				"StatsCB"
+			],
+			"pauseWiFiforBLE": 1,
+			"slowSysModMs": 50
+		},
+		"ProtExchg": {
+			"RICSerial": {
+				"FrameBound": "0xE7",
+				"CtrlEscape": "0xD7"
+			}
+		},
 		"NetMan": {
 			"WiFiEnabled": 1,
 			"logLevel": "D"
@@ -50,7 +58,8 @@
 		"SerialConsole": {
 			"enable": 1,
 			"uartNum": 0,
-			"baudRate": 115200,
+			"rxBuf": 256,
+			"txBuf": 2048,
 			"crlfOnTx": 1,
 			"protocol": "RICSerial",
 			"logLevel": "D"
@@ -67,15 +76,15 @@
 		},
 		"FileManager": {
 			"SPIFFSEnabled": 1,
-			"SPIFFSFormatIfCorrupt": 1,
-			"CacheFileList": 0,
-			"SDEnabled": 1,
+			"LittleFSEnabled": 1,
+			"LocalFSFormatIfCorrupt": 1,
+			"CacheFileSysInfo": 1,
+			"SDEnabled": 0,
 			"DefaultSD": 1,
 			"SDMOSI": 15,
 			"SDMISO": 4,
 			"SDCLK": 14,
-			"SDCS": 13,
-			"maxCacheBytes": 0
+			"SDCS": 13
 		},
 		"CommandSocket": {
 			"enable":1,

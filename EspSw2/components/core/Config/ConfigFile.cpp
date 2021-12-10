@@ -14,6 +14,18 @@ static const char* MODULE_PREFIX = "ConfigFile";
 
 //#define DEBUG_CONFIG_FILE
 
+ConfigFile::ConfigFile(FileManager& fileManager, const char *fileSystem, const char* filename, int configMaxlen) :
+        _fileManager(fileManager)
+{
+    _fileSystem = fileSystem;
+    _filename = filename;
+    _configMaxDataLen = configMaxlen;
+}
+
+~ConfigFile::ConfigFile()
+{
+}
+
 // Clear
 void ConfigFile::clear()
 {
@@ -24,7 +36,7 @@ void ConfigFile::clear()
     ConfigBase::clear();
 
     // Clear the config string
-    setConfigData("");
+    _setConfigData("");
 }
 
 // Initialise
@@ -34,11 +46,20 @@ bool ConfigFile::setup()
     ConfigBase::setup();
 
     // Get config string
-    String configData = _fileManager.getFileContents(_fileSystem, _filename, _configMaxDataLen);
-    setConfigData(configData.c_str());
+    char* pConfigData = _fileManager.getFileContents(_fileSystem, _filename, _configMaxDataLen);
+    if (pConfigData)
+    {
+        _setConfigData(pConfigData);
+        free(pConfigData);
 #ifdef DEBUG_CONFIG_FILE
-    LOG_I(MODULE_PREFIX, "Config %s read len(%d) %s", _filename.c_str(), configData.length(), configData.c_str());
+        LOG_I(MODULE_PREFIX, "Config %s read len(%d) %s", _filename.c_str(), configData.length(), configData.c_str());
 #endif
+    }
+    else
+    {
+        _setConfigData("");
+    }
+
     // Ok
     return true;
 }

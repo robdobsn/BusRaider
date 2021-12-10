@@ -11,3 +11,8 @@ scripts/config.ini
 test/eepromPartitionTest/prewritedata.bin
 test/eepromPartitionTest/readbackdata.bin
 
+# Generated updater files
+current_version.json
+ot[ac]_current_version.json
+updates/
+node_modules/

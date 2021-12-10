@@ -18,23 +18,17 @@
 #include "nvs_flash.h"
 #include "WString.h"
 
-// #define PRIVATE_EVENT_LOOP 1
-#define USE_V4_0_1_PLUS_NET_STRUCTS 1
+// #define PRIVATE_EVENT_LOOP
 
 #include "esp_idf_version.h"
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 1, 0)
-// #pragma message "Using V4.1+ NETIF methods"
-#define USE_IDF_V4_1_PLUS_NETIF_METHODS
-#endif
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 3, 0)
 // #pragma message "Using V4.3+ WiFi methods"
 #define ESP_IDF_WIFI_STA_MODE_FLAG WIFI_IF_STA
-#define USE_IDF_V4_2_PLUS_WIFI_METHODS
 #else
 #define ESP_IDF_WIFI_STA_MODE_FLAG ESP_IF_WIFI_STA
 #endif
 
-#ifdef USE_IDF_V4_1_PLUS_NETIF_METHODS
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 1, 0)
 #include "esp_netif.h"
 #else
 #include "tcpip_adapter.h"
@@ -131,6 +125,7 @@ private:
 #ifdef PRIVATE_EVENT_LOOP
     // Event loop for WiFi connection
     esp_event_loop_handle_t _wifiEventLoopHandle;
+    static const int CONFIG_WIFI_PRIVATE_EVENT_LOOP_CORE = 1;
 #endif
 
     // FreeRTOS event group to signal when we are connected

@@ -1,7 +1,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // FileSystem 
-// Handles SPIFFS and SD card file access
+// Handles SPIFFS/LittleFS and SD card file access
 //
 // Rob Dobson 2018-2020
 //
@@ -20,16 +20,26 @@
 #include <Utils.h>
 #include <ConfigPinMap.h>
 #include <Logger.h>
+#include <SpiramAwareAllocator.h>
+#include "esp_littlefs.h"
 
 static const char* MODULE_PREFIX = "FileSystem";
 
 FileSystem fileSystem;
 
-// #define WARN_ON_FILE_NOT_FOUND
+// Warn
+#define WARN_ON_FILE_NOT_FOUND
 #define WARN_ON_FILE_SYSTEM_ERRORS
+#define WARN_ON_INVALID_FILE_SYSTEM
 #define WARN_ON_FILE_TOO_BIG
-// #define DEBUG_FILE_UPLOAD 1
-// #define DEBUG_FILE_SYSTEM
+#define WARN_ON_GET_CONTENTS_IS_FOLDER
+
+// Debug
+// #define DEBUG_FILE_UPLOAD
+// #define DEBUG_GET_FILE_CONTENTS
+// #define DEBUG_FILE_EXISTS_PERFORMANCE
+// #define DEBUG_FILE_SYSTEM_MOUNT
+// #define DEBUG_CACHE_FS_INFO
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -37,137 +47,50 @@ FileSystem fileSystem;
 
 FileSystem::FileSystem()
 {
-    // Vars    
-    _enableSPIFFS = false;
-    _spiffsIsOk = false;
-    _enableSD = false;
-    _sdIsOk = false;
-    _cacheFileList = false;
-    _cachedFileListValid = false;
+    // Vars
+    _localFSIsLittleFS = false;
+    _cacheFileSystemInfo = false;
     _defaultToSDIfAvailable = true;
     _pSDCard = NULL;
     _fileSysMutex = xSemaphoreCreateMutex();
-    _maxCacheBytes = 5000;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Setup
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void FileSystem::setup(bool enableSPIFFS, bool spiffsFormatIfCorrupt, bool enableSD, 
+void FileSystem::setup(bool enableSPIFFS, bool enableLittleFS, bool localFsFormatIfCorrupt, bool enableSD, 
         int sdMOSIPin, int sdMISOPin, int sdCLKPin, int sdCSPin, bool defaultToSDIfAvailable,
-        bool cacheFileList, int maxCacheBytes)
+        bool cacheFileSystemInfo)
 {
     // Init
-    _spiffsIsOk = false;
-    _sdIsOk = false;
-    _cacheFileList = cacheFileList;
-    _cachedFileListValid = false;
+    _localFsCache.isUsed = false;
+    _localFsCache.fsName.clear();
+    _sdFsCache.isUsed = false;
+    _cacheFileSystemInfo = cacheFileSystemInfo;
     _defaultToSDIfAvailable = defaultToSDIfAvailable;
-    _maxCacheBytes = maxCacheBytes;
 
-    // See if SPIFFS enabled
-    _enableSPIFFS = enableSPIFFS;
+    // Setup local file system
+    localFileSystemSetup(enableSPIFFS, enableLittleFS, localFsFormatIfCorrupt);
 
-    // Init SPIFFS if required
-    if (_enableSPIFFS)
-    {
-        // Using ESP32 native SPIFFS support rather than arduino as potential bugs encountered in some
-        // arduino functions
-        esp_vfs_spiffs_conf_t conf = {
-            .base_path = "/spiffs",
-            .partition_label = NULL,
-            .max_files = 5,
-            .format_if_mount_failed = spiffsFormatIfCorrupt
-        };        
-        // Use settings defined above to initialize and mount SPIFFS filesystem.
-        // Note: esp_vfs_spiffs_register is an all-in-one convenience function.
-        esp_err_t ret = esp_vfs_spiffs_register(&conf);
-        if (ret != ESP_OK)
-        {
-            if (ret == ESP_FAIL) {
-                LOG_W(MODULE_PREFIX, "setup failed mount/format SPIFFS");
-            } else if (ret == ESP_ERR_NOT_FOUND) {
-                LOG_W(MODULE_PREFIX, "setup failed to find SPIFFS partition");
-            } else {
-                LOG_W(MODULE_PREFIX, "setup failed to init SPIFFS (error %s)", esp_err_to_name(ret));
-            }
-        }
-        else
-        {
-            // Get SPIFFS info
-            size_t total = 0, used = 0;
-            esp_err_t ret = esp_spiffs_info(NULL, &total, &used);
-            if (ret != ESP_OK) {
-                LOG_W(MODULE_PREFIX, "setup failed to get SPIFFS info (error %s)", esp_err_to_name(ret));
-            } else {
-                LOG_I(MODULE_PREFIX, "setup SPIFFS partition size total %d, used %d", total, used);
-            }
+    // Setup SD file system
+    sdFileSystemSetup(enableSD, sdMOSIPin, sdMISOPin, sdCLKPin, sdCSPin);
 
-            // SPIFFS ok
-            _spiffsIsOk = true;
-        }
-    }
-    else
-    {
-        LOG_I(MODULE_PREFIX, "SPIFFS disabled");
-    }
+    // Service a few times to setup caches
+    for (uint32_t i = 0; i < SERVICE_COUNT_FOR_CACHE_PRIMING; i++)
+        service();
+}
 
-    // See if SD enabled
-    _enableSD = enableSD;
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Service
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    // Init SD if enabled
-    if (_enableSD)
-    {
-        // Check valid
-        if (sdMOSIPin == -1 || sdMISOPin == -1 || sdCLKPin == -1 || sdCSPin == -1)
-        {
-            LOG_W(MODULE_PREFIX, "setup SD pins invalid");
-        }
-        else
-        {
-            sdmmc_host_t host = SDSPI_HOST_DEFAULT();
-            sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
-            slot_config.gpio_miso = (gpio_num_t)sdMISOPin;
-            slot_config.gpio_mosi = (gpio_num_t)sdMOSIPin;
-            slot_config.gpio_sck  = (gpio_num_t)sdCLKPin;
-            slot_config.gpio_cs   = (gpio_num_t)sdCSPin;
-            // Options for mounting the filesystem.
-            // If format_if_mount_failed is set to true, SD card will be partitioned and formatted
-            // in case when mounting fails.
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-            esp_vfs_fat_sdmmc_mount_config_t mount_config = {
-                .format_if_mount_failed = false,
-                .max_files = 5
-            };
-#pragma GCC diagnostic pop
-
-            sdmmc_card_t* pCard;
-            esp_err_t ret = esp_vfs_fat_sdmmc_mount("/sd", &host, &slot_config, &mount_config, &pCard);
-            if (ret != ESP_OK) {
-                if (ret == ESP_FAIL) {
-                    LOG_W(MODULE_PREFIX, "setup failed mount SD");
-                } else {
-                    LOG_I(MODULE_PREFIX, "setup failed to init SD (error %s)", esp_err_to_name(ret));
-                }
-            }
-            else
-            {
-                _pSDCard = pCard;
-                LOG_I(MODULE_PREFIX, "setup SD ok");
-                // SD ok
-                _sdIsOk = true;
-            }
-
-            // DEBUG SD print SD card info
-            // sdmmc_card_print_info(stdout, pCard);
-        }
-    }
-    else
-    {
-        LOG_I(MODULE_PREFIX, "SD disabled");
-    }
+void FileSystem::service()
+{
+    if (!_cacheFileSystemInfo)
+        return;
+    fileSystemCacheService(_localFsCache);
+    fileSystemCacheService(_sdFsCache);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -184,28 +107,46 @@ void FileSystem::reformat(const String& fileSystemStr, String& respStr)
         return;
     }
     
+    // Check FS name
+    if (!nameOfFS.equalsIgnoreCase(LOCAL_FILE_SYSTEM_NAME))
+    {
+        LOG_W(MODULE_PREFIX, "Can only format local file system");
+        return;
+    }
+
     // TODO - check WDT maybe enabled
     // Reformat - need to disable Watchdog timer while formatting
     // Watchdog is not enabled on core 1 in Arduino according to this
     // https://www.bountychannel.com/issues/44690700-watchdog-with-system-reset
-    _cachedFileListValid = false;
     // disableCore0WDT();
-    esp_err_t ret = esp_spiffs_format(NULL);
+    _localFsCache.isSizeInfoValid = false;
+    _localFsCache.isFileInfoValid = false;
+    _localFsCache.isFileInfoSetup = false;
+    esp_err_t ret = ESP_FAIL;
+    if (_localFSIsLittleFS)
+        ret = esp_littlefs_format(NULL);
+    else
+        ret = esp_spiffs_format(NULL);
     // enableCore0WDT();
     Utils::setJsonBoolResult("reformat", respStr, ret == ESP_OK);
-    LOG_W(MODULE_PREFIX, "Reformat SPIFFS result %s", (ret == ESP_OK ? "OK" : "FAIL"));
+    LOG_W(MODULE_PREFIX, "Reformat result %s", (ret == ESP_OK ? "OK" : "FAIL"));
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Get path of root of default file system
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-String FileSystem::getDefaultFSRoot()
+String FileSystem::getDefaultFSRoot() const
 {
     // Default file system root path
-    if (_sdIsOk && ((!_spiffsIsOk) || (!_defaultToSDIfAvailable)))
-        return "sd";
-    return "spiffs";
+    if (_sdFsCache.isUsed)
+    {
+        if (_defaultToSDIfAvailable)
+            return SD_FILE_SYSTEM_NAME;
+        if (_localFsCache.fsName.length() == 0)
+            return SD_FILE_SYSTEM_NAME;
+    }
+    return _localFsCache.fsName.c_str();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -255,179 +196,51 @@ bool FileSystem::getFileInfo(const String& fileSystemStr, const String& filename
 
 bool FileSystem::getFilesJSON(const char* req, const String& fileSystemStr, const String& folderStr, String& respStr)
 {
-    // Standard request name to add to response JSON
-    String reqStr = req;
-
     // Check file system supported
     String nameOfFS;
     if (!checkFileSystem(fileSystemStr, nameOfFS))
     {
         LOG_W(MODULE_PREFIX, "getFilesJSON unknownFS %s", fileSystemStr.c_str());
-        Utils::setJsonErrorResult(reqStr.c_str(), respStr, "unknownfs");
+        Utils::setJsonErrorResult(req, respStr, "unknownfs");
         return false;
     }
 
-    // Check if cached version can be used
-    if ((_cachedFileListValid) && (_cachedFileListResponse.length() != 0))
+    // Check if cached information can be used
+    CachedFileSystem& cachedFs = nameOfFS.equalsIgnoreCase(LOCAL_FILE_SYSTEM_NAME) ? _localFsCache : _sdFsCache;
+    if (_cacheFileSystemInfo && ((folderStr.length() == 0) || (folderStr.equalsIgnoreCase("/"))))
     {
-        respStr = _cachedFileListResponse;
-        return true;
-        
-    }
-    // Take mutex
-    if (xSemaphoreTake(_fileSysMutex, 0) != pdTRUE)
-    {
-        Utils::setJsonErrorResult(reqStr.c_str(), respStr, "fsbusy");
-        return false;
+        LOG_I(MODULE_PREFIX, "getFilesJSON using cached info");
+        return fileInfoCacheToJSON(req, cachedFs, "/", respStr);
     }
 
-    // Get size of file systems
-    String baseFolderForFS;
-    double fsSizeBytes = 0, fsUsedBytes = 0;
-    if (nameOfFS == "spiffs")
-    {
-        uint32_t sizeBytes = 0, usedBytes = 0;
-        esp_err_t ret = esp_spiffs_info(NULL, &sizeBytes, &usedBytes);
-        if (ret != ESP_OK)
-        {
-            xSemaphoreGive(_fileSysMutex);
-            LOG_W(MODULE_PREFIX, "getFilesJSON Failed to get SPIFFS info (error %s)", esp_err_to_name(ret));
-            Utils::setJsonErrorResult(reqStr.c_str(), respStr, "spiffsInfo");
-            return false;
-        }
-        // FS settings
-        fsSizeBytes = sizeBytes;
-        fsUsedBytes = usedBytes;
-        nameOfFS = "spiffs";
-        baseFolderForFS = "/spiffs";
-    }
-    else if (nameOfFS == "sd")
-    {
-        // Get size info
-        sdmmc_card_t* pCard = (sdmmc_card_t*)_pSDCard;
-        if (pCard)
-        {
-            fsSizeBytes = ((double) pCard->csd.capacity) * pCard->csd.sector_size;
-        	FATFS* fsinfo;
-            DWORD fre_clust;
-            if(f_getfree("0:",&fre_clust,&fsinfo) == 0)
-            {
-                fsUsedBytes = ((double)(fsinfo->csize))*((fsinfo->n_fatent - 2) - (fsinfo->free_clst))
-            #if _MAX_SS != 512
-                    *(fsinfo->ssize);
-            #else
-                    *512;
-            #endif
-            }
-        }
-        // Set FS info
-        nameOfFS = "sd";
-        baseFolderForFS = "/sd";
-    }
-
-    // Check file system is valid
-    if (fsSizeBytes == 0)
-    {
-        xSemaphoreGive(_fileSysMutex);
-        LOG_W(MODULE_PREFIX, "getFilesJSON No valid file system");
-        Utils::setJsonErrorResult(reqStr.c_str(), respStr, "nofs");
-        return false;
-    }
-
-    // Open directory
-    String rootFolder = (folderStr.startsWith("/") ? baseFolderForFS + folderStr : (baseFolderForFS + "/" + folderStr));
-    DIR* dir = opendir(rootFolder.c_str());
-    if (!dir)
-    {
-        xSemaphoreGive(_fileSysMutex);
-        LOG_W(MODULE_PREFIX, "getFilesJSON Failed to open base folder %s", rootFolder.c_str());
-        Utils::setJsonErrorResult(reqStr.c_str(), respStr, "nofolder");
-        return false;
-    }
-
-    // Start response JSON
-    respStr = R"({"req":")" + reqStr + R"(","rslt":"ok","fsName":")" + nameOfFS + R"(","fsBase":")" + baseFolderForFS + 
-                R"(","diskSize":)" + String(fsSizeBytes) + R"(,"diskUsed":)" + fsUsedBytes +
-                R"(,"folder":")" + String(rootFolder) + R"(","files":[)";
-    bool firstFile = true;
-
-    // Read directory entries
-    struct dirent* ent = NULL;
-    while ((ent = readdir(dir)) != NULL) 
-    {
-        // Check for unwanted files
-        String fName = ent->d_name;
-        if (fName.equalsIgnoreCase("System Volume Information"))
-            continue;
-        if (fName.equalsIgnoreCase("thumbs.db"))
-            continue;
-
-        // Get file info including size
-        size_t fileSize = 0;
-        struct stat st;
-        String filePath = (rootFolder.endsWith("/") ? rootFolder + fName : rootFolder + "/" + fName);
-        if (stat(filePath.c_str(), &st) == 0) 
-        {
-            fileSize = st.st_size;
-        }
-
-        // Form the JSON list
-        if (!firstFile)
-            respStr += ",";
-        firstFile = false;
-        respStr += R"({"name":")";
-        respStr += ent->d_name;
-        respStr += R"(","size":)";
-        respStr += String(fileSize);
-        respStr += "}";
-    }
-
-    // Finished with file list
-    closedir(dir);
-    xSemaphoreGive(_fileSysMutex);
-
-    // Complete string and replenish cache
-    respStr += "]}";
-    if (_cacheFileList)
-    {
-        _cachedFileListResponse = respStr;
-        _cachedFileListValid = true;
-    }
-    return true;
+    // Generate info immediately
+    return fileInfoGenImmediate(req, cachedFs, folderStr, respStr);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Get file contents
+// If non-null pointer returned then it must be freed by caller
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-String FileSystem::getFileContents(const String& fileSystemStr, const String& filename, 
-                int maxLen, bool cacheIfPossible)
+char* FileSystem::getFileContents(const String& fileSystemStr, const String& filename, 
+                int maxLen)
 {
     // Check file system supported
     String nameOfFS;
     if (!checkFileSystem(fileSystemStr, nameOfFS))
     {
+#ifdef WARN_ON_INVALID_FILE_SYSTEM
         LOG_W(MODULE_PREFIX, "getContents %s invalid file system %s", filename.c_str(), fileSystemStr.c_str());
-        return "";
+#endif
+        return nullptr;
     }
 
     // Filename
-
     String rootFilename = getFilePath(nameOfFS, filename);
-
-    // Check if cached
-    for (CachedFileEntry& cachedFile : _cachedFiles)
-    {
-        if (cachedFile._fileName.equals(rootFilename))
-        {
-            cachedFile._lastUsedMs = millis();
-            return cachedFile._fileContents;
-        }
-    }
 
     // Take mutex
     if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
-        return "";
+        return nullptr;
 
     // Get file info - to check length
     struct stat st;
@@ -437,21 +250,21 @@ String FileSystem::getFileContents(const String& fileSystemStr, const String& fi
 #ifdef WARN_ON_FILE_NOT_FOUND
         LOG_W(MODULE_PREFIX, "getContents %s cannot stat", rootFilename.c_str());
 #endif
-        return "";
+        return nullptr;
     }
     if (!S_ISREG(st.st_mode))
     {
         xSemaphoreGive(_fileSysMutex);
-#ifdef DEBUG_FILE_SYSTEM
+#ifdef WARN_ON_GET_CONTENTS_IS_FOLDER
         LOG_I(MODULE_PREFIX, "getContents %s is a folder", rootFilename.c_str());
 #endif
-        return "";
+        return nullptr;
     }
 
     // Check valid
     if (maxLen <= 0)
     {
-        maxLen = heap_caps_get_free_size(MALLOC_CAP_8BIT) / 3;
+        maxLen = SpiramAwareAllocator<char>::max_allocatable() / 3;
     }
     if (st.st_size >= maxLen-1)
     {
@@ -459,7 +272,7 @@ String FileSystem::getFileContents(const String& fileSystemStr, const String& fi
 #ifdef WARN_ON_FILE_TOO_BIG
         LOG_W(MODULE_PREFIX, "getContents %s free heap %d size %d too big to read", rootFilename.c_str(), maxLen, (int)st.st_size);
 #endif
-        return "";
+        return nullptr;
     }
     int fileSize = st.st_size;
 
@@ -471,11 +284,16 @@ String FileSystem::getFileContents(const String& fileSystemStr, const String& fi
 #ifdef WARN_ON_FILE_NOT_FOUND
         LOG_W(MODULE_PREFIX, "getContents failed to open file to read %s", rootFilename.c_str());
 #endif
-        return "";
+        return nullptr;
     }
 
+#ifdef DEBUG_GET_FILE_CONTENTS
+    uint32_t intMemPreAlloc = heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+#endif
+
     // Buffer
-    uint8_t* pBuf = new uint8_t[fileSize+1];
+    SpiramAwareAllocator<char> allocator;
+    char* pBuf = allocator.allocate(fileSize+1);
     if (!pBuf)
     {
         fclose(pFile);
@@ -483,34 +301,23 @@ String FileSystem::getFileContents(const String& fileSystemStr, const String& fi
 #ifdef WARN_ON_FILE_TOO_BIG
         LOG_W(MODULE_PREFIX, "getContents failed to allocate %d", fileSize);
 #endif
-        return "";
+        return nullptr;
     }
 
     // Read
-    size_t bytesRead = fread((char*)pBuf, 1, fileSize, pFile);
+    size_t bytesRead = fread(pBuf, 1, fileSize, pFile);
     fclose(pFile);
     xSemaphoreGive(_fileSysMutex);
     pBuf[bytesRead] = 0;
-    String readData = (char*)pBuf;
-    delete [] pBuf;
 
-    // Decide whether to cache
-    if (cacheIfPossible && (readData.length() < _maxCacheBytes))
-    {
-        // Get current cache size
-        int spaceNeeded = readData.length();
-        int numCachedFiles = _cachedFiles.size();
-        for (int i = 0; i < numCachedFiles; i++)
-        {
-            if (cachedFilesGetBytes() + spaceNeeded <= _maxCacheBytes)
-                break;
-            cachedFilesDropOldest();
-        }
-        // Check ok and store in cache
-        if (cachedFilesGetBytes() + spaceNeeded < _maxCacheBytes)
-            cachedFilesStoreNew(rootFilename, readData);
-    }
-    return readData;
+#ifdef DEBUG_GET_FILE_CONTENTS
+    LOG_I(MODULE_PREFIX, "getContents preReadIntHeap %d postReadIntHeap %d fileSize %d filename %s", intMemPreAlloc, 
+                heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+                fileSize, rootFilename.c_str());
+#endif
+
+    // Return buffer - must be freed by caller
+    return pBuf;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -547,145 +354,12 @@ bool FileSystem::setFileContents(const String& fileSystemStr, const String& file
     fclose(pFile);
 
     // Clean up
-    _cachedFileListValid = false;
+#ifdef DEBUG_CACHE_FS_INFO
+    LOG_I(MODULE_PREFIX, "setFileContents cache invalid");
+#endif
+    markFileCacheDirty(nameOfFS, filename);
     xSemaphoreGive(_fileSysMutex);
     return bytesWritten == fileContents.length();
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Upload
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void FileSystem::uploadAPIBlocksComplete()
-{
-    // This may or may not be called depending on the interface used
-    // HTTP file upload will call it
-    // Other file upload paths don't - but it isn't needed as the uploadAPIBlockHandler as a finalBlock flag
-}
-
-void FileSystem::uploadAPIBlockHandler(const char* fileSystem, const String& req, 
-                    FileBlockInfo& fileBlockInfo)
-{
-#ifdef DEBUG_FILE_UPLOAD
-    LOG_I(MODULE_PREFIX, "uploadAPIBlockHandler fileSys %s, filename %s, fileLenValid %d fileLen %d contentLen %d, pos %d, len %d, final %d", 
-                fileSystem, fileBlockInfo.filename, fileBlockInfo.fileLenValid, 
-                fileBlockInfo.fileLen, fileBlockInfo.contentLen,
-                fileBlockInfo.filePos, fileBlockInfo.blockLen, fileBlockInfo.finalBlock);
-#endif
-
-    // Check valid
-    if ((!fileBlockInfo.filename) || (strlen(fileBlockInfo.filename) == 0))
-    {
-        LOG_W(MODULE_PREFIX, "uploadBlock file name invalid");
-        return;
-    }
-
-    // Check file system supported
-    String nameOfFS;
-    if (!checkFileSystem(String(fileSystem), nameOfFS))
-    {
-        LOG_W(MODULE_PREFIX, "uploadBlock file system %s not supported", fileSystem);
-        return;
-    }
-
-    // Take mutex
-    if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
-    {
-        LOG_W(MODULE_PREFIX, "uploadBlock file system semaphore problem");
-        return;
-    }
-
-    // Get path
-    String filename = fileBlockInfo.filename;
-    String tempFileName = "/__tmp__";
-    String tmpRootFilename = getFilePath(nameOfFS, tempFileName);
-    if (fileBlockInfo.pBlock && (fileBlockInfo.blockLen > 0))
-    {
-        FILE* pFile = NULL;
-
-        // Check if we should overwrite or append
-        if (fileBlockInfo.filePos > 0)
-            pFile = fopen(tmpRootFilename.c_str(), "ab");
-        else
-            pFile = fopen(tmpRootFilename.c_str(), "wb");
-        if (!pFile)
-        {
-            xSemaphoreGive(_fileSysMutex);
-            LOG_W(MODULE_PREFIX, "uploadBlock failed to open file to write %s", tmpRootFilename.c_str());
-            return;
-        }
-
-        // Write file block to temporary file
-        size_t bytesWritten = fwrite(fileBlockInfo.pBlock, 1, fileBlockInfo.blockLen, pFile);
-        fclose(pFile);
-        if (bytesWritten != fileBlockInfo.blockLen)
-        {
-            LOG_W(MODULE_PREFIX, "uploadBlock write failed %s (written %d != blockLen %d)", 
-                        tmpRootFilename.c_str(), bytesWritten, fileBlockInfo.blockLen);
-        }
-        else
-        {
-#ifdef DEBUG_FILE_UPLOAD
-            LOG_I(MODULE_PREFIX, "uploadBlock write ok %s (written %d == blockLen %d)", 
-                        tmpRootFilename.c_str(), bytesWritten, fileBlockInfo.blockLen);
-#endif
-        }
-    }
-    else if (!fileBlockInfo.finalBlock)
-    {
-        LOG_W(MODULE_PREFIX, "uploadBlock Non-final block with null ptr or len %d == 0", 
-                fileBlockInfo.blockLen);
-    }
-
-    // Rename if last block
-    if (fileBlockInfo.finalBlock)
-    {
-        // Check if destination file exists before renaming
-        struct stat st;
-        String rootFilename = getFilePath(nameOfFS, filename);
-        if (stat(rootFilename.c_str(), &st) == 0) 
-        {
-            // Remove in case filename already exists
-            unlink(rootFilename.c_str());
-        }
-
-        // Rename
-        if (rename(tmpRootFilename.c_str(), rootFilename.c_str()) != 0)
-        {
-            LOG_W(MODULE_PREFIX, "uploadBlock failed rename %s to %s", tmpRootFilename.c_str(), rootFilename.c_str());
-        }
-        else
-        {
-            // Cached file list now invalid
-            _cachedFileListValid = false;
-#ifdef DEBUG_FILE_UPLOAD
-            LOG_I(MODULE_PREFIX, "uploadBlock finalBlock rename OK fileSys %s, filename %s, contentLen %d, pos %d, len %d", 
-                nameOfFS.c_str(), filename.c_str(), fileBlockInfo.contentLen, 
-                fileBlockInfo.filePos, fileBlockInfo.blockLen);
-#endif
-        }
-
-        // Restore semaphore
-        xSemaphoreGive(_fileSysMutex);
-        
-        // Debug - check file present
-        if (!exists(getFilePath(nameOfFS, filename).c_str()))
-        {
-            LOG_W(MODULE_PREFIX, "uploadBlock file does not exist %s", getFilePath(nameOfFS, filename).c_str());
-        }
-        if (exists(tmpRootFilename.c_str()))
-        {
-            LOG_W(MODULE_PREFIX, "uploadBlock temp file exists %s", tmpRootFilename.c_str());
-        }
-    }
-    else
-    {
-#ifdef DEBUG_FILE_UPLOAD
-        LOG_W(MODULE_PREFIX, "uploadBlock non-final block");
-#endif
-        // Restore semaphore
-        xSemaphoreGive(_fileSysMutex);
-    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -713,7 +387,10 @@ bool FileSystem::deleteFile(const String& fileSystemStr, const String& filename)
         unlink(rootFilename.c_str());
     }
 
-    _cachedFileListValid = false;
+#ifdef DEBUG_CACHE_FS_INFO
+    LOG_I(MODULE_PREFIX, "deleteFile cache invalid");
+#endif
+    markFileCacheDirty(nameOfFS, filename);
     xSemaphoreGive(_fileSysMutex);   
     return true;
 }
@@ -754,7 +431,7 @@ char* FileSystem::readLineFromFile(char* pBuf, int maxLen, FILE* pFile)
 // Get file name extension
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-String FileSystem::getFileExtension(String& fileName)
+String FileSystem::getFileExtension(const String& fileName)
 {
     String extn;
     // Find last .
@@ -769,27 +446,29 @@ String FileSystem::getFileExtension(String& fileName)
 // Get file system and check ok
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool FileSystem::checkFileSystem(const String& fileSystemStr, String& fsName)
+bool FileSystem::checkFileSystem(const String& fileSystemStr, String& fsName) const
 {
     // Check file system
     fsName = fileSystemStr;
     fsName.trim();
     fsName.toLowerCase();
 
+    // Check alternate name
+    if (fsName.equalsIgnoreCase(LOCAL_FILE_SYSTEM_ALT_NAME))
+        fsName = LOCAL_FILE_SYSTEM_NAME;
+
     // Use default file system if not specified
     if (fsName.length() == 0)
         fsName = getDefaultFSRoot();
 
-    // Handle access
-    if (fsName == "spiffs")
+    // Handle local file system
+    if (fsName == LOCAL_FILE_SYSTEM_NAME)
+        return _localFsCache.fsName.length() > 0;
+
+    // SD file system
+    if (fsName == SD_FILE_SYSTEM_NAME)
     {
-        if (!_spiffsIsOk)
-            return false;
-        return true;
-    }
-    if (fsName == "sd")
-    {
-        if (!_sdIsOk)
+        if (!_sdFsCache.isUsed)
             return false;
         return true;
     }
@@ -802,10 +481,10 @@ bool FileSystem::checkFileSystem(const String& fileSystemStr, String& fsName)
 // Get file path
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-String FileSystem::getFilePath(const String& nameOfFS, const String& filename)
+String FileSystem::getFilePath(const String& nameOfFS, const String& filename) const
 {
     // Check if filename already contains file system
-    if ((filename.indexOf("spiffs/") >= 0) || (filename.indexOf("sd/") >= 0))
+    if ((filename.indexOf(LOCAL_FILE_SYSTEM_PATH_ELEMENT) >= 0) || (filename.indexOf(SD_FILE_SYSTEM_PATH_ELEMENT) >= 0))
         return (filename.startsWith("/") ? filename : ("/" + filename));
     return (filename.startsWith("/") ? "/" + nameOfFS + filename : ("/" + nameOfFS + "/" + filename));
 }
@@ -814,7 +493,7 @@ String FileSystem::getFilePath(const String& nameOfFS, const String& filename)
 // Get file path with fs check
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool FileSystem::getFileFullPath(const String& filename, String& fileFullPath)
+bool FileSystem::getFileFullPath(const String& filename, String& fileFullPath) const
 {
     // Extract filename elements
     String modFileName = filename;
@@ -845,14 +524,27 @@ bool FileSystem::getFileFullPath(const String& filename, String& fileFullPath)
 // Exists - check if file exists
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool FileSystem::exists(const char* path)
+bool FileSystem::exists(const char* path) const
 {
     // Take mutex
+#ifdef DEBUG_FILE_EXISTS_PERFORMANCE
+    uint64_t st1 = micros();
+#endif
     if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
         return false;
+#ifdef DEBUG_FILE_EXISTS_PERFORMANCE
+    uint64_t st2 = micros();
+#endif
     struct stat buffer;   
     bool rslt = (stat(path, &buffer) == 0);
+#ifdef DEBUG_FILE_EXISTS_PERFORMANCE
+    uint64_t st3 = micros();
+#endif
     xSemaphoreGive(_fileSysMutex);
+#ifdef DEBUG_FILE_EXISTS_PERFORMANCE
+    uint64_t st4 = micros();
+    LOG_I(MODULE_PREFIX, "exists 1:%lld 2:%lld 3:%lld", st2-st1, st3-st2, st4-st3);
+#endif
     return rslt;
 }
 
@@ -961,41 +653,748 @@ bool FileSystem::getFileLine(const String& fileSystemStr, const String& filename
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Cached file helpers
+// Open file
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-uint32_t FileSystem::cachedFilesGetBytes()
+FILE* FileSystem::fileOpen(const String& fileSystemStr, const String& filename, 
+                    bool writeMode, uint32_t seekToPos)
 {
-    uint32_t totalBytes = 0;
-    for (CachedFileEntry& cachedFile : _cachedFiles)
-        totalBytes += cachedFile._fileContents.length();
-    return totalBytes;
+    // Check file system supported
+    String nameOfFS;
+    if (!checkFileSystem(fileSystemStr, nameOfFS))
+    {
+        LOG_W(MODULE_PREFIX, "fileOpen %s invalid file system %s", filename.c_str(), fileSystemStr.c_str());
+        return nullptr;
+    }
+
+    // Take mutex
+    if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
+        return nullptr;
+
+    // Open file
+    String rootFilename = getFilePath(nameOfFS, filename);
+    FILE* pFile = fopen(rootFilename.c_str(), writeMode ? "wb" : "rb");
+    if (pFile && (seekToPos != 0))
+        fseek(pFile, seekToPos, SEEK_SET);
+
+    // Check writing (invalidates cache)
+    if (writeMode)
+    {
+        markFileCacheDirty(nameOfFS, filename);
+    }
+
+    // Release mutex
+    xSemaphoreGive(_fileSysMutex);
+
+    // Check result
+    if (!pFile)
+    {
+        LOG_W(MODULE_PREFIX, "getFileSection failed to open file to read %s", rootFilename.c_str());
+        return nullptr;
+    }
+
+    if (writeMode)
+    {
+#ifdef DEBUG_CACHE_FS_INFO
+        LOG_I(MODULE_PREFIX, "fileOpen cache invalid");
+#endif
+    }
+
+    // Return file 
+    return pFile;
 }
 
-void FileSystem::cachedFilesDropOldest()
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Close file
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool FileSystem::fileClose(FILE* pFile)
 {
-    // Find oldest
-    std::list<CachedFileEntry>::iterator oldestIt = _cachedFiles.begin();
-    uint32_t oldestMs = 0;
-    for (std::list<CachedFileEntry>::iterator it = _cachedFiles.begin(); it != _cachedFiles.end(); it++)
+    // Take mutex
+    if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
+        return false;
+
+    // Close file
+    fclose(pFile);
+
+    // Release mutex
+    xSemaphoreGive(_fileSysMutex);
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Read from file
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uint32_t FileSystem::fileRead(FILE* pFile, uint8_t* pBuf, uint32_t readLen)
+{
+    // Ensure valid
+    if (!pFile)
     {
-        uint32_t sinceUsedMs = Utils::timeElapsed(millis(), it->_lastUsedMs);
-        if (oldestMs < sinceUsedMs)
+        LOG_W(MODULE_PREFIX, "fileRead filePtr null");
+        return 0;
+    }
+
+    // Take mutex
+    if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
+        return 0;
+
+    // Read
+    uint32_t lenRead = fread((char*)pBuf, 1, readLen, pFile);
+
+    // Release mutex
+    xSemaphoreGive(_fileSysMutex);
+    return lenRead;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Write to file
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uint32_t FileSystem::fileWrite(FILE* pFile, const uint8_t* pBuf, uint32_t writeLen)
+{
+    // Ensure valid
+    if (!pFile)
+    {
+        LOG_W(MODULE_PREFIX, "fileWrite filePtr null");
+        return 0;
+    }
+
+    // Take mutex
+    if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
+        return 0;
+
+    // Read
+    uint32_t lenWritten = fwrite((char*)pBuf, 1, writeLen, pFile);
+
+    // Release mutex
+    xSemaphoreGive(_fileSysMutex);
+    return lenWritten;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Get temporary file name
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+String getTempFileName()
+{
+    return "__temp__";
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Get file position
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uint32_t FileSystem::filePos(FILE* pFile)
+{
+    // Ensure valid
+    if (!pFile)
+    {
+        LOG_W(MODULE_PREFIX, "filePos filePtr null");
+        return 0;
+    }
+
+    // Take mutex
+    if (xSemaphoreTake(_fileSysMutex, portMAX_DELAY) != pdTRUE)
+        return 0;
+
+    // Read
+    uint32_t filePosition = ftell(pFile);
+
+    // Release mutex
+    xSemaphoreGive(_fileSysMutex);
+    return filePosition;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Setup local file system
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void FileSystem::localFileSystemSetup(bool enableSPIFFS, bool enableLittleFS, bool formatIfCorrupt)
+{
+    // Check enabled
+    if (!enableSPIFFS && !enableLittleFS)
+    {
+        LOG_I(MODULE_PREFIX, "localFileSystemSetup local file system disabled");
+        return;
+    }
+
+    // Check if SPIFFS if enabled
+    if (enableSPIFFS)
+    {
+        // Format SPIFFS file system if required - this will fail if the partition is not
+        // in SPIFFS format and formatting will only be done if enabled and LittleFS is not
+        // enabled
+        if (localFileSystemSetupSPIFFS(!enableLittleFS && formatIfCorrupt))
+            return;
+    }
+
+    // Init LittleFS if enabled
+    if (enableLittleFS)
+    {
+        // Init LittleFS file system (format if required)
+        if (localFileSystemSetupLittleFS(formatIfCorrupt))
+            return;
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Setup local file system
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool FileSystem::localFileSystemSetupLittleFS(bool formatIfCorrupt)
+{
+    // Using ESP IDF virtual file system
+    esp_vfs_littlefs_conf_t conf = {
+        .base_path = LOCAL_FILE_SYSTEM_BASE_PATH,
+        .partition_label = LOCAL_FILE_SYSTEM_PARTITION_LABEL,
+        .format_if_mount_failed = formatIfCorrupt,
+        .dont_mount = false,
+    };        
+    // Use settings defined above to initialize and mount LittleFS filesystem.
+    // Note: esp_vfs_littlefs_register is an all-in-one convenience function.
+    esp_err_t ret = esp_vfs_littlefs_register(&conf);
+    if (ret != ESP_OK)
+    {
+#ifdef DEBUG_FILE_SYSTEM_MOUNT
+        if (ret == ESP_FAIL) 
         {
-            oldestMs = sinceUsedMs;
-            oldestIt = it;
+            LOG_I(MODULE_PREFIX, "setup failed mount/format LittleFS");
+        } 
+        else if (ret == ESP_ERR_NOT_FOUND) 
+        {
+            LOG_I(MODULE_PREFIX, "setup failed to find LittleFS partition");
+        } 
+        else 
+        {
+            LOG_I(MODULE_PREFIX, "setup failed to init LittleFS (error %s)", esp_err_to_name(ret));
+        }
+#endif
+        return false;
+    }
+
+    // Get file system info
+    size_t total = 0, used = 0;
+    ret = esp_littlefs_info(LOCAL_FILE_SYSTEM_PARTITION_LABEL, &total, &used);
+    if (ret != ESP_OK) 
+    {
+        LOG_W(MODULE_PREFIX, "setup failed to get LittleFS info (error %s)", esp_err_to_name(ret));
+        return false;
+    } 
+
+    // Done ok
+    LOG_I(MODULE_PREFIX, "setup LittleFS partition size total %d, used %d", total, used);
+    
+    // Local file system is ok
+    _localFSIsLittleFS = true;
+    _localFsCache.isUsed = true;
+    _localFsCache.isFileInfoValid = false;
+    _localFsCache.isSizeInfoValid = false;
+    _localFsCache.isFileInfoSetup = false;
+    _localFsCache.fsName = LOCAL_FILE_SYSTEM_NAME;
+    _localFsCache.fsBase = LOCAL_FILE_SYSTEM_BASE_PATH;
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Setup local file system
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool FileSystem::localFileSystemSetupSPIFFS(bool formatIfCorrupt)
+{
+    // Using ESP IDF virtual file system
+    esp_vfs_spiffs_conf_t conf = {
+        .base_path = LOCAL_FILE_SYSTEM_BASE_PATH,
+        .partition_label = LOCAL_FILE_SYSTEM_PARTITION_LABEL,
+        .max_files = 5,
+        .format_if_mount_failed = formatIfCorrupt
+    };        
+    // Use settings defined above to initialize and mount SPIFFS filesystem.
+    // Note: esp_vfs_spiffs_register is an all-in-one convenience function.
+    esp_err_t ret = esp_vfs_spiffs_register(&conf);
+    if (ret != ESP_OK)
+    {
+#ifdef DEBUG_FILE_SYSTEM_MOUNT
+        if (ret == ESP_FAIL) 
+        {
+            LOG_I(MODULE_PREFIX, "setup failed mount/format SPIFFS");
+        } 
+        else if (ret == ESP_ERR_NOT_FOUND) 
+        {
+            LOG_I(MODULE_PREFIX, "setup failed to find SPIFFS partition");
+        } 
+        else 
+        {
+            LOG_I(MODULE_PREFIX, "setup failed to init SPIFFS (error %s)", esp_err_to_name(ret));
+        }
+#endif
+        return false;
+    }
+
+    // Get file system info
+    LOG_I(MODULE_PREFIX, "setup SPIFFS initialised ok");
+    size_t total = 0, used = 0;
+    ret = esp_spiffs_info(LOCAL_FILE_SYSTEM_PARTITION_LABEL, &total, &used);
+    if (ret != ESP_OK)
+    {
+        LOG_W(MODULE_PREFIX, "setup failed to get SPIFFS info (error %s)", esp_err_to_name(ret));
+        return false;
+    } 
+
+    // Done ok
+    LOG_I(MODULE_PREFIX, "setup SPIFFS partition size total %d, used %d", total, used);
+
+    // Local file system is ok
+    _localFSIsLittleFS = false;
+    _localFsCache.isUsed = true;
+    _localFsCache.isFileInfoValid = false;
+    _localFsCache.isSizeInfoValid = false;
+    _localFsCache.isFileInfoSetup = false;
+    _localFsCache.fsName = LOCAL_FILE_SYSTEM_NAME;
+    _localFsCache.fsBase = LOCAL_FILE_SYSTEM_BASE_PATH;
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Setup SD file system
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool FileSystem::sdFileSystemSetup(bool enableSD, int sdMOSIPin, int sdMISOPin, int sdCLKPin, int sdCSPin)
+{
+    if (!enableSD)
+    {
+        LOG_I(MODULE_PREFIX, "sdFileSystemSetup SD disabled");
+        return false;
+    }
+
+    // Check valid
+    if (sdMOSIPin == -1 || sdMISOPin == -1 || sdCLKPin == -1 || sdCSPin == -1)
+    {
+        LOG_W(MODULE_PREFIX, "sdFileSystemSetup SD pins invalid");
+        return false;
+    }
+
+    // Setup SD
+    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+    sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
+    slot_config.gpio_miso = (gpio_num_t)sdMISOPin;
+    slot_config.gpio_mosi = (gpio_num_t)sdMOSIPin;
+    slot_config.gpio_sck  = (gpio_num_t)sdCLKPin;
+    slot_config.gpio_cs   = (gpio_num_t)sdCSPin;
+    // Options for mounting the filesystem.
+    // If format_if_mount_failed is set to true, SD card will be partitioned and formatted
+    // in case when mounting fails.
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
+        .format_if_mount_failed = false,
+        .max_files = 5
+    };
+#pragma GCC diagnostic pop
+
+    sdmmc_card_t* pCard;
+    esp_err_t ret = esp_vfs_fat_sdmmc_mount(SD_FILE_SYSTEM_BASE_PATH, &host, &slot_config, &mount_config, &pCard);
+    if (ret != ESP_OK) 
+    {
+        if (ret == ESP_FAIL) 
+        {
+            LOG_W(MODULE_PREFIX, "sdFileSystemSetup failed mount SD");
+        } 
+        else 
+        {
+            LOG_I(MODULE_PREFIX, "sdFileSystemSetup failed to init SD (error %s)", esp_err_to_name(ret));
+        }
+        return false;
+    }
+
+    _pSDCard = pCard;
+    LOG_I(MODULE_PREFIX, "sdFileSystemSetup ok");
+
+    // SD ok
+    _sdFsCache.isUsed = true;
+    _sdFsCache.isFileInfoValid = false;
+    _sdFsCache.isSizeInfoValid = false;
+    _sdFsCache.isFileInfoSetup = false;
+    _sdFsCache.fsName = SD_FILE_SYSTEM_NAME;
+    _sdFsCache.fsBase = SD_FILE_SYSTEM_BASE_PATH;
+
+    // DEBUG SD print SD card info
+    // sdmmc_card_print_info(stdout, pCard);
+
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Convert cached file system info to JSON
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool FileSystem::fileInfoCacheToJSON(const char* req, CachedFileSystem& cachedFs, const String& folderStr, String& respStr)
+{
+    // Check valid
+    if (cachedFs.isSizeInfoValid && cachedFs.isFileInfoValid)
+    {
+        LOG_I(MODULE_PREFIX, "fileInfoCacheToJSON cached info valid");
+
+        uint32_t debugStartMs = millis();
+        String fileListStr;
+        bool firstFile = true;
+        uint32_t fileCount = 0;
+        for (CachedFileInfo& cachedFileInfo : cachedFs.cachedRootFileList)
+        {
+            fileListStr += String(firstFile ? R"({"name":")" : R"(,{"name":")") + cachedFileInfo.fileName.c_str() + R"(","size":)" + String(cachedFileInfo.fileSize) + "}";
+            firstFile = false;
+            fileCount++;
+        }
+        // Format response
+        respStr = formatJSONFileInfo(req, cachedFs, fileListStr, folderStr);
+        uint32_t elapsedMs = millis() - debugStartMs;
+        LOG_I(MODULE_PREFIX, "fileInfoCacheToJSON elapsed %dms fileCount %d", elapsedMs, fileCount);
+        return true;
+    }
+
+    // Info invalid - need to wait
+    LOG_I(MODULE_PREFIX, "fileInfoCacheToJSON cached info invalid - need to wait");
+    Utils::setJsonErrorResult(req, respStr, "fsinfodirty");
+    return false;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Get JSON file info immediately
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool FileSystem::fileInfoGenImmediate(const char* req, CachedFileSystem& cachedFs, const String& folderStr, String& respStr)
+{
+    // Check if file-system info is valid
+    if (!cachedFs.isUsed)
+    {
+        Utils::setJsonErrorResult(req, respStr, "fsinvalid");
+        return false;
+    }
+    if (!cachedFs.isSizeInfoValid)
+    {
+        if (!fileSysInfoUpdateCache(req, cachedFs, respStr))
+            return false;
+    }
+
+    // Take mutex
+    if (xSemaphoreTake(_fileSysMutex, 0) != pdTRUE)
+    {
+        Utils::setJsonErrorResult(req, respStr, "fsbusy");
+        return false;
+    }
+
+    // Debug
+    uint32_t debugStartMs = millis();
+
+    // Check file system is valid
+    if (cachedFs.fsSizeBytes == 0)
+    {
+        xSemaphoreGive(_fileSysMutex);
+        LOG_W(MODULE_PREFIX, "getFilesJSON No valid file system");
+        Utils::setJsonErrorResult(req, respStr, "nofs");
+        return false;
+    }
+
+    // Open directory
+    String rootFolder = cachedFs.fsBase.c_str();
+    if (!folderStr.startsWith("/"))
+        rootFolder += "/";
+    rootFolder += folderStr;
+    DIR* dir = opendir(rootFolder.c_str());
+    if (!dir)
+    {
+        xSemaphoreGive(_fileSysMutex);
+        LOG_W(MODULE_PREFIX, "getFilesJSON Failed to open base folder %s", rootFolder.c_str());
+        Utils::setJsonErrorResult(req, respStr, "nofolder");
+        return false;
+    }
+
+    // Read directory entries
+    bool firstFile = true;
+    String fileListStr;
+    struct dirent* ent = NULL;
+    while ((ent = readdir(dir)) != NULL)
+    {
+        // Check for unwanted files
+        String fName = ent->d_name;
+        if (fName.equalsIgnoreCase("System Volume Information"))
+            continue;
+        if (fName.equalsIgnoreCase("thumbs.db"))
+            continue;
+
+        // Get file info including size
+        size_t fileSize = 0;
+        struct stat st;
+        String filePath = (rootFolder.endsWith("/") ? rootFolder + fName : rootFolder + "/" + fName);
+        if (stat(filePath.c_str(), &st) == 0) 
+        {
+            fileSize = st.st_size;
+        }
+
+        // Form the JSON list
+        if (!firstFile)
+            fileListStr += ",";
+        firstFile = false;
+        fileListStr += R"({"name":")";
+        fileListStr += ent->d_name;
+        fileListStr += R"(","size":)";
+        fileListStr += String(fileSize);
+        fileListStr += "}";
+    }
+
+    // Finished with file list
+    closedir(dir);
+    xSemaphoreGive(_fileSysMutex);
+
+    // Format response
+    respStr = formatJSONFileInfo(req, cachedFs, fileListStr, rootFolder);
+
+    // Debug
+    uint32_t debugGetFilesMs = millis() - debugStartMs;
+    LOG_I(MODULE_PREFIX, "getFilesJSON timing fileList %dms", debugGetFilesMs);
+
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Update File system info cache
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool FileSystem::fileSysInfoUpdateCache(const char* req, CachedFileSystem& cachedFs, String& respStr)
+{
+    // Take mutex
+    if (xSemaphoreTake(_fileSysMutex, 0) != pdTRUE)
+    {
+        Utils::setJsonErrorResult(req, respStr, "fsbusy");
+        return false;
+    }
+
+    // Get size of file systems
+    uint32_t debugStartMs = millis();
+    String fsName = cachedFs.fsName.c_str();
+    if (fsName == LOCAL_FILE_SYSTEM_NAME)
+    {
+        uint32_t sizeBytes = 0, usedBytes = 0;
+        esp_err_t ret = ESP_FAIL;
+        if (_localFSIsLittleFS)
+            ret = esp_littlefs_info(LOCAL_FILE_SYSTEM_PARTITION_LABEL, &sizeBytes, &usedBytes);
+        else
+            ret = esp_spiffs_info(LOCAL_FILE_SYSTEM_PARTITION_LABEL, &sizeBytes, &usedBytes);
+        if (ret != ESP_OK)
+        {
+            xSemaphoreGive(_fileSysMutex);
+            LOG_W(MODULE_PREFIX, "fileSysInfoUpdateCache failed to get file system info (error %s)", esp_err_to_name(ret));
+            Utils::setJsonErrorResult(req, respStr, "fsInfo");
+            return false;
+        }
+        // FS settings
+        cachedFs.fsSizeBytes = sizeBytes;
+        cachedFs.fsUsedBytes = usedBytes;
+        cachedFs.isSizeInfoValid = true;
+    }
+    else if (fsName == SD_FILE_SYSTEM_NAME)
+    {
+        // Get size info
+        sdmmc_card_t* pCard = (sdmmc_card_t*)_pSDCard;
+        if (pCard)
+        {
+            cachedFs.fsSizeBytes = ((double) pCard->csd.capacity) * pCard->csd.sector_size;
+        	FATFS* fsinfo;
+            DWORD fre_clust;
+            if(f_getfree("0:",&fre_clust,&fsinfo) == 0)
+            {
+                cachedFs.fsUsedBytes = ((double)(fsinfo->csize))*((fsinfo->n_fatent - 2) - (fsinfo->free_clst))
+            #if _MAX_SS != 512
+                    *(fsinfo->ssize);
+            #else
+                    *512;
+            #endif
+            }
+            cachedFs.isSizeInfoValid = true;
+        }
+    }
+    xSemaphoreGive(_fileSysMutex);
+    uint32_t debugGetFsInfoMs = millis() - debugStartMs;
+    LOG_I(MODULE_PREFIX, "fileSysInfoUpdateCache timing fsInfo %dms", debugGetFsInfoMs);
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Mark file cache dirty
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void FileSystem::markFileCacheDirty(const String& fsName, const String& filename)
+{
+    // Check caching enabled
+    if (!_cacheFileSystemInfo)
+        return;
+
+    // Get file system info
+    CachedFileSystem& cachedFs = fsName.equalsIgnoreCase(LOCAL_FILE_SYSTEM_NAME) ? _localFsCache : _sdFsCache;
+
+    // Check valid
+    if (!cachedFs.isFileInfoSetup)
+        return;
+
+    // Find the file in the cached file list
+    bool fileFound = false;
+    for (CachedFileInfo& cachedFileInfo : cachedFs.cachedRootFileList)
+    {
+        // Check name
+        if (cachedFileInfo.fileName.compare(filename.c_str()) == 0)
+        {
+            // Invalidate specific file
+            cachedFileInfo.isValid = false;
+            fileFound = true;
+            break;
         }
     }
 
-    // Remove oldest
-    if (oldestIt != _cachedFiles.end())
-        _cachedFiles.erase(oldestIt);
+    // Check for file not found
+    if (!fileFound)
+    {
+        CachedFileInfo newFileInfo;
+        newFileInfo.fileName = filename.c_str();
+        newFileInfo.fileSize = 0;
+        newFileInfo.isValid = false;
+        cachedFs.cachedRootFileList.push_back(newFileInfo);
+    }
+    cachedFs.isFileInfoValid = false;
+    cachedFs.isSizeInfoValid = false;
 }
 
-void FileSystem::cachedFilesStoreNew(const String& fileName, const String& fileContents)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Mark file cache dirty
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void FileSystem::fileSystemCacheService(CachedFileSystem& cachedFs)
 {
-    // Append to list
-    CachedFileEntry ent(fileName, fileContents);
-    _cachedFiles.push_back(ent);
+    // Check if file-system info is invalid
+    if (!cachedFs.isUsed)
+        return;
+
+    // Update fsInfo if required        
+    String respStr;
+    if (!cachedFs.isSizeInfoValid)
+    {
+        fileSysInfoUpdateCache("", cachedFs, respStr);
+        return;
+    }
+
+    // Update file info if required
+    if (!cachedFs.isFileInfoSetup)
+    {
+        uint32_t debugStartMs = millis();
+
+        // Take mutex
+        if (xSemaphoreTake(_fileSysMutex, 0) != pdTRUE)
+            return;
+
+        // Clear file list
+        cachedFs.cachedRootFileList.clear();
+
+        // Iterate file info
+        String rootFolder = (cachedFs.fsBase + "/").c_str();
+        DIR* dir = opendir(rootFolder.c_str());
+        if (!dir)
+        {
+            xSemaphoreGive(_fileSysMutex);
+            return;
+        }
+        // Read directory entries
+        struct dirent* ent = NULL;
+        uint32_t fileCount = 0;
+        while ((ent = readdir(dir)) != NULL)
+        {
+            // Check for unwanted files
+            String fName = ent->d_name;
+            if (fName.equalsIgnoreCase("System Volume Information"))
+                continue;
+            if (fName.equalsIgnoreCase("thumbs.db"))
+                continue;
+
+            // Get file info including size
+            size_t fileSize = 0;
+            struct stat st;
+            String filePath = rootFolder + fName;
+            if (stat(filePath.c_str(), &st) == 0) 
+            {
+                fileSize = st.st_size;
+            }
+
+            // Add file to list
+            CachedFileInfo fileInfo;
+            fileInfo.fileName = fName.c_str();
+            fileInfo.fileSize = fileSize;
+            fileInfo.isValid = true;
+            cachedFs.cachedRootFileList.push_back(fileInfo);
+            fileCount++;
+        }
+
+        // Finished with file list
+        closedir(dir);
+        cachedFs.isFileInfoSetup = true;
+        cachedFs.isFileInfoValid = true;
+        xSemaphoreGive(_fileSysMutex);
+        uint32_t debugCachedFsSetupMs = millis() - debugStartMs;
+        LOG_I(MODULE_PREFIX, "fileSystemCacheService fs %s files %d took %dms", 
+                    cachedFs.fsName.c_str(), fileCount, debugCachedFsSetupMs);
+        return;
+    }
+
+    // Check file info
+    if (cachedFs.isFileInfoSetup && !cachedFs.isFileInfoValid)
+    {
+        // Update info for specific file(s)
+        // Take mutex
+        if (xSemaphoreTake(_fileSysMutex, 0) != pdTRUE)
+            return;
+        String rootFolder = (cachedFs.fsBase + "/").c_str();
+        bool allValid = true;
+        for (auto it = cachedFs.cachedRootFileList.begin(); it != cachedFs.cachedRootFileList.end(); ++it)
+        {
+            // Check name
+            if (!(it->isValid))
+            {
+                // Get file info including size
+                struct stat st;
+                String filePath = rootFolder + it->fileName.c_str();
+                if (stat(filePath.c_str(), &st) == 0) 
+                {
+                    it->fileSize = st.st_size;
+                    LOG_I(MODULE_PREFIX, "fileSystemCacheService updated %s size %ld", 
+                            it->fileName.c_str(), st.st_size);
+                }
+                else
+                {
+                    // Remove from list
+                    cachedFs.cachedRootFileList.erase(it);
+                    LOG_I(MODULE_PREFIX, "fileSystemCacheService deleted %s", 
+                            it->fileName.c_str());
+                    allValid = false;
+                    break;
+                }
+                // File info now valid
+                it->isValid = true;
+                break;
+            }
+        }
+        LOG_I(MODULE_PREFIX, "fileSystemCacheService fileInfo %s", allValid ? "valid" : "invalid");
+        cachedFs.isFileInfoValid = allValid;
+        xSemaphoreGive(_fileSysMutex);
+    }
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Format JSON file info
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+String FileSystem::formatJSONFileInfo(const char* req, CachedFileSystem& cachedFs, 
+            const String& fileListStr, const String& rootFolder)
+{
+    // Start response JSON
+    return R"({"req":")" + String(req) + R"(","rslt":"ok","fsName":")" + String(cachedFs.fsName.c_str()) + 
+                R"(","fsBase":")" + String(cachedFs.fsBase.c_str()) + 
+                R"(","diskSize":)" + String(cachedFs.fsSizeBytes) + R"(,"diskUsed":)" + String(cachedFs.fsUsedBytes) +
+                R"(,"folder":")" + rootFolder + R"(","files":[)" + fileListStr + "]}";
+}

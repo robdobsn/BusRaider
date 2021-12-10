@@ -28,12 +28,12 @@ def parse_args():
                         help="Path to folder containing binaries to flash")
     parser.add_argument('firmware_binary_name',
                         help="Name of the firmware binary (excluding path)")
-    parser.add_argument('file_system_image_name',
-                        help="Name of the file system image (excluding path)")
     parser.add_argument('port',
                         help="Serial port")
     parser.add_argument('-b', '--baud', default='2000000',
                         help="Baud rate for serial port")
+    parser.add_argument('-f', '--filesysimage', default='',
+                        help="Name of the file system image (excluding path)")
     return parser.parse_args()
 
 def parse_partitions_csv(partitions_csv_file):
@@ -79,9 +79,9 @@ def main():
     filesToFlash = [
         ["bootloader/bootloader.bin","0x1000"],
         ["partition_table/partition-table.bin", "0x8000"],
-        ["ota_data_initial.bin", "0xe000"],
+        ["ota_data_initial.bin", "$otadata"],
         ["$firmware_binary_name", "$app0"],
-        ["$file_system_image_name", "$spiffs"]
+        ["$filesysimage", "$spiffs"]
     ]
 
     # Run esptool using partition info
@@ -100,6 +100,8 @@ def main():
     # and partitions table likewise for partitions to flash into
     for fileToFlash in filesToFlash:
         flashFileName = convert_arg_str(args, fileToFlash[0])
+        if len(flashFileName) == 0:
+            continue
         if not (build_folder / flashFileName).is_file():
             raise ValueError(f"File {flashFileName} not found in build folder {args.build_folder}")
         flashOffset = convert_offset_str(partitions, fileToFlash[1])
@@ -108,11 +110,30 @@ def main():
         esptool_options += [flashOffset, str(args.build_folder / flashFileName)]
 
     # Form command
-    esptool_command = ['esptool'] + esptool_options
-    _log.info("Executing '%s'...", " ".join(esptool_command))
-    subprocess.run(esptool_command, check=True)
-    _log.info("Done!\n")
+    esptoolPossNames = ['esptool.py.exe','esptool','esptool.py']
+    espToolCmdFound = False
+    lastExcp = None
+    for espToolName in esptoolPossNames:
+        esptool_command = [espToolName] + esptool_options
+        _log.info("Executing '%s'...", " ".join(esptool_command))
+        rslt = None
+        try:
+            rslt = subprocess.run(esptool_command, check=True)
+            espToolCmdFound = True
+            break
+        except Exception as excp:
+            lastExcp = excp
+            rslt = None
+            continue
+    if not espToolCmdFound and lastExcp is not None:
+        _log.error(f"Failed to execute esptool command {str(lastExcp)}")
+    if rslt is not None and rslt.returncode == 0:
+        _log.info("Done!\n")
+    else:
+        _log.error(f"esptool command returned non-zero code {rslt}")
+        return -1 if rslt is None else rslt.returncode
+    return 0
 
 if __name__ == '__main__':
-    main()
-    sys.exit(0)
+    rslt = main()
+    sys.exit(rslt)

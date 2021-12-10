@@ -12,7 +12,7 @@
 #include <ConfigBase.h>
 
 // Logging
-static const char* MODULE_PREFIX = "PcolRICFrm";
+static const char* MODULE_PREFIX = "RICFrame";
 
 // Debug
 // #define DEBUG_PROTOCOL_RIC_FRAME
@@ -60,17 +60,17 @@ void ProtocolRICFrame::addRxData(const uint8_t* pData, uint32_t dataLen)
     // Extract message type
     uint32_t msgNumber = pData[0];
     uint32_t msgProtocolCode = pData[1] & 0x3f;
-    uint32_t msgDirectionCode = pData[1] >> 6;
+    uint32_t msgTypeCode = pData[1] >> 6;
 
     // Debug
 #ifdef DEBUG_PROTOCOL_RIC_FRAME
-    LOG_I(MODULE_PREFIX, "addRxData len %d msgNum %d protocolCode %d dirn %d", 
-                    dataLen, msgNumber, msgProtocolCode, msgDirectionCode);
+    LOG_I(MODULE_PREFIX, "addRxData len %d msgNum %d protocolCode %d msgTypeCode %d", 
+                    dataLen, msgNumber, msgProtocolCode, msgTypeCode);
 #endif
 
     // Convert to ProtocolEndpointMsg
     ProtocolEndpointMsg endpointMsg;
-    endpointMsg.setFromBuffer(_channelID, (ProtocolMsgProtocol)msgProtocolCode, msgNumber, (ProtocolMsgDirection)msgDirectionCode, pData+2, dataLen-2);
+    endpointMsg.setFromBuffer(_channelID, (ProtocolMsgProtocol)msgProtocolCode, msgNumber, (ProtocolMsgTypeCode)msgTypeCode, pData+2, dataLen-2);
     _msgRxCB(endpointMsg);
 
 }
@@ -80,7 +80,7 @@ void ProtocolRICFrame::addRxData(const uint8_t* pData, uint32_t dataLen)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool ProtocolRICFrame::decodeParts(const uint8_t* pData, uint32_t dataLen, uint32_t& msgNumber, 
-                uint32_t& msgProtocolCode, uint32_t& msgDirectionCode, uint32_t& payloadStartPos)
+                uint32_t& msgProtocolCode, uint32_t& msgTypeCode, uint32_t& payloadStartPos)
 {
     // Check validity of frame length
     if (dataLen < 2)
@@ -89,7 +89,7 @@ bool ProtocolRICFrame::decodeParts(const uint8_t* pData, uint32_t dataLen, uint3
     // Extract message type
     msgNumber = pData[0];
     msgProtocolCode = pData[1] & 0x3f;
-    msgDirectionCode = pData[1] >> 6;
+    msgTypeCode = pData[1] >> 6;
     payloadStartPos = 2;
     return true;
 }
@@ -103,8 +103,8 @@ void ProtocolRICFrame::encode(ProtocolEndpointMsg& msg, std::vector<uint8_t>& ou
     // Create the message
     outMsg.reserve(msg.getBufLen()+2);
     outMsg.push_back(msg.getMsgNumber());
-    uint8_t protocolDirnByte = ((msg.getDirection() & 0x03) << 6) + (msg.getProtocol() & 0x3f);
-    outMsg.push_back(protocolDirnByte);
+    uint8_t protocolTypeByte = ((msg.getMsgTypeCode() & 0x03) << 6) + (msg.getProtocol() & 0x3f);
+    outMsg.push_back(protocolTypeByte);
     outMsg.insert(outMsg.end(), msg.getCmdVector().begin(), msg.getCmdVector().end());
 }
 

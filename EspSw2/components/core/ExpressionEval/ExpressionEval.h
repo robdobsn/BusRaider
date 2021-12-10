@@ -65,15 +65,26 @@ public:
     }
 
     // Get numbers of vars and functions
-    void getNumVarsAndFuncs(uint32_t& numVars, uint32_t& numFuncs)
+    void getNumVarsAndFuncs(uint32_t& numLocalVars, uint32_t& numGlobalVars, uint32_t& numFuncs)
     {
-        return _exprContext.getNumVarsAndFuncs(numVars, numFuncs);
+        return _exprContext.getNumVarsAndFuncs(numLocalVars, numGlobalVars, numFuncs);
     }
 
-    // Debug
+    // Debug - variables
     void debugLogVars()
     {
         _exprContext.debugLogVars();
+    }
+
+    // Debug
+    uint32_t debugGetCompiledCodeStats(uint32_t& totalBytes)
+    {
+        totalBytes = 0;
+        for (const CompiledStatement& compStat : _compiledStatements)
+        {
+            debugGetExprInfo(compStat._pCompExpr, 0, true, totalBytes);
+        }
+        return _compiledStatements.size();
     }
 
 private:
@@ -119,7 +130,7 @@ private:
     // Helpers
     void findAndReplaceStringConsts(String& exprStr);
     void handleExpressions(const char* pExpr, bool addVars, bool compileExprs);
-    bool compileAndStore(String& expr, const String& varName, StatementFlowType flowType);
+    bool compileAndStore(String& expr, const String& varName, StatementFlowType flowType, uint32_t lineNum);
     uint32_t findMatchingFlowUnit(uint32_t pc);
     const char* getFlowTypeStr(StatementFlowType flowType)
     {
@@ -133,4 +144,7 @@ private:
             case FLOW_TYPE_WHILE: return "WHILE";
         }
     }
+
+    // Debug - get expression info
+    void debugGetExprInfo(const te_expr *n, int depth, bool logExpr, uint32_t& curCompiledSize);
 };

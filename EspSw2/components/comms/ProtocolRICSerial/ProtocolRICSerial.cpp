@@ -11,12 +11,19 @@
 #include <ProtocolEndpointMsg.h>
 #include <ConfigBase.h>
 #include <MiniHDLC.h>
+#include <Utils.h>
 
 // Logging
-static const char* MODULE_PREFIX = "PcolRICSer";
+static const char* MODULE_PREFIX = "RICSerial";
+
+// Warn
+#define WARN_ON_NO_HDLC_HANDLER
 
 // Debug
-// #define DEBUG_PROTOCOL_RIC_SERIAL
+// #define DEBUG_PROTOCOL_RIC_SERIAL_DECODE
+// #define DEBUG_PROTOCOL_RIC_SERIAL_DECODE_DETAIL
+// #define DEBUG_PROTOCOL_RIC_SERIAL_ENCODE
+// #define DEBUG_PROTOCOL_RIC_SERIAL_ENCODE_DETAIL
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -40,7 +47,7 @@ ProtocolRICSerial::ProtocolRICSerial(uint32_t channelID, const char* configJSON,
             _maxTxMsgLen, _maxRxMsgLen);
 
     // Debug
-    LOG_I(MODULE_PREFIX, "constructed maxRxMsgLen %d maxTxMsgLen %d", _maxRxMsgLen, _maxTxMsgLen);
+    LOG_I(MODULE_PREFIX, "constructor maxRxMsgLen %d maxTxMsgLen %d", _maxRxMsgLen, _maxTxMsgLen);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -60,14 +67,24 @@ ProtocolRICSerial::~ProtocolRICSerial()
 
 void ProtocolRICSerial::addRxData(const uint8_t* pData, uint32_t dataLen)
 {
-#ifdef DEBUG_PROTOCOL_RIC_SERIAL
+#ifdef DEBUG_PROTOCOL_RIC_SERIAL_DECODE
     // Debug
     LOG_I(MODULE_PREFIX, "addRxData len %d", dataLen);
+#endif
+#ifdef DEBUG_PROTOCOL_RIC_SERIAL_DECODE_DETAIL
+    String dataStr;
+    Utils::getHexStrFromBytes(pData, dataLen, dataStr);
+    LOG_I(MODULE_PREFIX, "addRxData %s", dataStr.c_str());
 #endif
 
     // Valid?
     if (!_pHDLC)
+    {
+#ifdef WARN_ON_NO_HDLC_HANDLER
+        LOG_W(MODULE_PREFIX, "addRxData no HDLC handler");
+#endif
         return;
+    }
 
     // Add data
     _pHDLC->handleBuffer(pData, dataLen);
@@ -88,7 +105,7 @@ void ProtocolRICSerial::encodeTxMsgAndSend(ProtocolEndpointMsg& msg)
         // Create the message header
         uint8_t msgHeader[2];
         msgHeader[0] = msg.getMsgNumber();
-        uint8_t protocolDirnByte = ((msg.getDirection() & 0x03) << 6) + (msg.getProtocol() & 0x3f);
+        uint8_t protocolDirnByte = ((msg.getMsgTypeCode() & 0x03) << 6) + (msg.getProtocol() & 0x3f);
         msgHeader[1] = protocolDirnByte;
 
         // Calculate encoded length of full message
@@ -140,17 +157,24 @@ void ProtocolRICSerial::encodeTxMsgAndSend(ProtocolEndpointMsg& msg)
         std::vector<uint8_t> ricSerialMsg;
         ricSerialMsg.reserve(msg.getBufLen()+2);
         ricSerialMsg.push_back(msg.getMsgNumber());
-        uint8_t protocolDirnByte = ((msg.getDirection() & 0x03) << 6) + (msg.getProtocol() & 0x3f);
+        uint8_t protocolDirnByte = ((msg.getMsgTypeCode() & 0x03) << 6) + (msg.getProtocol() & 0x3f);
         ricSerialMsg.push_back(protocolDirnByte);
         ricSerialMsg.insert(ricSerialMsg.end(), msg.getCmdVector().begin(), msg.getCmdVector().end());
         _pHDLC->sendFrame(ricSerialMsg.data(), ricSerialMsg.size());
         msg.setFromBuffer(_pHDLC->getFrameTxBuf(), _pHDLC->getFrameTxLen());
         _pHDLC->clearTxBuf();
-
 #endif
+
         // Debug
-#ifdef DEBUG_PROTOCOL_RIC_SERIAL
+#ifdef DEBUG_PROTOCOL_RIC_SERIAL_ENCODE
         LOG_I(MODULE_PREFIX, "encodeTxMsgAndSend, encoded len %d", msg.getBufLen());
+#endif
+#ifdef DEBUG_PROTOCOL_RIC_SERIAL_ENCODE_DETAIL
+        {
+        String outStr;
+        Utils::getHexStrFromBytes(msg.getBuf(), msg.getBufLen(), outStr);
+        LOG_I(MODULE_PREFIX, "encodeTxMsgAndSend %s", outStr.c_str());
+        }
 #endif
 
         // Send
@@ -174,16 +198,21 @@ void ProtocolRICSerial::hdlcFrameRxCB(const uint8_t* pFrame, int frameLen)
     // Extract message type
     uint32_t msgNumber = pFrame[0];
     uint32_t msgProtocolCode = pFrame[1] & 0x3f;
-    uint32_t msgDirectionCode = pFrame[1] >> 6;
+    uint32_t msgTypeCode = pFrame[1] >> 6;
 
     // Debug
-#ifdef DEBUG_PROTOCOL_RIC_SERIAL
-    LOG_I(MODULE_PREFIX, "Frame received len %d msgNum %d protocolCode %d dirn %d", 
-                    frameLen, msgNumber, msgProtocolCode, msgDirectionCode);
+#ifdef DEBUG_PROTOCOL_RIC_SERIAL_DECODE
+    LOG_I(MODULE_PREFIX, "hdleFrameRxCB len %d msgNum %d protocolCode %d msgTypeCode %d", 
+                    frameLen, msgNumber, msgProtocolCode, msgTypeCode);
+#endif
+#ifdef DEBUG_PROTOCOL_RIC_SERIAL_DECODE_DETAIL
+    String dataStr;
+    Utils::getHexStrFromBytes(pFrame, frameLen, dataStr);
+    LOG_I(MODULE_PREFIX, "hdleFrameRxCB %s", dataStr.c_str());
 #endif
 
     // Convert to ProtocolEndpointMsg
     ProtocolEndpointMsg endpointMsg;
-    endpointMsg.setFromBuffer(_channelID, (ProtocolMsgProtocol)msgProtocolCode, msgNumber, (ProtocolMsgDirection)msgDirectionCode, pFrame+2, frameLen-2);
+    endpointMsg.setFromBuffer(_channelID, (ProtocolMsgProtocol)msgProtocolCode, msgNumber, (ProtocolMsgTypeCode)msgTypeCode, pFrame+2, frameLen-2);
     _msgRxCB(endpointMsg);
 }

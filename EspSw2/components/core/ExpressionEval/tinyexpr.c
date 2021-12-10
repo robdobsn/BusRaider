@@ -34,13 +34,18 @@ For log = base 10 log do nothing
 For log = natural log uncomment the next line. */
 /* #define TE_NAT_LOG */
 
-
+#include <Logger.h>
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
 #include <stdio.h>
 
 #include "tinyexpr.h"
+
+// #define DEBUG_TINYEXPR
+#if defined(DEBUG_TINYEXPR)
+static const char* MODULE_PREFIX = "Tinyexpr";
+#endif
 
 #ifndef NAN
 #define NAN (0.0/0.0)
@@ -114,6 +119,7 @@ void te_free(te_expr *n) {
 
 static double pi() { return 3.14159265358979323846; }
 static double e() { return 2.71828182845904523536; }
+static double nanFn() { return NAN; }
 
 static double minfn(double a, double b) { return a < b ? a : b; }
 static double maxfn(double a, double b) { return a < b ? b : a; }
@@ -123,6 +129,13 @@ static double randomv() { return rand() / ((double)RAND_MAX); };
 static double ifFn(double test, double a, double b) { return test ? a : b; };
 
 static double equals(double a, double b) { return a == b; }
+
+static double isdef(double a) { 
+#ifdef DEBUG_TINYEXPR
+	LOG_I(MODULE_PREFIX, "defined a: %f, rslt %d", a, !isnan(a));
+#endif
+	return !isnan(a); 
+}
 
 static const te_variable functions[] = {
 	/* must be in alphabetical order */
@@ -137,6 +150,7 @@ static const te_variable functions[] = {
 	{ "ceil", ceil,    TE_FUNCTION1 | TE_FLAG_PURE, 0 },
 	{ "cos", cos,      TE_FUNCTION1 | TE_FLAG_PURE, 0 },
 	{ "cosh", cosh,    TE_FUNCTION1 | TE_FLAG_PURE, 0 },
+	{ "defined", isdef,TE_FUNCTION1 | TE_FLAG_PURE, 0 },
 	{ "e", e,          TE_FUNCTION0 | TE_FLAG_PURE, 0 },
 	{ "exp", exp,      TE_FUNCTION1 | TE_FLAG_PURE, 0 },
 	{ "equals", equals,TE_FUNCTION2 | TE_FLAG_PURE, 0 },
@@ -152,6 +166,7 @@ static const te_variable functions[] = {
 	{ "log10", log10,  TE_FUNCTION1 | TE_FLAG_PURE, 0 },
 	{ "max", maxfn,    TE_FUNCTION2 | TE_FLAG_PURE, 0 },
 	{ "min", minfn,    TE_FUNCTION2 | TE_FLAG_PURE, 0 },
+	{ "NAN", nanFn,    TE_FUNCTION0 | TE_FLAG_PURE, 0 },
 	{ "pi", pi,        TE_FUNCTION0 | TE_FLAG_PURE, 0 },
 	{ "pow", pow,      TE_FUNCTION2 | TE_FLAG_PURE, 0 },
 	{ "random",randomv,TE_FUNCTION0 | TE_FLAG_PURE, 0 },
@@ -194,6 +209,9 @@ static const te_variable *find_lookup(const state *s, const char *name, int len)
 	if (!s->lookup) return 0;
 
 	for (var = s->lookup, iters = s->lookup_len; iters; ++var, --iters) {
+#ifdef DEBUG_TINYEXPR
+		LOG_I(MODULE_PREFIX, "find_lookup checking against variable %s len %d", var->name, len);
+#endif
 		if (strncasecmp(name, var->name, len) == 0 && var->name[len] == '\0') {
 			return var;
 		}
@@ -232,16 +250,25 @@ void next_token(state *s) {
 		}
 		else {
 			/* Look for a variable or builtin function call. */
-			if ((s->next[0] >= 'a' && s->next[0] <= 'z') || (s->next[0] >= 'A' && s->next[0] <= 'Z')) {
+			if ((s->next[0] >= 'a' && s->next[0] <= 'z') || (s->next[0] >= 'A' && s->next[0] <= 'Z') || (s->next[0] == '_') || (s->next[0] == '$')) {
 				const char *start;
 				start = s->next;
-				while ((s->next[0] >= 'a' && s->next[0] <= 'z') || (s->next[0] >= 'A' && s->next[0] <= 'Z') || (s->next[0] >= '0' && s->next[0] <= '9') || (s->next[0] == '_')) s->next++;
+				while ((s->next[0] >= 'a' && s->next[0] <= 'z') || (s->next[0] >= 'A' && s->next[0] <= 'Z') || (s->next[0] >= '0' && s->next[0] <= '9') || (s->next[0] == '_') || (s->next[0] == '$')) s->next++;
 
 				const te_variable *var = find_lookup(s, start, s->next - start);
+#ifdef DEBUG_TINYEXPR
+				LOG_I(MODULE_PREFIX, "next_token find_lookup token %s resultOK %d type %d", start, var != NULL, var != NULL ? var->type : 0);
+#endif
 				if (!var) var = find_builtin(start, s->next - start);
 
 				if (!var) {
-					s->type = TOK_ERROR;
+					// Handle global variables resolving to NAN
+					if (start[0] == '$') {
+						s->value = NAN;
+						s->type = TOK_NUMBER;
+					} else {
+						s->type = TOK_ERROR;
+					}
 				}
 				else {
 					switch (TYPE_MASK(var->type))

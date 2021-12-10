@@ -10,6 +10,7 @@
 #include <Logger.h>
 // #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 #include <ConfigBase.h>
+#include <RICUtils.h>
 #include <ESPUtils.h>
 #include <WString.h>
 #include "unity.h"
@@ -97,7 +98,7 @@ const char* testJSONConfigBase =
     R"(})"
     ;
 
-const int hwRev = getHwRevision();
+int hwRev = 1;
 const String curHwRev(hwRev);
 const String otherHwRev(curHwRev + 100);
 const String revisionSwitchedJson(
@@ -124,6 +125,10 @@ const String revisionSwitchedJson(
     R"(        {"__hwRevs__": [], "__value__": 42},)"
     R"(        {"__hwRevs__": [1000], "__value__": -1})"
     R"(    ],)"
+    R"(    "BoolSetting": [)"
+    R"(        {"__hwRevs__": [], "__value__": false},)"
+    R"(        {"__hwRevs__": [1000], "__value__": true})"
+    R"(    ],)"
     R"(    "NoValue": [)"
     R"(        {"__hwRevs__": [1000], "__value__": 0},)"
     R"(        {"__hwRevs__": [1001], "__value__": 1})"
@@ -132,7 +137,7 @@ const String revisionSwitchedJson(
     R"(        {"__hwRevs__": [], "__value__": [10, 20, 30]})"
     R"(    ],)"
     R"(    "ObjectSetting": [)"
-    R"(        {"__hwRevs__": [ )" + curHwRev + R"(], "__value__": {"str": "hello", "int": 42, "float": -0.1}})"
+    R"(        {"__hwRevs__": [ )" + curHwRev + R"(], "__value__": {"str": "hello", "int": 42, "float": -0.1, "bool": true}})"
     R"(    ],)"
     R"(    "ArrayWithSwitchedElem": [)"
     R"(        "normalElement1",)"
@@ -191,8 +196,9 @@ TEST_CASE("test_getString", "[ConfigBase]")
         { "StringDefault", "defaultVal" },
         { "pi", "3.1415" },
         { "IntSetting", "42" },
+        { "BoolSetting", "false" },
         { "ArraySetting", "[10,20,30]" },
-        { "ObjectSetting", R"({"str":"hello","int":42,"float":-0.1})" },
+        { "ObjectSetting", R"({"str":"hello","int":42,"float":-0.1,"bool":true})" },
         { "ArrayWithSwitchedElem[0]", "normalElement1" },
         { "ArrayWithSwitchedElem[2]", "correctSwitchedElem" },
         { "ArrayWithSwitchedElem/[3]", "normalElement3" },
@@ -222,6 +228,10 @@ TEST_CASE("test_getLong", "[ConfigBase]")
 
     result = config.getLong("NoValue", -4);
     TEST_ASSERT_EQUAL_INT(-4, result);
+
+    result = config.getLong("BoolSetting", 1);
+    TEST_ASSERT_EQUAL_INT(0, result);
+
 }
 
 TEST_CASE("test_getDouble", "[ConfigBase]")
@@ -282,7 +292,7 @@ TEST_CASE("test_getKeys", "[ConfigBase]")
         const char* resultArr[result.size()];
         for (int i = 0; i < result.size(); ++i)
             resultArr[i] = result[i].c_str();
-        const char* expectedArr[3] = {"str", "int", "float"};
+        const char* expectedArr[] = {"str", "int", "float", "bool"};
         TEST_ASSERT_EQUAL_STRING_ARRAY(expectedArr, resultArr, result.size());
     }
     {
@@ -291,7 +301,7 @@ TEST_CASE("test_getKeys", "[ConfigBase]")
         const char* resultArr[result.size()];
         for (int i = 0; i < result.size(); ++i)
             resultArr[i] = result[i].c_str();
-        const char* expectedArr[9] = {"StringSetting", "StringDefault", "pi", "e", "IntSetting",
+        const char* expectedArr[] = {"StringSetting", "StringDefault", "pi", "e", "IntSetting", "BoolSetting",
                                       "NoValue", "ArraySetting", "ObjectSetting", "ArrayWithSwitchedElem"};
         TEST_ASSERT_EQUAL_STRING_ARRAY(expectedArr, resultArr, result.size());
     }

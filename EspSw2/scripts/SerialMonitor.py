@@ -335,7 +335,7 @@ class Terminal:
 # Handle arguments
 argparser = argparse.ArgumentParser(description='Serial Monitor')
 argparser.add_argument('serialPort', action='store')
-argparser.add_argument('-b', action='store', default=115200, dest='serialbaud')
+argparser.add_argument('-b', action='store', default=2000000, dest='serialbaud')
 argparser.add_argument('-g', action='store_true', dest='logToFile',
                 help='log to a file in ./logs folder with date-time based name')
 argparser.add_argument('-c', action='store_true', dest='retainColors',

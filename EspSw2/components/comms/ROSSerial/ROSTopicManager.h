@@ -75,6 +75,8 @@
 #define ROS_POWER_STATUS_POWERFLAGS 10
 #define ROS_POWER_STATUS_FLAGBIT_USB_POWER 0
 #define ROS_POWER_STATUS_FLAGBIT_5V_ON 1
+#define ROS_POWER_STATUS_FLAGBIT_BATT_INFO_INVALID 2
+#define ROS_POWER_STATUS_FLAGBIT_USB_POWER_INFO_INVALID 3
 #define ROS_POWER_STATUS_IDNO 12
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

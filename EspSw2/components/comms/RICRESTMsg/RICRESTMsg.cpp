@@ -48,13 +48,18 @@ bool RICRESTMsg::decode(const uint8_t* pBuf, uint32_t len)
 
             // Debug
 #ifdef DEBUG_RICREST_MSG
-            LOG_I(MODULE_PREFIX, "request %s", _req.c_str());
+            LOG_I(MODULE_PREFIX, "decode URL req %s", _req.c_str());
 #endif
             break;
         }
         case RICREST_ELEM_CODE_CMDRESPJSON:
         {
             getStringFromBuf(_payloadJson, pBuf, RICREST_HEADER_PAYLOAD_POS, len, RICREST_MAX_PAYLOAD_LEN);
+#ifdef DEBUG_RICREST_MSG
+            String debugStr;
+            Utils::getHexStrFromBytes(pBuf, len, debugStr);
+            LOG_I(MODULE_PREFIX, "decode CMDRESPJSON data %s len %d string form %s", debugStr.c_str(), len, _payloadJson.c_str());
+#endif
             _req = "resp";
             break;
         }
@@ -116,28 +121,15 @@ bool RICRESTMsg::decode(const uint8_t* pBuf, uint32_t len)
             // Extract params
             const uint8_t* pData = pBuf + RICREST_FILEBLOCK_FILE_POS;
             const uint8_t* pEndStop = pBuf + len;
-            _bufferPos = Utils::getBEUint32AndInc(pData, pEndStop);
+            uint32_t streamIDAndBufferPos = Utils::getBEUint32AndInc(pData, pEndStop);
+            _bufferPos = streamIDAndBufferPos & 0xffffff;
+            _streamID = streamIDAndBufferPos >> 24;
             if (pData < pEndStop)
             {
                 _pBinaryData = pData;
                 _binaryLen = pEndStop-pData;
             }
             _req = "ufBlock";
-            break;
-        }
-        case RICREST_ELEM_CODE_STREAMBLOCK:
-        {
-            // Extract params
-            const uint8_t* pData = pBuf + RICREST_STREAMBLOCK_ID_POS;
-            const uint8_t* pEndStop = pBuf + len;
-            _streamId = Utils::getUint8AndInc(pData, pEndStop);
-            _bufferPos = Utils::getBEUint32AndInc(pData, pEndStop);
-            if (pData < pEndStop)
-            {
-                _pBinaryData = pData;
-                _binaryLen = pEndStop-pData;
-            }
-            _req = "stBlock";
             break;
         }
         default:
@@ -152,7 +144,7 @@ void RICRESTMsg::encode(const String& payload, ProtocolEndpointMsg& endpointMsg,
     uint8_t msgPrefixBuf[RICREST_HEADER_PAYLOAD_POS];
     msgPrefixBuf[RICREST_ELEM_CODE_POS] = elemCode;
 
-    // Set the response ensuring to include the string terminator although this isn't stricly necessary
+    // Set the response ensuring to include the string terminator
     endpointMsg.setBufferSize(RICREST_HEADER_PAYLOAD_POS + payload.length() + 1);
     endpointMsg.setPartBuffer(RICREST_ELEM_CODE_POS, msgPrefixBuf, sizeof(msgPrefixBuf));
     endpointMsg.setPartBuffer(RICREST_HEADER_PAYLOAD_POS, (uint8_t*)payload.c_str(), payload.length() + 1);

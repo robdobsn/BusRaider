@@ -32,20 +32,21 @@ public:
     void addEndpoint(const char *pEndpointStr, 
                     RestAPIEndpointDef::EndpointType endpointType,
                     RestAPIEndpointDef::EndpointMethod endpointMethod,
-                    RestAPIFunction callback,
+                    RestAPIFunction callbackMain,
                     const char *pDescription,
-                    const char *pContentType = NULL,
-                    const char *pContentEncoding = NULL,
+                    const char *pContentType = nullptr,
+                    const char *pContentEncoding = nullptr,
                     RestAPIEndpointDef::EndpointCache_t pCache = RestAPIEndpointDef::ENDPOINT_CACHE_NEVER,
-                    const char *pExtraHeaders = NULL,
-                    RestAPIFnBody callbackBody = NULL,
-                    RestAPIFnUpload callbackUpload = NULL);
+                    const char *pExtraHeaders = nullptr,
+                    RestAPIFnBody callbackBody = nullptr,
+                    RestAPIFnChunk callbackChunk = nullptr,
+                    RestAPIFnIsReady callbackIsReady = nullptr);
 
     // Get the endpoint definition corresponding to a requested endpoint
     RestAPIEndpointDef *getEndpoint(const char *pEndpointStr);
 
     // Handle an API request
-    bool handleApiRequest(const char *requestStr, String &retStr);
+    bool handleApiRequest(const char *requestStr, String &retStr, const APISourceInfo& sourceInfo);
 
     // Get matching endpoint def
     RestAPIEndpointDef* getMatchingEndpointDef(const char *requestStr,
@@ -75,6 +76,14 @@ public:
 
     // URL Parser
     static bool getParamsAndNameValues(const char* reqStr, std::vector<String>& params, std::vector<RdJson::NameValuePair>& nameValuePairs);
+
+    // Special channel IDs
+    static const uint32_t CHANNEL_ID_EVENT_DETECTOR = 20000;
+    static const uint32_t CHANNEL_ID_ROBOT_CONTROLLER = 20001;
+    static const uint32_t CHANNEL_ID_COMMAND_FILE = 20002;
+    static const uint32_t CHANNEL_ID_SERIAL_CONSOLE = 20003;
+    static const uint32_t CHANNEL_ID_COMMAND_SCHEDULER = 20004;
+    static const uint32_t CHANNEL_ID_MQTT_COMMS = 20005;
 
 private:
     // Vector of endpoints

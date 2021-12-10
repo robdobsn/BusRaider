@@ -72,7 +72,7 @@ void NetworkSystem::setup(bool enableWiFi, bool enableEthernet, const char* defa
     // Start netif if not done already
     if ((enableWiFi || enableEthernet) && (!_netifStarted))
     {
-#ifdef USE_IDF_V4_1_PLUS_NETIF_METHODS
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 1, 0)
         if (esp_netif_init() == ESP_OK)
             _netifStarted = true;
         else
@@ -265,19 +265,19 @@ bool NetworkSystem::startStationMode()
             .task_name = "WiFiEvLp",
             .task_priority = configMAX_PRIORITIES,
             .task_stack_size = 2048,
-            .task_core_id = CONFIG_WIFI_EVENT_LOOP_CORE,
+            .task_core_id = CONFIG_WIFI_PRIVATE_EVENT_LOOP_CORE,
         };
         esp_err_t err = esp_event_loop_create(&eventLoopArgs, &_wifiEventLoopHandle);
         if (err != ESP_OK)
         {
-            LOG_E(MODULE_PREFIX, "failed to start event loop");
+            LOG_E(MODULE_PREFIX, "startStationMode FAILED to start event loop");
             return false;
         }            
     }
 #endif
 
     // Create the default WiFi STA
-#ifdef USE_IDF_V4_1_PLUS_NETIF_METHODS
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 1, 0)
     esp_netif_create_default_wifi_sta();
 #endif
 
@@ -355,10 +355,8 @@ bool NetworkSystem::configureWiFi(const String& ssid, const String& pw, const St
                 .listen_interval = 0,
                 .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
                 .threshold = {.rssi = 0, .authmode = WIFI_AUTH_OPEN},
-#ifdef USE_V4_0_1_PLUS_NET_STRUCTS
                 .pmf_cfg = {.capable = 0, .required = 0},
-#endif
-#ifdef USE_IDF_V4_3_PLUS_WIFI_METHODS
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 3, 0)
                 .rm_enabled = 1,
                 .btm_enabled = 0,
                 .reserved = 0,
@@ -371,7 +369,7 @@ bool NetworkSystem::configureWiFi(const String& ssid, const String& pw, const St
         esp_err_t err = esp_wifi_set_config(ESP_IDF_WIFI_STA_MODE_FLAG, &wifiConfig);
         if (err != ESP_OK)
         {
-            LOG_E(MODULE_PREFIX, "startStationMode *** WiFi failed to set configuration err %s (%d) ***", esp_err_to_name(err), err);
+            LOG_E(MODULE_PREFIX, "configureWiFi *** WiFi failed to set configuration err %s (%d) ***", esp_err_to_name(err), err);
             return false;
         }
 

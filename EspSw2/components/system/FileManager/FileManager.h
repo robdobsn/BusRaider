@@ -1,7 +1,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
 // FileManager 
-// Handles SPIFFS and SD card file access
+// Handles SPIFFS/LittleFS and SD card file access
 //
 // Rob Dobson 2018-2020
 //
@@ -15,14 +15,25 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include <Utils.h>
-#include "FileBlockInfo.h"
+#include "FileStreamBlock.h"
+#include <ProtocolExchange.h>
 
 class RestAPIEndpointManager;
+class APISourceInfo;
 
 class FileManager : public SysModBase
 {
 public:
     FileManager(const char* pModuleName, ConfigBase& defaultConfig, ConfigBase* pGlobalConfig, ConfigBase* pMutableConfig);
+
+    // // Upload file to file system
+    // virtual bool fileStreamDataBlock(FileStreamBlock& fileStreamBlock) override final;
+
+    // Set protocol exchange
+    void setProtocolExchange(ProtocolExchange& protocolExchange)
+    {
+        _pProtocolExchange = &protocolExchange;
+    }
 
 protected:
     // Setup
@@ -34,38 +45,39 @@ protected:
     // Add endpoints
     virtual void addRestAPIEndpoints(RestAPIEndpointManager& endpointManager) override final;
 
+    // Get debug string
+    virtual String getDebugJSON() override final;
+
 private:
+
+    // Protocol exchange
+    ProtocolExchange* _pProtocolExchange;
+
     // Helpers
     void applySetup();
 
-    // Get system version
-    void apiGetVersion(const String &reqStr, String& respStr);
-
     // Format file system
-    void apiReformatFS(const String &reqStr, String& respStr);
+    void apiReformatFS(const String &reqStr, String& respStr, const APISourceInfo& sourceInfo);
 
     // List files on a file system
-    // Uses FileSystem.h
-    // In the reqStr the first part of the path is the file system name (e.g. sd or spiffs, can be blank to default)
+    // In the reqStr the first part of the path is the file system name (e.g. sd or local, can be blank to default)
     // The second part of the path is the folder - note that / must be replaced with ~ in folder
-    void apiFileList(const String &reqStr, String& respStr);
+    void apiFileList(const String &reqStr, String& respStr, const APISourceInfo& sourceInfo);
 
     // Read file contents
-    // Uses FileSystem.h
-    // In the reqStr the first part of the path is the file system name (e.g. sd or spiffs)
+    // In the reqStr the first part of the path is the file system name (e.g. sd or local)
     // The second part of the path is the folder and filename - note that / must be replaced with ~ in folder
-    void apiFileRead(const String &reqStr, String& respStr);
+    void apiFileRead(const String &reqStr, String& respStr, const APISourceInfo& sourceInfo);
 
     // Delete file on the file system
-    // Uses FileSystem.h
-    // In the reqStr the first part of the path is the file system name (e.g. sd or spiffs)
+    // In the reqStr the first part of the path is the file system name (e.g. sd or local)
     // The second part of the path is the filename - note that / must be replaced with ~ in filename
-    void apiDeleteFile(const String &reqStr, String& respStr);
+    void apiDeleteFile(const String &reqStr, String& respStr, const APISourceInfo& sourceInfo);
 
-    // Upload file to file system - completed
-    void apiUploadToFileManComplete(const String &reqStr, String &respStr);
+    // API upload file to file system - completed
+    void apiUploadFileComplete(const String &reqStr, String &respStr, const APISourceInfo& sourceInfo);
 
     // Upload file to file system - part of file (from HTTP POST file)
-    void apiUploadToFileManPart(const String& req, FileBlockInfo& fileBlockInfo);
+    bool apiUploadFileBlock(const String& req, FileStreamBlock& fileStreamBlock, const APISourceInfo& sourceInfo);
 
 };

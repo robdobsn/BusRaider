@@ -19,15 +19,18 @@ template<typename ElemT>
 class ThreadSafeQueue
 {
 public:
-    ThreadSafeQueue()
+    ThreadSafeQueue(uint32_t maxLen = DEFAULT_MAX_QUEUE_LEN)
     {
         // Mutex for ThreadSafeQueue
         _queueMutex = xSemaphoreCreateMutex();
-        _maxLen = DEFAULT_MAX_QUEUE_LEN;
+        _maxLen = maxLen;
+        _maxTicksToWaitDefault = DEFAULT_MAX_MS_TO_WAIT;
     }
 
     virtual ~ThreadSafeQueue()
     {
+        if (_queueMutex)
+            vSemaphoreDelete(_queueMutex);
     }
 
     void setMaxLen(uint32_t maxLen)
@@ -35,10 +38,10 @@ public:
         _maxLen = maxLen;
     }
 
-    bool put(const ElemT& elem)
+    bool put(const ElemT& elem, uint32_t maxMsToWait = 0)
     {
         // Get mutex
-        if (xSemaphoreTake(_queueMutex, 1) == pdTRUE)
+        if (xSemaphoreTake(_queueMutex, _getMaxTicksToWait(maxMsToWait)) == pdTRUE)
         {
             // Check if queue is full
             if (_queue.size() >= _maxLen)
@@ -58,10 +61,10 @@ public:
         return false;
     }
 
-    bool get(ElemT& elem)
+    bool get(ElemT& elem, uint32_t maxMsToWait = 0)
     {
         // Get Mutex
-        if (xSemaphoreTake(_queueMutex, 1) == pdTRUE)
+        if (xSemaphoreTake(_queueMutex, _getMaxTicksToWait(maxMsToWait)) == pdTRUE)
         {
             if (_queue.empty())
             {
@@ -81,9 +84,31 @@ public:
         return false;
     }
 
-    void clear()
+    bool peek(ElemT& elem, uint32_t maxMsToWait = 0)
     {
-        if (xSemaphoreTake(_queueMutex, 1) == pdTRUE)
+        // Get Mutex
+        if (xSemaphoreTake(_queueMutex, _getMaxTicksToWait(maxMsToWait)) == pdTRUE)
+        {
+            if (_queue.empty())
+            {
+                // Return semaphore
+                xSemaphoreGive(_queueMutex);
+                return false;
+            }
+
+            // read the item (but do not remove)
+            elem = _queue.front();
+
+            // Return semaphore
+            xSemaphoreGive(_queueMutex);
+            return true;
+        }
+        return false;
+    }
+
+    void clear(uint32_t maxMsToWait = 0)
+    {
+        if (xSemaphoreTake(_queueMutex, _getMaxTicksToWait(maxMsToWait)) == pdTRUE)
         {
             // Clear queue
             while(!_queue.empty()) 
@@ -94,9 +119,9 @@ public:
         }
     }
 
-    uint32_t count()
+    uint32_t count(uint32_t maxMsToWait = 0)
     {
-        if (xSemaphoreTake(_queueMutex, 1) == pdTRUE)
+        if (xSemaphoreTake(_queueMutex, _getMaxTicksToWait(maxMsToWait)) == pdTRUE)
         {
             int qSize = _queue.size();
             // Return semaphore
@@ -116,10 +141,23 @@ public:
         return _queue.size() < _maxLen;
     }
 
+    void setMaxMsToWait(uint32_t maxMsToWait)
+    {
+        _maxTicksToWaitDefault = pdMS_TO_TICKS(maxMsToWait);
+    }
+
 private:
     std::queue<ElemT> _queue;
-    static const uint16_t DEFAULT_MAX_QUEUE_LEN = 1000;
+    static const uint16_t DEFAULT_MAX_QUEUE_LEN = 50;
     uint16_t _maxLen;
+    static const uint16_t DEFAULT_MAX_MS_TO_WAIT = 1;
+    uint16_t _maxTicksToWaitDefault;
+    inline uint32_t _getMaxTicksToWait(uint32_t maxMsToWait)
+    {
+        if (maxMsToWait == 0)
+            return _maxTicksToWaitDefault;
+        return pdMS_TO_TICKS(maxMsToWait);
+    }
     // Mutex for queue
     SemaphoreHandle_t _queueMutex;
 };

@@ -23,9 +23,15 @@
 #include <ESPUtils.h>
 #include <SysManager.h>
 
+// Use a separate thread to send over BLE
+#define USE_SEPARATE_THREAD_FOR_BLE_SENDING
+
+// Warn
 #define WARN_ON_BLE_INIT_FAILED
-#define WARN_ON_BLE_ADVERTISING_ERROR
+#define WARN_ON_BLE_ADVERTISING_START_FAILURE
 #define WARN_ON_ONSYNC_ADDR_ERROR
+
+// Debug
 // #define DEBUG_ONSYNC_ADDR
 // #define DEBUG_BLE_ADVERTISING
 // #define DEBUG_BLE_ON_RESET
@@ -37,7 +43,7 @@
 // #define DEBUG_BLE_SETUP
 // #define DEBUG_LOG_CONNECT
 // #define DEBUG_LOG_CONNECT_DETAIL
-#define DEBUG_LOG_DISCONNECT_DETAIL
+// #define DEBUG_LOG_DISCONNECT_DETAIL
 // #define DEBUG_LOG_CONN_UPDATE_DETAIL
 // #define DEBUG_LOG_CONN_UPDATE
 // #define DEBUG_LOG_GAP_EVENT
@@ -50,7 +56,9 @@
 // #define DEBUG_BLE_EVENT_MTU
 // #define DEBUG_BLE_TASK_STARTED
 
-// #define INCLUDE_RSSI_IN_DEBUG_SEEMS_TO_CRASH_IDF_V4_3
+// The following should only be uncommented if the cost of getting RSSI is acceptable
+// it seems to take 3.5ms in ESP IDF 4.0.1
+// #define INCLUDE_RSSI_IN_GET_STATUS_JSON
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Statics, etc
@@ -87,7 +95,8 @@ uint32_t BLEManager::_advertisingCheckMs = millis();
 
 BLEManager::BLEManager(const char *pModuleName, ConfigBase &defaultConfig, ConfigBase *pGlobalConfig, 
                 ConfigBase *pMutableConfig, const char* defaultAdvName)
-    : SysModBase(pModuleName, defaultConfig, pGlobalConfig, pMutableConfig)
+    : SysModBase(pModuleName, defaultConfig, pGlobalConfig, pMutableConfig),
+      _bleOutboundQueue(BLE_OUTBOUND_MSG_QUEUE_SIZE)
 {
     // BLE interface
     _enableBLE = false;
@@ -107,8 +116,8 @@ BLEManager::BLEManager(const char *pModuleName, ConfigBase &defaultConfig, Confi
     // Outbound msg timing
     _lastOutboundMsgMs = 0;
 
-    // Outbound queue
-    _bleOutboundQueue.setMaxLen(BLE_OUTBOUND_MSG_QUEUE_SIZE);
+    // Outbound queue task
+    _outboundMsgTaskHandle = nullptr;
 }
 
 BLEManager::~BLEManager()
@@ -198,13 +207,50 @@ void BLEManager::applySetup()
         // Currently disconnected
         setIsConnected(false);
 
+        // Check if a thread should be started for sending
+#ifdef USE_SEPARATE_THREAD_FOR_BLE_SENDING
+        UBaseType_t taskCore = configGetLong("taskCore", DEFAULT_TASK_CORE);
+        BaseType_t taskPriority = configGetLong("taskPriority", DEFAULT_TASK_PRIORITY);
+        int taskStackSize = configGetLong("taskStack", DEFAULT_TASK_SIZE_BYTES);
+
+        // Start the worker task
+        BaseType_t retc = pdPASS;
+        if (_outboundMsgTaskHandle == nullptr)
+        {
+            retc = xTaskCreatePinnedToCore(
+                        outboundMsgTaskStatic,
+                        "BLEOutQ",                              // task name
+                        taskStackSize,                          // stack size of task
+                        this,                                   // parameter passed to task on execute
+                        taskPriority,                           // priority
+                        (TaskHandle_t*)&_outboundMsgTaskHandle, // task handle
+                        taskCore);                              // pin task to core N
+        }
+
         // Debug
-#ifdef DEBUG_BLE_SETUP
+        LOG_I(MODULE_PREFIX, "setup maxPktLen %d task %s(%d) core %d priority %d stack %d outQSlots %d minMsBetweenSends %d",
+                    _maxPacketLength,
+                    (retc == pdPASS) ? "OK" : "FAILED", retc, 
+                    taskCore, taskPriority, taskStackSize,
+                    BLE_OUTBOUND_MSG_QUEUE_SIZE,
+                    BLE_MIN_TIME_BETWEEN_OUTBOUND_MSGS_MS);
+        LOG_I(MODULE_PREFIX, "applySetup maxPktLen %d", _maxPacketLength);
+#else
+        // Debug
+        LOG_I(MODULE_PREFIX, "setup maxPktLen %d using service loop outQSlots %d minMsBetweenSends %d",
+                    _maxPacketLength,
+                    BLE_OUTBOUND_MSG_QUEUE_SIZE,
+                    BLE_MIN_TIME_BETWEEN_OUTBOUND_MSGS_MS);
         LOG_I(MODULE_PREFIX, "applySetup maxPktLen %d", _maxPacketLength);
 #endif
     }
     else if (_BLEDeviceInitialised)
     {
+#ifdef USE_SEPARATE_THREAD_FOR_BLE_SENDING
+        // Shutdown task
+        xTaskNotifyGive(_outboundMsgTaskHandle);
+#endif
+
         // Deinit GATTServer
         BLEGattServer::deinitServer();
 
@@ -252,17 +298,26 @@ void BLEManager::service()
             if (!ble_gap_adv_active())
             {
                 // Debug
-#ifdef WARN_ON_BLE_ADVERTISING_ERROR
+#ifdef WARN_ON_BLE_ADVERTISING
                 LOG_W(MODULE_PREFIX, "service not conn or adv so start advertising");
 #endif
 
                 // Start advertising
-                startAdvertising();
+                bool startAdvOk = startAdvertising();
 
                 // Debug
-#ifdef WARN_ON_BLE_ADVERTISING_ERROR
-                LOG_W(MODULE_PREFIX, "service start advertising ok");
-                delay(50);
+#ifdef WARN_ON_BLE_ADVERTISING_START_FAILURE
+                if (!startAdvOk)
+                {
+                    LOG_W(MODULE_PREFIX, "service started advertising FAILED");
+                    delay(50);
+                }
+#endif
+#ifdef DEBUG_BLE_ADVERTISING
+                if (startAdvOk)
+                {
+                    LOG_W(MODULE_PREFIX, "service started advertising ok");
+                }
 #endif
             }
             else
@@ -277,17 +332,10 @@ void BLEManager::service()
     }
 #endif
 
-    // Handle outbound message queue
-    if (_bleOutboundQueue.count() > 0)
-    {
-        if (Utils::isTimeout(millis(), _lastOutboundMsgMs, BLE_MIN_TIME_BETWEEN_OUTBOUND_MSGS_MS))
-        {
-            ProtocolRawMsg bleOutMsg;
-            if (_bleOutboundQueue.get(bleOutMsg))
-                BLEGattServer::sendToCentral(bleOutMsg.getBuf(), bleOutMsg.getBufLen());
-            _lastOutboundMsgMs = millis();
-        }
-    }
+#ifndef USE_SEPARATE_THREAD_FOR_BLE_SENDING
+    // Send if not using alternate thread
+    handleSendFromOutboundQueue();
+#endif
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -319,17 +367,27 @@ String BLEManager::getStatusJSON()
     if (!_BLEDeviceInitialised)
         return R"({"rslt":"failDisabled"})";
 
+#ifdef INCLUDE_RSSI_IN_GET_STATUS_JSON
+    char bleRSSIStr[50];
     int8_t rssiOut = 0;
     int bleGapConnRSSI = ble_gap_conn_rssi(_bleGapConnHandle, &rssiOut);
+    snprintf(bleRSSIStr, sizeof(bleRSSIStr), R"(,"rssi":%d")", bleGapConnRSSI == 0 ? rssiOut : 0);
+#endif
+
     char statusStr[200];
     snprintf(statusStr, sizeof(statusStr), 
-                R"({"rslt":"ok","isConn":%d,"isAdv":%d,"advName":"%s","rssi":%d,"BLEMAC":"%s"})",
+                R"({"rslt":"ok","isConn":%d,"isAdv":%d,"advName":"%s",%s"BLEMAC":"%s"})",
                 _isConnected,
                 ble_gap_adv_active(),
                 ble_svc_gap_device_name(),
-                bleGapConnRSSI == 0 ? rssiOut : 0,
+#ifdef INCLUDE_RSSI_IN_GET_STATUS_JSON
+                bleRSSIStr,
+#else
+                "",
+#endif    
                 getSystemMACAddressStr(ESP_MAC_BT, ":").c_str()
                 );
+
     return statusStr;
 }
 
@@ -337,47 +395,28 @@ String BLEManager::getStatusJSON()
 // Debug
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-String BLEManager::getDebugStr()
+String BLEManager::getDebugJSON()
 {
     if (!_BLEDeviceInitialised)
-        return "";
+        return R"({"s":"none"})";
 
     bool advertisingActive = ble_gap_adv_active();
     bool discoveryActive = ble_gap_disc_active();
     bool gapConnActive = ble_gap_conn_active();
 
-#ifdef INCLUDE_RSSI_IN_DEBUG_SEEMS_TO_CRASH_IDF_V4_3
-    int8_t rssiOut = 0;
-    char tmpRssi[20];
-    strlcpy(tmpRssi, "", sizeof(tmpRssi));
-    if (_isConnected)
-    {
-        int bleGapConnRSSI = ble_gap_conn_rssi(_bleGapConnHandle, &rssiOut);
-        if (bleGapConnRSSI == 0)
-            snprintf(tmpRssi, sizeof(tmpRssi), "%ddB", rssiOut);
-    }
-#endif
-
     // Also ble_gap_conn_desc can be obtained
-    String advertisingName = " ";
-    advertisingName += ble_svc_gap_device_name();
+    String advertisingInfo;
+    if (advertisingActive)
+        advertisingInfo = R"(,"adv":")" + String(ble_svc_gap_device_name()) + R"(")";
     char tmpBuf[200];
-    snprintf(tmpBuf, sizeof(tmpBuf)-1, 
-        "BLE%s%s%s%s%s Rx%d Tx%d",
-        _isConnected ? " Conn" : (advertisingActive ? "Adv" : ""),
-        gapConnActive ? " Actv" : "",
-        advertisingActive ? advertisingName.c_str() : "",
-        discoveryActive ? " Discov" : "",
-#ifdef INCLUDE_RSSI_IN_DEBUG_SEEMS_TO_CRASH_IDF_V4_3
-        tmpRssi,
-#else
-        "",
-#endif
+    snprintf(tmpBuf, sizeof(tmpBuf)-1, R"({"s":"%s"%s,"rx":%d,"tx":%d})",
+        _isConnected ? (gapConnActive ? "actv" : "conn") : (advertisingActive ? "adv" : (discoveryActive ? "disco" : "none")),
+        advertisingInfo.c_str(),
         _rxTotalCount,
         _txTotalCount);
-
     return tmpBuf;
 }
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // onSync callback
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -410,7 +449,13 @@ void BLEManager::onSync()
 #endif
 
     // Start advertising
-    startAdvertising();
+    if (!startAdvertising())
+    {
+#ifdef WARN_ON_BLE_ADVERTISING_START_FAILURE
+        LOG_W(MODULE_PREFIX, "onSync started advertising FAILED");
+        delay(50);
+#endif
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -422,7 +467,7 @@ void BLEManager::onSync()
  *     o General discoverable mode.
  *     o Undirected connectable mode.
  */
-void BLEManager::startAdvertising()
+bool BLEManager::startAdvertising()
 {
     // Check if already advertising
     if (ble_gap_adv_active())
@@ -430,7 +475,7 @@ void BLEManager::startAdvertising()
 #ifdef DEBUG_BLE_ADVERTISING
         LOG_I(MODULE_PREFIX, "startAdvertising - already advertising");
 #endif
-        return;
+        return true;
     }
 
     struct ble_gap_adv_params adv_params;
@@ -467,10 +512,8 @@ void BLEManager::startAdvertising()
     int rc = ble_gap_adv_set_fields(&fields);
     if (rc != 0)
     {
-#ifdef WARN_ON_BLE_ADVERTISING_ERROR
         LOG_E(MODULE_PREFIX, "error setting adv fields; rc=%d", rc);
-#endif
-        return;
+        return false;
     }
 
     // Clear fields
@@ -479,9 +522,7 @@ void BLEManager::startAdvertising()
     // Set the advertising name
     if (ble_svc_gap_device_name_set(_configuredAdvertisingName.c_str()) != 0)
     {
-#ifdef WARN_ON_BLE_ADVERTISING_ERROR
         LOG_E(MODULE_PREFIX, "error setting adv name rc=%d", rc);
-#endif
     }
 
     const char *name = ble_svc_gap_device_name();
@@ -492,10 +533,8 @@ void BLEManager::startAdvertising()
     rc = ble_gap_adv_rsp_set_fields(&fields);
     if (rc != 0)
     {
-#ifdef WARN_ON_BLE_ADVERTISING_ERROR
         LOG_E(MODULE_PREFIX, "error setting adv rsp fields; rc=%d", rc);
-#endif
-        return;
+        return false;
     }
 
     /* Begin advertising. */
@@ -506,11 +545,10 @@ void BLEManager::startAdvertising()
                            &adv_params, nimbleGapEvent, NULL);
     if (rc != 0)
     {
-#ifdef WARN_ON_BLE_ADVERTISING_ERROR
         LOG_E(MODULE_PREFIX, "error enabling adv; rc=%d", rc);
-#endif
-        return;
+        return false;
     }
+    return true;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -604,16 +642,24 @@ int BLEManager::nimbleGapEvent(struct ble_gap_event *event, void *arg)
             else
             {
                 setIsConnected(false);
-                // // Connection failed; resume advertising
-                LOG_W(MODULE_PREFIX, "GAPEvent connection failed - request resume advertising");
-                startAdvertising();
-
+                // Connection failed; resume advertising
+                if (!startAdvertising())
+                {
+#ifdef WARN_ON_BLE_ADVERTISING_START_FAILURE
+                    LOG_W(MODULE_PREFIX, "nimbleGapEvent start advertising FAILED");
+                    delay(50);
+#endif
+                }
+                else
+                {
+                    LOG_I(MODULE_PREFIX, "nimbleGapEvent resumed advertising after connection failure");
+                }
             }
             return 0;
         }
         case BLE_GAP_EVENT_DISCONNECT:
         {
-            LOG_W(MODULE_PREFIX, "GAPEvent disconnect; reason=%d ", event->disconnect.reason);
+            LOG_W(MODULE_PREFIX, "nimbleGapEvent disconnect; reason=%d ", event->disconnect.reason);
             setIsConnected(false);
 #ifdef DEBUG_LOG_DISCONNECT_DETAIL
             logConnectionInfo(&event->disconnect.conn);
@@ -679,7 +725,14 @@ int BLEManager::nimbleGapEvent(struct ble_gap_event *event, void *arg)
             LOG_I(MODULE_PREFIX, "GAPEvent advertise complete; reason=%d",
                         event->adv_complete.reason);
 #endif
-            startAdvertising();
+            // Connection failed; resume advertising
+            if (!startAdvertising())
+            {
+#ifdef WARN_ON_BLE_ADVERTISING_START_FAILURE
+                    LOG_W(MODULE_PREFIX, "nimbleGapEvent started advertising FAILED");
+                    delay(50);
+#endif
+            }
             return 0;
         }
         case BLE_GAP_EVENT_ENC_CHANGE:
@@ -853,18 +906,18 @@ bool BLEManager::sendBLEMsg(ProtocolEndpointMsg& msg)
 
 #ifdef DEBUG_BLE_TX_MSG
 #ifndef DEBUG_BLE_PUBLISH
-    if (msg.getDirection() != MSG_DIRECTION_PUBLISH) 
+    if (msg.getMsgTypeCode() != MSG_TYPE_PUBLISH) 
     {
 #endif
-        LOG_I(MODULE_PREFIX, "sendBLEMsg channelID %d, direction %s msgNum %d, len %d msg %s",
-            msg.getChannelID(), msg.getDirectionAsString(msg.getDirection()), msg.getMsgNumber(), msg.getBufLen(), msg.getBuf());
+        LOG_I(MODULE_PREFIX, "sendBLEMsg channelID %d, msgType %s msgNum %d, len %d msg %s",
+            msg.getChannelID(), msg.getMsgTypeAsString(msg.getMsgTypeCode()), msg.getMsgNumber(), msg.getBufLen(), msg.getBuf());
 #ifndef DEBUG_BLE_PUBLISH
     }
 #endif
 #endif
 
     // Check if publish message and only add if outbound queue less than half full
-    if ((msg.getDirection() == MSG_DIRECTION_PUBLISH) && (_bleOutboundQueue.count() >= _bleOutboundQueue.maxLen()/2))
+    if ((msg.getMsgTypeCode() == MSG_TYPE_PUBLISH) && (_bleOutboundQueue.count() >= _bleOutboundQueue.maxLen()/2))
         return false;
 
     // Split into multiple messages if required
@@ -930,7 +983,7 @@ void BLEManager::setIsConnected(bool isConnected, uint16_t connHandle)
     
     // Inform hooks of status change
     if (_pBLEManager)
-        _pBLEManager->executeStatusChangeCBs();
+        _pBLEManager->executeStatusChangeCBs(isConnected);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -952,4 +1005,52 @@ String BLEManager::getAdvertisingName()
     if (adName.length() == 0)
         adName = _pBLEManager->getSystemName();
     return adName;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Handle sending from outbound queue
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BLEManager::handleSendFromOutboundQueue()
+{
+    // Handle outbound message queue
+    if (_bleOutboundQueue.count() > 0)
+    {
+        if (Utils::isTimeout(millis(), _lastOutboundMsgMs, BLE_MIN_TIME_BETWEEN_OUTBOUND_MSGS_MS))
+        {
+            ProtocolRawMsg bleOutMsg;
+            if (_bleOutboundQueue.get(bleOutMsg))
+                BLEGattServer::sendToCentral(bleOutMsg.getBuf(), bleOutMsg.getBufLen());
+            _lastOutboundMsgMs = millis();
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Task worker for outbound messages
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BLEManager::outboundMsgTaskStatic(void* pvParameters)
+{
+    // Get the object that requested the task
+    BLEManager* pObjPtr = (BLEManager*)pvParameters;
+    if (pObjPtr)
+        pObjPtr->outboundMsgTask();
+}
+
+void BLEManager::outboundMsgTask()
+{
+    // Run the task until asked to stop
+    while (ulTaskNotifyTake(pdTRUE, 0) == 0)
+    {        
+        // Handle queue
+        handleSendFromOutboundQueue();
+
+        // Yield
+        vTaskDelay(1);
+    }
+
+    // Task has exited
+    _outboundMsgTaskHandle = nullptr;
+    vTaskDelete(NULL);
 }

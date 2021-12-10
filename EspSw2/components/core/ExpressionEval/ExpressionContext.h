@@ -1,9 +1,9 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// ExpressionEval
-// Handles mathematical expressions with variables
+// ExpressionContext
+// Handles variables for ExpressionEval
 //
-// Rob Dobson 2017-2020
+// Rob Dobson 2017-2021
 // Originally from RBotFirmware
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -21,6 +21,9 @@ public:
     ExpressionContext();
 	~ExpressionContext();
 
+    // Global variable prefix
+    static constexpr const char* GLOBAL_VAR_PREFIX = "$";
+
     // Add varibles and functions
     void addVariable(const char* name, double val, bool overwriteValue = true);
     void addFunction(const char* name, const void* pFn, uint32_t numFunctionParams);
@@ -32,14 +35,21 @@ public:
     void getTEVars(std::vector<te_variable>& vars);
 
     // Get numbers of vars and functions
-    void getNumVarsAndFuncs(uint32_t& numVars, uint32_t& numFuncs)
+    void getNumVarsAndFuncs(uint32_t& numLocalVars, uint32_t& numGlobalVars, uint32_t& numFuncs)
     {
-        numVars = _mapVars.size();
+        // Count global variables
+        numGlobalVars = 0;
+        for (auto it = _mapVars.begin(); it != _mapVars.end(); ++it)
+        {
+            if (it->first.startsWith(GLOBAL_VAR_PREFIX))
+                numGlobalVars++;
+        }
+        numLocalVars = _mapVars.size() - numGlobalVars;
         numFuncs = _mapFuncs.size();
     }
 
     // Clear
-	void clear();
+	void clear(bool includeGlobals = false);
     void clearTEVars();
 
     // Debug

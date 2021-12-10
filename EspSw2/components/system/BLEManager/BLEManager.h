@@ -48,7 +48,7 @@ protected:
     virtual String getStatusJSON() override final;
 
     // Get debug string
-    virtual String getDebugStr() override final;
+    virtual String getDebugJSON() override final;
 
 private:
     // Singleton BLEManager
@@ -77,9 +77,9 @@ private:
 
     // Protocol message handling
     static const uint32_t BLE_INBOUND_BLOCK_MAX_DEFAULT = 220;
-    static const uint32_t BLE_INBOUND_QUEUE_MAX_DEFAULT = 5;
+    static const uint32_t BLE_INBOUND_QUEUE_MAX_DEFAULT = 20;
     static const uint32_t BLE_OUTBOUND_BLOCK_MAX_DEFAULT = 220;
-    static const uint32_t BLE_OUTBOUND_QUEUE_MAX_DEFAULT = 5;
+    static const uint32_t BLE_OUTBOUND_QUEUE_MAX_DEFAULT = 20;
 
     // Status
     static bool _isConnected;
@@ -97,6 +97,12 @@ private:
     static const uint32_t BLE_MIN_TIME_BETWEEN_OUTBOUND_MSGS_MS = 25;
     uint32_t _lastOutboundMsgMs;
 
+    // Task that runs the outbound queue - if selected by #define in cpp file
+    volatile TaskHandle_t _outboundMsgTaskHandle;
+    static const int DEFAULT_TASK_CORE = 0;
+    static const int DEFAULT_TASK_PRIORITY = 1;
+    static const int DEFAULT_TASK_SIZE_BYTES = 3000;
+
     // Stats
     uint32_t _rxTotalCount;
     uint32_t _txTotalCount;
@@ -111,7 +117,7 @@ private:
     // Helpers
     void applySetup();
     void onSync();
-    static void startAdvertising();
+    static bool startAdvertising();
     static int nimbleGapEvent(struct ble_gap_event *event, void *arg);
     static void bleHostTask(void *param);
     static void logConnectionInfo(struct ble_gap_conn_desc *desc);
@@ -122,5 +128,7 @@ private:
     bool readyToSend(uint32_t channelID);
     static void setIsConnected(bool isConnected, uint16_t connHandle = 0);
     static String getAdvertisingName();
-
+    void handleSendFromOutboundQueue();
+    static void outboundMsgTaskStatic(void* pvParameters);
+    void outboundMsgTask();
 };

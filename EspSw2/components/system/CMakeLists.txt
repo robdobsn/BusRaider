@@ -2,7 +2,6 @@ idf_component_register(
                 SRCS 
                   "SysMod/SysModBase.cpp"
                   "SysManager/SysManager.cpp"
-                  "SysManager/FileUploadHandler.cpp"
                   "SysTypes/SysTypeManager.cpp"
                   "BLEManager/BLEManager.cpp"
                   "BLEManager/BLEGattServer.cpp"
@@ -15,6 +14,9 @@ idf_component_register(
                   "CommandSerial/CommandSerial.cpp"
                   "CommandFile/CommandFile.cpp"
                   "ESPOTAUpdate/ESPOTAUpdate.cpp"
+                  "StreamManager/StreamManager.cpp"
+                  "MQTTManager/MQTTManager.cpp"
+                  "StatePublisher/StatePublisher.cpp"
                 INCLUDE_DIRS
                   "SysMod"
                   "SysManager"
@@ -23,18 +25,22 @@ idf_component_register(
                   "NetworkManager"
                   "SerialConsole"
                   "FileManager"
+                  "StreamManager"
                   "WebServer"
                   "NetDiscovery"
                   "CommandSocket"
                   "CommandSerial"
                   "CommandFile"
                   "ESPOTAUpdate"
+                  "MQTTManager"
+                  "StatePublisher"
                 REQUIRES 
                   core
                   comms
-                  RdWebServer
+                  rd_webserver-src
+                  RdMQTT
                   bt
                   spiffs
                   fatfs
                   app_update
-                  )
+                )

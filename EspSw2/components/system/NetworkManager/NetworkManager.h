@@ -14,6 +14,7 @@
 
 class ConfigBase;
 class RestAPIEndpointManager;
+class APISourceInfo;
 
 class NetworkManager : public SysModBase
 {
@@ -35,7 +36,7 @@ protected:
     virtual String getStatusJSON() override final;
 
     // Get debug string
-    virtual String getDebugStr() override final;
+    virtual String getDebugJSON() override final;
 
 private:
     // Singleton NetworkManager
@@ -49,7 +50,7 @@ private:
     
     // Helpers
     void applySetup();
-    void apiWifiSet(const String &reqStr, String &respStr);
-    void apiWifiClear(const String &reqStr, String &respStr);
-    void apiWiFiPause(const String &reqStr, String& respStr);
+    void apiWifiSet(const String &reqStr, String &respStr, const APISourceInfo& sourceInfo);
+    void apiWifiClear(const String &reqStr, String &respStr, const APISourceInfo& sourceInfo);
+    void apiWiFiPause(const String &reqStr, String& respStr, const APISourceInfo& sourceInfo);
 };

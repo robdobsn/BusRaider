@@ -26,17 +26,8 @@ private:
     String _filename;
 
 public:
-    ConfigFile(FileManager& fileManager, const char *fileSystem, const char* filename, int configMaxlen) :
-            _fileManager(fileManager)
-    {
-        _fileSystem = fileSystem;
-        _filename = filename;
-        _configMaxDataLen = configMaxlen;
-    }
-
-    virtual ~ConfigFile()
-    {
-    }
+    ConfigFile(FileManager& fileManager, const char *fileSystem, const char* filename, int configMaxlen);
+    virtual ~ConfigFile();
 
     // Get max length
     virtual int getMaxLen() const override final;

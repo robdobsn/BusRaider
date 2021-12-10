@@ -33,9 +33,9 @@ public:
     void addStaticResources(const WebServerResource *pResources, int numResources);
     void serveStaticFiles(const char* baseUrl, const char* baseFolder, const char* cacheControl = NULL);
     
-    // Async event handler (one-way text to browser)
-    void enableAsyncEvents(const String& eventsURL);
-    void sendAsyncEvent(const char* eventContent, const char* eventGroup);
+    // Server-side event handler (one-way text to browser)
+    void enableServerSideEvents(const String& eventsURL);
+    void sendServerSideEvent(const char* eventContent, const char* eventGroup);
 
     // Web sockets
     void webSocketSetup(const String& websocketURL);
@@ -55,7 +55,7 @@ protected:
     
 private:
     // Helpers
-    void addStaticResource(const WebServerResource *pResource, const char *pAliasPath = NULL);
+    void addStaticResource(const WebServerResource *pResource, const char *pAliasPath = nullptr);
     void configChanged();
     void applySetup();
     void setupEndpoints();

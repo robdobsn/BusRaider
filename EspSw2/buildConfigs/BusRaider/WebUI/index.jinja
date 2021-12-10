@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>BusRaider</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="description" content="WebUI for Bus Raider">
+	<meta name="author" content="Rob Dobson">
+	<script type="text/javascript">
+
+{% include "common.js" %}
+{% include "BusRaider/Machines.js" %}
+{% include "BusRaider/ScreenMirror.js" %}
+{% include "BusRaider/FileSystem.js" %}
+{% include "BusRaider/Debugger.js" %}
+{% include "spin.js" %}
+
+    </script>
+
+	<style>
+
+{% include "common.css" %}
+
+	</style>
+</head>
+
+<body onload="bodyIsLoaded()">
+
+{% include "indexHeader.html" %}
+
+{% include "common.html" %}
+
+{% include "indexFooter.html" %}
+
+{% include "svgicons.html" %}
+
+</body>
+
+</html>

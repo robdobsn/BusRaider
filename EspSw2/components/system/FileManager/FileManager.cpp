@@ -25,6 +25,7 @@ static const char* MODULE_PREFIX = "FileManager";
 FileManager::FileManager(const char *pModuleName, ConfigBase& defaultConfig, ConfigBase* pGlobalConfig, ConfigBase* pMutableConfig) 
         : SysModBase(pModuleName, defaultConfig, pGlobalConfig, pMutableConfig)
 {
+    _pProtocolExchange = nullptr;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -33,17 +34,23 @@ FileManager::FileManager(const char *pModuleName, ConfigBase& defaultConfig, Con
 
 void FileManager::setup()
 {
+    // Apply setup
     applySetup();
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Apply Setup
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void FileManager::applySetup()
 {
     // Config settings
     bool enableSPIFFS = (configGetLong("SPIFFSEnabled", 0) != 0);
-    bool spiffsFormatIfCorrupt = (configGetLong("SPIFFSFormatIfCorrupt", 0) != 0);
+    bool enableLittleFS = (configGetLong("LittleFSEnabled", 0) != 0);
+    bool localFsFormatIfCorrupt = (configGetLong("LocalFsFormatIfCorrupt", 0) != 0);
     bool enableSD = (configGetLong("SDEnabled", 0) != 0);
     bool defaultToSDIfAvailable = (configGetLong("DefaultSD", 0) != 0);
-    bool cacheFileList = (configGetLong("CacheFileList", 0) != 0);
+    bool cacheFileSystemInfo = (configGetLong("CacheFileSysInfo", 0) != 0);
 
     // SD pins
     String pinName = configGetString("SDMOSI", "");
@@ -55,12 +62,9 @@ void FileManager::applySetup()
     pinName = configGetString("SDCS", "");
     int sdCSPin = ConfigPinMap::getPinFromName(pinName.c_str());
 
-    // Cache max
-    int maxCacheBytes = configGetLong("maxCacheBytes", 5000);
-
     // Setup file system
-    fileSystem.setup(enableSPIFFS, spiffsFormatIfCorrupt, enableSD, sdMOSIPin, sdMISOPin, sdCLKPin, sdCSPin, 
-                defaultToSDIfAvailable, cacheFileList, maxCacheBytes);
+    fileSystem.setup(enableSPIFFS, enableLittleFS, localFsFormatIfCorrupt, enableSD, sdMOSIPin, sdMISOPin, sdCLKPin, sdCSPin, 
+                defaultToSDIfAvailable, cacheFileSystemInfo);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +73,8 @@ void FileManager::applySetup()
 
 void FileManager::service()
 {
-    // Nothing to do
+    // Service the file system
+    fileSystem.service();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -79,45 +84,50 @@ void FileManager::service()
 void FileManager::addRestAPIEndpoints(RestAPIEndpointManager& endpointManager)
 {
     endpointManager.addEndpoint("reformatfs", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET, 
-                    std::bind(&FileManager::apiReformatFS, this, std::placeholders::_1, std::placeholders::_2), 
-                    "Reformat file system e.g. /spiffs");
+                    std::bind(&FileManager::apiReformatFS, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), 
+                    "Reformat file system e.g. /local");
     endpointManager.addEndpoint("filelist", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET, 
-                    std::bind(&FileManager::apiFileList, this, std::placeholders::_1, std::placeholders::_2), 
-                    "List files in folder e.g. /spiffs/folder ... ~ for / in folder");
+                    std::bind(&FileManager::apiFileList, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), 
+                    "List files in folder e.g. /local/folder ... ~ for / in folder");
     endpointManager.addEndpoint("fileread", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET, 
-                    std::bind(&FileManager::apiFileRead, this, std::placeholders::_1, std::placeholders::_2), 
+                    std::bind(&FileManager::apiFileRead, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), 
                     "Read file ... name", "text/plain");
     endpointManager.addEndpoint("filedelete", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET, 
-                    std::bind(&FileManager::apiDeleteFile, this, std::placeholders::_1, std::placeholders::_2), 
-                    "Delete file e.g. /spiffs/filename ... ~ for / in filename");
+                    std::bind(&FileManager::apiDeleteFile, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), 
+                    "Delete file e.g. /local/filename ... ~ for / in filename");
     endpointManager.addEndpoint("fileupload", 
                     RestAPIEndpointDef::ENDPOINT_CALLBACK, 
                     RestAPIEndpointDef::ENDPOINT_POST,
-                    std::bind(&FileManager::apiUploadToFileManComplete, this, 
-                            std::placeholders::_1, std::placeholders::_2),
+                    std::bind(&FileManager::apiUploadFileComplete, this, 
+                            std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
                     "Upload file", 
                     "application/json", 
-                    NULL,
+                    nullptr,
                     RestAPIEndpointDef::ENDPOINT_CACHE_NEVER,
-                    NULL, 
-                    NULL,
-                    std::bind(&FileManager::apiUploadToFileManPart, this, 
-                            std::placeholders::_1, std::placeholders::_2));
+                    nullptr, 
+                    nullptr,
+                    std::bind(&FileManager::apiUploadFileBlock, this, 
+                            std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Format file system
-void FileManager::apiReformatFS(const String &reqStr, String& respStr)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void FileManager::apiReformatFS(const String &reqStr, String& respStr, const APISourceInfo& sourceInfo)
 {
     // File system
     String fileSystemStr = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
     fileSystem.reformat(fileSystemStr, respStr);
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // List files on a file system
-// Uses FileManager.h
-// In the reqStr the first part of the path is the file system name (e.g. sd or spiffs, can be blank to default)
+// In the reqStr the first part of the path is the file system name (e.g. sd or local, can be blank to default)
 // The second part of the path is the folder - note that / must be replaced with ~ in folder
-void FileManager::apiFileList(const String &reqStr, String& respStr)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void FileManager::apiFileList(const String &reqStr, String& respStr, const APISourceInfo& sourceInfo)
 {
     // File system
     String fileSystemStr = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
@@ -141,11 +151,13 @@ void FileManager::apiFileList(const String &reqStr, String& respStr)
 #endif
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Read file contents
-// Uses FileManager.h
-// In the reqStr the first part of the path is the file system name (e.g. sd or spiffs)
+// In the reqStr the first part of the path is the file system name (e.g. sd or local)
 // The second part of the path is the folder and filename - note that / must be replaced with ~ in folder
-void FileManager::apiFileRead(const String &reqStr, String& respStr)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void FileManager::apiFileRead(const String &reqStr, String& respStr, const APISourceInfo& sourceInfo)
 {
     // File system
     String fileSystemStr = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
@@ -155,14 +167,23 @@ void FileManager::apiFileRead(const String &reqStr, String& respStr)
     if (extraPath.length() > 0)
         fileNameStr += "/" + extraPath;
     fileNameStr.replace("~", "/");
-    respStr = fileSystem.getFileContents(fileSystemStr, fileNameStr);
+    char* pFileContents = fileSystem.getFileContents(fileSystemStr, fileNameStr);
+    if (!pFileContents)
+    {
+        respStr = "";
+        return;
+    }
+    respStr = pFileContents;
+    free(pFileContents);
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Delete file on the file system
-// Uses FileManager.h
-// In the reqStr the first part of the path is the file system name (e.g. sd or spiffs)
+// In the reqStr the first part of the path is the file system name (e.g. sd or local)
 // The second part of the path is the filename - note that / must be replaced with ~ in filename
-void FileManager::apiDeleteFile(const String &reqStr, String& respStr)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void FileManager::apiDeleteFile(const String &reqStr, String& respStr, const APISourceInfo& sourceInfo)
 {
     // File system
     String fileSystemStr = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
@@ -181,23 +202,52 @@ void FileManager::apiDeleteFile(const String &reqStr, String& respStr)
                         rslt ? "ok" : "fail");
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Upload file to file system - completed
-void FileManager::apiUploadToFileManComplete(const String &reqStr, String &respStr)
-{
-#ifdef DEBUG_FILE_MANAGER_UPLOAD
-    LOG_I(MODULE_PREFIX, "apiUploadToFileManComplete %s", reqStr.c_str());
-#endif
-    fileSystem.uploadAPIBlocksComplete();
-    Utils::setJsonBoolResult(reqStr.c_str(), respStr, true);
-    }
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-// Upload file to file system - part of file (from HTTP POST file)
-void FileManager::apiUploadToFileManPart(const String& req, FileBlockInfo& fileBlockInfo)
+void FileManager::apiUploadFileComplete(const String &reqStr, String &respStr, const APISourceInfo& sourceInfo)
 {
 #ifdef DEBUG_FILE_MANAGER_UPLOAD
-    LOG_I(MODULE_PREFIX, "apiUpToFileMan fileLen %d filePos %d blockLen %d isFinal %d", 
-            fileBlockInfo.fileLen, fileBlockInfo.filePos,
-            fileBlockInfo.blockLen, fileBlockInfo.finalBlock);
+    LOG_I(MODULE_PREFIX, "uploadFileComplete %s", reqStr.c_str());
 #endif
-    fileSystem.uploadAPIBlockHandler("", req, fileBlockInfo);
+    Utils::setJsonBoolResult(reqStr.c_str(), respStr, true);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Upload file to file system - part of file (from HTTP POST file)
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool FileManager::apiUploadFileBlock(const String& req, FileStreamBlock& fileStreamBlock, const APISourceInfo& sourceInfo)
+{
+    if (_pProtocolExchange)
+        return _pProtocolExchange->handleAPIFileStreamBlock(req, fileStreamBlock, sourceInfo, 
+                    ProtocolFileStream::FILE_STREAM_TYPE_FILE);
+    return false;
+}
+
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// // Upload file to file system - part of file (from HTTP POST file)
+// /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// bool FileManager::fileStreamDataBlock(FileStreamBlock& fileStreamBlock)
+// {
+// #ifdef DEBUG_FILE_MANAGER_UPLOAD
+//     LOG_I(MODULE_PREFIX, "fileStreamDataBlock fileName %s fileLen %d filePos %d blockLen %d isFinal %d", 
+//             fileStreamBlock.filename ? fileStreamBlock.filename : "<null>", 
+//             fileStreamBlock.fileLen, fileStreamBlock.filePos,
+//             fileStreamBlock.blockLen, fileStreamBlock.finalBlock);
+// #endif
+
+//     // Handle block
+//     return _fileTransferHelper.handleRxBlock(fileStreamBlock);
+// }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Debug
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+String FileManager::getDebugJSON()
+{
+    return "{}";
 }

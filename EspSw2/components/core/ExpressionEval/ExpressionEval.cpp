@@ -18,9 +18,7 @@
 // #define DEBUG_EXPRESSION_EVAL 1
 // #define DEBUG_EXPRESSION_EVAL_VAR_DETAIL 1
 
-#if defined(DEBUG_EXPRESSION_EVAL) || defined(DEBUG_EXPRESSION_EVAL_VAR_DETAIL)
 static const char* MODULE_PREFIX = "ExprEval";
-#endif
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor / Destructor
@@ -52,7 +50,7 @@ void ExpressionEval::addVariables(const char* valsJSON, bool append)
     {
         // Get value
         double val = RdJson::getDouble(valToAdd.c_str(), 0, valsJSON);
-#ifdef DEBUG_EXPRESSION_EVAL
+#ifdef DEBUG_EXPRESSION_EVAL_VAR_DETAIL
         LOG_I(MODULE_PREFIX, "addVariables var %s val %f", valToAdd.c_str(), val);
 #endif
         _exprContext.addVariable(valToAdd.c_str(), val);
@@ -134,7 +132,7 @@ bool ExpressionEval::addExpressions(const char* pExpr, uint32_t& errorLine)
         // Handle EOL
         if ((*pCh == '\r') || (*pCh == '\n'))
         {
-            if (!compileAndStore(curToken, varName, flowType))
+            if (!compileAndStore(curToken, varName, flowType, lineNum))
             {
                 errorLine = lineNum;
                 compileOk = false;
@@ -204,7 +202,7 @@ bool ExpressionEval::addExpressions(const char* pExpr, uint32_t& errorLine)
     // Handle last expression (if there is one)
     if (compileOk)
     {
-        compileOk = compileAndStore(curToken, varName, flowType);
+        compileOk = compileAndStore(curToken, varName, flowType, lineNum);
         if (!compileOk)
             errorLine = lineNum;
     }
@@ -423,7 +421,7 @@ uint32_t ExpressionEval::findMatchingFlowUnit(uint32_t pc)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool ExpressionEval::compileAndStore(String& expr, const String& varName, 
-            StatementFlowType flowType)
+            StatementFlowType flowType, uint32_t lineNum)
 {
     // Check we haven't reached the limit of statements
     if (_compiledStatements.size() >= MAX_EXPRESSIONS)
@@ -438,12 +436,12 @@ bool ExpressionEval::compileAndStore(String& expr, const String& varName,
 
     // Debug TEVars
 #ifdef DEBUG_EXPRESSION_EVAL
-    LOG_I(MODULE_PREFIX, "compileAndStore varName %s expr %s flowType %s numTEVars %d", 
+    LOG_I(MODULE_PREFIX, "compileAndStore line %d varName %s expr %s flowType %s numTEVars %d", lineNum,
                     varName.c_str(), expr.length() > 0 ? expr.c_str() : "EMPTY", getFlowTypeStr(flowType), varsContext.size());
 #ifdef DEBUG_EXPRESSION_EVAL_VAR_DETAIL
     for (int i = 0; i < varsContext.size(); i++)
     {
-        LOG_I(MODULE_PREFIX, "compileAndStore var %d name %s type %s val %f", 
+        LOG_I(MODULE_PREFIX, "compileAndStore line %d var %d name %s type %s val %f", lineNum,
                 i, varsContext[i].name, ExpressionContext::getVarTypeStr(varsContext[i].type),
                 varsContext[i].type == TE_VARIABLE ? *(double*)varsContext[i].address : 0);
     }
@@ -465,14 +463,15 @@ bool ExpressionEval::compileAndStore(String& expr, const String& varName,
         compiledStatement._flowType = flowType;
         _compiledStatements.push_back(compiledStatement);
 #ifdef DEBUG_EXPRESSION_EVAL
-        LOG_I(MODULE_PREFIX, "compileAndStore OK %s numVars %d compiledExprs %d", 
+        LOG_I(MODULE_PREFIX, "compileAndStore line %d OK %s numVars %d compiledExprs %d", lineNum,
                 expr.c_str(), varsContext.size(), _compiledStatements.size());
 #endif
     }
     else
     {
 #ifdef DEBUG_EXPRESSION_EVAL
-        LOG_I(MODULE_PREFIX, "compileAndStore ignored line");
+        LOG_I(MODULE_PREFIX, "compileAndStore ignored line %d exprLen %d compiledExpr %s", 
+                    lineNum, expr.length(), pCompiledExpr != NULL ? "OK" : "NULL");
 #endif
     }
 
@@ -526,4 +525,76 @@ void ExpressionEval::findAndReplaceStringConsts(String& exprStr)
             }
         }
     }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Debugging function for expressions
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void ExpressionEval::debugGetExprInfo(const te_expr *n, int depth, bool logExpr, uint32_t& curCompiledSize) 
+{
+    // Size of data
+    curCompiledSize += sizeof(te_expr);
+
+    // Indent appropriately
+    String logIndent;
+    char logTmp[100];
+    snprintf(logTmp, sizeof(logTmp), "%*s", depth, "");
+    logIndent = logTmp;
+
+    #define TYPE_MASK(TYPE) ((TYPE)&0x0000001F)
+    #define ARITY(TYPE) ( ((TYPE) & (TE_FUNCTION0 | TE_CLOSURE0)) ? ((TYPE) & 0x00000007) : 0 )
+    enum { TE_CONSTANT = 1 };
+
+    // Handle node type
+	switch (TYPE_MASK(n->type)) 
+    {
+        case TE_CONSTANT:
+            if (logExpr)
+            {
+                LOG_I(MODULE_PREFIX, "%s%f", logIndent.c_str(), n->value);
+            }
+            break;
+        case TE_VARIABLE: 
+            if (logExpr)
+            {
+                LOG_I(MODULE_PREFIX, "%sbound %p", logIndent.c_str(), n->bound);
+            }
+            break;
+        case TE_FUNCTION0: 
+        case TE_FUNCTION1: 
+        case TE_FUNCTION2: 
+        case TE_FUNCTION3:
+        case TE_FUNCTION4: 
+        case TE_FUNCTION5: 
+        case TE_FUNCTION6: 
+        case TE_FUNCTION7:
+        case TE_CLOSURE0: 
+        case TE_CLOSURE1: 
+        case TE_CLOSURE2: 
+        case TE_CLOSURE3:
+        case TE_CLOSURE4: 
+        case TE_CLOSURE5: 
+        case TE_CLOSURE6: 
+        case TE_CLOSURE7:
+        {
+            int arity = ARITY(n->type);
+            snprintf(logTmp, sizeof(logTmp), "f%d", arity);
+            logIndent += logTmp;
+            for (int i = 0; i < arity; i++) 
+            {
+                snprintf(logTmp, sizeof(logTmp), " %p", n->parameters[i]);
+                logIndent += logTmp;
+            }
+            if (logExpr)
+            {
+                LOG_I(MODULE_PREFIX, "%s", logIndent.c_str());
+            }
+            for (int i = 0; i < arity; i++) 
+            {
+                debugGetExprInfo((const te_expr *)(n->parameters[i]), depth + 1, logExpr, curCompiledSize);
+            }
+            break;
+        }
+	}
 }

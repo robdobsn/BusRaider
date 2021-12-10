@@ -1,5 +1,10 @@
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 // Utils
-// Rob Dobson 2012-2017
+//
+// Rob Dobson 2012-2021
+//
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
@@ -56,7 +61,7 @@ public:
     // Also checks endStop pointer value if provided
     static uint16_t getUint8AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = nullptr)
     {
-        if (pEndStop && (pVal >= pEndStop))
+        if (!pVal || (pEndStop && (pVal >= pEndStop)))
             return 0;
         uint8_t val = *pVal;
         pVal += 1;
@@ -68,7 +73,7 @@ public:
     // Also checks endStop pointer value if provided
     static int16_t getInt8AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = nullptr)
     {
-        if (pEndStop && (pVal >= pEndStop))
+        if (!pVal || (pEndStop && (pVal >= pEndStop)))
             return 0;
         int8_t val = *((int8_t*)pVal);
         pVal += 1;
@@ -80,7 +85,7 @@ public:
     // Also checks endStop pointer value if provided
     static uint16_t getLEUint16AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = nullptr)
     {
-        if (pEndStop && (pVal + 1 >= pEndStop))
+        if (!pVal || (pEndStop && (pVal + 1 >= pEndStop)))
             return 0;
         uint16_t val = ((((uint16_t)(*(pVal+1))) * 256) + *pVal);
         pVal += 2;
@@ -92,7 +97,7 @@ public:
     // Also checks endStop pointer value if provided
     static int16_t getLEInt16AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = nullptr)
     {
-        if (pEndStop && (pVal + 1 >= pEndStop))
+        if (!pVal || (pEndStop && (pVal + 1 >= pEndStop)))
             return 0;
         uint32_t val = ((((uint32_t)(*(pVal+1))) * 256) + *pVal);
         pVal += 2;
@@ -106,7 +111,7 @@ public:
     // Also checks endStop pointer value if provided
     static uint16_t getBEUint16AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = nullptr)
     {
-        if (pVal && pEndStop && (pVal + 1 >= pEndStop))
+        if (!pVal || (pEndStop && (pVal + 1 >= pEndStop)))
             return 0;
         uint16_t val = ((((uint16_t)(*(pVal))) * 256) + *(pVal+1));
         pVal += 2;
@@ -118,7 +123,7 @@ public:
     // Also checks endStop pointer value if provided
     static int16_t getBEInt16AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = nullptr)
     {
-        if (pVal && pEndStop && (pVal + 1 >= pEndStop))
+        if (!pVal || (pEndStop && (pVal + 1 >= pEndStop)))
             return 0;
         uint32_t val = ((((uint32_t)(*(pVal))) * 256) + *(pVal+1));
         pVal += 2;
@@ -132,7 +137,7 @@ public:
     // Also checks endStop pointer value if provided
     static uint32_t getBEUint32AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = nullptr)
     {
-        if (pVal && pEndStop && (pVal + 3 >= pEndStop))
+        if (!pVal || (pEndStop && (pVal + 3 >= pEndStop)))
             return 0;
         uint32_t val = ((((uint32_t)(*pVal)) << 24) + (((uint32_t)(*(pVal+1))) << 16) +
                         + (((uint32_t)(*(pVal+2))) << 8) + *(pVal+3));
@@ -145,7 +150,7 @@ public:
     // Also checks endStop pointer value if provided
     static float getBEfloat32AndInc(const uint8_t*& pVal, const uint8_t* pEndStop = nullptr)
     {
-        if (pVal && pEndStop && (pVal + 3 >= pEndStop))
+        if (!pVal || (pEndStop && (pVal + 3 >= pEndStop)))
             return 0;
         
         float val = 0;
@@ -158,18 +163,24 @@ public:
     // Set values into a buffer
     static void setBEInt8(uint8_t* pBuf, uint32_t offset, int8_t val)
     {
+        if (!pBuf)
+            return;
         *(pBuf+offset) = val;
     }
 
     // Set values into a buffer
     static void setBEUint8(uint8_t* pBuf, uint32_t offset, uint8_t val)
     {
+        if (!pBuf)
+            return;
         *(pBuf+offset) = val;
     }
 
     // Set values into a buffer
     static void setBEInt16(uint8_t* pBuf, uint32_t offset, int16_t val)
     {
+        if (!pBuf)
+            return;
         *(pBuf+offset) = (val >> 8) & 0x0ff;
         *(pBuf+offset+1) = val & 0xff;
     }
@@ -177,6 +188,8 @@ public:
     // Set values into a buffer
     static void setBEUint16(uint8_t* pBuf, uint32_t offset, uint16_t val)
     {
+        if (!pBuf)
+            return;
         *(pBuf+offset) = (val >> 8) & 0x0ff;
         *(pBuf+offset+1) = val & 0xff;
     }
@@ -184,6 +197,8 @@ public:
     // Set values into a buffer
     static void setBEUint32(uint8_t* pBuf, uint32_t offset, uint32_t val)
     {
+        if (!pBuf)
+            return;
         *(pBuf+offset) = (val >> 24) & 0x0ff;
         *(pBuf+offset+1) = (val >> 16) & 0x0ff;
         *(pBuf+offset+2) = (val >> 8) & 0x0ff;
@@ -194,6 +209,8 @@ public:
     // Since ESP32 is little-endian this means reversing the order
     static void setBEFloat32(uint8_t* pBuf, uint32_t offset, float val)
     {
+        if (!pBuf)
+            return;
         uint8_t* pFloat = (uint8_t*)(&val)+3;
         uint8_t* pBufOff = pBuf + offset;
         for (int i = 0; i < 4; i++)
@@ -313,18 +330,6 @@ public:
             }
         }
     }
-
-    // ISR safe max function
-    static inline uint32_t IRAM_ATTR isrSafeMax(uint32_t a, uint32_t b)
-    {
-        return a > b ? a : b;
-    }
-
-    // ISR safe abs function
-    static inline uint32_t IRAM_ATTR isrSafeAbs(int32_t a)
-    {
-        return a >= 0 ? a : -a;
-    }
 };
 
 // Name value pair double
@@ -338,4 +343,10 @@ struct NameValuePairDouble
     String name;
     double value;
 };
+
+// ABS macro
+#define UTILS_ABS(N) ((N<0)?(-N):(N))
+#define UTILS_MAX(A,B) (A > B ? A : B)
+#define UTILS_MIN(A,B) (A < B ? A : B)
+
 

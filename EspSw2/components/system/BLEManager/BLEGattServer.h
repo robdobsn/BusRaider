@@ -59,7 +59,7 @@ private:
     static uint16_t _bleGapConnHandle;
 
     // State of notify (send from peripheral)
-    static uint8_t _responseNotifyState;
+    static bool _responseNotifyState;
 
     static const struct ble_gatt_svc_def servicesList[];
 
@@ -76,5 +76,9 @@ private:
                              void *arg);
 
     static BLEGattServerAccessCBType _accessCallback;
+
+    static const uint32_t MIN_TIME_BETWEEN_ERROR_MSGS_MS = 500;
+    static uint32_t _lastBLEErrorMsgMs;
+    static uint32_t _lastBLEErrorMsgCode;
 
 };

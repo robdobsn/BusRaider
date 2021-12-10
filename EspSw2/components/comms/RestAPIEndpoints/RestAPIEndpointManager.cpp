@@ -11,14 +11,19 @@
 #include <Utils.h>
 #include <RestAPIEndpointManager.h>
 
+// Warn
+#define WARN_ON_NON_MATCHING_ENDPOINTS
+
+// Debug
 // #define DEBUG_REST_API_ENDPOINTS_ADD
 // #define DEBUG_REST_API_ENDPOINTS_GET
 // #define DEBUG_HANDLE_API_REQUEST_AND_RESPONSE
-// #define WARN_ON_NON_MATCHING_ENDPOINTS
+// #define DEBUG_NAME_VALUE_PAIR_EXTRACTION
 
 #if defined(DEBUG_REST_API_ENDPOINTS_ADD) || \
     defined(DEBUG_REST_API_ENDPOINTS_GET) || \
     defined(DEBUG_HANDLE_API_REQUEST_AND_RESPONSE) || \
+    defined(DEBUG_NAME_VALUE_PAIR_EXTRACTION) || \
     defined(WARN_ON_NON_MATCHING_ENDPOINTS)
 static const char* MODULE_PREFIX = "RestAPIEndpointManager";
 #endif
@@ -70,7 +75,9 @@ void RestAPIEndpointManager::addEndpoint(const char *pEndpointStr,
                     RestAPIEndpointDef::EndpointCache_t cacheControl,
                     const char *pExtraHeaders,
                     RestAPIFnBody callbackBody,
-                    RestAPIFnUpload callbackUpload)
+                    RestAPIFnChunk callbackChunk,
+                    RestAPIFnIsReady callbackIsReady
+                    )
 {
     // Create new command definition and add
     _endpointsList.push_back(RestAPIEndpointDef(pEndpointStr, endpointType,
@@ -78,7 +85,7 @@ void RestAPIEndpointManager::addEndpoint(const char *pEndpointStr,
                                 pDescription,
                                 pContentType, pContentEncoding,
                                 cacheControl, pExtraHeaders,
-                                callbackBody, callbackUpload));
+                                callbackBody, callbackChunk, callbackIsReady));
 #ifdef DEBUG_REST_API_ENDPOINTS_ADD
     LOG_I(MODULE_PREFIX, "addEndpoint %s", pEndpointStr);
 #endif
@@ -139,7 +146,7 @@ RestAPIEndpointDef* RestAPIEndpointManager::getMatchingEndpointDef(const char *r
 // Handle simple REST API request
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool RestAPIEndpointManager::handleApiRequest(const char *requestStr, String &retStr)
+bool RestAPIEndpointManager::handleApiRequest(const char *requestStr, String &retStr, const APISourceInfo& sourceInfo)
 {
     // Get matching def
     RestAPIEndpointDef* pDef = getMatchingEndpointDef(requestStr);
@@ -150,9 +157,9 @@ bool RestAPIEndpointManager::handleApiRequest(const char *requestStr, String &re
 
     // Call endpoint
     String reqStr(requestStr);
-    pDef->callback(reqStr, retStr);
+    pDef->callbackMain(reqStr, retStr, sourceInfo);
 #ifdef DEBUG_HANDLE_API_REQUEST_AND_RESPONSE
-    LOG_W(MODULE_PREFIX, "handleApiRequest %s resp %s", requestStr, retStr.c_str());
+    LOG_W(MODULE_PREFIX, "handleApiRequest %s resp %s channelID %d", requestStr, retStr.c_str(), sourceInfo.channelID);
 #endif
     return true;
 }
@@ -384,8 +391,10 @@ bool RestAPIEndpointManager::getParamsAndNameValues(const char* reqStr, std::vec
     }
 
     // Debug
-    // for (NameValuePair& pair : nameValuePairs)
-    //     LOG_I(MODULE_PREFIX, "getParamsAndNamedValues name %s val %s", pair.name.c_str(), pair.value.c_str());
+#ifdef DEBUG_NAME_VALUE_PAIR_EXTRACTION
+    for (RdJson::NameValuePair& pair : nameValuePairs)
+        LOG_I(MODULE_PREFIX, "getParamsAndNamedValues name %s val %s", pair.name.c_str(), pair.value.c_str());
+#endif
     return true;
 
 }

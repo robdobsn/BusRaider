@@ -97,7 +97,12 @@ String SysModBase::configGetString(const char *dataPath, const char* defaultValu
 
 String SysModBase::configGetString(const char *dataPath, const String& defaultValue)
 {
-    return _combinedConfig.getString(dataPath, defaultValue);
+    return _combinedConfig.getString(dataPath, defaultValue.c_str());
+}
+
+bool SysModBase::configGetArrayElems(const char *dataPath, std::vector<String>& strList) const
+{
+    return _combinedConfig.getArrayElems(dataPath, strList);
 }
 
 void SysModBase::configRegisterChangeCallback(ConfigChangeCallbackType configChangeCallback)
@@ -139,12 +144,12 @@ void SysModBase::sysModSetStatusChangeCB(const char* sysModName, SysMod_statusCh
 }
 
 // Execute status change callbacks
-void SysModBase::executeStatusChangeCBs()
+void SysModBase::executeStatusChangeCBs(bool changeToOn)
 {
     for (SysMod_statusChangeCB& statusChangeCB : _statusChangeCBs)
     {
         if (statusChangeCB)
-            statusChangeCB();
+            statusChangeCB(_sysModName, changeToOn);
     }
 }
 
@@ -153,4 +158,28 @@ SupervisorStats* SysModBase::getSysManagerStats()
     if (_pSysManager)
         return _pSysManager->getStats();
     return nullptr;
+}
+
+// File/stream system activity - main firmware update
+bool SysModBase::isSystemMainFWUpdate()
+{
+    if (getSysManager())
+        return getSysManager()->isSystemMainFWUpdate();
+    return false;
+}
+
+// File/stream system activity - file transfer
+bool SysModBase::isSystemFileTransferring()
+{
+    if (getSysManager())
+        return getSysManager()->isSystemFileTransferring();
+    return false;
+}
+
+// File/stream system activity - streaming
+bool SysModBase::isSystemStreaming()
+{
+    if (getSysManager())
+        return getSysManager()->isSystemStreaming();
+    return false;
 }

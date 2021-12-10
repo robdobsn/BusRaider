@@ -1,5 +1,10 @@
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 // Utils
-// Rob Dobson 2012-2017
+//
+// Rob Dobson 2012-2021
+//
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #include <Utils.h>
 #include <limits.h>
@@ -304,7 +309,7 @@ bool Utils::strFromBuffer(const uint8_t* pBuf, uint32_t bufLen, String& outStr, 
     {
         char tmpStr[lenToCopy+1];
         char* pOut = tmpStr;
-        for (int i = 0; i < lenToCopy; i++)
+        for (uint32_t i = 0; i < lenToCopy; i++)
         {
             if ((pBuf[i] == 0) || (asciiOnly && (pBuf[i] > 127)))
                 break;
@@ -323,7 +328,7 @@ bool Utils::strFromBuffer(const uint8_t* pBuf, uint32_t bufLen, String& outStr, 
         return false;
     }
     char* pOut = tmpStr;
-    for (int i = 0; i < lenToCopy; i++)
+    for (uint32_t i = 0; i < lenToCopy; i++)
     {
         if ((pBuf[i] == 0) || (asciiOnly && (pBuf[i] > 127)))
             break;

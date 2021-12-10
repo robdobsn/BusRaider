@@ -9,6 +9,7 @@
 #pragma once
 
 #include <WString.h>
+#include <Utils.h>
 
 class FileSystemChunker
 {
@@ -22,14 +23,21 @@ public:
 
     // Start access to a file in chunks
     // Returns false on failure
-    bool start(const String& filePath, uint32_t chunkMaxLen, bool readByLine);
+    bool start(const String& filePath, uint32_t chunkMaxLen, bool readByLine, bool writing, bool keepOpen);
 
-    // Get next chunk of file
+    // Read or write next chunk of file
     // Returns false on failure
-    bool next(uint8_t* pBuf, uint32_t bufLen, uint32_t& readLen, bool& finalChunk);
+    bool nextRead(uint8_t* pBuf, uint32_t bufLen, uint32_t& handledBytes, bool& finalChunk);
+
+    // Write next chunk of file
+    // Returns false on failure
+    bool nextWrite(const uint8_t* pBuf, uint32_t bufLen, uint32_t& handledBytes, bool& finalChunk);
 
     // End file access
     void end();
+
+    // Relax (closes file if open)
+    void relax();
 
     // Get file length
     uint32_t getFileLen()
@@ -37,10 +45,10 @@ public:
         return _fileLen;
     }
 
-    // Is busy
-    bool isBusy()
+    // Is active
+    bool isActive()
     {
-        return _isBusy;
+        return _isActive;
     }
 
     // Get file name
@@ -48,6 +56,9 @@ public:
     {
         return _filePath;
     }
+
+    // Get file position
+    uint32_t getFilePos() const;
 
 private:
 
@@ -60,12 +71,25 @@ private:
     // Current position
     uint32_t _curPos;
 
-    // Chunk max length
+    // Chunk max length (may be 0 if writing)
     uint32_t _chunkMaxLen;
 
     // Read by line
     bool _readByLine;
 
-    // Busy
-    bool _isBusy;
+    // Active
+    bool _isActive;
+
+    // Writing (and not reading)
+    bool _writing;
+
+    // Keep file open
+    bool _keepOpen;
+
+    // File ptr (when file is kept open)
+    FILE* _pFile;
+
+    // Helpers
+    bool nextReadKeepOpen(uint8_t* pBuf, uint32_t bufLen, uint32_t& handledBytes, 
+                        bool& finalChunk, uint32_t numToRead);
 };

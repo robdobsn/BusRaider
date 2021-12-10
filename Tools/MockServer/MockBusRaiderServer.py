@@ -6,7 +6,7 @@ from os.path import isfile, join
 import os
 import json
 
-fsFiles = "../../EspSw2/spiffs_image"
+fsFiles = "../../EspSw2/buildConfigs/BusRaider/FSImage"
 sdFiles = "./SDTestFiles"
 htmlIndex = fsFiles + "/index.html"
 mockBusRaider = MockBusRaider()

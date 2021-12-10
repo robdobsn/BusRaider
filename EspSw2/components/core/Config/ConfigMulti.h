@@ -3,7 +3,7 @@
 // ConfigMulti
 // Configuration handling multiple underlying config objects in a hierarchy
 //
-// Rob Dobson 2020
+// Rob Dobson 2020-2021
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -41,132 +41,21 @@ public:
             bool _isMutable;
     };
 
-    ConfigMulti()
-    {
-    }
-
-    virtual ~ConfigMulti()
-    {
-    }
-
-    void addConfig(ConfigBase* pConfig, const char* prefix, bool isMutable)
-    {
-        if (!pConfig)
-            return;
-        ConfigRec rec(pConfig, prefix, isMutable);
-        _configsList.push_back(rec);
-    }
+    ConfigMulti();
+    virtual ~ConfigMulti();
+    void addConfig(ConfigBase* pConfig, const char* prefix, bool isMutable);
 
     // Write configuration data to last (in order of adding) mutable element
-    virtual bool writeConfig(const String& configJSONStr) override final
-    {
-        // Find last mutable element
-        for (std::list<ConfigRec>::reverse_iterator rit=_configsList.rbegin(); rit != _configsList.rend(); ++rit)
-        {
-            if (rit->_isMutable)
-                return rit->_pConfig->writeConfig(configJSONStr);
-        }
+    virtual bool writeConfig(const String& configJSONStr) override final;
 
-        // Write base if not already done
-        return ConfigBase::writeConfig(configJSONStr);
-    }
-
-    virtual String getString(const char *dataPath, const char *defaultValue) const override final
-    {
-        // Get base value
-        String retVal = ConfigBase::getString(dataPath, defaultValue);
-
-        // Iterate other configs in the order added
-        for (const ConfigRec& rec : _configsList)
-        {
-            if (rec._prefix.length() > 0)
-            {
-                ConfigBase conf = rec._pConfig->getString(rec._prefix.c_str(), "{}");
-                retVal = conf.getString(dataPath, retVal);
-            }
-            else
-            {
-                retVal = rec._pConfig->getString(dataPath, retVal);
-            }
-        }
-        return retVal;
-    }
-
-    virtual String getString(const char *dataPath, const String& defaultValue) const override final
-    {
-        // Get base value
-        String retVal = ConfigBase::getString(dataPath, defaultValue);
-
-        // Iterate other configs in the order added
-        for (const ConfigRec& rec : _configsList)
-        {
-            if (rec._prefix.length() > 0)
-            {
-                ConfigBase conf = rec._pConfig->getString(rec._prefix.c_str(), "{}");
-                retVal = conf.getString(dataPath, retVal);
-            }
-            else
-            {
-                retVal = rec._pConfig->getString(dataPath, retVal);
-            }
-        }
-        return retVal;    
-    }
-
-    virtual long getLong(const char *dataPath, long defaultValue) const override final
-    {
-        // Get base value
-        long retVal = ConfigBase::getLong(dataPath, defaultValue);
-
-        // Iterate other configs in the order added
-        for (const ConfigRec& rec : _configsList)
-        {
-            if (!rec._pConfig)
-                continue;
-            if (rec._prefix.length() > 0)
-            {
-                ConfigBase conf = rec._pConfig->getString(rec._prefix.c_str(), "{}");
-                retVal = conf.getLong(dataPath, retVal);
-            }
-            else
-            {
-                retVal = rec._pConfig->getLong(dataPath, retVal);
-            }
-        }
-        return retVal;    
-    }
-
-    virtual double getDouble(const char *dataPath, double defaultValue) const override final
-    {
-        // Get base value
-        double retVal = ConfigBase::getDouble(dataPath, defaultValue);
-
-        // Iterate other configs in the order added
-        for (const ConfigRec& rec : _configsList)
-        {
-            if (rec._prefix.length() > 0)
-            {
-                ConfigBase conf = rec._pConfig->getString(rec._prefix.c_str(), "{}");
-                retVal = conf.getDouble(dataPath, retVal);
-            }
-            else
-            {
-                retVal = rec._pConfig->getDouble(dataPath, retVal);
-            }
-        }
-        return retVal;    
-    }
+    // Get functions
+    virtual String getString(const char *dataPath, const char *defaultValue) const override final;
+    virtual long getLong(const char *dataPath, long defaultValue) const override final;
+    virtual double getDouble(const char *dataPath, double defaultValue) const override final;
+    virtual bool getArrayElems(const char *dataPath, std::vector<String>& strList) const override final;
 
     // Register change callback
-    virtual void registerChangeCallback(ConfigChangeCallbackType configChangeCallback) override final
-    {
-        // Find last mutable element
-        for (std::list<ConfigRec>::reverse_iterator rit=_configsList.rbegin(); rit != _configsList.rend(); ++rit)
-        {
-            if (rit->_isMutable)
-                return rit->_pConfig->registerChangeCallback(configChangeCallback);
-        }
-    }
+    virtual void registerChangeCallback(ConfigChangeCallbackType configChangeCallback) override final;
 
 private:
     std::list<ConfigRec> _configsList;

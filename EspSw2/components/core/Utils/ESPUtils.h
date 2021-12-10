@@ -1,7 +1,14 @@
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
 // ESPUtils
-// Rob Dobson 2020
+//
+// Rob Dobson 2020-2021
+//
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
+
+#ifndef ESP8266
 
 #include <cstdint>
 #include <WString.h>
@@ -22,10 +29,7 @@ void disableCore1WDT();
 // Ethernet is base +3
 String getSystemMACAddressStr(esp_mac_type_t macType, const char* pSeparator);
 
-// Setup SPIRAM
-extern bool esp32SPIRAM_found;
-extern bool esp32SPIRAM_initCalled;
-void esp32SPIRAMSetup();
+// Get size of SPIRAM (returns 0 if not available)
+uint32_t utilsGetSPIRAMSize();
 
-// Detect hardware revision number of this RIC
-int getHwRevision();
+#endif

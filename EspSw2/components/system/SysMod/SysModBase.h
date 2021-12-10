@@ -16,14 +16,23 @@
 #include <list>
 #include <Logger.h>
 
-typedef std::function<void()> SysMod_statusChangeCB;
-
+// Forward declarations
 class SysManager;
 class RestAPIEndpointManager;
 class ProtocolEndpointManager;
 class ProtocolEndpointMsg;
 class RICRESTMsg;
 class SupervisorStats;
+class FileStreamBlock;
+
+// Status change callback function type
+typedef std::function<void(const String& sourceName, bool changeToOnline)> SysMod_statusChangeCB;
+
+// Message generator callback function type
+typedef std::function<bool(const char* messageName, ProtocolEndpointMsg& msg)> SysMod_publishMsgGenFn;
+
+// State change detector callback function type
+typedef std::function<void(const char* stateName, std::vector<uint8_t>& stateHash)> SysMod_stateDetectCB;
 
 class SysModBase
 {
@@ -82,6 +91,7 @@ public:
     virtual long configGetLong(const char *dataPath, long defaultValue);
     virtual String configGetString(const char *dataPath, const char* defaultValue);
     virtual String configGetString(const char *dataPath, const String& defaultValue);
+    virtual bool configGetArrayElems(const char *dataPath, std::vector<String>& strList) const;
     virtual int configGetPin(const char* dataPath, const char* defaultValue);
     virtual void configRegisterChangeCallback(ConfigChangeCallbackType configChangeCallback);
     virtual ConfigBase& configGetConfig()
@@ -97,6 +107,11 @@ public:
 
     // Receive JSON command
     virtual void receiveCmdJSON(const char* cmdJSON)
+    {
+    }
+
+    // Receive msg generator callback function
+    virtual void receiveMsgGenCB(const char* msgGenID, SysMod_publishMsgGenFn msgGenCB, SysMod_stateDetectCB stateDetectCB)
     {
     }
 
@@ -117,53 +132,33 @@ public:
     }
 
     // Get debug string
-    virtual String getDebugStr()
+    virtual String getDebugJSON()
     {
-        return "";
+        return "{}";
     }
 
-    // Direct firmware update SysMod
-    virtual bool isFirmwareUpdateModule()
+    // File/Stream Start
+    virtual bool fileStreamStart(const char* fileName, size_t fileLen)
     {
         return false;
     }
-
-    // Stream handler
-    virtual bool isStreamHandlerModule()
+    virtual bool fileStreamDataBlock(FileStreamBlock& fileStreamBlock)
     {
         return false;
     }
-
-    // Firmware update
-    virtual bool firmwareUpdateStart(const char* fileName, size_t fileLen)
-    {
-        return false;
-    }
-    virtual bool firmwareUpdateBlock(uint32_t filePos, const uint8_t *pBlock, size_t blockLen)
-    {
-        return false;
-    }
-    virtual bool firmwareUpdateEnd()
-    {
-        return false;
-    }
-    virtual bool firmwareUpdateCancel()
+    virtual bool fileStreamCancelEnd(bool isNormalEnd)
     {
         return true;
     }
 
-    // Process RICRESTMsg CmdFrame
-    virtual bool procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg& ricRESTReqMsg, 
-                String& respMsg, const ProtocolEndpointMsg &endpointMsg)
-    {
-        return false;
-    }
+    // File/stream system activity - main firmware update
+    bool isSystemMainFWUpdate();
 
-    // Process stream block
-    virtual bool handleStreamBlock(RICRESTMsg& ricRESTReqMsg, String& respMsg)
-    {
-        return false;
-    }
+    // File/stream system activity - file transfer
+    bool isSystemFileTransferring();
+
+    // File/stream system activity - streaming
+    bool isSystemStreaming();
 
 public:
     // Non-virtual methods
@@ -217,7 +212,7 @@ protected:
     ConfigMulti _combinedConfig;
 
     // Execute status change callbacks
-    void executeStatusChangeCBs();
+    void executeStatusChangeCBs(bool changeToOn);
 
     // Mutable config management
     virtual void configSaveData(const String& pConfigStr);

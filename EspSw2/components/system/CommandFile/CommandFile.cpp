@@ -90,7 +90,7 @@ void CommandFile::addRestAPIEndpoints(RestAPIEndpointManager &endpointManager)
 {
     // Run a file
     endpointManager.addEndpoint("filerun", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET, 
-                std::bind(&CommandFile::apiFileRun, this, std::placeholders::_1, std::placeholders::_2), 
+                std::bind(&CommandFile::apiFileRun, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3), 
                 "Run a file");
 
     _pRestAPIEndpointManager = &endpointManager;
@@ -100,7 +100,7 @@ void CommandFile::addRestAPIEndpoints(RestAPIEndpointManager &endpointManager)
 // Run a file
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void CommandFile::apiFileRun(const String &reqStr, String& respStr)
+void CommandFile::apiFileRun(const String &reqStr, String& respStr, const APISourceInfo& sourceInfo)
 {
     // File
     String fileName = RestAPIEndpointManager::getNthArgStr(reqStr.c_str(), 1);
@@ -153,8 +153,14 @@ void CommandFile::apiFileRun(const String &reqStr, String& respStr)
 bool CommandFile::handleAPIFile(String& fileName)
 {
     // Read contents
-    _APICode = fileSystem.getFileContents("", fileName.c_str(), 
-                MAX_API_FILE_LENGTH, true);
+    char* pAPICode = fileSystem.getFileContents("", fileName.c_str(), MAX_API_FILE_LENGTH);
+    if (!pAPICode)
+    {
+        LOG_W(MODULE_PREFIX, "handleAPIFile unable to read file %s", fileName.c_str());
+        return false;
+    }
+    _APICode = pAPICode;
+    free(pAPICode);
 
     // Start the processing of the file
     _curState = API_STATE_PROCESSING;
@@ -251,7 +257,8 @@ bool CommandFile::exec() {
     // Send API request
     String s = "";
     if (_pRestAPIEndpointManager)
-        _pRestAPIEndpointManager->handleApiRequest(_curCommand.c_str(), s);
+        _pRestAPIEndpointManager->handleApiRequest(_curCommand.c_str(), s, 
+                        APISourceInfo(RestAPIEndpointManager::CHANNEL_ID_COMMAND_FILE));
 
     // Change API State
     if (_curPosition == _APICode.length() && _repsLeft == 0) {

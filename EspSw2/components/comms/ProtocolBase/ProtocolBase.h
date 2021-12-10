@@ -39,6 +39,11 @@ public:
     virtual void addRxData(const uint8_t* pData, uint32_t dataLen) = 0;
     virtual void encodeTxMsgAndSend(ProtocolEndpointMsg& msg) = 0;
 
+    virtual const char* getProtocolName()
+    {
+        return "BASE";
+    }
+
     uint32_t getChannelID()
     {
         return _channelID;

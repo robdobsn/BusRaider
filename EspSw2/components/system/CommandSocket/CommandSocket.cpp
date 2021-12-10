@@ -298,8 +298,8 @@ void CommandSocket::removeFromClientList(AsyncClient* pClient)
 
 bool CommandSocket::sendMsg(ProtocolEndpointMsg& msg)
 {
-    // LOG_D(MODULE_PREFIX, "sendBLEMsg channelID %d, direction %s msgNum %d, len %d",
-    //         msg.getChannelID(), msg.getDirectionAsString(msg.getDirection()), msg.getMsgNumber(), msg.getBufLen());
+    // LOG_D(MODULE_PREFIX, "sendBLEMsg channelID %d, msgType %s msgNum %d, len %d",
+    //         msg.getChannelID(), msg.getMsgTypeAsString(msg.getMsgTypeCode()), msg.getMsgNumber(), msg.getBufLen());
     return true;
 }
 

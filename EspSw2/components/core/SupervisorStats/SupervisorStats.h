@@ -26,7 +26,7 @@ class SupervisorStats
 public:
     SupervisorStats();
     void init();
-    void add(const char *name);
+    uint32_t add(const char *name);
     void execStarted(uint32_t modIdx);
     void execEnded(uint32_t modIdx);
     uint32_t getCount()

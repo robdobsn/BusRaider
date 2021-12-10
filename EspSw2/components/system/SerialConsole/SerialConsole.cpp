@@ -32,6 +32,8 @@ SerialConsole::SerialConsole(const char* pModuleName, ConfigBase& defaultConfig,
     _baudRate = 115200;
     _uartNum = 0;
     _isInitialised = false;
+    _rxBufferSize = 256;
+    _txBufferSize = 1024;
 
     // EndpointID
     _protocolEndpointID = ProtocolEndpointManager::UNDEFINED_ID;    
@@ -47,44 +49,51 @@ void SerialConsole::setup()
     _isEnabled = configGetLong("enable", 0) != 0;
     _crlfOnTx = configGetLong("crlfOnTx", 1);
     _uartNum = configGetLong("uartNum", 0);
-    _baudRate = configGetLong("baudRate", 115200);
+    _baudRate = configGetLong("baudRate", 0);
+    _rxBufferSize = configGetLong("rxBuf", 256);
+    _txBufferSize = configGetLong("txBuf", 1024);
 
     // Protocol
     _protocol = configGetString("protocol", "RICSerial");
 
-    // Delay before UART change
-    vTaskDelay(1);
-
-    // Configure UART. Note that REF_TICK is used so that the baud rate remains
-    // correct while APB frequency is changing in light sleep mode
-    const uart_config_t uart_config = {
-            .baud_rate = _baudRate,
-            .data_bits = UART_DATA_8_BITS,
-            .parity = UART_PARITY_DISABLE,
-            .stop_bits = UART_STOP_BITS_1,
-            .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-            .rx_flow_ctrl_thresh = 100,
-            .use_ref_tick = true,
-    };
-    esp_err_t err = uart_param_config((uart_port_t)_uartNum, &uart_config);
-    if (err != ESP_OK)
+    // Check if a baud rate is specified (otherwise leave serial config as it is)
+    if (_baudRate != 0)
     {
-        LOG_E(MODULE_PREFIX, "Failed to initialize uart, err %d", err);
-        return;
+        // Delay before UART change
+        vTaskDelay(1);
+
+        // Configure UART. Note that REF_TICK is used so that the baud rate remains
+        // correct while APB frequency is changing in light sleep mode
+        const uart_config_t uart_config = {
+                .baud_rate = _baudRate,
+                .data_bits = UART_DATA_8_BITS,
+                .parity = UART_PARITY_DISABLE,
+                .stop_bits = UART_STOP_BITS_1,
+                .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
+                .rx_flow_ctrl_thresh = 100,
+                .use_ref_tick = true,
+        };
+        esp_err_t err = uart_param_config((uart_port_t)_uartNum, &uart_config);
+        if (err != ESP_OK)
+        {
+            LOG_E(MODULE_PREFIX, "setup FAILED to initialize uart, err %d", err);
+            return;
+        }
+
+        // Delay after UART change
+        vTaskDelay(1);
     }
 
-    // Delay after UART change
-    vTaskDelay(1);
-
     // Debug
-    LOG_I(MODULE_PREFIX, "setup enabled %s uartNum %d baudRate %d crlfOnTx %s", 
-                _isEnabled ? "YES" : "NO", _uartNum, _baudRate, _crlfOnTx ? "YES" : "NO");
+    LOG_I(MODULE_PREFIX, "setup enabled %s uartNum %d crlfOnTx %s rxBufLen %d txBufLen %d", 
+                _isEnabled ? "YES" : "NO", _uartNum, _crlfOnTx ? "YES" : "NO",
+                _rxBufferSize, _txBufferSize);
 
     // Install UART driver for interrupt-driven reads and writes
-    err = uart_driver_install((uart_port_t)_uartNum, 256, 1024, 0, NULL, 0);
+    esp_err_t err = uart_driver_install((uart_port_t)_uartNum, _rxBufferSize, _txBufferSize, 0, NULL, 0);
     if (err != ESP_OK)
     {
-        LOG_E(MODULE_PREFIX, "Failed to install uart driver, err %d", err);
+        LOG_E(MODULE_PREFIX, "setup FAILED to install uart driver, err %d", err);
         return;
     }
     _isInitialised = true;
@@ -94,7 +103,7 @@ void SerialConsole::setup()
 // Endpoints
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void SerialConsole::addRestAPIEndpoints(RestAPIEndpointManager& endpoints)
+void SerialConsole::addRestAPIEndpoints(RestAPIEndpointManager& endpointManager)
 {
 }
 
@@ -228,7 +237,8 @@ void SerialConsole::service()
         LOG_D(MODULE_PREFIX, "CommsSerial: ->cmdInterp cmdStr %s", _curLine.c_str());
         String retStr;
         if (getRestAPIEndpoints())
-            getRestAPIEndpoints()->handleApiRequest(_curLine.c_str(), retStr);
+            getRestAPIEndpoints()->handleApiRequest(_curLine.c_str(), retStr, 
+                            APISourceInfo(RestAPIEndpointManager::CHANNEL_ID_SERIAL_CONSOLE));
         // Display response
         putStr(retStr);
         putStr(_crlfOnTx ? "\r\n" : "\n");
@@ -309,8 +319,8 @@ void SerialConsole::showEndpoints()
 bool SerialConsole::sendMsg(ProtocolEndpointMsg& msg)
 {
     // Debug
-    // LOG_I(MODULE_PREFIX, "sendMsg channelID %d, direction %s msgNum %d, len %d",
-    //         msg.getChannelID(), msg.getDirectionAsString(msg.getDirection()), msg.getMsgNumber(), msg.getBufLen());
+    // LOG_I(MODULE_PREFIX, "sendMsg channelID %d, msgType %s msgNum %d, len %d",
+    //         msg.getChannelID(), msg.getMsgTypeAsString(msg.getMsgTypeCode()), msg.getMsgNumber(), msg.getBufLen());
 
     // Check valid
     if (!_isInitialised)
@@ -325,8 +335,8 @@ bool SerialConsole::sendMsg(ProtocolEndpointMsg& msg)
     int bytesSent = uart_write_bytes((uart_port_t)_uartNum, (const char*)encodedFrame, encodedFrameLen);
     if (bytesSent != encodedFrameLen)
     {
-        LOG_W(MODULE_PREFIX, "sendMsg channelID %d, direction %s msgNum %d, len %d only wrote %d bytes",
-                msg.getChannelID(), msg.getDirectionAsString(msg.getDirection()), msg.getMsgNumber(), encodedFrameLen, bytesSent);
+        LOG_W(MODULE_PREFIX, "sendMsg channelID %d, msgType %s msgNum %d, len %d only wrote %d bytes",
+                msg.getChannelID(), msg.getMsgTypeAsString(msg.getMsgTypeCode()), msg.getMsgNumber(), encodedFrameLen, bytesSent);
 
         return false;
     }
@@ -341,4 +351,50 @@ bool SerialConsole::readyToSend(uint32_t channelID)
 {
     // TODO - handle ready to send
     return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Handle JSON command
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void SerialConsole::receiveCmdJSON(const char* cmdJSON)
+{
+    // Extract command from JSON
+    ConfigBase jsonInfo(cmdJSON);
+    String cmd = jsonInfo.getString("cmd", "");
+    int baudRate = jsonInfo.getLong("baudRate", -1);
+    int txBufSize = jsonInfo.getLong("txBuf", -1);
+    int rxBufSize = jsonInfo.getLong("rxBuf", -1);
+    if (cmd.equalsIgnoreCase("set"))
+    {
+        if (baudRate >= 0)
+        {
+            // Set UART baud rate
+            uart_set_baudrate((uart_port_t)_uartNum, baudRate);
+            LOG_W(MODULE_PREFIX, "receiveCmdJson baudRate (uart %d) changed to %d", _uartNum, baudRate);
+        }
+        if ((txBufSize > 0) || (rxBufSize > 0))
+        {
+            if (txBufSize > 0)
+                _txBufferSize = txBufSize;
+            if (rxBufSize > 0)
+                _rxBufferSize = rxBufSize;
+
+            // Remove existing driver
+            esp_err_t err = uart_driver_delete((uart_port_t)_uartNum);
+            if (err != ESP_OK)
+            {
+                LOG_E(MODULE_PREFIX, "receiveCmdJson FAILED to remove uart driver from port %d, err %d", _uartNum, err);
+                return;
+            }
+
+            // Install uart driver            
+            err = uart_driver_install((uart_port_t)_uartNum, _rxBufferSize, _txBufferSize, 0, NULL, 0);
+            if (err != ESP_OK)
+            {
+                LOG_E(MODULE_PREFIX, "receiveCmdJson FAILED to install uart driver to port %d, err %d", _uartNum, err);
+                return;
+            }
+        }
+    }
 }

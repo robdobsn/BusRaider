@@ -11,13 +11,13 @@
 #include "ProtocolEndpointManager.h"
 #include <ProtocolEndpointMsg.h>
 
-static const char* MODULE_PREFIX = "ProtoMgr";
+static const char* MODULE_PREFIX = "ProtMan";
 
 // #define WARN_ON_NO_CHANNEL_MATCH
 // #define DEBUG_OUTBOUND_RESPONSE
 // #define DEBUG_OUTBOUND_PUBLISH
 // #define DEBUG_INBOUND_MESSAGE
-// #define DEBUG_SERVICE
+// #define DEBUG_PROTMAN_SERVICE
 // #define DEBUG_CHANNEL_ID
 // #define DEBUG_PROTOCOL_HANDLER
 // #define DEBUG_FRAME_SEND
@@ -37,12 +37,17 @@ ProtocolEndpointManager::ProtocolEndpointManager(const char *pModuleName, Config
 ProtocolEndpointManager::~ProtocolEndpointManager()
 {
     // Clean up 
-    for (int channelID = 0; channelID < _endpointsVec.size(); channelID++)
+    for (uint32_t channelID = 0; channelID < _endpointsVec.size(); channelID++)
     {
-        // Check if channel 
-        ProtocolBase* pHandler = _endpointsVec[channelID]->getProtocolHandler();
+        // Check if channel is used
+        ProtocolEndpointDef* pEndpoint = _endpointsVec[channelID];
+        if (!pEndpoint)
+            continue;
+        ProtocolBase* pHandler = pEndpoint->getProtocolHandler();
         if (pHandler)
             delete pHandler;
+        // Delete the endpoint
+        delete pEndpoint;
     }
 }
 
@@ -53,32 +58,37 @@ ProtocolEndpointManager::~ProtocolEndpointManager()
 void ProtocolEndpointManager::service()
 {
     // Pump protocol queues
-    for (int channelID = 0; channelID < _endpointsVec.size(); channelID++)
+    for (uint32_t channelID = 0; channelID < _endpointsVec.size(); channelID++)
     {
+        // Check if channel is used
+        ProtocolEndpointDef* pEndpoint = _endpointsVec[channelID];
+        if (!pEndpoint)
+            continue;
+
         // Check if channel can accept an outbound message
-        if (_endpointsVec[channelID]->checkChannelReady(channelID))
+        if (pEndpoint->canAcceptOutbound(channelID))
         {
             // Check for outbound message
             ProtocolEndpointMsg msg;
-            if (_endpointsVec[channelID]->getFromOutboundQueue(msg))
+            if (pEndpoint->getFromOutboundQueue(msg))
             {
                 // Ensure protocol handler exists
                 ensureProtocolHandlerExists(channelID);
 
                 // Debug
-#ifdef DEBUG_SERVICE
-                LOG_I(MODULE_PREFIX, "service, got msg channelID %d, direction %s msgNum %d, len %d",
-                    msg.getChannelID(), msg.getDirectionAsString(msg.getDirection()), msg.getMsgNumber(), msg.getBufLen());
+#ifdef DEBUG_PROTMAN_SERVICE
+                LOG_I(MODULE_PREFIX, "service, got msg channelID %d, msgType %s msgNum %d, len %d",
+                    msg.getChannelID(), msg.getMsgTypeAsString(msg.getMsgTypeCode()), msg.getMsgNumber(), msg.getBufLen());
 #endif
                 // Handle the message
-                _endpointsVec[channelID]->callProtocolHandlerWithTxMsg(msg);
+                pEndpoint->callProtocolHandlerWithTxMsg(msg);
             }
         }
 
         // Process inbound message - possibly multiple messages
         for (int msgIdx = 0; msgIdx < MAX_INBOUND_MSGS_IN_LOOP; msgIdx++)
         {
-            if (!_endpointsVec[channelID]->processInboundQueue())
+            if (!pEndpoint->processInboundQueue())
                 break;
         }
     }
@@ -95,12 +105,14 @@ uint32_t ProtocolEndpointManager::registerChannel(const char* protocolName, Prot
                     uint32_t outboundBlockMax, uint32_t outboundQueueMaxLen)
 {
     // Create new command definition and add
-    _endpointsList.push_back(ProtocolEndpointDef(protocolName, msgCB, interfaceName, channelReadyCB,
-                    inboundBlockMax, inboundQueueMaxLen, outboundBlockMax, outboundQueueMaxLen));
-    _endpointsVec.push_back(&_endpointsList.back());
+    ProtocolEndpointDef* pDef = new ProtocolEndpointDef(protocolName, msgCB, interfaceName, channelReadyCB,
+                    inboundBlockMax, inboundQueueMaxLen, outboundBlockMax, outboundQueueMaxLen);
+    if (pDef)
+        _endpointsVec.push_back(pDef);
 
 #ifdef DEBUG_REGISTER_CHANNEL
-    LOG_I(MODULE_PREFIX, "registerChannel protocolName %s interfaceName %s", protocolName, interfaceName);
+    LOG_I(MODULE_PREFIX, "registerChannel protocolName %s interfaceName %s channelID %d", 
+                protocolName, interfaceName, _endpointsVec.size()-1);
 #endif
 
     // Return current callback number
@@ -124,15 +136,20 @@ void ProtocolEndpointManager::addProtocol(ProtocolDef& protocolDef)
 int32_t ProtocolEndpointManager::lookupChannelID(const char* interfaceName, const char* protocolName)
 {
     // Iterate the endpoints list to find a match
-    for (int channelID = 0; channelID < _endpointsVec.size(); channelID++)
+    for (uint32_t channelID = 0; channelID < _endpointsVec.size(); channelID++)
     {
+        // Check if channel is used
+        ProtocolEndpointDef* pEndpoint = _endpointsVec[channelID];
+        if (!pEndpoint)
+            continue;
+
 #ifdef DEBUG_CHANNEL_ID
         LOG_I(MODULE_PREFIX, "Testing interface %s with %s protocol %s with %s", 
-                    _endpointsVec[channelID]->getInterfaceName().c_str(), interfaceName,
-                    _endpointsVec[channelID]->getSourceProtocolName().c_str(), protocolName);
+                    pEndpoint->getInterfaceName().c_str(), interfaceName,
+                    pEndpoint->getSourceProtocolName().c_str(), protocolName);
 #endif
-        if (_endpointsVec[channelID]->getInterfaceName().equalsIgnoreCase(interfaceName) && 
-            _endpointsVec[channelID]->getSourceProtocolName().equalsIgnoreCase(protocolName))
+        if (pEndpoint->getInterfaceName().equalsIgnoreCase(interfaceName) && 
+            pEndpoint->getSourceProtocolName().equalsIgnoreCase(protocolName))
             return channelID;
     }
 #ifdef WARN_ON_NO_CHANNEL_MATCH
@@ -152,6 +169,10 @@ void ProtocolEndpointManager::getChannelIDs(std::vector<uint32_t>& channelIDs)
     channelIDs.reserve(_endpointsVec.size());
     for (uint32_t channelID = 0; channelID < _endpointsVec.size(); channelID++)
     {
+        // Check if channel is used
+        ProtocolEndpointDef* pEndpoint = _endpointsVec[channelID];
+        if (!pEndpoint)
+            continue;
         channelIDs.push_back(channelID);
     }
     channelIDs.shrink_to_fit();
@@ -167,11 +188,16 @@ bool ProtocolEndpointManager::canAcceptInbound(uint32_t channelID)
     if (channelID >= _endpointsVec.size())
         return false;
 
+    // Check if channel is used
+    ProtocolEndpointDef* pEndpoint = _endpointsVec[channelID];
+    if (!pEndpoint)
+        return false;
+
     // Ensure we have a handler
     ensureProtocolHandlerExists(channelID);
 
     // Check validity
-    return _endpointsVec[channelID]->canAcceptData();
+    return pEndpoint->canAcceptInbound();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -187,17 +213,47 @@ void ProtocolEndpointManager::handleInboundMessage(uint32_t channelID, const uin
         return;
     }
 
+    // Check if channel is used
+    ProtocolEndpointDef* pEndpoint = _endpointsVec[channelID];
+    if (!pEndpoint)
+    {
+        LOG_W(MODULE_PREFIX, "handleInboundMessage, channelID channelId %d is NULL msglen %d", channelID, msgLen);
+        return;
+    }
+
     // Debug
 #ifdef DEBUG_INBOUND_MESSAGE
     LOG_I(MODULE_PREFIX, "handleInboundMessage, channel Id %d channel name %s, msglen %d", channelID, 
-                _endpointsVec[channelID]->getInterfaceName().c_str(), msgLen);
+                pEndpoint->getInterfaceName().c_str(), msgLen);
 #endif
 
     // Ensure we have a handler for this msg
     ensureProtocolHandlerExists(channelID);
 
     // Handle the message
-    _endpointsVec[channelID]->callProtocolHandlerWithRxData(pMsg, msgLen);
+    pEndpoint->callProtocolHandlerWithRxData(pMsg, msgLen);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // Check if we can accept outbound message
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool ProtocolEndpointManager::canAcceptOutbound(uint32_t channelID)
+{
+    // Check the channel
+    if (channelID >= _endpointsVec.size())
+        return false;
+
+    // Check if channel is used
+    ProtocolEndpointDef* pEndpoint = _endpointsVec[channelID];
+    if (!pEndpoint)
+        return false;
+
+    // Ensure we have a handler
+    ensureProtocolHandlerExists(channelID);
+
+    // Check validity
+    return pEndpoint->canAcceptOutbound(channelID);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -261,19 +317,27 @@ uint32_t ProtocolEndpointManager::getInboundBlockMax(uint32_t channelID, uint32_
 
 void ProtocolEndpointManager::handleOutboundMessageOnChannel(ProtocolEndpointMsg& msg, uint32_t channelID)
 {
-    // Check for message direction, this controls whether a publish message or response
+    // Check valid
+    if (channelID >= _endpointsVec.size())
+        return;
+
+    // Check if channel is used
+    ProtocolEndpointDef* pEndpoint = _endpointsVec[channelID];
+    if (!pEndpoint)
+        return;
+
+    // Check for message type code, this controls whether a publish message or response
     // response messages are placed in a regular queue
     // publish messages are handled such that only the latest one of any address is sent
-    if (msg.getDirection() != MSG_DIRECTION_PUBLISH)
+    if (msg.getMsgTypeCode() != MSG_TYPE_PUBLISH)
     {
 #ifdef DEBUG_OUTBOUND_RESPONSE
         // Debug
-        LOG_I(MODULE_PREFIX, "handleOutboundMessage queued channel Id %d channel name %s, msglen %d, direction %s msgNum %d", channelID, 
-                    _endpointsVec[channelID]->getInterfaceName().c_str(), msg.getBufLen(), msg.getDirectionAsString(msg.getDirection()),
+        LOG_I(MODULE_PREFIX, "handleOutboundMessage queued channel Id %d channel name %s, msglen %d, msgType %s msgNum %d", channelID, 
+                    pEndpoint->getInterfaceName().c_str(), msg.getBufLen(), msg.getMsgTypeAsString(msg.getMsgTypeCode()),
                     msg.getMsgNumber());
 #endif
-        if (_endpointsVec[channelID])
-            _endpointsVec[channelID]->addToOutboundQueue(msg);
+        pEndpoint->addToOutboundQueue(msg);
     }
     else
     {
@@ -286,13 +350,13 @@ void ProtocolEndpointManager::handleOutboundMessageOnChannel(ProtocolEndpointMsg
 
 #ifdef DEBUG_OUTBOUND_PUBLISH
             // Debug
-            LOG_I(MODULE_PREFIX, "handleOutboundMessage msg channelID %d, direction %s msgNum %d, len %d",
-                msg.getChannelID(), msg.getDirectionAsString(msg.getDirection()), msg.getMsgNumber(), msg.getBufLen());
+            LOG_I(MODULE_PREFIX, "handleOutboundMessage msg channelID %d, msgType %s msgNum %d, len %d",
+                msg.getChannelID(), msg.getMsgTypeAsString(msg.getMsgTypeCode()), msg.getMsgNumber(), msg.getBufLen());
 #endif
 
             // Check if channel can accept an outbound message and send if so
-            if (_endpointsVec[channelID] && _endpointsVec[channelID]->checkChannelReady(channelID))
-                _endpointsVec[channelID]->callProtocolHandlerWithTxMsg(msg);
+            if (pEndpoint->canAcceptOutbound(channelID))
+                pEndpoint->callProtocolHandlerWithTxMsg(msg);
     }
 }
 
@@ -302,13 +366,17 @@ void ProtocolEndpointManager::handleOutboundMessageOnChannel(ProtocolEndpointMsg
 
 void ProtocolEndpointManager::ensureProtocolHandlerExists(uint32_t channelID)
 {
-    // Check if we already have a handler for this msg
-    if ((!_endpointsVec[channelID]) || (_endpointsVec[channelID]->getProtocolHandler() != NULL))
+    // Check valid
+    if (channelID >= _endpointsVec.size())
         return;
 
+    // Check if we already have a handler for this msg
+    ProtocolEndpointDef* pEndpoint = _endpointsVec[channelID];
+    if ((!pEndpoint) || (pEndpoint->getProtocolHandler() != nullptr))
+        return;
 
     // If not we need to get one
-    String channelProtocol = _endpointsVec[channelID]->getSourceProtocolName();
+    String channelProtocol = pEndpoint->getSourceProtocolName();
 
     // Debug
 #ifdef DEBUG_PROTOCOL_HANDLER
@@ -331,7 +399,7 @@ void ProtocolEndpointManager::ensureProtocolHandlerExists(uint32_t channelID)
             ProtocolBase* pProtocolHandler = protocolDef.createFn(channelID, protocolDef.paramsJSON.c_str(), 
                         std::bind(&ProtocolEndpointManager::frameSendCB, this, std::placeholders::_1), 
                         protocolDef.frameRxCB);
-            _endpointsVec[channelID]->setProtocolHandler(pProtocolHandler);
+            pEndpoint->setProtocolHandler(pProtocolHandler);
             return;
         }
     }
@@ -357,13 +425,39 @@ bool ProtocolEndpointManager::frameSendCB(ProtocolEndpointMsg& msg)
         return false;
     }
 
+    // Check if channel is used
+    ProtocolEndpointDef* pEndpoint = _endpointsVec[channelID];
+    if (!pEndpoint)
+        return false;
+
 #ifdef DEBUG_FRAME_SEND
     // Debug
     LOG_I(MODULE_PREFIX, "frameSendCB, channel Id %d channel name %s, msglen %d", channelID, 
-                _endpointsVec[channelID]->getInterfaceName().c_str(), msg.getBufLen());
+                pEndpoint->getInterfaceName().c_str(), msg.getBufLen());
 #endif
 
     // Send back to the channel
-    return _endpointsVec[channelID]->callEndpointMsgCB(msg);
+    return pEndpoint->callEndpointMsgCB(msg);
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Get info JSON
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+String ProtocolEndpointManager::getInfoJSON()
+{
+    String outStr;
+    // Channels
+    for (uint32_t channelID = 0; channelID < _endpointsVec.size(); channelID++)
+    {
+        // Check if channel is used
+        ProtocolEndpointDef* pEndpoint = _endpointsVec[channelID];
+        if (!pEndpoint)
+            continue;
+        // Get info
+        if (outStr.length() > 0)
+            outStr += ",";
+        outStr += pEndpoint->getInfoJSON();
+    }
+    return "[" + outStr + "]";
+}

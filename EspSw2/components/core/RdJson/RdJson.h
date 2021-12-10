@@ -69,8 +69,11 @@ public:
         String value;
     };
 
-    // Convert name value pairs to JSON
-    static String getNameValuePairsJSON(std::vector<NameValuePair>& nameValuePairs, bool includeOuterBraces);
+    // Get JSON from NameValue pairs
+    static String getJSONFromNVPairs(std::vector<NameValuePair>& nameValuePairs, bool includeOuterBraces);
+
+    // Get HTML query string from JSON
+    static String getHTMLQueryFromJSON(const String& jsonStr);
 
     static size_t safeStringLen(const char* pSrc,
                                 bool skipJSONWhitespace = false, size_t maxx = LONG_MAX);
@@ -106,7 +109,10 @@ public:
     static void extractNameValues(const String& inStr, 
         const char* pNameValueSep, const char* pPairDelim, const char* pPairDelimAlt, 
         std::vector<RdJson::NameValuePair>& nameValuePairs);
-        
+
+    // Check for boolean    
+    static bool isBoolean(const char* pBuf, uint32_t bufLen, int &retValue);
+
 #ifdef RDJSON_RECREATE_JSON
     static int recreateJson(const char* js, jsmntok_t* t,
                             size_t count, int indent, String& outStr);

@@ -41,14 +41,16 @@ void powerUpLEDSet(const char *pModuleName, ConfigBase &mainConfig)
         return;
 
     // Get LED settings and default ledVal
-    int ledVal = config.getLong("ledVal", 0);
+    String ledValStr = config.getString("ledVal", "0");
+    int ledVal = strtoul(("0x" + ledValStr).c_str(), nullptr, 0);
     int isPix = config.getLong("isPix", 0);
     int pixIdx = config.getLong("pixIdx", 0);
 
     // Check for USB sensing pin
     String usbSensePinStr = config.getString("usbSnsPin", "");
     int usbSenseThreshold = config.getLong("usbSnsThresh", 0);
-    int usbSenseLedVal = config.getLong("usbSnsVal", 0);
+    String usbSenseLedValStr = config.getString("usbSnsVal", "0");
+    int usbSenseLedVal = strtoul(("0x" + usbSenseLedValStr).c_str(), nullptr, 0);
     int usbSensePin = -1;
     if (usbSensePinStr.length() != 0)
         usbSensePin = ConfigPinMap::getPinFromName(usbSensePinStr.c_str());

@@ -15,7 +15,15 @@
 
 static const char *MODULE_PREFIX = "RdJson";
 
-#define DEBUG_PARSE_FAILURE
+#define WARN_ON_PARSE_FAILURE
+// #define DEBUG_PARSE_FAILURE
+// #define DEBUG_GET_VALUES
+// #define DEBUG_GET_ELEMENT
+// #define DEBUG_GET_KEYS
+// #define DEBUG_GET_ARRAY_ELEMS
+// #define DEBUG_EXTRACT_NAME_VALUES
+// #define DEBUG_FIND_KEY_IN_JSON
+// #define DEBUG_IS_BOOLEAN
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // getElement
@@ -40,7 +48,9 @@ bool RdJson::getElement(const char *dataPath,
     // Check for null
     if (!pSourceStr)
     {
-        // LOG_I(MODULE_PREFIX, "getElement failed null source");
+#ifdef DEBUG_GET_ELEMENT
+        LOG_I(MODULE_PREFIX, "getElement failed null source");
+#endif
         return false;
     }
 
@@ -49,7 +59,9 @@ bool RdJson::getElement(const char *dataPath,
     jsmntok_t *pTokens = parseJson(pSourceStr, numTokens);
     if (pTokens == NULL)
     {
-        // LOG_I(MODULE_PREFIX, "getElement failedParse");
+#ifdef DEBUG_GET_ELEMENT
+        LOG_I(MODULE_PREFIX, "getElement failedParse");
+#endif
         return false;
     }
 
@@ -59,7 +71,9 @@ bool RdJson::getElement(const char *dataPath,
                         dataPath, endTokenIdx);
     if (startTokenIdx < 0)
     {
-        // LOG_I(MODULE_PREFIX, "getElement failed findKeyInJson");
+#ifdef DEBUG_GET_ELEMENT
+        LOG_I(MODULE_PREFIX, "getElement failed findKeyInJson");
+#endif
         delete[] pTokens;
         return false;
     }
@@ -175,6 +189,10 @@ double RdJson::getDouble(const char *dataPath,
     isValid = getElement(dataPath, startPos, strLen, elemType, elemSize, pSourceStr);
     if (!isValid)
         return defaultValue;
+    // Check for booleans
+    int retValue = 0;
+    if (RdJson::isBoolean(pSourceStr+startPos, strLen, retValue))
+        return retValue;
     return strtod(pSourceStr + startPos, NULL);
 }
 /**
@@ -216,6 +234,10 @@ long RdJson::getLong(const char *dataPath,
     isValid = getElement(dataPath, startPos, strLen, elemType, elemSize, pSourceStr);
     if (!isValid)
         return defaultValue;
+    // Check for booleans
+    int retValue = 0;
+    if (RdJson::isBoolean(pSourceStr+startPos, strLen, retValue))
+        return retValue;
     return strtol(pSourceStr + startPos, NULL, 0);
 }
 
@@ -326,7 +348,9 @@ bool RdJson::getKeys(const char *dataPath, std::vector<String>& keysVector, cons
     }
 
     //Debug
-    // LOG_I(MODULE_PREFIX, "Found elem startTok %d endTok %d", startTokenIdx, endTokenIdx);
+#ifdef DEBUG_GET_KEYS
+    LOG_I(MODULE_PREFIX, "Found elem startTok %d endTok %d", startTokenIdx, endTokenIdx);
+#endif
 
     // Check its an object
     if ((pTokens[startTokenIdx].type != JSMN_OBJECT) || (pTokens[startTokenIdx].size > MAX_KEYS_TO_RETURN))
@@ -351,9 +375,13 @@ bool RdJson::getKeys(const char *dataPath, std::vector<String>& keysVector, cons
         keysVector[keyIdx] = keyStr;
         
         // Find end of value
-        // LOG_I(MODULE_PREFIX, "getKeys Looking for end of tokIdx %d", tokIdx);
+#ifdef DEBUG_GET_KEYS
+        LOG_I(MODULE_PREFIX, "getKeys Looking for end of tokIdx %d", tokIdx);
+#endif
         tokIdx = findElemEnd(pSourceStr, pTokens, numTokens, tokIdx+1);
-        // LOG_I(MODULE_PREFIX, "getKeys ............. Found end at tokIdx %d", tokIdx);
+#ifdef DEBUG_GET_KEYS
+        LOG_I(MODULE_PREFIX, "getKeys ............. Found end at tokIdx %d", tokIdx);
+#endif
     }
 
     // Clean up
@@ -399,7 +427,9 @@ bool RdJson::getArrayElems(const char *dataPath, std::vector<String>& arrayElems
     }
 
     //Debug
-    // LOG_I(MODULE_PREFIX, "Found elem startTok %d endTok %d", startTokenIdx, endTokenIdx);
+#ifdef DEBUG_GET_ARRAY_ELEMS
+    LOG_I(MODULE_PREFIX, "Found elem startTok %d endTok %d", startTokenIdx, endTokenIdx);
+#endif
 
     // Check its an array
     if ((pTokens[startTokenIdx].type != JSMN_ARRAY) || (pTokens[startTokenIdx].size > MAX_KEYS_TO_RETURN))
@@ -666,7 +696,9 @@ int RdJson::findKeyInJson(const char *jsonOriginal, jsmntok_t tokens[],
             safeStringCopy(srchKey, pDataPathPos, slashPos - pDataPathPos);
             pDataPathPos = slashPos + 1;
         }
-        // LOG_D(MODULE_PREFIX, "findKeyInJson slashPos %d, %d, srchKey <%s>", slashPos, slashPos-pDataPathPos, srchKey);
+#ifdef DEBUG_FIND_KEY_IN_JSON
+        LOG_I(MODULE_PREFIX, "findKeyInJson slashPos %ld, %d, srchKey <%s>", (long)slashPos, slashPos-pDataPathPos, srchKey);
+#endif
 
         // See if search key contains an array reference
         bool arrayElementReqd = false;
@@ -685,8 +717,9 @@ int RdJson::findKeyInJson(const char *jsonOriginal, jsmntok_t tokens[],
             *sqBracketPos = 0;
         }
 
-        // LOG_D(MODULE_PREFIX, "findKeyInJson srchKey %s arrayIdx %d", srchKey, reqdArrayIdx);
-
+#ifdef DEBUG_FIND_KEY_IN_JSON
+        LOG_I(MODULE_PREFIX, "findKeyInJson srchKey %s arrayIdx %d", srchKey, reqdArrayIdx);
+#endif
         // Iterate over tokens to find key of the right type
         // If we are already looking at the node level then search for requested type
         // Otherwise search for an element that will contain the next level key
@@ -707,8 +740,10 @@ int RdJson::findKeyInJson(const char *jsonOriginal, jsmntok_t tokens[],
             {
                 keyMatchFound = true;
             }
-            // LOG_I(MODULE_PREFIX, "findKeyInJson tokIdx %d Token type %d srchKey %s arrayReqd %d reqdIdx %d matchFound %d", 
-            //                 tokIdx, pTok->type, srchKey, arrayElementReqd, reqdArrayIdx, keyMatchFound);
+#ifdef DEBUG_FIND_KEY_IN_JSON
+            LOG_I(MODULE_PREFIX, "findKeyInJson tokIdx %d Token type %d srchKey %s arrayReqd %d reqdIdx %d matchFound %d", 
+                            tokIdx, pTok->type, srchKey, arrayElementReqd, reqdArrayIdx, keyMatchFound);
+#endif
 
             if (keyMatchFound)
             {
@@ -720,14 +755,18 @@ int RdJson::findKeyInJson(const char *jsonOriginal, jsmntok_t tokens[],
                     if (tokens[tokIdx].type == JSMN_ARRAY)
                     {
                         int newTokIdx = findArrayElem(jsonOriginal, tokens, numTokens, tokIdx, reqdArrayIdx);
-                        // LOG_I(MODULE_PREFIX, "findKeyInJson TokIdxArray inIdx %d, reqdArrayIdx %d, outTokIdx %d", 
-                        //                 tokIdx, reqdArrayIdx, newTokIdx);
+#ifdef DEBUG_FIND_KEY_IN_JSON
+                        LOG_I(MODULE_PREFIX, "findKeyInJson TokIdxArray inIdx %d, reqdArrayIdx %d, outTokIdx %d", 
+                                        tokIdx, reqdArrayIdx, newTokIdx);
+#endif
                         tokIdx = newTokIdx;
                     }
                     else
                     {
                         // This isn't an array element
-                        // LOG_I(MODULE_PREFIX, "findKeyInJson NOT AN ARRAY ELEM");
+#ifdef DEBUG_FIND_KEY_IN_JSON
+                        LOG_I(MODULE_PREFIX, "findKeyInJson NOT AN ARRAY ELEM");
+#endif
                         return -1;
                     }
                 }
@@ -740,30 +779,36 @@ int RdJson::findKeyInJson(const char *jsonOriginal, jsmntok_t tokens[],
                     if ((keyTypeToFind == JSMN_UNDEFINED) || (tokens[tokIdx].type == keyTypeToFind))
                     {
                         endTokenIdx = findElemEnd(jsonOriginal, tokens, numTokens, tokIdx);
-                        //int testTokenIdx = findElemEnd(jsonOriginal, tokens, numTokens, tokIdx+1, 1);
-                        //LOG_D(MODULE_PREFIX, "findKeyInJson TokIdxDiff max %d, test %d, diff %d", endTokenIdx, testTokenIdx, testTokenIdx-endTokenIdx);
                         return tokIdx;
                     }
-                    // LOG_I(MODULE_PREFIX, "findKeyInJson AT NOTE LEVEL FAIL");
+#ifdef DEBUG_FIND_KEY_IN_JSON
+                    LOG_I(MODULE_PREFIX, "findKeyInJson AT NOTE LEVEL FAIL");
+#endif
                     return -1;
                 }
                 else
                 {
                     // Check for an object
-                    // LOG_I(MODULE_PREFIX, "findKeyInJson findElemEnd inside tokIdx %d", tokIdx);
+#ifdef DEBUG_FIND_KEY_IN_JSON
+                    LOG_I(MODULE_PREFIX, "findKeyInJson findElemEnd inside tokIdx %d", tokIdx);
+#endif
                     if ((tokens[tokIdx].type == JSMN_OBJECT) || (tokens[tokIdx].type == JSMN_ARRAY))
                     {
                         // Continue next level of search in this object
                         maxTokenIdx = findElemEnd(jsonOriginal, tokens, numTokens, tokIdx);
                         curTokenIdx = (tokens[tokIdx].type == JSMN_OBJECT) ? tokIdx + 1 : tokIdx;
-                        // LOG_I(MODULE_PREFIX, "findKeyInJson tokIdx %d max %d next %d", 
-                        //             tokIdx, maxTokenIdx, curTokenIdx);
+#ifdef DEBUG_FIND_KEY_IN_JSON
+                        LOG_I(MODULE_PREFIX, "findKeyInJson tokIdx %d max %d next %d", 
+                                    tokIdx, maxTokenIdx, curTokenIdx);
+#endif
                         break;
                     }
                     else
                     {
                         // Found a key in the path but it didn't point to an object so we can't continue
-                        // LOG_I(MODULE_PREFIX, "findKeyInJson FOUND KEY BUT NOT POINTING TO OBJ");
+#ifdef DEBUG_FIND_KEY_IN_JSON
+                        LOG_I(MODULE_PREFIX, "findKeyInJson FOUND KEY BUT NOT POINTING TO OBJ");
+#endif
                         return -1;
                     }
                 }
@@ -781,7 +826,9 @@ int RdJson::findKeyInJson(const char *jsonOriginal, jsmntok_t tokens[],
             else if (pTok->type == JSMN_ARRAY)
             {
                 // Root level array which doesn't match the dataPath
-                // LOG_I(MODULE_PREFIX, "findKeyInJson UNEXPECTED ARRAY");
+#ifdef DEBUG_FIND_KEY_IN_JSON
+                LOG_I(MODULE_PREFIX, "findKeyInJson UNEXPECTED ARRAY");
+#endif
                 return -1;
             }
             else
@@ -791,7 +838,9 @@ int RdJson::findKeyInJson(const char *jsonOriginal, jsmntok_t tokens[],
             }
         }
     }
-    // LOG_I(MODULE_PREFIX, "findKeyInJson DROPPED OUT");
+#ifdef DEBUG_FIND_KEY_IN_JSON
+    LOG_I(MODULE_PREFIX, "findKeyInJson DROPPED OUT");
+#endif
     return -1;
 }
 
@@ -934,7 +983,7 @@ void RdJson::debugDumpParseResult(const char* pSourceStr, jsmntok_t* pTokens, in
 // Convert name value pairs to JSON
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-String RdJson::getNameValuePairsJSON(std::vector<NameValuePair>& nameValuePairs, bool includeOuterBraces)
+String RdJson::getJSONFromNVPairs(std::vector<NameValuePair>& nameValuePairs, bool includeOuterBraces)
 {
     // Calculate length for efficiency
     uint32_t reserveLen = 0;
@@ -948,11 +997,40 @@ String RdJson::getNameValuePairsJSON(std::vector<NameValuePair>& nameValuePairs,
     {
         if (jsonStr.length() > 0)
             jsonStr += ',';
-        jsonStr += "\"" + pair.name + "\":\"" + pair.value + "\"";
+        if (pair.value.startsWith("[") || pair.value.startsWith("{"))
+            jsonStr += "\"" + pair.name + "\":" + pair.value;
+        else
+            jsonStr += "\"" + pair.name + "\":\"" + pair.value + "\"";
     }
     if (includeOuterBraces)
         return "{" + jsonStr + "}";
     return jsonStr;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Convert JSON object to HTML query string syntax
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+String RdJson::getHTMLQueryFromJSON(const String& jsonStr)
+{
+    // Get keys of object
+    std::vector<String> keyStrs;
+    RdJson::getKeys("", keyStrs, jsonStr.c_str());
+    if (keyStrs.size() == 0)
+        return "";
+
+    // Fill object
+    String outStr;
+    for (String& keyStr : keyStrs)
+    {
+        String valStr = getString(keyStr.c_str(), "", jsonStr.c_str());
+        if (valStr.length() == 0)
+            continue;
+        if (outStr.length() != 0)
+            outStr += "&";
+        outStr += keyStr + "=" + valStr;
+    }
+    return outStr;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1041,6 +1119,37 @@ void RdJson::extractNameValues(const String& inStr,
 #endif
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool RdJson::isBoolean(const char* pBuf, uint32_t bufLen, int &retValue)
+{
+    if ((*pBuf == 'f') || (*pBuf == 't'))
+    {
+        String elemStr;
+        Utils::strFromBuffer((uint8_t*)pBuf, bufLen, elemStr);
+#ifdef DEBUG_IS_BOOLEAN
+        LOG_I(MODULE_PREFIX, "isBoolean str %s", elemStr.c_str());
+#endif
+        if (elemStr.equals("true"))
+        {
+            retValue = 1;
+            return true;
+        }
+        else if (elemStr.equals("false"))
+        {
+            retValue = 0;
+            return true;
+        }
+    }
+    return false;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Re-create JSON
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 #ifdef RDJSON_RECREATE_JSON
 int RdJson::recreateJson(const char *js, jsmntok_t *t,
                          size_t count, int indent, String &outStr)
@@ -1126,6 +1235,10 @@ int RdJson::recreateJson(const char *js, jsmntok_t *t,
     }
     return 0;
 }
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Print JSON
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 bool RdJson::doPrint(const char *jsonStr)
 {

@@ -25,12 +25,12 @@ enum ProtocolMsgProtocol
     MSG_PROTOCOL_NONE = 0x3f,
 };
 
-enum ProtocolMsgDirection
+enum ProtocolMsgTypeCode
 {
-    MSG_DIRECTION_COMMAND,
-    MSG_DIRECTION_RESPONSE,
-    MSG_DIRECTION_PUBLISH,
-    MSG_DIRECTION_REPORT
+    MSG_TYPE_COMMAND,
+    MSG_TYPE_RESPONSE,
+    MSG_TYPE_PUBLISH,
+    MSG_TYPE_REPORT
 };
 
 static const uint32_t MSG_CHANNEL_ID_ALL = 10000;
@@ -43,15 +43,15 @@ public:
         _channelID = 0;
         _msgProtocol = MSG_PROTOCOL_NONE;
         _msgNum = PROTOCOL_MSG_UNNUMBERED_NUM;
-        _msgDirection = MSG_DIRECTION_REPORT;
+        _msgTypeCode = MSG_TYPE_REPORT;
     }
 
-    ProtocolEndpointMsg(uint32_t channelID, ProtocolMsgProtocol msgProtocol, uint32_t msgNum, ProtocolMsgDirection msgDirection)
+    ProtocolEndpointMsg(uint32_t channelID, ProtocolMsgProtocol msgProtocol, uint32_t msgNum, ProtocolMsgTypeCode msgTypeCode)
     {
         _channelID = channelID;
         _msgProtocol = msgProtocol;
         _msgNum = msgNum;
-        _msgDirection = msgDirection;
+        _msgTypeCode = msgTypeCode;
     }
 
     void clear()
@@ -60,12 +60,12 @@ public:
         _cmdVector.shrink_to_fit();
     }
 
-    void setFromBuffer(uint32_t channelID, ProtocolMsgProtocol msgProtocol, uint32_t msgNum, ProtocolMsgDirection msgDirection, const uint8_t* pBuf, uint32_t bufLen)
+    void setFromBuffer(uint32_t channelID, ProtocolMsgProtocol msgProtocol, uint32_t msgNum, ProtocolMsgTypeCode msgTypeCode, const uint8_t* pBuf, uint32_t bufLen)
     {
         _channelID = channelID;
         _msgProtocol = msgProtocol;
         _msgNum = msgNum;
-        _msgDirection = msgDirection;
+        _msgTypeCode = msgTypeCode;
         _cmdVector.assign(pBuf, pBuf+bufLen);
 
 #ifdef IMPLEMENT_PROTOCOL_MSG_JSON
@@ -96,9 +96,9 @@ public:
         _msgProtocol = protocol;
     }
 
-    void setDirection(ProtocolMsgDirection direction)
+    void setMsgTypeCode(ProtocolMsgTypeCode msgTypeCode)
     {
-        _msgDirection = direction;
+        _msgTypeCode = msgTypeCode;
     }
 
     void setAsResponse(const ProtocolEndpointMsg& reqMsg)
@@ -106,15 +106,15 @@ public:
         _channelID = reqMsg._channelID;
         _msgProtocol = reqMsg._msgProtocol;
         _msgNum = reqMsg._msgNum;
-        _msgDirection = MSG_DIRECTION_RESPONSE;
+        _msgTypeCode = MSG_TYPE_RESPONSE;
     }
 
-    void setAsResponse(uint32_t channelID, ProtocolMsgProtocol msgProtocol, uint32_t msgNum, ProtocolMsgDirection msgDirn)
+    void setAsResponse(uint32_t channelID, ProtocolMsgProtocol msgProtocol, uint32_t msgNum, ProtocolMsgTypeCode msgTypeCode)
     {
         _channelID = channelID;
         _msgProtocol = msgProtocol;
         _msgNum = msgNum;
-        _msgDirection = msgDirn;
+        _msgTypeCode = msgTypeCode;
     }
 
     ProtocolMsgProtocol getProtocol() const
@@ -122,9 +122,9 @@ public:
         return _msgProtocol;
     }
 
-    ProtocolMsgDirection getDirection()
+    ProtocolMsgTypeCode getMsgTypeCode()
     {
-        return _msgDirection;
+        return _msgTypeCode;
     }
 
     void setMsgNumber(uint32_t num)
@@ -158,14 +158,14 @@ public:
         }
     }
 
-    static const char* getDirectionAsString(ProtocolMsgDirection msgDirection)
+    static const char* getMsgTypeAsString(ProtocolMsgTypeCode msgTypeCode)
     {
-        switch(msgDirection)
+        switch(msgTypeCode)
         {
-            case MSG_DIRECTION_COMMAND: return "CMD";
-            case MSG_DIRECTION_RESPONSE: return "RSP";
-            case MSG_DIRECTION_PUBLISH: return "PUB";
-            case MSG_DIRECTION_REPORT: return "REP";
+            case MSG_TYPE_COMMAND: return "CMD";
+            case MSG_TYPE_RESPONSE: return "RSP";
+            case MSG_TYPE_PUBLISH: return "PUB";
+            case MSG_TYPE_REPORT: return "REP";
             default:
                 return "OTH";
         }
@@ -179,7 +179,7 @@ public:
     void setJSON()
     {
         _cmdJSON = String("{\"p\":\"") + getProtocolAsString(_msgProtocol) + String("\",") +
-                    String("\"d\":\"") + getDirectionAsString(_msgDirection) + String("\",") +
+                    String("\"d\":\"") + getMsgTypeAsString(_msgTypeCode) + String("\",") +
                     String("\"n\":\"") + String(_msgNum) + String("\"}");
     }
     String getString(const char *dataPath, const char *defaultValue)
@@ -220,7 +220,7 @@ private:
     uint32_t _channelID;
     ProtocolMsgProtocol _msgProtocol;
     uint32_t _msgNum;
-    ProtocolMsgDirection _msgDirection;
+    ProtocolMsgTypeCode _msgTypeCode;
     std::vector<uint8_t> _cmdVector;
 #ifdef IMPLEMENT_PROTOCOL_MSG_JSON
     String _cmdJSON;

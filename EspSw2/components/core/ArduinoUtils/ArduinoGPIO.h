@@ -1,4 +1,4 @@
-// ArduinoTime
+// ArduinoGPIO
 // Rob Dobson 2012-2021
 
 #pragma once

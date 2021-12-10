@@ -285,17 +285,17 @@ void PiCoProcessor::service()
             // Save the data
             if (_uploadBlockBuffer.size() >= UPLOAD_BLOCK_SIZE_BYTES)
             {
-                if (_chunker.next(_uploadBlockBuffer.data(), UPLOAD_BLOCK_SIZE_BYTES, readLen, finalChunk))
+                if (_chunker.nextRead(_uploadBlockBuffer.data(), UPLOAD_BLOCK_SIZE_BYTES, readLen, finalChunk))
                 {
                     // File block info
                     uint32_t fileLen = _chunker.getFileLen();
-                    FileBlockInfo fileBlockInfo(_chunker.getFileName().c_str(), 
+                    FileStreamBlock fileStreamBlock(_chunker.getFileName().c_str(), 
                                 fileLen, _uploadFilePos, 
                                 _uploadBlockBuffer.data(), readLen, finalChunk,
                                 0, false,
-                                fileLen, true);
+                                fileLen, true, false);
                     // Handle the block
-                    uploadCommonBlockHandler(_uploadFileType.c_str(), _uploadFromFSRequest, fileBlockInfo); 
+                    uploadCommonBlockHandler(_uploadFileType.c_str(), _uploadFromFSRequest, fileStreamBlock); 
                     _uploadFilePos += readLen;
                 }
                 else
@@ -528,14 +528,14 @@ void PiCoProcessor::apiUploadPiSwComplete(const String &reqStr, String &respStr)
 // API request - Upload pi-sw - part of file (from HTTP POST file)
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PiCoProcessor::apiUploadPiSwPart(const String& req, FileBlockInfo& fileBlockInfo)
+void PiCoProcessor::apiUploadPiSwPart(const String& req, FileStreamBlock& fileStreamBlock)
 {
 #ifdef DEBUG_PI_SW_UPLOAD
     LOG_I(MODULE_PREFIX, "apiUploadPiSwPart contentLen %d, fileLen %d, filePos %d, blockLen %d, finalBlock %d, crc %04x", 
-                    fileBlockInfo.contentLen, fileBlockInfo.fileLen, fileBlockInfo.filePos, 
-                    fileBlockInfo.blockLen, fileBlockInfo.finalBlock, fileBlockInfo.crc16);
+                    fileStreamBlock.contentLen, fileStreamBlock.fileLen, fileStreamBlock.filePos, 
+                    fileStreamBlock.blockLen, fileStreamBlock.finalBlock, fileStreamBlock.crc16);
 #endif
-    uploadAPIBlockHandler("firmware", req, fileBlockInfo);
+    uploadAPIBlockHandler("firmware", req, fileStreamBlock);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -554,7 +554,7 @@ void PiCoProcessor::apiQueryPiStatus(const String &reqStr, String &respStr)
 
 void PiCoProcessor::apiQueryCurMc(const String &reqStr, String &respStr)
 {
-    configGetConfig().getConfigString(respStr);
+    respStr = configGetConfig().getConfigString();
     LOG_I(MODULE_PREFIX, "apiQueryCurMc %s returning %s", reqStr.c_str(), respStr.c_str());
 }
 
@@ -972,7 +972,7 @@ void PiCoProcessor::hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen)
             LOG_I(MODULE_PREFIX, "hdlcFrameRxFromPiCB apiReq");
 #endif
             String respStr;
-            _pRestAPIEndpointManager->handleApiRequest(requestStr.c_str(), respStr);
+            _pRestAPIEndpointManager->handleApiRequest(requestStr.c_str(), respStr, APISourceInfo(0));
             sendResponseToPi(requestStr, respStr);
         }
     }
@@ -1011,7 +1011,7 @@ void PiCoProcessor::hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen)
                 ProtocolEndpointMsg endpointMsg;
                 ricRESTRespMsg.encode(pFrame + payloadStartPos, payloadLen, endpointMsg, 
                             RICRESTMsg::RICREST_ELEM_CODE_CMDRESPJSON);
-                endpointMsg.setAsResponse(_rdpChannelId, MSG_PROTOCOL_RICREST, msgIdx, MSG_DIRECTION_RESPONSE);
+                endpointMsg.setAsResponse(_rdpChannelId, MSG_PROTOCOL_RICREST, msgIdx, MSG_TYPE_RESPONSE);
 
                 // Send message on the appropriate channel
                 if (_pEndpointManager)
@@ -1081,7 +1081,7 @@ void PiCoProcessor::hdlcFrameTxToPiCB(const uint8_t* pFrame, int frameLen)
 // Handle upload block
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void PiCoProcessor::uploadAPIBlockHandler(const char* fileType, const String& req, FileBlockInfo& fileBlockInfo)
+void PiCoProcessor::uploadAPIBlockHandler(const char* fileType, const String& req, FileStreamBlock& fileStreamBlock)
 {
     // Check there isn't an upload in progress from FS
     if (_uploadFromFSInProgress)
@@ -1093,7 +1093,7 @@ void PiCoProcessor::uploadAPIBlockHandler(const char* fileType, const String& re
     // Check upload from API already in progress
     if (!_uploadFromAPIInProgress)
     {
-        if (fileBlockInfo.filePos != 0)
+        if (fileStreamBlock.filePos != 0)
             return;
         // Upload now in progress
         _uploadLastBlockMs = millis();
@@ -1102,13 +1102,13 @@ void PiCoProcessor::uploadAPIBlockHandler(const char* fileType, const String& re
         _uploadFilePos = 0;
         _uploadStartMs = millis();
         LOG_I(MODULE_PREFIX, "uploadAPIBlockHandler starting new fileType %s filename %s fileLenValid %d fileLen %d contentLen %d pos %d, blockLen %d",
-                fileType, fileBlockInfo.filename,
-                fileBlockInfo.fileLenValid, fileBlockInfo.fileLen, fileBlockInfo.contentLen,
-                fileBlockInfo.filePos, fileBlockInfo.blockLen);
+                fileType, fileStreamBlock.filename,
+                fileStreamBlock.fileLenValid, fileStreamBlock.fileLen, fileStreamBlock.contentLen,
+                fileStreamBlock.filePos, fileStreamBlock.blockLen);
     }
     
     // Commmon handler
-    if (!uploadCommonBlockHandler(fileType, req, fileBlockInfo))
+    if (!uploadCommonBlockHandler(fileType, req, fileStreamBlock))
     {
         _uploadFromAPIInProgress = false;
     }
@@ -1118,11 +1118,11 @@ void PiCoProcessor::uploadAPIBlockHandler(const char* fileType, const String& re
 // Common upload block handler
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String& req, FileBlockInfo& fileBlockInfo)
+bool PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String& req, FileStreamBlock& fileStreamBlock)
 {
 #ifdef DEBUG_PI_UPLOAD_COMMON_BLOCK_DETAIL
     LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler filePos %d blkCnt %d blkLen %d isFinal %d rxIdx %d bytesSent %d", 
-                fileBlockInfo.filePos, _uploadBlockCount, fileBlockInfo.blockLen, fileBlockInfo.finalBlock,
+                fileStreamBlock.filePos, _uploadBlockCount, fileStreamBlock.blockLen, fileStreamBlock.finalBlock,
                 _uploadBlockRxIndex, _uploadBytesSent);
 #endif
 
@@ -1138,9 +1138,9 @@ bool PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String&
 
         // Debug
         LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler new upload millis %ld filetype %s fileName %s fileLenValid %d fileLen %d contentLen %d blockLen %d final %d isFS %s isAPI %s", 
-                _uploadLastBlockMs, fileType, fileBlockInfo.filename, 
-                fileBlockInfo.fileLenValid, fileBlockInfo.fileLen, fileBlockInfo.contentLen,
-                fileBlockInfo.blockLen, fileBlockInfo.finalBlock,
+                _uploadLastBlockMs, fileType, fileStreamBlock.filename, 
+                fileStreamBlock.fileLenValid, fileStreamBlock.fileLen, fileStreamBlock.contentLen,
+                fileStreamBlock.blockLen, fileStreamBlock.finalBlock,
                 (_uploadFromFSInProgress ? "yes" : "no"), 
                 (_uploadFromAPIInProgress ? "yes" : "no"));
 
@@ -1154,8 +1154,8 @@ bool PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String&
         // Send file start
         for (int retryCount = 0; retryCount < UPLOAD_MAX_RESENDS_BEFORE_FAIL; retryCount++)
         {
-            sendFileStartRecord(fileType, req, fileBlockInfo.filename, 
-                        fileBlockInfo.fileLenValid ? fileBlockInfo.fileLen : fileBlockInfo.contentLen);
+            sendFileStartRecord(fileType, req, fileStreamBlock.filename, 
+                        fileStreamBlock.fileLenValid ? fileStreamBlock.fileLen : fileStreamBlock.contentLen);
             if (waitForStartAck())
                 break;
             LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler retry %d upload start", retryCount+1);
@@ -1167,22 +1167,22 @@ bool PiCoProcessor::uploadCommonBlockHandler(const char* fileType, const String&
     // Send the block
     for (int retryCount = 0; retryCount < UPLOAD_MAX_RESENDS_BEFORE_FAIL; retryCount++)
     {
-        sendFileBlock(fileBlockInfo.filePos, fileBlockInfo.pBlock, fileBlockInfo.blockLen);
-        if (waitForBlockAck(fileBlockInfo.filePos))
+        sendFileBlock(fileStreamBlock.filePos, fileStreamBlock.pBlock, fileStreamBlock.blockLen);
+        if (waitForBlockAck(fileStreamBlock.filePos))
             break;
         LOG_I(MODULE_PREFIX, "uploadCommonBlockHandler retry %d upload block %d", 
                     retryCount+1, _uploadBlockCount);
     }
-    if (!waitForBlockAck(fileBlockInfo.filePos))
+    if (!waitForBlockAck(fileStreamBlock.filePos))
         return false;
     _uploadBlockCount++;
 
     // Update CRC
-    _fileCRC = MiniHDLC::crcUpdateCCITT(_fileCRC, fileBlockInfo.pBlock, fileBlockInfo.blockLen);
-    _uploadBytesSent += fileBlockInfo.blockLen;
+    _fileCRC = MiniHDLC::crcUpdateCCITT(_fileCRC, fileStreamBlock.pBlock, fileStreamBlock.blockLen);
+    _uploadBytesSent += fileStreamBlock.blockLen;
 
     // Check if that was the final block
-    if (fileBlockInfo.finalBlock)
+    if (fileStreamBlock.finalBlock)
     {
         for (int retryCount = 0; retryCount < UPLOAD_MAX_RESENDS_BEFORE_FAIL; retryCount++)
         {
@@ -1232,7 +1232,7 @@ bool PiCoProcessor::startUploadFromFileSystem(const String& fileSystemName,
     }
 
     // Start a chunked file session
-    if (!_chunker.start(filename, UPLOAD_BLOCK_SIZE_BYTES, false))
+    if (!_chunker.start(filename, UPLOAD_BLOCK_SIZE_BYTES, false, false, true))
     {
         LOG_I(MODULE_PREFIX, "startUploadFromFileSystem failed to start %s", filename.c_str());
         return false;
@@ -1258,62 +1258,62 @@ bool PiCoProcessor::startUploadFromFileSystem(const String& fileSystemName,
 // Process RICRESTMsg CmdFrame - coming from websocket
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool PiCoProcessor::procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg& ricRESTReqMsg, 
-                        String& respMsg, const ProtocolEndpointMsg &endpointMsg)
-{
-    // Handle command frames
-    if (cmdName.equalsIgnoreCase("comtest"))
-    {
-        ConfigBase cmdFrame = ricRESTReqMsg.getPayloadJson();
-        unsigned msgIdx = cmdFrame.getLong("msgIdx", 0);
-        // Response
-        char extraJson[100];
-        snprintf(extraJson, sizeof(extraJson), "\"cmdName\":\"%sResp\",\"msgIdx\":%d", 
-                        cmdName.c_str(), msgIdx);
-        Utils::setJsonResult(ricRESTReqMsg.getReq().c_str(), respMsg, true, NULL, extraJson);
+// bool PiCoProcessor::procRICRESTCmdFrame(const String& cmdName, const RICRESTMsg& ricRESTReqMsg, 
+//                         String& respMsg, const ProtocolEndpointMsg &endpointMsg)
+// {
+//     // Handle command frames
+//     if (cmdName.equalsIgnoreCase("comtest"))
+//     {
+//         ConfigBase cmdFrame = ricRESTReqMsg.getPayloadJson();
+//         unsigned msgIdx = cmdFrame.getLong("msgIdx", 0);
+//         // Response
+//         char extraJson[100];
+//         snprintf(extraJson, sizeof(extraJson), "\"cmdName\":\"%sResp\",\"msgIdx\":%d", 
+//                         cmdName.c_str(), msgIdx);
+//         Utils::setJsonResult(ricRESTReqMsg.getReq().c_str(), respMsg, true, NULL, extraJson);
 
-#ifdef DEBUG_RICREST_CMD_FRAMES
-        LOG_I(MODULE_PREFIX, "procRICRESTCmdFrame comtest msgIdx %d %s => Resp %s", 
-                        msgIdx, cmdName.c_str(), respMsg.c_str());
-#endif
-        return true;
-    }
+// #ifdef DEBUG_RICREST_CMD_FRAMES
+//         LOG_I(MODULE_PREFIX, "procRICRESTCmdFrame comtest msgIdx %d %s => Resp %s", 
+//                         msgIdx, cmdName.c_str(), respMsg.c_str());
+// #endif
+//         return true;
+//     }
 
-    // Endpoint msg num
-    uint32_t endpointMsgNum = endpointMsg.getMsgNumber();
+//     // Endpoint msg num
+//     uint32_t endpointMsgNum = endpointMsg.getMsgNumber();
 
-    // Send on to Pi as a combined message
-    std::vector<uint8_t> combinedMsg;
-    unsigned jsonLen = ricRESTReqMsg.getPayloadJson().length();
-    unsigned binaryLen = ricRESTReqMsg.getBinLen();
-    unsigned combinedLen = jsonLen + 1 + binaryLen;
-    combinedMsg.resize(combinedLen);
-    if (combinedMsg.size() >= combinedLen)
-    {
-        memcpy(combinedMsg.data(), ricRESTReqMsg.getPayloadJson().c_str(), jsonLen + 1);
-        memcpy(combinedMsg.data() + jsonLen + 1, ricRESTReqMsg.getBinBuf(), binaryLen);
+//     // Send on to Pi as a combined message
+//     std::vector<uint8_t> combinedMsg;
+//     unsigned jsonLen = ricRESTReqMsg.getPayloadJson().length();
+//     unsigned binaryLen = ricRESTReqMsg.getBinLen();
+//     unsigned combinedLen = jsonLen + 1 + binaryLen;
+//     combinedMsg.resize(combinedLen);
+//     if (combinedMsg.size() >= combinedLen)
+//     {
+//         memcpy(combinedMsg.data(), ricRESTReqMsg.getPayloadJson().c_str(), jsonLen + 1);
+//         memcpy(combinedMsg.data() + jsonLen + 1, ricRESTReqMsg.getBinBuf(), binaryLen);
 
-#ifdef DEBUG_RICREST_CMD_FRAMES
-        String combinedMsgHexStr;
-        Utils::getHexStrFromBytes(combinedMsg.data(), combinedMsg.size(), combinedMsgHexStr);
-        LOG_I(MODULE_PREFIX, "procRICRESTCmdFrame combinedLen %d binaryLen %d send %s", combinedLen, binaryLen, combinedMsgHexStr.c_str());
-#endif
+// #ifdef DEBUG_RICREST_CMD_FRAMES
+//         String combinedMsgHexStr;
+//         Utils::getHexStrFromBytes(combinedMsg.data(), combinedMsg.size(), combinedMsgHexStr);
+//         LOG_I(MODULE_PREFIX, "procRICRESTCmdFrame combinedLen %d binaryLen %d send %s", combinedLen, binaryLen, combinedMsgHexStr.c_str());
+// #endif
 
-#ifdef DEBUG_COMMS_USING_IO_21_22
-        debugPulse21();
-#endif
+// #ifdef DEBUG_COMMS_USING_IO_21_22
+//         debugPulse21();
+// #endif
 
-        sendTargetData("rdp", combinedMsg.data(), combinedLen, endpointMsgNum);
-        _rdpChannelId  = endpointMsg.getChannelID();
-        return true;
-    }
+//         sendTargetData("rdp", combinedMsg.data(), combinedLen, endpointMsgNum);
+//         _rdpChannelId  = endpointMsg.getChannelID();
+//         return true;
+//     }
 
-#ifdef DEBUG_RICREST_CMD_FRAMES
-    LOG_I(MODULE_PREFIX, "procRICRESTCmdFrame UNKNOWN %s", cmdName.c_str());
-#endif
+// #ifdef DEBUG_RICREST_CMD_FRAMES
+//     LOG_I(MODULE_PREFIX, "procRICRESTCmdFrame UNKNOWN %s", cmdName.c_str());
+// #endif
 
-    return false;
-}
+//     return false;
+// }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Wait for acknowledgement
