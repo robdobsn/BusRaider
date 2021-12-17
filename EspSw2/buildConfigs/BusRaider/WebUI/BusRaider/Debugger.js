@@ -5,15 +5,8 @@
             }
             this.scaderName = "Debugger";
             this.friendlyName = "Debugger";
-            this.configObj = {};                
-        }
-
-        init() {
-            // Config
-            if (!(this.scaderName in window.appState.configObj)) {
-                window.appState.configObj[this.scaderName] = this.defaultConfig();
-            }
-            this.configObj = window.appState.configObj[this.scaderName]
+            this.configObj = {};
+            this.objGlobalStr = "";
         }
 
         postInit() {

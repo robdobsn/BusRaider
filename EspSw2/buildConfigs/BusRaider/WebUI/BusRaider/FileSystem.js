@@ -8,15 +8,8 @@
             }
             this.scaderName = "FileSystem";
             this.friendlyName = "File System";
-            this.configObj = {};                
-        }
-
-        init() {
-            // Config
-            if (!(this.scaderName in window.appState.configObj)) {
-                window.appState.configObj[this.scaderName] = this.defaultConfig();
-            }
-            this.configObj = window.appState.configObj[this.scaderName]
+            this.configObj = {};
+            this.objGlobalStr = "";
         }
 
         postInit() {
@@ -80,10 +73,13 @@
         }
 
         fileListUpdate() {
-            ajaxGet("/api/filelist/" + this.state.fsDefault + "/", this.fileListUpdateOk, this.fileListUpdateFail);
-        }
-
-        fileListUpdateFail() {
+            ajaxGet("/api/filelist/" + this.state.fsDefault + "/", 
+                    (resp) => {
+                        this.populateFileGrid(resp);
+                    },
+                    () => {
+                        console.log("fileListUpdate - error getting file list");
+                    });
         }
 
         fileSizeSI(size) {
@@ -91,7 +87,7 @@
             return +(size / Math.pow(1024, e)).toFixed(2) + ' ' + ('kMGTPEZY'[e - 1] || '') + 'B';
         }
 
-        fileListUpdateOk(resp) {
+        populateFileGrid(resp) {
             // Parse status received
             let fileListInfo = JSON.parse(resp);
             this.state.latestfileListInfo = fileListInfo;
@@ -99,7 +95,7 @@
             // Show info
             if (fileListInfo.diskSize) {
                 let fileSystemInfo = document.getElementById("file-system-info");
-                let fsInfoStr = "<b>Disk Size:</b> " + fileSizeSI(fileListInfo.diskSize) + ", <b>Free Bytes:</b> " + fileSizeSI(fileListInfo.diskSize - fileListInfo.diskUsed);
+                let fsInfoStr = "<b>Disk Size:</b> " + this.fileSizeSI(fileListInfo.diskSize) + ", <b>Free Bytes:</b> " + this.fileSizeSI(fileListInfo.diskSize - fileListInfo.diskUsed);
                 fileSystemInfo.innerHTML = fsInfoStr;
             }
 
@@ -124,28 +120,32 @@
                 let filesize = fileListInfo.files[i].size;
                 let row = '<tr data-file="' + filename + '">';
                 row += '<td class=file-actions">'
-                row += '<a class="btn btn-fileaction tooltip" onclick="deleteFile(\'' + filename + '\')">'
+                row += `<a id="btn-file-delete-${i}" class="btn btn-fileaction tooltip">`
                 row += '<svg class="icon-action"><use xlink:href="#ico-delete"></use></svg>'
                 row += '<span class="tooltiptext">Delete file</span>'
                 row += '</a>'
-                row += '<a class="btn btn-fileaction tooltip" onclick="sendFileToTargetBuffer(\'' + filename + '\')">'
+                row += `<a id="btn-file-send-${i}" class="btn btn-fileaction tooltip">`
                 row += '<svg class="icon-action"><use xlink:href="#icon-send"></use></svg>'
                 row += '<span class="tooltiptext">Send to target buffer</span>'
                 row += '</a>'
-                row += '<a class="btn btn-fileaction tooltip" onclick="appendFileToTargetBuffer(\'' + filename + '\')">'
+                row += `<a id="btn-file-append-${i}" class="btn btn-fileaction tooltip">`
                 row += '<svg class="icon-action"><use xlink:href="#icon-send-plus"></use></svg>'
                 row += '<span class="tooltiptext">Append to target buffer</span>'
                 row += '</a>'
-                row += '<a class="btn btn-fileaction tooltip" onclick="runFileOnTarget(\'' + filename + '\')">'
+                row += `<a id="btn-file-run-${i}" class="btn btn-fileaction tooltip">`
                 row += '<svg class="icon-action"><use xlink:href="#ico-play"></use></svg>'
                 row += '<span class="tooltiptext">Run file now</span>'
                 row += '</a>'
                 row += '</td>'
                 row += '<td class="file-name">' + filename + '</td>';
-                row += '<td class="file-size hidden-xs">' + fileSizeSI(filesize) + '</td>';
+                row += '<td class="file-size hidden-xs">' + this.fileSizeSI(filesize) + '</td>';
                 row += '</tr>';
                 let newRow = tabFiles.insertRow(tabFiles.rows.length);
                 newRow.innerHTML = row;
+                document.getElementById(`btn-file-delete-${i}`).addEventListener("click", (event) => { this.deleteFile(filename) } );
+                document.getElementById(`btn-file-send-${i}`).addEventListener("click", (event) => { this.sendFileToTargetBuffer(filename) } );
+                document.getElementById(`btn-file-append-${i}`).addEventListener("click", (event) => { this.appendFileToTargetBuffer(filename) } );
+                document.getElementById(`btn-file-run-${i}`).addEventListener("click", (event) => { this.runFileOnTarget(filename) } );
             }
         }
 
@@ -177,62 +177,64 @@
         }
         
         initializeProgress(numFiles, progressBarName) {
-            window.pageState.uploadProgress = []
+            this.state.uploadProgress = []
             let progressBar = document.getElementById(progressBarName);
             progressBar.value = 0;
             for (let i = numFiles; i > 0; i--) {
-                window.pageState.uploadProgress.push(0);
+                this.state.uploadProgress.push(0);
             }
         }
 
         updateProgress(fileNumber, percent, progressBarName) {
             let progressBar = document.getElementById(progressBarName);
-            window.pageState.uploadProgress[fileNumber] = percent;
-            let total = window.pageState.uploadProgress.reduce((tot, curr) => tot + curr, 0) / 
-                        window.pageState.uploadProgress.length;
+            this.state.uploadProgress[fileNumber] = percent;
+            let total = this.state.uploadProgress.reduce((tot, curr) => tot + curr, 0) / 
+                        this.state.uploadProgress.length;
             // console.debug('update', fileNumber, percent, total);
             progressBar.value = total;
         }
 
         uploadToFileManager(files) {
-            filesArray = [...files];
-            initializeProgress(filesArray.length, 'progress-bar-file-manager');
-            filesArray.forEach(uploadOnlyFile);
+            const fileArray = Array.from(files);
+            this.initializeProgress(fileArray.length, 'progress-bar-file-manager');
+            fileArray.forEach((el, i) => this.uploadOnlyFile(el, i));
             document.getElementById("fileElemUpload").value = ""
         }
 
         uploadOnlyFile(file, i) {
-            uploadFileSpecUrl("/fileupload", 'progress-bar-file-manager', file, i)
+            this.uploadFileSpecUrl("/api/fileupload", 'progress-bar-file-manager', file, i)
         }
 
         uploadAndRunFiles(files) {
-            filesArray = [...files];
-            initializeProgress(filesArray.length, 'progress-bar-run');
-            filesArray.forEach(uploadAndRunFile);
+            const fileArray = Array.from(files);
+            if (fileArray.length >= 1) {
+                this.initializeProgress(1, 'progress-bar-run');
+                this.uploadAndRunFile(fileArray[0], 0);
+            }
             document.getElementById("fileElemRun").value = ""
         }
 
         uploadAndRunFile(file, i) {
-            sendCmdToTarget("imagerClear");
-            uploadFileSpecUrl("/uploadandrun", 'progress-bar-run', file, i);
+            this.sendCmdToTarget("api/imagerClear");
+            this.uploadFileSpecUrl("/api/uploadandrun", 'progress-bar-run', file, i);
         }
 
         uploadFileSpecUrl(url, progressBarName, file, i) {
-            var xhr = new XMLHttpRequest();
-            var formData = new FormData();
+            const xhr = new XMLHttpRequest();
+            const formData = new FormData();
             xhr.open('POST', url, true);
             xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
 
             // Update progress (can be used to show progress indicator)
             xhr.upload.addEventListener("progress", (e) => {
-                updateProgress(i, (e.loaded * 100.0 / e.total) || 100, progressBarName);
+                this.updateProgress(i, (e.loaded * 100.0 / e.total) || 100, progressBarName);
                 // console.log("Progress" + e.loaded + ", " + e.total);
             });
 
             xhr.addEventListener('readystatechange', (e) => {
                 if (xhr.readyState === 4 && xhr.status === 200) {
-                    updateProgress(i, 100, progressBarName)
-                    fileListUpdate();
+                    this.updateProgress(i, 100, progressBarName)
+                    this.fileListUpdate();
                 } else if (xhr.readyState === 4 && xhr.status != 200) {
                     // Error
                 }
@@ -249,29 +251,31 @@
                 <div class="uiPanelSub">
                     <form class="file-upload-form">
                         <p>Drop files to immediately run on the target</p>
-                        <label class="button" for="fileElemRun">Select a file to immediately run</label>
-                        <input type="file" id="fileElemRun" onchange="uploadAndRunFiles(this.files)">
+                        <label id="fileElemRun" class="button" for="fileElemRun">Select a file to immediately run</label>
+                        <input type="file" id="fileElemRun">
                     </form>
                 </div>
                 <progress id="progress-bar-run" max=100 value=0></progress>
             </div>
-            <!--         <div id="upload-only" class="layout-region drop-zone">
+            <!--
+            <div id="upload-only" class="layout-region drop-zone">
                 <form class="file-upload-form">
                     <p>Drop files to upload to the Bus-Raider's buffer</p>
-                    <input type="file" id="fileElem" onchange="uploadToFileManager(this.files)">
+                    <input type="file" id="fileElem">
                     <label class="button" for="fileElem">Select a file to upload</label>
                 </form>
                 <progress id="progress-bar-buffer" max=100 value=0></progress>
 
-                <span class="button" onclick="sendCmdToTarget('imagerWrite')">Send to target</span>
+                <span id="imagerWrite" class="button">Send to target</span>
 
-                <span class="button" onclick="sendCmdToTarget('ioclrtarget')">Clear all RC2014 IO</span> 
-            </div> -->
+                <span id="ioclrTarget" class="button">Clear all RC2014 IO</span> 
+            </div>
+            -->
             <div id="file-manager" class="layout-region drop-zone">
                 <form class="file-upload-form">
                     <div class=uiPanelSub>
                         <p>Drop files to upload to ESP32 file system</p>
-                        <input type="file" id="fileElemUpload" onchange="uploadToFileManager(this.files)">
+                        <input type="file" id="fileElemUpload">
                         <label class="button" for="fileElemUpload">Select a file to upload</label>
                         <!-- <span class="button radio" onclick="fsSelectClick(event)">File System = SPIFFS</span> -->
                     </div>
@@ -295,5 +299,10 @@
                 </form>
             </div>
             `;
+            document.getElementById("fileElemRun").addEventListener("change", (event) => { this.uploadAndRunFiles(event.target.files); });
+            // document.getElementById("fileElem").addEventListener("change", (files) => { this.uploadToFileManager(files); });
+            // document.getElementById("imagerWrite").addEventListener("change", (files) => { this.sendCmdToTarget('imagerWrite'); });
+            // document.getElementById("ioclrTarget").addEventListener("change", (files) => { this.sendCmdToTarget('ioclrtarget'); });
+            document.getElementById("fileElemUpload").addEventListener("change", (event) => { this.uploadToFileManager(event.target.files); });
         }
     }

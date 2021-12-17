@@ -573,18 +573,19 @@ void PiCoProcessor::apiSetMcJson(const String &reqStr, String &respStr)
 
 void PiCoProcessor::apiSetMcJsonContent(const String &reqStr, const uint8_t *pData, size_t len, size_t index, size_t total)
 {
+    // Check valid
+    if (len > 5000)
+    {
+        LOG_E(MODULE_PREFIX, "apiSetMcJsonContent too long %d", len);
+        return;
+    }
     // Extract JSON
-    static const int MAX_JSON_DATA_LEN = 1000;
-    char jsonData[MAX_JSON_DATA_LEN];
-    size_t toCopy = len+1;
-    if (len > MAX_JSON_DATA_LEN)
-        toCopy = MAX_JSON_DATA_LEN;
-    strlcpy(jsonData, (const char*) pData, toCopy);
+    String jsonStr;
+    Utils::strFromBuffer(pData, len, jsonStr);
     // Debug
-    LOG_I(MODULE_PREFIX, "apiSetMcJsonContent %s json %s",  
-            reqStr.c_str(), jsonData);
+    LOG_I(MODULE_PREFIX, "apiSetMcJsonContent %s json %s", reqStr.c_str(), jsonStr.c_str());
     // Store in non-volatile so we can pick back up with same machine
-    SysModBase::configSaveData(String(jsonData));
+    SysModBase::configSaveData(jsonStr);
     // Send to the Pi
     sendTargetData("setmcjson", pData, len, 0);
 }

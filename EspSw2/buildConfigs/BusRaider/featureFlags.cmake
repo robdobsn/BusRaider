@@ -23,7 +23,7 @@ add_compile_definitions(CONFIG_LITTLEFS_BLOCK_CYCLES=512)
 # add_compile_definitions(FEATURE_INCLUDE_SCADER)
 
 # CMake definitions
-set(WEB_UI_GEN_FLAGS --nogzip)
+# set(WEB_UI_GEN_FLAGS --nogzip)
 set(FS_TYPE "littlefs")
 set(FS_IMAGE_PATH "${RIC_CONFIG_DIR}/FSImage")
 set(UI_SOURCE_PATH "${RIC_CONFIG_DIR}/WebUI")

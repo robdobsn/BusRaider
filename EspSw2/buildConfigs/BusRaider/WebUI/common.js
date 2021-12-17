@@ -31,6 +31,9 @@
             // Add the File System
             const fileSystem = new FileSystem();
             window.appState.elems[fileSystem.getId()] = fileSystem;
+
+            // Wire up buttons
+            machines.setButtons(screenMirror.termShowClick, z80Debugger.debuggerShowClick);
             
             // Get settings and update UI
             getAppSettingsAndUpdateUI();
@@ -109,7 +112,12 @@
         function commonSetupDefaults() {
             // Initialize the elements
             for (const [key, elem] of Object.entries(window.appState.elems)) {
-                elem.init();
+                // Config
+                if (!(elem.scaderName in window.appState.configObj)) {
+                    window.appState.configObj[elem.scaderName] = elem.defaultConfig();
+                }
+                elem.configObj = window.appState.configObj[elem.scaderName];
+                elem.objGlobalStr = `window.appState.elems['${elem.scaderName}']`;
             }
 
             // Ensure there is a title for the main screen
