@@ -6,7 +6,7 @@ const expressStaticGzip = require("express-static-gzip");
 const ws = require('ws');
 const url = require('url')
 const fileUpload = require('express-fileupload');
-const Z80System = require('./z80System');
+const Z80System = require('./Z80System');
 
 let curSettings = {
     "BusRaider": {
@@ -35,6 +35,7 @@ let stFileInfo = {
 };
 
 const z80System = new Z80System();
+z80System.setMachine(curState.status.machineCur);
 
 const localFSFolder = "../../EspSw2/buildConfigs/BusRaider/FSImage/";
 const sdFSFolder = "./SDFSImage/";
@@ -45,6 +46,25 @@ run().catch(err => console.log(err));
 const wsServer = new ws.Server({ noServer: true, path: '/ws' });
 wsServer.on('connection', socket => {
     socket.on('message', message => console.log("ws " + message));
+    console.log("wsServer connection open");
+
+    // Cache info for screen mirroring
+    let mirrorScreenCache = new Uint8Array();
+
+    function screenUpdateOnTimer(screenCache) {
+        // Start timer to update mirror screen
+        let mirrorScreenTimer = setInterval(() => {
+            // console.log('update mirror screen');
+            z80System.updateMirrorScreen(socket, screenCache);
+            console.log(`mirrorScreenCache ${screenCache}`);
+        }, 1000);
+    }
+    screenUpdateOnTimer(mirrorScreenCache);
+
+    socket.on('close', () => {
+        console.log('ws close');
+        clearInterval(mirrorScreenTimer);
+    });
 });
 
 async function uploadFile(req, res) {
@@ -81,7 +101,7 @@ async function uploadFile(req, res) {
 
 function getFilePath(fs, filename) {
     let fsFolder = localFSFolder;
-    if (req.params.fs === "sd") {
+    if (fs === "sd") {
         fsFolder = sdFSFolder;
     }
     let filePath = fsFolder + filename;
@@ -153,11 +173,12 @@ async function run() {
 
     app.post('/api/setmcjson', async function (req, res) {
         console.log("setmcjson", req.body)
-        if ("name" in req.body) {
-            curState.status.machineCur = req.body.name;
-        }
         if ("clockHz" in req.body) {
             curState.status.clockHz = req.body.clockHz;
+        }
+        if ("name" in req.body) {
+            curState.status.machineCur = req.body.name;
+            z80System.setMachine(req.body.name);
         }
         res.json({ "rslt": "ok" })
     });
@@ -167,6 +188,11 @@ async function run() {
         if ("clockHz" in req.body) {
             curState.status.clockHz = req.body.clockHz;
         }
+        res.json({ "rslt": "ok" })
+    });
+
+    app.get('/api/targetcmd/mirrorscreenon', async function (req, res) {
+        console.log(`mirrorscreenon ${req.params}`)
         res.json({ "rslt": "ok" })
     });
 
@@ -220,7 +246,7 @@ async function run() {
     // the same ws upgrade process described here:
     // https://www.npmjs.com/package/ws#multiple-servers-sharing-a-single-https-server
     const server = app.listen(port, () => {
-        console.log(`Listening at http://localhost:${port}`)
+        console.log(`Listening at http://localhost:${port}`);
     });
 
     server.on('upgrade', (request, socket, head) => {

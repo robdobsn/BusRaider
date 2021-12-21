@@ -1,4 +1,3 @@
-const Z80 = require('./z80');
 
 class MemAccess {
     constructor() {
@@ -27,6 +26,14 @@ class MemAccess {
             this.ioSpace[addr] = data;
         }
     }
+    blockRead(start, len, isIo) {
+        if (isIo) {
+            return this.ioSpace.slice(start, start + len);
+        } else {
+            return this.addrSpace.slice(start, start + len);
+        }
+    }
+
     load(filename) {
         const fs = require('fs');
         const data = fs.readFileSync(filename);
@@ -35,23 +42,12 @@ class MemAccess {
             this.mem_write(i, mem[i]);
         }
     }
-};
-
-class Z80System {
-    constructor() {
-        this.memAccess = new MemAccess();
-        this.z80Proc = new Z80(this.memAccess);
-    }
-
-    exec(filename) {
-        this.memAccess.load(filename);
-        this.z80Proc.reset();
-        let curState = this.z80Proc.getState();
-        console.log(curState);
-        this.z80Proc.run_instruction();
-        curState = this.z80Proc.getState();
-        console.log(curState);
+    dumpMem(start, len) {
+        const hexStr = this.addrSpace.slice(start, start + len)
+            .map(x => x.toString(16).padStart(2, '0'))
+            .join('');
+        console.log(hexStr);
     }
 };
 
-module.exports = Z80System;
+module.exports = MemAccess;
