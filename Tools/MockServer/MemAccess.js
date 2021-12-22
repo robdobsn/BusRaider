@@ -33,6 +33,13 @@ class MemAccess {
             return this.addrSpace.slice(start, start + len);
         }
     }
+    blockWrite(start, data, isIo) {
+        if (isIo) {
+            this.ioSpace.set(data, start);
+        } else {
+            this.addrSpace.set(data, start);
+        }
+    }
 
     load(filename) {
         const fs = require('fs');
@@ -41,11 +48,17 @@ class MemAccess {
         for (let i = 0; i < mem.length; i++) {
             this.mem_write(i, mem[i]);
         }
+        console.log(`Loaded ${mem.length} bytes from ${filename}`);
     }
     dumpMem(start, len) {
-        const hexStr = this.addrSpace.slice(start, start + len)
-            .map(x => x.toString(16).padStart(2, '0'))
-            .join('');
+        // const hexStr = this.addrSpace.slice(start, start + len)
+        //     .map(x => x.toString(16).padStart(2, '0'))
+        //     .join('');
+        // console.log(hexStr);
+        let hexStr = "";
+        for (let i = 0; i < len; i++) {
+            hexStr += this.addrSpace[start + i].toString(16).padStart(2, '0') + " ";
+        }
         console.log(hexStr);
     }
 };

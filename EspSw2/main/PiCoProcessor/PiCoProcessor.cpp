@@ -474,7 +474,7 @@ void PiCoProcessor::addRestAPIEndpoints(RestAPIEndpointManager &endpointManager)
     //                             std::placeholders::_3, std::placeholders::_4,
     //                             std::placeholders::_5, std::placeholders::_6,
     //                             std::placeholders::_7));                          
-    // endpointManager.addEndpoint("sendKey", 
+    // endpointManager.addEndpoint("sendkey", 
     //                     RestAPIEndpointDef::ENDPOINT_CALLBACK, 
     //                     RestAPIEndpointDef::ENDPOINT_GET, 
     //                     std::bind(&PiCoProcessor::apiSendKey, this,

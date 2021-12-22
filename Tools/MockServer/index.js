@@ -51,20 +51,20 @@ wsServer.on('connection', socket => {
     // Cache info for screen mirroring
     let mirrorScreenCache = new Uint8Array();
 
-    function screenUpdateOnTimer(screenCache) {
+    function screenUpdateOnTimer(screenCache, socket) {
         // Start timer to update mirror screen
         let mirrorScreenTimer = setInterval(() => {
             // console.log('update mirror screen');
-            z80System.updateMirrorScreen(socket, screenCache);
-            console.log(`mirrorScreenCache ${screenCache}`);
-        }, 1000);
-    }
-    screenUpdateOnTimer(mirrorScreenCache);
+            screenCache = z80System.updateMirrorScreen(socket, screenCache);
+            // console.log(`mirrorScreenCache ${screenCache}`);
+        }, 100);
 
-    socket.on('close', () => {
-        console.log('ws close');
-        clearInterval(mirrorScreenTimer);
-    });
+        socket.on('close', () => {
+            console.log('ws close');
+            clearInterval(mirrorScreenTimer);
+        });    
+    }
+    screenUpdateOnTimer(mirrorScreenCache, socket);
 });
 
 async function uploadFile(req, res) {
@@ -127,7 +127,8 @@ async function run() {
     app.get('/api/runfileontarget/:fs/:filename', async (req, res) => {
         console.log(`runfileontarget ${req.params.fs} ${req.params.filename}`)
         const filePath = getFilePath(req.params.fs, req.params.filename);
-        z80System.exec(filePath);
+        z80System.load(filePath);
+        z80System.exec();
         res.json({ "rslt": "ok" });
     });
 
@@ -193,6 +194,17 @@ async function run() {
 
     app.get('/api/targetcmd/mirrorscreenon', async function (req, res) {
         console.log(`mirrorscreenon ${req.params}`)
+        res.json({ "rslt": "ok" })
+    });
+
+    app.get('/api/targetcmd/mirrorscreenoff', async function (req, res) {
+        console.log(`mirrorscreenoff ${req.params}`)
+        res.json({ "rslt": "ok" })
+    });
+
+    app.get('/api/keyboard/:isdown/:asciicode/:keycode/:modifiers', async function (req, res) {
+        console.log(`keyboard isdown ${req.params.isdown} ascii ${req.params.asciicode} keycode ${req.params.keycode} mod ${req.params.modifiers}`)
+        z80System.keyboard(req.params.isdown, req.params.asciicode, req.params.keycode, req.params.modifiers);
         res.json({ "rslt": "ok" })
     });
 

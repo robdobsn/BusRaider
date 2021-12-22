@@ -1,262 +1,259 @@
-        ////////////////////////////////////////////////////////////////////////////
-        // Common (common.js)
-        ////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+// Common (common.js)
+////////////////////////////////////////////////////////////////////////////
 
-        ////////////////////////////////////////////////////////////////////////////
-        // bodyIsLoaded
-        ////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////
+// bodyIsLoaded
+////////////////////////////////////////////////////////////////////////////
 
-        // Function called when body is loaded
-        function bodyIsLoaded() {
-            // Setup common state
-            window.appState = {
-                configObj: {},
-                spinner: new Spinner(),
-                uiInSetupMode: false,
-            };
-            window.appState.elems = {};
+// Function called when body is loaded
+function bodyIsLoaded() {
+    // Setup common state
+    window.appState = {
+        configObj: {},
+        spinner: new Spinner(),
+        uiInSetupMode: false,
+    };
+    window.appState.elems = {};
 
-            // Add the Machines
-            const machines = new Machines();
-            window.appState.elems[machines.getId()] = machines;
+    // Add the Machines
+    const machines = new Machines();
+    window.appState.elems[machines.getId()] = machines;
 
-            // Add the Screen Mirror
-            const screenMirror = new ScreenMirror();
-            window.appState.elems[screenMirror.getId()] = screenMirror;
+    // Add the Screen Mirror
+    const screenMirror = new ScreenMirror();
+    window.appState.elems[screenMirror.getId()] = screenMirror;
 
-            // Add the Debugger
-            const z80Debugger = new Debugger();
-            window.appState.elems[z80Debugger.getId()] = z80Debugger;
+    // Add the Debugger
+    const z80Debugger = new Debugger();
+    window.appState.elems[z80Debugger.getId()] = z80Debugger;
 
-            // Add the File System
-            const fileSystem = new FileSystem();
-            window.appState.elems[fileSystem.getId()] = fileSystem;
+    // Add the File System
+    const fileSystem = new FileSystem();
+    window.appState.elems[fileSystem.getId()] = fileSystem;
 
-            // Wire up buttons
-            machines.setButtons(screenMirror.termShowClick, z80Debugger.debuggerShowClick);
-            
-            // Get settings and update UI
-            getAppSettingsAndUpdateUI();
-        }
+    // Wire up buttons
+    machines.setButtons(screenMirror.termShowClick, z80Debugger.debuggerShowClick);
 
-        ////////////////////////////////////////////////////////////////////////////
-        // Get and post the app settings from the server
-        ////////////////////////////////////////////////////////////////////////////
+    // Get settings and update UI
+    getAppSettingsAndUpdateUI();
+}
 
-        // Get application settings and update UI
-        async function getAppSettingsAndUpdateUI()
-        {
-            const getSettingsResponse = await fetch("/api/getsettings/nv");
-            if (getSettingsResponse.ok) {
-                const settings = await getSettingsResponse.json();
-                if ("nv" in settings) {
-                    // Extract non-volatile settings
-                    window.appState.configObj = settings.nv;
+////////////////////////////////////////////////////////////////////////////
+// Get and post the app settings from the server
+////////////////////////////////////////////////////////////////////////////
 
-                    // Common setup defaults
-                    commonSetupDefaults();
+// Get application settings and update UI
+async function getAppSettingsAndUpdateUI() {
+    const getSettingsResponse = await fetch("/api/getsettings/nv");
+    if (getSettingsResponse.ok) {
+        const settings = await getSettingsResponse.json();
+        if ("nv" in settings) {
+            // Extract non-volatile settings
+            window.appState.configObj = settings.nv;
 
-                    // Update UI
-                    commonUIUpdate();
-
-                    // Post init
-                    for (const [key, elem] of Object.entries(window.appState.elems)) {
-                        elem.postInit();
-                    }
-
-                } else {
-                    alert("getAppSettings settings missing nv section");
-                }
-            } else {
-                alert("getAppSettings failed");
-            }
-        }
-
-        // Post applicaton settings
-        function postAppSettings(okCallback, failCallback) {
-            let jsonStr = JSON.stringify(window.appState.configObj);
-            jsonStr = jsonStr.replace("\n", "\\n")
-            console.log("postAppSettings " + jsonStr);
-            ajaxPost("/api/postsettings", jsonStr, okCallback, failCallback);
-        }
-
-        ////////////////////////////////////////////////////////////////////////////
-        // UI Update
-        ////////////////////////////////////////////////////////////////////////////
-
-        function commonUIUpdate() {
-
-            // Clear the UI
-            document.getElementById("elements-area").innerHTML = "";
-
-            // Init element UI
-            for (const [key, elem] of Object.entries(window.appState.elems)) {
-
-                // Get or create the documentElement
-                const mainDocElem = commonGetOrCreateDocElem(elem.getId());
-
-                // Generate the div for the main UI
-                const elemDiv = document.createElement("div");
-                elemDiv.id = elem.getId() + "-main";
-                mainDocElem.appendChild(elemDiv);
-
-                // Populate the main div
-                elem.updateMainDiv(elemDiv);
-            }
-        }
-
-        ////////////////////////////////////////////////////////////////////////////
-        // Setup default values
-        ////////////////////////////////////////////////////////////////////////////
-
-        function commonSetupDefaults() {
-            // Initialize the elements
-            for (const [key, elem] of Object.entries(window.appState.elems)) {
-                // Config
-                if (!(elem.scaderName in window.appState.configObj)) {
-                    window.appState.configObj[elem.scaderName] = elem.defaultConfig();
-                }
-                elem.configObj = window.appState.configObj[elem.scaderName];
-                elem.objGlobalStr = `window.appState.elems['${elem.scaderName}']`;
-            }
-
-            // Ensure there is a title for the main screen
-            if (!("ScaderCommon" in window.appState.configObj)) {
-                window.appState.configObj.ScaderCommon = {
-                    name: "Scader"
-                }
-            }
-        }
-
-        ////////////////////////////////////////////////////////////////////////////
-        // Save and restart
-        ////////////////////////////////////////////////////////////////////////////
-
-        // Reset functions
-        function commonSaveAndRestart() {
-            // Save settings
-            postAppSettings(
-                () => {
-                    console.log("Post settings ok");
-                    commonRestartOnly();
-                },
-                () => {
-                    console.log("Post settings failed");
-                    alert("Save settings failed")
-                },
-            );
-        }
-
-        function commonRestartOnly() {
-            // Reset
-            ajaxGet("/api/reset");
-            window.appState.isUIInSetupMode = false;
-
-            // Update UI after a time delay
-            const controlButtons = document.getElementById("save-load-settings-buttons");
-            window.appState.spinner.spin(controlButtons);
-            setTimeout(() => {
-                window.appState.uiInSetupMode = false;
-                commonUIUpdate();
-                window.appState.spinner.stop();
-            }, 10000);
-        }
-
-        function commonRestoreDefaults() {
-            // Restore defaults
-            window.appState.configObj = {};
+            // Common setup defaults
             commonSetupDefaults();
-            commonSaveAndRestart();
-        }
 
-        ////////////////////////////////////////////////////////////////////////////
-        // UI Generation
-        ////////////////////////////////////////////////////////////////////////////
+            // Update UI
+            commonUIUpdate();
 
-        function commonGetOrCreateDocElem(elemName) {
-            // Get existing
-            let elemDocElem = document.getElementById(elemName);
-            if (elemDocElem)
-                return elemDocElem;
-            const elementsArea = document.getElementById("elements-area");
-            if (!elementsArea)
-                return null;
-            elemDocElem = document.createElement("div");
-            elemDocElem.id = elemName;
-            elementsArea.appendChild(elemDocElem);
-            return elemDocElem;
-        }
-
-        function commonGenCheckbox(parentEl, elName, cbName, label, checked) {
-            let elStr = `<div class='common-config'>`;
-                elStr += `<input type="checkbox" ${checked ? "checked" : ""} class="common-checkbox" ` +
-                        `id="${elName}-${cbName}-checkbox" name="${elName}-${cbName}-checkbox" ` +
-                        `onclick="window.appState.elems['${elName}'].${cbName}ChangeCB(this);"'>`;
-                elStr += `<label for="${elName}-enable-checkbox">${label}</label>`;
-                elStr += `</div>`;
-            parentEl.innerHTML += elStr;
-        }
-
-        ////////////////////////////////////////////////////////////////////////////
-        // AJAX
-        ////////////////////////////////////////////////////////////////////////////
-
-        // Basic AJAX GET
-        function ajaxGet(url, okCallback, failCallback, okParam) {
-            let xmlhttp = new XMLHttpRequest();
-            xmlhttp.onreadystatechange = function() {
-                if (xmlhttp.readyState == 4) {
-                    if (xmlhttp.status == 200) {
-                        if ((okCallback !== undefined) && (typeof okCallback !== 'undefined'))
-                            okCallback(xmlhttp.responseText, okParam);
-                    } else {
-                        if ((failCallback !== undefined) && (typeof failCallback !== 'undefined'))
-                            failCallback(xmlhttp);
-                    }
-                }
+            // Post init
+            for (const [key, elem] of Object.entries(window.appState.elems)) {
+                elem.postInit();
             }
-            xmlhttp.open("GET", url, true);
-            xmlhttp.send();
+
+        } else {
+            alert("getAppSettings settings missing nv section");
         }
+    } else {
+        alert("getAppSettings failed");
+    }
+}
 
-        // Basic AJAX POST
-        function ajaxPost(url, jsonStrToPos, okCallback, failCallback, okParam) {
-            const xmlhttp = new XMLHttpRequest();
-            xmlhttp.onreadystatechange = function() {
-                if (xmlhttp.readyState === 4) {
-                    if (xmlhttp.status === 200) {
-                        if ((okCallback !== undefined) && (typeof okCallback !== 'undefined'))
-                            okCallback(xmlhttp.responseText, okParam);
-                    } else {
-                        if ((failCallback !== undefined) && (typeof failCallback !== 'undefined'))
-                            failCallback(xmlhttp);
-                    }
-                }
-            };
-            xmlhttp.open("POST", url);
-            xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
-            xmlhttp.send(jsonStrToPos);
+// Post applicaton settings
+function postAppSettings(okCallback, failCallback) {
+    let jsonStr = JSON.stringify(window.appState.configObj);
+    jsonStr = jsonStr.replace("\n", "\\n")
+    console.log("postAppSettings " + jsonStr);
+    ajaxPost("/api/postsettings", jsonStr, okCallback, failCallback);
+}
+
+////////////////////////////////////////////////////////////////////////////
+// UI Update
+////////////////////////////////////////////////////////////////////////////
+
+function commonUIUpdate() {
+
+    // Clear the UI
+    document.getElementById("elements-area").innerHTML = "";
+
+    // Init element UI
+    for (const [key, elem] of Object.entries(window.appState.elems)) {
+
+        // Get or create the documentElement
+        const mainDocElem = commonGetOrCreateDocElem(elem.getId());
+
+        // Generate the div for the main UI
+        const elemDiv = document.createElement("div");
+        elemDiv.id = elem.getId() + "-main";
+        mainDocElem.appendChild(elemDiv);
+
+        // Populate the main div
+        elem.updateMainDiv(elemDiv);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////
+// Setup default values
+////////////////////////////////////////////////////////////////////////////
+
+function commonSetupDefaults() {
+    // Initialize the elements
+    for (const [key, elem] of Object.entries(window.appState.elems)) {
+        // Config
+        if (!(elem.scaderName in window.appState.configObj)) {
+            window.appState.configObj[elem.scaderName] = elem.defaultConfig();
         }
+        elem.configObj = window.appState.configObj[elem.scaderName];
+        elem.objGlobalStr = `window.appState.elems['${elem.scaderName}']`;
+    }
 
-        ////////////////////////////////////////////////////////////////////////////
-        // Utils
-        ////////////////////////////////////////////////////////////////////////////
-
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
+    // Ensure there is a title for the main screen
+    if (!("ScaderCommon" in window.appState.configObj)) {
+        window.appState.configObj.ScaderCommon = {
+            name: "Scader"
         }
+    }
+}
 
-        function highlight(e) {
-            let regionId = e.currentTarget.id;
-            let dropArea = document.getElementById(regionId);
-            dropArea.classList.add('highlight');
+////////////////////////////////////////////////////////////////////////////
+// Save and restart
+////////////////////////////////////////////////////////////////////////////
+
+// Reset functions
+function commonSaveAndRestart() {
+    // Save settings
+    postAppSettings(
+        () => {
+            console.log("Post settings ok");
+            commonRestartOnly();
+        },
+        () => {
+            console.log("Post settings failed");
+            alert("Save settings failed")
+        },
+    );
+}
+
+function commonRestartOnly() {
+    // Reset
+    ajaxGet("/api/reset");
+    window.appState.isUIInSetupMode = false;
+
+    // Update UI after a time delay
+    const controlButtons = document.getElementById("save-load-settings-buttons");
+    window.appState.spinner.spin(controlButtons);
+    setTimeout(() => {
+        window.appState.uiInSetupMode = false;
+        commonUIUpdate();
+        window.appState.spinner.stop();
+    }, 10000);
+}
+
+function commonRestoreDefaults() {
+    // Restore defaults
+    window.appState.configObj = {};
+    commonSetupDefaults();
+    commonSaveAndRestart();
+}
+
+////////////////////////////////////////////////////////////////////////////
+// UI Generation
+////////////////////////////////////////////////////////////////////////////
+
+function commonGetOrCreateDocElem(elemName) {
+    // Get existing
+    let elemDocElem = document.getElementById(elemName);
+    if (elemDocElem)
+        return elemDocElem;
+    const elementsArea = document.getElementById("elements-area");
+    if (!elementsArea)
+        return null;
+    elemDocElem = document.createElement("div");
+    elemDocElem.id = elemName;
+    elementsArea.appendChild(elemDocElem);
+    return elemDocElem;
+}
+
+function commonGenCheckbox(parentEl, elName, cbName, label, checked) {
+    let elStr = `<div class='common-config'>`;
+    elStr += `<input type="checkbox" ${checked ? "checked" : ""} class="common-checkbox" ` +
+        `id="${elName}-${cbName}-checkbox" name="${elName}-${cbName}-checkbox" ` +
+        `onclick="window.appState.elems['${elName}'].${cbName}ChangeCB(this);"'>`;
+    elStr += `<label for="${elName}-enable-checkbox">${label}</label>`;
+    elStr += `</div>`;
+    parentEl.innerHTML += elStr;
+}
+
+////////////////////////////////////////////////////////////////////////////
+// AJAX
+////////////////////////////////////////////////////////////////////////////
+
+// Basic AJAX GET
+function ajaxGet(url, okCallback, failCallback, okParam) {
+    let xmlhttp = new XMLHttpRequest();
+    xmlhttp.onreadystatechange = function () {
+        if (xmlhttp.readyState == 4) {
+            if (xmlhttp.status == 200) {
+                if ((okCallback !== undefined) && (typeof okCallback !== 'undefined'))
+                    okCallback(xmlhttp.responseText, okParam);
+            } else {
+                if ((failCallback !== undefined) && (typeof failCallback !== 'undefined'))
+                    failCallback(xmlhttp);
+            }
         }
+    }
+    xmlhttp.open("GET", url, true);
+    xmlhttp.send();
+}
 
-        function unhighlight(e) {
-            let regionId = e.currentTarget.id;
-            let dropArea = document.getElementById(regionId);
-            dropArea.classList.remove('highlight');
+// Basic AJAX POST
+function ajaxPost(url, jsonStrToPos, okCallback, failCallback, okParam) {
+    const xmlhttp = new XMLHttpRequest();
+    xmlhttp.onreadystatechange = function () {
+        if (xmlhttp.readyState === 4) {
+            if (xmlhttp.status === 200) {
+                if ((okCallback !== undefined) && (typeof okCallback !== 'undefined'))
+                    okCallback(xmlhttp.responseText, okParam);
+            } else {
+                if ((failCallback !== undefined) && (typeof failCallback !== 'undefined'))
+                    failCallback(xmlhttp);
+            }
         }
+    };
+    xmlhttp.open("POST", url);
+    xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+    xmlhttp.send(jsonStrToPos);
+}
 
+////////////////////////////////////////////////////////////////////////////
+// Utils
+////////////////////////////////////////////////////////////////////////////
 
+function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+}
+
+function highlight(e) {
+    let regionId = e.currentTarget.id;
+    let dropArea = document.getElementById(regionId);
+    dropArea.classList.add('highlight');
+}
+
+function unhighlight(e) {
+    let regionId = e.currentTarget.id;
+    let dropArea = document.getElementById(regionId);
+    dropArea.classList.remove('highlight');
+}

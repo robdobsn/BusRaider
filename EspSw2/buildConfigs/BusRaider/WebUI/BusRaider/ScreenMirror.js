@@ -239,119 +239,132 @@ class ScreenMirror {
             event.srcElement.innerHTML = "Show Terminal";
         }
     }
-
-    termKeyPressed(event) {
-        event.preventDefault();
-        let uniCh = event.charCode || event.keyCode;  // Get the Unicode value
-        // if (((uniCh >= 64) && (uniCh <= 90)) && (event.ctrlKey))
-        //     uniCh -= 64;
-        // else if (((uniCh >= 65) && (uniCh <= 90)) && (event.shiftKey == event.getModifierState("CapsLock")))
-        //     uniCh += 32;
-        let ch = String.fromCharCode(uniCh);
-        console.log(ch, "stt", uniCh, event.ctrlKey, event.shiftKey);
-        // callAjax("/api/sendKey/" + uniCh.toString());
-    }
     getKeyModCodes(event) {
         let modCodes = 0;
-        if (event.ctrlKey)
-            modCodes |= 1;
-        let uniCh = event.charCode || event.keyCode;
-        if (event.shiftKey != (event.getModifierState("CapsLock") && ((uniCh >= 65) && (uniCh <= 90))))
-            modCodes |= 2;
-        if (event.altKey)
-            modCodes |= 4;
+        // if (event.ctrlKey)
+        //     modCodes |= 1;
+        // let jsKeyCode = event.charCode || event.keyCode;
+        // if (event.shiftKey != (event.getModifierState("CapsLock") && ((jsKeyCode >= 65) && (jsKeyCode <= 90))))
+        //     modCodes |= 2;
+        // if (event.altKey)
+        //     modCodes |= 4;
+        modCodes |= (event.getModifierState("Control") ? 1 : 0);
+        modCodes |= (event.getModifierState("Shift") ? 2 : 0);
+        modCodes |= (event.getModifierState("Alt") ? 4 : 0);
         return modCodes;
     }
-    termKeyDown(event) {
+    // getUsbKeyCode(jsKeyCode) {
+    //     const keyMap = {
+    //         8: 
+    //     let usbKeyCode = jsKeyCode;
+    //     if ((jsKeyCode >= 65) && (jsKeyCode <= 90)) {
+    //         usbKeyCode = jsKeyCode - 61;
+    //     } else if ((jsKeyCode === 48)) {
+    //         usbKeyCode = 0x27;
+    //     } else if ((jsKeyCode >= 49) && (jsKeyCode <= 57)) {
+    //         usbKeyCode = jsKeyCode - 49 + 0x1e;
+    //     } else if ((jsKeyCode === 13)) {
+    //         usbKeyCode = 0x28;
+    //     } else if ((jsKeyCode === 27)) {
+    //         usbKeyCode = 0x29;
+    //     } else if ((jsKeyCode === 8)) {
+    //         usbKeyCode = 0x2a;
+    //     } else if ((jsKeyCode === 9)) {
+    //         usbKeyCode = 0x2b;
+    //     } else if ((jsKeyCode === 32)) {
+    //         usbKeyCode = 0x2c;
+    //     } else if ((jsKeyCode === 189)) {
+    //         usbKeyCode = 0x2d;
+    //     } else if ((jsKeyCode === 187)) {
+    //         usbKeyCode = 0x2e;
+    //     } else if ((jsKeyCode === 219)) {
+    //         usbKeyCode = 0x2f;
+    //     } else if ((jsKeyCode === 221)) {
+    //         usbKeyCode = 0x30;
+    //     } else if ((jsKeyCode === 220)) {
+    //         usbKeyCode = 0x31;
+    //     } else if ((jsKeyCode === 163)) {
+    //         usbKeyCode = 0x32;
+    //     } else if ((jsKeyCode === 186)) {
+    //         usbKeyCode = 0x33;
+    //     } else if ((jsKeyCode === 222)) {
+    //         usbKeyCode = 0x34;
+    //     } else if ((jsKeyCode === 192)) {
+    //         usbKeyCode = 0x35;
+    //     } else if ((jsKeyCode === 188)) {
+    //         usbKeyCode = 0x36;
+    //     } else if ((jsKeyCode === 190)) {
+    //         usbKeyCode = 0x37;
+    //     } else if ((jsKeyCode === 191)) {
+    //         usbKeyCode = 0x38;
+    //     } else if ((jsKeyCode >= 112) && (jsKeyCode <= 123)) {
+    //         usbKeyCode = jsKeyCode - 112 + 0x3a;
+    //     } else if ((jsKeyCode === 45)) {
+    //         usbKeyCode = 0x49;
+    //     } else if ((jsKeyCode === 36)) {
+    //         usbKeyCode = 0x4a;
+    //     } else if ((jsKeyCode === 33)) {
+    //         usbKeyCode = 0x4b;
+    //     } else if ((jsKeyCode === 46)) {
+    //         usbKeyCode = 0x4c;
+    //     } else if ((jsKeyCode === 35)) {
+    //         usbKeyCode = 0x4d;
+    //     } else if ((jsKeyCode === 34)) {
+    //         usbKeyCode = 0x4e;
+    //     } else if ((jsKeyCode === 39)) {
+    //         usbKeyCode = 0x4f;
+    //     } else if ((jsKeyCode === 37)) {
+    //         usbKeyCode = 0x50;
+    //     } else if ((jsKeyCode === 40)) {
+    //         usbKeyCode = 0x51;
+    //     } else if ((jsKeyCode === 38)) {
+    //         usbKeyCode = 0x52;
+    //     }
+    //     return usbKeyCode;
+    // }
+
+    termKeyboardEvent(event, isdown) {
         // console.log(event);
-        if ((event.keyCode === 16) || (event.keyCode === 17) || (event.keyCode === 18) || (event.keyCode === 20)) {
-            // Ctrl, shift or Alt
+        // if ((event.keyCode === 16) || (event.keyCode === 17) || (event.keyCode === 18) || (event.keyCode === 20)) {
+        //     // Ctrl, shift or Alt
+        //     return;
+        // }
+        let jsKeyCode = event.charCode || event.keyCode;  // Get the Unicode value
+        let usbKeyCode = -1;
+        if (event.code in jsToHidKeyMap) {
+            usbKeyCode = jsToHidKeyMap[event.code];
+        }
+        let modCodes = this.getKeyModCodes(event);
+        
+        const cmdStr = "/api/keyboard/" + isdown.toString() + "/" + jsKeyCode.toString() + "/" + usbKeyCode.toString() + "/" + modCodes.toString();
+        console.log(event.code + " --- " + cmdStr);
+        if (usbKeyCode == -1) {
             return;
         }
-        let uniCh = event.charCode || event.keyCode;  // Get the Unicode value
-        let usbKeyCode = uniCh;
-        if ((uniCh >= 65) && (uniCh <= 90)) {
-            usbKeyCode = uniCh - 61;
-        } else if ((uniCh === 48)) {
-            usbKeyCode = 0x27;
-        } else if ((uniCh >= 49) && (uniCh <= 57)) {
-            usbKeyCode = uniCh - 49 + 0x1e;
-        } else if ((uniCh === 13)) {
-            usbKeyCode = 0x28;
-        } else if ((uniCh === 27)) {
-            usbKeyCode = 0x29;
-        } else if ((uniCh === 8)) {
-            usbKeyCode = 0x2a;
-        } else if ((uniCh === 9)) {
-            usbKeyCode = 0x2b;
-        } else if ((uniCh === 32)) {
-            usbKeyCode = 0x2c;
-        } else if ((uniCh === 189)) {
-            usbKeyCode = 0x2d;
-        } else if ((uniCh === 187)) {
-            usbKeyCode = 0x2e;
-        } else if ((uniCh === 219)) {
-            usbKeyCode = 0x2f;
-        } else if ((uniCh === 221)) {
-            usbKeyCode = 0x30;
-        } else if ((uniCh === 220)) {
-            usbKeyCode = 0x31;
-        } else if ((uniCh === 163)) {
-            usbKeyCode = 0x32;
-        } else if ((uniCh === 186)) {
-            usbKeyCode = 0x33;
-        } else if ((uniCh === 222)) {
-            usbKeyCode = 0x34;
-        } else if ((uniCh === 192)) {
-            usbKeyCode = 0x35;
-        } else if ((uniCh === 188)) {
-            usbKeyCode = 0x36;
-        } else if ((uniCh === 190)) {
-            usbKeyCode = 0x37;
-        } else if ((uniCh === 191)) {
-            usbKeyCode = 0x38;
-        } else if ((uniCh >= 112) && (uniCh <= 123)) {
-            usbKeyCode = uniCh - 112 + 0x3a;
-        } else if ((uniCh === 45)) {
-            usbKeyCode = 0x49;
-        } else if ((uniCh === 36)) {
-            usbKeyCode = 0x4a;
-        } else if ((uniCh === 33)) {
-            usbKeyCode = 0x4b;
-        } else if ((uniCh === 46)) {
-            usbKeyCode = 0x4c;
-        } else if ((uniCh === 35)) {
-            usbKeyCode = 0x4d;
-        } else if ((uniCh === 34)) {
-            usbKeyCode = 0x4e;
-        } else if ((uniCh === 39)) {
-            usbKeyCode = 0x4f;
-        } else if ((uniCh === 37)) {
-            usbKeyCode = 0x50;
-        } else if ((uniCh === 40)) {
-            usbKeyCode = 0x51;
-        } else if ((uniCh === 38)) {
-            usbKeyCode = 0x52;
-        }
-
-        const cmdStr = "/api/sendKey/" + uniCh.toString() + "/" + usbKeyCode.toString() + "/" + getKeyModCodes(event).toString();
-        console.log(cmdStr);
         ajaxGet(cmdStr);
         event.preventDefault();
         //     if (event.ctrlKey) {
         //         event.preventDefault();
-        //         uniCh -= 64;
-        //         let ch = String.fromCharCode(uniCh);
-        //         console.log(ch, "stt", uniCh, event.ctrlKey, event.shiftKey);
-        //         callAjax("/api/sendKey/" + uniCh.toString());
+        //         jsKeyCode -= 64;
+        //         let ch = String.fromCharCode(jsKeyCode);
+        //         console.log(ch, "stt", jsKeyCode, event.ctrlKey, event.shiftKey);
+        //         callAjax("/api/sendkey/" + jsKeyCode.toString());
         //         return;
         //     }
-        // } else if (uniCh == 38) {
-        //     callAjax("/api/sendKey/");
-        // if (((uniCh >= 64) && (uniCh <= 90)) && (event.ctrlKey))
-        //     uniCh -= 64;
-        // else if (((uniCh >= 65) && (uniCh <= 90)) && (event.shiftKey == event.getModifierState("CapsLock")))
-        //     uniCh += 32;
+        // } else if (jsKeyCode == 38) {
+        //     callAjax("/api/sendkey/");
+        // if (((jsKeyCode >= 64) && (jsKeyCode <= 90)) && (event.ctrlKey))
+        //     jsKeyCode -= 64;
+        // else if (((jsKeyCode >= 65) && (jsKeyCode <= 90)) && (event.shiftKey == event.getModifierState("CapsLock")))
+        //     jsKeyCode += 32;
+    }
+
+    termKeyDown(event) {
+        this.termKeyboardEvent(event, 1);
+    }
+
+    termKeyUp(event) {
+        this.termKeyboardEvent(event, 0);
     }
 
     validateHexInput(event, memDumpElementId) {
@@ -384,15 +397,15 @@ class ScreenMirror {
             `
                 <div id="term-panel" tabindex="110" class="layout-region">
                     <div id="term-text-sub-panel" class="uiPanelSub">
-                        <div id="term-text" class="term-text"></div>
+                        <div id="term-text" class="term-text" tabindex="0"></div>
                     </div>
                 </div>
             `;
-        document.getElementById('term-text').addEventListener('onkeypress', (event) => { 
-            this.termKeyPressed(event);
-        }, true);
-        document.getElementById('term-text').addEventListener('onkeydown', (event) => {
+        document.getElementById('term-text').addEventListener('keydown', (event) => {
             this.termKeyDown(event)
+        }, true);
+        document.getElementById('term-text').addEventListener('keyup', (event) => { 
+            this.termKeyUp(event);
         }, true);
         // document.getElementById('term-panel').addEventListener('onkeydown', (event) => {
         //     this.termKeyDown(event)

@@ -7,20 +7,46 @@ class Z80System {
         this.z80Proc = new Z80(this.memAccess);
         this.machine = null;
         this.isRunning = false;
+        this.keysDown = {};
+        this.resetOnExec = true;
     }
 
     setMachine(systemName) {
         console.log(`setMachine ${systemName}`);
         if (systemName === "TRS80") {
-            this.machine = new Z80TRS80(this.memAccess);
+            this.machine = new Z80TRS80(this.memAccess, this.z80Proc);
         }
     }
 
-    exec(filename) {
-        this.memAccess.load(filename);
-        this.z80Proc.reset();
-        let curState = this.z80Proc.getState();
-        console.log(curState);
+    load(filename) {
+        this.resetOnExec = true;
+        const fileExt = filename.substr(filename.lastIndexOf('.') + 1).toLowerCase();
+        // console.log(`load ${filename} ${fileExt}`);
+        if ((fileExt === 'bin') || (fileExt === 'rom')) {
+            this.memAccess.load(filename);
+        } else if (fileExt === 'cmd') {
+            if (this.machine) {
+                this.machine.loadCmdFile(filename);
+                this.resetOnExec = false;
+            }
+        }
+    }
+
+    exec() {
+        // Reset if required
+        if (this.resetOnExec) {
+            this.z80Proc.reset();
+        } else {
+            // console.log(`exec from ${this.z80Proc.pc.toString(16)}`);
+            // this.memAccess.dumpMem(0x5b00, 0x100);
+            // this.memAccess.dumpMem(0x7f00, 0x100);
+        }
+        for (let i = 0; i < 10; i++) {
+            console.log(`--------------------------------------------------------------------------------`);
+            let curState = this.z80Proc.getState();
+            console.log(curState);
+            this.z80Proc.run_instruction();
+        }
         this.isRunning = true; 
         // curState = this.z80Proc.getState();
         // console.log(curState);
@@ -41,11 +67,10 @@ class Z80System {
     updateMirrorScreen(websocket, screenCache) {
         // console.log(`updateMirrorScreen screenCache ${screenCache} mc ${this.machine}`);
         if (this.machine) {
-            screenCache = this.machine.getScreenIfUpdated(screenCache);
-            // console.log(`updateMirrorScreen screenCache ${screenCache}`);
-            if (screenCache) {
+            let screenInfo = this.machine.getScreenIfUpdated(screenCache);
+            if (screenInfo) {
                 const screenSize = this.machine.getScreenSize();
-                const msgBuf = new Uint8Array(10 + screenCache.length);
+                const msgBuf = new Uint8Array(10 + screenInfo.length);
                 msgBuf[0] = 0x00;
                 msgBuf[1] = 0x01;
                 msgBuf[2] = (screenSize[0] >> 8) & 0xff;
@@ -56,14 +81,34 @@ class Z80System {
                 msgBuf[7] = 0x01;
                 msgBuf[8] = 0x00;
                 msgBuf[9] = 0x00;
-                msgBuf.set(screenCache, 10);
+                msgBuf.set(screenInfo, 10);
                 websocket.send(msgBuf);
-                console.log(`screenCache: ${msgBuf.length}`);
-                return screenCache;
+                // console.log(`screenInfo: ${msgBuf.length}`);
+                return screenInfo;
             }
         }
-        return null;
+        return screenCache;
     }
-};
+
+    keyboard(isdown, asciiCode, usbKeyCode, modCode) {
+    }
+
+    keyboard(isdown, asciiCode, usbKeyCode, modCode) {
+        // Track key down/up state
+        // console.log(`keyboard ${isdown} ${asciiCode} ${usbKeyCode} ${modCode}`);
+        if (isdown !== '0') {
+            this.keysDown[usbKeyCode] = modCode;
+            // console.log(`keyboard down ${usbKeyCode}`);
+        } else {
+            delete this.keysDown[usbKeyCode];
+            // console.log(`keyboard up ${usbKeyCode}`);
+        }
+
+        // Send to machine
+        if (this.machine) {
+            this.machine.keyboardKey(this.keysDown);
+        }
+    }    
+}
 
 module.exports = Z80System;
