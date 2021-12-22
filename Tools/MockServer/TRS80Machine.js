@@ -11,6 +11,11 @@ class TRS80Machine {
     constructor(memAccess, z80Proc) {
         this.memAccess = memAccess;
         this.z80Proc = z80Proc;
+
+        // Init joystick
+        for (let i = 0; i < 256; i++) {
+            this.memAccess.io_write((i << 8) + 0x13, 0xff);
+        }
     }
 
     getScreenMem() {

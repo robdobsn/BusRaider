@@ -120,21 +120,23 @@ class ScreenMirror {
             if (trs80Font == 0x01) {
                 console.log("TRS80 font");
                 termText.classList.add("term-text-trs80-l1-2x3");
-            }
 
-            // Move to the start of data
-            chPos = 10;
+                // Move to the start of data
+                chPos = 10;
 
-            // Add the data
-            let termTextStr = "";
-            for (let i = 0; i < mirrorHeight; i++) {
-                let line = "";
-                for (let j = 0; j < mirrorWidth; j++) {
-                    line += String.fromCharCode(binData[chPos++]);
+                // Add the data
+                let termTextStr = "";
+                for (let i = 0; i < mirrorHeight; i++) {
+                    let line = "";
+                    for (let j = 0; j < mirrorWidth; j++) {
+                        line += String.fromCharCode(0xe000 + binData[chPos++]);
+                    }
+                    termTextStr += line + "<br>";
                 }
-                termTextStr += line + "<br>";
+                termText.innerHTML = termTextStr;
+            } else {
+                termText.classList.remove("term-text-trs80-l1-2x3");
             }
-            termText.innerHTML = termTextStr;
         }
 
 

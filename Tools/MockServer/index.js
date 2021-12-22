@@ -203,7 +203,7 @@ async function run() {
     });
 
     app.get('/api/keyboard/:isdown/:asciicode/:keycode/:modifiers', async function (req, res) {
-        console.log(`keyboard isdown ${req.params.isdown} ascii ${req.params.asciicode} keycode ${req.params.keycode} mod ${req.params.modifiers}`)
+        // console.log(`keyboard isdown ${req.params.isdown} ascii ${req.params.asciicode} keycode ${req.params.keycode} mod ${req.params.modifiers}`)
         z80System.keyboard(req.params.isdown, req.params.asciicode, req.params.keycode, req.params.modifiers);
         res.json({ "rslt": "ok" })
     });
