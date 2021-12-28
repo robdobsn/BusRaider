@@ -630,10 +630,9 @@ progress::-webkit-progress-value {
 #debugger-disasm {
     overflow: auto;
 }
-/* #debugger-panel {
-    resize: vertical;
-    overflow: hidden;
-} */
+#disasm-cur-pc {
+    background-color: #404040;
+}
 @font-face {
     font-family: "TRS80L1_2x3";
     src: url("./TRS80L1_2x3.ttf");

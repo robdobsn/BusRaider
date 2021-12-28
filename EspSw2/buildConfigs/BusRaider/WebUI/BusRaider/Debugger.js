@@ -209,7 +209,7 @@ class Debugger {
                 }
                 disasmLines.push(lineStr + " " + disRslt.dasm);
                 curAddr = disRslt.nextAddr;
-                if (curAddr < curPCAddr) {
+                if (curAddr <= curPCAddr) {
                     curPCLineIdx = disasmLines.length;
                 }
             }
@@ -219,8 +219,9 @@ class Debugger {
             }
             disasmText += "</code></pre>";
             el.innerHTML = disasmText;
+            const lineHeight = document.getElementById("disasm-cur-pc").offsetHeight;
             let scrollToLineEl = document.getElementById("disasm-cur-pc");
-            el.scrollTop = scrollToLineEl.offsetTop - el.offsetTop;
+            el.scrollTop = scrollToLineEl.offsetTop - el.offsetTop - lineHeight;
         }
         this.showHexDumps();
     }
