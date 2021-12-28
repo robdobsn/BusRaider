@@ -622,7 +622,18 @@ progress::-webkit-progress-value {
     padding: 1px;
     font-size: 2.5rem;
 }
-
+#debugger-disregs {
+    resize: vertical;
+    overflow: hidden;
+    height: 400px;
+}
+#debugger-disasm {
+    overflow: auto;
+}
+/* #debugger-panel {
+    resize: vertical;
+    overflow: hidden;
+} */
 @font-face {
     font-family: "TRS80L1_2x3";
     src: url("./TRS80L1_2x3.ttf");

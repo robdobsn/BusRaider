@@ -146,7 +146,7 @@ async function run() {
 
     app.get('/api/reset', async function (req, res) {
         console.log("Reset ESP32");
-        res.json({ "rslt": "ok" })
+        res.json({ "rslt": "ok" });
     });
 
     app.get('/api/querystatus', async function (req, res) {
@@ -181,7 +181,7 @@ async function run() {
             curState.status.machineCur = req.body.name;
             z80System.setMachine(req.body.name);
         }
-        res.json({ "rslt": "ok" })
+        res.json({ "rslt": "ok" });
     });
 
     app.post('/api/targetcmd/clockhzset', async function (req, res) {
@@ -189,17 +189,46 @@ async function run() {
         if ("clockHz" in req.body) {
             curState.status.clockHz = req.body.clockHz;
         }
-        res.json({ "rslt": "ok" })
+        res.json({ "rslt": "ok" });
     });
 
     app.get('/api/targetcmd/mirrorscreenon', async function (req, res) {
-        console.log(`mirrorscreenon ${req.params}`)
-        res.json({ "rslt": "ok" })
+        console.log(`mirrorscreenon ${req.params}`);
+        res.json({ "rslt": "ok" });
     });
 
     app.get('/api/targetcmd/mirrorscreenoff', async function (req, res) {
-        console.log(`mirrorscreenoff ${req.params}`)
-        res.json({ "rslt": "ok" })
+        console.log(`mirrorscreenoff ${req.params}`);
+        res.json({ "rslt": "ok" });
+    });
+
+    app.get('/api/targetcmd/rd/:start/:len', async function (req, res) {
+        console.log(`rd ${req.params.start} ${req.params.len}`);
+        const start = parseInt(req.params.start, 16);
+        const len = parseInt(req.params.len, 16);
+        const data = z80System.getDump(start, len);
+        res.json({ "rslt": "ok", "addr":req.params.start, "data": data });
+    });
+
+    app.get('/api/targetcmd/debugbreak', async function (req, res) {
+        z80System.break();
+        const mcStateResp = Object.assign(z80System.getState(), { "rslt": "ok" });
+        console.log(`debugbreak resp: ${JSON.stringify(mcStateResp)}`);
+        res.json(mcStateResp);
+    });
+
+    app.get('/api/targetcmd/debugcontinue', async function (req, res) {
+        z80System.continue();
+        const mcStateResp = Object.assign(z80System.getState(), { "rslt": "ok" });
+        console.log(`debugcontinue resp: ${JSON.stringify(mcStateResp)}`);
+        res.json(mcStateResp);
+    });
+
+    app.get('/api/targetcmd/debugstepin', async function (req, res) {
+        z80System.step();
+        const mcStateResp = Object.assign(z80System.getState(), { "rslt": "ok" });
+        console.log(`debugstepin resp: ${JSON.stringify(mcStateResp)}`);
+        res.json(mcStateResp);
     });
 
     app.get('/api/keyboard/:isdown/:asciicode/:keycode/:modifiers', async function (req, res) {

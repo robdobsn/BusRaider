@@ -385,14 +385,6 @@ class ScreenMirror {
         let addr = parseInt(event.target.value, 16);
         this.showHexDump(isNaN(addr) ? 0 : addr, memDumpElementId)
     }
-    showHexDumps() {
-        let el = document.getElementById('debugger-mem1-addr');
-        let addr = parseInt(el.value, 16);
-        this.showHexDump(addr, 'debugger-mem1');
-        el = document.getElementById('debugger-mem2-addr');
-        addr = parseInt(el.value, 16);
-        this.showHexDump(addr, 'debugger-mem2');
-    }
 
     updateMainDiv(docElem) {
         docElem.innerHTML =

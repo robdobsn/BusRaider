@@ -257,3 +257,10 @@ function unhighlight(e) {
     let dropArea = document.getElementById(regionId);
     dropArea.classList.remove('highlight');
 }
+
+function intToHex(val, digits, uc=true) {
+    let st = "0000" + val.toString(16);
+    if (uc)
+        st = st.toUpperCase();
+    return st.slice(st.length-digits);
+}

@@ -5,26 +5,28 @@ class MemAccess {
         this.ioSpace = new Uint8Array(0x10000);
     }
     mem_read(addr) {
-        if ((addr >= 0) && (addr < 0x10000)) {
-            return this.addrSpace[addr];
+        if (addr > 65535) {
+            addr = addr % 0x10000;
         }
-        return 0;
+        return this.addrSpace[addr];
     }
     mem_write(addr, data) {
-        if ((addr >= 0) && (addr < 0x10000)) {
-            this.addrSpace[addr] = data;
+        if (addr > 65535) {
+            addr = addr % 0x10000;
         }
+        this.addrSpace[addr] = data;
     }
     io_read(addr) {
-        if ((addr >= 0) && (addr < 0x10000)) {
-            return this.ioSpace[addr];
+        if (addr > 65535) {
+            addr = addr % 0x10000;
         }
-        return 0;
+        return this.ioSpace[addr];
     }
     io_write(addr, data) {
-        if ((addr >= 0) && (addr < 0x10000)) {
-            this.ioSpace[addr] = data;
+        if (addr > 65535) {
+            addr = addr % 0x10000;
         }
+        this.ioSpace[addr] = data;
     }
     blockRead(start, len, isIo) {
         if (isIo) {
@@ -50,16 +52,22 @@ class MemAccess {
         }
         console.log(`Loaded ${mem.length} bytes from ${filename}`);
     }
+    memToHex(start, len, sep) {
+        let hexStr = "";
+        for (let i = start; i < start+len; i++) {
+            hexStr += this.addrSpace[i % 0x10000].toString(16).padStart(2, '0') + sep;
+        }
+        return hexStr;
+    }
     dumpMem(start, len) {
         // const hexStr = this.addrSpace.slice(start, start + len)
         //     .map(x => x.toString(16).padStart(2, '0'))
         //     .join('');
         // console.log(hexStr);
-        let hexStr = "";
-        for (let i = 0; i < len; i++) {
-            hexStr += this.addrSpace[start + i].toString(16).padStart(2, '0') + " ";
-        }
-        console.log(hexStr);
+        console.log(this.memToHex(start, len, " "));
+    }
+    getDump(addr, len) {
+        return this.memToHex(addr, len, "");
     }
 };
 

@@ -9,6 +9,8 @@ class Z80System {
         this.isRunning = false;
         this.keysDown = {};
         this.resetOnExec = true;
+        this.dumpBytesBeforePC = 0x40;
+        this.dumpBytesTotal = 0x100;
     }
 
     setMachine(systemName) {
@@ -53,15 +55,41 @@ class Z80System {
         // this.memAccess.dumpMem(0x3c00, 0x400);
         this.processorTick = setInterval(() => {
             for (let i = 0; i < 100; i++) {
+                if (!this.isRunning) {
+                    break;
+                }
                 this.step();
             }
         }, 1);
     }
 
     step() {
-        if (this.isRunning) {
-            this.z80Proc.run_instruction();
+        this.z80Proc.run_instruction();
+    }
+
+    break() {
+        this.isRunning = false;
+    }
+
+    continue() {
+        this.isRunning = true;
+    }
+
+    getDump(addr, size) {
+        return this.memAccess.getDump(addr, size);
+    }
+
+    getState() {
+        const regs = this.z80Proc.getState();
+        let memDumpStart = regs.pc - this.dumpBytesBeforePC;
+        if (memDumpStart < 0) {
+            memDumpStart = 0;
         }
+        return { 
+            regs: regs,
+            addr: memDumpStart,
+            mem: this.memAccess.getDump(memDumpStart, this.dumpBytesTotal)
+        };
     }
 
     updateMirrorScreen(websocket, screenCache) {
@@ -88,9 +116,6 @@ class Z80System {
             }
         }
         return screenCache;
-    }
-
-    keyboard(isdown, asciiCode, usbKeyCode, modCode) {
     }
 
     keyboard(isdown, asciiCode, usbKeyCode, modCode) {
