@@ -222,25 +222,40 @@ class ScreenMirror {
         //     this.state.term.showString(eventInfo.val);
 
     }
-
-    termShowClick(event) {
-        // console.log(event);
-        event.srcElement.classList.toggle("radio-on");
-        let termPanel = document.getElementById("term-panel");
-        if (event.srcElement.classList.contains("radio-on")) {
+    termShow(show) {
+        // Show panel
+        const termPanel = document.getElementById("term-panel");
+        if (show) {
             termPanel.classList.remove("panel-hidden");
             ajaxGet("/api/targetcmd/mirrorscreenon");
-            document.onkeydown = "termKeyDown(event)";
-            event.srcElement.innerHTML = "Hide Terminal";
+            // document.onkeydown = "termKeyDown(event)";
             termPanel.focus();
         }
         else {
+            const termPanel = document.getElementById("term-panel");
             termPanel.classList.add("panel-hidden");
             ajaxGet("/api/targetcmd/mirrorscreenoff");
-            document.onkeydown = null;
-            event.srcElement.innerHTML = "Show Terminal";
+            // document.onkeydown = null;
+        }
+
+        // Update button
+        const termButton = document.getElementById("btn-term-show");
+        if (termButton) {
+            if (show) {
+                termButton.innerHTML = "Hide Screen";
+                termButton.classList.add("radio-on");
+            } else {
+                termButton.innerHTML = "Show Screen";
+                termButton.classList.remove("radio-on");
+            }
         }
     }
+
+    termShowClick(event) {
+        // console.log(event);
+        this.termShow(!event.srcElement.classList.contains("radio-on"));
+    }
+
     getKeyModCodes(event) {
         let modCodes = 0;
         // if (event.ctrlKey)
@@ -386,10 +401,10 @@ class ScreenMirror {
         this.showHexDump(isNaN(addr) ? 0 : addr, memDumpElementId)
     }
 
-    updateMainDiv(docElem) {
+    updateMainDiv(docElem, urlParams) {
         docElem.innerHTML =
             `
-                <div id="term-panel" tabindex="110" class="layout-region">
+                <div id="term-panel" tabindex="110" class="layout-region panel-hidden">
                     <div id="term-text-sub-panel" class="uiPanelSub">
                         <div id="term-text" class="term-text" tabindex="0"></div>
                     </div>
@@ -401,6 +416,9 @@ class ScreenMirror {
         document.getElementById('term-text').addEventListener('keyup', (event) => { 
             this.termKeyUp(event);
         }, true);
+        if (urlParams.get("screen") === '1') {
+            this.termShow(true);
+        }
         // document.getElementById('term-panel').addEventListener('onkeydown', (event) => {
         //     this.termKeyDown(event)
         // });

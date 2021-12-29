@@ -1,3 +1,4 @@
+
 class Debugger {
     constructor() {
         this.state = {
@@ -9,6 +10,7 @@ class Debugger {
         this.memory = new Memory();
         this.port = new Port();
         this.z80 = new Z80(this.memory, this.port, true);
+        this.breakpoints = new Breakpoints();
     }
 
     postInit() {
@@ -71,10 +73,9 @@ class Debugger {
         console.log(jsonRslt, elementId);
         const rslt = JSON.parse(jsonRslt);
         const memData = rslt.data;
-        const memAddr = rslt.addr;
+        let addr = rslt.addr;
         const el = document.getElementById(elementId);
         let dumpHtml = "";
-        let addr = parseInt(memAddr, 16);
         for (let i = 0; i < memData.length; i += 2) {
             if (i % 32 === 0) {
                 if (i !== 0)
@@ -191,6 +192,7 @@ class Debugger {
             const el = document.getElementById("debugger-disasm");
             this.memory.setFromHexStr(mcRsltObj.addr, mcRsltObj.mem);
             let disasmLines = []
+            let disasmBPs = []
             let curAddr = mcRsltObj.addr;
             const memLen = mcRsltObj.mem.length;
             let curPCLineIdx = 0;
@@ -208,25 +210,54 @@ class Debugger {
                     }
                 }
                 disasmLines.push(lineStr + " " + disRslt.dasm);
+                disasmBPs.push({addr: curAddr, bp: this.breakpoints.bpAt(curAddr)});
                 curAddr = disRslt.nextAddr;
                 if (curAddr <= curPCAddr) {
                     curPCLineIdx = disasmLines.length;
                 }
             }
-            let disasmText = "<pre><code>";
+            let disasmText = `<pre class="disasm-code">`;
             for (let i = 0; i < disasmLines.length; i++) {
-                disasmText += (curPCLineIdx == i ? `<div id="disasm-cur-pc">` : `<div>`) + disasmLines[i] + '</div>';
+                disasmText += `<div class="disasm-row"><span class="disasm-col-bp" data-addr="${disasmBPs[i].addr}">`;
+                disasmText += `<svg class="icon-bp ${disasmBPs[i].bp?'icon-bp-on':''}" data-addr="${disasmBPs[i].addr}"><use data-addr="${disasmBPs[i].addr}" xlink:href="#icon-red-dot"></use></svg>`;
+                disasmText += `</span><span class="disasm-col" `;
+                disasmText += (curPCLineIdx == i ? `id="disasm-cur-pc">` : `>`) + disasmLines[i] + '</span>';
+                disasmText += "</div>";
             }
-            disasmText += "</code></pre>";
+            disasmText += "</pre>";
             el.innerHTML = disasmText;
-            const lineHeight = document.getElementById("disasm-cur-pc").offsetHeight;
+            const lineHeight = document.getElementById("disasm-cur-pc").parentElement.offsetHeight;
             let scrollToLineEl = document.getElementById("disasm-cur-pc");
             el.scrollTop = scrollToLineEl.offsetTop - el.offsetTop - lineHeight;
+            // make breakpoint icons clickable
+            const bpEls = document.getElementsByClassName("disasm-col-bp");
+            for (let i = 0; i < bpEls.length; i++) {
+                bpEls[i].addEventListener("click", (e) => {
+                    console.log(`bp click ${e.target.dataset.addr}`);
+                    this.breakpoints.toggle(e.target.dataset.addr);
+                    let targetEl = e.target;
+                    if (e.target.classList.contains("disasm-col-bp")) {
+                        targetEl = e.target.firstElementChild;
+                    } else if (!e.target.classList.contains("icon-bp")) {
+                        targetEl = e.target.parentElement;
+                    }
+                    targetEl.classList.toggle("icon-bp-on");
+                    this.sendBreakpoints();
+                });
+            }
         }
         this.showHexDumps();
     }
 
-    updateMainDiv(docElem) {
+    sendBreakpoints() {
+        const bpJson = this.breakpoints.getJson();
+        ajaxPost('/api/targetcmd/setbps', JSON.stringify(bpJson));
+    }
+
+    updateMainDiv(docElem, urlParams) {
+        if (urlParams.get("debugger") === '0') {
+            return;
+        }
         docElem.innerHTML =
             `
             <div id="debugger-panel" class="layout-region panel-hidden">

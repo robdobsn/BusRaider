@@ -32,8 +32,8 @@ function bodyIsLoaded() {
     const fileSystem = new FileSystem();
     window.appState.elems[fileSystem.getId()] = fileSystem;
 
-    // Wire up buttons
-    machines.setButtons(screenMirror.termShowClick, z80Debugger.debuggerShowClick);
+    // Wire up modules
+    machines.setModules(screenMirror, z80Debugger);
 
     // Get settings and update UI
     getAppSettingsAndUpdateUI();
@@ -88,6 +88,9 @@ function commonUIUpdate() {
     // Clear the UI
     document.getElementById("elements-area").innerHTML = "";
 
+    // Get URL params
+    const urlParams = new URLSearchParams(window.location.search);
+
     // Init element UI
     for (const [key, elem] of Object.entries(window.appState.elems)) {
 
@@ -100,7 +103,7 @@ function commonUIUpdate() {
         mainDocElem.appendChild(elemDiv);
 
         // Populate the main div
-        elem.updateMainDiv(elemDiv);
+        elem.updateMainDiv(elemDiv, urlParams);
     }
 }
 

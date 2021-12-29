@@ -575,6 +575,7 @@ progress::-webkit-progress-value {
     line-height: 0.2rem;
     min-height: inherit;
     padding: 1px;
+    width: 30%;
 }
 .debugger-memory {
     background-color: #000000;
@@ -632,6 +633,33 @@ progress::-webkit-progress-value {
 }
 #disasm-cur-pc {
     background-color: #404040;
+}
+.disasm-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+}
+.disasm-col-bp {
+    display: flex;
+    flex-direction: column;
+    width: 16px;
+}
+.disasm-col {
+    display: flex;
+    flex-direction: column;
+    flex-basis: 100%;
+    flex: 1;
+}
+.icon-bp {
+    width: 10px;
+    height: 10px;
+    vertical-align: middle;
+    margin-top: 7px;
+    opacity: 0;
+}
+.icon-bp-on {
+    opacity: 1;
 }
 @font-face {
     font-family: "TRS80L1_2x3";

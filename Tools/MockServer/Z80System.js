@@ -11,6 +11,7 @@ class Z80System {
         this.resetOnExec = true;
         this.dumpBytesBeforePC = 0x40;
         this.dumpBytesTotal = 0x100;
+        this.execbps = {};
     }
 
     setMachine(systemName) {
@@ -65,6 +66,9 @@ class Z80System {
 
     step() {
         this.z80Proc.run_instruction();
+        if (this.z80Proc.getState().pc in this.execbps) {
+            this.isRunning = false;
+        }
     }
 
     break() {
@@ -133,7 +137,11 @@ class Z80System {
         if (this.machine) {
             this.machine.keyboardKey(this.keysDown);
         }
-    }    
+    }
+
+    setExecBps(execbps) {
+        this.execbps = execbps;
+    }
 }
 
 module.exports = Z80System;

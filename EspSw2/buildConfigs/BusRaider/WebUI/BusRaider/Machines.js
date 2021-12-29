@@ -12,13 +12,13 @@ class Machines {
         this.friendlyName = "Machines";
         this.configObj = {};
         this.objGlobalStr = "";
-        this.showTerminalCB = null;
-        this.showDebuggerCB = null;
+        this.screenMirrorObj = null;
+        this.debuggerObj = null;
     }
 
-    setButtons(showTerminalCB, showDebuggerCB) {
-        this.showTerminalCB = showTerminalCB;
-        this.showDebuggerCB = showDebuggerCB;
+    setModules(screenMirrorObj, debuggerObj) {
+        this.screenMirrorObj = screenMirrorObj;
+        this.debuggerObj = debuggerObj;
     }
 
     postInit() {
@@ -398,7 +398,10 @@ class Machines {
         }
     }
 
-    updateMainDiv(docElem) {
+    updateMainDiv(docElem, urlParams) {
+        if (urlParams.get("machines") === '0') {
+            return;
+        }
         docElem.innerHTML =
             `
             <div id="machine-select-area" class="layout-region">
@@ -436,7 +439,8 @@ class Machines {
                         <input id="clock-freq-hz" type="number" max=50.0 min=0 value=1.0 step=0.1 class="clock-freq"">
                         <label>MHz</label>
                     </div>
-                    <span id="btn-term-show" class="button radio">Show Terminal</span>
+                    <span id="btn-term-show-new-window" class="button radio">Show Screen in New Window</span>
+                    <span id="btn-term-show" class="button radio">Show Screen</span>
                     <span id="btn-debugger-show" class="button radio">Show Debugger</span>
                 </div>
             </div>
@@ -444,13 +448,19 @@ class Machines {
         document.getElementById('btn-mc-config-toggle').addEventListener('click', (event) => this.machinePopupToggle(event));
         document.getElementById('popup-machine-ok').addEventListener('click', (event) => { event.preventDefault(); this.machineConfigOk(event); });
         document.getElementById('btn-mc-config-cancel').addEventListener('click', (event) => this.machineConfigCancel(event));
+        document.getElementById('btn-term-show-new-window').addEventListener('click', (event) => {
+            event.preventDefault();
+            let url = window.location.href;
+            url += "index.html?debugger=0&filesys=0&machines=0&screen=1";
+            window.open(url, "BusRaiderScreenWindow");
+        });
         document.getElementById('btn-term-show').addEventListener('click', (event) => {
-            if (this.showTerminalCB)
-                this.showTerminalCB(event);
+            if (this.screenMirrorObj)
+                this.screenMirrorObj.termShowClick(event);
         });
         document.getElementById('btn-debugger-show').addEventListener('click', (event) => {
-            if (this.showDebuggerCB)
-                this.showDebuggerCB(event);
+            if (this.debuggerObj)
+                this.debuggerObj.debuggerShowClick(event);
         });
         document.getElementById('clock-freq-hz').addEventListener('change', (event) => this.clockHzSet(event));
     }

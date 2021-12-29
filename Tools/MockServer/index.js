@@ -192,6 +192,14 @@ async function run() {
         res.json({ "rslt": "ok" });
     });
 
+    app.post('/api/targetcmd/setbps', async function (req, res) {
+        console.log("setbps", req.params, req.body)
+        if ("execbps" in req.body) {
+            curState.status.execbps = req.body.execbps;
+            z80System.setExecBps(req.body.execbps);
+        }
+    });
+
     app.get('/api/targetcmd/mirrorscreenon', async function (req, res) {
         console.log(`mirrorscreenon ${req.params}`);
         res.json({ "rslt": "ok" });
@@ -207,7 +215,7 @@ async function run() {
         const start = parseInt(req.params.start, 16);
         const len = parseInt(req.params.len, 16);
         const data = z80System.getDump(start, len);
-        res.json({ "rslt": "ok", "addr":req.params.start, "data": data });
+        res.json({ "rslt": "ok", "addr":start, "data": data });
     });
 
     app.get('/api/targetcmd/debugbreak', async function (req, res) {
