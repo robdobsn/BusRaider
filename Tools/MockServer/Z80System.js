@@ -104,21 +104,7 @@ class Z80System {
         if (this.machine) {
             let screenInfo = this.machine.getScreenIfUpdated(screenCache);
             if (screenInfo) {
-                const screenSize = this.machine.getScreenSize();
-                const msgBuf = new Uint8Array(10 + screenInfo.length);
-                msgBuf[0] = 0x00;
-                msgBuf[1] = 0x01;
-                msgBuf[2] = (screenSize[0] >> 8) & 0xff;
-                msgBuf[3] = screenSize[0] & 0xff;
-                msgBuf[4] = (screenSize[1] >> 8) & 0xff;
-                msgBuf[5] = screenSize[1] & 0xff;
-                msgBuf[6] = 0x00;
-                msgBuf[7] = 0x01;
-                msgBuf[8] = 0x00;
-                msgBuf[9] = 0x00;
-                msgBuf.set(screenInfo, 10);
-                websocket.send(msgBuf);
-                // console.log(`screenInfo: ${msgBuf.length}`);
+                websocket.send(this.machine.getScreenUpdateMsg(screenInfo));
             }
         }
     }

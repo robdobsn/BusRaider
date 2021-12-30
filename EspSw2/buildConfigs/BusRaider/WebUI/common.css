@@ -547,7 +547,7 @@ progress::-webkit-progress-value {
     font-size: 1rem;
     color: white;
 }
-.term-text {
+.screen-text {
     background-color: #000000;
     color: white;
     width: 100%;
@@ -556,6 +556,13 @@ progress::-webkit-progress-value {
     line-height: 0.2rem;
     min-height: inherit;
     padding: 1px;
+}
+.screen-canvas {
+    width: 100%;
+    background-color: #000000;
+    height: auto;
+    padding: 1px;
+    min-height: inherit;
 }
 #debugger-disasm {
     background-color: #000000;
@@ -603,7 +610,7 @@ progress::-webkit-progress-value {
 .regs-val {
     font-weight: bold;
 }
-.term-panel {
+.screen-panel {
     min-height: 1.2rem;
 }
 .radio-on {
@@ -612,7 +619,7 @@ progress::-webkit-progress-value {
 .panel-hidden {
     display: none;
 }
-.term-text-trs80-l1-2x3 {
+.screen-text-trs80-l1-2x3 {
     background-color: #000000;
     color: white;
     width: 100%;

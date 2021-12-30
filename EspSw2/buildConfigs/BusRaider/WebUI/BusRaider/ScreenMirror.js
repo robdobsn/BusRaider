@@ -79,139 +79,146 @@ class ScreenMirror {
     }
 
     updateMirrorFull(binData) {
-        // console.log(`updateMirrorFull ${binData.length}`);
-        let chPos = 2;
-        // console.log(binData[2], binData[3]);
-        const mirrorWidth = (binData[chPos] << 8) + binData[chPos+1];
-        const mirrorHeight = (binData[chPos+2] << 8) + binData[chPos+3];
-        // console.log(`Mirror size ${mirrorWidth}x${mirrorHeight}`);
-
-        // Get terminal window
-        let termText = document.getElementById("term-text");
-
         // Check if this is a character terminal
-        const isCharTerminal = binData[chPos+4] == 0x00;
-        if (isCharTerminal) {
+        if (binData[6] === 0x00) {
+            this.handleCharMappedScreen(binData);
+        } else if (binData[6] === 0x01) {
+            this.handlePixelMappedScreen(binData);
+        }
+    }
 
-            // Check for TRS80 font types
-            const trs80Font = binData[chPos+5];
-            if (trs80Font == 0x01) {
-                // console.log("TRS80 font");
-                termText.classList.add("term-text-trs80-l1-2x3");
+    handleCharMappedScreen(binData) {
+        // Get terminal window
+        const termText = document.getElementById("screen-text");
 
-                // Move to the start of data
-                chPos = 10;
-
-                // Add the data
-                let termTextStr = "";
-                for (let i = 0; i < mirrorHeight; i++) {
-                    let line = "";
-                    for (let j = 0; j < mirrorWidth; j++) {
-                        line += String.fromCharCode(0xe000 + binData[chPos++]);
-                    }
-                    termTextStr += line + "<br>";
-                }
-                termText.innerHTML = termTextStr;
-            } else {
-                termText.classList.remove("term-text-trs80-l1-2x3");
-            }
+        // Check visible
+        if (termText.style.display === "none") {
+            termText.style.display = "block";
+            const termCanvas = document.getElementById("screen-canvas");
+            termCanvas.style.display = "none";
         }
 
+        // Width and height
+        const mirrorWidth = (binData[2] << 8) + binData[3];
+        const mirrorHeight = (binData[4] << 8) + binData[5];
 
-        // const SIZE_OF_MSG_CHAR_DATA = 6;
-        // const SIZE_OF_BUF_CHAR_DATA = 4;
-        // // console.log(event.data.byteLength);
-        // const binData = new Uint8Array(event.data);
-        // // Find C string terminator of JSON section
-        // function isTerm(element, index, array) {
-        //     return element === 0;
-        // }
-        // const strTermPos = binData.findIndex(isTerm);
-        // if (strTermPos + 3 < binData.byteLength) {
-        //     // Get terminal window
-        //     let termText = document.getElementById("term-text");
-        //     let anyChange = false;
-        //     // Extract screen size
-        //     let chPos = strTermPos + 1;
-        //     this.state.terminalCols = binData[chPos++];
-        //     this.state.terminalRows = binData[chPos++];
-        //     console.log("Screen dimensions cols", this.state.terminalCols, "rows", this.state.terminalRows);
-        //     if ((this.state.terminalLineData.length < this.state.terminalRows) ||
-        //         (this.state.terminalLineData[0].byteLength / SIZE_OF_BUF_CHAR_DATA < this.state.terminalCols)) {
-        //         // Start buffer (again) on screen dimensions init or change
-        //         this.state.terminalLineData = [];
-        //         termText.innerHTML = "";
-        //         for (let i = 0; i < this.state.terminalRows; i++) {
-        //             let newLine = new Uint8Array(this.state.terminalCols * SIZE_OF_BUF_CHAR_DATA);
-        //             for (let j = 0; j < this.state.terminalCols; j += 4) {
-        //                 newLine[j] = 0x20;
-        //                 newLine[j + 1] = 15;
-        //                 newLine[j + 2] = 0;
-        //                 newLine[j + 3] = 0;
-        //             }
-        //             this.state.terminalLineData.push(newLine);
-        //             let newPara = document.createElement("pre");
-        //             termText.appendChild(newPara);
-        //         }
-        //         anyChange = true;
-        //     }
+        // Check for TRS80 font types
+        const fontType = binData[7];
+        if (fontType == 0x01) {
+            // console.log("TRS80 font");
+            termText.classList.add("screen-text-trs80-l1-2x3");
 
-        //     // Extract character blocks
-        //     if (chPos + SIZE_OF_MSG_CHAR_DATA < binData.byteLength) {
-        //         for (let i = 0; i < (binData.byteLength - strTermPos - 1) / SIZE_OF_MSG_CHAR_DATA; i++) {
-        //             let col = binData[chPos];
-        //             let row = binData[chPos + 1];
-        //             // Update lines
-        //             if ((row < this.state.terminalRows) && (col < this.state.terminalCols)) {
-        //                 bufPos = col * SIZE_OF_BUF_CHAR_DATA;
-        //                 chPos += 2;
-        //                 for (let k = 0; k < SIZE_OF_BUF_CHAR_DATA; k++)
-        //                     this.state.terminalLineData[row][bufPos++] = binData[chPos++];
-        //                 anyChange = true;
-        //             }
-        //             else {
-        //                 break;
-        //             }
-        //         }
-        //     }
+            // Move to the start of data
+            let chPos = 10;
 
-        //     // Write chars
-        //     if (anyChange) {
-        //         let termLines = termText.childNodes;
-        //         for (let i = 0; i < Math.min(this.state.terminalRows, termLines.length); i++) {
-        //             let lineStr = "";
-        //             let lineData = this.state.terminalLineData[i]
-        //             for (let j = 0; j < this.state.terminalCols; j++) {
-        //                 const fore = lineData[j * SIZE_OF_BUF_CHAR_DATA + 1];
-        //                 const back = lineData[j * SIZE_OF_BUF_CHAR_DATA + 2];
-        //                 if ((fore != 15) || (back != 0))
-        //                     lineStr += "<span style=\"color:#" + this.state.termColours[fore] + ";background-color:#" + this.state.termColours[back] + ";\">";
-        //                 lineStr += String.fromCharCode(lineData[j * SIZE_OF_BUF_CHAR_DATA]);
-        //                 if ((fore != 15) || (back != 0))
-        //                     lineStr += "</span>";
-        //             }
-        //             termLines[i].innerHTML = lineStr;
-        //         }
-        //     }
-        // }
-
-        // let eventInfo = JSON.parse(event.data);
-        // if (eventInfo && eventInfo.dataType === "key")
-        //     this.state.term.showString(eventInfo.val);
-
+            // Add the data
+            let termTextStr = "";
+            for (let i = 0; i < mirrorHeight; i++) {
+                let line = "";
+                for (let j = 0; j < mirrorWidth; j++) {
+                    line += String.fromCharCode(0xe000 + binData[chPos++]);
+                }
+                termTextStr += line + "<br>";
+            }
+            termText.innerHTML = termTextStr;
+        } else {
+            termText.classList.remove("screen-text-trs80-l1-2x3");
+        }
     }
+
+
+    // const SIZE_OF_MSG_CHAR_DATA = 6;
+    // const SIZE_OF_BUF_CHAR_DATA = 4;
+    // // console.log(event.data.byteLength);
+    // const binData = new Uint8Array(event.data);
+    // // Find C string terminator of JSON section
+    // function isTerm(element, index, array) {
+    //     return element === 0;
+    // }
+    // const strTermPos = binData.findIndex(isTerm);
+    // if (strTermPos + 3 < binData.byteLength) {
+    //     // Get terminal window
+    //     let termText = document.getElementById("screen-text");
+    //     let anyChange = false;
+    //     // Extract screen size
+    //     let chPos = strTermPos + 1;
+    //     this.state.terminalCols = binData[chPos++];
+    //     this.state.terminalRows = binData[chPos++];
+    //     console.log("Screen dimensions cols", this.state.terminalCols, "rows", this.state.terminalRows);
+    //     if ((this.state.terminalLineData.length < this.state.terminalRows) ||
+    //         (this.state.terminalLineData[0].byteLength / SIZE_OF_BUF_CHAR_DATA < this.state.terminalCols)) {
+    //         // Start buffer (again) on screen dimensions init or change
+    //         this.state.terminalLineData = [];
+    //         termText.innerHTML = "";
+    //         for (let i = 0; i < this.state.terminalRows; i++) {
+    //             let newLine = new Uint8Array(this.state.terminalCols * SIZE_OF_BUF_CHAR_DATA);
+    //             for (let j = 0; j < this.state.terminalCols; j += 4) {
+    //                 newLine[j] = 0x20;
+    //                 newLine[j + 1] = 15;
+    //                 newLine[j + 2] = 0;
+    //                 newLine[j + 3] = 0;
+    //             }
+    //             this.state.terminalLineData.push(newLine);
+    //             let newPara = document.createElement("pre");
+    //             termText.appendChild(newPara);
+    //         }
+    //         anyChange = true;
+    //     }
+
+    //     // Extract character blocks
+    //     if (chPos + SIZE_OF_MSG_CHAR_DATA < binData.byteLength) {
+    //         for (let i = 0; i < (binData.byteLength - strTermPos - 1) / SIZE_OF_MSG_CHAR_DATA; i++) {
+    //             let col = binData[chPos];
+    //             let row = binData[chPos + 1];
+    //             // Update lines
+    //             if ((row < this.state.terminalRows) && (col < this.state.terminalCols)) {
+    //                 bufPos = col * SIZE_OF_BUF_CHAR_DATA;
+    //                 chPos += 2;
+    //                 for (let k = 0; k < SIZE_OF_BUF_CHAR_DATA; k++)
+    //                     this.state.terminalLineData[row][bufPos++] = binData[chPos++];
+    //                 anyChange = true;
+    //             }
+    //             else {
+    //                 break;
+    //             }
+    //         }
+    //     }
+
+    //     // Write chars
+    //     if (anyChange) {
+    //         let termLines = termText.childNodes;
+    //         for (let i = 0; i < Math.min(this.state.terminalRows, termLines.length); i++) {
+    //             let lineStr = "";
+    //             let lineData = this.state.terminalLineData[i]
+    //             for (let j = 0; j < this.state.terminalCols; j++) {
+    //                 const fore = lineData[j * SIZE_OF_BUF_CHAR_DATA + 1];
+    //                 const back = lineData[j * SIZE_OF_BUF_CHAR_DATA + 2];
+    //                 if ((fore != 15) || (back != 0))
+    //                     lineStr += "<span style=\"color:#" + this.state.termColours[fore] + ";background-color:#" + this.state.termColours[back] + ";\">";
+    //                 lineStr += String.fromCharCode(lineData[j * SIZE_OF_BUF_CHAR_DATA]);
+    //                 if ((fore != 15) || (back != 0))
+    //                     lineStr += "</span>";
+    //             }
+    //             termLines[i].innerHTML = lineStr;
+    //         }
+    //     }
+    // }
+
+    // let eventInfo = JSON.parse(event.data);
+    // if (eventInfo && eventInfo.dataType === "key")
+    //     this.state.term.showString(eventInfo.val);
+
     termShow(show) {
         // Show panel
-        const termPanel = document.getElementById("term-panel");
+        const screenPanel = document.getElementById("screen-panel");
         if (show) {
-            termPanel.classList.remove("panel-hidden");
+            screenPanel.classList.remove("panel-hidden");
             ajaxGet("/api/targetcmd/mirrorscreenon");
             // document.onkeydown = "termKeyDown(event)";
-            termPanel.focus();
+            screenPanel.focus();
         }
         else {
-            const termPanel = document.getElementById("term-panel");
-            termPanel.classList.add("panel-hidden");
+            screenPanel.classList.add("panel-hidden");
             ajaxGet("/api/targetcmd/mirrorscreenoff");
             // document.onkeydown = null;
         }
@@ -330,7 +337,7 @@ class ScreenMirror {
             usbKeyCode = jsToHidKeyMap[event.code];
         }
         let modCodes = this.getKeyModCodes(event);
-        
+
         const cmdStr = "/api/keyboard/" + isdown.toString() + "/" + jsKeyCode.toString() + "/" + usbKeyCode.toString() + "/" + modCodes.toString();
         console.log(event.code + " --- " + cmdStr);
         if (usbKeyCode == -1) {
@@ -382,16 +389,23 @@ class ScreenMirror {
     updateMainDiv(docElem, urlParams) {
         docElem.innerHTML =
             `
-                <div id="term-panel" tabindex="110" class="layout-region panel-hidden">
-                    <div id="term-text-sub-panel" class="uiPanelSub">
-                        <div id="term-text" class="term-text" tabindex="0"></div>
+                <div id="screen-panel" tabindex="110" class="layout-region panel-hidden">
+                    <div id="screen-sub-panel" class="uiPanelSub">
+                        <div id="screen-text" class="screen-text" tabindex="0"></div>
+                        <div id="screen-canvas" class="screen-canvas" tabindex="1" style="display:none;"></div>
                     </div>
                 </div>
             `;
-        document.getElementById('term-text').addEventListener('keydown', (event) => {
+        document.getElementById('screen-text').addEventListener('keydown', (event) => {
             this.termKeyDown(event)
         }, true);
-        document.getElementById('term-text').addEventListener('keyup', (event) => { 
+        document.getElementById('screen-text').addEventListener('keyup', (event) => {
+            this.termKeyUp(event);
+        }, true);
+        document.getElementById('screen-canvas').addEventListener('keydown', (event) => {
+            this.termKeyDown(event)
+        }, true);
+        document.getElementById('screen-canvas').addEventListener('keyup', (event) => {
             this.termKeyUp(event);
         }, true);
         if (urlParams.get("screen") === '1') {
@@ -399,10 +413,10 @@ class ScreenMirror {
             const windowHeading = document.getElementById('heading-area');
             windowHeading.innerHTML = "<h1>BusRaider Screen</h1>";
         }
-        // document.getElementById('term-panel').addEventListener('onkeydown', (event) => {
+        // document.getElementById('screen-panel').addEventListener('onkeydown', (event) => {
         //     this.termKeyDown(event)
         // });
-        // document.getElementById('term-text-sub-panel').addEventListener('onkeydown', (event) => {
+        // document.getElementById('screen-sub-panel').addEventListener('onkeydown', (event) => {
         //     this.termKeyDown(event) 
         // });
     }

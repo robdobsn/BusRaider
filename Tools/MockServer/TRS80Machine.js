@@ -11,6 +11,7 @@ class TRS80Machine {
     constructor(memAccess, z80Proc) {
         this.memAccess = memAccess;
         this.z80Proc = z80Proc;
+        this.screenSize = [64, 16];
 
         // Init joystick
         for (let i = 0; i < 256; i++) {
@@ -23,7 +24,7 @@ class TRS80Machine {
     }
 
     getScreenSize() {
-        return [64, 16];
+        return this.screenSize;
     }
 
     getScreenIfUpdated(screenCache) {
@@ -35,6 +36,23 @@ class TRS80Machine {
             return screenMem
         }
         return null;
+    }
+
+    getScreenUpdateMsg(screenInfo) {
+        const screenSize = this.screenSize;
+        const msgBuf = new Uint8Array(10 + screenInfo.length);
+        msgBuf[0] = 0x00; // API version
+        msgBuf[1] = 0x01; // Screen update
+        msgBuf[2] = (screenSize[0] >> 8) & 0xff;
+        msgBuf[3] = screenSize[0] & 0xff;
+        msgBuf[4] = (screenSize[1] >> 8) & 0xff;
+        msgBuf[5] = screenSize[1] & 0xff;
+        msgBuf[6] = 0x00; // Character based screen
+        msgBuf[7] = 0x01; // TRS80 font id
+        msgBuf[8] = 0x00; // Reserved
+        msgBuf[9] = 0x00; // Reserved
+        msgBuf.set(screenInfo, 10);
+        return msgBuf;
     }
 
     keyboardKey(keysDown) {
