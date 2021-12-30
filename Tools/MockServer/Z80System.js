@@ -116,10 +116,8 @@ class Z80System {
                 msgBuf.set(screenInfo, 10);
                 websocket.send(msgBuf);
                 // console.log(`screenInfo: ${msgBuf.length}`);
-                return screenInfo;
             }
         }
-        return screenCache;
     }
 
     keyboard(isdown, asciiCode, usbKeyCode, modCode) {

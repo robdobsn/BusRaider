@@ -1,44 +1,49 @@
 const USBKeys = require('./USBKeys.js');
-const TRS80CmdFileFormat = require('./TRS80CmdFileFormat.js');
 
-const TRS80_KEYBOARD_RAM_ADDR = 0x3800;
-const TRS80_KEYBOARD_RAM_SIZE = 0x0100;
-const TRS80_DISP_RAM_ADDR = 0x3c00;
-const TRS80_DISP_RAM_SIZE = 0x400;
-const TRS80_KEY_BYTES = 8;
+const SPECTRUM_KEYBOARD_RAM_ADDR = 0x3800;
+const SPECTRUM_KEYBOARD_RAM_SIZE = 0x0100;
+const SPECTRUM_DISP_RAM_ADDR = 0x4000;
+const SPECTRUM_DISP_RAM_SIZE = 6144;
+const SPECTRUM_ATTR_RAM_ADDR = 0x5800;
+const SPECTRUM_ATTR_RAM_SIZE = 768;
+const SPECTRUM_DISP_AND_ATTR_SIZE = SPECTRUM_DISP_RAM_SIZE + SPECTRUM_ATTR_RAM_SIZE;
 
-class TRS80Machine {
+
+class SpectrumMachine {
     constructor(memAccess, z80Proc) {
         this.memAccess = memAccess;
         this.z80Proc = z80Proc;
 
-        // Init joystick
-        for (let i = 0; i < 256; i++) {
-            this.memAccess.io_write((i << 8) + 0x13, 0xff);
-        }
     }
 
     getScreenMem() {
-        return this.memAccess.blockRead(0x3c00, 0x400, false);
+        return this.memAccess.blockRead(SPECTRUM_DISP_RAM_ADDR, SPECTRUM_DISP_AND_ATTR_SIZE, false);
     }
 
     getScreenSize() {
-        return [64, 16];
+        return [256, 192];
     }
 
     getScreenIfUpdated(screenCache) {
         let isChanged = false;
         const screenMem = this.getScreenMem();
-        if (!("cache" in screenCache)) {
+        if (screenCache === null) {
             isChanged = true;
-            // console.log(`getScreenIfUpdated screenCache.cache null`);
-        } else if (!screenCache.cache.equals(screenMem)) {
+            // console.log(`getScreenIfUpdated screenCache null`);
+        } else if (screenCache.length !== screenMem.length) {
             isChanged = true;
-            // console.log(`getScreenIfUpdated screenMem changed`);
+            // console.log(`getScreenIfUpdated screenCache length ${screenCache.length} !== ${screenMem.length}`);
+        } else {
+            for (let i = 0; i < screenCache.length; i++) {
+                if (screenCache[i] !== screenMem[i]) {
+                    isChanged = true;
+                    // console.log(`getScreenIfUpdated screenCache changed at ${i} ... ${screenCache[i]} !== ${screenMem[i]}`);
+                    break;
+                }
+            }
         }
         if (isChanged) {
-            screenCache.cache = Buffer.from(screenMem);
-            // console.log(`screen changed len ${screenCache.cache.length}`);
+            // console.log(`screen changed len ${screenMem.length}`);
             return screenMem
         }
         return null;
@@ -215,4 +220,4 @@ class TRS80Machine {
     }
 }
 
-module.exports = TRS80Machine;
+module.exports = SpectrumMachine;

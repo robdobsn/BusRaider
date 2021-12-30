@@ -1,8 +1,8 @@
 
 class MemAccess {
     constructor() {
-        this.addrSpace = new Uint8Array(0x10000);
-        this.ioSpace = new Uint8Array(0x10000);
+        this.addrSpace = Buffer.alloc(0x10000);
+        this.ioSpace = Buffer.alloc(0x10000);
     }
     mem_read(addr) {
         if (addr > 65535) {

@@ -49,13 +49,13 @@ wsServer.on('connection', socket => {
     console.log("wsServer connection open");
 
     // Cache info for screen mirroring
-    let mirrorScreenCache = new Uint8Array();
+    let mirrorScreenCache = {};
 
     function screenUpdateOnTimer(screenCache, socket) {
         // Start timer to update mirror screen
         let mirrorScreenTimer = setInterval(() => {
             // console.log('update mirror screen');
-            screenCache = z80System.updateMirrorScreen(socket, screenCache);
+            z80System.updateMirrorScreen(socket, screenCache);
             // console.log(`mirrorScreenCache ${screenCache}`);
         }, 100);
 
