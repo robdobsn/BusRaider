@@ -16,17 +16,17 @@ function bodyIsLoaded() {
     };
     window.appState.elems = {};
 
-    // Add the Machines
-    const machines = new Machines();
-    window.appState.elems[machines.getId()] = machines;
-
     // Add the Screen Mirror
     const screenMirror = new ScreenMirror();
     window.appState.elems[screenMirror.getId()] = screenMirror;
-
+    
     // Add the Debugger
     const z80Debugger = new Debugger();
     window.appState.elems[z80Debugger.getId()] = z80Debugger;
+    
+    // Add the Machines
+    const machines = new Machines();
+    window.appState.elems[machines.getId()] = machines;
 
     // Add the File System
     const fileSystem = new FileSystem();
@@ -37,6 +37,9 @@ function bodyIsLoaded() {
 
     // Get settings and update UI
     getAppSettingsAndUpdateUI();
+
+    // Open websocket
+    webSocketOpen();
 }
 
 ////////////////////////////////////////////////////////////////////////////
@@ -238,6 +241,36 @@ function ajaxPost(url, jsonStrToPos, okCallback, failCallback, okParam) {
     xmlhttp.open("POST", url);
     xmlhttp.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
     xmlhttp.send(jsonStrToPos);
+}
+
+////////////////////////////////////////////////////////////////////////////
+// WebSocket
+////////////////////////////////////////////////////////////////////////////
+
+function webSocketOpen() {
+    // Open a web socket for screen mirroring
+    window.appState.screenMirrorWebSocket = new WebSocket("ws://" + location.host + "/ws", "screen");
+    window.appState.screenMirrorWebSocket.binaryType = 'arraybuffer';
+    window.appState.screenMirrorWebSocket.onopen = () => {
+        console.log("Web socket open");
+    }
+    window.appState.screenMirrorWebSocket.onclose = () => {
+        console.log("Web socket closed");
+    }
+    window.appState.screenMirrorWebSocket.onmessage = (event) => {
+        // console.log(`Web socket message ${event.data.byteLength}`);
+        const msgData = new Uint8Array(event.data);
+        // console.log(this.buf2hex(msgData.slice(0, 20)));
+        if (msgData.length < 2) {
+            console.log("Web socket message too short");
+            return;
+        }
+        // Offer to elems
+        for (const [key, elem] of Object.entries(window.appState.elems)) {
+            if (elem.webSocketMessage(msgData))
+                return;
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////

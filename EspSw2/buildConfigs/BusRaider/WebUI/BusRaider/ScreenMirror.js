@@ -1,13 +1,6 @@
 
 class ScreenMirror {
     constructor() {
-        this.state = {
-            terminalLineData: [],
-            terminalRows: 25,
-            terminalCols: 80,
-            termColours: []
-        }
-
         this.scaderName = "Mirror";
         this.friendlyName = "Mirror";
         this.configObj = {};
@@ -33,7 +26,7 @@ class ScreenMirror {
     }
 
     setAnsiColours() {
-        this.state.termColours = [
+        this.termColours = [
             "000000", "800000", "008000", "808000", "000080", "800080", "008080", "c0c0c0",
             "808080", "ff0000", "00ff00", "ffff00", "0000ff", "ff00ff", "00ffff", "ffffff",
             "000000", "00005f", "000087", "0000af", "0000df", "0000ff", "005f00", "005f5f",
@@ -69,28 +62,13 @@ class ScreenMirror {
     }
 
     initScreenMirror() {
+    }
 
-        // Open a web socket for screen mirroring
-        this.state.screenMirrorWebSocket = new WebSocket("ws://" + location.host + "/ws", "screen");
-        this.state.screenMirrorWebSocket.binaryType = 'arraybuffer';
-        this.state.screenMirrorWebSocket.onopen = () => {
-            console.log("Web socket open");
-        }
-        this.state.screenMirrorWebSocket.onclose = () => {
-            console.log("Web socket closed");
-        }
-        this.state.screenMirrorWebSocket.onmessage = (event) => {
-            console.log(`Web socket message ${event.data.byteLength}`);
-            const msgData = new Uint8Array(event.data);
-            console.log(this.buf2hex(msgData.slice(0, 20)));
-
-            // Check valid message format
-            if (msgData.length > 2) {
-                if ((msgData[0] === 0x00) && (msgData[1] === 0x01)) {
-                    console.log("Screen mirroring message");
-                    this.updateMirrorFull(msgData);
-                }
-            }
+    webSocketMessage(msgData) {
+        // Check valid message format
+        if ((msgData[0] === 0x00) && (msgData[1] === 0x01)) {
+            // console.log("Screen mirroring message");
+            this.updateMirrorFull(msgData);
         }
     }
 
@@ -101,12 +79,12 @@ class ScreenMirror {
     }
 
     updateMirrorFull(binData) {
-        console.log(`updateMirrorFull ${binData.length}`);
+        // console.log(`updateMirrorFull ${binData.length}`);
         let chPos = 2;
-        console.log(binData[2], binData[3]);
+        // console.log(binData[2], binData[3]);
         const mirrorWidth = (binData[chPos] << 8) + binData[chPos+1];
         const mirrorHeight = (binData[chPos+2] << 8) + binData[chPos+3];
-        console.log(`Mirror size ${mirrorWidth}x${mirrorHeight}`);
+        // console.log(`Mirror size ${mirrorWidth}x${mirrorHeight}`);
 
         // Get terminal window
         let termText = document.getElementById("term-text");
@@ -118,7 +96,7 @@ class ScreenMirror {
             // Check for TRS80 font types
             const trs80Font = binData[chPos+5];
             if (trs80Font == 0x01) {
-                console.log("TRS80 font");
+                // console.log("TRS80 font");
                 termText.classList.add("term-text-trs80-l1-2x3");
 
                 // Move to the start of data
@@ -418,6 +396,8 @@ class ScreenMirror {
         }, true);
         if (urlParams.get("screen") === '1') {
             this.termShow(true);
+            const windowHeading = document.getElementById('heading-area');
+            windowHeading.innerHTML = "<h1>BusRaider Screen</h1>";
         }
         // document.getElementById('term-panel').addEventListener('onkeydown', (event) => {
         //     this.termKeyDown(event)

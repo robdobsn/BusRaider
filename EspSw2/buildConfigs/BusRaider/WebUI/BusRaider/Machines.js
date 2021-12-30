@@ -42,6 +42,9 @@ class Machines {
         }
     }
 
+    webSocketMessage(msgData) {
+    }
+
     updateUI() {
         // Get or create the documentElement
         const mainDocElem = commonGetOrCreateDocElem(this.scaderName);

@@ -30,6 +30,9 @@ class FileSystem {
         }
     }
 
+    webSocketMessage(msgData) {
+    }
+
     initDragAndDrop() {
         // Drag and drop
         let dropZones = document.getElementsByClassName("drop-zone");

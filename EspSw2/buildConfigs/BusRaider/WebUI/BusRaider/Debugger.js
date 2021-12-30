@@ -27,6 +27,9 @@ class Debugger {
         }
     }
 
+    webSocketMessage(msgData) {
+    }
+
     debuggerShowClick(event) {
         event.srcElement.classList.toggle("radio-on");
         let debuggerPanel = document.getElementById("debugger-panel");

@@ -27,15 +27,8 @@ class TRS80Machine {
     }
 
     getScreenIfUpdated(screenCache) {
-        let isChanged = false;
         const screenMem = this.getScreenMem();
-        if (!("cache" in screenCache)) {
-            isChanged = true;
-            // console.log(`getScreenIfUpdated screenCache.cache null`);
-        } else if (!screenCache.cache.equals(screenMem)) {
-            isChanged = true;
-            // console.log(`getScreenIfUpdated screenMem changed`);
-        }
+        const isChanged = !("cache" in screenCache) || !screenCache.cache.equals(screenMem);
         if (isChanged) {
             screenCache.cache = Buffer.from(screenMem);
             // console.log(`screen changed len ${screenCache.cache.length}`);
@@ -209,9 +202,12 @@ class TRS80Machine {
         }
     }
 
-    loadCmdFile(filename) {
-        const cmdFileFormat = new TRS80CmdFileFormat();
-        cmdFileFormat.process(filename, this.memAccess, this.z80Proc);
+    loadFile(filename) {
+        const fileExt = filename.substr(filename.lastIndexOf('.') + 1).toLowerCase();
+        if (fileExt === 'cmd') {
+            const cmdFileFormat = new TRS80CmdFileFormat();
+            cmdFileFormat.process(filename, this.memAccess, this.z80Proc);
+        }
     }
 }
 

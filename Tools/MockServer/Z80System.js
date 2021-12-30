@@ -1,6 +1,7 @@
 const Z80 = require('./Z80');
 const MemAccess = require('./MemAccess');
 const Z80TRS80 = require('./TRS80Machine');
+const Z80Spectrum = require('./SpectrumMachine');
 class Z80System {
     constructor() {
         this.memAccess = new MemAccess();
@@ -18,6 +19,8 @@ class Z80System {
         console.log(`setMachine ${systemName}`);
         if (systemName === "TRS80") {
             this.machine = new Z80TRS80(this.memAccess, this.z80Proc);
+        } else if (systemName === "ZX Spectrum") {
+            this.machine = new Z80Spectrum(this.memAccess, this.z80Proc);
         }
     }
 
@@ -27,9 +30,9 @@ class Z80System {
         // console.log(`load ${filename} ${fileExt}`);
         if ((fileExt === 'bin') || (fileExt === 'rom')) {
             this.memAccess.load(filename);
-        } else if (fileExt === 'cmd') {
+        } else {
             if (this.machine) {
-                this.machine.loadCmdFile(filename);
+                this.machine.loadFile(filename);
                 this.resetOnExec = false;
             }
         }
