@@ -13,7 +13,7 @@ class SpectrumMachine {
     constructor(memAccess, z80Proc) {
         this.memAccess = memAccess;
         this.z80Proc = z80Proc;
-
+        this.screenSize = [256, 192];
     }
 
     getScreenMem() {
@@ -21,7 +21,7 @@ class SpectrumMachine {
     }
 
     getScreenSize() {
-        return [256, 192];
+        return this.screenSize;
     }
 
     getScreenIfUpdated(screenCache) {

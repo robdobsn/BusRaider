@@ -611,7 +611,7 @@ progress::-webkit-progress-value {
     font-weight: bold;
 }
 .screen-panel {
-    min-height: 1.2rem;
+    min-height: 10rem;
 }
 .radio-on {
     background-color: #602020;

@@ -257,6 +257,23 @@ class Debugger {
         ajaxPost('/api/targetcmd/setbps', JSON.stringify(bpJson));
     }
 
+    validateHexInput(event, memDumpElementId) {
+        console.log(event);
+        if (event.code === "Backspace" || event.code === "Delete" || event.code === "Enter")
+            return true
+        const okKeys = "01234567890ABCDEFabcdef"
+        if (okKeys.includes(event.key))
+            return true;
+        return false
+    }
+    onChangeHexInput(event, memDumpElementId) {
+        console.log(event);
+        const val = event.target.value
+        // const rslt = /^([0-9A-Fa-f]{1,4})$/.test(val)
+        let addr = parseInt(event.target.value, 16);
+        this.showHexDump(isNaN(addr) ? 0 : addr, memDumpElementId)
+    }
+
     updateMainDiv(docElem, urlParams) {
         if (urlParams.get("debugger") === '0') {
             return;

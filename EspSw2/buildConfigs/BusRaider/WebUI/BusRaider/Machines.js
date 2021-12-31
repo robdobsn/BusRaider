@@ -60,6 +60,9 @@ class Machines {
 
     setupMachineDropDownList() {
         const selEl = document.getElementById("machine-select");
+        if (!selEl) {
+            return;
+        }
         if (selEl.selectedIndex < 0)
             selEl.selectedIndex = 0;
         // Remove any existing selected item div
@@ -165,6 +168,9 @@ class Machines {
 
     enableTabInsertion(elementId) {
         let el = document.getElementById(elementId);
+        if (!el) {
+            return;
+        }
         el.onkeydown = (e) => {
             let handled = false;
             if (e.code === 9) {

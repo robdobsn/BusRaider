@@ -5,6 +5,8 @@ class ScreenMirror {
         this.friendlyName = "Mirror";
         this.configObj = {};
         this.objGlobalStr = "";
+        this.canvasImage = null;
+        this.canvasImageU32 = null;
     }
 
     postInit() {
@@ -13,6 +15,9 @@ class ScreenMirror {
 
         // Init screen mirror
         this.initScreenMirror();
+
+        // Set spectrum colours
+        this.setSpectrumColours();
     }
 
     getId() {
@@ -61,6 +66,17 @@ class ScreenMirror {
             "a8a8a8", "b2b2b2", "bcbcbc", "c6c6c6", "d0d0d0", "dadada", "e4e4e4", "eeeeee"];
     }
 
+    setSpectrumColours() {
+        const colours = [
+            "000000", "0000d8", "d80000", "d800d8", "00d800", "00d8d8", "d8d800", "d8d8d8",
+            "000000", "0000ff", "ff0000", "ff00ff", "00ff00", "00ffff", "ffff00", "ffffff"
+        ];
+        this.spectrumColours = [];
+        for (let i = 0; i < colours.length; i++) {
+            this.spectrumColours[i] = parseInt(colours[i] + "ff", 16);
+        }
+    }
+
     initScreenMirror() {
     }
 
@@ -88,14 +104,14 @@ class ScreenMirror {
     }
 
     handleCharMappedScreen(binData) {
-        // Get terminal window
-        const termText = document.getElementById("screen-text");
+        // Get screen text element
+        const screenText = document.getElementById("screen-text");
 
         // Check visible
-        if (termText.style.display === "none") {
-            termText.style.display = "block";
-            const termCanvas = document.getElementById("screen-canvas");
-            termCanvas.style.display = "none";
+        if (screenText.style.display === "none") {
+            screenText.style.display = "block";
+            const screenCanvas = document.getElementById("screen-canvas");
+            screenCanvas.style.display = "none";
         }
 
         // Width and height
@@ -106,23 +122,102 @@ class ScreenMirror {
         const fontType = binData[7];
         if (fontType == 0x01) {
             // console.log("TRS80 font");
-            termText.classList.add("screen-text-trs80-l1-2x3");
+            screenText.classList.add("screen-text-trs80-l1-2x3");
 
             // Move to the start of data
             let chPos = 10;
 
             // Add the data
-            let termTextStr = "";
+            let screenTextStr = "";
             for (let i = 0; i < mirrorHeight; i++) {
                 let line = "";
                 for (let j = 0; j < mirrorWidth; j++) {
                     line += String.fromCharCode(0xe000 + binData[chPos++]);
                 }
-                termTextStr += line + "<br>";
+                screenTextStr += line + "<br>";
             }
-            termText.innerHTML = termTextStr;
+            screenText.innerHTML = screenTextStr;
         } else {
-            termText.classList.remove("screen-text-trs80-l1-2x3");
+            screenText.classList.remove("screen-text-trs80-l1-2x3");
+        }
+    }
+
+    handlePixelMappedScreen(binData) {
+        // Get canvas element
+        const screenCanvas = document.getElementById("screen-canvas");
+        const ctx = screenCanvas.getContext('2d');
+
+        // Check visible
+        if (screenCanvas.style.display === "none") {
+            screenCanvas.style.display = "block";
+            const screenText = document.getElementById("screen-text");
+            screenText.style.display = "none";
+        }
+
+        // Width and height
+        const mirrorWidth = (binData[2] << 8) + binData[3];
+        const mirrorHeight = (binData[4] << 8) + binData[5];
+
+        // Create canvas image if required
+        if ((this.canvasImage === null) || 
+                    (this.canvasImage.width !== mirrorWidth) || 
+                    (this.canvasImage.height !== mirrorHeight) ||
+                    (screenCanvas.width !== mirrorWidth) ||
+                    (screenCanvas.height !== mirrorHeight)) {
+            screenCanvas.width = mirrorWidth;
+            screenCanvas.height = mirrorHeight;
+            this.canvasImage = ctx.createImageData(mirrorWidth, mirrorHeight);
+            this.canvasImageU32 = new DataView(this.canvasImage.data.buffer);
+        }
+
+        // Check for Spectrum layout
+        const layoutType = binData[7];
+        if (layoutType == 0x01) {
+            // Move to the start of data
+            let chPos = 10;
+            let bitMask = 0x80;
+
+            // Draw something on the image
+            const imageData = this.canvasImageU32;
+
+            for (let y = 0; y < mirrorHeight; y++) {
+                const lineStart = ((y & 0xc0) + ((y & 0x07) << 3) + ((y & 0x38) >> 3)) << 8;
+                let foreColour = 0;
+                let backColour = 0;
+                for (let x = 0; x < mirrorWidth; x++) {
+                    if (bitMask === 0x80) {
+                        const colourDataAddr = 10 + 0x1800 + ((y >> 3) << 5) + (x >> 3);
+                        const colourByte = binData[colourDataAddr];
+                        foreColour = this.spectrumColours[(colourByte & 0x07) + (colourByte & 0x40 ? 8 : 0)];
+                        backColour = this.spectrumColours[(colourByte & 0x38) >> 3];
+                    }
+                    const pixelIndex = lineStart + x;
+                    imageData.setUint32(pixelIndex << 2, (binData[chPos] & bitMask) ? foreColour : backColour, false);
+                    // imageData[pixelIndex] = (y % 16 === 0) ? 0xff00ff00 : ((y % 16 === 1) ? 0xffffffff : 0);
+                    // if (chPos - 10 >= 0x14e0) {
+                    //     console.log(`pixelIndex = ${pixelIndex} bitMask = ${bitMask} imageData[pixelIndex] = ${imageData[pixelIndex]} chPos = ${chPos} binData[chPos] = ${binData[chPos]}`);
+                    //     // debugger;
+                    // }
+                    if (bitMask === 0x01) {
+                        chPos++;
+                        bitMask = 0x80;
+                    } else {
+                        bitMask >>= 1;
+                    }
+                }
+            }
+            ctx.putImageData(this.canvasImage, 0, 0);
+
+            // for (let x = 0; x < mirrorWidth; x++) {
+            //     for (let y = 0; y < mirrorHeight; y++) {
+            //         const pixel = binData[chPos++];
+            //         const pixelIndex = (y * mirrorWidth + x) * 4;
+            //         imageData[pixelIndex] = this.spectrumColors[pixel][0];
+            //         imageData[pixelIndex + 1] = this.spectrumColors[pixel][1];
+            //         imageData[pixelIndex + 2] = this.spectrumColors[pixel][2];
+            //         imageData[pixelIndex + 3] = 255;
+            //     }
+            // }
         }
     }
 
@@ -368,31 +463,13 @@ class ScreenMirror {
     termKeyUp(event) {
         this.termKeyboardEvent(event, 0);
     }
-
-    validateHexInput(event, memDumpElementId) {
-        console.log(event);
-        if (event.code === "Backspace" || event.code === "Delete" || event.code === "Enter")
-            return true
-        const okKeys = "01234567890ABCDEFabcdef"
-        if (okKeys.includes(event.key))
-            return true;
-        return false
-    }
-    onChangeHexInput(event, memDumpElementId) {
-        console.log(event);
-        const val = event.target.value
-        // const rslt = /^([0-9A-Fa-f]{1,4})$/.test(val)
-        let addr = parseInt(event.target.value, 16);
-        this.showHexDump(isNaN(addr) ? 0 : addr, memDumpElementId)
-    }
-
     updateMainDiv(docElem, urlParams) {
         docElem.innerHTML =
             `
                 <div id="screen-panel" tabindex="110" class="layout-region panel-hidden">
                     <div id="screen-sub-panel" class="uiPanelSub">
                         <div id="screen-text" class="screen-text" tabindex="0"></div>
-                        <div id="screen-canvas" class="screen-canvas" tabindex="1" style="display:none;"></div>
+                        <canvas id="screen-canvas" class="screen-canvas" tabindex="1" style="display:none;"></canvas>
                     </div>
                 </div>
             `;

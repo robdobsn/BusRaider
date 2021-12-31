@@ -90,18 +90,24 @@ class FileSystem {
 
     populateFileGrid(resp) {
         // Parse status received
-        let fileListInfo = JSON.parse(resp);
+        const fileListInfo = JSON.parse(resp);
         this.state.latestfileListInfo = fileListInfo;
 
         // Show info
         if (fileListInfo.diskSize) {
             let fileSystemInfo = document.getElementById("file-system-info");
-            let fsInfoStr = "<b>Disk Size:</b> " + this.fileSizeSI(fileListInfo.diskSize) + ", <b>Free Bytes:</b> " + this.fileSizeSI(fileListInfo.diskSize - fileListInfo.diskUsed);
-            fileSystemInfo.innerHTML = fsInfoStr;
+            if (fileSystemInfo) {
+                const fsInfoStr = "<b>Disk Size:</b> " + this.fileSizeSI(fileListInfo.diskSize) + ", <b>Free Bytes:</b> " + this.fileSizeSI(fileListInfo.diskSize - fileListInfo.diskUsed);
+                fileSystemInfo.innerHTML = fsInfoStr;
+            }
         }
 
         // Clear the table
         let tabFiles = document.getElementById("table_files");
+        if (!tabFiles) {
+            console.log("populateFileGrid - no table found");
+            return;
+        }
         let rowCount = tabFiles.rows.length;
         for (let i = rowCount - 1; i > 0; i--)
             tabFiles.deleteRow(i);
