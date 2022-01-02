@@ -13,6 +13,9 @@ class TRS80Machine {
         this.z80Proc = z80Proc;
         this.screenSize = [64, 16];
 
+        // Setup memory size, etc
+        this.memAccess.setup(0x10000, null, 0x10000, null);
+
         // Init joystick
         for (let i = 0; i < 256; i++) {
             this.memAccess.io_write((i << 8) + 0x13, 0xff);

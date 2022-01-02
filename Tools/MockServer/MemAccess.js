@@ -1,30 +1,50 @@
 
 class MemAccess {
     constructor() {
-        this.addrSpace = Buffer.alloc(0x10000);
+        this.memSpace = Buffer.alloc(0x10000);
         this.ioSpace = Buffer.alloc(0x10000);
+        this.ioAddrModifierCB = null;
+        this.memAddrModifierCB = null;
     }
-    mem_read(addr) {
-        if (addr > 65535) {
-            addr = addr % 0x10000;
+    setup(memSize, memAddrModifierCB, ioSize, ioAddrModifierCB) {
+        this.memSpace = Buffer.alloc(memSize);
+        this.memAddrModifierCB = memAddrModifierCB;
+        this.ioSpace = Buffer.alloc(ioSize);
+        this.ioAddrModifierCB = ioAddrModifierCB;
+    }
+    mem_read(addr, noModifier) {
+        if (!noModifier && this.memAddrModifierCB) {
+            addr = this.memAddrModifierCB(addr);
         }
-        return this.addrSpace[addr];
-    }
-    mem_write(addr, data) {
-        if (addr > 65535) {
-            addr = addr % 0x10000;
+        if (addr > this.memSpace.length) {
+            addr = addr % this.memSpace.length;
         }
-        this.addrSpace[addr] = data;
+        return this.memSpace[addr];
     }
-    io_read(addr) {
-        if (addr > 65535) {
-            addr = addr % 0x10000;
+    mem_write(addr, data, noModifier) {
+        if (!noModifier && this.memAddrModifierCB) {
+            addr = this.memAddrModifierCB(addr);
+        }
+        if (addr > this.memSpace.length) {
+            addr = addr % this.memSpace.length;
+        }
+        this.memSpace[addr] = data;
+    }
+    io_read(addr, noModifier) {
+        if (!noModifier && this.ioAddrModifierCB) {
+            addr = this.ioAddrModifierCB(addr);
+        }
+        if (addr > this.ioSpace.length) {
+            addr = addr % this.ioSpace.length;
         }
         return this.ioSpace[addr];
     }
-    io_write(addr, data) {
-        if (addr > 65535) {
-            addr = addr % 0x10000;
+    io_write(addr, data, noModifier) {
+        if (!noModifier && this.ioAddrModifierCB) {
+            addr = this.ioAddrModifierCB(addr);
+        }
+        if (addr > this.ioSpace.length) {
+            addr = addr % this.ioSpace.length;
         }
         this.ioSpace[addr] = data;
     }
@@ -32,18 +52,25 @@ class MemAccess {
         if (isIo) {
             return this.ioSpace.slice(start, start + len);
         } else {
-            return this.addrSpace.slice(start, start + len);
+            return this.memSpace.slice(start, start + len);
         }
     }
     blockWrite(start, data, isIo) {
         if (isIo) {
             this.ioSpace.set(data, start);
         } else {
-            this.addrSpace.set(data, start);
+            this.memSpace.set(data, start);
+        }
+    }
+    blockFill(start, len, val, isIO) {
+        if (isIO) {
+            this.ioSpace.fill(val, start, start+len);
+        } else {
+            this.memSpace.fill(val, start, start+len);
         }
     }
 
-    load(filename) {
+    loadBinaryFile(filename) {
         const fs = require('fs');
         const data = fs.readFileSync(filename);
         const mem = new Uint8Array(data.buffer);
@@ -52,22 +79,29 @@ class MemAccess {
         }
         console.log(`Loaded ${mem.length} bytes from ${filename}`);
     }
-    memToHex(start, len, sep) {
+    memToHex(start, len, sep, isIo) {
+        if (isIo) {
+            return this.bufToHex(this.ioSpace.slice(start, start + len), sep);
+        } else {
+            return this.bufToHex(this.memSpace.slice(start, start + len), sep);
+        }
+    }
+    bufToHex(buf, sep) {
         let hexStr = "";
-        for (let i = start; i < start+len; i++) {
-            hexStr += this.addrSpace[i % 0x10000].toString(16).padStart(2, '0') + sep;
+        for (let i = 0; i < buf.length; i++) {
+            hexStr += buf[i].toString(16).padStart(2, '0') + sep;
         }
         return hexStr;
     }
-    dumpMem(start, len) {
-        // const hexStr = this.addrSpace.slice(start, start + len)
+    dumpMem(start, len, isIo) {
+        // const hexStr = this.memSpace.slice(start, start + len)
         //     .map(x => x.toString(16).padStart(2, '0'))
         //     .join('');
         // console.log(hexStr);
-        console.log(this.memToHex(start, len, " "));
+        console.log(this.memToHex(start, len, " ", isIo));
     }
-    getDump(addr, len) {
-        return this.memToHex(addr, len, "");
+    getDump(addr, len, isIo) {
+        return this.memToHex(addr, len, "", isIo);
     }
 };
 

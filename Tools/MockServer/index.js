@@ -127,7 +127,7 @@ async function run() {
     app.get('/api/runfileontarget/:fs/:filename', async (req, res) => {
         console.log(`runfileontarget ${req.params.fs} ${req.params.filename}`)
         const filePath = getFilePath(req.params.fs, req.params.filename);
-        z80System.load(filePath);
+        z80System.loadFile(filePath);
         z80System.exec();
         res.json({ "rslt": "ok" });
     });
@@ -214,7 +214,7 @@ async function run() {
         console.log(`rd ${req.params.start} ${req.params.len}`);
         const start = parseInt(req.params.start, 16);
         const len = parseInt(req.params.len, 16);
-        const data = z80System.getDump(start, len);
+        const data = z80System.getDump(start, len, false);
         res.json({ "rslt": "ok", "addr":start, "data": data });
     });
 

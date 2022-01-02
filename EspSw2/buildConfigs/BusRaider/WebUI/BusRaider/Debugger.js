@@ -49,14 +49,6 @@ class Debugger {
             flagStr += (elem !== 0) ? key : " ";
         }
         return flagStr;
-        // const flagStr = "SZ H PNC"
-        // let fMask = 0x80;
-        // let rsltStr = ""
-        // for (let i = 0; i < 8; i++) {
-        //     rsltStr += ((fMask & flags) != 0) ? flagStr[i] : " ";
-        //     fMask = fMask >> 1;
-        // }
-        // return rsltStr;
     }
 
     enableDebugger(en) {

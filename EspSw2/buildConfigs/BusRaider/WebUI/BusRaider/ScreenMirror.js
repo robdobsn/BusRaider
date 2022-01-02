@@ -175,29 +175,24 @@ class ScreenMirror {
         if (layoutType == 0x01) {
             // Move to the start of data
             let chPos = 10;
-            let bitMask = 0x80;
 
             // Draw something on the image
             const imageData = this.canvasImageU32;
 
             for (let y = 0; y < mirrorHeight; y++) {
                 const lineStart = ((y & 0xc0) + ((y & 0x07) << 3) + ((y & 0x38) >> 3)) << 8;
+                const colourStart = 10 + 0x1800 + ((lineStart >> 11) << 5);
                 let foreColour = 0;
                 let backColour = 0;
+                let bitMask = 0x80;
                 for (let x = 0; x < mirrorWidth; x++) {
                     if (bitMask === 0x80) {
-                        const colourDataAddr = 10 + 0x1800 + ((y >> 3) << 5) + (x >> 3);
-                        const colourByte = binData[colourDataAddr];
+                        const colourByte = binData[colourStart + (x >> 3)];
                         foreColour = this.spectrumColours[(colourByte & 0x07) + (colourByte & 0x40 ? 8 : 0)];
                         backColour = this.spectrumColours[(colourByte & 0x38) >> 3];
                     }
                     const pixelIndex = lineStart + x;
                     imageData.setUint32(pixelIndex << 2, (binData[chPos] & bitMask) ? foreColour : backColour, false);
-                    // imageData[pixelIndex] = (y % 16 === 0) ? 0xff00ff00 : ((y % 16 === 1) ? 0xffffffff : 0);
-                    // if (chPos - 10 >= 0x14e0) {
-                    //     console.log(`pixelIndex = ${pixelIndex} bitMask = ${bitMask} imageData[pixelIndex] = ${imageData[pixelIndex]} chPos = ${chPos} binData[chPos] = ${binData[chPos]}`);
-                    //     // debugger;
-                    // }
                     if (bitMask === 0x01) {
                         chPos++;
                         bitMask = 0x80;
@@ -207,101 +202,8 @@ class ScreenMirror {
                 }
             }
             ctx.putImageData(this.canvasImage, 0, 0);
-
-            // for (let x = 0; x < mirrorWidth; x++) {
-            //     for (let y = 0; y < mirrorHeight; y++) {
-            //         const pixel = binData[chPos++];
-            //         const pixelIndex = (y * mirrorWidth + x) * 4;
-            //         imageData[pixelIndex] = this.spectrumColors[pixel][0];
-            //         imageData[pixelIndex + 1] = this.spectrumColors[pixel][1];
-            //         imageData[pixelIndex + 2] = this.spectrumColors[pixel][2];
-            //         imageData[pixelIndex + 3] = 255;
-            //     }
-            // }
         }
     }
-
-
-    // const SIZE_OF_MSG_CHAR_DATA = 6;
-    // const SIZE_OF_BUF_CHAR_DATA = 4;
-    // // console.log(event.data.byteLength);
-    // const binData = new Uint8Array(event.data);
-    // // Find C string terminator of JSON section
-    // function isTerm(element, index, array) {
-    //     return element === 0;
-    // }
-    // const strTermPos = binData.findIndex(isTerm);
-    // if (strTermPos + 3 < binData.byteLength) {
-    //     // Get terminal window
-    //     let termText = document.getElementById("screen-text");
-    //     let anyChange = false;
-    //     // Extract screen size
-    //     let chPos = strTermPos + 1;
-    //     this.state.terminalCols = binData[chPos++];
-    //     this.state.terminalRows = binData[chPos++];
-    //     console.log("Screen dimensions cols", this.state.terminalCols, "rows", this.state.terminalRows);
-    //     if ((this.state.terminalLineData.length < this.state.terminalRows) ||
-    //         (this.state.terminalLineData[0].byteLength / SIZE_OF_BUF_CHAR_DATA < this.state.terminalCols)) {
-    //         // Start buffer (again) on screen dimensions init or change
-    //         this.state.terminalLineData = [];
-    //         termText.innerHTML = "";
-    //         for (let i = 0; i < this.state.terminalRows; i++) {
-    //             let newLine = new Uint8Array(this.state.terminalCols * SIZE_OF_BUF_CHAR_DATA);
-    //             for (let j = 0; j < this.state.terminalCols; j += 4) {
-    //                 newLine[j] = 0x20;
-    //                 newLine[j + 1] = 15;
-    //                 newLine[j + 2] = 0;
-    //                 newLine[j + 3] = 0;
-    //             }
-    //             this.state.terminalLineData.push(newLine);
-    //             let newPara = document.createElement("pre");
-    //             termText.appendChild(newPara);
-    //         }
-    //         anyChange = true;
-    //     }
-
-    //     // Extract character blocks
-    //     if (chPos + SIZE_OF_MSG_CHAR_DATA < binData.byteLength) {
-    //         for (let i = 0; i < (binData.byteLength - strTermPos - 1) / SIZE_OF_MSG_CHAR_DATA; i++) {
-    //             let col = binData[chPos];
-    //             let row = binData[chPos + 1];
-    //             // Update lines
-    //             if ((row < this.state.terminalRows) && (col < this.state.terminalCols)) {
-    //                 bufPos = col * SIZE_OF_BUF_CHAR_DATA;
-    //                 chPos += 2;
-    //                 for (let k = 0; k < SIZE_OF_BUF_CHAR_DATA; k++)
-    //                     this.state.terminalLineData[row][bufPos++] = binData[chPos++];
-    //                 anyChange = true;
-    //             }
-    //             else {
-    //                 break;
-    //             }
-    //         }
-    //     }
-
-    //     // Write chars
-    //     if (anyChange) {
-    //         let termLines = termText.childNodes;
-    //         for (let i = 0; i < Math.min(this.state.terminalRows, termLines.length); i++) {
-    //             let lineStr = "";
-    //             let lineData = this.state.terminalLineData[i]
-    //             for (let j = 0; j < this.state.terminalCols; j++) {
-    //                 const fore = lineData[j * SIZE_OF_BUF_CHAR_DATA + 1];
-    //                 const back = lineData[j * SIZE_OF_BUF_CHAR_DATA + 2];
-    //                 if ((fore != 15) || (back != 0))
-    //                     lineStr += "<span style=\"color:#" + this.state.termColours[fore] + ";background-color:#" + this.state.termColours[back] + ";\">";
-    //                 lineStr += String.fromCharCode(lineData[j * SIZE_OF_BUF_CHAR_DATA]);
-    //                 if ((fore != 15) || (back != 0))
-    //                     lineStr += "</span>";
-    //             }
-    //             termLines[i].innerHTML = lineStr;
-    //         }
-    //     }
-    // }
-
-    // let eventInfo = JSON.parse(event.data);
-    // if (eventInfo && eventInfo.dataType === "key")
-    //     this.state.term.showString(eventInfo.val);
 
     termShow(show) {
         // Show panel
@@ -338,94 +240,13 @@ class ScreenMirror {
 
     getKeyModCodes(event) {
         let modCodes = 0;
-        // if (event.ctrlKey)
-        //     modCodes |= 1;
-        // let jsKeyCode = event.charCode || event.keyCode;
-        // if (event.shiftKey != (event.getModifierState("CapsLock") && ((jsKeyCode >= 65) && (jsKeyCode <= 90))))
-        //     modCodes |= 2;
-        // if (event.altKey)
-        //     modCodes |= 4;
         modCodes |= (event.getModifierState("Control") ? 1 : 0);
         modCodes |= (event.getModifierState("Shift") ? 2 : 0);
         modCodes |= (event.getModifierState("Alt") ? 4 : 0);
         return modCodes;
     }
-    // getUsbKeyCode(jsKeyCode) {
-    //     const keyMap = {
-    //         8: 
-    //     let usbKeyCode = jsKeyCode;
-    //     if ((jsKeyCode >= 65) && (jsKeyCode <= 90)) {
-    //         usbKeyCode = jsKeyCode - 61;
-    //     } else if ((jsKeyCode === 48)) {
-    //         usbKeyCode = 0x27;
-    //     } else if ((jsKeyCode >= 49) && (jsKeyCode <= 57)) {
-    //         usbKeyCode = jsKeyCode - 49 + 0x1e;
-    //     } else if ((jsKeyCode === 13)) {
-    //         usbKeyCode = 0x28;
-    //     } else if ((jsKeyCode === 27)) {
-    //         usbKeyCode = 0x29;
-    //     } else if ((jsKeyCode === 8)) {
-    //         usbKeyCode = 0x2a;
-    //     } else if ((jsKeyCode === 9)) {
-    //         usbKeyCode = 0x2b;
-    //     } else if ((jsKeyCode === 32)) {
-    //         usbKeyCode = 0x2c;
-    //     } else if ((jsKeyCode === 189)) {
-    //         usbKeyCode = 0x2d;
-    //     } else if ((jsKeyCode === 187)) {
-    //         usbKeyCode = 0x2e;
-    //     } else if ((jsKeyCode === 219)) {
-    //         usbKeyCode = 0x2f;
-    //     } else if ((jsKeyCode === 221)) {
-    //         usbKeyCode = 0x30;
-    //     } else if ((jsKeyCode === 220)) {
-    //         usbKeyCode = 0x31;
-    //     } else if ((jsKeyCode === 163)) {
-    //         usbKeyCode = 0x32;
-    //     } else if ((jsKeyCode === 186)) {
-    //         usbKeyCode = 0x33;
-    //     } else if ((jsKeyCode === 222)) {
-    //         usbKeyCode = 0x34;
-    //     } else if ((jsKeyCode === 192)) {
-    //         usbKeyCode = 0x35;
-    //     } else if ((jsKeyCode === 188)) {
-    //         usbKeyCode = 0x36;
-    //     } else if ((jsKeyCode === 190)) {
-    //         usbKeyCode = 0x37;
-    //     } else if ((jsKeyCode === 191)) {
-    //         usbKeyCode = 0x38;
-    //     } else if ((jsKeyCode >= 112) && (jsKeyCode <= 123)) {
-    //         usbKeyCode = jsKeyCode - 112 + 0x3a;
-    //     } else if ((jsKeyCode === 45)) {
-    //         usbKeyCode = 0x49;
-    //     } else if ((jsKeyCode === 36)) {
-    //         usbKeyCode = 0x4a;
-    //     } else if ((jsKeyCode === 33)) {
-    //         usbKeyCode = 0x4b;
-    //     } else if ((jsKeyCode === 46)) {
-    //         usbKeyCode = 0x4c;
-    //     } else if ((jsKeyCode === 35)) {
-    //         usbKeyCode = 0x4d;
-    //     } else if ((jsKeyCode === 34)) {
-    //         usbKeyCode = 0x4e;
-    //     } else if ((jsKeyCode === 39)) {
-    //         usbKeyCode = 0x4f;
-    //     } else if ((jsKeyCode === 37)) {
-    //         usbKeyCode = 0x50;
-    //     } else if ((jsKeyCode === 40)) {
-    //         usbKeyCode = 0x51;
-    //     } else if ((jsKeyCode === 38)) {
-    //         usbKeyCode = 0x52;
-    //     }
-    //     return usbKeyCode;
-    // }
 
     termKeyboardEvent(event, isdown) {
-        // console.log(event);
-        // if ((event.keyCode === 16) || (event.keyCode === 17) || (event.keyCode === 18) || (event.keyCode === 20)) {
-        //     // Ctrl, shift or Alt
-        //     return;
-        // }
         let jsKeyCode = event.charCode || event.keyCode;  // Get the Unicode value
         let usbKeyCode = -1;
         if (event.code in jsToHidKeyMap) {
@@ -440,20 +261,6 @@ class ScreenMirror {
         }
         ajaxGet(cmdStr);
         event.preventDefault();
-        //     if (event.ctrlKey) {
-        //         event.preventDefault();
-        //         jsKeyCode -= 64;
-        //         let ch = String.fromCharCode(jsKeyCode);
-        //         console.log(ch, "stt", jsKeyCode, event.ctrlKey, event.shiftKey);
-        //         callAjax("/api/sendkey/" + jsKeyCode.toString());
-        //         return;
-        //     }
-        // } else if (jsKeyCode == 38) {
-        //     callAjax("/api/sendkey/");
-        // if (((jsKeyCode >= 64) && (jsKeyCode <= 90)) && (event.ctrlKey))
-        //     jsKeyCode -= 64;
-        // else if (((jsKeyCode >= 65) && (jsKeyCode <= 90)) && (event.shiftKey == event.getModifierState("CapsLock")))
-        //     jsKeyCode += 32;
     }
 
     termKeyDown(event) {
@@ -490,28 +297,5 @@ class ScreenMirror {
             const windowHeading = document.getElementById('heading-area');
             windowHeading.innerHTML = "<h1>BusRaider Screen</h1>";
         }
-        // document.getElementById('screen-panel').addEventListener('onkeydown', (event) => {
-        //     this.termKeyDown(event)
-        // });
-        // document.getElementById('screen-sub-panel').addEventListener('onkeydown', (event) => {
-        //     this.termKeyDown(event) 
-        // });
     }
-
-    // // Create terminal emulator
-    // this.state.term = new TerminalEmulator("term", true, true, 80, 25, false, 25);
-    // this.state.term.setInputCallback(terminalEmulatorCharCallback);
-    // let termArea = document.getElementById("terminal-area");
-    // termArea.appendChild(this.state.term.html);
-    // function terminalEmulatorCharCallback(ch)
-    // {
-    //     if (this.state.terminalKeysSocket)
-    //     {
-    //         let msg = { dataType: "key", val: ch };
-    //         let jsonRaw = JSON.stringify(msg);
-    //         this.state.terminalKeysSocket.send(jsonRaw);
-    //         this.state.terminalKeysSocket.send("{\"dataType\":\"key\",\"val\":\"" + ch + "\"}");
-    //     }
-    //     // alert(ch + "==>" + ch.charCodeAt(0));
-    // }
 }

@@ -13,6 +13,7 @@ class Z80System {
         this.dumpBytesBeforePC = 0x40;
         this.dumpBytesTotal = 0x100;
         this.execbps = {};
+        this.tstatesSinceInt = 0;
     }
 
     setMachine(systemName) {
@@ -24,12 +25,12 @@ class Z80System {
         }
     }
 
-    load(filename) {
+    loadFile(filename) {
         this.resetOnExec = true;
         const fileExt = filename.substr(filename.lastIndexOf('.') + 1).toLowerCase();
         // console.log(`load ${filename} ${fileExt}`);
         if ((fileExt === 'bin') || (fileExt === 'rom')) {
-            this.memAccess.load(filename);
+            this.memAccess.loadBinaryFile(filename);
         } else {
             if (this.machine) {
                 this.machine.loadFile(filename);
@@ -44,19 +45,19 @@ class Z80System {
             this.z80Proc.reset();
         } else {
             // console.log(`exec from ${this.z80Proc.pc.toString(16)}`);
-            // this.memAccess.dumpMem(0x5b00, 0x100);
-            // this.memAccess.dumpMem(0x7f00, 0x100);
+            // this.memAccess.dumpMem(0x5b00, 0x100, false);
+            // this.memAccess.dumpMem(0x7f00, 0x100, false);
         }
-        for (let i = 0; i < 10; i++) {
-            console.log(`--------------------------------------------------------------------------------`);
-            let curState = this.z80Proc.getState();
-            console.log(curState);
-            this.z80Proc.run_instruction();
-        }
+        // for (let i = 0; i < 10; i++) {
+        //     console.log(`--------------------------------------------------------------------------------`);
+        //     let curState = this.z80Proc.getState();
+        //     console.log(curState);
+        //     this.z80Proc.run_instruction();
+        // }
         this.isRunning = true; 
         // curState = this.z80Proc.getState();
         // console.log(curState);
-        // this.memAccess.dumpMem(0x3c00, 0x400);
+        // this.memAccess.dumpMem(0x3c00, 0x400, false);
         this.processorTick = setInterval(() => {
             for (let i = 0; i < 100; i++) {
                 if (!this.isRunning) {
@@ -68,9 +69,16 @@ class Z80System {
     }
 
     step() {
-        this.z80Proc.run_instruction();
-        if (this.z80Proc.getState().pc in this.execbps) {
+        const tstates = this.z80Proc.run_instruction();
+        const z80State = this.z80Proc.getState();
+        if (z80State.pc in this.execbps) {
             this.isRunning = false;
+        }
+        this.tstatesSinceInt += tstates;
+        if (this.machine.intOnTstates && (this.tstatesSinceInt >= this.machine.intOnTstates)) {
+            this.z80Proc.interrupt(false, 0);
+            // console.log(`interrupt at ${z80State.pc.toString(16)} ${this.tstatesSinceInt} ${tstates}`);
+            this.tstatesSinceInt = 0;
         }
     }
 
@@ -82,8 +90,8 @@ class Z80System {
         this.isRunning = true;
     }
 
-    getDump(addr, size) {
-        return this.memAccess.getDump(addr, size);
+    getDump(addr, size, isIo) {
+        return this.memAccess.getDump(addr, size, isIo);
     }
 
     getState() {
@@ -95,7 +103,7 @@ class Z80System {
         return { 
             regs: regs,
             addr: memDumpStart,
-            mem: this.memAccess.getDump(memDumpStart, this.dumpBytesTotal)
+            mem: this.memAccess.getDump(memDumpStart, this.dumpBytesTotal, false)
         };
     }
 
