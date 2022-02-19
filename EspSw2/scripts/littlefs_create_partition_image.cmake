@@ -24,33 +24,39 @@ function(littlefs_create_partition_image partition base_dir)
     partition_table_get_partition_info(size "--partition-name ${partition}" "size")
     partition_table_get_partition_info(offset "--partition-name ${partition}" "offset")
 
-    if(NOT "${size}")
-        message(WARNING "littlefsgen: Unable to resolve size of partition '${partition}'. "
-                "Check config if using correct partition table.")
-    endif()
+    if("${size}" AND "${offset}")
 
-    if(NOT "${offset}")
-        message(WARNING "littlefsgen: Unable to resolve offset of partition '${partition}'. "
-                "Check config if using correct partition table.")
-    endif()
+        set(image_file ${CMAKE_BINARY_DIR}/${partition}.bin)
 
-    set(image_file ${CMAKE_BINARY_DIR}/${partition}.bin)
+        # Execute littlefs image generation; this always executes as there is no way to specify for CMake to watch for
+        # contents of the base dir changing.
+        add_custom_target(littlefs_${partition}_bin ALL
+            COMMAND echo "------------- Generating littlefs image ---------------"
+            COMMAND ${mklittlefs_exec} -s ${size} -c ${base_dir_full_path} ${image_file}
+            DEPENDS ${arg_DEPENDS} build_mklittlefs
+            )
 
-    # Execute littlefs image generation; this always executes as there is no way to specify for CMake to watch for
-    # contents of the base dir changing.
-    add_custom_target(littlefs_${partition}_bin ALL
-        COMMAND echo "------------- Generating littlefs image ---------------"
-        COMMAND ${mklittlefs_exec} -s ${size} -c ${base_dir_full_path} ${image_file}
-        DEPENDS ${arg_DEPENDS} build_mklittlefs
-        )
+        set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" APPEND PROPERTY
+            ADDITIONAL_MAKE_CLEAN_FILES
+            ${image_file})
 
-    set_property(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" APPEND PROPERTY
-        ADDITIONAL_MAKE_CLEAN_FILES
-        ${image_file})
+        idf_component_get_property(main_args esptool_py FLASH_ARGS)
+        idf_component_get_property(sub_args esptool_py FLASH_SUB_ARGS)
+        # Last (optional) parameter is the encryption for the target. In our
+        # case, spiffs is not encrypt so pass FALSE to the function.
+        esptool_py_flash_target(${partition}-flash "${main_args}" "${sub_args}" ALWAYS_PLAINTEXT)
+        esptool_py_flash_to_partition(${partition}-flash "${partition}" "${image_file}")
 
-    if(arg_FLASH_IN_PROJECT)
-        esptool_py_flash_project_args("${partition}" "${offset}" "${image_file}" FLASH_IN_PROJECT)
+        add_dependencies(${partition}-flash littlefs_${partition}_bin)
+
+        if(arg_FLASH_IN_PROJECT)
+            esptool_py_flash_to_partition(flash "${partition}" "${image_file}")
+            add_dependencies(flash littlefs_${partition}_bin)
+        endif()
     else()
-        esptool_py_flash_project_args("${partition}" "${offset}" "${image_file}")
+        set(message "littlefs_create_partition_image: Failed to create LITTLEFS image for partition '${partition}'. "
+                    "Check project configuration if using the correct partition table file.")
+        fail_at_build_time(littlefs_${partition}_bin "${message}")
     endif()
+
 endfunction()

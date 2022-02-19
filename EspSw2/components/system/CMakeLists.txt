@@ -17,6 +17,7 @@ idf_component_register(
                   "StreamManager/StreamManager.cpp"
                   "MQTTManager/MQTTManager.cpp"
                   "StatePublisher/StatePublisher.cpp"
+                  "LogManager/LogManager.cpp"
                 INCLUDE_DIRS
                   "SysMod"
                   "SysManager"
@@ -34,6 +35,7 @@ idf_component_register(
                   "ESPOTAUpdate"
                   "MQTTManager"
                   "StatePublisher"
+                  "LogManager"
                 REQUIRES 
                   core
                   comms

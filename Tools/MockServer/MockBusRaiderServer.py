@@ -16,11 +16,8 @@ app.config["DEBUG"] = True
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 curState = {
-        "status":
-        {
-            "machineList": ["Serial Terminal", "Rob's Z80", "TRS80", "ZX Spectrum"],
-            "machineCur": "TRS80"
-        },
+        "machineList": ["Serial Terminal", "Rob's Z80", "TRS80", "ZX Spectrum"],
+        "machineCur": "TRS80",
         "clockHz": 1100000
     }
 
@@ -55,7 +52,7 @@ def apiHome():
 @app.route('/querystatus', methods=['GET'])
 def apiQueryStatus():
     print('querystatus')
-    return jsonify(curState["status"])
+    return jsonify(curState)
 
 @app.route('/files/sd/<path:path>', methods=['GET'])
 def staticSd(path):

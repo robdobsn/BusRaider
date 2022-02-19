@@ -3,7 +3,7 @@
 // Main entry point
 //
 // BusRaider ESP32
-// Rob Dobson 2018-2021
+// Rob Dobson 2018-2022
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -11,14 +11,14 @@
 // System Name and Version
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define SYSTEM_VERSION "3.1.9"
+#define SYSTEM_VERSION "3.1.10"
 
 #define MACRO_STRINGIFY(x) #x
 #define MACRO_TOSTRING(x) MACRO_STRINGIFY(x)
-#define SYSTEM_NAME MACRO_TOSTRING(RIC_SYSTEM_NAME)
-#define DEFAULT_FRIENDLY_NAME MACRO_TOSTRING(RIC_DEFAULT_FRIENDLY_NAME)
-#define DEFAULT_HOSTNAME MACRO_TOSTRING(RIC_DEFAULT_HOSTNAME)
-#define DEFAULT_ADVNAME MACRO_TOSTRING(RIC_DEFAULT_ADVNAME)
+#define SYSTEM_NAME MACRO_TOSTRING(HW_SYSTEM_NAME)
+#define DEFAULT_FRIENDLY_NAME MACRO_TOSTRING(HW_DEFAULT_FRIENDLY_NAME)
+#define DEFAULT_HOSTNAME MACRO_TOSTRING(HW_DEFAULT_HOSTNAME)
+#define DEFAULT_ADVNAME MACRO_TOSTRING(HW_DEFAULT_ADVNAME)
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Default system config
@@ -129,6 +129,7 @@ static heap_trace_record_t trace_record[NUM_RECORDS]; // This buffer must be in 
 #include <CommandSocket.h>
 #include <CommandFile.h>
 #include <StatePublisher.h>
+#include <LogManager.h>
 
 #ifdef FEATURE_INCLUDE_ROBOT_CONTROLLER
 #include <RobotController.h>
@@ -137,10 +138,7 @@ static heap_trace_record_t trace_record[NUM_RECORDS]; // This buffer must be in 
 #include <FileSystem.h>
 #include <ESPOTAUpdate.h>
 #include <ProtocolExchange.h>
-
-#ifdef FEATURE_TARGET_RIC_HARDWARE
-#include <RICUtils.h>
-#endif
+#include <HWUtils.h>
 
 #include <MQTTManager.h>
 
@@ -159,7 +157,7 @@ static heap_trace_record_t trace_record[NUM_RECORDS]; // This buffer must be in 
 #include <PiCoProcessor.h>
 
 // System type consts
-#include "RICSysTypes.h"
+#include "SysTypeStatics.h"
 
 #ifdef FEATURE_INCLUDE_SCADER
 // Scader components
@@ -261,11 +259,7 @@ void mainTask(void *pvParameters)
 #endif
     // Set hardware revision - ensure this runs early as some methods for determining
     // hardware revision may get disabled later on (e.g. GPIO pins later used for output)
-#ifdef FEATURE_TARGET_RIC_HARDWARE
-    ConfigBase::setHwRevision(getRICRevision());
-#else
-    ConfigBase::setHwRevision(1);
-#endif
+    ConfigBase::setHwRevision(getHWRevision());
 
     // Config for hardware
     ConfigBase defaultSystemConfig(defaultConfigJSON);
@@ -297,7 +291,7 @@ void mainTask(void *pvParameters)
 
     // SysTypes
     SysTypeManager _sysTypeManager(_sysTypeConfig);
-    _sysTypeManager.setup(RIC_SYS_TYPE_STATICS, RIC_SYS_TYPE_STATICS_LEN);
+    _sysTypeManager.setup(SYS_TYPE_STATICS, SYS_TYPE_STATICS_LEN);
 
     // Handle power-up LED setting as early as possible
 #ifdef FEATURE_POWER_UP_LED_ASAP
@@ -320,10 +314,9 @@ void mainTask(void *pvParameters)
     // Register HWElemTypes
     _robotController.hwElemRegister("I2SOut", HWElemAudioOut::createFn);
     _robotController.hwElemRegister("GPIO", HWElemGPIO::createFn);
-#endif
-
 #ifdef FEATURE_HWELEM_STEPPERS
     _robotController.hwElemRegister("Steppers", HWElemSteppers::createFn);
+#endif
 #endif
 
     // API Endpoints
@@ -382,17 +375,12 @@ void mainTask(void *pvParameters)
     // State Publisher
     StatePublisher _statePublisher("Publish", defaultSystemConfig, &_sysTypeConfig, nullptr);
 
+    // Log manager
+    LogManager _LogManager("LogManager", defaultSystemConfig, &_sysTypeConfig, &_sysModMutableConfig);
+    
 #ifdef FEATURE_EMBED_MICROPYTHON
     // Micropython
     MicropythonRICIF _micropythonRICIF("uPy", defaultSystemConfig, &_sysTypeConfig, nullptr);
-#endif
-
-#ifdef FEATURE_INCLUDE_SCADER
-    // Scader components
-    ScaderRelays _scaderRelays("ScaderRelays", defaultSystemConfig, &_sysTypeConfig, nullptr);
-    ScaderShades _scaderShades("ScaderShades", defaultSystemConfig, &_sysTypeConfig, nullptr);
-    ScaderOpener _scaderOpener("ScaderOpener", defaultSystemConfig, &_sysTypeConfig, nullptr);
-    ScaderCat _scaderCat("ScaderCat", defaultSystemConfig, &_sysTypeConfig, nullptr);
 #endif
 
     // Pi CoProcessor

@@ -103,10 +103,12 @@ def main():
         if len(flashFileName) == 0:
             continue
         if not (build_folder / flashFileName).is_file():
-            raise ValueError(f"File {flashFileName} not found in build folder {args.build_folder}")
+            _log.error(f"File {flashFileName} not found in build folder {args.build_folder}")
+            raise ValueError()
         flashOffset = convert_offset_str(partitions, fileToFlash[1])
         if len(flashOffset) == 0:
-            raise ValueError(f"Partition {fileToFlash[1]} not found in partition table")
+            _log.error(f"Partition {fileToFlash[1]} not found in partition table")
+            raise ValueError()
         esptool_options += [flashOffset, str(args.build_folder / flashFileName)]
 
     # Form command

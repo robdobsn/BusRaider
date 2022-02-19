@@ -191,7 +191,7 @@ class Machines {
 
     populateMcList(jsonResp) {
         let queryResult = JSON.parse(jsonResp);
-        this.state.machineList = queryResult.status.machineList;
+        this.state.machineList = queryResult.machineList;
         if (this.state.machineList === undefined)
             this.state.machineList = [];
         // Clear list and fill
@@ -206,7 +206,7 @@ class Machines {
                 mcListSelect.add(option);
             }
             // Set current machine
-            mcListSelect.value = queryResult.status.machineCur;
+            mcListSelect.value = queryResult.machineCur;
         }
         // Re-setup select
         this.setupMachineDropDownList();
@@ -218,7 +218,7 @@ class Machines {
             this.state.machineConfigs.push(configContent);
         }
         // Show frequency
-        this.showFrequency(queryResult.status);
+        this.showFrequency(queryResult);
         // Start getting first machine's config
         this.machineConfigReq(true);
     }
@@ -230,7 +230,7 @@ class Machines {
     updateMachineInfo(jsonResp) {
         let status = JSON.parse(jsonResp);
         // Show frequency
-        this.showFrequency(status.status);
+        this.showFrequency(status);
     }
 
     showFrequency(status) {

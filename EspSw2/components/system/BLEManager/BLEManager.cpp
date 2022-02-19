@@ -19,6 +19,7 @@
 #include "host/ble_hs.h"
 #include "host/util/util.h"
 #include "services/gap/ble_svc_gap.h"
+#include "../src/ble_hs_hci_priv.h"
 #include <Utils.h>
 #include <ESPUtils.h>
 #include <SysManager.h>
@@ -102,16 +103,13 @@ BLEManager::BLEManager(const char *pModuleName, ConfigBase &defaultConfig, Confi
     _enableBLE = false;
     _BLEDeviceInitialised = false;
     _defaultAdvName = defaultAdvName;
+    _bleRestartState = BLERestartState_Idle;
 
     // EndpointID
     _protocolEndpointID = ProtocolEndpointManager::UNDEFINED_ID;
 
     // Singleton
     _pBLEManager = this;
-
-    // Stats
-    _rxTotalCount = 0;
-    _txTotalCount = 0;
 
     // Outbound msg timing
     _lastOutboundMsgMs = 0;
@@ -147,62 +145,14 @@ void BLEManager::applySetup()
         // Get max packet length
         _maxPacketLength = configGetLong("maxPktLen", MAX_BLE_PACKET_LEN_DEFAULT);
 
-        // Init Nimble
+        // Start NimBLE if not already started
         if (!_BLEDeviceInitialised)
         {
-            esp_err_t err = esp_nimble_hci_and_controller_init();
-            if (err != ESP_OK)
-            {
-#ifdef WARN_ON_BLE_INIT_FAILED
-                LOG_E(MODULE_PREFIX, "applySetup nimble init failed err=%d", err);
-#endif
+            // Start NimBLE
+            if (!nimbleStart())
                 return;
-            }
-
-            // Log level for NimBLE module is set in here so if we want to override it
-            // we have to do so after this call
-            nimble_port_init();
+            _BLEDeviceInitialised = true;
         }
-        _BLEDeviceInitialised = true;
-
-        // Get NimBLE log level 
-        String nimLogLev = configGetString("nimLogLev", "");
-        setModuleLogLevel("NimBLE", nimLogLev);
-
-        // onReset callback
-        ble_hs_cfg.reset_cb = [](int reason) {
-#ifdef DEBUG_BLE_ON_RESET            
-            LOG_I(MODULE_PREFIX, "onReset() reason=%d", reason);
-#endif
-        };
-
-        // onSync callback
-        ble_hs_cfg.sync_cb = []() {
-            if (_pBLEManager)
-                _pBLEManager->onSync();
-        };
-
-        ble_hs_cfg.gatts_register_cb = BLEGattServer::registrationCallback;
-        ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
-
-        // Not really explained here
-        // https://microchipdeveloper.com/wireless:ble-gap-security
-        ble_hs_cfg.sm_io_cap = BLE_SM_IO_CAP_KEYBOARD_DISP;
-        ble_hs_cfg.sm_sc = 0;
-
-        int rc = BLEGattServer::initServer();
-        assert(rc == 0);
-
-        // Set the advertising name
-        _configuredAdvertisingName = getAdvertisingName();
-        rc = ble_svc_gap_device_name_set(_configuredAdvertisingName.c_str());
-        assert(rc == 0);
-
-        // Set the callback
-        BLEGattServer::setServerAccessCB(gattAccessCallbackStatic);
-
-        // Start the host task
-        nimble_port_freertos_init(bleHostTask);
 
         // Currently disconnected
         setIsConnected(false);
@@ -288,6 +238,31 @@ void BLEManager::service()
     if (!_BLEDeviceInitialised)
         return;
 
+    // Check if restart in progress
+    switch(_bleRestartState)
+    {
+        case BLERestartState_Idle:
+            break;
+        case BLERestartState_StopRequired:
+            if (Utils::isTimeout(millis(), _bleRestartLastMs, BLE_RESTART_BEFORE_STOP_MS))
+            {
+                // Stop the BLE stack
+                nimbleStop();
+                _bleRestartState = BLERestartState_StartRequired;
+                _bleRestartLastMs = millis();
+            }
+            return;
+        case BLERestartState_StartRequired:
+            if (Utils::isTimeout(millis(), _bleRestartLastMs, BLE_RESTART_BEFORE_START_MS))
+            {
+                // Start the BLE stack
+                nimbleStart();
+                _bleRestartState = BLERestartState_Idle;
+                _bleRestartLastMs = millis();
+            }
+            return;
+    }
+
 #ifdef USE_TIMED_ADVERTISING_CHECK
     // Handle advertising check
     if ((!_isConnected) && (_advertisingCheckRequired))
@@ -344,6 +319,9 @@ void BLEManager::service()
 
 void BLEManager::addRestAPIEndpoints(RestAPIEndpointManager &endpointManager)
 {
+    endpointManager.addEndpoint("blerestart", RestAPIEndpointDef::ENDPOINT_CALLBACK, RestAPIEndpointDef::ENDPOINT_GET,
+                        std::bind(&BLEManager::apiBLERestart, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+                        "Restart BLE");
 }
 
 void BLEManager::addProtocolEndpoints(ProtocolEndpointManager& endpointManager)
@@ -376,7 +354,7 @@ String BLEManager::getStatusJSON()
 
     char statusStr[200];
     snprintf(statusStr, sizeof(statusStr), 
-                R"({"rslt":"ok","isConn":%d,"isAdv":%d,"advName":"%s",%s"BLEMAC":"%s"})",
+                R"({"rslt":"ok","isConn":%d,"isAdv":%d,"advName":"%s",%s"BLEMAC":"%s",)",
                 _isConnected,
                 ble_gap_adv_active(),
                 ble_svc_gap_device_name(),
@@ -388,7 +366,9 @@ String BLEManager::getStatusJSON()
                 getSystemMACAddressStr(ESP_MAC_BT, ":").c_str()
                 );
 
-    return statusStr;
+    String statusJSON = statusStr + _bleStats.getJSON(false, false) + "}";
+
+    return statusJSON;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -409,12 +389,11 @@ String BLEManager::getDebugJSON()
     if (advertisingActive)
         advertisingInfo = R"(,"adv":")" + String(ble_svc_gap_device_name()) + R"(")";
     char tmpBuf[200];
-    snprintf(tmpBuf, sizeof(tmpBuf)-1, R"({"s":"%s"%s,"rx":%d,"tx":%d})",
+    snprintf(tmpBuf, sizeof(tmpBuf)-1, R"({"s":"%s"%s,)",
         _isConnected ? (gapConnActive ? "actv" : "conn") : (advertisingActive ? "adv" : (discoveryActive ? "disco" : "none")),
-        advertisingInfo.c_str(),
-        _rxTotalCount,
-        _txTotalCount);
-    return tmpBuf;
+        advertisingInfo.c_str());
+    String statusStr = tmpBuf + _bleStats.getJSON(false, true) + "}";
+    return statusStr;
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -552,6 +531,15 @@ bool BLEManager::startAdvertising()
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// stopAdvertising
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BLEManager::stopAdvertising()
+{
+    ble_gap_adv_stop();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Log information about a connection to the console.
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -626,14 +614,21 @@ int BLEManager::nimbleGapEvent(struct ble_gap_event *event, void *arg)
         {
             // A new connection was established or a connection attempt failed
 #ifdef DEBUG_LOG_CONNECT
-            LOG_I(MODULE_PREFIX, "GAPEvent connection %s (%d) ",
+            LOG_I(MODULE_PREFIX, "GAPEvent conn %s (%d) ",
                         event->connect.status == 0 ? "established" : "failed",
                         event->connect.status);
 #endif
             if (event->connect.status == 0)
             {
+                int rc = ble_att_set_preferred_mtu(PREFERRED_MTU_VALUE);
+                if (rc != 0) {
+                    LOG_W(MODULE_PREFIX, "GAPEvent conn failed to set preferred MTU; rc = %d", rc);
+                }
+                rc = ble_hs_hci_util_set_data_len(event->connect.conn_handle,
+                                    LL_PACKET_LENGTH,
+                                    LL_PACKET_TIME);
                 setIsConnected(true, event->connect.conn_handle);
-                int rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
+                rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
                 assert(rc == 0);
 #ifdef DEBUG_LOG_CONNECT_DETAIL
                 logConnectionInfo(&desc);
@@ -646,13 +641,13 @@ int BLEManager::nimbleGapEvent(struct ble_gap_event *event, void *arg)
                 if (!startAdvertising())
                 {
 #ifdef WARN_ON_BLE_ADVERTISING_START_FAILURE
-                    LOG_W(MODULE_PREFIX, "nimbleGapEvent start advertising FAILED");
+                    LOG_W(MODULE_PREFIX, "GAPEvent conn start advertising FAILED");
                     delay(50);
 #endif
                 }
                 else
                 {
-                    LOG_I(MODULE_PREFIX, "nimbleGapEvent resumed advertising after connection failure");
+                    LOG_I(MODULE_PREFIX, "GAPEvent conn resumed advertising after connection failure");
                 }
             }
             return 0;
@@ -765,7 +760,6 @@ int BLEManager::nimbleGapEvent(struct ble_gap_event *event, void *arg)
         }
         case BLE_GAP_EVENT_NOTIFY_TX:
         {
-            _pBLEManager->_txTotalCount++;
 #ifdef DEBUG_BLE_EVENT_NOTIFY_TX
             LOG_I(MODULE_PREFIX, "GAPEvent notify TX");
 #endif
@@ -871,7 +865,49 @@ void BLEManager::gattAccessCallbackStatic(const char* characteristicName, bool r
 
 void BLEManager::gattAccessCallback(const char* characteristicName, bool readOp, const uint8_t *payloadbuffer, int payloadlength)
 {
-    _pBLEManager->_rxTotalCount++;
+    // Check for test frames (used to determine performance of the link)
+    if ((payloadlength > 10) && (payloadbuffer[5] == 0x1f) && (payloadbuffer[6] == 0x9d) && (payloadbuffer[7] == 0xf4) && (payloadbuffer[8] == 0x7a) && (payloadbuffer[9] == 0xb5))
+    {
+        // Get msg count
+        uint32_t inMsgCount = (payloadbuffer[1] << 24)
+                    | (payloadbuffer[2] << 16)
+                    | (payloadbuffer[3] << 8)
+                    | payloadbuffer[4];
+        bool isSeqOk = inMsgCount == _lastTestMsgCount+1;
+        bool isFirst = inMsgCount == 0;
+        if (isFirst)
+        {
+            _testPerfPrbsState = 1;
+            _bleStats.clearTestPerfStats();
+            isSeqOk = true;
+        }
+        _lastTestMsgCount = inMsgCount;
+        
+        // Check test message valid
+        bool isDataOk = true;
+        for (uint32_t i = 10; i < payloadlength; i++) {
+            _testPerfPrbsState = parkmiller_next(_testPerfPrbsState);
+            if (payloadbuffer[i] != (_testPerfPrbsState & 0xff)) {
+                isDataOk = false;
+            }
+        }
+
+        // Update test stats
+        _bleStats.rxTestFrame(payloadlength, isSeqOk, isDataOk);
+
+        // Message
+        LOG_I(MODULE_PREFIX, "%s inMsgCount %4d rate %8.1fBytesPS seqErrs %4d dataErrs %6d  len %4d", 
+                    isFirst ? "FIRST  " : (isSeqOk & isDataOk) ? "OK     " : !isSeqOk ? "SEQERR " : "DATERR ",
+                    inMsgCount,
+                    _bleStats.getTestRate(),
+                    _bleStats.getTestSeqErrCount(),
+                    _bleStats.getTestDataErrCount(),
+                    payloadlength);        
+    }
+    else
+    {
+        _bleStats.rxMsg(payloadlength);
+    }
     if (!readOp)
     {
         // Send the message to the ProtocolEndpointManager if this is a write to the characteristic
@@ -1020,7 +1056,10 @@ void BLEManager::handleSendFromOutboundQueue()
         {
             ProtocolRawMsg bleOutMsg;
             if (_bleOutboundQueue.get(bleOutMsg))
-                BLEGattServer::sendToCentral(bleOutMsg.getBuf(), bleOutMsg.getBufLen());
+            {
+                bool rslt = BLEGattServer::sendToCentral(bleOutMsg.getBuf(), bleOutMsg.getBufLen());
+                _bleStats.txMsg(bleOutMsg.getBufLen(), rslt);
+            }
             _lastOutboundMsgMs = millis();
         }
     }
@@ -1053,4 +1092,122 @@ void BLEManager::outboundMsgTask()
     // Task has exited
     _outboundMsgTaskHandle = nullptr;
     vTaskDelete(NULL);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// API Restart BLE
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void BLEManager::apiBLERestart(const String &reqStr, String &respStr, const APISourceInfo& sourceInfo)
+{
+    // Stop advertising
+    stopAdvertising();
+
+    // Set state to stop required
+    _bleRestartState = BLERestartState_StopRequired;
+    _bleRestartLastMs = millis();
+
+    // Restart in progress
+    Utils::setJsonBoolResult(reqStr.c_str(), respStr, true);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Start the BLE stack
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool BLEManager::nimbleStart()
+{
+    // Init Nimble
+    esp_err_t err = esp_nimble_hci_and_controller_init();
+    if (err != ESP_OK)
+    {
+#ifdef WARN_ON_BLE_INIT_FAILED
+        LOG_E(MODULE_PREFIX, "nimbleStart esp_nimble_hci_and_controller_init failed err=%d", err);
+#endif
+        return false;
+    }
+
+    // Log level for NimBLE module is set in here so if we want to override it
+    // we have to do so after this call
+    nimble_port_init();
+
+    // Get NimBLE log level 
+    String nimLogLev = configGetString("nimLogLev", "");
+    setModuleLogLevel("NimBLE", nimLogLev);
+
+    // onReset callback
+    ble_hs_cfg.reset_cb = [](int reason) {
+#ifdef DEBUG_BLE_ON_RESET            
+        LOG_I(MODULE_PREFIX, "onReset() reason=%d", reason);
+#endif
+    };
+
+    // onSync callback
+    ble_hs_cfg.sync_cb = []() {
+        if (_pBLEManager)
+            _pBLEManager->onSync();
+    };
+
+    ble_hs_cfg.gatts_register_cb = BLEGattServer::registrationCallback;
+    ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
+
+    // Not really explained here
+    // https://microchipdeveloper.com/wireless:ble-gap-security
+    ble_hs_cfg.sm_io_cap = BLE_SM_IO_CAP_KEYBOARD_DISP;
+    ble_hs_cfg.sm_sc = 0;
+
+    int rc = BLEGattServer::initServer();
+    if (rc == 0)
+    {
+        // Set the advertising name
+        _configuredAdvertisingName = getAdvertisingName();
+        rc = ble_svc_gap_device_name_set(_configuredAdvertisingName.c_str());
+     
+        // Set the callback
+        BLEGattServer::setServerAccessCB(gattAccessCallbackStatic);
+    }
+    else
+    {
+        LOG_W(MODULE_PREFIX, "nimbleStart BLEGattServer::initServer() failed rc=%d", rc);
+    }
+
+    // Start the host task
+    nimble_port_freertos_init(bleHostTask);
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Stop the BLE stack
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool BLEManager::nimbleStop()
+{
+    int ret = nimble_port_stop();
+    if (ret != 0)
+    {
+        LOG_W(MODULE_PREFIX, "nimbleStop nimble_port_stop() failed ret=%d", ret);
+        return false;
+    }
+    nimble_port_deinit();
+    ret = esp_nimble_hci_and_controller_deinit();
+    if (ret != 0) {
+        LOG_W(MODULE_PREFIX, "nimbleStop nimble_port_deinit() failed ret=%d", ret);
+        return false;
+    }
+    return true;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// PRBS for throughput testing
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uint32_t BLEManager::parkmiller_next(uint32_t seed) const
+{
+    uint32_t hi = 16807 * (seed & 0xffff);
+    uint32_t lo = 16807 * (seed >> 16);
+    lo += (hi & 0x7fff) << 16;
+    lo += hi >> 15;
+    if (lo > 0x7fffffff)
+        lo -= 0x7fffffff;
+    return lo;
 }

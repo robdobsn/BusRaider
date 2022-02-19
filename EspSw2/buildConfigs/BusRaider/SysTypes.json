@@ -24,6 +24,24 @@
 			"WiFiEnabled": 1,
 			"logLevel": "D"
 		},
+		"MQTTMan": {
+			"enable": 0,
+			"brokerHostname": "192.168.86.247",
+			"brokerPort": 1883,
+			"clientID": "RBot",
+			"topics": [
+				{
+					"inbound": 1,
+					"path": "scader/in",
+					"qos": 1
+				},
+				{
+					"inbound": 0,
+					"path": "scader/out",
+					"qos": 1
+				}
+			]
+		},
 		"NTPClient": {
 			"enable": 1,
 			"NTPServer": "pool.ntp.org",
@@ -50,7 +68,7 @@
 			"wsPcol": "RICSerial",
 			"wsPingMs": 2000,
 			"logLevel": "D",
-			"sendMax": 1000,
+			"sendMax": 500,
 			"taskCore": 0,
 			"taskStack": 3000,
 			"taskPriority": 9
@@ -67,24 +85,12 @@
 		"CommandSerial": {
 			"enable": 1,
 			"uartNum": 1,
-			"baudRate": 912600,
+			"baudRate": 921600,
 			"rxBufSize": 32768,
 			"rxPin": 35,
 			"txPin": 12,
 			"protocol": "RICSerial",
 			"logLevel": "D"
-		},
-		"FileManager": {
-			"SPIFFSEnabled": 1,
-			"LittleFSEnabled": 1,
-			"LocalFSFormatIfCorrupt": 1,
-			"CacheFileSysInfo": 1,
-			"SDEnabled": 0,
-			"DefaultSD": 1,
-			"SDMOSI": 15,
-			"SDMISO": 4,
-			"SDCLK": 14,
-			"SDCS": 13
 		},
 		"CommandSocket": {
 			"enable":1,
@@ -92,6 +98,19 @@
 			"protocol":"BusRaiderCSOK",
 			"logLevel":"D"
 		},
+		"FileManager": {
+			"SPIFFSEnabled": 1,
+			"LittleFSEnabled": 1,
+			"LocalFSFormatIfCorrupt": 1,
+			"CacheFileSysInfo": 0,
+			"SDEnabled": 0,
+			"DefaultSD": 1,
+			"SDMOSI": 15,
+			"SDMISO": 4,
+			"SDCLK": 14,
+			"SDCS": 13
+		},
+
 		"PiCoProcessor":{
 			"enable":1,
 			"uartNum":2,

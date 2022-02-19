@@ -14,12 +14,9 @@ let curSettings = {
 };
 
 let curState = {
-    "status":
-    {
-        "machineList": ["Serial Terminal", "Rob's Z80", "TRS80", "ZX Spectrum"],
-        "machineCur": "TRS80",
-        "clockHz": 1100000
-    },
+    "machineList": ["Serial Terminal", "Rob's Z80", "TRS80", "ZX Spectrum"],
+    "machineCur": "TRS80",
+    "clockHz": 1100000
 };
 
 let stFileInfo = {
@@ -35,7 +32,7 @@ let stFileInfo = {
 };
 
 const z80System = new Z80System();
-z80System.setMachine(curState.status.machineCur);
+z80System.setMachine(curState.machineCur);
 
 const localFSFolder = "../../EspSw2/buildConfigs/BusRaider/FSImage/";
 const sdFSFolder = "./SDFSImage/";
@@ -175,10 +172,10 @@ async function run() {
     app.post('/api/setmcjson', async function (req, res) {
         console.log("setmcjson", req.body)
         if ("clockHz" in req.body) {
-            curState.status.clockHz = req.body.clockHz;
+            curState.clockHz = req.body.clockHz;
         }
         if ("name" in req.body) {
-            curState.status.machineCur = req.body.name;
+            curState.machineCur = req.body.name;
             z80System.setMachine(req.body.name);
         }
         res.json({ "rslt": "ok" });
@@ -187,7 +184,7 @@ async function run() {
     app.post('/api/targetcmd/clockhzset', async function (req, res) {
         console.log("clockhzset", req.params, req.body)
         if ("clockHz" in req.body) {
-            curState.status.clockHz = req.body.clockHz;
+            curState.clockHz = req.body.clockHz;
         }
         res.json({ "rslt": "ok" });
     });
@@ -195,7 +192,7 @@ async function run() {
     app.post('/api/targetcmd/setbps', async function (req, res) {
         console.log("setbps", req.params, req.body)
         if ("execbps" in req.body) {
-            curState.status.execbps = req.body.execbps;
+            curState.execbps = req.body.execbps;
             z80System.setExecBps(req.body.execbps);
         }
     });

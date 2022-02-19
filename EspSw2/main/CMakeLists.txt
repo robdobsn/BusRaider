@@ -4,7 +4,7 @@ file(MAKE_DIRECTORY ${_custom_headers_dir})
 idf_component_register(
                 SRCS
                     "main.cpp"
-                    "RICSysTypes.cpp"
+                    "SysTypeStatics.cpp"
                     "PiCoProcessor/PiCoProcessor.cpp"
                 INCLUDE_DIRS
                     "."
@@ -14,7 +14,7 @@ idf_component_register(
 
 # Make sure the SysTypes header is (re)generated before compiling this component (main) if needed
 set(_systypes_header "${_custom_headers_dir}/SysTypes.h")
-set(_systypes_json "${RIC_CONFIG_DIR}/SysTypes.json")
+set(_systypes_json "${BUILD_CONFIG_DIR}/SysTypes.json")
 add_custom_command(OUTPUT ${_systypes_header}
                     COMMAND python3 ${CMAKE_SOURCE_DIR}/scripts/json2header.py ${_systypes_json} ${_systypes_header}
                     DEPENDS ${_systypes_json}

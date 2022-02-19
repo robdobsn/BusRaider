@@ -15,10 +15,12 @@
 #include "host/ble_uuid.h"
 #include <ThreadSafeQueue.h>
 #include <ProtocolRawMsg.h>
+#include "BLEManStats.h"
 
 #define USE_TIMED_ADVERTISING_CHECK 1
 
 class ProtocolEndpointMsg;
+class APISourceInfo;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // BLEManager
@@ -69,6 +71,11 @@ private:
     // Addr type
     static uint8_t own_addr_type;
 
+    // Preferred connection params
+    static const uint32_t PREFERRED_MTU_VALUE = 512;
+    static const uint32_t LL_PACKET_TIME = 2120;
+    static const uint32_t LL_PACKET_LENGTH = 251;
+
     // BLE advertising service UUIDs
     static ble_uuid128_t BLE_RICV2_ADVERTISING_UUID;
 
@@ -104,8 +111,24 @@ private:
     static const int DEFAULT_TASK_SIZE_BYTES = 3000;
 
     // Stats
-    uint32_t _rxTotalCount;
-    uint32_t _txTotalCount;
+    BLEManStats _bleStats;
+
+    // BLE performance testing
+    static const uint32_t TEST_THROUGHPUT_MAX_PAYLOAD = 500;
+    uint32_t _testPerfPrbsState = 1;
+    uint32_t _lastTestMsgCount = 0;
+
+    // BLE restart state
+    enum BLERestartState
+    {
+        BLERestartState_Idle,
+        BLERestartState_StopRequired,
+        BLERestartState_StartRequired
+    };
+    BLERestartState _bleRestartState = BLERestartState_Idle;
+    static const uint32_t BLE_RESTART_BEFORE_STOP_MS = 200;
+    static const uint32_t BLE_RESTART_BEFORE_START_MS = 200;
+    uint32_t _bleRestartLastMs = 0;
 
 #ifdef USE_TIMED_ADVERTISING_CHECK
     // Advertising check timeout
@@ -118,6 +141,7 @@ private:
     void applySetup();
     void onSync();
     static bool startAdvertising();
+    static void stopAdvertising();
     static int nimbleGapEvent(struct ble_gap_event *event, void *arg);
     static void bleHostTask(void *param);
     static void logConnectionInfo(struct ble_gap_conn_desc *desc);
@@ -131,4 +155,8 @@ private:
     void handleSendFromOutboundQueue();
     static void outboundMsgTaskStatic(void* pvParameters);
     void outboundMsgTask();
+    bool nimbleStart();
+    bool nimbleStop();
+    void apiBLERestart(const String &reqStr, String &respStr, const APISourceInfo& sourceInfo);
+    uint32_t parkmiller_next(uint32_t seed) const;
 };

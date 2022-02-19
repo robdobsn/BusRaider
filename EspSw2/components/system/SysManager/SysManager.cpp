@@ -20,7 +20,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "Utils.h"
-#include <RICUtils.h>
+#include <HWUtils.h>
 #include <ESPUtils.h>
 #include <NetworkSystem.h>
 #include <DebugGlobals.h>
@@ -285,6 +285,9 @@ void SysManager::service()
         uint64_t sysModExecStartUs = micros();
 #endif
 
+        // Debug
+        // LOG_I(MODULE_PREFIX, "service module %s", _sysModServiceVector[_serviceLoopCurModIdx]->modName());
+
         // Service SysMod
         _supervisorStats.execStarted(_serviceLoopCurModIdx);
         _sysModServiceVector[_serviceLoopCurModIdx]->service();
@@ -302,9 +305,6 @@ void SysManager::service()
 #ifndef ONLY_ONE_MODULE_PER_SERVICE_LOOP
     }
 #endif
-
-    // Debug
-    // LOG_D(MODULE_PREFIX, "Service module %s", sysModInfo._pSysMod->modName());
 
     // Next SysMod
     _serviceLoopCurModIdx++;
@@ -532,13 +532,13 @@ void SysManager::apiGetVersion(const String &reqStr, String& respStr, const APIS
     char versionJson[225];
     snprintf(versionJson, sizeof(versionJson),
              R"({"req":"%s","rslt":"ok","SystemName":"%s","SystemVersion":"%s","SerialNo":"%s",)"
-             R"("MAC":"%s","RicHwRevNo":%d})",
+             R"("MAC":"%s","HwRevNo":%d})",
              reqStr.c_str(), 
              _systemName.c_str(), 
              _systemVersion.c_str(), 
              _ricSerialNoStoredStr.c_str(),
              _systemUniqueString.c_str(), 
-             getRICRevision());
+             getHWRevision());
     respStr = versionJson;
 }
 
@@ -666,7 +666,7 @@ void SysManager::apiHwRevisionNumber(const String &reqStr, String& respStr, cons
 {
     // Create response JSON
     char jsonOut[30];
-    snprintf(jsonOut, sizeof(jsonOut), R"("RicHwRevNo":%d)", getRICRevision());
+    snprintf(jsonOut, sizeof(jsonOut), R"("RicHwRevNo":%d,"HwRevNo":%d)", getHWRevision(), getHWRevision());
     Utils::setJsonBoolResult(reqStr.c_str(), respStr, true, jsonOut);
 }
 
@@ -787,7 +787,7 @@ void SysManager::statsShow()
     snprintf(statsStr, sizeof(statsStr), R"({"n":"%s","v":"%s","r":%d,"hpInt":%d,"hpMin":%d,"hpAll":%d)", 
                 _systemName.c_str(),
                 _systemVersion.c_str(),
-                getRICRevision(),
+                getHWRevision(),
                 heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
                 heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
                 heap_caps_get_free_size(MALLOC_CAP_8BIT));

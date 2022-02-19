@@ -152,8 +152,8 @@ static const te_variable functions[] = {
 	{ "cosh", cosh,    TE_FUNCTION1 | TE_FLAG_PURE, 0 },
 	{ "defined", isdef,TE_FUNCTION1 | TE_FLAG_PURE, 0 },
 	{ "e", e,          TE_FUNCTION0 | TE_FLAG_PURE, 0 },
-	{ "exp", exp,      TE_FUNCTION1 | TE_FLAG_PURE, 0 },
 	{ "equals", equals,TE_FUNCTION2 | TE_FLAG_PURE, 0 },
+	{ "exp", exp,      TE_FUNCTION1 | TE_FLAG_PURE, 0 },
 	{ "floor", floor,  TE_FUNCTION1 | TE_FLAG_PURE, 0 },
 	{ "if", ifFn,       TE_FUNCTION3 | TE_FLAG_PURE, 0 },
 	{ "ln", log,       TE_FUNCTION1 | TE_FLAG_PURE, 0 },
@@ -162,8 +162,8 @@ static const te_variable functions[] = {
 #else
 	{ "log", log10,    TE_FUNCTION1 | TE_FLAG_PURE, 0 },
 #endif
-	{ "log2", log2,    TE_FUNCTION1 | TE_FLAG_PURE, 0 },
 	{ "log10", log10,  TE_FUNCTION1 | TE_FLAG_PURE, 0 },
+	{ "log2", log2,    TE_FUNCTION1 | TE_FLAG_PURE, 0 },
 	{ "max", maxfn,    TE_FUNCTION2 | TE_FLAG_PURE, 0 },
 	{ "min", minfn,    TE_FUNCTION2 | TE_FLAG_PURE, 0 },
 	{ "NAN", nanFn,    TE_FUNCTION0 | TE_FLAG_PURE, 0 },

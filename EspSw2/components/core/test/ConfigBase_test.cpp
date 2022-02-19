@@ -10,7 +10,7 @@
 #include <Logger.h>
 // #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG
 #include <ConfigBase.h>
-#include <RICUtils.h>
+#include <HWUtils.h>
 #include <ESPUtils.h>
 #include <WString.h>
 #include "unity.h"
@@ -75,7 +75,7 @@ static bool testConfigVsJson(const char* dataPath, const char* pSourceStr)
     return true;
 }
 
-#define SYSTEM_NAME "RicFirmwareESP32"
+#define SYSTEM_NAME "FirmwareESP32"
 #define SYSTEM_VERSION "0.0.3"
 const char* testJSONConfigBase =
     R"({)"
@@ -171,7 +171,7 @@ TEST_CASE("test_getString", "[ConfigBase]")
         const char* expStr;
     };
     TestElem getStringTests [] = {
-        { "SystemName", "RicFirmwareESP32" },
+        { "SystemName", "FirmwareESP32" },
         { "SysManager/reportList", R"(["NetMan","RobotCtrl"])" },
         { "SysManager/reportList[1]", "RobotCtrl" },
         { "NetMan", R"({"WiFiEnabled":1,"defaultHostname":"Marty","logLevel":"D"})" },

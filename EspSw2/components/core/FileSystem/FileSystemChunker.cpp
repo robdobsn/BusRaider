@@ -58,7 +58,10 @@ bool FileSystemChunker::start(const String& filePath, uint32_t chunkMaxLen, bool
 
     // Get file details
     if (!writing && !fileSystem.getFileInfo("", filePath, _fileLen))
+    {
+        LOG_W(MODULE_PREFIX, "start cannot getFileInfo %s", filePath);
         return false;
+    }
 
     // Store
     _chunkMaxLen = chunkMaxLen;
@@ -192,6 +195,7 @@ bool FileSystemChunker::nextReadKeepOpen(uint8_t* pBuf, uint32_t bufLen, uint32_
             finalChunk = true;
             fileSystem.fileClose(_pFile);
             _pFile = nullptr;
+            _isActive = false;
         }
     }
 

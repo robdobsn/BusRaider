@@ -1,13 +1,15 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// RIC SysTypes
+// HWUtils
+// Get hardware revision info
 //
-// Rob Dobson 2020
+// Rob Dobson 2020-2022
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-const char* RIC_SYS_TYPE_STATICS[] = {
-#include "SysTypes.h"
-};
+#pragma once
 
-extern const int RIC_SYS_TYPE_STATICS_LEN = sizeof(RIC_SYS_TYPE_STATICS) / sizeof(const char *);
+static const int HW_REVISION_NUMBER_UNKNOWN = 0;
+
+// Detect hardware revision number
+int getHWRevision();

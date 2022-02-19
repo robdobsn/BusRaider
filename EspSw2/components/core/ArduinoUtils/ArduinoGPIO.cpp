@@ -25,7 +25,7 @@ extern "C" void IRAM_ATTR __pinMode(int pin, uint8_t mode)
                 gpio_set_direction((gpio_num_t)pin, GPIO_MODE_INPUT);
                 if (mode == INPUT_PULLUP)
                     gpio_set_pull_mode((gpio_num_t)pin, GPIO_PULLUP_ONLY);
-                else if (mode == INPUT_PULLUP)
+                else if (mode == INPUT_PULLDOWN)
                     gpio_set_pull_mode((gpio_num_t)pin, GPIO_PULLDOWN_ONLY);
                 else
                     gpio_set_pull_mode((gpio_num_t)pin, GPIO_FLOATING);

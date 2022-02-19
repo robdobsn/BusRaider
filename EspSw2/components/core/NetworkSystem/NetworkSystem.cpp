@@ -359,6 +359,7 @@ bool NetworkSystem::configureWiFi(const String& ssid, const String& pw, const St
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 3, 0)
                 .rm_enabled = 1,
                 .btm_enabled = 0,
+                .mbo_enabled  = 0,
                 .reserved = 0,
 #endif
                 }};

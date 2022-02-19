@@ -6,6 +6,7 @@
 //
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#include <cmath>
 #include <limits.h>
 #include "unity.h"
 #include <ExpressionEval.h>
@@ -396,4 +397,91 @@ TEST_CASE("Expression test 4", "[expressions]")
     TEST_ASSERT_MESSAGE(numLocalVars == 14, "Incorrect number of local vars");
     TEST_ASSERT_MESSAGE(numGlobalVars == 2, "Incorrect number of global vars");
 
+}
+
+/**
+ * @brief Checks that each "builtin" function is recognised correctly
+ */
+TEST_CASE("Builtins test", "[expressions]")
+{
+    // Set values
+    evaluator.clear();
+    evaluator.addVariables("{\"definedVar\":42}", false);
+
+    // Test definitions
+    struct TestDef
+    {
+        const char* builtinFnExpr;
+        double expVal;
+    };
+    TestDef tests[] = {
+        { "abs(-42)", 42.0 },
+        { "abs(12.3)", 12.3 },
+        { "acos(0.1)", std::acos(0.1) },
+        { "acosh(0.1)", std::acosh(0.1) },
+        { "asin(0.1)", std::asin(0.1) },
+        { "asinh(0.1)", std::asinh(0.1) },
+        { "atan(0.1)", std::atan(0.1) },
+        { "atan2(0.1, -0.2)", std::atan2(0.1, -0.2) },
+        { "atanh(0.1)", std::atanh(0.1) },
+        { "ceil(99.1)", 100 },
+        { "cos(1)", std::cos(1) },
+        { "cosh(1)", std::cosh(1) },
+        { "defined(definedVar)", 1 },
+        { "defined(undefinedVar)", 0 },
+        { "e()", std::exp(1) },
+        { "equals(42, 42)", 1 },
+        { "equals(-5, 5)", 0 },
+        { "exp(3)", std::exp(3) },
+        { "floor(99.9)", 99.0 },
+        { "if(0, 45, 78)", 78 },
+        { "if(1, 45, 78)", 45 },
+        { "ln(10)", std::log(10) },
+#ifdef TE_NAT_LOG
+        { "log(12)", std::log(12) },
+#else
+        { "log(100)", 2 },
+#endif
+        { "log10(0.1)", -1 },
+        { "log2(2048)", 11 },
+        { "max(89, 56)", 89 },
+        { "max(56, 89)", 89 },
+        { "min(89, 56)", 56 },
+        { "min(56, 89)", 56 },
+        { "NAN()", NAN },
+        { "pi()", std::acos(-1) },
+        { "pow(3, 4)", 81 },
+        // { "random()", 0 },  // TODO: Figure out how to test this one
+        { "round(87.2)", 87.0 },
+        { "round(87.6)", 88.0 },
+        { "sin(1)", std::sin(1) },
+        { "sinh(1)", std::sinh(1) },
+        { "sqrt(2)", std::sqrt(2) },
+        { "tan(1)", std::tan(1) },
+        { "tanh(1)", std::tanh(1) },
+        { "trunc(62.7)", 62.0 },
+        { "trunc(-62.9)", -62.0 }
+    };
+    const int numTests = sizeof(tests)/sizeof(tests[0]);
+
+    // Create expressions and add them to the evaluator
+    String builtinsTraj("");
+    for (int i = 0; i < numTests; i++)
+    {
+        builtinsTraj += "var" + String(i) + " = " + String(tests[i].builtinFnExpr) + "\n";
+    }
+    uint32_t errorLine = 0;
+    TEST_ASSERT_TRUE(evaluator.addExpressions(builtinsTraj.c_str(), errorLine));
+    evaluator.evalStatements("");
+
+    // Check results
+    for (int i = 0; i < numTests; i++)
+    {
+        double expectedVal = tests[i].expVal;
+        String varName = "var" + String(i);
+        bool isValid;
+        double actualVal = evaluator.getVal(varName.c_str(), isValid);
+        TEST_ASSERT_TRUE_MESSAGE(isValid, tests[i].builtinFnExpr);
+        TEST_ASSERT_EQUAL_DOUBLE_MESSAGE(expectedVal, actualVal, tests[i].builtinFnExpr);
+    }
 }

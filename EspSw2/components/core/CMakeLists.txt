@@ -7,6 +7,8 @@ idf_component_register(
                   "Utils/stdlib_noniso.c"
                   "MiniHDLC/MiniHDLC.cpp"
                   "Logger/Logger.cpp"
+                  "Logger/LoggerCore.cpp"
+                  "Logger/LoggerPapertrail.cpp"
                   "RdJson/RdJson.cpp"
                   "RdJson/jsmnR.cpp"
                   "Config/ConfigNVS.cpp"
@@ -25,7 +27,7 @@ idf_component_register(
                   "ArduinoUtils/ArduinoGPIO.cpp"
                   "SupervisorStats/SupervisorStats.cpp"
                   "DebugGlobals/DebugGlobals.cpp"
-                  "RICUtils/RICUtils.cpp"
+                  "HWUtils/HWUtils.cpp"
                 INCLUDE_DIRS
                   "Logger"
                   "ConfigPinMap"
@@ -45,8 +47,9 @@ idf_component_register(
                   "SupervisorStats"
                   "APICommon"
                   "DebugGlobals"
-                  "RICUtils"
+                  "HWUtils"
                   "NumericalFilters"
+                  "MovingAverage"
                 REQUIRES
                   nvs_flash
                   spiffs
