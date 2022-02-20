@@ -9,7 +9,7 @@ cd ../src &&\
 cd .. &&\
 python tools/CalcCRC.py src/kernel.img
 # python.exe tools/UploadToDev.py src/kernel.img $1 $2
-curl -F "file=@./src/kernel.img" http://$1/uploadpisw
+curl -F "file=@./src/kernel.img" http://$1/api/uploadpisw
 # if [ -z "$1" ]
 #   then
 #     echo "Done"

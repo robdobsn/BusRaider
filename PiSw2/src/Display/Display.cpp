@@ -18,7 +18,6 @@ static const int DISPLAY_TARGET_BORDER = 8;
 static const int DISPLAY_STATUS_LINES = 8;
 static const int DISPLAY_STATUS_MARGIN = 10;
 static const int DISPLAY_CONSOLE_MARGIN = 10;
-static const int DISPLAY_STATUS_INDENT = 40;
 
 static const int DISPLAY_TARGET_WIDTH = 1024;
 static const int DISPLAY_TARGET_HEIGHT = DISPLAY_HEIGHT - (2 * DISPLAY_TARGET_BORDER);
@@ -105,7 +104,7 @@ void Display::statusPut(int statusElement, int statusType, const char* pStr)
         { 0,                        2 }, // ESP version
         { DISPLAY_STATUS_INDENT,    2 }, // IP addr
         { 0,                        3 }, // Cur machine
-        { DISPLAY_STATUS_INDENT,    3 }, // Num machines
+        { DISPLAY_STATUS_INDENT,    3 }, // Clock speed
         { 0,                        4 }, // Bus access
         { DISPLAY_STATUS_INDENT-2,  4 }, // Refresh
         { 0,                        5 }, // Keyboard

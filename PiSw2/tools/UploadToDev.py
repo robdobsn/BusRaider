@@ -127,7 +127,7 @@ from martypy import RICCommsWiFi, RICInterface
 argparser = argparse.ArgumentParser(description='UploadToBusRaider')
 DEFAULT_SERIAL_PORT = "COM7"
 DEFAULT_SERIAL_BAUD = 921600
-DEFAULT_IP_ADDRESS = "192.168.86.7"
+DEFAULT_IP_ADDRESS = "192.168.86.68"
 argparser.add_argument('--fileName', help='File Name', default='/home/rob/rdev/BusRaider/PiSw2/src/kernel.img')
 argparser.add_argument('--port', help='Serial Port', default=DEFAULT_SERIAL_PORT)
 argparser.add_argument('--baud', help='Serial Baud', default=DEFAULT_SERIAL_BAUD)

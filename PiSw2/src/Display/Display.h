@@ -31,6 +31,8 @@ public:
     static const int STATUS_FAIL = 1;
     static const int STATUS_HILITE = 2;
 
+    static const int DISPLAY_STATUS_INDENT = 40;
+
 public:
     Display();
     ~Display();

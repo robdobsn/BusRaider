@@ -327,9 +327,11 @@ void BusRaiderApp::statusDisplayUpdate()
         }
 
         // Machine name
-        strlcpy(statusStr, "M/C: ", MAX_STATUS_STR_LEN);
-        strlcat(statusStr, _mcManager.getMachineName(), MAX_STATUS_STR_LEN);
-        strlcat(statusStr, "                       ", locmin(MAX_STATUS_STR_LEN, 40));
+        strlcpy(statusStr, "M/C: ", Display::DISPLAY_STATUS_INDENT);
+        strlcat(statusStr, _mcManager.getMachineName(), Display::DISPLAY_STATUS_INDENT);
+        for (uint32_t i = strlen(statusStr); i < Display::DISPLAY_STATUS_INDENT; i++)
+            statusStr[i] = ' ';
+        statusStr[Display::DISPLAY_STATUS_INDENT] = 0;
         _display.statusPut(Display::STATUS_FIELD_CUR_MACHINE, Display::STATUS_NORMAL, statusStr);
 
         // Speed

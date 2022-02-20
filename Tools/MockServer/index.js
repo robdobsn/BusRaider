@@ -33,6 +33,7 @@ let stFileInfo = {
 
 const z80System = new Z80System();
 z80System.setMachine(curState.machineCur);
+z80System.setClockHz(curState.clockHz)
 
 const localFSFolder = "../../EspSw2/buildConfigs/BusRaider/FSImage/";
 const sdFSFolder = "./SDFSImage/";
@@ -171,20 +172,23 @@ async function run() {
 
     app.post('/api/setmcjson', async function (req, res) {
         console.log("setmcjson", req.body)
-        if ("clockHz" in req.body) {
-            curState.clockHz = req.body.clockHz;
-        }
         if ("name" in req.body) {
             curState.machineCur = req.body.name;
             z80System.setMachine(req.body.name);
         }
+        // Override clock from json
+        if ("clockHz" in req.body) {
+            z80System.setClockHz(req.body.clockHz)
+        }
+        curState.clockHz = z80System.getClockHz();
         res.json({ "rslt": "ok" });
     });
 
     app.post('/api/targetcmd/clockhzset', async function (req, res) {
         console.log("clockhzset", req.params, req.body)
         if ("clockHz" in req.body) {
-            curState.clockHz = req.body.clockHz;
+            z80System.setClockHz(req.body.clockHz)
+            curState.clockHz = z80System.getClockHz();
         }
         res.json({ "rslt": "ok" });
     });

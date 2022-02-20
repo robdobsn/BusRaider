@@ -14,15 +14,44 @@ class Z80System {
         this.dumpBytesTotal = 0x100;
         this.execbps = {};
         this.tstatesSinceInt = 0;
+        this.clockHz = 1000000;
+        this.machines = {
+            "TRS80": {
+                "clockHz": 1770000,
+                "create": (memAccess, z80Proc) => {
+                    new Z80TRS80(memAccess, z80Proc);
+                }
+            },
+            "ZX Spectrum": {
+                "clockHz": 3500000,
+                "create": (memAccess, z80Proc) => {
+                    new Z80Spectrum(memAccess, z80Proc);
+                }
+            }
+        }
     }
 
     setMachine(systemName) {
-        console.log(`setMachine ${systemName}`);
-        if (systemName === "TRS80") {
-            this.machine = new Z80TRS80(this.memAccess, this.z80Proc);
-        } else if (systemName === "ZX Spectrum") {
-            this.machine = new Z80Spectrum(this.memAccess, this.z80Proc);
+        if (systemName in this.machines) {
+            this.machine = this.machines[systemName].create(this.memAccess, this.z80Proc);
+            this.clockHz = this.machines[systemName].clockHz;
+            console.log(`setMachine ${systemName} set Ok`);
+            return;
         }
+        console.log(`setMachine ${systemName} UNKNOWN SYSTEM NAME`);
+        // if (systemName === "TRS80") {
+        //     this.machine = new Z80TRS80(this.memAccess, this.z80Proc);
+        // } else if (systemName === "ZX Spectrum") {
+        //     this.machine = new Z80Spectrum(this.memAccess, this.z80Proc);
+        // }
+    }
+
+    setClockHz(clockHz) {
+        this.clockHz = clockHz;
+    }
+
+    getClockHz() {
+        return this.clockHz;
     }
 
     loadFile(filename) {
@@ -59,7 +88,7 @@ class Z80System {
         // console.log(curState);
         // this.memAccess.dumpMem(0x3c00, 0x400, false);
         this.processorTick = setInterval(() => {
-            for (let i = 0; i < 100; i++) {
+            for (let i = 0; i < this.clockHz/100000; i++) {
                 if (!this.isRunning) {
                     break;
                 }
