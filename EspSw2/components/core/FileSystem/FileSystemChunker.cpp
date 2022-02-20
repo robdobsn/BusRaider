@@ -59,7 +59,9 @@ bool FileSystemChunker::start(const String& filePath, uint32_t chunkMaxLen, bool
     // Get file details
     if (!writing && !fileSystem.getFileInfo("", filePath, _fileLen))
     {
-        LOG_W(MODULE_PREFIX, "start cannot getFileInfo %s", filePath);
+#ifdef DEBUG_FILE_CHUNKER
+        LOG_D(MODULE_PREFIX, "start cannot getFileInfo %s", filePath.c_str());
+#endif
         return false;
     }
 
