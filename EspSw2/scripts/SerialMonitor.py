@@ -124,7 +124,7 @@ class SerialIO:
             print("Serial Port " + str(self._serialPort) + " " + str(excp))
             return False
         try:
-            self._serial.set_buffer_size(100000, None)
+            self._serial.set_buffer_size(20000, None)
         except Exception:
             print("Failed to set serial buffer size")
 
