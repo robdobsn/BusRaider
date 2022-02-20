@@ -249,7 +249,7 @@ function ajaxPost(url, jsonStrToPos, okCallback, failCallback, okParam) {
 
 function webSocketOpen() {
     // Open a web socket for screen mirroring
-    window.appState.screenMirrorWebSocket = new WebSocket("ws://" + location.host + "/ws", "screen");
+    window.appState.screenMirrorWebSocket = new WebSocket("ws://" + location.host + "/ws");
     window.appState.screenMirrorWebSocket.binaryType = 'arraybuffer';
     window.appState.screenMirrorWebSocket.onopen = () => {
         console.log("Web socket open");
