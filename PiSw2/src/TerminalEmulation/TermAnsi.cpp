@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../system/lowlev.h"
+#include "lowlev.h"
 #include "TermAnsi.h"
 
 #define MAX(x, y) (((size_t)(x) > (size_t)(y)) ? (size_t)(x) : (size_t)(y))

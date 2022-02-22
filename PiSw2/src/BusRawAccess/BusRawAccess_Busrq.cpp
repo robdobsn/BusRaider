@@ -201,7 +201,7 @@ bool BusRawAccess::busReqWaitForAck(bool ack, uint32_t maxWaitForBUSACKus)
             break;
         // Service the bus to handle wait
         if (_pCallbackWhileWaitAsserted)
-            _pCallbackWhileWaitAsserted();
+            _pCallbackWhileWaitAsserted(_pCallbackObj);
     }
 
     // Fall-back to slower checking which can be timed against target clock speed
@@ -220,7 +220,7 @@ bool BusRawAccess::busReqWaitForAck(bool ack, uint32_t maxWaitForBUSACKus)
         }
         // Service the bus to handle wait
         if (_pCallbackWhileWaitAsserted)
-            _pCallbackWhileWaitAsserted();    
+            _pCallbackWhileWaitAsserted(_pCallbackObj);    
     }
 
 #ifdef DEBUG_BUS_ACCESS_BUSRQ

@@ -22,7 +22,11 @@ BusControl::BusControl()
       _busSocketManager(*this), 
       _memoryController(*this),
       _busRawAccess(*this, _clockGenerator, 
-                    [this](){ _targetControl.service(true); }),
+                    [](void* pObj){ 
+                        if(pObj) 
+                            ((BusControl*)pObj)->_targetControl.service(true); 
+                        },
+                    this),
       _hwManager(*this)
 {
     // Not init yet

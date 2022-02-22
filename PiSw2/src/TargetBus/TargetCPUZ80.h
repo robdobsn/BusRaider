@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "../TargetBus/TargetRegisters.h"
+#include "TargetRegisters.h"
 
 #define Z80_PROGRAM_RESET_VECTOR 0
 

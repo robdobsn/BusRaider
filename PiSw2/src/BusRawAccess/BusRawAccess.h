@@ -25,13 +25,13 @@ class BusSocketInfo;
 class BusControl;
 
 // Callback while WAIT asserted
-typedef void BusWaitAssertedCB();
+typedef void BusWaitAssertedCB(void* obj);
 
 class BusRawAccess
 {
 public:
     BusRawAccess(BusControl& busControl, BusClockGenerator& busClockGenerator,
-                BusWaitAssertedCB* pCallbackWhileWaitAsserted);
+                BusWaitAssertedCB* pCallbackWhileWaitAsserted, void* pCallbackObj);
 
     // Initialization
     void init();
@@ -182,6 +182,7 @@ private:
     bool _waitOnIO_Debugger;
     bool _waitIsSuspended;
     BusWaitAssertedCB* _pCallbackWhileWaitAsserted;
+    void* _pCallbackObj;
     void waitSystemInit();
     void waitRawSet();
 

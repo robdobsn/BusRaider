@@ -5,7 +5,6 @@
 CIRCLEHOME = ../../circle
 
 OBJS	= BusControl.o BusSocketManager.o \
-		BusClockGenerator.o \
 		TargetControl.o TargetControl_Debugger.o \
 		TargetControl_Prog.o TargetControl_Cycle.o \
 		TargetControl_Disasm.o \

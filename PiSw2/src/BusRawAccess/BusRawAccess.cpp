@@ -18,12 +18,13 @@ static const char MODULE_PREFIX[] = "BusRawAccess";
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 BusRawAccess::BusRawAccess(BusControl& busControl, BusClockGenerator& busClockGenerator,
-                BusWaitAssertedCB* pCallbackWhileWaitAsserted) :
+                BusWaitAssertedCB* pCallbackWhileWaitAsserted, void* pCallbackObj) :
         _busControl(busControl),
         _busClockGenerator(busClockGenerator)
 {
     _busReqAcknowledged = false;
     _pCallbackWhileWaitAsserted = pCallbackWhileWaitAsserted;
+    _pCallbackObj = pCallbackObj;
 }
 
 void BusRawAccess::init()
