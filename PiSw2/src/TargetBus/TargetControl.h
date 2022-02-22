@@ -6,7 +6,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include "TargetCPU.h"
+#include "BusAccess.h"
 #include "BusSocketInfo.h"
 #include "TargetRegisters.h"
 #include "TargetBreakpoints.h"

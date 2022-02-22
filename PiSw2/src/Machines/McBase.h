@@ -4,7 +4,7 @@
 #pragma once
 #include <stdint.h>
 #include "DisplayBase.h"
-#include "TargetCPU.h"
+#include "BusAccess.h"
 #include "McVariantTable.h"
 #include <circle/util.h>
 

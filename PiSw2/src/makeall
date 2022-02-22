@@ -14,6 +14,10 @@ cd web
 $make $1 $2 || exit
 cd ..
 
+cd BusRawAccess
+$make $1 $2 || exit
+cd ..
+
 cd TargetBus
 $make $1 $2 || exit
 cd ..

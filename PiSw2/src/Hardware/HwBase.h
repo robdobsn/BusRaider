@@ -3,7 +3,7 @@
 
 #pragma once
 #include <stdint.h>
-#include "TargetCPU.h"
+#include "BusAccess.h"
 
 class BusControl;
 

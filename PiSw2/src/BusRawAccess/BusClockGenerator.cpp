@@ -1,8 +1,8 @@
 // Bus Raider
 // Rob Dobson 2019-2020
 
-#include "TargetClockGenerator.h"
-#include "TargetClockDefs.h"
+#include "BusClockGenerator.h"
+#include "BusClockDefs.h"
 #include "BusAccessDefs.h"
 #include "PiWiring.h"
 #include "lowlib.h"
@@ -19,7 +19,7 @@ static const char MODULE_PREFIX[] = "TargClock";
 // Target Clock
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-TargetClockGenerator::TargetClockGenerator()
+BusClockGenerator::BusClockGenerator()
 {
     _freqReqd = 1000000;
     _enabled = false;
@@ -27,7 +27,7 @@ TargetClockGenerator::TargetClockGenerator()
     _altMode = INPUT;
 }
 
-bool TargetClockGenerator::setup(int pin)
+bool BusClockGenerator::setup(int pin)
 {
     // Check for default
     if (pin == -1)
@@ -50,7 +50,7 @@ bool TargetClockGenerator::setup(int pin)
     return true;
 }
 
-void TargetClockGenerator::setFreqHz(uint32_t newFreq)
+void BusClockGenerator::setFreqHz(uint32_t newFreq)
 {
     bool isEnabled = _enabled;
 #ifdef DEBUG_TARGET_CLOCK_GEN
@@ -65,7 +65,7 @@ void TargetClockGenerator::setFreqHz(uint32_t newFreq)
         enable(true);
 }
 
-void TargetClockGenerator::enable(bool en)
+void BusClockGenerator::enable(bool en)
 {
     // Check no change  
     if (en == _enabled)

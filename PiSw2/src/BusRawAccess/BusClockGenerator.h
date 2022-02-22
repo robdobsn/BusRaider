@@ -6,10 +6,10 @@
 #include <circle/bcm2835.h>
 #include <circle/memio.h>
 
-class TargetClockGenerator
+class BusClockGenerator
 {
   public:
-    TargetClockGenerator();
+    BusClockGenerator();
 
     bool setup(int pin = -1);
 

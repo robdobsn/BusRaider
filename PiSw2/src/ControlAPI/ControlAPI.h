@@ -8,7 +8,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "../TargetBus/TargetCPU.h"
+#include "../TargetBus/BusAccess.h"
 
 class CommandHandler;
 class BusControl;

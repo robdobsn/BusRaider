@@ -7,7 +7,7 @@ CIRCLEHOME = ../../circle
 OBJS	= HwManager.o HwBase.o 
 # HwRAMROM.o
 
-INCLUDE	+= -I ../system -I ../TargetBus -I ../Hardware
+INCLUDE	+= -I ../system -I ../TargetBus -I ../Hardware -I ../BusRawAccess
 
 brHardware.a: $(OBJS)
 	@echo "  AR    $@"

@@ -3,8 +3,8 @@
 
 #pragma once
 #include <stdint.h>
-#include "../TargetBus/TargetRegisters.h"
-#include "../TargetBus/TargetCPU.h"
+#include "TargetRegisters.h"
+#include "BusAccess.h"
 
 class TargetImager
 {

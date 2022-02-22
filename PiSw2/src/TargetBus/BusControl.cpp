@@ -21,7 +21,8 @@ BusControl::BusControl()
     : _targetControl(*this), 
       _busSocketManager(*this), 
       _memoryController(*this),
-      _busRawAccess(*this, _clockGenerator),
+      _busRawAccess(*this, _clockGenerator, 
+                    [this](){ _targetControl.service(true); }),
       _hwManager(*this)
 {
     // Not init yet

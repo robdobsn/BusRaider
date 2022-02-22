@@ -6,7 +6,7 @@ CIRCLEHOME = ../../circle
 
 OBJS	= ControlAPI.o
 
-INCLUDE	+= -I ../system -I ../TargetBus -I ../Hardware -I ../comms -I ../Machines -I ../Display
+INCLUDE	+= -I ../system -I ../TargetBus -I ../Hardware -I ../comms -I ../Machines -I ../Display -I ../BusRawAccess
 
 brBusAPI.a: $(OBJS)
 	@echo "  AR    $@"

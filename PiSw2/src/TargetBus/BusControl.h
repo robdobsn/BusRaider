@@ -10,11 +10,11 @@
 #include <circle/memio.h>
 #include "lowlib.h"
 #include "lowlev.h"
-#include "TargetCPU.h"
+#include "BusAccess.h"
 #include "TargetControl.h"
 #include "BusSocketManager.h"
 #include "BusAccessDefs.h"
-#include "TargetClockGenerator.h"
+#include "BusClockGenerator.h"
 #include "MemoryController.h"
 #include "BusRawAccess.h"
 #include "BusControlSettings.h"
@@ -62,7 +62,7 @@ public:
     }
 
     // Target clock generator
-    inline TargetClockGenerator& clock()
+    inline BusClockGenerator& clock()
     {
         return _clockGenerator;
     }
@@ -119,7 +119,7 @@ private:
     bool _isInitialized;
 
     // Clock generator
-    TargetClockGenerator _clockGenerator;
+    BusClockGenerator _clockGenerator;
 
     // TargetControl
     TargetControl _targetControl;

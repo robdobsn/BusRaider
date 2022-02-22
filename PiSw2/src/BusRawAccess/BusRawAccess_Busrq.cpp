@@ -1,8 +1,7 @@
 // Bus Raider
-// Rob Dobson 2018-2019
+// Rob Dobson 2018-2022
 
 #include "BusRawAccess.h"
-#include "BusControl.h"
 #include "PiWiring.h"
 #include "lowlev.h"
 #include "lowlib.h"
@@ -201,14 +200,15 @@ bool BusRawAccess::busReqWaitForAck(bool ack, uint32_t maxWaitForBUSACKus)
         if (rawBUSAKActive() == ack)
             break;
         // Service the bus to handle wait
-        _busControl.ctrl().service(true);
+        if (_pCallbackWhileWaitAsserted)
+            _pCallbackWhileWaitAsserted();
     }
 
     // Fall-back to slower checking which can be timed against target clock speed
     if (rawBUSAKActive() != ack)
     {
         uint32_t maxUsToWait = (maxWaitForBUSACKus == 0) ? 
-                getUsFromTStates(BR_MAX_WAIT_FOR_BUSACK_T_STATES, _targetClockGenerator.getFreqInHz()) : 
+                getUsFromTStates(BR_MAX_WAIT_FOR_BUSACK_T_STATES, _busClockGenerator.getFreqInHz()) : 
                 maxWaitForBUSACKus;
         if (maxUsToWait <= 0)
             maxUsToWait = 1;
@@ -218,6 +218,9 @@ bool BusRawAccess::busReqWaitForAck(bool ack, uint32_t maxWaitForBUSACKus)
                 break;
             microsDelay(1);
         }
+        // Service the bus to handle wait
+        if (_pCallbackWhileWaitAsserted)
+            _pCallbackWhileWaitAsserted();    
     }
 
 #ifdef DEBUG_BUS_ACCESS_BUSRQ

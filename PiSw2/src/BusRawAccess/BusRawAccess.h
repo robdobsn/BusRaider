@@ -10,11 +10,9 @@
 #include <circle/memio.h>
 #include "lowlib.h"
 #include "lowlev.h"
-#include "TargetCPU.h"
-#include "BusSocketManager.h"
+#include "BusAccess.h"
 #include "BusAccessDefs.h"
-#include "TargetClockGenerator.h"
-#include "MemoryController.h"
+#include "BusClockGenerator.h"
 #include "BusRawAccess_Timing.h"
 
 // #define CHECK_ARM_PWM_STA_BEFORE_WAIT_CLEAR
@@ -26,10 +24,14 @@
 class BusSocketInfo;
 class BusControl;
 
+// Callback while WAIT asserted
+typedef void BusWaitAssertedCB();
+
 class BusRawAccess
 {
 public:
-    BusRawAccess(BusControl& busControl, TargetClockGenerator& targetClockGenerator);
+    BusRawAccess(BusControl& busControl, BusClockGenerator& busClockGenerator,
+                BusWaitAssertedCB* pCallbackWhileWaitAsserted);
 
     // Initialization
     void init();
@@ -171,7 +173,7 @@ private:
     BusControl& _busControl;
 
     // Target clock generator
-    TargetClockGenerator& _targetClockGenerator;
+    BusClockGenerator& _busClockGenerator;
 
     // Wait system
     bool _waitOnMem_Socket;
@@ -179,6 +181,7 @@ private:
     bool _waitOnMem_Debugger;
     bool _waitOnIO_Debugger;
     bool _waitIsSuspended;
+    BusWaitAssertedCB* _pCallbackWhileWaitAsserted;
     void waitSystemInit();
     void waitRawSet();
 

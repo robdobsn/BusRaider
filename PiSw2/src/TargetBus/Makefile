@@ -5,10 +5,7 @@
 CIRCLEHOME = ../../circle
 
 OBJS	= BusControl.o BusSocketManager.o \
-		BusRawAccess.o BusRawAccess_Wait.o \
-		BusRawAccess_Busrq.o BusRawAccess_Addr.o \
-		BusRawAccess_Block.o BusRawAccess_Mux.o \
-		TargetClockGenerator.o \
+		BusClockGenerator.o \
 		TargetControl.o TargetControl_Debugger.o \
 		TargetControl_Prog.o TargetControl_Cycle.o \
 		TargetControl_Disasm.o \
@@ -17,7 +14,7 @@ OBJS	= BusControl.o BusSocketManager.o \
 		MemoryController.o \
 		mdZ80.o
 
-INCLUDE	+= -I ../system -I ../Hardware -I ../TargetBus
+INCLUDE	+= -I ../system -I ../Hardware -I ../TargetBus -I ../BusRawAccess
 
 brTargetBus.a: $(OBJS)
 	@echo "  AR    $@"

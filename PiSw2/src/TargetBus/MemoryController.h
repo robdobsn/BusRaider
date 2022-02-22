@@ -11,15 +11,9 @@
 #include "lowlib.h"
 #include "lowlev.h"
 #include "BusSocketInfo.h"
+#include "BusAccess.h"
 
 class BusControl;
-
-// Block access
-enum BlockAccessType
-{
-    BLOCK_ACCESS_MEM,
-    BLOCK_ACCESS_IO
-};
 
 class MemoryController
 {

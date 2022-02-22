@@ -33,6 +33,13 @@ enum BR_BUS_REQ_REASON {
     BR_BUS_REQ_REASON_GENERAL
 };
 
+// Block access
+enum BlockAccessType
+{
+    BLOCK_ACCESS_MEM,
+    BLOCK_ACCESS_IO
+};
+
 // Return codes from wait-state ISR
 
 // Indicate that memory or IO requested is not supported by the machine
