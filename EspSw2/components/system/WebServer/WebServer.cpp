@@ -22,7 +22,7 @@ WebServer* WebServer::_pThisWebServer = NULL;
 
 static const char* MODULE_PREFIX = "WebServer";
 
-#define DEBUG_WEBSOCKETS
+// #define DEBUG_WEBSOCKETS
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor

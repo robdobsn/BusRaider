@@ -694,17 +694,6 @@ uint32_t McZXSpectrum::getMirrorChanges(uint8_t* pMirrorChangeBuf, uint32_t mirr
                 _nextMirrorPos,
                 ZXSPECTRUM_DISP_RAM_SIZE);
 
-    // for (uint32_t i = 0x1600; i > 0; i--)
-    // {
-    //     if (_screenBuffer[i] != _screenBuffer[i-1])
-    //     {
-    //     }
-    // }
-
-    LogWrite(MODULE_PREFIX, LOG_DEBUG, "mirror %02x %02x %02x %02x",
-                _screenBuffer[0x1afc], _screenBuffer[0x17e0],
-                _screenBuffer[0x16fa], _screenBuffer[0x15fb]);
-
     // Copy screen to buffer
     memcpy(pMirrorChangeBuf+bufPos, _screenBuffer + _nextMirrorPos, bytesToSend);
 

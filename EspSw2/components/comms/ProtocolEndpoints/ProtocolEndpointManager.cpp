@@ -18,7 +18,7 @@ static const char* MODULE_PREFIX = "ProtMan";
 // #define DEBUG_OUTBOUND_PUBLISH
 // #define DEBUG_INBOUND_MESSAGE
 // #define DEBUG_PROTMAN_SERVICE
-#define DEBUG_CHANNEL_ID
+// #define DEBUG_CHANNEL_ID
 // #define DEBUG_PROTOCOL_HANDLER
 // #define DEBUG_FRAME_SEND
 // #define DEBUG_REGISTER_CHANNEL

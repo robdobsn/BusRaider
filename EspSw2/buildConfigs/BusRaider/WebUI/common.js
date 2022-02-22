@@ -302,19 +302,6 @@ function webSocketOpen() {
                 msgHandler(jsonData, binaryData);
             }
         }
-
-
-        // // console.log(`Web socket message ${event.data.byteLength}`);
-        // // console.log(this.buf2hex(msgData.slice(0, 20)));
-        // if (msgData.length < 2) {
-        //     console.log("Web socket message too short");
-        //     return;
-        // }
-        // // Offer to elems
-        // for (const [key, elem] of Object.entries(window.appState.elems)) {
-        //     if (elem.webSocketMessage(msgData))
-        //         return;
-        // }
     }
 }
 
