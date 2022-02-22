@@ -37,8 +37,6 @@ public:
     void enableServerSideEvents(const String& eventsURL);
     void sendServerSideEvent(const char* eventContent, const char* eventGroup);
 
-    // Web sockets
-    void webSocketSetup(const String& websocketURL);
 
 protected:
     // Setup
@@ -59,10 +57,9 @@ private:
     void configChanged();
     void applySetup();
     void setupEndpoints();
-    bool webSocketSendMsg(ProtocolEndpointMsg& msg);
-    bool webSocketCanSend(uint32_t channelID);
     bool restAPIMatchEndpoint(const char* url, RdWebServerMethod method,
                     RdWebServerRestEndpoint& endpoint);
+    void webSocketSetup();
 
     // Server config
     bool _accessControlAllowOriginAll;
@@ -79,8 +76,8 @@ private:
     // Singleton
     static WebServer* _pThisWebServer;
 
-    // Websocket protocol
-    String _webSocketProtocol;
+    // Websockets
+    std::vector<String> _webSocketConfigs;
 
     // Websocket protocol handling
     static const uint32_t WS_INBOUND_BLOCK_MAX_DEFAULT = 1200;

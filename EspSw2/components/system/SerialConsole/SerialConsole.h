@@ -113,5 +113,4 @@ private:
     // Helpers
     void showEndpoints();
     bool sendMsg(ProtocolEndpointMsg& msg);
-    bool readyToSend(uint32_t channelID);    
 };

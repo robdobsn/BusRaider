@@ -24,7 +24,7 @@ typedef std::function<bool(ProtocolEndpointMsg& msg)> ProtocolEndpointMsgCB;
 // Create protocol instance
 typedef std::function<ProtocolBase* (uint32_t channelID, const char* pConfigJSON, ProtocolEndpointMsgCB msgTxCB, ProtocolEndpointMsgCB msgRxCB)> ProtocolCreateFnType;
 // Channel ready function type
-typedef std::function<bool(uint32_t channelID)> ChannelReadyCBType;
+typedef std::function<bool(uint32_t channelID, bool& noConn)> ChannelReadyCBType;
 
 class ProtocolBase
 {

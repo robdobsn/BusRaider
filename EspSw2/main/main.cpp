@@ -392,9 +392,6 @@ void mainTask(void *pvParameters)
     // SysTypeManager endpoints
     _sysTypeManager.addRestAPIEndpoints(_restAPIEndpointManager);
 
-    // System module manager
-    _SysManager.setup();
-
 #ifdef FEATURE_WEB_SERVER_STATIC_FILES
     // Web server add files
     _webServer.serveStaticFiles("/files/local", "/local/");
@@ -402,15 +399,13 @@ void mainTask(void *pvParameters)
     _webServer.serveStaticFiles("/", ("/" + fileSystem.getDefaultFSRoot()).c_str());
 #endif
 
-#ifdef FEATURE_WEB_SOCKETS
-    // Serve websockets
-    _webServer.webSocketSetup("/ws");
-#endif
-
 #ifdef FEATURE_WEB_SERVER_OR_WEB_SOCKETS
     // Start webserver
     _webServer.beginServer();
 #endif
+
+    // System module manager
+    _SysManager.setup();
 
     // Loop forever
     while (1)

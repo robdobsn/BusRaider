@@ -147,9 +147,12 @@ void CommandSocket::addProtocolEndpoints(ProtocolEndpointManager &endpointManage
     // TODO - really should have a separate protocolEndpointID for each socket that is connected???? - maybe need a pool???
     // TODO - otherwise it won't be possible to direct a response back to the right socket ???
     _protocolEndpointID = endpointManager.registerChannel(_protocol.c_str(),
-            std::bind(&CommandSocket::sendMsg, this, std::placeholders::_1),
             modName(),
-            std::bind(&CommandSocket::readyToSend, this, std::placeholders::_1),
+            modName(),
+            std::bind(&CommandSocket::sendMsg, this, std::placeholders::_1),
+            [this](uint32_t channelID, bool& noConn) {
+                return true;
+            },
             INBOUND_BLOCK_MAX_DEFAULT,
             INBOUND_QUEUE_MAX_DEFAULT,
             OUTBOUND_BLOCK_MAX_DEFAULT,
@@ -300,16 +303,6 @@ bool CommandSocket::sendMsg(ProtocolEndpointMsg& msg)
 {
     // LOG_D(MODULE_PREFIX, "sendBLEMsg channelID %d, msgType %s msgNum %d, len %d",
     //         msg.getChannelID(), msg.getMsgTypeAsString(msg.getMsgTypeCode()), msg.getMsgNumber(), msg.getBufLen());
-    return true;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Ready to send indicator
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool CommandSocket::readyToSend(uint32_t channelID)
-{
-    // TODO - handle ready to send
     return true;
 }
 

@@ -25,8 +25,8 @@ public:
     // Register as an external message channel
     // xxBlockMax and xxQueueMaxLen parameters can be 0 for defaults to be used
     // Returns an ID used to identify this channel
-    uint32_t registerChannel(const char* protocolName, ProtocolEndpointMsgCB msgCB, 
-                const char* channelName, ChannelReadyCBType channelReadyCB,
+    uint32_t registerChannel(const char* protocolName, const char* interfaceName, const char* channelName, 
+                ProtocolEndpointMsgCB msgCB, ChannelReadyCBType channelReadyCB,
                 uint32_t inboundBlockMax = 0, uint32_t inboundQueueMaxLen = 0,
                 uint32_t outboundBlockMax = 0, uint32_t outboundQueueMaxLen = 0);
 
@@ -36,8 +36,10 @@ public:
     // Add protocol handler
     void addProtocol(ProtocolDef& protocolDef);
 
-    // Lookup channel ID
-    int32_t lookupChannelID(const char* interfaceName, const char* protocolName);
+    // Get channel IDs
+    int32_t getChannelIDByName(const char* channelName, const char* protocolName = nullptr);
+    void getChannelIDsByInterface(const char* interfaceName, std::vector<uint32_t>& channelIDs);
+    void getChannelIDs(std::vector<uint32_t>& channelIDs);
 
     // Check if we can accept inbound message
     bool canAcceptInbound(uint32_t channelID);
@@ -46,7 +48,7 @@ public:
     void handleInboundMessage(uint32_t channelID, const uint8_t* pMsg, uint32_t msgLen);
 
     // Check if we can accept outbound message
-    bool canAcceptOutbound(uint32_t channelID);
+    bool canAcceptOutbound(uint32_t channelID, bool &noConn);
     
     // Handle outbound message
     void handleOutboundMessage(ProtocolEndpointMsg& msg);
@@ -54,8 +56,9 @@ public:
     // Get the optimal comms block size
     uint32_t getInboundBlockMax(uint32_t channelID, uint32_t defaultSize);
 
-    // Undefined endpointID
+    // Special channelIDs
     static const uint32_t UNDEFINED_ID = 0xffff;
+    static const uint32_t CHANNEL_ID_REST_API = 0xfffe;
 
     // Get info
     String getInfoJSON();
@@ -78,7 +81,6 @@ private:
     // Helpers
     void ensureProtocolHandlerExists(uint32_t channelID);
     void handleOutboundMessageOnChannel(ProtocolEndpointMsg& msg, uint32_t channelID);
-    void getChannelIDs(std::vector<uint32_t>& channelIDs);
 
     // Consts
     static const int MAX_INBOUND_MSGS_IN_LOOP = 1;

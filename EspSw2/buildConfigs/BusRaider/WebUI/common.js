@@ -15,6 +15,7 @@ function bodyIsLoaded() {
         uiInSetupMode: false,
     };
     window.appState.elems = {};
+    window.appState.msgHandlers = {};
 
     // Add the Screen Mirror
     const screenMirror = new ScreenMirror();
@@ -34,6 +35,18 @@ function bodyIsLoaded() {
 
     // Wire up modules
     machines.setModules(screenMirror, z80Debugger);
+
+    // Record module message handlers
+    for (const [key, elem] of Object.entries(window.appState.elems)) {
+        const msgHandlers = elem.getMsgHandlers();
+        for (const msgHandler of msgHandlers) {
+            if (msgHandler.msgName in this.appState.msgHandlers) {
+                this.appState.msgHandlers[msgHandler.msgName].push(msgHandler.handler);
+            } else {
+                this.appState.msgHandlers[msgHandler.msgName] = [ msgHandler.handler ];
+            }
+        }
+    }
 
     // Get settings and update UI
     getAppSettingsAndUpdateUI();
@@ -249,27 +262,59 @@ function ajaxPost(url, jsonStrToPos, okCallback, failCallback, okParam) {
 
 function webSocketOpen() {
     // Open a web socket for screen mirroring
-    window.appState.screenMirrorWebSocket = new WebSocket("ws://" + location.host + "/ws");
-    window.appState.screenMirrorWebSocket.binaryType = 'arraybuffer';
-    window.appState.screenMirrorWebSocket.onopen = () => {
+    window.appState.websocket = new WebSocket("ws://" + location.host + "/ws");
+    window.appState.websocket.binaryType = 'arraybuffer';
+    window.appState.websocket.onopen = () => {
         console.log("Web socket open");
     }
-    window.appState.screenMirrorWebSocket.onclose = () => {
+    window.appState.websocket.onclose = () => {
         console.log("Web socket closed");
     }
-    window.appState.screenMirrorWebSocket.onmessage = (event) => {
-        // console.log(`Web socket message ${event.data.byteLength}`);
+    window.appState.websocket.onmessage = (event) => {
+        // Interpret websocket message
         const msgData = new Uint8Array(event.data);
-        // console.log(this.buf2hex(msgData.slice(0, 20)));
-        if (msgData.length < 2) {
-            console.log("Web socket message too short");
+
+        // Find end of JSON section
+        const jsonStartPos = 2;
+        const stringTerm = msgData.indexOf(0, jsonStartPos);
+        if (stringTerm <= 0)
+            return;
+
+        // Extract JSON
+        const jsonBinary = msgData.subarray(jsonStartPos, stringTerm);
+        const jsonStr = new TextDecoder("ascii").decode(jsonBinary);
+        let jsonData = null;
+        try {
+            jsonData = JSON.parse(jsonStr);
+        } catch (error) {
+            console.log(`ws onmessage invalid json ${jsonStr}`);
             return;
         }
-        // Offer to elems
-        for (const [key, elem] of Object.entries(window.appState.elems)) {
-            if (elem.webSocketMessage(msgData))
-                return;
+        if (!jsonData)
+            return;
+
+        // Extract binary section if any
+        const binaryData = msgData.subarray(stringTerm+1, stringTerm+1+jsonData.dataLen);
+
+        // Send to message handler(s)
+        if (jsonData.cmdName in this.appState.msgHandlers) {
+            for (const msgHandler of this.appState.msgHandlers[jsonData.cmdName]) {
+                msgHandler(jsonData, binaryData);
+            }
         }
+
+
+        // // console.log(`Web socket message ${event.data.byteLength}`);
+        // // console.log(this.buf2hex(msgData.slice(0, 20)));
+        // if (msgData.length < 2) {
+        //     console.log("Web socket message too short");
+        //     return;
+        // }
+        // // Offer to elems
+        // for (const [key, elem] of Object.entries(window.appState.elems)) {
+        //     if (elem.webSocketMessage(msgData))
+        //         return;
+        // }
     }
 }
 

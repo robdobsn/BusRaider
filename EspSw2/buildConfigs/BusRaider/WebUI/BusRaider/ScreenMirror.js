@@ -7,6 +7,9 @@ class ScreenMirror {
         this.objGlobalStr = "";
         this.canvasImage = null;
         this.canvasImageU32 = null;
+        this.headerStartPos = 0;
+        this.dataStartPos = 16;
+        this.screenDataCache = null;
     }
 
     postInit() {
@@ -80,12 +83,22 @@ class ScreenMirror {
     initScreenMirror() {
     }
 
-    webSocketMessage(msgData) {
+    webSocketMessage(jsonData, binaryData) {
+        console.log(jsonData, binaryData.length);
         // Check valid message format
-        if ((msgData[0] === 0x00) && (msgData[1] === 0x01)) {
+        if ((binaryData[this.headerStartPos] === 0x00) && (binaryData[this.headerStartPos+1] === 0x01)) {
             // console.log("Screen mirroring message");
-            this.updateMirrorFull(msgData);
+            this.updateMirrorFull(binaryData);
         }
+    }
+
+    getMsgHandlers() {
+        return [
+            { 
+                "msgName": "mirrorScreen",
+                "handler": (jsonData, binaryData) => this.webSocketMessage(jsonData, binaryData)
+            }
+        ];
     }
 
     buf2hex(buffer) {
@@ -96,9 +109,9 @@ class ScreenMirror {
 
     updateMirrorFull(binData) {
         // Check if this is a character terminal
-        if (binData[6] === 0x00) {
+        if (binData[this.headerStartPos+6] === 0x00) {
             this.handleCharMappedScreen(binData);
-        } else if (binData[6] === 0x01) {
+        } else if (binData[this.headerStartPos+6] === 0x01) {
             this.handlePixelMappedScreen(binData);
         }
     }
@@ -115,17 +128,17 @@ class ScreenMirror {
         }
 
         // Width and height
-        const mirrorWidth = (binData[2] << 8) + binData[3];
-        const mirrorHeight = (binData[4] << 8) + binData[5];
+        const mirrorWidth = (binData[this.headerStartPos+2] << 8) + binData[this.headerStartPos+3];
+        const mirrorHeight = (binData[this.headerStartPos+4] << 8) + binData[this.headerStartPos+5];
 
         // Check for TRS80 font types
-        const fontType = binData[7];
+        const fontType = binData[this.headerStartPos+7];
         if (fontType == 0x01) {
             // console.log("TRS80 font");
             screenText.classList.add("screen-text-trs80-l1-2x3");
 
             // Move to the start of data
-            let chPos = 10;
+            let chPos = this.dataStartPos;
 
             // Add the data
             let screenTextStr = "";
@@ -143,6 +156,22 @@ class ScreenMirror {
     }
 
     handlePixelMappedScreen(binData) {
+        // Get total screen bytes
+        const totalScreenBytes = (binData[this.headerStartPos+10] << 8) + binData[this.headerStartPos+11];
+        const bufOffset = (binData[this.headerStartPos+8] << 8) + binData[this.headerStartPos+9];
+
+        // Check cache valid
+        if (!this.screenDataCache || (this.screenDataCache.length != totalScreenBytes))
+            this.screenDataCache = new Uint8Array(totalScreenBytes);
+
+        // Add data to cache
+        this.screenDataCache.set(binData.subarray(this.dataStartPos), bufOffset);
+        // console.log(`handlePixMap set ${binData.length-this.dataStartPos} bytes at ${bufOffset}`);
+
+        // Check if final message (may be multiple messages)
+        if (bufOffset + binData.length - this.dataStartPos < totalScreenBytes)
+            return;
+
         // Get canvas element
         const screenCanvas = document.getElementById("screen-canvas");
         const ctx = screenCanvas.getContext('2d');
@@ -155,8 +184,8 @@ class ScreenMirror {
         }
 
         // Width and height
-        const mirrorWidth = (binData[2] << 8) + binData[3];
-        const mirrorHeight = (binData[4] << 8) + binData[5];
+        const mirrorWidth = (binData[this.headerStartPos+2] << 8) + binData[this.headerStartPos+3];
+        const mirrorHeight = (binData[this.headerStartPos+4] << 8) + binData[this.headerStartPos+5];
 
         // Create canvas image if required
         if ((this.canvasImage === null) || 
@@ -171,28 +200,29 @@ class ScreenMirror {
         }
 
         // Check for Spectrum layout
-        const layoutType = binData[7];
+        const layoutType = binData[this.headerStartPos+7];
         if (layoutType == 0x01) {
             // Move to the start of data
-            let chPos = 10;
+            let chPos = 0;
+            const screenData = this.screenDataCache;
 
             // Draw something on the image
             const imageData = this.canvasImageU32;
 
             for (let y = 0; y < mirrorHeight; y++) {
                 const lineStart = ((y & 0xc0) + ((y & 0x07) << 3) + ((y & 0x38) >> 3)) << 8;
-                const colourStart = 10 + 0x1800 + ((lineStart >> 11) << 5);
+                const colourStart = 0x1800 + ((lineStart >> 11) << 5);
                 let foreColour = 0;
                 let backColour = 0;
                 let bitMask = 0x80;
                 for (let x = 0; x < mirrorWidth; x++) {
                     if (bitMask === 0x80) {
-                        const colourByte = binData[colourStart + (x >> 3)];
+                        const colourByte = screenData[colourStart + (x >> 3)];
                         foreColour = this.spectrumColours[(colourByte & 0x07) + (colourByte & 0x40 ? 8 : 0)];
                         backColour = this.spectrumColours[(colourByte & 0x38) >> 3];
                     }
                     const pixelIndex = lineStart + x;
-                    imageData.setUint32(pixelIndex << 2, (binData[chPos] & bitMask) ? foreColour : backColour, false);
+                    imageData.setUint32(pixelIndex << 2, (screenData[chPos] & bitMask) ? foreColour : backColour, false);
                     if (bitMask === 0x01) {
                         chPos++;
                         bitMask = 0x80;

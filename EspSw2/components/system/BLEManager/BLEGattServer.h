@@ -44,7 +44,7 @@ public:
     static bool sendToCentral(const uint8_t* pBuf, uint32_t bufLen);
 
     // Check ready to send
-    static bool readyToSend();
+    static bool readyToSend(bool& noConn);
 
 private:
 

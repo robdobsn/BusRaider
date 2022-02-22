@@ -48,7 +48,6 @@ private:
     void begin();
     void end();
     bool sendMsg(ProtocolEndpointMsg& msg);
-    bool readyToSend(uint32_t channelID);
 
     // Vars
     bool _isEnabled;

@@ -55,5 +55,4 @@ private:
 
     // Helpers
     bool sendMQTTMsg(const String& topicName, ProtocolEndpointMsg& msg);
-    bool readyToSend(uint32_t channelID);
 };

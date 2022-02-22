@@ -63,9 +63,16 @@
 			"allowOriginAll": 1,
 			"apiPrefix": "api/",
 			"fileServer": 1,
-			"numConnSlots": 10,
-			"maxWS": 4,
-			"wsPcol": "RICSerial",
+			"numConnSlots": 6,
+			"websockets": [
+				{
+					"pfix": "ws",
+					"pcol": "RICFrame",
+					"maxConn": 2,
+					"txQueueMax": 1,
+					"pktMaxBytes": 5000
+				}
+			],
 			"wsPingMs": 2000,
 			"logLevel": "D",
 			"sendMax": 500,
@@ -86,7 +93,7 @@
 			"enable": 1,
 			"uartNum": 1,
 			"baudRate": 921600,
-			"rxBufSize": 32768,
+			"rxBufSize": 4096,
 			"rxPin": 35,
 			"txPin": 12,
 			"protocol": "RICSerial",

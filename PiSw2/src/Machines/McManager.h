@@ -135,6 +135,6 @@ private:
     const int SCREEN_MIRROR_REFRESH_MS = 100;
     bool _screenMirrorOut;
     uint32_t _screenMirrorLastMs;
-    const uint32_t SCREEN_MIRROR_FULL_REFRESH_COUNT = 500;
+    const uint32_t SCREEN_MIRROR_FULL_REFRESH_COUNT = 50;
     uint32_t _screenMirrorCount;
 };

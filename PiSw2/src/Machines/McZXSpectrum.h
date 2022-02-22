@@ -53,6 +53,9 @@ public:
         //             clockFreqHz, clockInCyclesPerMs, MIN_KEY_DOWN_TIME_IN_T_STATES / clockInCyclesPerMs);
     }
 
+    // Get changes made since last mirror display update
+    virtual uint32_t getMirrorChanges(uint8_t* pMirrorChangeBuf, uint32_t mirrorChangeMaxLen, bool forceGetAll) override;
+
 private:
     static uint32_t getKeyBitmap(const int* keyCodes, int keyCodesLen, const uint8_t* currentKeyPresses);
     void updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen);
@@ -61,11 +64,16 @@ private:
     static constexpr uint32_t ZXSPECTRUM_DISP_RAM_SIZE = 0x1b00;
     uint8_t _screenBuffer[ZXSPECTRUM_DISP_RAM_SIZE];
     bool _screenBufferValid;
+    bool _screenRefreshRequired = false;
     uint32_t _screenBufferRefreshY;
     uint32_t _screenBufferRefreshX;
     uint32_t _screenBufferRefreshCount;
     uint8_t _screenCache[ZXSPECTRUM_DISP_RAM_SIZE];
     bool _screenCacheValid;
+    static const uint32_t MAX_BYTES_IN_EACH_MIRROR_UPDATE = 4096;
+    uint32_t _nextMirrorPos = 0;
+    uint8_t _mirrorCache[ZXSPECTRUM_DISP_RAM_SIZE];
+    bool _mirrorCacheValid = false;
 
     uint8_t* _pFrameBuffer;
     uint32_t _pfbSize;

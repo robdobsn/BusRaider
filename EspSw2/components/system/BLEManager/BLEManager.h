@@ -149,7 +149,6 @@ private:
     static void gattAccessCallbackStatic(const char* characteristicName, bool readOp, const uint8_t *payloadbuffer, int payloadlength);
     void gattAccessCallback(const char* characteristicName, bool readOp, const uint8_t *payloadbuffer, int payloadlength);
     bool sendBLEMsg(ProtocolEndpointMsg& msg);
-    bool readyToSend(uint32_t channelID);
     static void setIsConnected(bool isConnected, uint16_t connHandle = 0);
     static String getAdvertisingName();
     void handleSendFromOutboundQueue();

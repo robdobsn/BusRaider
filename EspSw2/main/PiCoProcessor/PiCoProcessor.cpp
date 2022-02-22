@@ -223,7 +223,18 @@ void PiCoProcessor::applySetup()
 #endif
 
     // Detect hardware version
-    detectHardwareVersion();    
+    detectHardwareVersion();
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Post-Setup
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void PiCoProcessor::postSetup()
+{
+    // Get a match of interface and protocol
+    _pEndpointManager->getChannelIDsByInterface("ws", _wsChannelIDs);
+    LOG_I(MODULE_PREFIX, "setup WebSocket %d channelIDs", _wsChannelIDs.size());
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1046,8 +1057,18 @@ void PiCoProcessor::hdlcFrameRxFromPiCB(const uint8_t* pFrame, int frameLen)
         LOG_I(MODULE_PREFIX, "Mirror screen len %d buf[52]... %x %x %x %x", 
                 frameLen, pFrame[52], pFrame[53], pFrame[54], pFrame[55]);
 
-        // TODO 2020
-        // _pWebServer->webSocketSend(pFrame, frameLen);
+        // Set message
+        ProtocolEndpointMsg endpointMsg(0, MSG_PROTOCOL_NONE, 
+                    0, MSG_TYPE_PUBLISH);
+        endpointMsg.setFromBuffer(pFrame, frameLen);
+
+        // Iterate endpoints
+        for (auto channelID : _wsChannelIDs)
+        {
+            // Send message
+            endpointMsg.setChannelID(channelID);
+            _pEndpointManager->handleOutboundMessage(endpointMsg);
+        }
     }
     else if ((cmdName.endsWith("Resp")))
     {

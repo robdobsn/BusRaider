@@ -30,7 +30,8 @@ class FileSystem {
         }
     }
 
-    webSocketMessage(msgData) {
+    getMsgHandlers() {
+        return [];
     }
 
     initDragAndDrop() {

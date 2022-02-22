@@ -10,6 +10,8 @@
 #include "ProtocolRICFrame.h"
 #include <ProtocolEndpointMsg.h>
 #include <ConfigBase.h>
+#include "esp_heap_caps.h"
+#include <ArduinoTime.h>
 
 // Logging
 static const char* MODULE_PREFIX = "RICFrame";
@@ -100,6 +102,10 @@ bool ProtocolRICFrame::decodeParts(const uint8_t* pData, uint32_t dataLen, uint3
 
 void ProtocolRICFrame::encode(ProtocolEndpointMsg& msg, std::vector<uint8_t>& outMsg)
 {
+    LOG_I(MODULE_PREFIX, "encode mem %d len %d", heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT),
+                msg.getBufLen()+2);
+    delay(1);
+
     // Create the message
     outMsg.reserve(msg.getBufLen()+2);
     outMsg.push_back(msg.getMsgNumber());

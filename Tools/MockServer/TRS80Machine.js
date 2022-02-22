@@ -43,7 +43,8 @@ class TRS80Machine {
 
     getScreenUpdateMsg(screenInfo) {
         const screenSize = this.screenSize;
-        const msgBuf = new Uint8Array(10 + screenInfo.length);
+        const dataStart = 16;
+        const msgBuf = new Uint8Array(dataStart + screenInfo.length);
         msgBuf[0] = 0x00; // API version
         msgBuf[1] = 0x01; // Screen update
         msgBuf[2] = (screenSize[0] >> 8) & 0xff;
@@ -52,9 +53,11 @@ class TRS80Machine {
         msgBuf[5] = screenSize[1] & 0xff;
         msgBuf[6] = 0x00; // Character based screen
         msgBuf[7] = 0x01; // TRS80 font id
-        msgBuf[8] = 0x00; // Reserved
-        msgBuf[9] = 0x00; // Reserved
-        msgBuf.set(screenInfo, 10);
+        msgBuf[8] = 0x00; // Buffer offset high
+        msgBuf[9] = 0x00; // Buffer offet low
+        msgBuf[10] = (screenInfo.length >> 8) & 0xff;
+        msgBuf[11] = screenInfo.length & 0xff;
+        msgBuf.set(screenInfo, dataStart);
         return msgBuf;
     }
 

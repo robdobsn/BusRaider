@@ -18,7 +18,7 @@ static const char* MODULE_PREFIX = "ProtMan";
 // #define DEBUG_OUTBOUND_PUBLISH
 // #define DEBUG_INBOUND_MESSAGE
 // #define DEBUG_PROTMAN_SERVICE
-// #define DEBUG_CHANNEL_ID
+#define DEBUG_CHANNEL_ID
 // #define DEBUG_PROTOCOL_HANDLER
 // #define DEBUG_FRAME_SEND
 // #define DEBUG_REGISTER_CHANNEL
@@ -66,22 +66,30 @@ void ProtocolEndpointManager::service()
             continue;
 
         // Check if channel can accept an outbound message
-        if (pEndpoint->canAcceptOutbound(channelID))
+        bool noConn = false;
+        bool canAccept = pEndpoint->canAcceptOutbound(channelID, noConn);
+
+        // When either canAccept or no-connection get the message to be sent
+        if (canAccept || noConn)
         {
             // Check for outbound message
             ProtocolEndpointMsg msg;
             if (pEndpoint->getFromOutboundQueue(msg))
             {
-                // Ensure protocol handler exists
-                ensureProtocolHandlerExists(channelID);
+                // Check if we can send
+                if (canAccept)
+                {
+                    // Ensure protocol handler exists
+                    ensureProtocolHandlerExists(channelID);
 
-                // Debug
+                    // Debug
 #ifdef DEBUG_PROTMAN_SERVICE
-                LOG_I(MODULE_PREFIX, "service, got msg channelID %d, msgType %s msgNum %d, len %d",
-                    msg.getChannelID(), msg.getMsgTypeAsString(msg.getMsgTypeCode()), msg.getMsgNumber(), msg.getBufLen());
+                    LOG_I(MODULE_PREFIX, "service, got msg channelID %d, msgType %s msgNum %d, len %d",
+                        msg.getChannelID(), msg.getMsgTypeAsString(msg.getMsgTypeCode()), msg.getMsgNumber(), msg.getBufLen());
 #endif
-                // Handle the message
-                pEndpoint->callProtocolHandlerWithTxMsg(msg);
+                    // Handle the message
+                    pEndpoint->callProtocolHandlerWithTxMsg(msg);
+                }
             }
         }
 
@@ -99,13 +107,16 @@ void ProtocolEndpointManager::service()
 // The blockMax and queueMaxLen values can be left at 0 for default values to be applied
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-uint32_t ProtocolEndpointManager::registerChannel(const char* protocolName, ProtocolEndpointMsgCB msgCB, 
-                    const char* interfaceName, ChannelReadyCBType channelReadyCB,
+uint32_t ProtocolEndpointManager::registerChannel(const char* protocolName, 
+                    const char* interfaceName, const char* channelName,
+                    ProtocolEndpointMsgCB msgCB,
+                    ChannelReadyCBType channelReadyCB,
                     uint32_t inboundBlockMax, uint32_t inboundQueueMaxLen,
                     uint32_t outboundBlockMax, uint32_t outboundQueueMaxLen)
 {
     // Create new command definition and add
-    ProtocolEndpointDef* pDef = new ProtocolEndpointDef(protocolName, msgCB, interfaceName, channelReadyCB,
+    ProtocolEndpointDef* pDef = new ProtocolEndpointDef(protocolName, interfaceName, channelName, 
+                    msgCB, channelReadyCB,
                     inboundBlockMax, inboundQueueMaxLen, outboundBlockMax, outboundQueueMaxLen);
     if (pDef)
         _endpointsVec.push_back(pDef);
@@ -130,10 +141,10 @@ void ProtocolEndpointManager::addProtocol(ProtocolDef& protocolDef)
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Get channel ID
+// Get channel ID by name
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-int32_t ProtocolEndpointManager::lookupChannelID(const char* interfaceName, const char* protocolName)
+int32_t ProtocolEndpointManager::getChannelIDByName(const char* channelName, const char* protocolName)
 {
     // Iterate the endpoints list to find a match
     for (uint32_t channelID = 0; channelID < _endpointsVec.size(); channelID++)
@@ -144,18 +155,45 @@ int32_t ProtocolEndpointManager::lookupChannelID(const char* interfaceName, cons
             continue;
 
 #ifdef DEBUG_CHANNEL_ID
-        LOG_I(MODULE_PREFIX, "Testing interface %s with %s protocol %s with %s", 
-                    pEndpoint->getInterfaceName().c_str(), interfaceName,
+        LOG_I(MODULE_PREFIX, "Testing chName %s with %s protocol %s with %s", 
+                    pEndpoint->getChannelName().c_str(), channelName,
                     pEndpoint->getSourceProtocolName().c_str(), protocolName);
 #endif
-        if (pEndpoint->getInterfaceName().equalsIgnoreCase(interfaceName) && 
-            pEndpoint->getSourceProtocolName().equalsIgnoreCase(protocolName))
+        if (pEndpoint->getChannelName().equalsIgnoreCase(channelName) &&
+            ((protocolName == nullptr) || (strlen(protocolName) == 0) || pEndpoint->getSourceProtocolName().equalsIgnoreCase(protocolName)))
             return channelID;
     }
 #ifdef WARN_ON_NO_CHANNEL_MATCH
-    LOG_W(MODULE_PREFIX, "getChannelID noMatch interface %s protocol %s", interfaceName, protocolName);
+    LOG_W(MODULE_PREFIX, "getChannelID noMatch chName %s protocol %s", channelName, protocolName);
 #endif
     return -1;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Get channel IDs by interface
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void ProtocolEndpointManager::getChannelIDsByInterface(const char* interfaceName, std::vector<uint32_t>& channelIDs)
+{
+    // Iterate the endpoints list to find matches
+    channelIDs.clear();
+    for (uint32_t channelID = 0; channelID < _endpointsVec.size(); channelID++)
+    {
+        // Check if channel is used
+        ProtocolEndpointDef* pEndpoint = _endpointsVec[channelID];
+        if (!pEndpoint)
+            continue;
+
+#ifdef DEBUG_CHANNEL_ID
+        LOG_I(MODULE_PREFIX, "Testing interface %s with %s", 
+                    pEndpoint->getInterfaceName().c_str(), interfaceName);
+#endif
+        if (pEndpoint->getInterfaceName().equalsIgnoreCase(interfaceName))
+            channelIDs.push_back(channelID);
+    }
+#ifdef WARN_ON_NO_CHANNEL_MATCH
+    LOG_W(MODULE_PREFIX, "getChannelID interface %s returning %d IDs", interfaceName, channelIDs.size());
+#endif
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -169,7 +207,7 @@ void ProtocolEndpointManager::getChannelIDs(std::vector<uint32_t>& channelIDs)
     channelIDs.reserve(_endpointsVec.size());
     for (uint32_t channelID = 0; channelID < _endpointsVec.size(); channelID++)
     {
-        // Check if channel is used
+        // Check if channel is valid
         ProtocolEndpointDef* pEndpoint = _endpointsVec[channelID];
         if (!pEndpoint)
             continue;
@@ -238,7 +276,7 @@ void ProtocolEndpointManager::handleInboundMessage(uint32_t channelID, const uin
     // Check if we can accept outbound message
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool ProtocolEndpointManager::canAcceptOutbound(uint32_t channelID)
+bool ProtocolEndpointManager::canAcceptOutbound(uint32_t channelID, bool& noConn)
 {
     // Check the channel
     if (channelID >= _endpointsVec.size())
@@ -253,7 +291,7 @@ bool ProtocolEndpointManager::canAcceptOutbound(uint32_t channelID)
     ensureProtocolHandlerExists(channelID);
 
     // Check validity
-    return pEndpoint->canAcceptOutbound(channelID);
+    return pEndpoint->canAcceptOutbound(channelID, noConn);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -355,7 +393,8 @@ void ProtocolEndpointManager::handleOutboundMessageOnChannel(ProtocolEndpointMsg
 #endif
 
             // Check if channel can accept an outbound message and send if so
-            if (pEndpoint->canAcceptOutbound(channelID))
+            bool noConn = false;
+            if (pEndpoint->canAcceptOutbound(channelID, noConn))
                 pEndpoint->callProtocolHandlerWithTxMsg(msg);
     }
 }

@@ -14,6 +14,7 @@
 #include "FileSystemChunker.h"
 #include "MiniHDLC.h"
 #include <list>
+#include <vector>
 #include "FileStreamBlock.h"
 #include <driver/gpio.h>
 #include "Utils.h"
@@ -33,6 +34,9 @@ public:
 protected:
     // Setup
     virtual void setup() override final;
+
+    // Post-setup - called after setup of all sysMods complete
+    virtual void postSetup() override final;
 
     // Service - called frequently
     virtual void service() override final;
@@ -101,6 +105,9 @@ private:
 
     // EndpointManager
     ProtocolEndpointManager* _pEndpointManager;
+
+    // Channel IDs for websockets
+    std::vector<uint32_t> _wsChannelIDs;
 
     // Pi status
     String _cachedPiStatusJSON;

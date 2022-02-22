@@ -28,8 +28,9 @@ static const char* MODULE_PREFIX = "ProtDef";
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ProtocolEndpointDef::ProtocolEndpointDef(const char* pSourceProtocolName, 
-            ProtocolEndpointMsgCB endpointMsgCB, 
             const char* interfaceName, 
+            const char* channelName,
+            ProtocolEndpointMsgCB endpointMsgCB, 
             ChannelReadyCBType channelReadyCB,
             uint32_t inboundBlockMax,
             uint32_t inboundQueueMaxLen,
@@ -46,6 +47,7 @@ ProtocolEndpointDef::ProtocolEndpointDef(const char* pSourceProtocolName,
     _channelProtocolName = pSourceProtocolName;
     _endpointMsgCB = endpointMsgCB;
     _interfaceName = interfaceName;
+    _channelName = channelName;
     _channelReadyCB = channelReadyCB;
     _pProtocolHandler = NULL;
     _outboundQPeak = 0;
@@ -82,9 +84,10 @@ void ProtocolEndpointDef::callProtocolHandlerWithRxData(const uint8_t* pMsg, uin
 {
     // Debug
 #ifdef DEBUG_PROTOCOL_ENDPOINT_DEF
-    LOG_I(MODULE_PREFIX, "callProtocolHandlerWithRxData protocolName %s interfaceName %s len %d handlerPtrOk %s", 
+    LOG_I(MODULE_PREFIX, "callProtocolHandlerWithRxData protocolName %s interfaceName %s channelName %s len %d handlerPtrOk %s", 
         _channelProtocolName.c_str(), 
         _interfaceName.c_str(), 
+        _channelName.c_str(),
         msgLen, 
         (_pProtocolHandler ? "YES" : "NO"));
 #endif
@@ -184,8 +187,8 @@ String ProtocolEndpointDef::getInfoJSON()
 {
     char jsonInfoStr[200];
     snprintf(jsonInfoStr, sizeof(jsonInfoStr),
-            R"("name":"%s","if":"%s","hdlr":%d,"chanID":%d,"inMax":%d,"inPk":%d,"inBlk":%d,"outMax":%d,"outPk":%d,"outBlk":%d)",
-            _channelProtocolName.c_str(), _interfaceName.c_str(), 
+            R"("name":"%s","if":"%s","ch":%s,"hdlr":%d,"chanID":%d,"inMax":%d,"inPk":%d,"inBlk":%d,"outMax":%d,"outPk":%d,"outBlk":%d)",
+            _channelProtocolName.c_str(), _interfaceName.c_str(), _channelName.c_str(),
             _pProtocolHandler ? 1 : 0,
             _pProtocolHandler ? _pProtocolHandler->getChannelID() : -1,
             _inboundQueue.maxLen(), _inboundQPeak, _inboundBlockMax,

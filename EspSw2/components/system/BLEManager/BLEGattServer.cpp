@@ -336,8 +336,9 @@ bool BLEGattServer::sendToCentral(const uint8_t* pBuf, uint32_t bufLen)
 // Check ready to send
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool BLEGattServer::readyToSend()
+bool BLEGattServer::readyToSend(bool& noConn)
 {
+    noConn = !BLEGattServer::_responseNotifyState;
     // LOG_W(MODULE_PREFIX, "readyToSend %d", BLEGattServer::_responseNotifyState);
     return BLEGattServer::_responseNotifyState;
 }

@@ -40,6 +40,9 @@ public:
     // Bus action active callback
     virtual void busReqAckedCallback(BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt) override;
 
+    // Get changes made since last mirror display update
+    virtual uint32_t getMirrorChanges(uint8_t* pMirrorChangeBuf, uint32_t mirrorChangeMaxLen, bool forceGetAll) override;
+
 private:
     // Helpers
     void updateDisplayFromBuffer(uint8_t* pScrnBuffer, uint32_t bufLen);
@@ -55,6 +58,10 @@ private:
     // Buffer for screen content
     uint8_t _screenBuffer[TRS80_DISP_RAM_SIZE];
     bool _screenBufferValid;
+
+    // Screen cache
+    uint8_t _mirrorCache[TRS80_DISP_RAM_SIZE];
+    bool _mirrorCacheValid = false;
 
     // Buffer for Keyboard mapping
     static const int TRS80_KEY_BYTES = 8;

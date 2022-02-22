@@ -45,11 +45,6 @@ public:
     // New HTTP connection
     void onConnection(struct netconn *pConnection);
 
-    // Get new responder
-    // NOTE: this returns a new object or NULL
-    // NOTE: if a new object is returned the caller is responsible for deleting it when appropriate
-    RdWebResponder* getNewResponder(const RdWebRequestHeader& header, const RdWebRequestParams& params);
-
     // Get server settings
     std::vector<TCPConnSettings>& getServerSettings()
     {

@@ -328,9 +328,12 @@ void BLEManager::addProtocolEndpoints(ProtocolEndpointManager& endpointManager)
 {
     // Register as a channel of protocol messages
     _protocolEndpointID = endpointManager.registerChannel("RICSerial", 
-            std::bind(&BLEManager::sendBLEMsg, this, std::placeholders::_1),
             "BLE",
-            std::bind(&BLEManager::readyToSend, this, std::placeholders::_1),
+            "BLE",
+            std::bind(&BLEManager::sendBLEMsg, this, std::placeholders::_1),
+            [this](uint32_t channelID, bool& noConn) {
+                return BLEGattServer::readyToSend(noConn); 
+            },
             BLE_INBOUND_BLOCK_MAX_DEFAULT,
             BLE_INBOUND_QUEUE_MAX_DEFAULT,
             BLE_OUTBOUND_BLOCK_MAX_DEFAULT,
@@ -989,16 +992,6 @@ bool BLEManager::sendBLEMsg(ProtocolEndpointMsg& msg)
             break;
     }
     return true;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Ready to send indicator
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool BLEManager::readyToSend(uint32_t channelID)
-{
-    // Check if BLE connected
-    return BLEGattServer::readyToSend();
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

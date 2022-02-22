@@ -15,6 +15,7 @@
 #include "SystemFont.h"
 #include "PiWiring.h"
 #include "DebugHelper.h"
+#include "DisplayChange.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Vars
@@ -83,7 +84,9 @@ McZXSpectrum::McZXSpectrum(McManager& mcManager, BusControl& busControl) :
 void McZXSpectrum::enableMachine()
 {
     _screenBufferValid = false;
+    _screenRefreshRequired = false;
     _screenCacheValid = false;
+    _mirrorCacheValid = false;
     _screenBufferRefreshY = 0;
     _screenBufferRefreshX = 0;
     _screenBufferRefreshCount = 0;
@@ -109,10 +112,10 @@ void McZXSpectrum::machineHeartbeat()
 void McZXSpectrum::service()
 {
     // Check if display data valid
-    if (_screenBufferValid)
+    if (_screenRefreshRequired)
     {
         _screenBufferRefreshCount = 0;
-        _screenBufferValid = false;
+        _screenRefreshRequired = false;
     }
 
     // Check if refresh completed
@@ -141,6 +144,7 @@ void McZXSpectrum::refreshDisplay()
     if (_busControl.mem().blockRead(ZXSPECTRUM_DISP_RAM_ADDR, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE, BLOCK_ACCESS_MEM) == BR_OK)
     {
         _screenBufferValid = true;
+        _screenRefreshRequired = true;
         // LogWrite(MODULE_PREFIX, LOG_DEBUG, "DISP REF %d %02x %02x", _screenBuffer, _screenBuffer[0x1800], _screenBuffer[0x1801]);
     }
 }
@@ -383,7 +387,10 @@ uint32_t McZXSpectrum::getKeyBitmap(const int* keyCodes, int keyCodesLen,
     return retVal;
 }
 
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Handle a key press
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 void McZXSpectrum::keyHandler( unsigned char ucModifiers, 
                  const unsigned char* rawKeys)
 {
@@ -639,4 +646,74 @@ void McZXSpectrum::busReqAckedCallback(BR_BUS_REQ_REASON reason, BR_RETURN_TYPE 
     //     // }
 
     // }
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Get changes to screen contents
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uint32_t McZXSpectrum::getMirrorChanges(uint8_t* pMirrorChangeBuf, uint32_t mirrorChangeMaxLen, bool forceGetAll)
+{
+    // TODO implement differences-only protocol?
+
+    // Check buffer valid
+    if (!_screenBufferValid)
+        return 0;
+
+    // Check for changes or forced get
+    bool forceUpdate = forceGetAll || (!_mirrorCacheValid);
+    if (!forceUpdate)
+        forceUpdate = memcmp(_screenBuffer, _mirrorCache, ZXSPECTRUM_DISP_RAM_SIZE) != 0;
+
+    // Check if update needed
+    if (!forceUpdate)
+        return 0;
+
+    // Update cache
+    memcpy(_mirrorCache, _screenBuffer, ZXSPECTRUM_DISP_RAM_SIZE);
+    _mirrorCacheValid = true;
+
+    // Screen info
+    int cols = getDescriptorTable().displayPixelsX; 
+    int rows = getDescriptorTable().displayPixelsY;
+
+    // Calculate how much to send
+    uint32_t bytesToSend = ZXSPECTRUM_DISP_RAM_SIZE - _nextMirrorPos;
+    if (bytesToSend > MAX_BYTES_IN_EACH_MIRROR_UPDATE)
+        bytesToSend = MAX_BYTES_IN_EACH_MIRROR_UPDATE;
+
+    // Init response buffer for full screen dump
+    uint32_t bufPos = DisplayChange::initResponse(
+                pMirrorChangeBuf, 
+                mirrorChangeMaxLen, 
+                DisplayChange::FULL_SCREEN_UPDATE, 
+                cols, 
+                rows, 
+                DisplayChange::PIXEL_BASED_SCREEN, 
+                DisplayChange::SPECTRUM_SCREEN_LAYOUT,
+                _nextMirrorPos,
+                ZXSPECTRUM_DISP_RAM_SIZE);
+
+    // for (uint32_t i = 0x1600; i > 0; i--)
+    // {
+    //     if (_screenBuffer[i] != _screenBuffer[i-1])
+    //     {
+    //     }
+    // }
+
+    LogWrite(MODULE_PREFIX, LOG_DEBUG, "mirror %02x %02x %02x %02x",
+                _screenBuffer[0x1afc], _screenBuffer[0x17e0],
+                _screenBuffer[0x16fa], _screenBuffer[0x15fb]);
+
+    // Copy screen to buffer
+    memcpy(pMirrorChangeBuf+bufPos, _screenBuffer + _nextMirrorPos, bytesToSend);
+
+    // Calculate place to send from next time
+    if (_nextMirrorPos + MAX_BYTES_IN_EACH_MIRROR_UPDATE > ZXSPECTRUM_DISP_RAM_SIZE)
+        _nextMirrorPos = 0;
+    else
+        _nextMirrorPos += MAX_BYTES_IN_EACH_MIRROR_UPDATE;
+
+    // Return length to send
+    return bytesToSend + bufPos;
 }

@@ -27,7 +27,8 @@ class Debugger {
         }
     }
 
-    webSocketMessage(msgData) {
+    getMsgHandlers() {
+        return [];
     }
 
     debuggerShowClick(event) {

@@ -30,8 +30,9 @@ public:
 
     // xxBlockMax and xxQueueMaxLen parameters can be 0 for defaults to be used
     ProtocolEndpointDef(const char* pSourceProtocolName, 
-                ProtocolEndpointMsgCB endpointMsgCB, 
                 const char* interfaceName, 
+                const char* channelName,
+                ProtocolEndpointMsgCB endpointMsgCB, 
                 ChannelReadyCBType channelReadyCB,
                 uint32_t inboundBlockMax,
                 uint32_t inboundQueueMaxLen,
@@ -42,6 +43,11 @@ private:
     String getInterfaceName()
     {
         return _interfaceName;
+    }
+
+    String getChannelName()
+    {
+        return _channelName;
     }
 
     String getSourceProtocolName()
@@ -89,10 +95,10 @@ private:
     void callProtocolHandlerWithTxMsg(ProtocolEndpointMsg& msg);
 
     // Check channel is ready
-    bool canAcceptOutbound(uint32_t channelID)
+    bool canAcceptOutbound(uint32_t channelID, bool &noConn)
     {
         if (_channelReadyCB)
-            return _channelReadyCB(channelID);
+            return _channelReadyCB(channelID, noConn);
         return false;
     }
 
@@ -114,8 +120,9 @@ private:
     // Callback
     ProtocolEndpointMsgCB _endpointMsgCB;
 
-    // Name of channel
+    // Name of interface and channel
     String _interfaceName;
+    String _channelName;
 
     // Protocol handler
     ProtocolBase* _pProtocolHandler;

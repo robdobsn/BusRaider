@@ -10,6 +10,7 @@
 #include "McManager.h"
 #include "McTRS80CmdFormat.h"
 #include "DebugHelper.h"
+#include "DisplayChange.h"
 
 static const char* MODULE_PREFIX = "TRS80";
 
@@ -78,6 +79,7 @@ void McTRS80::enableMachine()
 {
     // Invalidate screen buffer
     _screenBufferValid = false;
+    _mirrorCacheValid = false;
     _keyBufferDirty = false;
 }
 
@@ -438,4 +440,54 @@ void McTRS80::handleWD1771DiskController( uint32_t addr,  uint32_t data,
 
 void McTRS80::busReqAckedCallback(BR_BUS_REQ_REASON reason, BR_RETURN_TYPE rslt)
 {
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Get changes to screen contents
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uint32_t McTRS80::getMirrorChanges(uint8_t* pMirrorChangeBuf, uint32_t mirrorChangeMaxLen, bool forceGetAll)
+{
+    // TODO implement differences-only protocol?
+
+    // Check buffer valid
+    if (!_screenBufferValid)
+        return 0;
+
+    // Check length ok
+    if (mirrorChangeMaxLen < TRS80_DISP_RAM_SIZE + DisplayChange::MAX_DISP_CHANGE_OVERHEAD)
+        return 0;
+
+    // Check for changes or forced get
+    bool forceUpdate = forceGetAll || (!_mirrorCacheValid);
+    if (!forceUpdate)
+        forceUpdate = memcmp(_screenBuffer, _mirrorCache, TRS80_DISP_RAM_SIZE) != 0;
+
+    // Check if update needed
+    if (!forceUpdate)
+        return 0;
+
+    // Update cache
+    memcpy(_mirrorCache, _screenBuffer, TRS80_DISP_RAM_SIZE);
+    _mirrorCacheValid = true;
+
+    // Screen info
+    int cols = getDescriptorTable().displayPixelsX / getDescriptorTable().displayCellX; 
+    int rows = getDescriptorTable().displayPixelsY / getDescriptorTable().displayCellY;
+
+    // Init response buffer for full screen dump
+    uint32_t bufPos = DisplayChange::initResponse(
+                pMirrorChangeBuf, 
+                mirrorChangeMaxLen, 
+                DisplayChange::FULL_SCREEN_UPDATE, 
+                cols, 
+                rows, 
+                DisplayChange::CHAR_BASED_SCREEN, 
+                DisplayChange::FONT_ID_TRS80_L3,
+                0,
+                TRS80_DISP_RAM_SIZE);
+
+    // Copy screen to buffer
+    memcpy(pMirrorChangeBuf+bufPos, _screenBuffer, TRS80_DISP_RAM_SIZE);
+    return TRS80_DISP_RAM_SIZE + bufPos;
 }

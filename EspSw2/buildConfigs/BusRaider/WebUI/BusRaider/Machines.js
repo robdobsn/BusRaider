@@ -42,7 +42,8 @@ class Machines {
         }
     }
 
-    webSocketMessage(msgData) {
+    getMsgHandlers() {
+        return [];
     }
 
     updateUI() {

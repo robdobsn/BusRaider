@@ -175,7 +175,7 @@ void StatePublisher::service()
                 if (rateRec._channelID == PUBLISHING_HANDLE_UNDEFINED)
                 {
                     // Get a match of interface and protocol
-                    rateRec._channelID = _pProtocolEndpointManager->lookupChannelID(rateRec._interface.c_str(),
+                    rateRec._channelID = _pProtocolEndpointManager->getChannelIDByName(rateRec._interface.c_str(),
                             rateRec._protocol.c_str());
 
 #ifdef DEBUG_PUBLISHING_HANDLE
@@ -190,7 +190,8 @@ void StatePublisher::service()
                 }
 
                 // Check if interface can accept messages
-                if (!_pProtocolEndpointManager->canAcceptOutbound(rateRec._channelID))
+                bool noConn = false;
+                if (!_pProtocolEndpointManager->canAcceptOutbound(rateRec._channelID, noConn))
                     continue;
 
 #ifdef DEBUG_REDUCED_PUBLISHING_RATE_WHEN_BUSY

@@ -22,7 +22,7 @@ WebServer* WebServer::_pThisWebServer = NULL;
 
 static const char* MODULE_PREFIX = "WebServer";
 
-// #define DEBUG_WEBSOCKETS
+#define DEBUG_WEBSOCKETS
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Constructor
@@ -87,14 +87,11 @@ void WebServer::applySetup()
     // Num connection slots
     uint32_t numConnSlots = configGetLong("numConnSlots", 6);
 
-    // Max websockets
-    uint32_t maxWebSockets = configGetLong("maxWS", 3);
-
     // Ping interval ms
     uint32_t pingIntervalMs = configGetLong("wsPingMs", 1000);
 
-    // Websocket protocol
-    _webSocketProtocol = configGetString("wsPcol", "RICSerial");
+    // Websockets
+    configGetArrayElems("websockets", _webSocketConfigs);
 
     // Get Task settings
     UBaseType_t taskCore = configGetLong("taskCore", RdWebServerSettings::DEFAULT_TASK_CORE);
@@ -110,13 +107,20 @@ void WebServer::applySetup()
         // Start server
         if (!_isWebServerSetup)
         {
-            RdWebServerSettings settings(_port, numConnSlots, maxWebSockets, 
+            RdWebServerSettings settings(_port, numConnSlots, _webSocketConfigs.size() > 0, 
                     pingIntervalMs, enableFileServer,
-                    taskCore, taskPriority, taskStackSize, sendBufferMaxLen);
+                    taskCore, taskPriority, taskStackSize, sendBufferMaxLen,
+                    ProtocolEndpointManager::CHANNEL_ID_REST_API);
             _rdWebServer.setup(settings);
         }
         _isWebServerSetup = true;
     }
+
+#ifdef FEATURE_WEB_SOCKETS
+    // Serve websockets
+    webSocketSetup();
+#endif
+
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -210,68 +214,67 @@ void WebServer::sendServerSideEvent(const char* eventContent, const char* eventG
 // Web sockets
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void WebServer::webSocketSetup(const String& websocketURL)
+void WebServer::webSocketSetup()
 {
     // Add websocket handler
 #ifdef DEBUG_WEBSOCKETS
-    LOG_I(MODULE_PREFIX, "webSocketSetup wsPath %s", websocketURL.c_str());
+    LOG_I(MODULE_PREFIX, "webSocketSetup num websocket configs %d", _webSocketConfigs.size());
 #endif
-    uint32_t maxWS = _rdWebServer.getMaxWebSockets();
     ProtocolEndpointManager* pEndpointManager = getProtocolEndpointManager();
     if (!pEndpointManager)
         return;
-    RdWebHandlerWS* pHandler = new RdWebHandlerWS(websocketURL, maxWS,
-            std::bind(&ProtocolEndpointManager::canAcceptInbound, pEndpointManager, 
-                    std::placeholders::_1),
-            std::bind(&ProtocolEndpointManager::handleInboundMessage, pEndpointManager, 
-                    std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)
-            );
-
-    // Register message channels
-    if (!pHandler || !getProtocolEndpointManager())
-        return;
-    for (uint32_t wsIdx = 0; wsIdx < maxWS; wsIdx++)
+    
+    // Create websockets
+    for (uint32_t wsIdx = 0; wsIdx < _webSocketConfigs.size(); wsIdx++)
     {
-        // Register a channel with the protocol endpoint manager
-        uint32_t wsChanID = getProtocolEndpointManager()->registerChannel(
-                _webSocketProtocol.c_str(), 
-	            std::bind(&WebServer::webSocketSendMsg, this, std::placeholders::_1),
-    	        "WS",
-	            std::bind(&WebServer::webSocketCanSend, this, std::placeholders::_1),
-				WS_INBOUND_BLOCK_MAX_DEFAULT,
-				WS_INBOUND_QUEUE_MAX_DEFAULT,
-				WS_OUTBOUND_BLOCK_MAX_DEFAULT,
-				WS_OUTBOUND_QUEUE_MAX_DEFAULT);
+        // Get config
+        ConfigBase jsonConfig = _webSocketConfigs[wsIdx];
 
-        // Set into the websocket handler so channel IDs match up
-        pHandler->defineWebSocketChannelID(wsIdx, wsChanID);
+        // Setup WebHandler for Websockets    
+        RdWebHandlerWS* pHandler = new RdWebHandlerWS(jsonConfig, 
+                std::bind(&ProtocolEndpointManager::canAcceptInbound, pEndpointManager, 
+                        std::placeholders::_1),
+                std::bind(&ProtocolEndpointManager::handleInboundMessage, pEndpointManager, 
+                        std::placeholders::_1, std::placeholders::_2, std::placeholders::_3)
+                );
+        if (!pHandler)
+            continue;
+
+        // Add handler
+        if (!_rdWebServer.addHandler(pHandler))
+        {
+            delete pHandler;
+            continue;
+        }
+
+        // Register a channel  with the protocol endpoint manager
+        // for each possible connection
+        uint32_t maxConn = jsonConfig.getLong("maxConn", 1);
+        for (uint32_t possConnIdx = 0; possConnIdx < maxConn; possConnIdx++)
+        {
+            String interfaceName = jsonConfig.getString("pfix", "ws");
+            String wsName = interfaceName + "_" + possConnIdx;
+            String protocol = jsonConfig.getString("pcol", "RICSerial");
+            uint32_t wsChanID = getProtocolEndpointManager()->registerChannel(
+                    protocol.c_str(), 
+                    interfaceName.c_str(),
+                    wsName.c_str(),
+                    [this](ProtocolEndpointMsg& msg) { 
+                        return _rdWebServer.sendMsg(msg.getBuf(), msg.getBufLen(), 
+                                false, msg.getChannelID());
+                    },
+                    [this](uint32_t channelID, bool& noConn) {
+                        return _rdWebServer.canSend(channelID, noConn); 
+                    },
+                    WS_INBOUND_BLOCK_MAX_DEFAULT,
+                    WS_INBOUND_QUEUE_MAX_DEFAULT,
+                    WS_OUTBOUND_BLOCK_MAX_DEFAULT,
+                    WS_OUTBOUND_QUEUE_MAX_DEFAULT);
+
+            // Set into the websocket handler so channel IDs match up
+            pHandler->setupWebSocketChannelID(possConnIdx, wsChanID);
+        }
     }
-
-    // Add handler 
-    if (!_rdWebServer.addHandler(pHandler))
-        delete pHandler;
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Send message over websocket
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool WebServer::webSocketSendMsg(ProtocolEndpointMsg& msg)
-{
-#ifdef DEBUG_WEBSOCKETS
-    LOG_I(MODULE_PREFIX, "sendWebSocketMsg channelID %d, direction %s msgNum %d, len %d",
-            msg.getChannelID(), msg.getDirectionAsString(msg.getDirection()), msg.getMsgNumber(), msg.getBufLen());
-#endif 
-    return _rdWebServer.webSocketSendMsg(msg.getBuf(), msg.getBufLen(), true, 0);
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Check if websocket is ready to send
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool WebServer::webSocketCanSend(uint32_t channelID)
-{
-    return _rdWebServer.webSocketCanSend(channelID);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////

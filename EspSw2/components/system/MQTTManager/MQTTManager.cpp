@@ -121,9 +121,10 @@ void MQTTManager::addProtocolEndpoints(ProtocolEndpointManager& endpointManager)
 
         // Register as a channel of protocol messages
         _protocolEndpointID = endpointManager.registerChannel("RICJSON", 
-                [this, topicName](ProtocolEndpointMsg& msg) { return sendMQTTMsg(topicName, msg); },
                 topicName.c_str(),
-                std::bind(&MQTTManager::readyToSend, this, std::placeholders::_1),
+                topicName.c_str(),
+                [this, topicName](ProtocolEndpointMsg& msg) { return sendMQTTMsg(topicName, msg); },
+                [this](uint32_t channelID, bool& noConn) { return true; },
                 MQTT_INBOUND_BLOCK_MAX_DEFAULT,
                 MQTT_INBOUND_QUEUE_MAX_DEFAULT,
                 MQTT_OUTBOUND_BLOCK_MAX_DEFAULT,
@@ -147,11 +148,3 @@ bool MQTTManager::sendMQTTMsg(const String& topicName, ProtocolEndpointMsg& msg)
     return _mqttClient.publishToTopic(topicName, msgStr);
 }
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Check if ready to message over MQTT
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool MQTTManager::readyToSend(uint32_t channelID)
-{
-    return true;
-}
