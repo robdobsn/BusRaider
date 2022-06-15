@@ -4,7 +4,7 @@
 #include "TargetCPUZ80.h"
 #include <string.h>
 #include <stdlib.h>
-#include "../system/lowlev.h"
+#include "../System/lowlev.h"
 
 // Module name
 static const char FromTargetCPUZ80[] = "TargetCPUZ80";

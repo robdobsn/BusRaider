@@ -1,5 +1,5 @@
 // Bus Raider
-// Rob Dobson 2019
+// Rob Dobson 2019-2020
 
 #pragma once
 
@@ -10,12 +10,12 @@
 
 #include "../CommandInterface/CommandHandler.h"
 
-class ZEsarUXInterface
+class DeZogInterface
 {
 public:
     static const int MAX_MEM_BLOCK_READ_WRITE = 1024;
 
-    ZEsarUXInterface();
+    DeZogInterface();
     void init();
 
     // Service
@@ -24,7 +24,7 @@ public:
 private:
 
     // Singleton instance
-    static ZEsarUXInterface* _pThisInstance;
+    static DeZogInterface* _pThisInstance;
 
     // Comms socket we're attached to and setup info
     static int _commsSocketId;
@@ -34,14 +34,14 @@ private:
     static bool handleRxMsg(const char* pCmdJson, const uint8_t* pParams, int paramsLen,
                     char* pRespJson, int maxRespLen);
 
-    void handleMessage(const char* pJsonCmd, const char* pZesaruxMsg, uint32_t zesaruxIndex);
-    bool handleLine(char* pCmd, char* pResponse, int maxResponseLen, uint32_t zesaruxMsgIndex);
+    void handleMessage(const char* pJsonCmd, const char* pDezogMsg, uint32_t dezogIndex);
+    bool handleLine(char* pCmd, char* pResponse, int maxResponseLen, uint32_t dezogMsgIndex);
     bool commandMatch(const char* s1, const char* s2); 
     void addPromptMsg(char* pResponse, int maxResponseLen);
     void mungeDisassembly(char* pText);
 
-    static const int ZEsarUX_CMD_MAX_LEN = 1000;
-    static const int ZEsarUX_RESP_MAX_LEN = 1000;
+    static const int DEZOG_CMD_MAX_LEN = 1000;
+    static const int DEZOG_RESP_MAX_LEN = 1000;
 
     // Smartload state
     uint32_t _smartloadStartUs;

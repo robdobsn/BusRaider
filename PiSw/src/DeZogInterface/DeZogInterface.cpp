@@ -1,7 +1,7 @@
 // Bus Raider
 // Rob Dobson 2019
 
-#include "ZEsarUXInterface.h"
+#include "DeZogInterface.h"
 #include "../System/ee_sprintf.h"
 #include "../System/logging.h"
 #include "../System/rdutils.h"
@@ -17,29 +17,29 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Module name
-static const char FromZEsarUXInterface[] = "ZEsarUXInterface";
+static const char MODULE_PREFIX[] = "DeZogInterface";
 
 // Sockets
-int ZEsarUXInterface::_commsSocketId = -1;
+int DeZogInterface::_commsSocketId = -1;
 
 // Main comms socket - to wire up command handler
-CommsSocketInfo ZEsarUXInterface::_commsSocketInfo =
+CommsSocketInfo DeZogInterface::_commsSocketInfo =
 {
     true,
-    ZEsarUXInterface::handleRxMsg,
+    DeZogInterface::handleRxMsg,
     NULL,
     NULL
 };
 
 // This instance
-ZEsarUXInterface* ZEsarUXInterface::_pThisInstance = NULL;
+DeZogInterface* DeZogInterface::_pThisInstance = NULL;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Construction
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Constructor
-ZEsarUXInterface::ZEsarUXInterface()
+DeZogInterface::DeZogInterface()
 {
     _pThisInstance = this;
     _smartloadInProgress = false;
@@ -51,28 +51,28 @@ ZEsarUXInterface::ZEsarUXInterface()
     _stepCompletionPending = false;
 }
 
-void ZEsarUXInterface::init()
+void DeZogInterface::init()
 {
     // Connect to the comms socket
     if (_commsSocketId < 0)
         _commsSocketId = CommandHandler::commsSocketAdd(_commsSocketInfo);
 }
 
-void ZEsarUXInterface::service()
+void DeZogInterface::service()
 {
     // Check for smartload completion and timeouts
-    char respMsg[ZEsarUX_RESP_MAX_LEN];
+    char respMsg[DEZOG_RESP_MAX_LEN];
     if (_smartloadInProgress)
     {
         if (_smartloadStartDetected)
         {
             if (!CommandHandler::isFileTransferInProgress())
             {
-                LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Smartload completed");
+                LogWrite(MODULE_PREFIX, LOG_DEBUG, "Smartload completed");
                 _smartloadInProgress = false;
-                strlcpy(respMsg, "Smartload OK", ZEsarUX_RESP_MAX_LEN);
-                addPromptMsg(respMsg, ZEsarUX_RESP_MAX_LEN);
-                CommandHandler::sendWithJSON("zesarux", "", _smartloadMsgIdx, 
+                strlcpy(respMsg, "Smartload OK", DEZOG_RESP_MAX_LEN);
+                addPromptMsg(respMsg, DEZOG_RESP_MAX_LEN);
+                CommandHandler::sendWithJSON("dezog", "", _smartloadMsgIdx, 
                                 (const uint8_t*)respMsg, strlen(respMsg));
 
                 // Start programming process
@@ -83,11 +83,11 @@ void ZEsarUXInterface::service()
             }
             else if (isTimeout(micros(), _smartloadStartUs, MAX_SMART_LOAD_TIME_US))
             {
-                LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Smartload timed-out");
+                LogWrite(MODULE_PREFIX, LOG_DEBUG, "Smartload timed-out");
                 _smartloadInProgress = false;
-                strlcpy(respMsg, "Smartload failed to complete in time", ZEsarUX_RESP_MAX_LEN);
-                addPromptMsg(respMsg, ZEsarUX_RESP_MAX_LEN);
-                CommandHandler::sendWithJSON("zesarux", "", _smartloadMsgIdx, 
+                strlcpy(respMsg, "Smartload failed to complete in time", DEZOG_RESP_MAX_LEN);
+                addPromptMsg(respMsg, DEZOG_RESP_MAX_LEN);
+                CommandHandler::sendWithJSON("dezog", "", _smartloadMsgIdx, 
                             (const uint8_t*)respMsg, strlen(respMsg));
             }
         }
@@ -95,16 +95,16 @@ void ZEsarUXInterface::service()
         {
             if (CommandHandler::isFileTransferInProgress())
             {
-                LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Smartload start detected");
+                LogWrite(MODULE_PREFIX, LOG_DEBUG, "Smartload start detected");
                 _smartloadStartDetected = true;
             }
             else if (isTimeout(micros(), _smartloadStartUs, MAX_TIME_BEFORE_START_DETECT_US))
             {
-                LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Smartload start not detected");
+                LogWrite(MODULE_PREFIX, LOG_DEBUG, "Smartload start not detected");
                 _smartloadInProgress = false;
-                strlcpy(respMsg, "Smartload start not detected", ZEsarUX_RESP_MAX_LEN);
-                addPromptMsg(respMsg, ZEsarUX_RESP_MAX_LEN);
-                CommandHandler::sendWithJSON("zesarux", "", _smartloadMsgIdx, 
+                strlcpy(respMsg, "Smartload start not detected", DEZOG_RESP_MAX_LEN);
+                addPromptMsg(respMsg, DEZOG_RESP_MAX_LEN);
+                CommandHandler::sendWithJSON("dezog", "", _smartloadMsgIdx, 
                                 (const uint8_t*)respMsg, strlen(respMsg));
             }
         }
@@ -119,14 +119,14 @@ void ZEsarUXInterface::service()
             // Disassembly
             uint32_t curAddr = TargetTracker::getRegs().PC;
             uint8_t* pMirrorMemory = HwManager::getMirrorMemForAddr(0);
-            strlcpy(respMsg, "", ZEsarUX_RESP_MAX_LEN);
+            strlcpy(respMsg, "", DEZOG_RESP_MAX_LEN);
             if (pMirrorMemory)
             {
                 disasmZ80(pMirrorMemory, 0, curAddr, respMsg, INTEL, false, true);
                 mungeDisassembly(respMsg);
             }
-            addPromptMsg(respMsg, ZEsarUX_RESP_MAX_LEN);
-            CommandHandler::sendWithJSON("zesarux", "", _smartloadMsgIdx, 
+            addPromptMsg(respMsg, DEZOG_RESP_MAX_LEN);
+            CommandHandler::sendWithJSON("dezog", "", _smartloadMsgIdx, 
                             (const uint8_t*)respMsg, strlen(respMsg));
             _stepCompletionPending = false;
         }
@@ -137,7 +137,7 @@ void ZEsarUXInterface::service()
 // Received message handler
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool ZEsarUXInterface::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t* pParams, [[maybe_unused]]int paramsLen,
+bool DeZogInterface::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const uint8_t* pParams, [[maybe_unused]]int paramsLen,
                 [[maybe_unused]]char* pRespJson, [[maybe_unused]]int maxRespLen)
 {
     // No direct response
@@ -152,24 +152,27 @@ bool ZEsarUXInterface::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const u
     msgIdxStr[0] = 0;
     jsonGetValueForKey("msgIdx", pCmdJson, msgIdxStr, MAX_MSGIDX_STR_LEN);
 
-    if (strcasecmp(cmdName, "zesarux") == 0)
+    if (strcasecmp(cmdName, "dezog") == 0)
     {
-        char pCommandString[ZEsarUX_CMD_MAX_LEN];
-        pCommandString[0] = 0;
+        // char pCommandString[DEZOG_CMD_MAX_LEN];
+        // pCommandString[0] = 0;
 
-        // Rdp msg idx is the outer msgIdx
-        uint32_t zesaruxIndex = strtol(msgIdxStr, NULL, 10);
+        // // Rdp msg idx is the outer msgIdx
+        uint32_t dezogIndex = strtol(msgIdxStr, NULL, 10);
 
-        // Handle the zesarux frame - extract command string
-        uint32_t maxContentLen = ZEsarUX_CMD_MAX_LEN-1 < paramsLen ? ZEsarUX_CMD_MAX_LEN-1 : paramsLen;
-        if (maxContentLen > 0)
-            memcopyfast(pCommandString, (const char*)pParams, maxContentLen);
-        pCommandString[maxContentLen] = 0;
+        // // Handle the DeZog frame - extract command string
+        // uint32_t maxContentLen = DEZOG_CMD_MAX_LEN-1 < paramsLen ? DEZOG_CMD_MAX_LEN-1 : paramsLen;
+        // if (maxContentLen > 0)
+        //     memcopyfast(pCommandString, (const char*)pParams, maxContentLen);
+        // pCommandString[maxContentLen] = 0;
 
-        // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "ZESARUX cmd %s cmdLen %d contentStr %s zesaruxIdx %d", 
-        //             pCmdJson, strlen(pCmdJson), pCommandString, zesaruxIndex);
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "DeZog cmd %s cmdLen %d contentStr %s dezogIndex %d", 
+        //             pCmdJson, strlen(pCmdJson), pCommandString, dezogIndex);
 
-        _pThisInstance->handleMessage(pCmdJson, pCommandString, zesaruxIndex);
+        // _pThisInstance->handleMessage(pCmdJson, pCommandString, dezogIndex);
+
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "DeZog cmd %s cmdLen %d paramsLen %d dezogIndex %d", 
+                    pCmdJson, strlen(pCmdJson), paramsLen, dezogIndex);
 
         return true;
     }
@@ -178,19 +181,19 @@ bool ZEsarUXInterface::handleRxMsg(const char* pCmdJson, [[maybe_unused]]const u
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// ZEsarUX Messages
+// DeZog Messages
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ZEsarUXInterface::addPromptMsg(char* pResponse, int maxResponseLen)
+void DeZogInterface::addPromptMsg(char* pResponse, int maxResponseLen)
 {
     strlcat(pResponse, (TargetTracker::isPaused() ? "\ncommand@cpu-step> " : "\ncommand> "), maxResponseLen);
 }
 
-void ZEsarUXInterface::handleMessage([[maybe_unused]] const char* pJsonCmd, const char* pZesaruxMsg, uint32_t zesaruxIndex)
+void DeZogInterface::handleMessage([[maybe_unused]] const char* pJsonCmd, const char* pDezogMsg, uint32_t dezogIndex)
 {
     // Need to modify line in-place so make a copy
-    char cmdToSplit[ZEsarUX_CMD_MAX_LEN];
-    strlcpy(cmdToSplit, pZesaruxMsg, ZEsarUX_CMD_MAX_LEN);
+    char cmdToSplit[DEZOG_CMD_MAX_LEN];
+    strlcpy(cmdToSplit, pDezogMsg, DEZOG_CMD_MAX_LEN);
 
     // Break into lines
     char* pCmdCur = cmdToSplit;
@@ -221,20 +224,20 @@ void ZEsarUXInterface::handleMessage([[maybe_unused]] const char* pJsonCmd, cons
         static const int MAX_RESP_MSG_LEN = 5000;
         char respMsg[MAX_RESP_MSG_LEN];
         respMsg[0] = 0;
-        handleLine(pCmdCur, respMsg, MAX_RESP_MSG_LEN, zesaruxIndex);
+        handleLine(pCmdCur, respMsg, MAX_RESP_MSG_LEN, dezogIndex);
 
         // Send response
-        CommandHandler::sendWithJSON("zesarux", "", zesaruxIndex, (const uint8_t*)respMsg, strlen(respMsg));
+        CommandHandler::sendWithJSON("dezog", "", dezogIndex, (const uint8_t*)respMsg, strlen(respMsg));
 
         // Next command
         pCmdCur = pCmdNext;
     }
 }
 
-bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLen, uint32_t zesaruxMsgIndex)
+bool DeZogInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLen, uint32_t dezogMsgIndex)
 {
 
-    // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "ZESARUX handle line %s", pCmd);
+    // LogWrite(MODULE_PREFIX, LOG_DEBUG, "DeZog handle line %s", pCmd);
 
     // Split
     const char* cmdStr = strtok(pCmd, " ");
@@ -283,15 +286,15 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "smartload"))
     {
-        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Smartload");
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Smartload");
 
         // Recombine args
-        char argsCombined[ZEsarUX_CMD_MAX_LEN];
-        strlcpy(argsCombined, argStr, ZEsarUX_CMD_MAX_LEN);
+        char argsCombined[DEZOG_CMD_MAX_LEN];
+        strlcpy(argsCombined, argStr, DEZOG_CMD_MAX_LEN);
         if (argStr2)
-            strlcat(argsCombined, argStr2, ZEsarUX_CMD_MAX_LEN);
+            strlcat(argsCombined, argStr2, DEZOG_CMD_MAX_LEN);
         if (argRest)
-            strlcat(argsCombined, argRest, ZEsarUX_CMD_MAX_LEN);
+            strlcat(argsCombined, argRest, DEZOG_CMD_MAX_LEN);
 
         // Extract the file name only
         char* fileNamePtr = argsCombined+strlen(argsCombined);
@@ -315,26 +318,26 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
             if (pMcName)
             {
                 McManager::setMachineByName(pMcName);
-                LogWrite(FromZEsarUXInterface, LOG_DEBUG, "fileType %s setMachine %s", fileTypePtr, pMcName);
+                LogWrite(MODULE_PREFIX, LOG_DEBUG, "fileType %s setMachine %s", fileTypePtr, pMcName);
             }
             // Request the file from the ESP32
             static const int MAX_API_REQ_LEN = 200;
             char apiReqStr[MAX_API_REQ_LEN];
             strlcpy(apiReqStr, "sendfiletotargetbuffer//", MAX_API_REQ_LEN);
             strlcat(apiReqStr, fileNamePtr, MAX_API_REQ_LEN);
-            LogWrite(FromZEsarUXInterface, LOG_DEBUG, "sendFileReq %s", apiReqStr);
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "sendFileReq %s", apiReqStr);
             // Send command to ESP32
             CommandHandler::sendAPIReq(apiReqStr);
             _smartloadStartUs = micros();
             _smartloadInProgress = true;
-            _smartloadMsgIdx = zesaruxMsgIndex;
+            _smartloadMsgIdx = dezogMsgIndex;
             _smartloadStartDetected = false;
             // Don't reply now to give time for smartload to occur
             return true;
         }
         else
         {
-            LogWrite(FromZEsarUXInterface, LOG_NOTICE, "Failed to smartload file");
+            LogWrite(MODULE_PREFIX, LOG_NOTICE, "Failed to smartload file");
             strlcat(pResponse, "Failed to smartload file", maxResponseLen);
         }
     }
@@ -373,7 +376,7 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
         {
             uint8_t dataBlock[MAX_BYTES_TO_RETURN];
             HwManager::blockRead(startAddr, dataBlock, blockLength, false, false, false);
-            LogWrite(FromZEsarUXInterface, LOG_DEBUG, "dataBlock %04x %02x %02x %02x %02x", 
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "dataBlock %04x %02x %02x %02x %02x", 
                             startAddr, dataBlock[0], dataBlock[1], dataBlock[2], dataBlock[3]);
             for (uint32_t i = 0; i < blockLength; i++)
             {
@@ -414,13 +417,13 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "set-breakpoint"))
     {
-        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "set breakpoint %s %s", argStr, argStr2);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "set breakpoint %s %s", argStr, argStr2);
 
         // Set breakpoint
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
         if ((argStr2[0] != 'P') || (argStr2[1] != 'C') || (argStr2[2] != '='))
         {
-            LogWrite(FromZEsarUXInterface, LOG_DEBUG, "breakpoint format must be PC= argstr2 %02x %02x %02x", 
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "breakpoint format must be PC= argstr2 %02x %02x %02x", 
                         argStr2[0], argStr2[1], argStr2[2]);
         }
         else
@@ -431,13 +434,13 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "set-breakpointaction"))
     {
-        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "set breakpoint action %s %s %s", argStr, argStr2, argRest);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "set breakpoint action %s %s %s", argStr, argStr2, argRest);
 
         // Set action on breakpoint
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
         if (!commandMatch(argStr2, "prints"))
         {
-            LogWrite(FromZEsarUXInterface, LOG_DEBUG, "breakpoint doesn't have message");
+            LogWrite(MODULE_PREFIX, LOG_DEBUG, "breakpoint doesn't have message");
         }
         else
         {        
@@ -446,7 +449,7 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "enable-breakpoint"))
     {
-        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "enable breakpoint %s", argStr);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "enable breakpoint %s", argStr);
 
         // Get breakpoint to enable
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
@@ -454,7 +457,7 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "disable-breakpoint"))
     {
-        // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "disable breakpoint %s", argStr);
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "disable breakpoint %s", argStr);
 
         // Breakpoint number
         int breakpointIdx = strtol(argStr, NULL, 10) - 1;
@@ -491,7 +494,7 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "hard-reset-cpu"))
     {
-        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Reset machine");
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "Reset machine");
         BusAccess::busAccessReset();
         TargetTracker::targetReset();
         _resetPending = true;
@@ -499,20 +502,20 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "reset-tstates-partial"))
     {
-        // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Reset tstates partial");
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Reset tstates partial");
     }
     else if (commandMatch(cmdStr, "get-tstates-partial"))
     {
-        // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Get tstates partial");
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Get tstates partial");
     }
     else if (commandMatch(cmdStr, "get-cpu-frequency"))
     {
-        // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "Get CPU frequency");
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "Get CPU frequency");
     }
     else if (commandMatch(cmdStr, "quit"))
     {
         // Target tracker off
-        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "TargetTracker OFF");
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "TargetTracker OFF");
         TargetTracker::enable(false);
     }
     else if (commandMatch(cmdStr, "enter-cpu-step"))
@@ -520,7 +523,7 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
         // Reset bus
         BusAccess::busAccessReset();
         // Target tracker on
-        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "TargetTracker ON");
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "TargetTracker ON");
         if (_resetPending)
         {
             if (!isTimeout(micros(), _resetPendingTimeUs, MAX_TIME_RESET_PENDING_US))
@@ -535,7 +538,7 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
         TargetTracker::stepOver();
         _stepCompletionPending = true;
         // Debug
-        // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "stepOver");
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "stepOver");
         // Return immediately (no prompt)
         return true;
     }
@@ -545,7 +548,7 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
         TargetTracker::stepInto();
         _stepCompletionPending = true;
         // Debug
-        // LogWrite(FromZEsarUXInterface, LOG_DEBUG, "stepInto");
+        // LogWrite(MODULE_PREFIX, LOG_DEBUG, "stepInto");
         // Return immediately (no prompt)
         return true;
     }
@@ -562,12 +565,12 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
     }
     else if (commandMatch(cmdStr, "\n"))
     {
-        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "blank (step)");
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "blank (step)");
         TargetTracker::stepInto();
     }
     else
     {
-        LogWrite(FromZEsarUXInterface, LOG_DEBUG, "cmdStr %s %02x %02x %02x", cmdStr, cmdStr[0], cmdStr[1], cmdStr[2]);
+        LogWrite(MODULE_PREFIX, LOG_DEBUG, "cmdStr %s %02x %02x %02x", cmdStr, cmdStr[0], cmdStr[1], cmdStr[2]);
     }
 
     // Add the prompt used by debugger to detect state
@@ -580,7 +583,7 @@ bool ZEsarUXInterface::handleLine(char* pCmd, char* pResponse, int maxResponseLe
 // Utility functions
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void ZEsarUXInterface::mungeDisassembly(char* pText)
+void DeZogInterface::mungeDisassembly(char* pText)
 {
     // Make upper case
     int txtLen = strlen(pText);
@@ -597,7 +600,7 @@ void ZEsarUXInterface::mungeDisassembly(char* pText)
     }
 }
 
-bool ZEsarUXInterface::commandMatch(const char* s1, const char* s2)
+bool DeZogInterface::commandMatch(const char* s1, const char* s2)
 {
     const char* p1 = s1;
     const char* p2 = s2;
@@ -1229,7 +1232,7 @@ bool ZEsarUXInterface::commandMatch(const char* s1, const char* s2)
 // }
 
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// // Debugger command handler - based on ZEsarUX / Z80 Debugger for VS Code
+// // Debugger command handler - based on DeZog / Z80 Debugger for VS Code
 // /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // // bool Debugger::handleDebuggerCommand(char* pCommand, char* pResponse, int maxResponseLen)

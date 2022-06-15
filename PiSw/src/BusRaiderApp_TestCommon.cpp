@@ -44,7 +44,7 @@ BusRaiderApp::testCodeRet_type BusRaiderApp::testSelf_commonLoop()
         return TEST_SELF_RET_QUIT;
 
     // Test for time-out
-    if (isTimeout(millis(), _testSelf_startUpdateTimeMs, 60000))
+    if (isTimeout(millis(), _testSelf_startUpdateTimeMs, 630000))
     {
         _display.consolePut("\nTest timed-out, repeat if required\n");
         return TEST_SELF_RET_TIMEOUT;

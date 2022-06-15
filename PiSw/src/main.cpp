@@ -14,7 +14,7 @@
 #include "Hardware/HwManager.h"
 #include "Machines/McManager.h"
 #include "BusController/BusController.h"
-#include "ZEsarUXInterface/ZEsarUXInterface.h"
+#include "DeZogInterface/DeZogInterface.h"
 #include "StepTracer/StepTracer.h"
 #include "BusRaiderApp.h"
 
@@ -23,7 +23,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Program details
-static const char* PROG_VERSION = "Bus Raider V2.2.061  (C) Rob Dobson 2018-2019";
+static const char* PROG_VERSION = "Bus Raider V2.2.062  (C) Rob Dobson 2018-2022";
 static const char* PROG_LINKS_1 = "https://robdobson.com/tag/raider";
 
 // Send log data to display (as opposed to merging in the ESP32 log output)
@@ -41,7 +41,7 @@ UartMaxi mainUart;
 // CommandHandler, StepTracer, BusController
 StepTracer stepTracer;
 BusController busController;
-ZEsarUXInterface _ZEsarUXInterface;
+DeZogInterface _DeZogInterface;
 McManager mcManager;
 
 // Bus Raider app
@@ -101,7 +101,7 @@ extern "C" int main()
     // BusController, StepTracer
     busController.init();
     stepTracer.init();
-    _ZEsarUXInterface.init();
+    _DeZogInterface.init();
 
     // Init machine manager
     mcManager.init(&display);
@@ -116,8 +116,8 @@ extern "C" int main()
     mcManager.setMachineByName("Serial Terminal");
 
 
-    LogWrite(FromMain, LOG_DEBUG, "StepTracer %08x %u ZEsarUXInterface %08x %u",
-            &stepTracer, &stepTracer, &_ZEsarUXInterface, &_ZEsarUXInterface);
+    LogWrite(FromMain, LOG_DEBUG, "StepTracer %08x %u DeZogInterface %08x %u",
+            &stepTracer, &stepTracer, &_DeZogInterface, &_DeZogInterface);
 
     // Loop forever
     while(1)
@@ -146,6 +146,6 @@ extern "C" int main()
         // BusController, StepTracer
         busController.service();
         stepTracer.service();
-        _ZEsarUXInterface.service();
+        _DeZogInterface.service();
     }
 }
