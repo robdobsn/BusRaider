@@ -273,6 +273,30 @@ void BusRaiderApp::testSelf_detailedBus()
                 _display.consolePut("\n");
                 _display.consoleForeground(DISPLAY_FX_WHITE);
                 issueCount++;
+                if (pTestRec->testOption == TEST_OPT_PIN_TO_MUX)
+                {
+                    ee_sprintf(outMsg, "Pin %s should oscillate at 2Hz for 5 minutes", pTestRec->testPinName);
+                    _display.consolePut(outMsg);
+                    _display.consolePut("\n");
+                    for (int i = 0; i < 600; i++)
+                    {
+                        if (i % 2 == 0)
+                        {
+                            BusAccess::rawBusControlMuxSet(pTestRec->levelToCheckFor);
+                        }
+                        else
+                        {
+                            BusAccess::rawBusControlMuxClear();
+                        }
+                        // if (testSelf_commonLoop() != TEST_SELF_RET_OK)
+                        // {
+                        //     testState = TEST_STATE_DONE;
+                        //     break;
+                        // }
+                        microsDelay(500000);
+                    }
+                    break;
+                }
                 if (!pTestRec->continueOnFail)
                 {
                     _display.consoleForeground(DISPLAY_FX_RED);
