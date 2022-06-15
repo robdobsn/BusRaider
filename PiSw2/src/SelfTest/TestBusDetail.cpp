@@ -2,15 +2,14 @@
 // Rob Dobson 2019
 
 #include "BusRaiderApp.h"
-#include "System/Display.h"
-#include "System/ee_sprintf.h"
-#include "System/PiWiring.h"
-#include "System/lowlib.h"
-#include "System/rdutils.h"
-#include "TargetBus/BusAccess.h"
-#include "System/timer.h"
-#include "Machines/McTerminal.h"
-#include "System/memoryTests.h"
+#include "Display.h"
+#include "PiWiring.h"
+#include "lowlib.h"
+#include "rdutils.h"
+#include "BusAccess.h"
+#include "timer.h"
+#include "McTerminal.h"
+#include "memoryTests.h"
 
 // Log string
 static const char* FromBusRaiderTests = "BusRaiderTests";
@@ -123,7 +122,7 @@ void BusRaiderApp::testSelf_detailedBus()
                 if (strlen(pTestRec->msgBeforeTest) != 0)
                 {
                     char outMsg[200];
-                    ee_sprintf(outMsg, pTestRec->msgBeforeTest, pTestRec->testPinName);
+                    snprintf(outMsg, sizeof(outMsg), pTestRec->msgBeforeTest, pTestRec->testPinName);
                     _display.consolePut(outMsg);
                     _display.consolePut(", then press SPACE BAR");
                     _testSelf_startUpdateTimeMs = millis();
@@ -268,11 +267,30 @@ void BusRaiderApp::testSelf_detailedBus()
             {
                 char outMsg[200];
                 _display.consoleForeground(DISPLAY_FX_RED);
-                ee_sprintf(outMsg, pTestRec->msgIfFailed, pTestRec->testPinName);
+                snprintf(outMsg, sizeof(outMsg), pTestRec->msgIfFailed, pTestRec->testPinName);
                 _display.consolePut(outMsg);
                 _display.consolePut("\n");
                 _display.consoleForeground(DISPLAY_FX_WHITE);
                 issueCount++;
+                if (pTestRec->testOption == TEST_STATE_TEST_PIN_TO_MUX)
+                {
+                    snprintf(outMsg, sizeof(outMsg), "Pin %s should oscillate at 2Hz for 5 minutes", pTestRec->testPinName);
+                    _display.consolePut(outMsg);
+                    _display.consolePut("\n");
+                    for (int i = 0; i < 600)
+                    {
+                        if (i % 2 == 0)
+                        {
+                            BusAccess::rawBusControlMuxSet(pTestRec->levelToCheckFor);
+                        }
+                        else
+                        {
+                            BusAccess::rawBusControlMuxClear();
+                        }
+                        delayMicroseconds(500000);
+                    }
+                    break;
+                }
                 if (!pTestRec->continueOnFail)
                 {
                     _display.consoleForeground(DISPLAY_FX_RED);
@@ -292,7 +310,7 @@ void BusRaiderApp::testSelf_detailedBus()
                 if (strlen(pTestRec->msgIfSucceeded) > 0)
                 {
                     _display.consoleForeground(DISPLAY_FX_GREEN);
-                    ee_sprintf(outMsg, pTestRec->msgIfSucceeded, pTestRec->testPinName);
+                    snprintf(outMsg, sizeof(outMsg), pTestRec->msgIfSucceeded, pTestRec->testPinName);
                     _display.consolePut(outMsg);
                     _display.consolePut("\n");
                     _display.consoleForeground(DISPLAY_FX_WHITE);
@@ -329,7 +347,7 @@ void BusRaiderApp::testSelf_detailedBus()
                 {
                     _display.consoleForeground(DISPLAY_FX_RED);
                     char issueText[100];
-                    ee_sprintf(issueText, "Tests complete %d issue%s found",
+                    snprintf(issueText, sizeof(issueText), "Tests complete %d issue%s found",
                                     issueCount, issueCount > 1 ? "s" : "");
                     _display.consolePut(issueText);
                     _display.consoleForeground(DISPLAY_FX_WHITE);
@@ -378,7 +396,7 @@ bool BusRaiderApp::testSelf_detailedBus_addr()
         char ctrlStr[100];
         BusAccess::formatCtrlBus(ctrl, ctrlStr, 20);
         char testStr[100];
-        ee_sprintf(testStr, "Awr %04x Ard %04x Ard2 %02x data %02x ctrl %s\n", addrTestMask, addr, vv, data, ctrlStr);
+        snprintf(testStr, sizeof(testStr), "Awr %04x Ard %04x Ard2 %02x data %02x ctrl %s\n", addrTestMask, addr, vv, data, ctrlStr);
         LogWrite(FromBusRaiderTests, LOG_DEBUG, "%s", testStr);
 
         // Check correct
@@ -402,7 +420,7 @@ bool BusRaiderApp::testSelf_detailedBus_addr()
 
         // Debug
         BusAccess::formatCtrlBus(ctrl, ctrlStr, 20);
-        ee_sprintf(testStr, "Awr %04x Ard %04x Ard2 %02x data %02x ctrl %s\n", inverseTestMask, addr, vv, data, ctrlStr);
+        snprintf(testStr, sizeof(testStr), "Awr %04x Ard %04x Ard2 %02x data %02x ctrl %s\n", inverseTestMask, addr, vv, data, ctrlStr);
         LogWrite(FromBusRaiderTests, LOG_DEBUG, "%s", testStr);
 
         // Check correct
@@ -435,7 +453,7 @@ bool BusRaiderApp::testSelf_detailedBus_addr()
         for (int i = 0; i < 16; i++)
         {
             char tmpStr[10];
-            ee_sprintf(tmpStr, "%d", i);
+            snprintf(tmpStr, sizeof(tmpStr), "%d", i);
             if (addrStuckHighMask & addrTestMask)
             {
                 if (strlen(stuckHighStr) > 0)

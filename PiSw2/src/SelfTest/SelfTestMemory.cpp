@@ -6,7 +6,7 @@
 #include "PiWiring.h"
 #include "lowlib.h"
 #include "rdutils.h"
-#include "BusControl.h"
+#include "../BusControl/BusControl.h"
 #include "memoryTests.h"
 #include "KeyConversion.h"
 #include "SelfTest.h"
@@ -97,7 +97,7 @@ void selfTestMemory(BusRaiderApp* pBusRaiderApp, Display& display, BusControl& b
             case TEST_STATE_PERFORM_RESET:
             {
                 // Reset the machine
-                busControl.bus().targetReset(100);
+                busControl.bus().resetTargetCPU(100);
                 testState = TEST_STATE_CHECK_BUSRQ;
                 break;
             }

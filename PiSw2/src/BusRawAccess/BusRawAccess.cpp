@@ -17,9 +17,8 @@ static const char MODULE_PREFIX[] = "BusRawAccess";
 // Constructor
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-BusRawAccess::BusRawAccess(BusControl& busControl, BusClockGenerator& busClockGenerator,
+BusRawAccess::BusRawAccess(BusClockGenerator& busClockGenerator,
                 BusWaitAssertedCB* pCallbackWhileWaitAsserted, void* pCallbackObj) :
-        _busControl(busControl),
         _busClockGenerator(busClockGenerator)
 {
     _busReqAcknowledged = false;
@@ -85,7 +84,7 @@ void BusRawAccess::service()
 // Reset target
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void BusRawAccess::targetReset(uint32_t ms)
+void BusRawAccess::resetTargetCPU(uint32_t ms)
 {
     muxSet(BR_MUX_RESET_Z80_BAR_LOW);
     microsDelay(100000);

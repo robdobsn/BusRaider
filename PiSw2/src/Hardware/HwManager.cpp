@@ -2,7 +2,7 @@
 // Rob Dobson 2018
 
 #include "HwManager.h"
-#include "BusControl.h"
+#include "lowlev.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Variables
@@ -38,8 +38,7 @@ const char* HwManager::_pDefaultHardwareList =
 // Constructor
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-HwManager::HwManager(BusControl& busControl) :
-    _busControl(busControl)
+HwManager::HwManager()
 {
     // _pThisInstance = this;
     // Sockets

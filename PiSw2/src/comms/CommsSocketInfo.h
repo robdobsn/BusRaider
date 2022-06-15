@@ -7,10 +7,12 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // Callback types
-typedef bool CmdHandlerHandleRxMsgFnType(void* pObject, const char* pCmdJson, const uint8_t* pParams, unsigned paramsLen,
+typedef bool CmdHandlerHandleRxMsgFnType(void* pObject, const char* pCmdJson, 
+                    const uint8_t* pParams, unsigned paramsLen,
                     char* pRespJson, unsigned maxRespLen);
 typedef bool CmdHandlerOTAUpdateFnType(const uint8_t* pData, unsigned dataLen);
-typedef bool CmdHandlerTargetFileFnType(void* pObject, const char* rxFileInfo, const uint8_t* pData, unsigned dataLen);
+typedef bool CmdHandlerTargetFileFnType(void* pObject, const char* rxFileInfo, 
+                    const uint8_t* pData, unsigned dataLen);
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Comms Socket Info - this is used to plug-in to the CommmandHandler layer

@@ -7,7 +7,7 @@ CIRCLEHOME = ../../circle
 OBJS	= McTRS80CmdFormat.o McZXSpectrumSNAFormat.o McZXSpectrumTZXFormat.o \
 	      McZXSpectrumZ80Format.o srecparser.o
 
-INCLUDE	+= -I ../system
+INCLUDE	+= -I ../system -I ../CPUHandler
 
 brFileFormats.a: $(OBJS)
 	@echo "  AR    $@"

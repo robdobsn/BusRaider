@@ -4,9 +4,9 @@
 
 CIRCLEHOME = ../../circle
 
-OBJS	= SelfTestMemory.o
+OBJS	= SelfTestMemory.o memoryTests.o
 
-INCLUDE	+= -I ../system -I ../TargetBus -I ../comms -I ../Hardware -I ../fonts -I ../TerminalEmulation -I ../FileFormats -I ../Display -I ../ -I ../BusRawAccess
+INCLUDE	+= -I ../system -I ../BusControl -I ../comms -I ../Hardware -I ../fonts -I ../TerminalEmulation -I ../FileFormats -I ../Display -I ../ -I ../BusRawAccess -I ../CPUHandler -I ../McManager
 
 brSelfTest.a: $(OBJS)
 	@echo "  AR    $@"

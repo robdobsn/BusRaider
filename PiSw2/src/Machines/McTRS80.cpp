@@ -375,7 +375,7 @@ bool McTRS80::fileHandler(const char* pFileInfo, const uint8_t* pFileData, int f
         McTRS80CmdFormat cmdFormat;
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing TRS80 CMD file len %d", fileLen);
         cmdFormat.proc(targetImager.addMemoryBlockStatic, 
-                    targetImager.setTargetRegistersStatic, 
+                    targetImager.setCPURegistersStatic, 
                     &targetImager, pFileData, fileLen);
     }
     else

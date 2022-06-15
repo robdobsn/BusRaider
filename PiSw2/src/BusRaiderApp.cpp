@@ -17,7 +17,7 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define SYSTEM_NAME "BusRaider"
-#define SYSTEM_VERSION "3.1.12"
+#define SYSTEM_VERSION "3.1.16"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Globals
@@ -70,7 +70,8 @@ void BusRaiderApp::init()
     _mcManager.init();
     
     // Add socket for status handling
-    _commsManager.getCommandHandler().commsSocketAdd(this, true, BusRaiderApp::handleRxMsgStatic, NULL, NULL);
+    _commsManager.getCommandHandler().commsSocketAdd(this, true, 
+            BusRaiderApp::handleRxMsgStatic, NULL, NULL);
 }
 
 void BusRaiderApp::clear()

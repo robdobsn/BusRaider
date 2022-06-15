@@ -3,7 +3,7 @@
 
 #include "McBase.h"
 #include "usb_hid_keys.h"
-#include "TargetRegisters.h"
+#include "CPUHandler_Z80Regs.h"
 #include "logging.h"
 
 class McZXSpectrum : public McBase

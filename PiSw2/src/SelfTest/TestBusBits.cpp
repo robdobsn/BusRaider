@@ -2,15 +2,14 @@
 // Rob Dobson 2019
 
 #include "BusRaiderApp.h"
-#include "System/Display.h"
-#include "System/ee_sprintf.h"
-#include "System/PiWiring.h"
-#include "System/lowlib.h"
-#include "System/rdutils.h"
-#include "TargetBus/BusAccess.h"
-#include "System/timer.h"
+#include "Display.h"
+#include "PiWiring.h"
+#include "lowlib.h"
+#include "rdutils.h"
+#include "BusAccess.h"
+#include "timer.h"
 #include "Machines/McTerminal.h"
-#include "System/memoryTests.h"
+#include "memoryTests.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Self test - bits test
@@ -155,7 +154,7 @@ void BusRaiderApp::testSelf_busBits()
 
                     // Next test
                     char testStr[100];
-                    ee_sprintf(testStr, testSequence[testSeqIdx].msg, testSequence[testSeqIdx].val);
+                    snprintf(testStr, sizeof(testStr), testSequence[testSeqIdx].msg, testSequence[testSeqIdx].val);
                     _display.consolePut("Test set: ");
                     _display.consolePut(testStr);
                     _display.consolePut(", SPACE or Q(uit) ...");

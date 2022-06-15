@@ -17,7 +17,8 @@ LIBS	= 	$(CIRCLEHOME)/lib/usb/libusb.a \
 			comms/brcomms.a \
 			web/brweb.a \
 			BusRawAccess/brBusRawAccess.a \
-			TargetBus/brTargetBus.a \
+			CPUHandler/brCPUHandler.a \
+			BusControl/brBusControl.a \
 			Hardware/brHardware.a \
 			ControlAPI/brBusAPI.a \
 			Machines/brMachines.a \
@@ -27,7 +28,7 @@ LIBS	= 	$(CIRCLEHOME)/lib/usb/libusb.a \
 			FileFormats/brFileFormats.a \
 			Display/brDisplay.a
 
-INCLUDE	+= -I system -I comms -I web -I TargetBus -I Display -I Machines -I TerminalEmulation -I SelfTest -I Hardware -I BusRawAccess
+INCLUDE	+= -I system -I comms -I web -I BusControl -I Display -I Machines -I TerminalEmulation -I SelfTest -I Hardware -I BusRawAccess -I CPUHandler
 
 include Rules.mk
 

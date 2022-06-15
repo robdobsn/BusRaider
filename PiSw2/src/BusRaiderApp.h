@@ -5,7 +5,7 @@
 
 #include "stdint.h"
 #include "comms/CommsManager.h"
-#include "TargetBus/BusControl.h"
+#include "BusControl/BusControl.h"
 #include "Machines/McManager.h"
 #include "ControlAPI/ControlAPI.h"
 

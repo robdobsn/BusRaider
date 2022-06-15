@@ -2,15 +2,15 @@
 // Rob Dobson 2019
 
 #include "BusRaiderApp.h"
-#include "System/Display.h"
-#include "System/ee_sprintf.h"
-#include "System/PiWiring.h"
-#include "System/lowlib.h"
-#include "System/rdutils.h"
-#include "TargetBus/BusAccess.h"
-#include "System/timer.h"
+#include "Display.h"
+#include "string.h"
+#include "PiWiring.h"
+#include "lowlib.h"
+#include "rdutils.h"
+#include "BusAccess.h"
+#include "timer.h"
 #include "Machines/McTerminal.h"
-#include "System/memoryTests.h"
+#include "memoryTests.h"
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Self test - common looping code
@@ -44,7 +44,7 @@ BusRaiderApp::SelfTestRetType BusRaiderApp::testSelf_commonLoop()
         return TEST_SELF_RET_QUIT;
 
     // Test for time-out
-    if (isTimeout(millis(), _testSelf_startUpdateTimeMs, 60000))
+    if (isTimeout(millis(), _testSelf_startUpdateTimeMs, 630000))
     {
         _display.consolePut("\nTest timed-out, repeat if required\n");
         return TEST_SELF_RET_TIMEOUT;
@@ -127,7 +127,7 @@ void BusRaiderApp::testSelf_busrq()
                 {
                     _display.consoleForeground(DISPLAY_FX_RED);
                     char issueText[100];
-                    ee_sprintf(issueText, "Tests complete %d issue%s found",
+                    snprintf(issueText, sizeof(issueText), "Tests complete %d issue%s found",
                                     issueCount, issueCount > 1 ? "s" : "");
                     _display.consolePut(issueText);
                     _display.consoleForeground(DISPLAY_FX_WHITE);
@@ -217,7 +217,7 @@ void BusRaiderApp::testSelf_readSetBus(bool readMode)
                     char busInfo[100];
                     char ctrlBusStr[20];
                     BusAccess::formatCtrlBus(ctrl, ctrlBusStr, 20);
-                    ee_sprintf(busInfo, "BUS Addr: %04x Data: %02x, Ctrl: %s%c%c (%08x)\n", 
+                    snprintf(busInfo, sizeof(busInfo), "BUS Addr: %04x Data: %02x, Ctrl: %s%c%c (%08x)\n", 
                                 addr, data, 
                                 ctrlBusStr,
                                 (rawVals & BR_BUSACK_BAR_MASK) ? '.' : 'K',

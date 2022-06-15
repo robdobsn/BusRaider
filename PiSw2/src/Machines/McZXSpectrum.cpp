@@ -524,7 +524,7 @@ bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         McZXSpectrumTZXFormat formatHandler;
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing TZX file len %d", fileLen);
         formatHandler.proc(targetImager.addMemoryBlockStatic, 
-                targetImager.setTargetRegistersStatic,
+                targetImager.setCPURegistersStatic,
                 &targetImager,
                 pFileData, fileLen);
     }
@@ -535,7 +535,7 @@ bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing Z80 file len %d", fileLen);
         // Handle registers and injecting RET
         formatHandler.proc(targetImager.addMemoryBlockStatic, 
-                targetImager.setTargetRegistersStatic,
+                targetImager.setCPURegistersStatic,
                 &targetImager,
                 pFileData, fileLen);
     }
@@ -546,7 +546,7 @@ bool McZXSpectrum::fileHandler(const char* pFileInfo, const uint8_t* pFileData, 
         LogWrite(MODULE_PREFIX, LOG_DEBUG, "Processing SNA file len %d", fileLen);
         // Handle the format
         formatHandler.proc(targetImager.addMemoryBlockStatic, 
-                targetImager.setTargetRegistersStatic,
+                targetImager.setCPURegistersStatic,
                 &targetImager,
                 pFileData, fileLen);
     }

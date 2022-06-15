@@ -24,7 +24,7 @@ class HwManager
 {
 public:
     // Constructor
-    HwManager(BusControl& busControl);
+    HwManager();
 
     // Get code snippet to setup hardware
     uint32_t getSnippetToSetupHw(uint32_t codeLocation, uint8_t* pCodeBuffer, uint32_t codeMaxlen);
@@ -106,7 +106,7 @@ public:
 //     CommandHandler& _commandHandler;
 
     // Bus access
-    BusControl& _busControl;
+    // BusControl& _busControl;
 
     // // Hardware slots
     // static const int MAX_HARDWARE = 10;

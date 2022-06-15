@@ -18,7 +18,15 @@ cd BusRawAccess
 $make $1 $2 || exit
 cd ..
 
-cd TargetBus
+cd CPUHandler
+$make $1 $2 || exit
+cd ..
+
+cd StepTracer
+$make $1 $2 || exit
+cd ..
+
+cd BusControl
 $make $1 $2 || exit
 cd ..
 

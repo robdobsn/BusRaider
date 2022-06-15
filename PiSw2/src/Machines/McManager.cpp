@@ -6,7 +6,7 @@
 #include "lowlib.h"
 #include "rdutils.h"
 #include "PiWiring.h"
-#include "TargetCPUZ80.h"
+#include "CPUHandler_Z80.h"
 #include "McTRS80.h"
 #include "McRobsZ80.h"
 #include "McZXSpectrum.h"
@@ -55,7 +55,7 @@ void McManager::init()
 {
     // Connect to the bus socket
     if (_busSocketId < 0)
-        _busSocketId = _busControl.sock().addSocket(
+        _busSocketId = _busControl.sock().socketAdd(
             true,
             handleWaitInterruptStatic,
             busReqAckedStatic,
@@ -274,7 +274,7 @@ bool McManager::setupMachine(const char* mcJson)
                 pMc->isMonitorIORQEnabled());
 
     // Setup target imager
-    _busControl.imager().setSetRegistersCodeAddr(pMc->getSetRegistersCodeAddr());
+    _busControl.imagerSetRegistersCodeAddr(pMc->getSetRegistersCodeAddr());
 
     // See if any files to load
     static const int MAX_FILE_NAME_LEN = 100;

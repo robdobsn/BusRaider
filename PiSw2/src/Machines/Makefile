@@ -10,7 +10,7 @@ OBJS	= McBase.o McManager.o \
 		  McZXSpectrum.o
 		#   McRobsZ80.o 
 
-INCLUDE	+= -I ../system -I ../TargetBus -I ../comms -I ../Hardware -I ../fonts -I ../TerminalEmulation -I ../FileFormats -I ../Display -I ../BusRawAccess
+INCLUDE	+= -I ../system -I ../BusControl -I ../comms -I ../Hardware -I ../fonts -I ../TerminalEmulation -I ../FileFormats -I ../Display -I ../BusRawAccess -I ../CPUHandler
 
 brMachines.a: $(OBJS)
 	@echo "  AR    $@"

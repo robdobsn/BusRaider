@@ -48,7 +48,7 @@ void ControlAPI::init()
 {
     // Connect to the bus socket
     if (_busSocketId < 0)
-        _busSocketId = _busControl.sock().addSocket( 
+        _busSocketId = _busControl.sock().socketAdd( 
             true,
             ControlAPI::handleWaitInterruptStatic,
             ControlAPI::busReqAckedStatic,
@@ -818,7 +818,7 @@ void ControlAPI::service()
 bool ControlAPI::apiImagerClear(char* pRespJson, unsigned maxRespLen)
 {
     // LogWrite(MODULE_PREFIX, LOG_VERBOSE, "imagerClear");
-    _busControl.imager().clear();
+    _busControl.imagerClear();
     return true;
 }
 
@@ -836,7 +836,7 @@ bool ControlAPI::apiImagerAddMemBlock(const char* pCmdJson,
 #ifdef DEBUG_API_PROGRAMMER
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "imagerAdd addr 0x%04x len %d", addr, paramsLen);
 #endif
-    _busControl.imager().addMemoryBlock(addr, pParams, paramsLen);
+    _busControl.imagerAddMemoryBlock(addr, pParams, paramsLen);
     return true;
 }
 
@@ -852,13 +852,13 @@ bool ControlAPI::apiImagerWrite(const char* pCmdJson,
 #ifdef DEBUG_API_PROGRAMMER
     LogWrite(MODULE_PREFIX, LOG_DEBUG, "apiImagerWrite exec %d debug %d", doExec, doDebug);
 #endif
-    _busControl.ctrl().programmingStart(doExec, doDebug);
+    _busControl.programmingStart(doExec, doDebug);
     return true;
 }
 
 bool ControlAPI::apiImagerWriteAndExec(char* pRespJson, unsigned maxRespLen)
 {
-    _busControl.ctrl().programmingStart(true, false);
+    _busControl.programmingStart(true, false);
     return true;
 }
 

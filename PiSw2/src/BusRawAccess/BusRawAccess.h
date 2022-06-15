@@ -30,7 +30,7 @@ typedef void BusWaitAssertedCB(void* obj);
 class BusRawAccess
 {
 public:
-    BusRawAccess(BusControl& busControl, BusClockGenerator& busClockGenerator,
+    BusRawAccess(BusClockGenerator& busClockGenerator,
                 BusWaitAssertedCB* pCallbackWhileWaitAsserted, void* pCallbackObj);
 
     // Initialization
@@ -40,7 +40,7 @@ public:
     void service();
 
     // Reset target
-    void targetReset(uint32_t ms);
+    void resetTargetCPU(uint32_t ms);
 
     // Read and write raw blocks - directly to bus
     BR_RETURN_TYPE rawBlockWrite(uint32_t addr, const uint8_t* pData, uint32_t len, BlockAccessType accessType);
@@ -168,9 +168,6 @@ private:
     // Hardware version
     // V1.7 ==> 17, V2.0 ==> 20
     int _hwVersionNumber;
-
-    // Bus control
-    BusControl& _busControl;
 
     // Target clock generator
     BusClockGenerator& _busClockGenerator;
